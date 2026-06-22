@@ -8,6 +8,7 @@
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { useFleetComparison } from "@/hooks/useFleetInsights";
@@ -38,6 +39,8 @@ function MetricRow({
   unit,
   lowerIsBetter,
 }: RowProps) {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith("en") ? "en-US" : "tr-TR";
   const hasData = deltaPct !== null;
   const isImprovement = hasData
     ? lowerIsBetter
@@ -70,7 +73,7 @@ function MetricRow({
             {label}
           </p>
           <p className="font-mono text-sm font-bold tabular-nums text-primary">
-            {current.toLocaleString("tr-TR")}{" "}
+            {current.toLocaleString(locale)}{" "}
             <span className="text-[10px] text-tertiary">{unit}</span>
           </p>
         </div>
@@ -88,10 +91,12 @@ function MetricRow({
             {deltaPct.toFixed(1)}%
           </span>
         ) : (
-          <span className="text-[10px] text-tertiary italic">veri yok</span>
+          <span className="text-[10px] text-tertiary italic">
+            {t("nav.no_data", "No data")}
+          </span>
         )}
         <span className="font-mono text-[10px] text-tertiary">
-          geç: {previous.toLocaleString("tr-TR")}
+          {t("common.previous", "Prev.")}: {previous.toLocaleString(locale)}
         </span>
       </div>
     </div>

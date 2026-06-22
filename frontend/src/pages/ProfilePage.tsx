@@ -24,6 +24,8 @@ import { PushNotificationToggle } from "../components/profile/PushNotificationTo
 import { QuietHoursSettings } from "../components/profile/QuietHoursSettings";
 import axiosInstance from "@/services/api/axios-instance";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useLocale } from "../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 // ── Schemas ────────────────────────────────────────────────────────────────
 
@@ -67,7 +69,7 @@ const ROLE_COLORS: Record<string, string> = {
   user: "bg-secondary/10 text-secondary",
 };
 
-function formatRelative(iso: string | undefined): string {
+function formatRelative(iso: string | undefined, locale: string): string {
   if (!iso) return "Bilinmiyor";
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -77,12 +79,12 @@ function formatRelative(iso: string | undefined): string {
   if (hours < 24) return `${hours} saat önce`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `${days} gün önce`;
-  return new Date(iso).toLocaleDateString("tr-TR");
+  return new Date(iso).toLocaleDateString(locale);
 }
 
-function formatDate(iso: string | undefined): string {
+function formatDate(iso: string | undefined, locale: string): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("tr-TR", {
+  return new Date(iso).toLocaleDateString(locale, {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -219,7 +221,9 @@ function PasswordToggleButton({
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  usePageTitle("Profilim");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("common.my_profile", "My Profile"));
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -330,7 +334,7 @@ export default function ProfilePage() {
                 <Clock size={11} className="flex-shrink-0" />
                 Son giriş:{" "}
                 <span className="text-secondary font-medium">
-                  {formatRelative(user?.last_login)}
+                  {formatRelative(user?.last_login, locale)}
                 </span>
               </span>
               {user?.son_giris_ip && (
@@ -347,7 +351,7 @@ export default function ProfilePage() {
                   <User size={11} className="flex-shrink-0" />
                   Hesap:{" "}
                   <span className="text-secondary font-medium">
-                    {formatDate(user.created_at)}
+                    {formatDate(user.created_at, locale)}
                   </span>
                 </span>
               )}
@@ -356,7 +360,7 @@ export default function ProfilePage() {
                   <KeyRound size={11} className="flex-shrink-0" />
                   Şifre:{" "}
                   <span className="text-secondary font-medium">
-                    {formatRelative(user.sifre_degisim_tarihi)}
+                    {formatRelative(user.sifre_degisim_tarihi, locale)}
                   </span>
                 </span>
               )}

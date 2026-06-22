@@ -16,6 +16,8 @@ import { adminHealthApi } from "@/api/admin";
 import { reportService } from "@/api/reports";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 const statusColor = (status?: string) => {
   if (status === "healthy" || status === "success") return "text-emerald-500";
@@ -39,7 +41,9 @@ const statusLabel = (status?: string) => {
 
 export default function AdminOverviewPage() {
   const { adminOverviewText } = useAdminResources();
-  usePageTitle("Yönetim Paneli");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("admin.overview", "Overview"));
   const { data: dashboard } = useQuery({
     queryKey: ["admin-overview", "dashboard"],
     queryFn: () => reportService.getDashboardStats(),
@@ -243,7 +247,7 @@ export default function AdminOverviewPage() {
                 <p className="mt-2 text-xs text-secondary">
                   {health?.backups?.last_backup
                     ? new Date(health.backups.last_backup).toLocaleString(
-                        "tr-TR",
+                        locale,
                       )
                     : adminOverviewText.operationalHealth.noBackup}
                 </p>

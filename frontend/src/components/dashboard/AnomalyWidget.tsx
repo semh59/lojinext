@@ -2,6 +2,7 @@
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import type { FleetInsightsData } from "@/api/anomalies";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   data: FleetInsightsData | undefined;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function AnomalyWidget({ data, isLoading }: Props) {
+  const locale = useLocale();
   return (
     <Card padding="lg" className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
@@ -36,7 +38,7 @@ export function AnomalyWidget({ data, isLoading }: Props) {
               </p>
               <p className="text-sm text-primary">
                 <span className="font-semibold">
-                  {data.leakage.fuel_gap_liters.toLocaleString("tr-TR", {
+                  {data.leakage.fuel_gap_liters.toLocaleString(locale, {
                     maximumFractionDigits: 0,
                   })}{" "}
                   L
@@ -49,7 +51,7 @@ export function AnomalyWidget({ data, isLoading }: Props) {
               </p>
               <p className="text-xs text-warning/80">
                 ≈{" "}
-                {data.leakage.fuel_gap_cost.toLocaleString("tr-TR", {
+                {data.leakage.fuel_gap_cost.toLocaleString(locale, {
                   style: "currency",
                   currency: "TRY",
                   maximumFractionDigits: 0,

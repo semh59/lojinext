@@ -5,6 +5,7 @@ import { Edit2, Fuel, Trash2 } from "lucide-react";
 
 import { FuelRecord } from "../../types";
 import { useFuelResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface FuelTableProps {
   records: FuelRecord[];
@@ -20,6 +21,7 @@ export function FuelTable({
   onDelete,
 }: FuelTableProps) {
   const { fuelTableText } = useFuelResources();
+  const locale = useLocale();
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -124,7 +126,7 @@ export function FuelTable({
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-primary">
-                      {new Date(record.tarih).toLocaleDateString("tr-TR", {
+                      {new Date(record.tarih).toLocaleDateString(locale, {
                         day: "numeric",
                         month: "short",
                         year: "numeric",
@@ -170,7 +172,7 @@ export function FuelTable({
 
                   <div className="text-right">
                     <span className="whitespace-nowrap rounded bg-success/10 px-2 py-1 text-xs font-bold tabular-nums text-success">
-                      {(record.fiyat_tl || 0).toLocaleString("tr-TR", {
+                      {(record.fiyat_tl || 0).toLocaleString(locale, {
                         style: "currency",
                         currency: "TRY",
                       })}{" "}
@@ -180,7 +182,7 @@ export function FuelTable({
 
                   <div className="text-right">
                     <span className="text-sm font-bold tabular-nums text-primary">
-                      {record.toplam_tutar.toLocaleString("tr-TR", {
+                      {record.toplam_tutar.toLocaleString(locale, {
                         style: "currency",
                         currency: "TRY",
                       })}

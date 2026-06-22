@@ -9,6 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { aiApi, type AiQueryResponse } from "../../api/ai";
+import { useLocale } from "../../hooks/useLocale";
 
 const CATEGORIES = [
   { value: "general", label: "Genel" },
@@ -27,6 +28,7 @@ type SpeechRecognitionCtor = new () => {
  */
 export function AiQueryPanel() {
   const [category, setCategory] = useState("general");
+  const locale = useLocale();
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<AiQueryResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export function AiQueryPanel() {
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) return;
     const rec = new Ctor();
-    rec.lang = "tr-TR";
+    rec.lang = locale;
     rec.onresult = (e) => setMessage(e.results[0][0].transcript);
     rec.start();
   };

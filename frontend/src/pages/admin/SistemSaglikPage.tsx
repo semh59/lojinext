@@ -40,6 +40,8 @@ import type { BackendErrorEvent } from "@/services/api/error-service";
 import { useEventSource } from "@/hooks/use-event-source";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 type Tab = "health" | "errors";
 
@@ -66,6 +68,7 @@ const severityVariant = (
 
 function HataAnaliziTab() {
   const { notify } = useNotify();
+  const locale = useLocale();
   const qc = useQueryClient();
   const [layer, setLayer] = useState("");
   const [severity, setSeverity] = useState("");
@@ -239,7 +242,7 @@ function HataAnaliziTab() {
                   </p>
                   <p className="text-xs text-secondary">
                     {ev.layer} · {ev.category} ·{" "}
-                    {new Date(ev.last_seen).toLocaleTimeString("tr-TR")}
+                    {new Date(ev.last_seen).toLocaleTimeString(locale)}
                   </p>
                 </div>
               </div>
@@ -430,7 +433,7 @@ function HataAnaliziTab() {
                       {ev.count}
                     </TableCell>
                     <TableCell className="text-xs text-secondary">
-                      {new Date(ev.last_seen).toLocaleString("tr-TR")}
+                      {new Date(ev.last_seen).toLocaleString(locale)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -507,8 +510,9 @@ const statusLabel = (status?: string) => {
 };
 
 export default function SystemHealthPage() {
+  const { t } = useTranslation();
   const { adminHealthText } = useAdminResources();
-  usePageTitle("Sistem Sağlığı");
+  usePageTitle(t("admin.system_health", "System Health"));
   const qc = useQueryClient();
   const { notify } = useNotify();
   const [activeTab, setActiveTab] = useState<Tab>("health");

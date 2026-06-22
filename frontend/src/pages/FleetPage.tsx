@@ -9,11 +9,13 @@ import { usePageTitle } from "../hooks/usePageTitle";
 import { useUrlState } from "../hooks/use-url-state";
 import { cn } from "../lib/utils";
 import { useFleetResources } from "../resources/useResources";
+import { useTranslation } from "react-i18next";
 type TabType = "vehicles" | "trailers";
 
 export default function FleetPage() {
   const { fleetPageText } = useFleetResources();
-  usePageTitle("Araçlar & Dorseler");
+  const { t } = useTranslation();
+  usePageTitle(t("fleet.title", "Vehicles & Trailers"));
   const [{ tab: activeTab }, setUrlState] = useUrlState({
     tab: "vehicles" as TabType,
     page: undefined as number | undefined,

@@ -25,7 +25,13 @@
     "details": "Details",
     "status": "Status",
     "date": "Date",
-    "note": "Note"
+    "note": "Note",
+    "today": "Today",
+    "previous": "Prev.",
+    "toggle_menu": "Toggle menu",
+    "not_found": "Page Not Found",
+    "my_profile": "My Profile",
+    "see_all": "See All"
   },
   "dashboard": {
     "title": "Fleet Dashboard",
@@ -33,7 +39,14 @@
     "total_vehicles": "Fleet",
     "active_trips": "Trips",
     "total_km": "Total KM",
-    "fuel_consumed": "Fuel Consumed"
+    "fuel_consumed": "Fuel Consumed",
+    "todays_trips": "Today's Trips",
+    "todays_trips_error": "Could not load today's trips",
+    "todays_trips_empty": "No trips planned for today",
+    "todays_summary_loading": "Loading today's summary…",
+    "todays_summary_empty": "No trips recorded for today.",
+    "todays_summary_count": "trips today",
+    "in_progress": "En Route"
   },
   "auth": {
     "login": "Login",
@@ -74,16 +87,28 @@
     "export_excel": "Download Excel",
     "export_pdf": "Download PDF"
   },
+  "alerts": {
+    "title": "Anomalies"
+  },
   "admin": {
     "title": "Administration",
     "users": "Users",
     "roles": "Roles",
     "settings": "Settings",
     "system_health": "System Health",
-    "audit_log": "Audit Log"
+    "audit_log": "Audit Log",
+    "overview": "Overview",
+    "ml_models": "ML Models",
+    "configuration": "Configuration",
+    "data_management": "Data Management",
+    "maintenance": "Maintenance",
+    "trip_assignment": "Trip Assignment",
+    "forecast_accuracy": "Forecast Accuracy",
+    "usage_analytics": "Usage Analytics",
+    "notifications": "Notifications"
   },
   "fleet": {
-    "title": "Fleet",
+    "title": "Vehicles & Trailers",
     "vehicle": "Vehicle",
     "vehicles": "Vehicles",
     "plate": "Plate",
@@ -112,5 +137,29 @@
     "predicted_consumption": "Predicted Consumption",
     "status": "Status",
     "add_trip": "Add Trip"
+  },
+  "nav": {
+    "today": "Today",
+    "maintenance": "Maintenance",
+    "fleet_insights": "Fleet Insights",
+    "coaching": "Coaching",
+    "reports": "Report Studio",
+    "route_lab": "Route Lab",
+    "notifications": "Notifications",
+    "mark_all_read": "Mark all as read",
+    "no_notifications": "No notifications yet",
+    "no_data": "No data",
+    "group": {
+      "operations": "Operations",
+      "fleet": "Fleet",
+      "insights": "Insights",
+      "system": "System"
+    },
+    "event_types": {
+      "anomaly": "Anomaly",
+      "delay": "Delay",
+      "trip": "Trip",
+      "notification": "Notification"
+    }
   }
 }

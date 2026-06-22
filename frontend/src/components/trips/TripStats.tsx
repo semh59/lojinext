@@ -3,6 +3,7 @@ import { LucideIcon } from "lucide-react";
 
 import { cn } from "../../lib/utils";
 import { useTripsResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface TripStat {
   label: string;
@@ -52,6 +53,7 @@ const colorMap = [
 
 export function TripStats({ stats }: TripStatsProps) {
   const { tripStatsText } = useTripsResources();
+  const locale = useLocale();
   return (
     <div className="mb-8">
       <div className="mb-6 flex flex-col gap-1">
@@ -98,7 +100,7 @@ export function TripStats({ stats }: TripStatsProps) {
                   <div className="flex items-baseline gap-1.5">
                     <h3 className="text-2xl font-black tracking-tight text-primary tabular-nums">
                       {typeof stat.value === "number" && index !== 1
-                        ? stat.value.toLocaleString("tr-TR")
+                        ? stat.value.toLocaleString(locale)
                         : stat.value}
                     </h3>
                     {stat.unit && (

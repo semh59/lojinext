@@ -3,6 +3,7 @@ import { AlertCircle, Leaf, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCarbon } from "@/hooks/useExecutive";
 import { useExecutiveResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   className?: string;
@@ -10,6 +11,7 @@ interface Props {
 
 export function CarbonReportCard({ className }: Props) {
   const { executiveText } = useExecutiveResources();
+  const locale = useLocale();
   const { data, isLoading, error } = useCarbon(30);
   const t = executiveText.carbon;
 
@@ -75,7 +77,7 @@ export function CarbonReportCard({ className }: Props) {
             {t.totalCo2}
           </p>
           <p className="font-mono text-lg font-bold text-primary">
-            {data.total_co2_kg.toLocaleString("tr-TR")}
+            {data.total_co2_kg.toLocaleString(locale)}
           </p>
         </div>
         <div>
@@ -114,7 +116,7 @@ export function CarbonReportCard({ className }: Props) {
                 key={cls}
                 className="rounded-card border border-border bg-elevated px-2 py-0.5 font-mono text-[10px] text-secondary"
               >
-                Euro {cls}: {co2.toLocaleString("tr-TR")} kg
+                Euro {cls}: {co2.toLocaleString(locale)} kg
               </span>
             ))}
           </div>

@@ -224,12 +224,16 @@ export const adminLayoutText = {
   nav: {
     overview: "Overview",
     users: "Users",
+    roles: "Roles",
     ml: "ML & Models",
     configuration: "Configuration",
     maintenance: "Maintenance & Repair",
+    assignment: "Trip Assignment",
+    accuracy: "Forecast Accuracy",
     dataManagement: "Data Management",
     systemHealth: "System Health",
     notifications: "Notifications",
+    analytics: "Usage Analytics",
     fallback: "Settings",
   },
   accessDenied: {

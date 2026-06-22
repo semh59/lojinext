@@ -27,6 +27,7 @@ import { useNotify } from "../context/NotificationContext";
 import { cn } from "../lib/utils";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { reportsApi } from "../services/api";
+import { useTranslation } from "react-i18next";
 import { useReportsResources } from "../resources/useResources";
 import type {
   ReportTabId,
@@ -35,7 +36,8 @@ import type {
 
 export default function ReportsPage() {
   const { reportDownloadOptions, reportPageText } = useReportsResources();
-  usePageTitle("Raporlar");
+  const { t } = useTranslation();
+  usePageTitle(t("reports.title", "Reports"));
   const { notify } = useNotify();
   const [activeTab, setActiveTab] = useState<ReportTabId>("pdf");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);

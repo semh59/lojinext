@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/Table";
 import { adminFuelAccuracyApi, type FuelAccuracyStats } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useTranslation } from "react-i18next";
 
 const PERIODS = [7, 30, 90] as const;
 
@@ -47,7 +48,8 @@ function MetricCard({
 }
 
 export default function DogrulukPage() {
-  usePageTitle("Tahmin Doğruluğu");
+  const { t } = useTranslation();
+  usePageTitle(t("admin.forecast_accuracy", "Forecast Accuracy"));
   const [days, setDays] = useState<number>(30);
 
   const { data, isLoading } = useQuery<FuelAccuracyStats>({

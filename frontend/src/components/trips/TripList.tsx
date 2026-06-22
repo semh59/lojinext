@@ -9,6 +9,7 @@ import {
   normalizeTripStatus,
 } from "../../lib/trip-status";
 import { useTripsResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface TripListProps {
   trips: Trip[];
@@ -34,6 +35,7 @@ const getStatusBadgeClass = (status?: string) => {
 
 export function TripList({ trips, onSelect, loading }: TripListProps) {
   const { tripListText } = useTripsResources();
+  const locale = useLocale();
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -97,7 +99,7 @@ export function TripList({ trips, onSelect, loading }: TripListProps) {
                     {trip.cikis_yeri}
                   </div>
                   <div className="text-xs font-medium text-secondary">
-                    {new Date(trip.tarih).toLocaleDateString("tr-TR", {
+                    {new Date(trip.tarih).toLocaleDateString(locale, {
                       day: "numeric",
                       month: "short",
                     })}

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { useBusFactor } from "@/hooks/useExecutive";
 import type { BusFactorRisk } from "@/api/executive";
 import { useExecutiveResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   className?: string;
@@ -17,6 +18,7 @@ const RISK_STYLE: Record<BusFactorRisk, string> = {
 
 export function BusFactorWidget({ className }: Props) {
   const { executiveText } = useExecutiveResources();
+  const locale = useLocale();
   const RISK_LABEL: Record<BusFactorRisk, string> = {
     high: executiveText.busFactor.riskHigh,
     medium: executiveText.busFactor.riskMedium,
@@ -85,7 +87,7 @@ export function BusFactorWidget({ className }: Props) {
           {t.yearlyLoss}
         </p>
         <p className="mt-1 font-mono text-2xl font-bold text-primary">
-          ₺{data.top_n_drivers_loss_tl.toLocaleString("tr-TR")}
+          ₺{data.top_n_drivers_loss_tl.toLocaleString(locale)}
         </p>
       </div>
 
@@ -111,7 +113,7 @@ export function BusFactorWidget({ className }: Props) {
               <span>
                 <span className="text-tertiary">{t.yearlyKm}:</span>{" "}
                 <span className="font-semibold text-primary">
-                  {d.yearly_km.toLocaleString("tr-TR")}
+                  {d.yearly_km.toLocaleString(locale)}
                 </span>
               </span>
             </span>

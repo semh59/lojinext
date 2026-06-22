@@ -36,7 +36,7 @@ export default function AdminLayout() {
     },
     {
       path: "/admin/roller",
-      label: "Roller",
+      label: adminLayoutText.nav.roles,
       icon: Shield,
     },
     { path: "/admin/ml", label: adminLayoutText.nav.ml, icon: Brain },
@@ -47,12 +47,12 @@ export default function AdminLayout() {
     },
     {
       path: "/admin/atama",
-      label: "Sefer Atama",
+      label: adminLayoutText.nav.assignment,
       icon: Shuffle,
     },
     {
       path: "/admin/dogruluk",
-      label: "Tahmin Doğruluğu",
+      label: adminLayoutText.nav.accuracy,
       icon: Target,
     },
     {
@@ -72,7 +72,7 @@ export default function AdminLayout() {
     },
     {
       path: "/admin/analitik",
-      label: "Kullanım Analitiği",
+      label: adminLayoutText.nav.analytics,
       icon: BarChart2,
     },
   ];

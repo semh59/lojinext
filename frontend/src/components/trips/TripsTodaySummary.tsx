@@ -7,6 +7,7 @@ import {
   Pause,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { tripService } from "../../api/trips";
 import { getTripStatusMeta } from "../../lib/status-labels";
 
@@ -15,6 +16,7 @@ function todayIso(): string {
 }
 
 export function TripsTodaySummary() {
+  const { t } = useTranslation();
   const today = todayIso();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["trips", "stats", "today", today],
@@ -29,7 +31,7 @@ export function TripsTodaySummary() {
       <div className="flex items-center gap-3 rounded-modal border border-border bg-elevated/30 px-5 py-3">
         <Loader2 className="h-4 w-4 animate-spin text-secondary" />
         <span className="text-sm text-secondary">
-          Bugünün özeti yükleniyor…
+          {t("dashboard.todays_summary_loading", "Loading today's summary…")}
         </span>
       </div>
     );
@@ -44,7 +46,9 @@ export function TripsTodaySummary() {
     return (
       <div className="flex items-center gap-3 rounded-modal border border-border/60 bg-surface/60 px-5 py-3">
         <CalendarDays className="h-5 w-5 text-secondary" />
-        <p className="text-sm text-secondary">Bugün için kayıtlı sefer yok.</p>
+        <p className="text-sm text-secondary">
+          {t("dashboard.todays_summary_empty", "No trips recorded for today.")}
+        </p>
       </div>
     );
   }
@@ -54,13 +58,14 @@ export function TripsTodaySummary() {
       <div className="flex items-center gap-3">
         <CalendarDays className="h-5 w-5 text-accent" />
         <p className="text-sm font-semibold text-primary">
-          Bugün <span className="font-mono">{total}</span> sefer
+          <span className="font-mono">{total}</span>{" "}
+          {t("dashboard.todays_summary_count", "trips today")}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <Chip
           icon={MapPin}
-          label="Yolda"
+          label={t("dashboard.in_progress", "En Route")}
           count={data.in_progress_count ?? 0}
           accent="text-warning"
           bg="bg-warning/10"

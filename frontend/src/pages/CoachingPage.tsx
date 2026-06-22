@@ -7,10 +7,12 @@ import { SendCoachingDialog } from "../components/coaching/SendCoachingDialog";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { CoachingInsight } from "../api/coaching";
 import { useCoachingResources } from "../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 export default function CoachingPage() {
   const { coachingPageText } = useCoachingResources();
-  usePageTitle("Koçluk");
+  const { t } = useTranslation();
+  usePageTitle(t("nav.coaching", "Coaching"));
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [activeInsight, setActiveInsight] = useState<CoachingInsight | null>(
     null,

@@ -2,10 +2,12 @@ import ErrorBoundary from "../components/common/ErrorBoundary";
 import { TripsModule } from "../features/trips/TripsModule";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useTripsResources } from "../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 export default function TripsPage() {
   const { tripPageText } = useTripsResources();
-  usePageTitle("Seferler");
+  const { t } = useTranslation();
+  usePageTitle(t("trips.title", "Trips"));
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">

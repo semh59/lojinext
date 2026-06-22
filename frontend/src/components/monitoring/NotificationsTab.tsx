@@ -3,6 +3,7 @@ import { CheckCheck, Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useNotifications } from "./useNotifications";
+import { useLocale } from "../../hooks/useLocale";
 import type {
   WsNotification,
   ConnectionStatus as WsStatus,
@@ -28,9 +29,9 @@ function badgeClass(type: string) {
   return EVENT_BADGE[type?.toUpperCase?.()] ?? "bg-elevated text-secondary";
 }
 
-function formatTime(iso: string) {
+function formatTime(iso: string, locale: string) {
   try {
-    return new Date(iso).toLocaleString("tr-TR", {
+    return new Date(iso).toLocaleString(locale, {
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",
@@ -48,6 +49,7 @@ export function NotificationsTab({
 }: Props) {
   const { notifications, unreadCount, isLoading, markRead, markAllRead } =
     useNotifications(wsNotifications);
+  const locale = useLocale();
 
   return (
     <div className="space-y-4">
@@ -118,7 +120,7 @@ export function NotificationsTab({
                         {n.olay_tipi || "BİLDİRİM"}
                       </span>
                       <span className="text-[10px] text-tertiary">
-                        {formatTime(n.olusturma_tarihi)}
+                        {formatTime(n.olusturma_tarihi, locale)}
                       </span>
                     </div>
                     <p className="text-sm font-semibold text-primary leading-snug">

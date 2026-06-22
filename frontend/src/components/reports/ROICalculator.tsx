@@ -5,6 +5,7 @@ import { PiggyBank, Target, TrendingUp } from "lucide-react";
 import { reportsApi } from "@/services/api";
 import { RoiStats } from "../../types";
 import { useReportsResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 type SavingsStats = {
   current_consumption: number;
@@ -20,6 +21,7 @@ const TARGET_CONSUMPTION = 28;
 
 export function ROICalculator() {
   const { reportRoiText } = useReportsResources();
+  const locale = useLocale();
   const [investment, setInvestment] = useState(50000);
   const [roiStats, setRoiStats] = useState<RoiStats | null>(null);
   const [savingsStats, setSavingsStats] = useState<SavingsStats | null>(null);
@@ -62,7 +64,7 @@ export function ROICalculator() {
   }, [investment]);
 
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("tr-TR", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "TRY",
       maximumFractionDigits: 0,

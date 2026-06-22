@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useWhatIf } from "@/hooks/useExecutive";
 import type { WhatIfRequest, WhatIfScenarioType } from "@/api/executive";
 import { useExecutiveResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   className?: string;
@@ -12,6 +13,7 @@ interface Props {
 
 export function WhatIfPanel({ className }: Props) {
   const { executiveText } = useExecutiveResources();
+  const locale = useLocale();
   const SCENARIOS: { id: WhatIfScenarioType; label: string }[] = [
     {
       id: "fleet_renewal",
@@ -187,14 +189,14 @@ export function WhatIfPanel({ className }: Props) {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric
               label={t.results.yearlySavings}
-              value={`₺${result.yearly_savings_tl.toLocaleString("tr-TR")}`}
+              value={`₺${result.yearly_savings_tl.toLocaleString(locale)}`}
               highlight
             />
             <Metric
               label={t.results.upfront}
               value={
                 result.upfront_cost_tl > 0
-                  ? `₺${result.upfront_cost_tl.toLocaleString("tr-TR")}`
+                  ? `₺${result.upfront_cost_tl.toLocaleString(locale)}`
                   : "—"
               }
             />
@@ -216,16 +218,16 @@ export function WhatIfPanel({ className }: Props) {
             <div className="grid grid-cols-3 gap-2 rounded-card border border-border/40 bg-elevated/30 p-3">
               <Metric
                 label={t.results.monteCarloP10}
-                value={`₺${result.monte_carlo.p10.toLocaleString("tr-TR")}`}
+                value={`₺${result.monte_carlo.p10.toLocaleString(locale)}`}
               />
               <Metric
                 label={t.results.monteCarloP50}
-                value={`₺${result.monte_carlo.p50.toLocaleString("tr-TR")}`}
+                value={`₺${result.monte_carlo.p50.toLocaleString(locale)}`}
                 highlight
               />
               <Metric
                 label={t.results.monteCarloP90}
-                value={`₺${result.monte_carlo.p90.toLocaleString("tr-TR")}`}
+                value={`₺${result.monte_carlo.p90.toLocaleString(locale)}`}
               />
             </div>
           )}
@@ -234,7 +236,7 @@ export function WhatIfPanel({ className }: Props) {
             <p className="text-[11px] text-success">
               🌿 {t.results.co2Reduction}:{" "}
               <span className="font-mono font-semibold">
-                {result.co2_reduction_kg.toLocaleString("tr-TR")} kg
+                {result.co2_reduction_kg.toLocaleString(locale)} kg
               </span>
             </p>
           )}

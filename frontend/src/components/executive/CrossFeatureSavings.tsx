@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCrossFeature } from "@/hooks/useExecutive";
 import { useExecutiveResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   className?: string;
@@ -26,6 +27,7 @@ function ImpactRow({
   valueTl: number;
   tone: "danger" | "success" | "warning";
 }) {
+  const locale = useLocale();
   const toneClass =
     tone === "danger"
       ? "text-danger"
@@ -45,7 +47,7 @@ function ImpactRow({
           toneClass,
         )}
       >
-        {sign} ₺{valueTl.toLocaleString("tr-TR")}
+        {sign} ₺{valueTl.toLocaleString(locale)}
       </span>
     </div>
   );
@@ -53,6 +55,7 @@ function ImpactRow({
 
 export function CrossFeatureSavings({ className }: Props) {
   const { executiveText } = useExecutiveResources();
+  const locale = useLocale();
   const { data, isLoading, error } = useCrossFeature(90);
   const t = executiveText.crossFeature;
 
@@ -136,7 +139,7 @@ export function CrossFeatureSavings({ className }: Props) {
           )}
         >
           {netImpact >= 0 ? "+" : ""}₺
-          {Math.abs(netImpact).toLocaleString("tr-TR")}
+          {Math.abs(netImpact).toLocaleString(locale)}
         </span>
       </div>
 

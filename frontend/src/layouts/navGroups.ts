@@ -35,14 +35,6 @@ export interface NavGroupsUser {
 
 const TRIAGE_ROLES = new Set(["admin", "super_admin", "fleet_manager"]);
 
-/**
- * RV2.9 — Plan §6.1 sidebar grupları.
- *
- * Roller:
- * - admin / super_admin → tüm gruplar + Sistem
- * - fleet_manager → tüm gruplar (Sistem hariç)
- * - diğer → Panel + Operasyon + Filo + İçgörü (kısıtlı)
- */
 export function buildNavGroups(
   user: NavGroupsUser | null | undefined,
   t: (key: string, fallback?: string) => string = (_k, fb) => fb ?? "",
@@ -54,58 +46,70 @@ export function buildNavGroups(
   const canSeeExecutive = canSeeTriage;
 
   const home: NavItem = canSeeTriage
-    ? { icon: ListChecks, label: "Bugün", path: "/today" }
-    : { icon: BarChart3, label: t("dashboard.title", "Panel"), path: "/" };
+    ? { icon: ListChecks, label: t("nav.today", "Today"), path: "/today" }
+    : { icon: BarChart3, label: t("dashboard.title", "Dashboard"), path: "/" };
 
   const groups: NavGroup[] = [
     { label: null, items: [home] },
     {
-      label: "Operasyon",
+      label: t("nav.group.operations", "Operations"),
       items: [
         {
           icon: Activity,
-          label: t("dashboard.active_trips", "Seferler"),
+          label: t("trips.title", "Trips"),
           path: "/trips",
         },
-        { icon: Fuel, label: t("fuel.title", "Yakıt"), path: "/fuel" },
-        { icon: Wrench, label: "Bakım", path: "/maintenance" },
+        { icon: Fuel, label: t("fuel.title", "Fuel"), path: "/fuel" },
+        {
+          icon: Wrench,
+          label: t("nav.maintenance", "Maintenance"),
+          path: "/maintenance",
+        },
       ],
     },
     {
-      label: "Filo",
+      label: t("nav.group.fleet", "Fleet"),
       items: [
-        { icon: Truck, label: "Araçlar & Dorseler", path: "/fleet" },
-        { icon: Users, label: "Şoförler", path: "/drivers" },
+        {
+          icon: Truck,
+          label: t("fleet.title", "Vehicles & Trailers"),
+          path: "/fleet",
+        },
+        { icon: Users, label: t("drivers.title", "Drivers"), path: "/drivers" },
         {
           icon: MapPin,
-          label: t("locations.title", "Lokasyonlar"),
+          label: t("locations.title", "Locations"),
           path: "/locations",
         },
       ],
     },
     {
-      label: "İçgörü",
+      label: t("nav.group.insights", "Insights"),
       items: [
         ...(canSeeInsights
           ? [
               {
                 icon: Sparkles,
-                label: "Filo İçgörü",
+                label: t("nav.fleet_insights", "Fleet Insights"),
                 path: "/insights/fleet",
               },
             ]
           : []),
         {
           icon: AlertTriangle,
-          label: t("alerts.title", "Anomaliler"),
+          label: t("alerts.title", "Anomalies"),
           path: "/alerts",
         },
         {
           icon: BrainCircuit,
-          label: t("predictions.title", "ML Tahminler"),
+          label: t("predictions.title", "ML Predictions"),
           path: "/predictions",
         },
-        { icon: GraduationCap, label: "Koçluk", path: "/coaching" },
+        {
+          icon: GraduationCap,
+          label: t("nav.coaching", "Coaching"),
+          path: "/coaching",
+        },
         ...(canSeeExecutive
           ? [
               {
@@ -115,19 +119,27 @@ export function buildNavGroups(
               },
             ]
           : []),
-        { icon: FileText, label: "Rapor Stüdyosu", path: "/reports" },
-        { icon: Route, label: "Güzergah Lab", path: "/route-lab" },
+        {
+          icon: FileText,
+          label: t("nav.reports", "Report Studio"),
+          path: "/reports",
+        },
+        {
+          icon: Route,
+          label: t("nav.route_lab", "Route Lab"),
+          path: "/route-lab",
+        },
       ],
     },
   ];
 
   if (isAdmin) {
     groups.push({
-      label: "Sistem",
+      label: t("nav.group.system", "System"),
       items: [
         {
           icon: Shield,
-          label: t("admin.title", "Sistem Yönetimi"),
+          label: t("admin.title", "Administration"),
           path: "/admin",
         },
       ],

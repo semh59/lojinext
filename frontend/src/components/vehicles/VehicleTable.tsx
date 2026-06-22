@@ -18,6 +18,7 @@ import { cn } from "../../lib/utils";
 import { Badge } from "../ui/Badge";
 import { SkeletonTable } from "./SkeletonTable";
 import { useVehiclesResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -35,6 +36,7 @@ export function VehicleTable({
   onViewDetail,
 }: VehicleTableProps) {
   const { vehicleTableText, vehicleCardText } = useVehiclesResources();
+  const locale = useLocale();
   function getInspectionStatus(muayene_tarihi: string | null | undefined): {
     type: "expired" | "expiring" | "ok" | "unknown";
     daysLeft: number;
@@ -222,8 +224,7 @@ export function VehicleTable({
                         </span>
                       </div>
                       <span className="text-[14px] font-bold text-primary">
-                        {vehicle.tank_kapasitesi?.toLocaleString("tr-TR") ||
-                          "-"}{" "}
+                        {vehicle.tank_kapasitesi?.toLocaleString(locale) || "-"}{" "}
                         L
                       </span>
                     </div>

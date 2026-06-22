@@ -21,6 +21,7 @@ import {
 import { useErrorStream } from "./useErrorStream";
 import { chartTheme } from "@/lib/chart-theme";
 import { TraceDetailDialog } from "./TraceDetailDialog";
+import { useLocale } from "../../hooks/useLocale";
 
 // ── Chart helpers ──────────────────────────────────────────────────────────
 
@@ -32,7 +33,7 @@ interface ChartRow {
   info: number;
 }
 
-function buildChartData(stats: ErrorStatsRow[]): ChartRow[] {
+function buildChartData(stats: ErrorStatsRow[], locale: string): ChartRow[] {
   const byHour = new Map<string, Record<string, number>>();
   stats.forEach(({ hour, severity, event_count }) => {
     if (!byHour.has(hour)) byHour.set(hour, {});
@@ -43,7 +44,7 @@ function buildChartData(stats: ErrorStatsRow[]): ChartRow[] {
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-24)
     .map(([hour, counts]) => ({
-      saat: new Date(hour).toLocaleTimeString("tr-TR", {
+      saat: new Date(hour).toLocaleTimeString(locale, {
         hour: "2-digit",
         minute: "2-digit",
       }),
@@ -82,9 +83,9 @@ const LAYERS = [
 ];
 const SEVERITIES = ["critical", "error", "warning", "info"];
 
-function formatTime(iso: string) {
+function formatTime(iso: string, locale: string) {
   try {
-    return new Date(iso).toLocaleString("tr-TR", {
+    return new Date(iso).toLocaleString(locale, {
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",
@@ -124,6 +125,7 @@ function FilterChip({
 
 export function ErrorEventsTab() {
   const queryClient = useQueryClient();
+  const locale = useLocale();
   const [layer, setLayer] = useState<string | null>(null);
   const [severity, setSeverity] = useState<string | null>(null);
   const [showResolved, setShowResolved] = useState(false);
@@ -158,7 +160,7 @@ export function ErrorEventsTab() {
       queryClient.invalidateQueries({ queryKey: ["error-events"] }),
   });
 
-  const chartData = statsData ? buildChartData(statsData.stats) : [];
+  const chartData = statsData ? buildChartData(statsData.stats, locale) : [];
 
   // Merge SSE live events with fetched list (dedup by fingerprint)
   const fetchedFingerprints = new Set(
@@ -359,8 +361,8 @@ export function ErrorEventsTab() {
                     </p>
                   )}
                   <div className="mt-1 flex items-center gap-3 text-[10px] text-tertiary">
-                    <span>İlk: {formatTime(evt.first_seen)}</span>
-                    <span>Son: {formatTime(evt.last_seen)}</span>
+                    <span>İlk: {formatTime(evt.first_seen, locale)}</span>
+                    <span>Son: {formatTime(evt.last_seen, locale)}</span>
                     {evt.trace_id && (
                       <button
                         type="button"

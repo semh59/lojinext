@@ -13,9 +13,11 @@ import { tripService } from "../api/trips";
 import { useTripStore } from "../stores/use-trip-store";
 import { Trip } from "../types";
 import { useTripsResources } from "../resources/useResources";
+import { useLocale } from "../hooks/useLocale";
 
 export function useTripsData() {
   const { tripModuleText, tripStatsText } = useTripsResources();
+  const locale = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
   const isInitialSync = useRef(true);
 
@@ -165,7 +167,7 @@ export function useTripsData() {
       },
       {
         label: "Toplam Mesafe",
-        value: (src.total_distance_km || 0).toLocaleString("tr-TR", {
+        value: (src.total_distance_km || 0).toLocaleString(locale, {
           maximumFractionDigits: 0,
         }),
         unit: "km",

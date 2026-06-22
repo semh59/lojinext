@@ -1,9 +1,11 @@
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import { DriversModule } from "../components/modules/DriversModule";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useTranslation } from "react-i18next";
 
 export default function DriversPage() {
-  usePageTitle("Şoförler");
+  const { t } = useTranslation();
+  usePageTitle(t("drivers.title", "Drivers"));
 
   return (
     <div className="space-y-6">

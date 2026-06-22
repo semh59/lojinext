@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, Sparkles, AlertCircle, Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { reportService } from "@/api/reports";
+import { useLocale } from "../../hooks/useLocale";
 
 interface SavingsResult {
   current_consumption?: number;
@@ -31,8 +32,8 @@ function pickAnnual(d: SavingsResult): number {
   return Number(d.annual_projection ?? pickMonthly(d) * 12);
 }
 
-const TRY = (v: number) =>
-  new Intl.NumberFormat("tr-TR", {
+const TRY = (v: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "TRY",
     maximumFractionDigits: 0,
@@ -40,6 +41,7 @@ const TRY = (v: number) =>
 
 export function SavingsPotentialCard() {
   const [target, setTarget] = useState(30);
+  const locale = useLocale();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["savings-potential", target],
@@ -115,13 +117,13 @@ export function SavingsPotentialCard() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat
             label="Aylık Potansiyel"
-            value={TRY(monthly)}
+            value={TRY(monthly, locale)}
             accent="text-success"
             bg="bg-success/10"
           />
           <Stat
             label="Yıllık Projeksiyon"
-            value={TRY(annual)}
+            value={TRY(annual, locale)}
             accent="text-accent"
             bg="bg-accent/10"
           />

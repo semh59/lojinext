@@ -4,6 +4,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import { AlertCircle, Loader2 } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useMaintenancePredictions } from "@/hooks/useMaintenancePredictions";
 import type {
@@ -35,6 +36,7 @@ function predictionToEvent(p: MaintenancePrediction): EventInput | null {
 }
 
 export function MaintenanceCalendar() {
+  const { t } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   const { data, isLoading, error } = useMaintenancePredictions();
   const [selected, setSelected] = useState<MaintenancePrediction | null>(null);
@@ -96,7 +98,7 @@ export function MaintenanceCalendar() {
           height="auto"
           locale="tr"
           firstDay={1}
-          buttonText={{ today: "Bugün" }}
+          buttonText={{ today: t("common.today", "Today") }}
         />
       </div>
       <MaintenanceDetailDrawer

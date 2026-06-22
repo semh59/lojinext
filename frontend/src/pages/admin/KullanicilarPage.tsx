@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { AdminUserRecord, adminRolesApi, adminUsersApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 type ModalMode = "create" | "edit";
 
@@ -78,7 +80,9 @@ function formatRolAd(rolAd?: string): string {
 
 export default function AdminUsersPage() {
   const { adminUsersText } = useAdminResources();
-  usePageTitle("Kullanıcılar");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("admin.users", "Users"));
   const qc = useQueryClient();
 
   const { data: users = [], isLoading } = useQuery({
@@ -334,7 +338,7 @@ export default function AdminUsersPage() {
                       <TableCell className="py-4 text-xs font-medium text-tertiary">
                         {user.son_giris
                           ? new Date(user.son_giris).toLocaleDateString(
-                              "tr-TR",
+                              locale,
                               {
                                 day: "2-digit",
                                 month: "short",

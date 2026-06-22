@@ -7,6 +7,7 @@ import { PeriodComparisonCard } from "@/components/fleet-insights/PeriodComparis
 import { cn } from "@/lib/utils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import type { PeriodType } from "@/api/fleet-insights";
+import { useTranslation } from "react-i18next";
 
 const PERIODS: Array<{ id: PeriodType; label: string }> = [
   { id: "week", label: "Bu Hafta" },
@@ -14,7 +15,8 @@ const PERIODS: Array<{ id: PeriodType; label: string }> = [
 ];
 
 export default function FleetInsightsPage() {
-  usePageTitle("Filo İçgörü");
+  const { t } = useTranslation();
+  usePageTitle(t("nav.fleet_insights", "Fleet Insights"));
   const [period, setPeriod] = useState<PeriodType>("month");
 
   return (

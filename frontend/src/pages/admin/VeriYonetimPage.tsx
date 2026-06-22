@@ -16,9 +16,13 @@ import { useNotify } from "@/context/NotificationContext";
 import { adminImportsApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 export default function AdminDataManagementPage() {
   const { adminDataManagementText } = useAdminResources();
+  const { t } = useTranslation();
+  const locale = useLocale();
   const mapImportStatus = (status?: string) => {
     switch (status) {
       case "tamamlandi":
@@ -43,7 +47,7 @@ export default function AdminDataManagementPage() {
         };
     }
   };
-  usePageTitle("Veri Yönetimi");
+  usePageTitle(t("admin.data_management", "Data Management"));
   const qc = useQueryClient();
   const { notify } = useNotify();
 
@@ -135,7 +139,7 @@ export default function AdminDataManagementPage() {
                       {job.aktarim_tipi}
                     </TableCell>
                     <TableCell className="text-sm">
-                      {new Date(job.baslama_zamani).toLocaleString("tr-TR")}
+                      {new Date(job.baslama_zamani).toLocaleString(locale)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={status.variant}>{status.label}</Badge>

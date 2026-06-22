@@ -11,9 +11,11 @@ import { adminAttributionApi } from "@/api/admin";
 import { vehicleService } from "@/api/vehicles";
 import { driverService } from "@/api/drivers";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useTranslation } from "react-i18next";
 
 export default function AtamaPage() {
-  usePageTitle("Sefer Atama Düzeltme");
+  const { t } = useTranslation();
+  usePageTitle(t("admin.trip_assignment", "Trip Assignment"));
 
   const [seferId, setSeferId] = useState("");
   const [aracId, setAracId] = useState("");

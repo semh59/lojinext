@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { reportService } from "@/api/reports";
+import { useLocale } from "../../hooks/useLocale";
 
 interface PeriodCostBreakdownProps {
   /** Drill-down için tek araca sabitlemek. */
@@ -26,8 +27,8 @@ function todayIso(offsetDays = 0): string {
   return d.toISOString().slice(0, 10);
 }
 
-const TRY = (v: number) =>
-  new Intl.NumberFormat("tr-TR", {
+const TRY = (v: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "TRY",
     maximumFractionDigits: 0,
@@ -37,6 +38,7 @@ export function PeriodCostBreakdown({
   aracId,
   plakaLabel,
 }: PeriodCostBreakdownProps) {
+  const locale = useLocale();
   const [startDate, setStartDate] = useState(todayIso(-30));
   const [endDate, setEndDate] = useState(todayIso());
 
@@ -107,7 +109,7 @@ export function PeriodCostBreakdown({
           <Tile
             icon={Receipt}
             label="Yakıt Maliyeti"
-            value={TRY(Number(data.fuel_cost ?? 0))}
+            value={TRY(Number(data.fuel_cost ?? 0), locale)}
             accent="text-warning"
             bg="bg-warning/10"
           />
@@ -128,14 +130,14 @@ export function PeriodCostBreakdown({
           <Tile
             icon={RouteIcon}
             label="Toplam Sefer"
-            value={Number(data.trip_count ?? 0).toLocaleString("tr-TR")}
+            value={Number(data.trip_count ?? 0).toLocaleString(locale)}
             accent="text-secondary"
             bg="bg-elevated"
           />
           <Tile
             icon={MapPin}
             label="Toplam km"
-            value={`${Number(data.total_distance ?? 0).toLocaleString("tr-TR", {
+            value={`${Number(data.total_distance ?? 0).toLocaleString(locale, {
               maximumFractionDigits: 0,
             })} km`}
             accent="text-success"

@@ -14,6 +14,7 @@ import {
 import { Dorse } from "../../types";
 import { cn } from "../../lib/utils";
 import { useTrailersResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface TrailerTableProps {
   trailers: Dorse[];
@@ -33,6 +34,7 @@ export function TrailerTable({
   viewMode = "grid",
 }: TrailerTableProps) {
   const { trailerTableText } = useTrailersResources();
+  const locale = useLocale();
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<number>>(new Set());
 
@@ -183,7 +185,7 @@ export function TrailerTable({
                               <Weight className="h-3.5 w-3.5 text-secondary" />
                               <span className="font-bold">
                                 {trailer.bos_agirlik_kg?.toLocaleString(
-                                  "tr-TR",
+                                  locale,
                                 ) || "-"}{" "}
                                 kg
                               </span>
@@ -340,7 +342,7 @@ export function TrailerTable({
                         </span>
                       </div>
                       <span className="text-sm font-bold text-primary">
-                        {trailer.bos_agirlik_kg?.toLocaleString("tr-TR") || "-"}{" "}
+                        {trailer.bos_agirlik_kg?.toLocaleString(locale) || "-"}{" "}
                         kg
                       </span>
                     </div>

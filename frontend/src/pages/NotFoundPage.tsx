@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Home, MoveLeft } from "lucide-react";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useTranslation } from "react-i18next";
 
 export default function NotFoundPage() {
-  usePageTitle("Sayfa Bulunamadı");
+  const { t } = useTranslation();
+  usePageTitle(t("common.not_found", "Page Not Found"));
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-base px-6 text-center">

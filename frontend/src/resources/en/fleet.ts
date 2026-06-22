@@ -22,6 +22,8 @@ export const fleetInsightsText = {
     trips: "Total Trips",
     recordsUnit: "records",
     inspectionWarning: "Inspection Alert",
+    vehicleUnit: "vehicle",
+    inspectionOk: "Inspection OK",
     inspectionHint: (expiring: number, overdue: number) =>
       overdue > 0
         ? `${overdue} vehicle${

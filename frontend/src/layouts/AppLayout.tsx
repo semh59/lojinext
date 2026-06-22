@@ -36,14 +36,6 @@ function useDarkMode() {
   return { isDark, toggle: () => setIsDark((p) => !p) };
 }
 
-function olay_tipi_label(olay_tipi: string): string {
-  if (olay_tipi.includes("ANOMALY")) return "Anomali";
-  if (olay_tipi.includes("DELAY") || olay_tipi.includes("SLA"))
-    return "Gecikme";
-  if (olay_tipi.includes("SEFER")) return "Sefer";
-  return "Bildirim";
-}
-
 function NotificationPanel({
   notifications,
   onMarkAllRead,
@@ -53,7 +45,18 @@ function NotificationPanel({
   onMarkAllRead: () => void;
   onClose: () => void;
 }) {
+  const { t, i18n } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
+  const locale = i18n.language.startsWith("en") ? "en-US" : "tr-TR";
+
+  function eventTypeLabel(olay_tipi: string): string {
+    if (olay_tipi.includes("ANOMALY"))
+      return t("nav.event_types.anomaly", "Anomaly");
+    if (olay_tipi.includes("DELAY") || olay_tipi.includes("SLA"))
+      return t("nav.event_types.delay", "Delay");
+    if (olay_tipi.includes("SEFER")) return t("nav.event_types.trip", "Trip");
+    return t("nav.event_types.notification", "Notification");
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -71,19 +74,21 @@ function NotificationPanel({
       className="absolute right-0 top-full mt-2 w-80 rounded-2xl border border-border bg-surface shadow-xl shadow-black/10 z-50 overflow-hidden"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <span className="text-sm font-semibold text-primary">Bildirimler</span>
+        <span className="text-sm font-semibold text-primary">
+          {t("nav.notifications", "Notifications")}
+        </span>
         <button
           onClick={onMarkAllRead}
           className="flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors"
         >
           <CheckCheck size={14} />
-          Tümünü okundu işaretle
+          {t("nav.mark_all_read", "Mark all as read")}
         </button>
       </div>
 
       {notifications.length === 0 ? (
         <div className="flex items-center justify-center py-10 text-sm text-secondary">
-          Henüz bildirim yok
+          {t("nav.no_notifications", "No notifications yet")}
         </div>
       ) : (
         <div className="max-h-80 overflow-y-auto divide-y divide-border/50">
@@ -106,8 +111,8 @@ function NotificationPanel({
                     {n.icerik}
                   </p>
                   <p className="text-[10px] text-tertiary mt-1">
-                    {olay_tipi_label(n.olay_tipi)} ·{" "}
-                    {new Date(n.olusturma_tarihi).toLocaleString("tr-TR", {
+                    {eventTypeLabel(n.olay_tipi)} ·{" "}
+                    {new Date(n.olusturma_tarihi).toLocaleString(locale, {
                       hour: "2-digit",
                       minute: "2-digit",
                       day: "numeric",
@@ -160,7 +165,7 @@ const AppLayout: React.FC = () => {
         <button
           onClick={() => setSidebarOpen(!isSidebarOpen)}
           className="p-2 text-primary rounded-lg hover:bg-elevated transition-colors"
-          aria-label="Menüyü aç/kapat"
+          aria-label={t("common.toggle_menu", "Toggle menu")}
         >
           {isSidebarOpen ? <X /> : <Menu />}
         </button>
@@ -259,7 +264,7 @@ const AppLayout: React.FC = () => {
               <button
                 onClick={() => setNotifOpen((p) => !p)}
                 className="p-2.5 text-secondary hover:bg-elevated rounded-xl transition-colors relative"
-                aria-label="Bildirimler"
+                aria-label={t("nav.notifications", "Notifications")}
               >
                 <Bell size={20} />
                 {unreadCount > 0 && (

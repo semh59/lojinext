@@ -12,6 +12,7 @@ import {
 import { Card } from "../ui/Card";
 import { chartTheme } from "../../lib/chart-theme";
 import { reportService } from "../../api/reports";
+import { useLocale } from "../../hooks/useLocale";
 
 interface ChartPoint {
   label: string;
@@ -35,6 +36,7 @@ function buildPoints(
 }
 
 export function CostTrendChart() {
+  const locale = useLocale();
   const {
     data: rows,
     isLoading,
@@ -98,14 +100,14 @@ export function CostTrendChart() {
                 const num = Number(value ?? 0);
                 if (name === "Litre") {
                   return [
-                    `${num.toLocaleString("tr-TR", {
+                    `${num.toLocaleString(locale, {
                       maximumFractionDigits: 0,
                     })} L`,
                     name,
                   ];
                 }
                 return [
-                  `${num.toLocaleString("tr-TR", {
+                  `${num.toLocaleString(locale, {
                     maximumFractionDigits: 2,
                   })} ₺/L`,
                   name,

@@ -1,6 +1,7 @@
 ﻿import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Route as RouteIcon, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { tripService } from "@/api/trips";
@@ -16,6 +17,7 @@ const TURKISH_STATUS_META: Record<string, StatusMeta> = {
 };
 
 export function TodaysActiveTrips() {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["trips", "today"],
     queryFn: () => tripService.getTodayTrips(),
@@ -37,7 +39,7 @@ export function TodaysActiveTrips() {
         <div className="flex items-center gap-2">
           <RouteIcon className="h-4 w-4 text-accent" />
           <h2 className="text-sm font-semibold text-primary">
-            Bugünkü Seferler
+            {t("dashboard.todays_trips", "Today's Trips")}
           </h2>
           {total > 0 && (
             <span className="text-xs font-semibold text-secondary">
@@ -50,7 +52,8 @@ export function TodaysActiveTrips() {
             to={tripsLinkHref}
             className="inline-flex items-center gap-0.5 text-xs font-medium text-accent hover:underline"
           >
-            Tümünü Gör <ChevronRight className="h-3 w-3" />
+            {t("common.see_all", "See All")}{" "}
+            <ChevronRight className="h-3 w-3" />
           </Link>
         )}
       </div>
@@ -65,9 +68,13 @@ export function TodaysActiveTrips() {
           ))}
         </div>
       ) : isError ? (
-        <p className="text-sm text-secondary">Bugünkü seferler yüklenemedi</p>
+        <p className="text-sm text-secondary">
+          {t("dashboard.todays_trips_error", "Could not load today's trips")}
+        </p>
       ) : visible.length === 0 ? (
-        <p className="text-sm text-secondary">Bugün için planlı sefer yok</p>
+        <p className="text-sm text-secondary">
+          {t("dashboard.todays_trips_empty", "No trips planned for today")}
+        </p>
       ) : (
         <ul className="space-y-2">
           {visible.map((trip) => {

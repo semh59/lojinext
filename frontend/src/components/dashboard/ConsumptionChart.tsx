@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   data: Array<{ month: string; consumption: number }>;
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function ConsumptionChart({ data, isLoading }: Props) {
+  const locale = useLocale();
   return (
     <Card padding="lg" className="flex flex-col gap-4">
       <div>
@@ -48,7 +50,7 @@ export function ConsumptionChart({ data, isLoading }: Props) {
               {...chartTheme.tooltip}
               formatter={(v: number | undefined) => [
                 v != null
-                  ? `${v.toLocaleString("tr-TR", {
+                  ? `${v.toLocaleString(locale, {
                       maximumFractionDigits: 1,
                     })} L`
                   : "",

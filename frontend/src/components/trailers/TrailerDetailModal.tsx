@@ -16,6 +16,7 @@ import {
 
 import { Dorse } from "../../types";
 import { useTrailersResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 interface TrailerDetailModalProps {
   trailer: Dorse | null;
   onClose: () => void;
@@ -49,10 +50,14 @@ const InfoCard = ({
   </div>
 );
 
-const safeMetric = (value: number | null | undefined, unit?: string) =>
+const safeMetric = (
+  value: number | null | undefined,
+  locale: string,
+  unit?: string,
+) =>
   value == null
     ? fallbackValue
-    : `${value.toLocaleString("tr-TR")}${unit ? ` ${unit}` : ""}`;
+    : `${value.toLocaleString(locale)}${unit ? ` ${unit}` : ""}`;
 
 const safeText = (value?: string | null) => value || fallbackValue;
 
@@ -61,6 +66,7 @@ const safeNullableText = (value?: string | null, unspecified = fallbackValue) =>
 
 const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
   const { trailerDetailText } = useTrailersResources();
+  const locale = useLocale();
   const tabs: Array<{ id: DetailTab; label: string; icon: LucideIcon }> = [
     { id: "general", label: trailerDetailText.tabs.general, icon: Info },
     {
@@ -219,12 +225,12 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                     <InfoCard
                       icon={Weight}
                       label={trailerDetailText.fields.emptyWeight}
-                      value={safeMetric(trailer.bos_agirlik_kg, "kg")}
+                      value={safeMetric(trailer.bos_agirlik_kg, locale, "kg")}
                     />
                     <InfoCard
                       icon={CircleDot}
                       label={trailerDetailText.fields.tireCount}
-                      value={safeMetric(trailer.lastik_sayisi)}
+                      value={safeMetric(trailer.lastik_sayisi, locale)}
                     />
                   </div>
                 </div>
@@ -239,6 +245,7 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       value={safeMetric(
                         trailer.rolling_resistance ??
                           trailer.dorse_lastik_direnc_katsayisi,
+                        locale,
                       )}
                     />
                     <InfoCard
@@ -246,6 +253,7 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       label={trailerDetailText.fields.dragContribution}
                       value={safeMetric(
                         trailer.drag_coefficient ?? trailer.dorse_hava_direnci,
+                        locale,
                       )}
                     />
                   </div>

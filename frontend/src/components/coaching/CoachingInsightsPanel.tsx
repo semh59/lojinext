@@ -17,6 +17,7 @@ import {
   type CoachingPriority,
 } from "../../api/coaching";
 import { useCoachingResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface CoachingInsightsPanelProps {
   soforId: number | null;
@@ -49,6 +50,7 @@ export function CoachingInsightsPanel({
 }: CoachingInsightsPanelProps) {
   const { coachingCategoryLabels, coachingPageText, coachingPriorityLabels } =
     useCoachingResources();
+  const locale = useLocale();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -127,7 +129,7 @@ export function CoachingInsightsPanel({
               ? coachingPageText.sourceLlm
               : coachingPageText.sourceFallback}
             {" · "}
-            {new Date(data.generated_at).toLocaleString("tr-TR", {
+            {new Date(data.generated_at).toLocaleString(locale, {
               day: "2-digit",
               month: "short",
               hour: "2-digit",

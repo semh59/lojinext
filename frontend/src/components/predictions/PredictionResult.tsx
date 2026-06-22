@@ -1,6 +1,7 @@
 import { Droplet, TrendingUp, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import type { PredictionResult as PredictionResultModel } from "@/types";
+import { useLocale } from "../../hooks/useLocale";
 
 interface PredictionResultProps {
   result: PredictionResultModel;
@@ -16,6 +17,7 @@ export function PredictionResult({
   mesafeKm,
   unitPriceTL = DEFAULT_UNIT_PRICE,
 }: PredictionResultProps) {
+  const locale = useLocale();
   const tuketim = Number(result.tahmini_tuketim ?? 0); // L/100km
   const totalLiters = result.tahmini_litre ?? (tuketim * mesafeKm) / 100;
   const projectedCost = totalLiters * unitPriceTL;
@@ -39,7 +41,7 @@ export function PredictionResult({
           icon={Droplet}
           label="Tahmini Tüketim"
           value={`${tuketim.toFixed(1)} L/100km`}
-          sub={`Toplam ≈ ${totalLiters.toLocaleString("tr-TR", {
+          sub={`Toplam ≈ ${totalLiters.toLocaleString(locale, {
             maximumFractionDigits: 1,
           })} L`}
           accent="text-info"
@@ -48,7 +50,7 @@ export function PredictionResult({
         <Tile
           icon={Wallet}
           label="Maliyet Projeksiyonu"
-          value={projectedCost.toLocaleString("tr-TR", {
+          value={projectedCost.toLocaleString(locale, {
             style: "currency",
             currency: "TRY",
             maximumFractionDigits: 0,

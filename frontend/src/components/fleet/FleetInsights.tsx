@@ -61,7 +61,11 @@ function StatCard({
 
 interface FleetInsightsTextShape {
   labels: { trailers: string; drivers: string; fallback: string };
-  cards: { inspectionHint: (expiring: number, overdue: number) => string };
+  cards: {
+    inspectionHint: (expiring: number, overdue: number) => string;
+    vehicleUnit: string;
+    inspectionOk: string;
+  };
 }
 
 async function getNonVehicleSummary(
@@ -186,14 +190,14 @@ export function FleetInsights({
           <StatCard
             title={fleetInsightsText.cards.inspectionWarning}
             value={String(inspectionCount)}
-            unit="araç"
+            unit={fleetInsightsText.cards.vehicleUnit}
             hint={
               hasInspectionIssue
                 ? fleetInsightsText.cards.inspectionHint(
                     fleetStats.inspection_expiring,
                     fleetStats.inspection_overdue,
                   )
-                : "Muayene sorunsuz"
+                : fleetInsightsText.cards.inspectionOk
             }
             className={cn(
               hasInspectionIssue && inspectionCount > 0

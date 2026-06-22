@@ -39,6 +39,8 @@ import { investigationService, type Investigation } from "@/api/investigations";
 import { anomalyService } from "@/api/anomalies";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
+import { useLocale } from "../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 const DAY_OPTIONS = [
   { label: "7 Gün", value: 7 },
@@ -49,7 +51,9 @@ const DAY_OPTIONS = [
 ];
 
 export default function AlertsPage() {
-  usePageTitle("Anomaliler");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("alerts.title", "Anomalies"));
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<AlertTab>("all");
   const [days, setDays] = useState(30);
@@ -174,7 +178,7 @@ export default function AlertsPage() {
       .slice(-14)
       .map((b) => ({
         ...b,
-        date: new Date(b.date).toLocaleDateString("tr-TR", {
+        date: new Date(b.date).toLocaleDateString(locale, {
           day: "numeric",
           month: "short",
         }),
@@ -202,7 +206,7 @@ export default function AlertsPage() {
       label: "Toplam Maliyet Kaçağı",
       value:
         totalLeakageCost > 0
-          ? totalLeakageCost.toLocaleString("tr-TR", {
+          ? totalLeakageCost.toLocaleString(locale, {
               style: "currency",
               currency: "TRY",
               maximumFractionDigits: 0,
@@ -611,7 +615,7 @@ export default function AlertsPage() {
                       <div className="flex shrink-0 flex-col items-end gap-1.5">
                         <SeverityBadge severity={anomaly.severity} />
                         <span className="text-[9px] font-bold uppercase tracking-wider text-secondary/50">
-                          {new Date(anomaly.tarih).toLocaleDateString("tr-TR", {
+                          {new Date(anomaly.tarih).toLocaleDateString(locale, {
                             day: "numeric",
                             month: "short",
                           })}

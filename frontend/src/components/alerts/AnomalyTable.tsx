@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import type { LeakageStats, MaintenanceVehicle } from "@/api/anomalies";
+import { useLocale } from "../../hooks/useLocale";
 
 // ─── LeakageSummary ──────────────────────────────────────────────────────────
 
@@ -103,6 +104,7 @@ export function MaintenanceTable({
 }: {
   vehicles: MaintenanceVehicle[];
 }) {
+  const locale = useLocale();
   if (vehicles.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-secondary">
@@ -132,7 +134,7 @@ export function MaintenanceTable({
             </TableCell>
             <TableCell className="text-secondary text-sm tabular-nums">
               {vehicle.toplam_km > 0
-                ? `${vehicle.toplam_km.toLocaleString("tr-TR")} km`
+                ? `${vehicle.toplam_km.toLocaleString(locale)} km`
                 : "—"}
             </TableCell>
             <TableCell>

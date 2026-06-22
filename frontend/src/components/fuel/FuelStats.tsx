@@ -10,6 +10,7 @@ import {
 import { motion } from "framer-motion";
 import { useAnomalyCount } from "../../hooks/useAnomalyCount";
 import { useFuelResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface FuelStatsProps {
   stats: FuelStatsModel | null;
@@ -18,8 +19,9 @@ interface FuelStatsProps {
 
 export function FuelStats({ stats, loading }: FuelStatsProps) {
   const { fuelStatsText } = useFuelResources();
+  const locale = useLocale();
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("tr-TR", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "TRY",
       maximumFractionDigits: 0,
@@ -47,7 +49,7 @@ export function FuelStats({ stats, loading }: FuelStatsProps) {
     {
       label: fuelStatsText.totalConsumption,
       value: hasData
-        ? `${(stats?.total_consumption ?? 0).toLocaleString("tr-TR", {
+        ? `${(stats?.total_consumption ?? 0).toLocaleString(locale, {
             maximumFractionDigits: 0,
           })} L`
         : "—",
@@ -82,7 +84,7 @@ export function FuelStats({ stats, loading }: FuelStatsProps) {
       label: fuelStatsText.totalDistance,
       value:
         totalDistance > 0
-          ? `${totalDistance.toLocaleString("tr-TR", {
+          ? `${totalDistance.toLocaleString(locale, {
               maximumFractionDigits: 0,
             })} km`
           : "—",

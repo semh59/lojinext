@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { adminApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useTranslation } from "react-i18next";
 
 interface ConfigItem {
   anahtar: string;
@@ -27,7 +28,8 @@ const adminUpdateReason = "Updated from admin panel";
 
 export default function AdminConfigurationPage() {
   const { adminConfigurationText } = useAdminResources();
-  usePageTitle("Konfigürasyon");
+  const { t } = useTranslation();
+  usePageTitle(t("admin.configuration", "Configuration"));
   const qc = useQueryClient();
   const { notify } = useNotify();
   const [localValues, setLocalValues] = useState<Record<string, unknown>>({});

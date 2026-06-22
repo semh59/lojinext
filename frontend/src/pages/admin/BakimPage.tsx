@@ -32,9 +32,13 @@ import { PredictionsTable } from "@/components/admin/maintenance/PredictionsTabl
 import { cn } from "@/lib/utils";
 import { useMaintenancePredictionsResources } from "@/resources/useResources";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 export default function AdminMaintenancePage() {
   const { adminMaintenanceText } = useAdminResources();
+  const { t } = useTranslation();
+  const locale = useLocale();
   const mapMaintenanceStatus = (status?: string) => {
     switch (status) {
       case "gecikmis":
@@ -55,7 +59,7 @@ export default function AdminMaintenancePage() {
     }
   };
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
-  usePageTitle("Bakım & Onarım");
+  usePageTitle(t("admin.maintenance", "Maintenance"));
   const qc = useQueryClient();
   const { notify } = useNotify();
 
@@ -290,7 +294,7 @@ export default function AdminMaintenancePage() {
                       <TableCell className="text-sm">
                         {alert.bakim_tarihi
                           ? new Date(alert.bakim_tarihi).toLocaleDateString(
-                              "tr-TR",
+                              locale,
                             )
                           : "-"}
                         {alert.km_bilgisi ? ` / ${alert.km_bilgisi} KM` : ""}

@@ -31,10 +31,14 @@ import { vehicleService } from "../api/vehicles";
 import { reportService } from "../api/reports";
 import { Card } from "../components/ui/Card";
 import { useFuelResources } from "../resources/useResources";
+import { useLocale } from "../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 export default function FuelPage() {
   const { fuelPageText } = useFuelResources();
-  usePageTitle("Yakıt");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("fuel.title", "Fuel"));
   const { notify } = useNotify();
   const queryClient = useQueryClient();
 
@@ -337,7 +341,7 @@ export default function FuelPage() {
                     {...chartTheme.tooltip}
                     formatter={(v: number | undefined) => [
                       v != null
-                        ? `${v.toLocaleString("tr-TR", {
+                        ? `${v.toLocaleString(locale, {
                             maximumFractionDigits: 1,
                           })} L`
                         : "",

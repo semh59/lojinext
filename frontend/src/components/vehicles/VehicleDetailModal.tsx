@@ -18,18 +18,22 @@ import {
 import { vehicleService } from "../../api/vehicles";
 import { Vehicle, VehicleEvent } from "../../types";
 import { useVehiclesResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 interface VehicleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   vehicle: Vehicle | null;
 }
 
-function getInspectionInfo(muayene_tarihi: string | null | undefined) {
+function getInspectionInfo(
+  muayene_tarihi: string | null | undefined,
+  locale: string,
+) {
   if (!muayene_tarihi) return null;
   const days = Math.ceil(
     (new Date(muayene_tarihi).getTime() - Date.now()) / 86_400_000,
   );
-  return { days, date: new Date(muayene_tarihi).toLocaleDateString("tr-TR") };
+  return { days, date: new Date(muayene_tarihi).toLocaleDateString(locale) };
 }
 
 export function VehicleDetailModal({
@@ -38,6 +42,7 @@ export function VehicleDetailModal({
   vehicle,
 }: VehicleDetailModalProps) {
   const { vehicleDetailText } = useVehiclesResources();
+  const locale = useLocale();
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["vehicle-stats", vehicle?.id],
     queryFn: () => vehicleService.getStats(vehicle!.id!),
@@ -56,7 +61,7 @@ export function VehicleDetailModal({
     return null;
   }
 
-  const inspection = getInspectionInfo(vehicle.muayene_tarihi);
+  const inspection = getInspectionInfo(vehicle.muayene_tarihi, locale);
   const currentYear = new Date().getFullYear();
   const vehicleAge = currentYear - vehicle.yil;
   const agingPct = +(vehicleAge * 1.5).toFixed(1);
@@ -79,7 +84,7 @@ export function VehicleDetailModal({
       icon: <Gauge className="h-5 w-5" />,
       label: vehicleDetailText.stats.totalDistance,
       value: stats?.toplam_km
-        ? `${stats.toplam_km.toLocaleString("tr-TR")} km`
+        ? `${stats.toplam_km.toLocaleString(locale)} km`
         : "-",
       color: "text-success bg-success/10",
     },
@@ -95,7 +100,7 @@ export function VehicleDetailModal({
       icon: <Fuel className="h-5 w-5" />,
       label: vehicleDetailText.stats.totalFuel,
       value: stats?.toplam_yakit
-        ? `${Math.round(stats.toplam_yakit).toLocaleString("tr-TR")} L`
+        ? `${Math.round(stats.toplam_yakit).toLocaleString(locale)} L`
         : "-",
       color: "text-info bg-info/10",
     },
@@ -288,7 +293,7 @@ export function VehicleDetailModal({
                     value={
                       vehicle.maks_yuk_kapasitesi_kg
                         ? `${vehicle.maks_yuk_kapasitesi_kg.toLocaleString(
-                            "tr-TR",
+                            locale,
                           )} kg`
                         : "-"
                     }
@@ -296,7 +301,8 @@ export function VehicleDetailModal({
                   <DetailItem
                     icon={
                       vehicle.muayene_tarihi &&
-                      getInspectionInfo(vehicle.muayene_tarihi)!.days < 0 ? (
+                      getInspectionInfo(vehicle.muayene_tarihi, locale)!.days <
+                        0 ? (
                         <ShieldAlert className="text-danger" />
                       ) : (
                         <ShieldCheck className="text-success" />
@@ -321,7 +327,7 @@ export function VehicleDetailModal({
                       value={
                         vehicle.bos_agirlik_kg
                           ? `${vehicle.bos_agirlik_kg.toLocaleString(
-                              "tr-TR",
+                              locale,
                             )} kg`
                           : "-"
                       }
@@ -401,8 +407,9 @@ export function VehicleDetailModal({
 
 function EventRow({ event }: { event: VehicleEvent }) {
   const { vehicleDetailText } = useVehiclesResources();
+  const locale = useLocale();
   const formatted = event.created_at
-    ? new Date(event.created_at).toLocaleString("tr-TR", {
+    ? new Date(event.created_at).toLocaleString(locale, {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",

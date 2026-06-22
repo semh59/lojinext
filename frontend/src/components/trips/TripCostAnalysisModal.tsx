@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useTaskStatus } from "../../hooks/useTaskStatus";
 import { tripService } from "../../api/trips";
+import { useLocale } from "../../hooks/useLocale";
 
 interface TripCostAnalysisModalProps {
   seferId: number | null;
@@ -22,8 +23,8 @@ interface ReconciliationResult {
   [key: string]: unknown;
 }
 
-const TRY = (v: number) =>
-  new Intl.NumberFormat("tr-TR", {
+const TRY = (v: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "TRY",
     maximumFractionDigits: 0,
@@ -163,7 +164,8 @@ function CostRow({
   accent: string;
   emphasis?: boolean;
 }) {
-  const display = value != null ? TRY(value) : "—";
+  const locale = useLocale();
+  const display = value != null ? TRY(value, locale) : "—";
   return (
     <div
       className={`rounded-card border border-border p-3 ${

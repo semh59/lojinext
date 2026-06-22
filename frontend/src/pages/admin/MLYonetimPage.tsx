@@ -18,10 +18,14 @@ import { adminMlApi } from "@/api/admin";
 import { vehicleService } from "@/api/vehicles";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 export default function AdminModelManagementPage() {
   const { adminMlText } = useAdminResources();
-  usePageTitle("ML Modelleri");
+  const { t } = useTranslation();
+  const locale = useLocale();
+  usePageTitle(t("admin.ml_models", "ML Models"));
   const queryClient = useQueryClient();
   const { notify } = useNotify();
   const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(
@@ -240,7 +244,7 @@ export default function AdminModelManagementPage() {
                     {task.error_message || task.trigger_reason || "-"}
                   </TableCell>
                   <TableCell className="text-xs text-secondary">
-                    {new Date(task.created_at).toLocaleString("tr-TR")}
+                    {new Date(task.created_at).toLocaleString(locale)}
                   </TableCell>
                 </TableRow>
               ))}

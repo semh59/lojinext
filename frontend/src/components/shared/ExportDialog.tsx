@@ -16,6 +16,7 @@ import { vehiclesApi } from "../../services/api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { useReportsResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 export type ExportType =
   | "fleet_summary"
@@ -62,6 +63,7 @@ export function ExportDialog({
   onExport,
 }: ExportDialogProps) {
   const { reportExportDialogText } = useReportsResources();
+  const locale = useLocale();
   const [format, setFormat] = useState<"pdf" | "excel">("pdf");
   const [startDate, setStartDate] = useState(
     new Date(new Date().setDate(new Date().getDate() - 30))
@@ -318,7 +320,7 @@ export function ExportDialog({
                         (calendarMonth) => (
                           <option key={calendarMonth} value={calendarMonth}>
                             {new Date(2000, calendarMonth - 1).toLocaleString(
-                              "tr-TR",
+                              locale,
                               {
                                 month: "long",
                               },

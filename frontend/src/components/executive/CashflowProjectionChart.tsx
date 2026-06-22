@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useCashflow } from "@/hooks/useExecutive";
 import { useExecutiveResources } from "@/resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface Props {
   className?: string;
@@ -19,6 +20,7 @@ interface Props {
 
 export function CashflowProjectionChart({ className }: Props) {
   const { executiveText } = useExecutiveResources();
+  const locale = useLocale();
   const { data, isLoading, error } = useCashflow(90);
   const t = executiveText.cashflow;
 
@@ -79,7 +81,7 @@ export function CashflowProjectionChart({ className }: Props) {
             {t.grandTotal}
           </p>
           <p className="font-mono text-lg font-bold text-primary">
-            ₺{data.grand_total_tl.toLocaleString("tr-TR")}
+            ₺{data.grand_total_tl.toLocaleString(locale)}
           </p>
         </div>
       </div>
@@ -109,7 +111,7 @@ export function CashflowProjectionChart({ className }: Props) {
                 borderRadius: 8,
               }}
               formatter={(value: unknown, name: unknown) => [
-                `₺${Number(value ?? 0).toLocaleString("tr-TR")}`,
+                `₺${Number(value ?? 0).toLocaleString(locale)}`,
                 String(name ?? ""),
               ]}
             />
@@ -142,7 +144,7 @@ export function CashflowProjectionChart({ className }: Props) {
         </span>
         <span>
           {t.avgBakimCost}: ₺
-          {data.assumptions.avg_bakim_cost_tl?.toLocaleString("tr-TR") ?? "—"}
+          {data.assumptions.avg_bakim_cost_tl?.toLocaleString(locale) ?? "—"}
         </span>
         <span>
           {t.upcomingBakim}: {data.assumptions.upcoming_bakim_count ?? 0}

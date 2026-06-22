@@ -7,6 +7,7 @@ import { TrainingTab } from "@/components/monitoring/TrainingTab";
 import { Button } from "@/components/ui/Button";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 type Tab = "notifications" | "errors" | "training";
 
@@ -18,7 +19,8 @@ interface TabConfig {
 }
 
 export default function MonitoringPage() {
-  usePageTitle("Bildirimler");
+  const { t } = useTranslation();
+  usePageTitle(t("nav.notifications", "Notifications"));
   const [activeTab, setActiveTab] = useState<Tab>("notifications");
   const { status, notifications, clearNotifications, reconnect } =
     useMonitoringSocket();

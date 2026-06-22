@@ -22,6 +22,8 @@ export const fleetInsightsText = {
     trips: "Toplam Sefer",
     recordsUnit: "kayıt",
     inspectionWarning: "Muayene Uyarısı",
+    vehicleUnit: "araç",
+    inspectionOk: "Muayene sorunsuz",
     inspectionHint: (expiring: number, overdue: number) =>
       overdue > 0
         ? `${overdue} araç muayene süresi geçmiş`

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { WsNotification } from "./useMonitoringSocket";
+import { useLocale } from "../../hooks/useLocale";
 
-function formatTime(iso: string) {
+function formatTime(iso: string, locale: string) {
   try {
-    return new Date(iso).toLocaleTimeString("tr-TR");
+    return new Date(iso).toLocaleTimeString(locale);
   } catch {
     return iso;
   }
@@ -59,6 +60,7 @@ export function NotificationFeed({
 }: {
   notifications: WsNotification[];
 }) {
+  const locale = useLocale();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   if (notifications.length === 0) {
@@ -144,7 +146,7 @@ export function NotificationFeed({
                     <p className="mt-0.5 text-xs text-secondary">{n.icerik}</p>
                   </div>
                   <span className="shrink-0 text-[10px] text-tertiary pt-0.5">
-                    {formatTime(n.olusturma_tarihi)}
+                    {formatTime(n.olusturma_tarihi, locale)}
                   </span>
                 </div>
               </motion.div>

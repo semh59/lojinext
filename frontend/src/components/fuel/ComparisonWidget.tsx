@@ -20,6 +20,7 @@ import { motion } from "framer-motion";
 
 import { PredictionComparisonResponse } from "../../types";
 import { useFuelResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface VehicleOption {
   id: number;
@@ -42,6 +43,7 @@ export const ComparisonWidget: React.FC<ComparisonWidgetProps> = ({
   onVehicleChange,
 }) => {
   const { fuelComparisonText } = useFuelResources();
+  const locale = useLocale();
   const showVehicleSelect = !!vehicles && !!onVehicleChange;
 
   const vehicleSelect = showVehicleSelect ? (
@@ -282,7 +284,7 @@ export const ComparisonWidget: React.FC<ComparisonWidgetProps> = ({
                   fill: "var(--text-secondary)",
                 }}
                 tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString("tr-TR", {
+                  new Date(value).toLocaleDateString(locale, {
                     day: "numeric",
                     month: "short",
                   })

@@ -225,12 +225,16 @@ export const adminLayoutText = {
   nav: {
     overview: "Genel Bakış",
     users: "Kullanıcılar",
+    roles: "Roller",
     ml: "ML & Modeller",
     configuration: "Konfigürasyon",
     maintenance: "Bakım & Onarım",
+    assignment: "Sefer Atama",
+    accuracy: "Tahmin Doğruluğu",
     dataManagement: "Veri Yönetimi",
     systemHealth: "Sistem Sağlığı",
     notifications: "Bildirimler",
+    analytics: "Kullanım Analitiği",
     fallback: "Ayarlar",
   },
   accessDenied: {

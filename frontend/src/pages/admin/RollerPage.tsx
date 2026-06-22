@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/Table";
 import { AdminRoleRecord, KNOWN_PERMISSIONS, adminRolesApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useTranslation } from "react-i18next";
 
 // Sistem rolleri — backend de düzenleme/silmeyi reddeder; UI'da aksiyon gizlenir.
 const PROTECTED_ROLES = ["super_admin", "admin"];
@@ -26,7 +27,8 @@ const PROTECTED_ROLES = ["super_admin", "admin"];
 type ModalMode = "create" | "edit";
 
 export default function RollerPage() {
-  usePageTitle("Roller");
+  const { t } = useTranslation();
+  usePageTitle(t("admin.roles", "Roles"));
   const qc = useQueryClient();
 
   const { data: roles = [], isLoading } = useQuery({

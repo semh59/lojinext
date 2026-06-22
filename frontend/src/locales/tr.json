@@ -25,7 +25,13 @@
     "details": "Detaylar",
     "status": "Durum",
     "date": "Tarih",
-    "note": "Not"
+    "note": "Not",
+    "today": "Bugün",
+    "previous": "Geç.",
+    "toggle_menu": "Menüyü aç/kapat",
+    "not_found": "Sayfa Bulunamadı",
+    "my_profile": "Profilim",
+    "see_all": "Tümünü Gör"
   },
   "dashboard": {
     "title": "Filo Paneli",
@@ -33,7 +39,14 @@
     "total_vehicles": "Araçlar",
     "active_trips": "Seferler",
     "total_km": "Toplam KM",
-    "fuel_consumed": "Tüketilen Yakıt"
+    "fuel_consumed": "Tüketilen Yakıt",
+    "todays_trips": "Bugünkü Seferler",
+    "todays_trips_error": "Bugünkü seferler yüklenemedi",
+    "todays_trips_empty": "Bugün için planlı sefer yok",
+    "todays_summary_loading": "Bugünün özeti yükleniyor…",
+    "todays_summary_empty": "Bugün için kayıtlı sefer yok.",
+    "todays_summary_count": "sefer bugün",
+    "in_progress": "Yolda"
   },
   "auth": {
     "login": "Giriş Yap",
@@ -74,16 +87,28 @@
     "export_excel": "Excel İndir",
     "export_pdf": "PDF İndir"
   },
+  "alerts": {
+    "title": "Anomaliler"
+  },
   "admin": {
     "title": "Yönetim",
     "users": "Kullanıcılar",
     "roles": "Roller",
     "settings": "Ayarlar",
     "system_health": "Sistem Sağlığı",
-    "audit_log": "Denetim Günlüğü"
+    "audit_log": "Denetim Günlüğü",
+    "overview": "Yönetim Paneli",
+    "ml_models": "ML Modelleri",
+    "configuration": "Konfigürasyon",
+    "data_management": "Veri Yönetimi",
+    "maintenance": "Bakım & Onarım",
+    "trip_assignment": "Sefer Atama",
+    "forecast_accuracy": "Tahmin Doğruluğu",
+    "usage_analytics": "Kullanım Analitiği",
+    "notifications": "Bildirimler"
   },
   "fleet": {
-    "title": "Filo",
+    "title": "Araçlar & Dorseler",
     "vehicle": "Araç",
     "vehicles": "Araçlar",
     "plate": "Plaka",
@@ -112,5 +137,29 @@
     "predicted_consumption": "Tahmini Tüketim",
     "status": "Durum",
     "add_trip": "Sefer Ekle"
+  },
+  "nav": {
+    "today": "Bugün",
+    "maintenance": "Bakım",
+    "fleet_insights": "Filo İçgörü",
+    "coaching": "Koçluk",
+    "reports": "Rapor Stüdyosu",
+    "route_lab": "Güzergah Lab",
+    "notifications": "Bildirimler",
+    "mark_all_read": "Tümünü okundu işaretle",
+    "no_notifications": "Henüz bildirim yok",
+    "no_data": "Veri yok",
+    "group": {
+      "operations": "Operasyon",
+      "fleet": "Filo",
+      "insights": "İçgörü",
+      "system": "Sistem"
+    },
+    "event_types": {
+      "anomaly": "Anomali",
+      "delay": "Gecikme",
+      "trip": "Sefer",
+      "notification": "Bildirim"
+    }
   }
 }

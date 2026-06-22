@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Bug, Copy, Loader2, ScrollText, X } from "lucide-react";
 import { useState } from "react";
 
+import { useLocale } from "../../hooks/useLocale";
 import {
   errorService,
   type TraceAuditRow,
@@ -21,10 +22,10 @@ const SEVERITY_TONE: Record<string, string> = {
   info: "bg-accent/10 text-accent border-accent/30",
 };
 
-function formatTime(iso?: string | null) {
+function formatTime(iso: string | null | undefined, locale: string) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("tr-TR", {
+    return new Date(iso).toLocaleString(locale, {
       day: "2-digit",
       month: "2-digit",
       year: "2-digit",
@@ -39,6 +40,7 @@ function formatTime(iso?: string | null) {
 
 function ErrorEventBlock({ evt }: { evt: TraceErrorRow }) {
   const [expanded, setExpanded] = useState(false);
+  const locale = useLocale();
   return (
     <div
       className={`rounded-card border bg-surface px-4 py-3 ${
@@ -78,8 +80,8 @@ function ErrorEventBlock({ evt }: { evt: TraceErrorRow }) {
         </p>
       )}
       <div className="mt-1 flex gap-3 text-[10px] text-tertiary">
-        <span>İlk: {formatTime(evt.first_seen)}</span>
-        <span>Son: {formatTime(evt.last_seen)}</span>
+        <span>İlk: {formatTime(evt.first_seen, locale)}</span>
+        <span>Son: {formatTime(evt.last_seen, locale)}</span>
       </div>
       {evt.stack_trace && (
         <div className="mt-2">
@@ -102,6 +104,7 @@ function ErrorEventBlock({ evt }: { evt: TraceErrorRow }) {
 }
 
 function AuditRowBlock({ row }: { row: TraceAuditRow }) {
+  const locale = useLocale();
   return (
     <div
       className="rounded-card border border-border bg-surface px-4 py-2"
@@ -133,7 +136,7 @@ function AuditRowBlock({ row }: { row: TraceAuditRow }) {
         )}
       </div>
       <div className="text-[10px] text-tertiary mt-0.5">
-        {formatTime(row.created_at)}
+        {formatTime(row.created_at, locale)}
         {row.user_id != null && ` · user=${row.user_id}`}
       </div>
     </div>

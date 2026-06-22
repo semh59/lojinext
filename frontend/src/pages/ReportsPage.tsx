@@ -26,15 +26,15 @@ import {
 import { useNotify } from "../context/NotificationContext";
 import { cn } from "../lib/utils";
 import { usePageTitle } from "../hooks/usePageTitle";
-import {
-  ReportDownloadOptionId,
-  ReportTabId,
-  reportDownloadOptions,
-  reportPageText,
-} from "../resources/tr/reports";
 import { reportsApi } from "../services/api";
+import { useReportsResources } from "../resources/useResources";
+import type {
+  ReportTabId,
+  ReportDownloadOptionId,
+} from "../resources/tr/reports";
 
 export default function ReportsPage() {
+  const { reportDownloadOptions, reportPageText } = useReportsResources();
   usePageTitle("Raporlar");
   const { notify } = useNotify();
   const [activeTab, setActiveTab] = useState<ReportTabId>("pdf");

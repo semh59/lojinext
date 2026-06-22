@@ -2,8 +2,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, Trash2 } from "lucide-react";
 
 import { Vehicle } from "../../types";
-import { vehicleDeleteText } from "../../resources/tr/vehicles";
 import { Button } from "../ui/Button";
+import { useVehiclesResources } from "../../resources/useResources";
 
 interface VehicleDeleteModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export function VehicleDeleteModal({
   onConfirm,
   vehicle,
 }: VehicleDeleteModalProps) {
+  const { vehicleDeleteText } = useVehiclesResources();
   if (!isOpen || !vehicle) {
     return null;
   }

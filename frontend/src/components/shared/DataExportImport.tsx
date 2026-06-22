@@ -11,8 +11,7 @@ import { Button } from "../ui/Button";
 import { cn } from "../../lib/utils";
 import { ExcelUploadModal } from "./ExcelUploadModal";
 import { RequirePermission } from "../auth/RequirePermission";
-import { dataTransferText } from "../../resources/tr/shared";
-
+import { useSharedResources } from "../../resources/useResources";
 interface DataExportImportProps {
   onExport?: () => Promise<void>;
   onImport?: (file: File) => Promise<any>;
@@ -30,6 +29,7 @@ export function DataExportImport({
   variant = "toolbar",
   className,
 }: DataExportImportProps) {
+  const { dataTransferText } = useSharedResources();
   const [isExporting, setIsExporting] = useState(false);
   const [isTemplateDownloading, setIsTemplateDownloading] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);

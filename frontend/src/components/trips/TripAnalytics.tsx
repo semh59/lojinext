@@ -13,10 +13,10 @@ import {
   YAxis,
 } from "recharts";
 
-import { tripAnalyticsText } from "../../resources/tr/trips";
 import { FuelPerformanceAnalyticsResponse } from "../../types";
 import { cn } from "../../lib/utils";
 import { Skeleton } from "../ui/Skeleton";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripAnalyticsProps {
   data?: FuelPerformanceAnalyticsResponse;
@@ -24,6 +24,7 @@ interface TripAnalyticsProps {
 }
 
 export function TripAnalytics({ data, isLoading = false }: TripAnalyticsProps) {
+  const { tripAnalyticsText } = useTripsResources();
   if (isLoading) {
     return (
       <div className="mb-8 space-y-6">

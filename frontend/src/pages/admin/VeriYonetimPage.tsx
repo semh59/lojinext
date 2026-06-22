@@ -13,36 +13,36 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
-import { adminDataManagementText } from "@/resources/tr/admin";
 import { adminImportsApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
-const mapImportStatus = (status?: string) => {
-  switch (status) {
-    case "tamamlandi":
-      return {
-        label: adminDataManagementText.statusLabels.completed,
-        variant: "success" as const,
-      };
-    case "hata":
-      return {
-        label: adminDataManagementText.statusLabels.error,
-        variant: "danger" as const,
-      };
-    case "geri_alindi":
-      return {
-        label: adminDataManagementText.statusLabels.rolledBack,
-        variant: "warning" as const,
-      };
-    default:
-      return {
-        label: adminDataManagementText.statusLabels.default,
-        variant: "default" as const,
-      };
-  }
-};
+import { useAdminResources } from "@/resources/useResources";
 
 export default function AdminDataManagementPage() {
+  const { adminDataManagementText } = useAdminResources();
+  const mapImportStatus = (status?: string) => {
+    switch (status) {
+      case "tamamlandi":
+        return {
+          label: adminDataManagementText.statusLabels.completed,
+          variant: "success" as const,
+        };
+      case "hata":
+        return {
+          label: adminDataManagementText.statusLabels.error,
+          variant: "danger" as const,
+        };
+      case "geri_alindi":
+        return {
+          label: adminDataManagementText.statusLabels.rolledBack,
+          variant: "warning" as const,
+        };
+      default:
+        return {
+          label: adminDataManagementText.statusLabels.default,
+          variant: "default" as const,
+        };
+    }
+  };
   usePageTitle("Veri Yönetimi");
   const qc = useQueryClient();
   const { notify } = useNotify();

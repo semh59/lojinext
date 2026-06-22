@@ -14,10 +14,10 @@ import {
 } from "lucide-react";
 
 import { Vehicle } from "../../types";
-import { vehicleTableText, vehicleCardText } from "../../resources/tr/vehicles";
 import { cn } from "../../lib/utils";
 import { Badge } from "../ui/Badge";
 import { SkeletonTable } from "./SkeletonTable";
+import { useVehiclesResources } from "../../resources/useResources";
 
 interface VehicleTableProps {
   vehicles: Vehicle[];
@@ -27,30 +27,6 @@ interface VehicleTableProps {
   onViewDetail: (vehicle: Vehicle) => void;
 }
 
-function getInspectionStatus(muayene_tarihi: string | null | undefined): {
-  type: "expired" | "expiring" | "ok" | "unknown";
-  daysLeft: number;
-  label: string;
-} {
-  if (!muayene_tarihi) return { type: "unknown", daysLeft: 0, label: "" };
-  const days = Math.ceil(
-    (new Date(muayene_tarihi).getTime() - Date.now()) / 86_400_000,
-  );
-  if (days < 0)
-    return {
-      type: "expired",
-      daysLeft: days,
-      label: vehicleCardText.inspection.expired,
-    };
-  if (days <= 30)
-    return {
-      type: "expiring",
-      daysLeft: days,
-      label: vehicleCardText.inspection.expiringSoon(days),
-    };
-  return { type: "ok", daysLeft: days, label: "" };
-}
-
 export function VehicleTable({
   vehicles,
   loading,
@@ -58,6 +34,30 @@ export function VehicleTable({
   onDelete,
   onViewDetail,
 }: VehicleTableProps) {
+  const { vehicleTableText, vehicleCardText } = useVehiclesResources();
+  function getInspectionStatus(muayene_tarihi: string | null | undefined): {
+    type: "expired" | "expiring" | "ok" | "unknown";
+    daysLeft: number;
+    label: string;
+  } {
+    if (!muayene_tarihi) return { type: "unknown", daysLeft: 0, label: "" };
+    const days = Math.ceil(
+      (new Date(muayene_tarihi).getTime() - Date.now()) / 86_400_000,
+    );
+    if (days < 0)
+      return {
+        type: "expired",
+        daysLeft: days,
+        label: vehicleCardText.inspection.expired,
+      };
+    if (days <= 30)
+      return {
+        type: "expiring",
+        daysLeft: days,
+        label: vehicleCardText.inspection.expiringSoon(days),
+      };
+    return { type: "ok", daysLeft: days, label: "" };
+  }
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<number>>(new Set());
 

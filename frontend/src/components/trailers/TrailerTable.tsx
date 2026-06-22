@@ -12,8 +12,8 @@ import {
 } from "lucide-react";
 
 import { Dorse } from "../../types";
-import { trailerTableText } from "../../resources/tr/trailers";
 import { cn } from "../../lib/utils";
+import { useTrailersResources } from "../../resources/useResources";
 
 interface TrailerTableProps {
   trailers: Dorse[];
@@ -32,6 +32,7 @@ export function TrailerTable({
   onViewDetail,
   viewMode = "grid",
 }: TrailerTableProps) {
+  const { trailerTableText } = useTrailersResources();
   const [deletingIds, setDeletingIds] = useState<Set<number>>(new Set());
   const [deletedIds, setDeletedIds] = useState<Set<number>>(new Set());
 

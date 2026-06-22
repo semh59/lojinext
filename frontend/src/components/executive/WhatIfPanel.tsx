@@ -2,24 +2,27 @@
 import { AlertCircle, Loader2, Play, Wand2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useWhatIf } from "@/hooks/useExecutive";
 import type { WhatIfRequest, WhatIfScenarioType } from "@/api/executive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
 }
 
-const SCENARIOS: { id: WhatIfScenarioType; label: string }[] = [
-  { id: "fleet_renewal", label: executiveText.whatIf.scenarios.fleet_renewal },
-  { id: "training", label: executiveText.whatIf.scenarios.training },
-  {
-    id: "route_portfolio",
-    label: executiveText.whatIf.scenarios.route_portfolio,
-  },
-];
-
 export function WhatIfPanel({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
+  const SCENARIOS: { id: WhatIfScenarioType; label: string }[] = [
+    {
+      id: "fleet_renewal",
+      label: executiveText.whatIf.scenarios.fleet_renewal,
+    },
+    { id: "training", label: executiveText.whatIf.scenarios.training },
+    {
+      id: "route_portfolio",
+      label: executiveText.whatIf.scenarios.route_portfolio,
+    },
+  ];
   const t = executiveText.whatIf;
   const [scenario, setScenario] = useState<WhatIfScenarioType>("fleet_renewal");
   // Senaryo input state'leri (default değerler)

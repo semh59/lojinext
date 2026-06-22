@@ -7,8 +7,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useFvi } from "@/hooks/useExecutive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
@@ -37,6 +37,7 @@ function SubScoreBar({ label, value }: { label: string; value: number }) {
 }
 
 export function FleetEfficiencyCard({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
   const { data, isLoading, error } = useFvi();
   const t = executiveText.fvi;
 

@@ -14,11 +14,11 @@ import {
 } from "lucide-react";
 
 import { Driver } from "../../types";
-import { driverPerformanceText } from "../../resources/tr/drivers";
 import { cn } from "../../lib/utils";
 import { driverService } from "../../api/drivers";
 import { DriverScoreBreakdown } from "./DriverScoreBreakdown";
 import { DriverRouteProfile } from "./DriverRouteProfile";
+import { useDriversResources } from "../../resources/useResources";
 
 type PerformanceTab = "performance" | "breakdown" | "routes";
 
@@ -43,6 +43,7 @@ export function DriverPerformanceModal({
   onClose,
   driver,
 }: DriverPerformanceModalProps) {
+  const { driverPerformanceText } = useDriversResources();
   const [data, setData] = useState<PerformanceData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

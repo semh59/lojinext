@@ -1,8 +1,7 @@
 import { Plus } from "lucide-react";
 import { Button } from "../ui/Button";
 import { DataExportImport } from "../shared/DataExportImport";
-import { driverHeaderText } from "../../resources/tr/drivers";
-
+import { useDriversResources } from "../../resources/useResources";
 interface DriverHeaderProps {
   onAdd: () => void;
   onExport: () => Promise<void>;
@@ -16,6 +15,7 @@ export function DriverHeader({
   onDownloadTemplate,
   onImport,
 }: DriverHeaderProps) {
+  const { driverHeaderText } = useDriversResources();
   return (
     <div className="flex justify-end mb-8 relative z-40">
       <div className="flex items-center gap-3">

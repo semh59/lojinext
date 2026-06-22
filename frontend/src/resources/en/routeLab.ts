@@ -1,0 +1,61 @@
+export const routeLabText = {
+  heading: "Route Laboratory",
+  description:
+    "Enter origin-destination and simulate the route at 500m segment resolution: speed, slope, and fuel consumption for each segment.",
+  form: {
+    modeLocation: "Registered route",
+    modeCoords: "Enter coordinates",
+    location: "Route",
+    locationPlaceholder: "Select route",
+    cikisLat: "Origin latitude",
+    cikisLon: "Origin longitude",
+    varisLat: "Destination latitude",
+    varisLon: "Destination longitude",
+    ton: "Load (tons)",
+    aracYasi: "Vehicle age",
+    segmentLength: "Segment size (m)",
+    submit: "Simulate",
+    submitting: "Simulating…",
+  },
+  summary: {
+    distance: "Distance",
+    duration: "Duration",
+    totalL: "Total fuel",
+    avg: "Average",
+    ascent: "Total ascent",
+    descent: "Total descent",
+    coverage: "Elevation coverage",
+    km: "km",
+    min: "min",
+    liters: "L",
+    lper100: "L/100km",
+    meters: "m",
+  },
+  profile: {
+    title: "Segment profile",
+    subtitle: "Speed and consumption along cumulative distance",
+    speed: "Speed (km/h)",
+    consumption: "Consumption (L/100km)",
+    grade: "Grade (%)",
+    distanceAxis: "Distance (km)",
+  },
+  heatmap: {
+    title: "Consumption heatmap",
+    subtitle: "Segment color = L/100km (green low, red high)",
+    legendLow: "< 30",
+    legendMid: "30–40",
+    legendHigh: "> 40",
+    noCoords: "No segment coordinates in this simulation.",
+  },
+  errors: {
+    coordsRequired:
+      "In coordinate mode, origin and destination lat/lon are required.",
+    rateLimited: "Too many requests. Please wait a moment and try again.",
+    providerDown:
+      "Route provider (Mapbox) is currently unreachable. Try again.",
+    generic: "Simulation failed. Please try again.",
+  },
+  empty: "Select a route and click 'Simulate'.",
+  coverageWarning:
+    "Elevation data is partial — slope and consumption estimate may be approximate.",
+} as const;

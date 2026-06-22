@@ -25,14 +25,15 @@ import ErrorBoundary from "../components/common/ErrorBoundary";
 import { useNotify } from "../context/NotificationContext";
 import { useUrlState } from "../hooks/use-url-state";
 import { usePageTitle } from "../hooks/usePageTitle";
-import { fuelPageText } from "../resources/tr/fuel";
 import { fuelService, type OcrPreview } from "../api/fuel";
 import { predictionService } from "../api/predictions";
 import { vehicleService } from "../api/vehicles";
 import { reportService } from "../api/reports";
 import { Card } from "../components/ui/Card";
+import { useFuelResources } from "../resources/useResources";
 
 export default function FuelPage() {
+  const { fuelPageText } = useFuelResources();
   usePageTitle("Yakıt");
   const { notify } = useNotify();
   const queryClient = useQueryClient();

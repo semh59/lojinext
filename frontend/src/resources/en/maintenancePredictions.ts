@@ -1,0 +1,64 @@
+export const maintenancePredictionsText = {
+  tabs: {
+    list: "List",
+    calendar: "Calendar",
+    history: "History",
+  },
+  pageTitle: "Predictive Maintenance",
+  calendarLegend: {
+    overdue: "Overdue",
+    soon: "Soon",
+    normal: "Normal",
+    low: "Low risk",
+    unpredictable: "No prediction",
+  },
+  riskLabels: {
+    overdue: "Overdue",
+    soon: "Soon",
+    normal: "Normal",
+    low: "Low",
+  } as const,
+  table: {
+    columns: {
+      plaka: "Plate",
+      bakim_tipi: "Maintenance Type",
+      predicted_date: "Predicted Date",
+      days_remaining: "Days Remaining",
+      risk_level: "Risk",
+      confidence: "Confidence",
+      savings: "Savings",
+      actions: "Actions",
+    },
+    empty: "No predictable maintenance yet.",
+    unpredictable: "Insufficient data for prediction",
+    notApplicable: "—",
+    downloadIcs: "Add to Calendar",
+  },
+  drawer: {
+    title: "Maintenance Prediction Detail",
+    sections: {
+      summary: "Summary",
+      reasons: "Reasons",
+      actions: "Actions",
+    },
+    labels: {
+      plaka: "Plate",
+      bakim_tipi: "Maintenance Type",
+      predicted_date: "Predicted Date",
+      days_remaining: "Days Remaining",
+      confidence: "Confidence",
+      risk: "Risk",
+      savings: "Estimated Savings",
+    },
+    downloadIcs: "Download to Calendar (.ics)",
+    close: "Close",
+    notPredictable:
+      "Insufficient data for this vehicle; prediction cannot be generated.",
+    downloadError: "Calendar file could not be downloaded.",
+  },
+  errors: {
+    loadFailed: "Predictions could not be loaded.",
+    flagOff: "Maintenance prediction module is disabled.",
+    forbidden: "You do not have permission for this operation.",
+  },
+} as const;

@@ -5,45 +5,12 @@ import { toast } from "sonner";
 import * as z from "zod";
 
 import { useDebounce } from "./useDebounce";
-import { locationFormText } from "../resources/tr/locations";
 import { GeocodeSuggestion, locationService } from "../api/locations";
 import { Location, LocationCreate, RouteAnalysis } from "../types/location";
+import { useLocationsResources } from "../resources/useResources";
 
 type EndpointKey = "cikis" | "varis";
 type LocationDifficulty = "Normal" | "Orta" | "Zor";
-
-const locationSchema = z.object({
-  cikis_yeri: z
-    .string()
-    .min(2, locationFormText.validation.originRequired)
-    .max(100),
-  varis_yeri: z
-    .string()
-    .min(2, locationFormText.validation.destinationRequired)
-    .max(100),
-  mesafe_km: z.number().positive(locationFormText.validation.distancePositive),
-  tahmini_sure_saat: z
-    .number()
-    .min(0, locationFormText.validation.durationRange)
-    .max(48, locationFormText.validation.durationRange),
-  zorluk: z.enum(["Normal", "Orta", "Zor"]),
-  ascent_m: z
-    .number()
-    .min(0, locationFormText.validation.ascentRange)
-    .max(10000, locationFormText.validation.ascentRange),
-  descent_m: z
-    .number()
-    .min(0, locationFormText.validation.descentRange)
-    .max(10000, locationFormText.validation.descentRange),
-  flat_distance_km: z.number().min(0).optional(),
-  otoban_mesafe_km: z.number().min(0).optional(),
-  sehir_ici_mesafe_km: z.number().min(0).optional(),
-  cikis_lat: z.number().min(-90).max(90),
-  cikis_lon: z.number().min(-180).max(180),
-  varis_lat: z.number().min(-90).max(90),
-  varis_lon: z.number().min(-180).max(180),
-  notlar: z.string().max(500, locationFormText.validation.notesMax),
-});
 
 export interface LocationFormValues {
   cikis_yeri: string;
@@ -140,6 +107,41 @@ export const useLocationForm = ({
   onSave,
   onClose,
 }: UseLocationFormProps) => {
+  const { locationFormText } = useLocationsResources();
+  const locationSchema = z.object({
+    cikis_yeri: z
+      .string()
+      .min(2, locationFormText.validation.originRequired)
+      .max(100),
+    varis_yeri: z
+      .string()
+      .min(2, locationFormText.validation.destinationRequired)
+      .max(100),
+    mesafe_km: z
+      .number()
+      .positive(locationFormText.validation.distancePositive),
+    tahmini_sure_saat: z
+      .number()
+      .min(0, locationFormText.validation.durationRange)
+      .max(48, locationFormText.validation.durationRange),
+    zorluk: z.enum(["Normal", "Orta", "Zor"]),
+    ascent_m: z
+      .number()
+      .min(0, locationFormText.validation.ascentRange)
+      .max(10000, locationFormText.validation.ascentRange),
+    descent_m: z
+      .number()
+      .min(0, locationFormText.validation.descentRange)
+      .max(10000, locationFormText.validation.descentRange),
+    flat_distance_km: z.number().min(0).optional(),
+    otoban_mesafe_km: z.number().min(0).optional(),
+    sehir_ici_mesafe_km: z.number().min(0).optional(),
+    cikis_lat: z.number().min(-90).max(90),
+    cikis_lon: z.number().min(-180).max(180),
+    varis_lat: z.number().min(-90).max(90),
+    varis_lon: z.number().min(-180).max(180),
+    notlar: z.string().max(500, locationFormText.validation.notesMax),
+  });
   const {
     register,
     handleSubmit,

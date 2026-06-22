@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 
 import { cn, safeHref } from "@/lib/utils";
-import { todayText } from "@/resources/tr/today";
 import type { TriageCategory, TriageItem, TriageSeverity } from "@/api/today";
+import { useTodayResources } from "@/resources/useResources";
 
 const SEVERITY_STYLE: Record<TriageSeverity, string> = {
   critical: "border-l-danger bg-danger/5",
@@ -53,6 +53,7 @@ interface Props {
 }
 
 export function TriageItemCard({ item }: Props) {
+  const { todayText } = useTodayResources();
   const navigate = useNavigate();
   const Icon = CATEGORY_ICON[item.category] ?? AlertCircle;
 

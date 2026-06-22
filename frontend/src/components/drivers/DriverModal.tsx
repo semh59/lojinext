@@ -16,46 +16,10 @@ import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Driver } from "../../types";
-import {
-  driverFilterText,
-  driverModalText,
-  driverModuleText,
-} from "../../resources/tr/drivers";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { useDriversResources } from "../../resources/useResources";
 
-const driverSchema = z.object({
-  ad_soyad: z
-    .string()
-    .min(3, driverModalText.validation.nameMin)
-    .max(100, driverModalText.validation.nameMax),
-  telefon: z
-    .string()
-    .optional()
-    .refine(
-      (value) => !value || /^[0-9\s]{10,14}$/.test(value),
-      driverModalText.validation.phone,
-    ),
-  ise_baslama: z.string().optional(),
-  ehliyet_sinifi: z.string().min(1, driverModalText.validation.licenseClass),
-  manual_score: z.number().min(0.1).max(2.0),
-  notlar: z.string().max(500, driverModalText.validation.notesMax).optional(),
-  aktif: z.boolean(),
-  tc_no: z.string().max(11).optional().nullable(),
-  dogum_tarihi: z.string().optional().nullable(),
-  kan_grubu: z
-    .enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", ""])
-    .optional()
-    .nullable(),
-  telegram_id: z
-    .string()
-    .max(50)
-    .regex(/^\d*$/, "Telegram ID yalnızca rakamlardan oluşmalıdır")
-    .optional()
-    .nullable(),
-});
-
-type DriverFormData = z.infer<typeof driverSchema>;
 type TabId = "temel" | "kisisel" | "telegram";
 
 interface DriverModalProps {
@@ -81,6 +45,39 @@ export function DriverModal({
   onSave,
   driver,
 }: DriverModalProps) {
+  const { driverFilterText, driverModalText, driverModuleText } =
+    useDriversResources();
+  const driverSchema = z.object({
+    ad_soyad: z
+      .string()
+      .min(3, driverModalText.validation.nameMin)
+      .max(100, driverModalText.validation.nameMax),
+    telefon: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || /^[0-9\s]{10,14}$/.test(value),
+        driverModalText.validation.phone,
+      ),
+    ise_baslama: z.string().optional(),
+    ehliyet_sinifi: z.string().min(1, driverModalText.validation.licenseClass),
+    manual_score: z.number().min(0.1).max(2.0),
+    notlar: z.string().max(500, driverModalText.validation.notesMax).optional(),
+    aktif: z.boolean(),
+    tc_no: z.string().max(11).optional().nullable(),
+    dogum_tarihi: z.string().optional().nullable(),
+    kan_grubu: z
+      .enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", ""])
+      .optional()
+      .nullable(),
+    telegram_id: z
+      .string()
+      .max(50)
+      .regex(/^\d*$/, "Telegram ID yalnızca rakamlardan oluşmalıdır")
+      .optional()
+      .nullable(),
+  });
+  type DriverFormData = z.infer<typeof driverSchema>;
   const [activeTab, setActiveTab] = useState<TabId>("temel");
 
   const {

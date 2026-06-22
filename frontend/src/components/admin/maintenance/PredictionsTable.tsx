@@ -3,12 +3,12 @@ import { AlertCircle, Info, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useMaintenancePredictions } from "@/hooks/useMaintenancePredictions";
-import { maintenancePredictionsText } from "@/resources/tr/maintenancePredictions";
 import type {
   MaintenancePrediction,
   RiskLevel,
 } from "@/api/maintenance-predictions";
 import { MaintenanceDetailDrawer } from "./MaintenanceDetailDrawer";
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
 
 const RISK_ORDER: Record<RiskLevel, number> = {
   overdue: 0,
@@ -24,14 +24,14 @@ const RISK_BADGE: Record<RiskLevel, string> = {
   low: "bg-success/10 text-success border-success/30",
 };
 
-function formatDate(iso: string | null): string {
-  if (!iso) return maintenancePredictionsText.table.notApplicable;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (!m) return iso;
-  return `${m[3]}.${m[2]}.${m[1]}`;
-}
-
 export function PredictionsTable() {
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
+  function formatDate(iso: string | null): string {
+    if (!iso) return maintenancePredictionsText.table.notApplicable;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!m) return iso;
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  }
   const { data = [], isLoading, error } = useMaintenancePredictions();
   const [selected, setSelected] = useState<MaintenancePrediction | null>(null);
 

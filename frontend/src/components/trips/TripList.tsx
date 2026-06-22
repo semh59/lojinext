@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight, MapPin, Truck, User } from "lucide-react";
 
-import { tripListText } from "../../resources/tr/trips";
 import { Trip } from "../../types";
 import {
   TRIP_STATUS_IPTAL,
@@ -9,6 +8,7 @@ import {
   TRIP_STATUS_TAMAMLANDI,
   normalizeTripStatus,
 } from "../../lib/trip-status";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripListProps {
   trips: Trip[];
@@ -33,6 +33,7 @@ const getStatusBadgeClass = (status?: string) => {
 };
 
 export function TripList({ trips, onSelect, loading }: TripListProps) {
+  const { tripListText } = useTripsResources();
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">

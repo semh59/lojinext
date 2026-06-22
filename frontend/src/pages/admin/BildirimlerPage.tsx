@@ -17,9 +17,9 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { cn } from "@/lib/utils";
-import { adminNotificationsText } from "@/resources/tr/admin";
 import { adminNotificationsApi, adminRolesApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 const CHANNELS = ["EMAIL", "PUSH", "TELEGRAM", "SMS"] as const;
 
@@ -38,6 +38,7 @@ const EMPTY_RULE_FORM: RuleForm = {
 };
 
 export default function AdminNotificationsPage() {
+  const { adminNotificationsText } = useAdminResources();
   usePageTitle(adminNotificationsText.heading);
   const qc = useQueryClient();
   const [isModalOpen, setModalOpen] = useState(false);

@@ -2,9 +2,9 @@ import React from "react";
 import { FieldErrors, UseFormRegister } from "react-hook-form";
 import { AlertCircle, ChevronDown, HardDrive, Truck, User } from "lucide-react";
 
-import { tripStaffVehicleSectionText } from "../../../resources/tr/trips";
 import { Dorse, Driver, TripFormData, Vehicle } from "../../../types";
 import { cn } from "../../../lib/utils";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface StaffVehicleSectionProps {
   register: UseFormRegister<TripFormData>;
@@ -18,6 +18,7 @@ interface StaffVehicleSectionProps {
 export const StaffVehicleSection: React.FC<StaffVehicleSectionProps> =
   React.memo(
     ({ register, errors, vehicles, drivers, trailers, isReadOnly = false }) => {
+      const { tripStaffVehicleSectionText } = useTripsResources();
       return (
         <div className="glass space-y-6 rounded-[28px] border-border/40 p-6">
           <h4 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-accent">

@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Ban, Navigation, TrendingUp, Truck } from "lucide-react";
 
-import { tripModuleText, tripStatsText } from "../resources/tr/trips";
 import {
   TRIP_STATUS_PLANLANDI,
   TRIP_STATUS_TAMAMLANDI,
@@ -13,8 +12,10 @@ import {
 import { tripService } from "../api/trips";
 import { useTripStore } from "../stores/use-trip-store";
 import { Trip } from "../types";
+import { useTripsResources } from "../resources/useResources";
 
 export function useTripsData() {
+  const { tripModuleText, tripStatsText } = useTripsResources();
   const [searchParams, setSearchParams] = useSearchParams();
   const isInitialSync = useRef(true);
 

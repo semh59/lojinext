@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { tripModuleText } from "../../resources/tr/trips";
 import { tripService } from "../../api/trips";
 import { useTripActions } from "../../hooks/useTripActions";
 import { useTripsData } from "../../hooks/useTripsData";
@@ -28,8 +27,10 @@ import { Button } from "../../components/ui/Button";
 import { useTripStore } from "../../stores/use-trip-store";
 import { normalizeTripStatusOrEmpty } from "../../lib/trip-status";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTripsResources } from "../../resources/useResources";
 
 export const TripsModule = () => {
+  const { tripModuleText } = useTripsResources();
   const queryClient = useQueryClient();
   const {
     setFilters,

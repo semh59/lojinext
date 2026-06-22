@@ -15,24 +15,13 @@ import {
 } from "lucide-react";
 
 import { Dorse } from "../../types";
-import { trailerDetailText } from "../../resources/tr/trailers";
-
+import { useTrailersResources } from "../../resources/useResources";
 interface TrailerDetailModalProps {
   trailer: Dorse | null;
   onClose: () => void;
 }
 
 type DetailTab = "general" | "technical" | "maintenance";
-
-const tabs: Array<{
-  id: DetailTab;
-  label: string;
-  icon: LucideIcon;
-}> = [
-  { id: "general", label: trailerDetailText.tabs.general, icon: Info },
-  { id: "technical", label: trailerDetailText.tabs.technical, icon: Settings },
-  { id: "maintenance", label: trailerDetailText.tabs.maintenance, icon: Truck },
-];
 
 const fallbackValue = "-";
 
@@ -67,10 +56,24 @@ const safeMetric = (value: number | null | undefined, unit?: string) =>
 
 const safeText = (value?: string | null) => value || fallbackValue;
 
-const safeNullableText = (value?: string | null) =>
-  value || trailerDetailText.fields.unspecified;
+const safeNullableText = (value?: string | null, unspecified = fallbackValue) =>
+  value || unspecified;
 
 const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
+  const { trailerDetailText } = useTrailersResources();
+  const tabs: Array<{ id: DetailTab; label: string; icon: LucideIcon }> = [
+    { id: "general", label: trailerDetailText.tabs.general, icon: Info },
+    {
+      id: "technical",
+      label: trailerDetailText.tabs.technical,
+      icon: Settings,
+    },
+    {
+      id: "maintenance",
+      label: trailerDetailText.tabs.maintenance,
+      icon: Truck,
+    },
+  ];
   const [activeTab, setActiveTab] = useState<DetailTab>("general");
 
   if (!trailer) {
@@ -193,6 +196,7 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       label={trailerDetailText.fields.type}
                       value={safeNullableText(
                         trailer.dorse_tipi || trailer.tipi,
+                        trailerDetailText.fields.unspecified,
                       )}
                     />
                     <InfoCard

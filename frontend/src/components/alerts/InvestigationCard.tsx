@@ -1,7 +1,7 @@
 ﻿import { AlertTriangle, User2 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { investigationsText } from "../../resources/tr/investigations";
 import type { Investigation, SuspicionLevel } from "../../api/investigations";
+import { useInvestigationsResources } from "../../resources/useResources";
 
 interface InvestigationCardProps {
   investigation: Investigation;
@@ -42,6 +42,7 @@ export function InvestigationCard({
   investigation,
   onClick,
 }: InvestigationCardProps) {
+  const { investigationsText } = useInvestigationsResources();
   const level = (investigation.suspicion_level ?? "unknown") as SuspicionLevel;
   const style = LEVEL_STYLE[level];
   const sapma = investigation.sapma_yuzde;

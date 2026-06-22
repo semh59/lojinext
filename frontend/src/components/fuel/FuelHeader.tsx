@@ -1,8 +1,7 @@
 import { Plus } from "lucide-react";
 import { DataExportImport } from "../shared/DataExportImport";
 import { Button } from "../ui/Button";
-import { fuelHeaderText } from "../../resources/tr/fuel";
-
+import { useFuelResources } from "../../resources/useResources";
 interface FuelHeaderProps {
   onAdd: () => void;
   onExport: () => Promise<void>;
@@ -16,6 +15,7 @@ export function FuelHeader({
   onDownloadTemplate,
   onImport,
 }: FuelHeaderProps) {
+  const { fuelHeaderText } = useFuelResources();
   return (
     <div className="flex justify-end mb-8 relative z-40">
       <div className="flex items-center gap-3">

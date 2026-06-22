@@ -1,8 +1,8 @@
 ﻿import { useMemo, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
-import { routeLabText } from "@/resources/tr/routeLab";
 import type { SegmentSim } from "@/api/route-sim";
+import { useRouteLabResources } from "@/resources/useResources";
 
 const W = 600;
 const H = 360;
@@ -33,6 +33,7 @@ interface Props {
 }
 
 export function RouteHeatmap({ segments }: Props) {
+  const { routeLabText } = useRouteLabResources();
   const pts = useMemo(
     () =>
       segments.filter(

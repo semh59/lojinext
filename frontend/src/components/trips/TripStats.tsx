@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
 import { LucideIcon } from "lucide-react";
 
-import { tripStatsText } from "../../resources/tr/trips";
 import { cn } from "../../lib/utils";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripStat {
   label: string;
@@ -51,6 +51,7 @@ const colorMap = [
 ];
 
 export function TripStats({ stats }: TripStatsProps) {
+  const { tripStatsText } = useTripsResources();
   return (
     <div className="mb-8">
       <div className="mb-6 flex flex-col gap-1">

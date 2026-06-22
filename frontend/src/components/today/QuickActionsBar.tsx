@@ -2,40 +2,39 @@ import { useNavigate } from "react-router-dom";
 import { AlertTriangle, LineChart, Plus, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { todayText } from "@/resources/tr/today";
-
-const ACTIONS = [
-  {
-    id: "newTrip",
-    icon: Plus,
-    label: todayText.quickActions.newTrip,
-    to: "/trips?new=1",
-  },
-  {
-    id: "anomalies",
-    icon: AlertTriangle,
-    label: todayText.quickActions.anomalies,
-    to: "/alerts",
-  },
-  {
-    id: "drivers",
-    icon: Users,
-    label: todayText.quickActions.drivers,
-    to: "/drivers",
-  },
-  {
-    id: "executive",
-    icon: LineChart,
-    label: todayText.quickActions.executive,
-    to: "/executive",
-  },
-] as const;
-
+import { useTodayResources } from "@/resources/useResources";
 interface Props {
   className?: string;
 }
 
 export function QuickActionsBar({ className }: Props) {
+  const { todayText } = useTodayResources();
+  const ACTIONS = [
+    {
+      id: "newTrip",
+      icon: Plus,
+      label: todayText.quickActions.newTrip,
+      to: "/trips?new=1",
+    },
+    {
+      id: "anomalies",
+      icon: AlertTriangle,
+      label: todayText.quickActions.anomalies,
+      to: "/alerts",
+    },
+    {
+      id: "drivers",
+      icon: Users,
+      label: todayText.quickActions.drivers,
+      to: "/drivers",
+    },
+    {
+      id: "executive",
+      icon: LineChart,
+      label: todayText.quickActions.executive,
+      to: "/executive",
+    },
+  ] as const;
   const navigate = useNavigate();
 
   return (

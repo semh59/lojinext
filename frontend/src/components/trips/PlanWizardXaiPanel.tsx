@@ -1,10 +1,10 @@
 ﻿import { AlertTriangle, Truck, User2, X } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { tripPlannerText } from "../../resources/tr/tripPlanner";
 import type {
   DriverSuggestion,
   VehicleSuggestion,
 } from "../../api/trip-planner";
+import { useTripPlannerResources } from "../../resources/useResources";
 
 // Plan §4 — ağırlıklar sabit (TripPlannerEngine.ARAC_WEIGHTS / SOFOR_WEIGHTS ile aynı).
 const VEHICLE_WEIGHTS = {
@@ -26,36 +26,6 @@ interface ScoreBarProps {
   weight: number; // 0..1
 }
 
-function ScoreBar({ label, value, weight }: ScoreBarProps) {
-  const pct = Math.max(0, Math.min(1, value)) * 100;
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between text-[11px]">
-        <span className="text-secondary">{label}</span>
-        <span className="font-mono text-tertiary tabular-nums">
-          <span className="font-semibold text-primary">{value.toFixed(2)}</span>
-          <span className="ml-2 text-[10px]">
-            {(weight * 100).toFixed(0)}% {tripPlannerText.xai.weightSuffix}
-          </span>
-        </span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
-        <div
-          className={cn(
-            "h-full transition-all",
-            value >= 0.75
-              ? "bg-success"
-              : value >= 0.5
-                ? "bg-warning"
-                : "bg-danger/70",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 interface XaiPanelProps {
   /** Açık item; null ise panel kapalı. */
   item: VehicleSuggestion | DriverSuggestion | null;
@@ -65,6 +35,38 @@ interface XaiPanelProps {
 }
 
 export function PlanWizardXaiPanel({ item, kind, onClose }: XaiPanelProps) {
+  const { tripPlannerText } = useTripPlannerResources();
+  function ScoreBar({ label, value, weight }: ScoreBarProps) {
+    const pct = Math.max(0, Math.min(1, value)) * 100;
+    return (
+      <div>
+        <div className="mb-1 flex items-center justify-between text-[11px]">
+          <span className="text-secondary">{label}</span>
+          <span className="font-mono text-tertiary tabular-nums">
+            <span className="font-semibold text-primary">
+              {value.toFixed(2)}
+            </span>
+            <span className="ml-2 text-[10px]">
+              {(weight * 100).toFixed(0)}% {tripPlannerText.xai.weightSuffix}
+            </span>
+          </span>
+        </div>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-elevated">
+          <div
+            className={cn(
+              "h-full transition-all",
+              value >= 0.75
+                ? "bg-success"
+                : value >= 0.5
+                  ? "bg-warning"
+                  : "bg-danger/70",
+            )}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
   if (!item || !kind) return null;
 
   const isVehicle = kind === "vehicle";

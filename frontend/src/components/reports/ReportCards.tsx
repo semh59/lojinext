@@ -1,12 +1,9 @@
 import { ArrowRight, Download, FileText, Truck, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
-import {
-  ReportDownloadOptionId,
-  reportCardsText,
-  reportDownloadOptions,
-} from "../../resources/tr/reports";
+import type { ReportDownloadOptionId } from "../../resources/tr/reports";
 import { Button } from "../ui/Button";
+import { useReportsResources } from "../../resources/useResources";
 
 interface ReportCardProps {
   onDownload: (type: ReportDownloadOptionId) => Promise<void> | void;
@@ -38,6 +35,7 @@ const reportCardVisuals: Record<
 };
 
 export function ReportCards({ onDownload }: ReportCardProps) {
+  const { reportCardsText, reportDownloadOptions } = useReportsResources();
   const cards = (
     Object.entries(reportDownloadOptions) as Array<
       [

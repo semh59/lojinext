@@ -10,14 +10,15 @@ import {
   YAxis,
 } from "recharts";
 
-import { reportChartText } from "../../resources/tr/reports";
 import type { MonthlyCostTrend } from "../../api/reports";
+import { useReportsResources } from "../../resources/useResources";
 
 interface CostAnalysisChartProps {
   data: MonthlyCostTrend[];
 }
 
 export function CostAnalysisChart({ data }: CostAnalysisChartProps) {
+  const { reportChartText } = useReportsResources();
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (

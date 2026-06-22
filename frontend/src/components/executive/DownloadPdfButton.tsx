@@ -2,10 +2,11 @@
 import { Download, Loader2 } from "lucide-react";
 
 import { useNotify } from "@/context/NotificationContext";
-import { executiveText } from "@/resources/tr/executive";
 import { executiveService } from "@/api/executive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 export function DownloadPdfButton() {
+  const { executiveText } = useExecutiveResources();
   const [downloading, setDownloading] = useState(false);
   const { notify } = useNotify();
   const t = executiveText.pdf;

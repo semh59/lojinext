@@ -1,6 +1,5 @@
 import { Truck } from "lucide-react";
-
-import { vehicleFilterText } from "../../resources/tr/vehicles";
+import { useVehiclesResources } from "../../resources/useResources";
 
 interface SkeletonTableProps {
   rows?: number;
@@ -11,6 +10,7 @@ function SkeletonCell({ width }: { width: string }) {
 }
 
 export function SkeletonTable({ rows = 5 }: SkeletonTableProps) {
+  const { vehicleFilterText } = useVehiclesResources();
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
       <table className="w-full">

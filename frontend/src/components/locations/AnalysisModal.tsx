@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Crosshair } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
-import { analysisModalText } from "../../resources/tr/locations";
 import { AnalysisResponse, Location } from "../../types/location";
 import { RouteAnalysisCard } from "./RouteAnalysisCard";
 import { CalibrationModal } from "./CalibrationModal";
+import { useLocationsResources } from "../../resources/useResources";
 
 interface AnalysisModalProps {
   isOpen: boolean;
@@ -24,6 +24,7 @@ export function AnalysisModal({
   isLoading,
   onAnalyze,
 }: AnalysisModalProps) {
+  const { analysisModalText } = useLocationsResources();
   const [isCalibrationOpen, setIsCalibrationOpen] = useState(false);
   if (!location) return null;
 

@@ -1,13 +1,13 @@
 ﻿import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle, Loader2, Send, X } from "lucide-react";
-import { sendCoachingDialogText } from "../../resources/tr/coaching";
 import {
   coachingService,
   type CoachingCategory,
   type CoachingInsight,
 } from "../../api/coaching";
 import { useNotify } from "../../context/NotificationContext";
+import { useCoachingResources } from "../../resources/useResources";
 
 interface SendCoachingDialogProps {
   soforId: number | null;
@@ -25,6 +25,7 @@ export function SendCoachingDialog({
   insight,
   onClose,
 }: SendCoachingDialogProps) {
+  const { sendCoachingDialogText } = useCoachingResources();
   const { notify } = useNotify();
   const [message, setMessage] = useState("");
 

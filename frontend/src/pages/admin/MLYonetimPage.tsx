@@ -14,12 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
-import { adminMlText } from "@/resources/tr/admin";
 import { adminMlApi } from "@/api/admin";
 import { vehicleService } from "@/api/vehicles";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 export default function AdminModelManagementPage() {
+  const { adminMlText } = useAdminResources();
   usePageTitle("ML Modelleri");
   const queryClient = useQueryClient();
   const { notify } = useNotify();

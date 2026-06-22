@@ -2,10 +2,10 @@ import React from "react";
 import { FieldErrors } from "react-hook-form";
 import { Activity, AlertCircle, MapPin, Navigation, Route } from "lucide-react";
 
-import { tripTelemetrySectionText } from "../../resources/tr/trips";
 import { TripFormData } from "../../types";
 import { cn } from "../../lib/utils";
 import { WeatherAnalysisCard } from "../weather/WeatherAnalysisCard";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TelemetrySectionProps {
   watchedGuzergahId: number | string;
@@ -27,6 +27,7 @@ export const TelemetrySection: React.FC<TelemetrySectionProps> = React.memo(
     weatherLoading,
     errors,
   }) => {
+    const { tripTelemetrySectionText } = useTripsResources();
     return (
       <div className="glass relative space-y-5 overflow-hidden rounded-[28px] border-border/40 p-6">
         <h4 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-accent">

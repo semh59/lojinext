@@ -5,13 +5,13 @@ import type { EventClickArg, EventInput } from "@fullcalendar/core";
 import { AlertCircle, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { maintenancePredictionsText } from "@/resources/tr/maintenancePredictions";
 import { useMaintenancePredictions } from "@/hooks/useMaintenancePredictions";
 import type {
   MaintenancePrediction,
   RiskLevel,
 } from "@/api/maintenance-predictions";
 import { MaintenanceDetailDrawer } from "./MaintenanceDetailDrawer";
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
 
 const RISK_COLOR: Record<RiskLevel, string> = {
   overdue: "#dc2626", // red-600
@@ -35,6 +35,7 @@ function predictionToEvent(p: MaintenancePrediction): EventInput | null {
 }
 
 export function MaintenanceCalendar() {
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   const { data, isLoading, error } = useMaintenancePredictions();
   const [selected, setSelected] = useState<MaintenancePrediction | null>(null);
 
@@ -107,6 +108,7 @@ export function MaintenanceCalendar() {
 }
 
 function Legend() {
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   const items: Array<{ key: RiskLevel; color: string }> = [
     { key: "overdue", color: RISK_COLOR.overdue },
     { key: "soon", color: RISK_COLOR.soon },

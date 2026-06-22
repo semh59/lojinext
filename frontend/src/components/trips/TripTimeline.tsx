@@ -12,22 +12,13 @@ import {
   User,
 } from "lucide-react";
 
-import { tripTimelineText } from "../../resources/tr/trips";
 import { SeferTimelineItem } from "../../types";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripTimelineProps {
   items: SeferTimelineItem[];
   isLoading?: boolean;
 }
-
-const EVENT_LABELS: Record<SeferTimelineItem["tip"], string> = {
-  CREATE: tripTimelineText.eventLabels.CREATE,
-  UPDATE: tripTimelineText.eventLabels.UPDATE,
-  STATUS_CHANGE: tripTimelineText.eventLabels.STATUS_CHANGE,
-  PREDICTION_REFRESH: tripTimelineText.eventLabels.PREDICTION_REFRESH,
-  RECONCILIATION: tripTimelineText.eventLabels.RECONCILIATION,
-  DELETE: tripTimelineText.eventLabels.DELETE,
-};
 
 const getEventIcon = (eventType: SeferTimelineItem["tip"]) => {
   switch (eventType) {
@@ -56,6 +47,15 @@ export const TripTimeline: React.FC<TripTimelineProps> = ({
   items,
   isLoading,
 }) => {
+  const { tripTimelineText } = useTripsResources();
+  const EVENT_LABELS: Record<SeferTimelineItem["tip"], string> = {
+    CREATE: tripTimelineText.eventLabels.CREATE,
+    UPDATE: tripTimelineText.eventLabels.UPDATE,
+    STATUS_CHANGE: tripTimelineText.eventLabels.STATUS_CHANGE,
+    PREDICTION_REFRESH: tripTimelineText.eventLabels.PREDICTION_REFRESH,
+    RECONCILIATION: tripTimelineText.eventLabels.RECONCILIATION,
+    DELETE: tripTimelineText.eventLabels.DELETE,
+  };
   if (isLoading) {
     return (
       <div className="flex flex-col gap-6 py-4">

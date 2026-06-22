@@ -1,8 +1,8 @@
 import { LayoutGrid, LayoutList, Search } from "lucide-react";
 
-import { driverFilterText } from "../../resources/tr/drivers";
 import { cn } from "../../lib/utils";
 import { Input } from "../ui/Input";
+import { useDriversResources } from "../../resources/useResources";
 
 interface DriverFiltersProps {
   search: string;
@@ -44,6 +44,7 @@ export function DriverFilters({
   maxScore,
   setMaxScore,
 }: DriverFiltersProps) {
+  const { driverFilterText } = useDriversResources();
   const handleReset = () => {
     setSearch("");
     setEhliyetFilter("");

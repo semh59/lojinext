@@ -6,11 +6,7 @@ import { driverService } from "../../api/drivers";
 import type { Driver } from "../../types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { cn } from "../../lib/utils";
-import {
-  coachingDriverListText,
-  coachingPageText,
-} from "../../resources/tr/coaching";
-
+import { useCoachingResources } from "../../resources/useResources";
 interface CoachingDriverListProps {
   selectedDriverId: number | null;
   onSelect: (driver: Driver) => void;
@@ -20,6 +16,7 @@ export function CoachingDriverList({
   selectedDriverId,
   onSelect,
 }: CoachingDriverListProps) {
+  const { coachingDriverListText, coachingPageText } = useCoachingResources();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
 

@@ -7,10 +7,8 @@ import {
   type TemplateDownloadConfig,
 } from "../components/reports-studio/TemplateConfigPanel";
 import { useReportTemplates } from "../hooks/useReportsStudio";
-import {
-  reportsStudioText,
-  type PeriodKey,
-} from "../resources/tr/reports-studio";
+import type { PeriodKey } from "../resources/tr/reports-studio";
+import { useReportsStudioResources } from "../resources/useResources";
 import type { TemplateMeta } from "../api/reports-studio";
 import { reportsApi, executiveApi } from "../services/api";
 import { usePageTitle } from "../hooks/usePageTitle";
@@ -155,6 +153,7 @@ async function dispatchDownload(config: TemplateDownloadConfig): Promise<void> {
 }
 
 export default function ReportsStudioPage() {
+  const { reportsStudioText } = useReportsStudioResources();
   usePageTitle(reportsStudioText.heading);
 
   const { data, isLoading, isError } = useReportTemplates();

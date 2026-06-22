@@ -12,11 +12,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "../../lib/utils";
 import { useUrlState } from "../../hooks/use-url-state";
-import { trailerModuleText } from "../../resources/tr/trailers";
-
+import { useTrailersResources } from "../../resources/useResources";
 const ITEMS_PER_PAGE = 8;
 
 export function TrailersModule() {
+  const { trailerModuleText } = useTrailersResources();
   const queryClient = useQueryClient();
   // URL State (Synced filters)
   const [urlState, setUrlState] = useUrlState({

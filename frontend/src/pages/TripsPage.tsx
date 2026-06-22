@@ -1,9 +1,10 @@
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import { TripsModule } from "../features/trips/TripsModule";
-import { tripPageText } from "../resources/tr/trips";
 import { usePageTitle } from "../hooks/usePageTitle";
+import { useTripsResources } from "../resources/useResources";
 
 export default function TripsPage() {
+  const { tripPageText } = useTripsResources();
   usePageTitle("Seferler");
   return (
     <div className="space-y-6">

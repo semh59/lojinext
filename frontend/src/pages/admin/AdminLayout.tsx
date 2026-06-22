@@ -20,63 +20,62 @@ import { motion } from "framer-motion";
 import { LojiNextLogo } from "@/components/common/LojiNextLogo";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import { adminLayoutText } from "@/resources/tr/admin";
-
-const ADMIN_NAV = [
-  {
-    path: "/admin",
-    label: adminLayoutText.nav.overview,
-    icon: LayoutDashboard,
-  },
-  {
-    path: "/admin/kullanicilar",
-    label: adminLayoutText.nav.users,
-    icon: Users,
-  },
-  {
-    path: "/admin/roller",
-    label: "Roller",
-    icon: Shield,
-  },
-  { path: "/admin/ml", label: adminLayoutText.nav.ml, icon: Brain },
-  {
-    path: "/admin/konfig",
-    label: adminLayoutText.nav.configuration,
-    icon: SlidersHorizontal,
-  },
-  {
-    path: "/admin/atama",
-    label: "Sefer Atama",
-    icon: Shuffle,
-  },
-  {
-    path: "/admin/dogruluk",
-    label: "Tahmin Doğruluğu",
-    icon: Target,
-  },
-  {
-    path: "/admin/veri",
-    label: adminLayoutText.nav.dataManagement,
-    icon: Database,
-  },
-  {
-    path: "/admin/saglik",
-    label: adminLayoutText.nav.systemHealth,
-    icon: Activity,
-  },
-  {
-    path: "/admin/bildirimler",
-    label: adminLayoutText.nav.notifications,
-    icon: Bell,
-  },
-  {
-    path: "/admin/analitik",
-    label: "Kullanım Analitiği",
-    icon: BarChart2,
-  },
-];
-
+import { useAdminResources } from "@/resources/useResources";
 export default function AdminLayout() {
+  const { adminLayoutText } = useAdminResources();
+  const ADMIN_NAV = [
+    {
+      path: "/admin",
+      label: adminLayoutText.nav.overview,
+      icon: LayoutDashboard,
+    },
+    {
+      path: "/admin/kullanicilar",
+      label: adminLayoutText.nav.users,
+      icon: Users,
+    },
+    {
+      path: "/admin/roller",
+      label: "Roller",
+      icon: Shield,
+    },
+    { path: "/admin/ml", label: adminLayoutText.nav.ml, icon: Brain },
+    {
+      path: "/admin/konfig",
+      label: adminLayoutText.nav.configuration,
+      icon: SlidersHorizontal,
+    },
+    {
+      path: "/admin/atama",
+      label: "Sefer Atama",
+      icon: Shuffle,
+    },
+    {
+      path: "/admin/dogruluk",
+      label: "Tahmin Doğruluğu",
+      icon: Target,
+    },
+    {
+      path: "/admin/veri",
+      label: adminLayoutText.nav.dataManagement,
+      icon: Database,
+    },
+    {
+      path: "/admin/saglik",
+      label: adminLayoutText.nav.systemHealth,
+      icon: Activity,
+    },
+    {
+      path: "/admin/bildirimler",
+      label: adminLayoutText.nav.notifications,
+      icon: Bell,
+    },
+    {
+      path: "/admin/analitik",
+      label: "Kullanım Analitiği",
+      icon: BarChart2,
+    },
+  ];
   const { user, logout } = useAuth();
   const location = useLocation();
 

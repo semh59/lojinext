@@ -5,42 +5,10 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Vehicle } from "../types";
-import { vehicleModalText } from "../resources/tr/vehicles";
-
+import { useVehiclesResources } from "../resources/useResources";
 const YAKIT_TIPLERI = ["DIZEL", "BENZIN", "LPG", "HYBRID", "ELEKTRIK"] as const;
 
-const vehicleSchema = z.object({
-  plaka: z
-    .string()
-    .min(3, vehicleModalText.validation.plateMin)
-    .transform((value) => value.replace(/\s+/g, "").toUpperCase()),
-  marka: z.string().min(2, vehicleModalText.validation.brandMin).max(50),
-  model: z.string().max(50).optional(),
-  yil: z
-    .number()
-    .min(1990)
-    .max(new Date().getFullYear() + 1),
-  yakit_tipi: z.enum(YAKIT_TIPLERI).default("DIZEL"),
-  tank_kapasitesi: z.number().min(1).max(5000),
-  hedef_tuketim: z.number().min(1).max(100),
-  dingil_sayisi: z.number().int().min(1).max(10).default(2),
-  muayene_tarihi: z.string().optional().nullable(),
-  sigorta_tarihi: z.string().optional().nullable(),
-  motor_no: z.string().max(50).optional().nullable(),
-  sasi_no: z.string().max(50).optional().nullable(),
-  notlar: z.string().max(500).optional(),
-  aktif: z.boolean(),
-  bos_agirlik_kg: z.number().min(0),
-  hava_direnc_katsayisi: z.number().min(0),
-  on_kesit_alani_m2: z.number().min(0),
-  motor_verimliligi: z.number().min(0).max(1),
-  lastik_direnc_katsayisi: z.number().min(0),
-  maks_yuk_kapasitesi_kg: z.number().min(0),
-});
-
-export type VehicleFormData = z.infer<typeof vehicleSchema>;
-
-export { vehicleSchema, YAKIT_TIPLERI };
+export { YAKIT_TIPLERI };
 
 const DEFAULT_PHYSICS = {
   bos_agirlik_kg: 8000,
@@ -64,6 +32,36 @@ export function useVehicleData({
   onSave,
   vehicle,
 }: UseVehicleDataProps) {
+  const { vehicleModalText } = useVehiclesResources();
+  const vehicleSchema = z.object({
+    plaka: z
+      .string()
+      .min(3, vehicleModalText.validation.plateMin)
+      .transform((value) => value.replace(/\s+/g, "").toUpperCase()),
+    marka: z.string().min(2, vehicleModalText.validation.brandMin).max(50),
+    model: z.string().max(50).optional(),
+    yil: z
+      .number()
+      .min(1990)
+      .max(new Date().getFullYear() + 1),
+    yakit_tipi: z.enum(YAKIT_TIPLERI).default("DIZEL"),
+    tank_kapasitesi: z.number().min(1).max(5000),
+    hedef_tuketim: z.number().min(1).max(100),
+    dingil_sayisi: z.number().int().min(1).max(10).default(2),
+    muayene_tarihi: z.string().optional().nullable(),
+    sigorta_tarihi: z.string().optional().nullable(),
+    motor_no: z.string().max(50).optional().nullable(),
+    sasi_no: z.string().max(50).optional().nullable(),
+    notlar: z.string().max(500).optional(),
+    aktif: z.boolean(),
+    bos_agirlik_kg: z.number().min(0),
+    hava_direnc_katsayisi: z.number().min(0),
+    on_kesit_alani_m2: z.number().min(0),
+    motor_verimliligi: z.number().min(0).max(1),
+    lastik_direnc_katsayisi: z.number().min(0),
+    maks_yuk_kapasitesi_kg: z.number().min(0),
+  });
+  type VehicleFormData = z.infer<typeof vehicleSchema>;
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const {

@@ -26,7 +26,6 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { tripTableText } from "../../resources/tr/trips";
 import { getTripStatusMeta } from "../../lib/status-labels";
 import { Trip } from "../../types";
 import { cn } from "../../lib/utils";
@@ -38,6 +37,7 @@ import {
   TRIP_STATUS_TAMAMLANDI,
   normalizeTripStatus,
 } from "../../lib/trip-status";
+import { useTripsResources } from "../../resources/useResources";
 
 export interface TripTableProps {
   trips: Trip[];
@@ -97,22 +97,6 @@ const getStatusStyles = (status?: string) => {
   }
 };
 
-const getStatusConfig = (status?: string) => {
-  switch (normalizeTripStatus(status)) {
-    case TRIP_STATUS_TAMAMLANDI:
-      return { text: getTripStatusMeta("Completed").label, progress: 100 };
-    case TRIP_STATUS_PLANLANDI:
-      return { text: getTripStatusMeta("Planned").label, progress: 35 };
-    case TRIP_STATUS_IPTAL:
-      return { text: getTripStatusMeta("Cancelled").label, progress: 0 };
-    default:
-      return {
-        text: status?.toUpperCase() || tripTableText.unknownValue,
-        progress: 0,
-      };
-  }
-};
-
 export function TripTable({
   trips,
   isLoading,
@@ -129,6 +113,22 @@ export function TripTable({
   hasActiveFilter = false,
   onClearFilters,
 }: TripTableProps) {
+  const { tripTableText } = useTripsResources();
+  const getStatusConfig = (status?: string) => {
+    switch (normalizeTripStatus(status)) {
+      case TRIP_STATUS_TAMAMLANDI:
+        return { text: getTripStatusMeta("Completed").label, progress: 100 };
+      case TRIP_STATUS_PLANLANDI:
+        return { text: getTripStatusMeta("Planned").label, progress: 35 };
+      case TRIP_STATUS_IPTAL:
+        return { text: getTripStatusMeta("Cancelled").label, progress: 0 };
+      default:
+        return {
+          text: status?.toUpperCase() || tripTableText.unknownValue,
+          progress: 0,
+        };
+    }
+  };
   const { hasPermission } = useAuth();
   const canApprove = hasPermission("sefer:onayla");
   const canWrite = hasPermission("sefer:write");

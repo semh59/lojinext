@@ -2,7 +2,6 @@ import React from "react";
 import { ChevronDown, Settings } from "lucide-react";
 import { UseFormRegister } from "react-hook-form";
 
-import { tripFormModalText } from "../../resources/tr/trips";
 import {
   TRIP_STATUS_IPTAL,
   TRIP_STATUS_PLANLANDI,
@@ -10,6 +9,7 @@ import {
   normalizeTripStatus,
 } from "../../lib/trip-status";
 import { Trip, TripFormData } from "../../types";
+import { useTripsResources } from "../../resources/useResources";
 
 // ---------------------------------------------------------------------------
 // KilometreYakitSection
@@ -122,32 +122,41 @@ interface TripStatusSectionProps {
 export const TripStatusSection: React.FC<TripStatusSectionProps> = ({
   register,
   initialData,
-}) => (
-  <div className="glass space-y-4 rounded-[28px] border-border/40 p-6">
-    <label className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-tertiary">
-      <Settings size={14} strokeWidth={3} />
-      {tripFormModalText.statusLabel}
-    </label>
-    <div className="relative">
-      <select
-        {...register("durum")}
-        className="h-14 w-full appearance-none rounded-xl border border-border/60 bg-transparent px-4 text-sm font-black text-primary outline-none transition-all hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/5"
-      >
-        <option value={TRIP_STATUS_PLANLANDI} className="bg-surface font-bold">
-          {TRIP_STATUS_PLANLANDI}
-        </option>
-        <option value={TRIP_STATUS_TAMAMLANDI} className="bg-surface font-bold">
-          {TRIP_STATUS_TAMAMLANDI}
-        </option>
-        {normalizeTripStatus(initialData?.durum) === TRIP_STATUS_IPTAL && (
-          <option value={TRIP_STATUS_IPTAL} className="bg-surface font-bold">
-            {TRIP_STATUS_IPTAL}
+}) => {
+  const { tripFormModalText } = useTripsResources();
+  return (
+    <div className="glass space-y-4 rounded-[28px] border-border/40 p-6">
+      <label className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-tertiary">
+        <Settings size={14} strokeWidth={3} />
+        {tripFormModalText.statusLabel}
+      </label>
+      <div className="relative">
+        <select
+          {...register("durum")}
+          className="h-14 w-full appearance-none rounded-xl border border-border/60 bg-transparent px-4 text-sm font-black text-primary outline-none transition-all hover:border-accent/40 focus:border-accent focus:ring-4 focus:ring-accent/5"
+        >
+          <option
+            value={TRIP_STATUS_PLANLANDI}
+            className="bg-surface font-bold"
+          >
+            {TRIP_STATUS_PLANLANDI}
           </option>
-        )}
-      </select>
-      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-tertiary opacity-40">
-        <ChevronDown size={20} strokeWidth={3} />
+          <option
+            value={TRIP_STATUS_TAMAMLANDI}
+            className="bg-surface font-bold"
+          >
+            {TRIP_STATUS_TAMAMLANDI}
+          </option>
+          {normalizeTripStatus(initialData?.durum) === TRIP_STATUS_IPTAL && (
+            <option value={TRIP_STATUS_IPTAL} className="bg-surface font-bold">
+              {TRIP_STATUS_IPTAL}
+            </option>
+          )}
+        </select>
+        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-tertiary opacity-40">
+          <ChevronDown size={20} strokeWidth={3} />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};

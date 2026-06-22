@@ -3,9 +3,9 @@ import { FieldErrors, UseFormRegister } from "react-hook-form";
 import { AlertCircle, ChevronDown, MapPin, Route, X } from "lucide-react";
 import { motion } from "framer-motion";
 
-import { tripRouteSelectorText } from "../../../resources/tr/trips";
 import { Guzergah, TripFormData } from "../../../types";
 import { cn } from "../../../lib/utils";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface RouteSelectorProps {
   register: UseFormRegister<TripFormData>;
@@ -17,6 +17,7 @@ interface RouteSelectorProps {
 
 export const RouteSelector: React.FC<RouteSelectorProps> = React.memo(
   ({ register, errors, routes, watchedGuzergahId, isReadOnly = false }) => {
+    const { tripRouteSelectorText } = useTripsResources();
     const selectedRoute = useMemo(
       () => routes.find((route) => route.id === Number(watchedGuzergahId)),
       [routes, watchedGuzergahId],

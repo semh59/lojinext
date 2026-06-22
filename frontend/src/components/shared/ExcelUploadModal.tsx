@@ -12,8 +12,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "../ui/Button";
 import { cn } from "../../lib/utils";
-import { dataTransferText } from "../../resources/tr/shared";
-
+import { useSharedResources } from "../../resources/useResources";
 interface ExcelUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -26,9 +25,13 @@ export function ExcelUploadModal({
   isOpen,
   onClose,
   onUpload,
-  title = dataTransferText.uploadModal.title,
-  description = dataTransferText.uploadModal.description,
+  title,
+  description,
 }: ExcelUploadModalProps) {
+  const { dataTransferText } = useSharedResources();
+  const resolvedTitle = title ?? dataTransferText.uploadModal.title;
+  const resolvedDescription =
+    description ?? dataTransferText.uploadModal.description;
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<
@@ -150,10 +153,10 @@ export function ExcelUploadModal({
             <div className="px-8 pt-8 pb-4 flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-black text-primary tracking-tight">
-                  {title}
+                  {resolvedTitle}
                 </h2>
                 <p className="text-sm font-medium text-secondary mt-1">
-                  {description}
+                  {resolvedDescription}
                 </p>
               </div>
               <button

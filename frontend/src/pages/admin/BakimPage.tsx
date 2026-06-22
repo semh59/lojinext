@@ -26,34 +26,35 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
-import { adminMaintenanceText } from "@/resources/tr/admin";
-import { maintenancePredictionsText } from "@/resources/tr/maintenancePredictions";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { MaintenanceCalendar } from "@/components/admin/maintenance/MaintenanceCalendar";
 import { PredictionsTable } from "@/components/admin/maintenance/PredictionsTable";
 import { cn } from "@/lib/utils";
-
-const mapMaintenanceStatus = (status?: string) => {
-  switch (status) {
-    case "gecikmis":
-      return {
-        label: adminMaintenanceText.statusLabels.overdue,
-        variant: "danger" as const,
-      };
-    case "yaklasiyor":
-      return {
-        label: adminMaintenanceText.statusLabels.upcoming,
-        variant: "warning" as const,
-      };
-    default:
-      return {
-        label: adminMaintenanceText.statusLabels.default,
-        variant: "default" as const,
-      };
-  }
-};
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
+import { useAdminResources } from "@/resources/useResources";
 
 export default function AdminMaintenancePage() {
+  const { adminMaintenanceText } = useAdminResources();
+  const mapMaintenanceStatus = (status?: string) => {
+    switch (status) {
+      case "gecikmis":
+        return {
+          label: adminMaintenanceText.statusLabels.overdue,
+          variant: "danger" as const,
+        };
+      case "yaklasiyor":
+        return {
+          label: adminMaintenanceText.statusLabels.upcoming,
+          variant: "warning" as const,
+        };
+      default:
+        return {
+          label: adminMaintenanceText.statusLabels.default,
+          variant: "default" as const,
+        };
+    }
+  };
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   usePageTitle("Bakım & Onarım");
   const qc = useQueryClient();
   const { notify } = useNotify();

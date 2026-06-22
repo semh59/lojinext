@@ -9,12 +9,12 @@ import {
 } from "lucide-react";
 
 import { cn } from "../../lib/utils";
-import { reportsStudioText } from "../../resources/tr/reports-studio";
 import type {
   TemplateCategory,
   TemplateId,
   TemplateMeta,
 } from "../../api/reports-studio";
+import { useReportsStudioResources } from "../../resources/useResources";
 
 const TEMPLATE_ICONS: Record<TemplateId, typeof FileText> = {
   ceo_1pager: FileText,
@@ -43,6 +43,7 @@ export function TemplateGallery({
   selectedId,
   onSelect,
 }: TemplateGalleryProps) {
+  const { reportsStudioText } = useReportsStudioResources();
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {templates.map((tmpl, index) => {

@@ -8,11 +8,11 @@ import { VehiclesModule } from "../components/modules/VehiclesModule";
 import { usePageTitle } from "../hooks/usePageTitle";
 import { useUrlState } from "../hooks/use-url-state";
 import { cn } from "../lib/utils";
-import { fleetPageText } from "../resources/tr/fleet";
-
+import { useFleetResources } from "../resources/useResources";
 type TabType = "vehicles" | "trailers";
 
 export default function FleetPage() {
+  const { fleetPageText } = useFleetResources();
   usePageTitle("Araçlar & Dorseler");
   const [{ tab: activeTab }, setUrlState] = useUrlState({
     tab: "vehicles" as TabType,

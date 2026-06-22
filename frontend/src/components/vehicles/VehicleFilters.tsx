@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Filter, Search } from "lucide-react";
 
-import { vehicleFilterText } from "../../resources/tr/vehicles";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { useVehiclesResources } from "../../resources/useResources";
 
 interface VehicleFiltersProps {
   search: string;
@@ -32,6 +32,7 @@ export function VehicleFilters({
   filters,
   setFilters,
 }: VehicleFiltersProps) {
+  const { vehicleFilterText } = useVehiclesResources();
   const handleReset = () => {
     setFilters({ marka: "", model: "", min_yil: "", max_yil: "" });
     setSearch("");

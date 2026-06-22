@@ -3,8 +3,8 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { AnimatePresence, motion } from "framer-motion";
 import { Edit2, Fuel, Trash2 } from "lucide-react";
 
-import { fuelTableText } from "../../resources/tr/fuel";
 import { FuelRecord } from "../../types";
+import { useFuelResources } from "../../resources/useResources";
 
 interface FuelTableProps {
   records: FuelRecord[];
@@ -19,6 +19,7 @@ export function FuelTable({
   onEdit,
   onDelete,
 }: FuelTableProps) {
+  const { fuelTableText } = useFuelResources();
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({

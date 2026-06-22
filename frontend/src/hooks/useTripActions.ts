@@ -2,7 +2,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { tripModuleText } from "../resources/tr/trips";
 import {
   TRIP_STATUS_IPTAL,
   TRIP_STATUS_TRANSITIONS,
@@ -12,6 +11,7 @@ import {
 import { tripService } from "../api/trips";
 import { useTripStore } from "../stores/use-trip-store";
 import { Trip } from "../types";
+import { useTripsResources } from "../resources/useResources";
 
 const resolveActionErrorMessage = (error: any, fallback: string) => {
   const detail = error?.response?.data?.detail;
@@ -33,6 +33,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export function useTripActions() {
+  const { tripModuleText } = useTripsResources();
   const queryClient = useQueryClient();
   const { filters, selectedTrip, setSelectedTrip, toggleForm, clearSelection } =
     useTripStore();

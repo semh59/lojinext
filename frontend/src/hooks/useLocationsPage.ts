@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { useLocations } from "./use-locations";
 import { useUrlState } from "./use-url-state";
 import { usePageTitle } from "./usePageTitle";
-import { locationsPageText } from "../resources/tr/locations";
 import { locationService } from "../api/locations";
 import {
   AnalysisResponse,
@@ -12,10 +11,12 @@ import {
   LocationCreate,
   LocationUpdate,
 } from "../types/location";
+import { useLocationsResources } from "../resources/useResources";
 
 const LIMIT = 12;
 
 export function useLocationsPage() {
+  const { locationsPageText } = useLocationsResources();
   usePageTitle("Güzergahlar");
 
   const [filters, setFilters] = useUrlState({

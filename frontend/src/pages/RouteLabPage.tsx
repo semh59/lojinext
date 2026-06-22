@@ -6,19 +6,18 @@ import { RouteSimForm } from "@/features/route-lab/RouteSimForm";
 import { RouteSimSummary } from "@/features/route-lab/RouteSimSummary";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useRouteSimulation } from "@/hooks/useRouteSimulation";
-import { routeLabText } from "@/resources/tr/routeLab";
-
-function errorMessage(err: unknown): string {
-  const status =
-    typeof err === "object" && err !== null
-      ? (err as { response?: { status?: number } }).response?.status
-      : undefined;
-  if (status === 429) return routeLabText.errors.rateLimited;
-  if (status === 502) return routeLabText.errors.providerDown;
-  return routeLabText.errors.generic;
-}
-
+import { useRouteLabResources } from "@/resources/useResources";
 export default function RouteLabPage() {
+  const { routeLabText } = useRouteLabResources();
+  function errorMessage(err: unknown): string {
+    const status =
+      typeof err === "object" && err !== null
+        ? (err as { response?: { status?: number } }).response?.status
+        : undefined;
+    if (status === 429) return routeLabText.errors.rateLimited;
+    if (status === 502) return routeLabText.errors.providerDown;
+    return routeLabText.errors.generic;
+  }
   usePageTitle(routeLabText.heading);
   const sim = useRouteSimulation();
 

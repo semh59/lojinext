@@ -8,8 +8,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { fuelStatsText } from "../../resources/tr/fuel";
 import { useAnomalyCount } from "../../hooks/useAnomalyCount";
+import { useFuelResources } from "../../resources/useResources";
 
 interface FuelStatsProps {
   stats: FuelStatsModel | null;
@@ -17,6 +17,7 @@ interface FuelStatsProps {
 }
 
 export function FuelStats({ stats, loading }: FuelStatsProps) {
+  const { fuelStatsText } = useFuelResources();
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("tr-TR", {
       style: "currency",

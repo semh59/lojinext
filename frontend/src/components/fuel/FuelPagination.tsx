@@ -5,8 +5,8 @@ import {
   ChevronsRight,
 } from "lucide-react";
 
-import { fuelPaginationText } from "../../resources/tr/fuel";
 import { cn } from "../../lib/utils";
+import { useFuelResources } from "../../resources/useResources";
 
 interface FuelPaginationProps {
   currentPage: number;
@@ -21,6 +21,7 @@ export function FuelPagination({
   pageSize,
   onPageChange,
 }: FuelPaginationProps) {
+  const { fuelPaginationText } = useFuelResources();
   const totalPages = Math.ceil(totalCount / pageSize);
 
   if (totalPages <= 1) return null;

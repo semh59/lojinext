@@ -3,10 +3,10 @@ import { createPortal } from "react-dom";
 import { ChevronDown, ChevronUp, Settings2, Truck, X } from "lucide-react";
 
 import { Vehicle } from "../../types";
-import { vehicleModalText } from "../../resources/tr/vehicles";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { useVehicleData, YAKIT_TIPLERI } from "../../hooks/useVehicleData";
+import { useVehiclesResources } from "../../resources/useResources";
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ export function VehicleModal({
   onSave,
   vehicle,
 }: VehicleModalProps) {
+  const { vehicleModalText } = useVehiclesResources();
   const {
     showAdvanced,
     setShowAdvanced,

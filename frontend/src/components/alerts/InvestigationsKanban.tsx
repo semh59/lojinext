@@ -1,7 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { investigationsText } from "../../resources/tr/investigations";
 import {
   investigationService,
   type Investigation,
@@ -9,6 +8,7 @@ import {
 } from "../../api/investigations";
 import { InvestigationCard } from "./InvestigationCard";
 import { InvestigationDetailDialog } from "./InvestigationDetailDialog";
+import { useInvestigationsResources } from "../../resources/useResources";
 
 const COLUMN_ORDER: InvestigationStatus[] = [
   "open",
@@ -19,6 +19,7 @@ const COLUMN_ORDER: InvestigationStatus[] = [
 ];
 
 export function InvestigationsKanban() {
+  const { investigationsText } = useInvestigationsResources();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({

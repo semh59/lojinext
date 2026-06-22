@@ -1,13 +1,11 @@
 ﻿import { useState } from "react";
 import { ChevronRight, Download, Loader2 } from "lucide-react";
 
-import {
-  PeriodKey,
-  reportsStudioText,
-} from "../../resources/tr/reports-studio";
+import type { PeriodKey } from "../../resources/tr/reports-studio";
 import type { TemplateFormat, TemplateMeta } from "../../api/reports-studio";
 import { Button } from "../ui/Button";
 import { cn } from "../../lib/utils";
+import { useReportsStudioResources } from "../../resources/useResources";
 
 interface TemplateConfigPanelProps {
   template: TemplateMeta | null;
@@ -32,6 +30,7 @@ export function TemplateConfigPanel({
   template,
   onDownload,
 }: TemplateConfigPanelProps) {
+  const { reportsStudioText } = useReportsStudioResources();
   const [format, setFormat] = useState<TemplateFormat>("pdf");
   const [period, setPeriod] = useState<PeriodKey>("current_month");
   const [busy, setBusy] = useState(false);

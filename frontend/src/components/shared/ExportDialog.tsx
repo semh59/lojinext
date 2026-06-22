@@ -12,10 +12,10 @@ import {
   X,
 } from "lucide-react";
 
-import { reportExportDialogText } from "../../resources/tr/reports";
 import { vehiclesApi } from "../../services/api";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
+import { useReportsResources } from "../../resources/useResources";
 
 export type ExportType =
   | "fleet_summary"
@@ -61,6 +61,7 @@ export function ExportDialog({
   type,
   onExport,
 }: ExportDialogProps) {
+  const { reportExportDialogText } = useReportsResources();
   const [format, setFormat] = useState<"pdf" | "excel">("pdf");
   const [startDate, setStartDate] = useState(
     new Date(new Date().setDate(new Date().getDate() - 30))

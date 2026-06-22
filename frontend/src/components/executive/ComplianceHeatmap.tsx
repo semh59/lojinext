@@ -1,9 +1,9 @@
 ﻿import { AlertCircle, Calendar, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useCompliance } from "@/hooks/useExecutive";
 import type { ComplianceRisk } from "@/api/executive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
@@ -16,13 +16,6 @@ const RISK_STYLE: Record<ComplianceRisk, string> = {
   low: "bg-success/10 text-success border-success/30",
 };
 
-const RISK_LABEL: Record<ComplianceRisk, string> = {
-  overdue: executiveText.compliance.overdue,
-  soon: executiveText.compliance.soon,
-  normal: executiveText.compliance.normal,
-  low: executiveText.compliance.low,
-};
-
 function formatDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return iso;
@@ -30,6 +23,13 @@ function formatDate(iso: string): string {
 }
 
 export function ComplianceHeatmap({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
+  const RISK_LABEL: Record<ComplianceRisk, string> = {
+    overdue: executiveText.compliance.overdue,
+    soon: executiveText.compliance.soon,
+    normal: executiveText.compliance.normal,
+    low: executiveText.compliance.low,
+  };
   const { data, isLoading, error } = useCompliance(90);
   const t = executiveText.compliance;
 

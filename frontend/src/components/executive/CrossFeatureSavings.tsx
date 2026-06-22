@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useCrossFeature } from "@/hooks/useExecutive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
@@ -52,6 +52,7 @@ function ImpactRow({
 }
 
 export function CrossFeatureSavings({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
   const { data, isLoading, error } = useCrossFeature(90);
   const t = executiveText.crossFeature;
 

@@ -18,50 +18,50 @@ import { DataExportImport } from "../components/shared/DataExportImport";
 import { Button } from "../components/ui/Button";
 import { useLocationsPage } from "../hooks/useLocationsPage";
 import { cn } from "../lib/utils";
-import { locationsPageText } from "../resources/tr/locations";
 import { locationService } from "../api/locations";
-
-const buildKpis = (
-  stats:
-    | {
-        total: number;
-        analyzed: number;
-        avg_distance_km: number;
-        high_difficulty: number;
-      }
-    | undefined,
-) => [
-  {
-    label: locationsPageText.kpis.totalRoutes.label,
-    value: stats?.total ?? "—",
-    hint: locationsPageText.kpis.totalRoutes.hint,
-    icon: MapIcon,
-    tone: "text-accent",
-  },
-  {
-    label: locationsPageText.kpis.analyzedRoutes.label,
-    value: stats ? `${stats.analyzed} / ${stats.total}` : "—",
-    hint: locationsPageText.kpis.analyzedRoutes.hint,
-    icon: BarChart3,
-    tone: "text-info",
-  },
-  {
-    label: locationsPageText.kpis.averageDistance.label,
-    value: stats ? `${stats.avg_distance_km.toFixed(0)} km` : "—",
-    hint: locationsPageText.kpis.averageDistance.hint,
-    icon: RefreshCw,
-    tone: "text-success",
-  },
-  {
-    label: locationsPageText.kpis.highDifficulty.label,
-    value: stats?.high_difficulty ?? "—",
-    hint: locationsPageText.kpis.highDifficulty.hint,
-    icon: AlertTriangle,
-    tone: "text-danger",
-  },
-];
+import { useLocationsResources } from "../resources/useResources";
 
 export default function LocationsPage() {
+  const { locationsPageText } = useLocationsResources();
+  const buildKpis = (
+    stats:
+      | {
+          total: number;
+          analyzed: number;
+          avg_distance_km: number;
+          high_difficulty: number;
+        }
+      | undefined,
+  ) => [
+    {
+      label: locationsPageText.kpis.totalRoutes.label,
+      value: stats?.total ?? "—",
+      hint: locationsPageText.kpis.totalRoutes.hint,
+      icon: MapIcon,
+      tone: "text-accent",
+    },
+    {
+      label: locationsPageText.kpis.analyzedRoutes.label,
+      value: stats ? `${stats.analyzed} / ${stats.total}` : "—",
+      hint: locationsPageText.kpis.analyzedRoutes.hint,
+      icon: BarChart3,
+      tone: "text-info",
+    },
+    {
+      label: locationsPageText.kpis.averageDistance.label,
+      value: stats ? `${stats.avg_distance_km.toFixed(0)} km` : "—",
+      hint: locationsPageText.kpis.averageDistance.hint,
+      icon: RefreshCw,
+      tone: "text-success",
+    },
+    {
+      label: locationsPageText.kpis.highDifficulty.label,
+      value: stats?.high_difficulty ?? "—",
+      hint: locationsPageText.kpis.highDifficulty.hint,
+      icon: AlertTriangle,
+      tone: "text-danger",
+    },
+  ];
   const {
     search,
     zorlukFilter,

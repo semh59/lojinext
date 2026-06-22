@@ -2,8 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
 
 import { Dorse } from "../../types";
-import { trailerDeleteText } from "../../resources/tr/trailers";
-
+import { useTrailersResources } from "../../resources/useResources";
 interface TrailerDeleteModalProps {
   trailer: Dorse | null;
   isOpen: boolean;
@@ -19,6 +18,7 @@ const TrailerDeleteModal = ({
   onConfirm,
   isDeleting = false,
 }: TrailerDeleteModalProps) => {
+  const { trailerDeleteText } = useTrailersResources();
   if (!trailer) {
     return null;
   }

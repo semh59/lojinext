@@ -1,9 +1,9 @@
 import React from "react";
 import { AlertTriangle, XCircle } from "lucide-react";
 
-import { tripBulkCancelModalText } from "../../resources/tr/trips";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { useTripsResources } from "../../resources/useResources";
 
 interface BulkCancelModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export function BulkCancelModal({
   selectedCount,
   isSubmitting,
 }: BulkCancelModalProps) {
+  const { tripBulkCancelModalText } = useTripsResources();
   const [reason, setReason] = React.useState("");
 
   return (

@@ -1,7 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Loader2, Trash2, X } from "lucide-react";
-import { investigationsText } from "../../resources/tr/investigations";
 import { safeHref } from "../../lib/utils";
 import {
   investigationService,
@@ -9,6 +8,7 @@ import {
   type ResolutionType,
 } from "../../api/investigations";
 import { useNotify } from "../../context/NotificationContext";
+import { useInvestigationsResources } from "../../resources/useResources";
 
 interface InvestigationDetailDialogProps {
   investigationId: number | null;
@@ -33,6 +33,7 @@ export function InvestigationDetailDialog({
   investigationId,
   onClose,
 }: InvestigationDetailDialogProps) {
+  const { investigationsText } = useInvestigationsResources();
   const queryClient = useQueryClient();
   const { notify } = useNotify();
 

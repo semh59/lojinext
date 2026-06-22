@@ -1,8 +1,8 @@
 ﻿import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Info, Loader2 } from "lucide-react";
-import { investigationsText } from "../../resources/tr/investigations";
 import { investigationService } from "../../api/investigations";
+import { useInvestigationsResources } from "../../resources/useResources";
 
 function formatDate(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
@@ -11,6 +11,7 @@ function formatDate(iso: string): string {
 }
 
 export function PatternList() {
+  const { investigationsText } = useInvestigationsResources();
   const [days, setDays] = useState(30);
   const [minCount, setMinCount] = useState(3);
 

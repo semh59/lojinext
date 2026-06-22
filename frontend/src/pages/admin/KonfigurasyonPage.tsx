@@ -7,9 +7,9 @@ import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useNotify } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
-import { adminConfigurationText } from "@/resources/tr/admin";
 import { adminApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 interface ConfigItem {
   anahtar: string;
@@ -26,6 +26,7 @@ interface ConfigItem {
 const adminUpdateReason = "Updated from admin panel";
 
 export default function AdminConfigurationPage() {
+  const { adminConfigurationText } = useAdminResources();
   usePageTitle("Konfigürasyon");
   const qc = useQueryClient();
   const { notify } = useNotify();

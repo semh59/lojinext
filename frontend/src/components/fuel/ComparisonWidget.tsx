@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-import { fuelComparisonText } from "../../resources/tr/fuel";
 import { PredictionComparisonResponse } from "../../types";
+import { useFuelResources } from "../../resources/useResources";
 
 interface VehicleOption {
   id: number;
@@ -41,6 +41,7 @@ export const ComparisonWidget: React.FC<ComparisonWidgetProps> = ({
   selectedVehicleId,
   onVehicleChange,
 }) => {
+  const { fuelComparisonText } = useFuelResources();
   const showVehicleSelect = !!vehicles && !!onVehicleChange;
 
   const vehicleSelect = showVehicleSelect ? (

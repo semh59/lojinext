@@ -11,16 +11,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Card } from "../ui/Card";
 import { cn } from "../../lib/utils";
 import {
-  coachingCategoryLabels,
-  coachingPageText,
-  coachingPriorityLabels,
-} from "../../resources/tr/coaching";
-import {
   coachingService,
   type CoachingCategory,
   type CoachingInsight,
   type CoachingPriority,
 } from "../../api/coaching";
+import { useCoachingResources } from "../../resources/useResources";
 
 interface CoachingInsightsPanelProps {
   soforId: number | null;
@@ -51,6 +47,8 @@ export function CoachingInsightsPanel({
   soforId,
   onSendClick,
 }: CoachingInsightsPanelProps) {
+  const { coachingCategoryLabels, coachingPageText, coachingPriorityLabels } =
+    useCoachingResources();
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({

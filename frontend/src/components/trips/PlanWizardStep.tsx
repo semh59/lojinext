@@ -8,7 +8,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { tripPlannerText } from "../../resources/tr/tripPlanner";
 import {
   type DriverSuggestion,
   type PlanWizardRequestPayload,
@@ -19,6 +18,7 @@ import {
 import { usePlanWizard } from "../../hooks/usePlanWizard";
 import { PlanWizardCard } from "./PlanWizardCard";
 import { PlanWizardXaiPanel } from "./PlanWizardXaiPanel";
+import { useTripPlannerResources } from "../../resources/useResources";
 
 export interface PlanWizardSelection {
   arac_id: number;
@@ -42,39 +42,38 @@ const RISK_STYLE: Record<RiskLabel, string> = {
   unknown: "bg-elevated text-secondary border-border",
 };
 
-function RiskBadge({ label }: { label: RiskLabel }) {
-  const Icon = label === "high" ? CloudRain : Cloud;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-        RISK_STYLE[label],
-      )}
-    >
-      <Icon className="h-3 w-3" />
-      {tripPlannerText.risk[label]}
-    </span>
-  );
-}
-
-function RouteTypeBadge({
-  routeType,
-}: {
-  routeType: PlanWizardResponse["route_type"];
-}) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-secondary">
-      <Map className="h-3 w-3" />
-      {tripPlannerText.routeTypeLabels[routeType]}
-    </span>
-  );
-}
-
 export function PlanWizardStep({
   payload,
   onSelectAndContinue,
   onOpenXai,
 }: PlanWizardStepProps) {
+  const { tripPlannerText } = useTripPlannerResources();
+  function RiskBadge({ label }: { label: RiskLabel }) {
+    const Icon = label === "high" ? CloudRain : Cloud;
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+          RISK_STYLE[label],
+        )}
+      >
+        <Icon className="h-3 w-3" />
+        {tripPlannerText.risk[label]}
+      </span>
+    );
+  }
+  function RouteTypeBadge({
+    routeType,
+  }: {
+    routeType: PlanWizardResponse["route_type"];
+  }) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-secondary">
+        <Map className="h-3 w-3" />
+        {tripPlannerText.routeTypeLabels[routeType]}
+      </span>
+    );
+  }
   const mutation = usePlanWizard();
   const [selectedVehicle, setSelectedVehicle] =
     useState<VehicleSuggestion | null>(null);

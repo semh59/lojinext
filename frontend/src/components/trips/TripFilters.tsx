@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { tripFilterText, tripModuleText } from "../../resources/tr/trips";
 import { preferenceService, Preference } from "../../api/preferences";
 import { useTripStore } from "../../stores/use-trip-store";
 import {
@@ -27,6 +26,7 @@ import {
 import { cn } from "../../lib/utils";
 import { DataExportImport } from "../shared/DataExportImport";
 import { Button } from "../ui/Button";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripFiltersProps {
   onExport: () => Promise<void>;
@@ -35,19 +35,19 @@ interface TripFiltersProps {
   dataUpdatedAt?: number;
 }
 
-const STATUS_TABS: Array<{ label: string; value: TripStatus | "" }> = [
-  { label: tripFilterText.tabs.all, value: "" },
-  { label: tripFilterText.tabs.planned, value: TRIP_STATUS_PLANLANDI },
-  { label: tripFilterText.tabs.completed, value: TRIP_STATUS_TAMAMLANDI },
-  { label: tripFilterText.tabs.canceled, value: TRIP_STATUS_IPTAL },
-];
-
 export const TripFilters: React.FC<TripFiltersProps> = ({
   onExport,
   onImport,
   onDownloadTemplate,
   dataUpdatedAt,
 }) => {
+  const { tripFilterText, tripModuleText } = useTripsResources();
+  const STATUS_TABS: Array<{ label: string; value: TripStatus | "" }> = [
+    { label: tripFilterText.tabs.all, value: "" },
+    { label: tripFilterText.tabs.planned, value: TRIP_STATUS_PLANLANDI },
+    { label: tripFilterText.tabs.completed, value: TRIP_STATUS_TAMAMLANDI },
+    { label: tripFilterText.tabs.canceled, value: TRIP_STATUS_IPTAL },
+  ];
   const { filters, setFilters, resetFilters } = useTripStore();
   const [isOpen, setIsOpen] = React.useState(false);
   const [secondsAgo, setSecondsAgo] = React.useState(0);

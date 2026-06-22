@@ -34,12 +34,12 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
-import { adminHealthText } from "@/resources/tr/admin";
 import { adminHealthApi } from "@/api/admin";
 import { errorService } from "@/services/api/error-service";
 import type { BackendErrorEvent } from "@/services/api/error-service";
 import { useEventSource } from "@/hooks/use-event-source";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 type Tab = "health" | "errors";
 
@@ -507,6 +507,7 @@ const statusLabel = (status?: string) => {
 };
 
 export default function SystemHealthPage() {
+  const { adminHealthText } = useAdminResources();
   usePageTitle("Sistem Sağlığı");
   const qc = useQueryClient();
   const { notify } = useNotify();

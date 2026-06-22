@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCircle, Trash2, X, XCircle } from "lucide-react";
 
-import { tripBulkActionText, tripModuleText } from "../../resources/tr/trips";
 import { RequirePermission } from "../auth/RequirePermission";
 import { Button } from "../ui/Button";
+import { useTripsResources } from "../../resources/useResources";
 
 interface BulkActionBarProps {
   selectedCount: number;
@@ -24,6 +24,7 @@ export function BulkActionBar({
   onApprove,
   isApproving,
 }: BulkActionBarProps) {
+  const { tripBulkActionText, tripModuleText } = useTripsResources();
   if (selectedCount === 0) return null;
 
   return (

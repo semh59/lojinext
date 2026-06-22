@@ -9,14 +9,15 @@ import {
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
-import { routeAnalysisCardText } from "../../resources/tr/locations";
 import { RouteAnalysis } from "../../types/location";
+import { useLocationsResources } from "../../resources/useResources";
 
 interface RouteAnalysisCardProps {
   analysis: RouteAnalysis;
 }
 
 export function RouteAnalysisCard({ analysis }: RouteAnalysisCardProps) {
+  const { routeAnalysisCardText } = useLocationsResources();
   const highwayFlat = analysis.highway?.flat || 0;
   const highwayUp = analysis.highway?.up || 0;
   const highwayDown = analysis.highway?.down || 0;

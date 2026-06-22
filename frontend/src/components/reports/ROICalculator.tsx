@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { PiggyBank, Target, TrendingUp } from "lucide-react";
 
 import { reportsApi } from "@/services/api";
-import { reportRoiText } from "../../resources/tr/reports";
 import { RoiStats } from "../../types";
+import { useReportsResources } from "../../resources/useResources";
 
 type SavingsStats = {
   current_consumption: number;
@@ -19,6 +19,7 @@ type SavingsStats = {
 const TARGET_CONSUMPTION = 28;
 
 export function ROICalculator() {
+  const { reportRoiText } = useReportsResources();
   const [investment, setInvestment] = useState(50000);
   const [roiStats, setRoiStats] = useState<RoiStats | null>(null);
   const [savingsStats, setSavingsStats] = useState<SavingsStats | null>(null);

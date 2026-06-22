@@ -11,19 +11,19 @@ import { TriageItemCard } from "@/components/today/TriageItemCard";
 import { useTriage } from "@/hooks/useTriage";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
-import { todayText } from "@/resources/tr/today";
 import type { TriageCategory } from "@/api/today";
+import { useTodayResources } from "@/resources/useResources";
 
 type ActiveTab = TriageCategory | "all";
 
-const TABS: Array<{ id: ActiveTab; label: string }> = [
-  { id: "all", label: todayText.tabs.all },
-  { id: "anomaly", label: todayText.tabs.anomaly },
-  { id: "maintenance", label: todayText.tabs.maintenance },
-  { id: "investigation", label: todayText.tabs.investigation },
-];
-
 export default function TodayPage() {
+  const { todayText } = useTodayResources();
+  const TABS: Array<{ id: ActiveTab; label: string }> = [
+    { id: "all", label: todayText.tabs.all },
+    { id: "anomaly", label: todayText.tabs.anomaly },
+    { id: "maintenance", label: todayText.tabs.maintenance },
+    { id: "investigation", label: todayText.tabs.investigation },
+  ];
   usePageTitle(todayText.pageTitle);
   const [activeTab, setActiveTab] = useState<ActiveTab>("all");
   const { data, isLoading, error } = useTriage();

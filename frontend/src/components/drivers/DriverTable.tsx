@@ -2,8 +2,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Award, BrainCircuit, Edit2, Phone, Star, Trash2 } from "lucide-react";
 
 import { Driver } from "../../types";
-import { driverTableText } from "../../resources/tr/drivers";
 import { cn } from "../../lib/utils";
+import { useDriversResources } from "../../resources/useResources";
 
 interface DriverTableProps {
   drivers: Driver[];
@@ -26,6 +26,7 @@ export function DriverTable({
   onToggleSelection,
   onToggleAll,
 }: DriverTableProps) {
+  const { driverTableText } = useDriversResources();
   const showSelection = !!onToggleSelection;
   const gridTemplate = showSelection
     ? "40px 1fr 140px 140px 140px 160px"

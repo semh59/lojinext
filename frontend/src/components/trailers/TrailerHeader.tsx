@@ -2,8 +2,7 @@ import { Plus } from "lucide-react";
 import { Button } from "../ui/Button";
 import { motion } from "framer-motion";
 import { DataExportImport } from "../shared/DataExportImport";
-import { trailerHeaderText } from "../../resources/tr/trailers";
-
+import { useTrailersResources } from "../../resources/useResources";
 interface TrailerHeaderProps {
   onAdd: () => void;
   onExport: () => Promise<void>;
@@ -17,6 +16,7 @@ export function TrailerHeader({
   onImport,
   onDownloadTemplate,
 }: TrailerHeaderProps) {
+  const { trailerHeaderText } = useTrailersResources();
   return (
     <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8 relative z-40">
       <motion.div

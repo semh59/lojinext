@@ -4,8 +4,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Info, Save, X } from "lucide-react";
 
 import { Dorse } from "../../types";
-import { trailerModalText } from "../../resources/tr/trailers";
 import { Button } from "../ui/Button";
+import { useTrailersResources } from "../../resources/useResources";
 
 interface TrailerModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export function TrailerModal({
   onSave,
   trailer,
 }: TrailerModalProps) {
+  const { trailerModalText } = useTrailersResources();
   const [formData, setFormData] = useState<Partial<Dorse>>({
     plaka: "",
     marka: "",

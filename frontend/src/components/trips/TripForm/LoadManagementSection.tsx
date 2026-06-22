@@ -3,9 +3,9 @@ import { Scale } from "lucide-react";
 import { motion } from "framer-motion";
 import { FieldErrors, UseFormRegister } from "react-hook-form";
 
-import { tripLoadManagementSectionText } from "../../../resources/tr/trips";
 import { TripFormData } from "../../../types";
 import { Input } from "../../ui/Input";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface LoadManagementSectionProps {
   register: UseFormRegister<TripFormData>;
@@ -16,6 +16,7 @@ interface LoadManagementSectionProps {
 
 export const LoadManagementSection: React.FC<LoadManagementSectionProps> =
   React.memo(({ register, errors, watchedNetKg, isReadOnly = false }) => {
+    const { tripLoadManagementSectionText } = useTripsResources();
     return (
       <div className="glass relative space-y-6 overflow-hidden rounded-[28px] border-border/40 p-6">
         <h4 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-success">

@@ -3,12 +3,12 @@ import { AlertCircle, Download, Loader2, Wrench, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useNotify } from "@/context/NotificationContext";
-import { maintenancePredictionsText } from "@/resources/tr/maintenancePredictions";
 import {
   maintenancePredictionsService,
   type MaintenancePrediction,
   type RiskLevel,
 } from "@/api/maintenance-predictions";
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
 
 const RISK_STYLE: Record<RiskLevel, string> = {
   overdue: "bg-danger/10 text-danger border-danger/30",
@@ -22,14 +22,14 @@ interface DrawerProps {
   onClose: () => void;
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return maintenancePredictionsText.table.notApplicable;
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-  if (!m) return iso;
-  return `${m[3]}.${m[2]}.${m[1]}`;
-}
-
 export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
+  function formatDate(iso: string | null): string {
+    if (!iso) return maintenancePredictionsText.table.notApplicable;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    if (!m) return iso;
+    return `${m[3]}.${m[2]}.${m[1]}`;
+  }
   const { notify } = useNotify();
   const [isDownloading, setIsDownloading] = useState(false);
 

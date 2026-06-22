@@ -7,28 +7,9 @@ import * as z from "zod";
 import { Input } from "../ui/Input";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
-import { fuelModalText } from "../../resources/tr/fuel";
 import { vehicleService } from "../../api/vehicles";
 import { FuelRecord } from "../../types";
-
-const fuelSchema = z.object({
-  tarih: z.string().min(1, fuelModalText.validation.dateRequired),
-  arac_id: z.number().min(1, fuelModalText.validation.vehicleRequired),
-  istasyon: z.string().min(1, fuelModalText.validation.stationRequired),
-  litre: z.number().min(0.1, fuelModalText.validation.litersPositive),
-  fiyat_tl: z.number().min(0.1, fuelModalText.validation.unitPricePositive),
-  toplam_tutar: z.number().min(0, fuelModalText.validation.totalPositive),
-  km_sayac: z.number().min(0, fuelModalText.validation.odometerPositive),
-  depo_durumu: z.enum([fuelModalText.enums.full, fuelModalText.enums.partial]),
-  durum: z.enum([
-    fuelModalText.enums.pending,
-    fuelModalText.enums.approved,
-    fuelModalText.enums.rejected,
-  ]),
-  fis_no: z.string().optional(),
-});
-
-type FuelFormData = z.infer<typeof fuelSchema>;
+import { useFuelResources } from "../../resources/useResources";
 
 interface FuelModalProps {
   isOpen: boolean;
@@ -46,6 +27,27 @@ export function FuelModal({
   record,
   ocrPrefill,
 }: FuelModalProps) {
+  const { fuelModalText } = useFuelResources();
+  const fuelSchema = z.object({
+    tarih: z.string().min(1, fuelModalText.validation.dateRequired),
+    arac_id: z.number().min(1, fuelModalText.validation.vehicleRequired),
+    istasyon: z.string().min(1, fuelModalText.validation.stationRequired),
+    litre: z.number().min(0.1, fuelModalText.validation.litersPositive),
+    fiyat_tl: z.number().min(0.1, fuelModalText.validation.unitPricePositive),
+    toplam_tutar: z.number().min(0, fuelModalText.validation.totalPositive),
+    km_sayac: z.number().min(0, fuelModalText.validation.odometerPositive),
+    depo_durumu: z.enum([
+      fuelModalText.enums.full,
+      fuelModalText.enums.partial,
+    ]),
+    durum: z.enum([
+      fuelModalText.enums.pending,
+      fuelModalText.enums.approved,
+      fuelModalText.enums.rejected,
+    ]),
+    fis_no: z.string().optional(),
+  });
+  type FuelFormData = z.infer<typeof fuelSchema>;
   const { data: vehiclesData = [] } = useQuery({
     queryKey: ["vehicles", { aktif_only: true }],
     queryFn: () => vehicleService.getAll({ limit: 100, aktif_only: true }),

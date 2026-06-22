@@ -17,8 +17,7 @@ import {
 
 import { vehicleService } from "../../api/vehicles";
 import { Vehicle, VehicleEvent } from "../../types";
-import { vehicleDetailText } from "../../resources/tr/vehicles";
-
+import { useVehiclesResources } from "../../resources/useResources";
 interface VehicleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -33,15 +32,12 @@ function getInspectionInfo(muayene_tarihi: string | null | undefined) {
   return { days, date: new Date(muayene_tarihi).toLocaleDateString("tr-TR") };
 }
 
-function getEventTypeLabel(type: string): string {
-  return vehicleDetailText.events.types[type] ?? type;
-}
-
 export function VehicleDetailModal({
   isOpen,
   onClose,
   vehicle,
 }: VehicleDetailModalProps) {
+  const { vehicleDetailText } = useVehiclesResources();
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["vehicle-stats", vehicle?.id],
     queryFn: () => vehicleService.getStats(vehicle!.id!),
@@ -404,6 +400,7 @@ export function VehicleDetailModal({
 }
 
 function EventRow({ event }: { event: VehicleEvent }) {
+  const { vehicleDetailText } = useVehiclesResources();
   const formatted = event.created_at
     ? new Date(event.created_at).toLocaleString("tr-TR", {
         day: "2-digit",
@@ -419,7 +416,7 @@ function EventRow({ event }: { event: VehicleEvent }) {
       <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent/60" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold text-primary">
-          {getEventTypeLabel(event.event_type)}
+          {vehicleDetailText.events.types[event.event_type] ?? event.event_type}
           {event.triggered_by && (
             <span className="ml-1 font-normal text-secondary text-xs">
               {vehicleDetailText.events.by(event.triggered_by)}

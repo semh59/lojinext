@@ -1,9 +1,9 @@
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, Truck } from "lucide-react";
 
-import { tripHeaderText } from "../../resources/tr/trips";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
+import { useTripsResources } from "../../resources/useResources";
 
 interface TripHeaderProps {
   onAdd: () => void;
@@ -16,6 +16,7 @@ export function TripHeader({
   showCharts,
   onToggleCharts,
 }: TripHeaderProps) {
+  const { tripHeaderText } = useTripsResources();
   return (
     <div className="relative z-40 mb-10 flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
       <motion.div

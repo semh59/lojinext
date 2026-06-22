@@ -1,7 +1,6 @@
 import React from "react";
 import { Clock } from "lucide-react";
 
-import { tripBulkStatusModalText } from "../../resources/tr/trips";
 import {
   TRIP_STATUS_PLANLANDI,
   TRIP_STATUS_TAMAMLANDI,
@@ -10,6 +9,7 @@ import {
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
+import { useTripsResources } from "../../resources/useResources";
 
 interface BulkStatusModalProps {
   isOpen: boolean;
@@ -19,23 +19,6 @@ interface BulkStatusModalProps {
   isSubmitting: boolean;
 }
 
-const statusOptions: Array<{
-  value: TripAssignableStatus;
-  label: string;
-  color: string;
-}> = [
-  {
-    value: TRIP_STATUS_PLANLANDI as TripAssignableStatus,
-    label: tripBulkStatusModalText.planned,
-    color: "bg-warning",
-  },
-  {
-    value: TRIP_STATUS_TAMAMLANDI as TripAssignableStatus,
-    label: tripBulkStatusModalText.completed,
-    color: "bg-success",
-  },
-];
-
 export function BulkStatusModal({
   isOpen,
   onClose,
@@ -43,6 +26,23 @@ export function BulkStatusModal({
   selectedCount,
   isSubmitting,
 }: BulkStatusModalProps) {
+  const { tripBulkStatusModalText } = useTripsResources();
+  const statusOptions: Array<{
+    value: TripAssignableStatus;
+    label: string;
+    color: string;
+  }> = [
+    {
+      value: TRIP_STATUS_PLANLANDI as TripAssignableStatus,
+      label: tripBulkStatusModalText.planned,
+      color: "bg-warning",
+    },
+    {
+      value: TRIP_STATUS_TAMAMLANDI as TripAssignableStatus,
+      label: tripBulkStatusModalText.completed,
+      color: "bg-success",
+    },
+  ];
   const [selectedStatus, setSelectedStatus] =
     React.useState<TripAssignableStatus>(
       TRIP_STATUS_TAMAMLANDI as TripAssignableStatus,

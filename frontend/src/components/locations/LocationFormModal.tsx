@@ -1,6 +1,5 @@
 ﻿import { Info, MapIcon, Search } from "lucide-react";
 
-import { locationFormText } from "../../resources/tr/locations";
 import { GeocodeSuggestion } from "../../api/locations";
 import { Location, LocationCreate } from "../../types/location";
 import {
@@ -11,6 +10,7 @@ import {
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Modal } from "../ui/Modal";
+import { useLocationsResources } from "../../resources/useResources";
 
 interface LocationFormModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export const LocationFormModal = ({
   onSave,
   location,
 }: LocationFormModalProps) => {
+  const { locationFormText } = useLocationsResources();
   const {
     register,
     handleSubmit,

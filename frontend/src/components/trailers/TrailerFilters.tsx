@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Filter, LayoutGrid, List, Search } from "lucide-react";
 
-import { trailerFilterText } from "../../resources/tr/trailers";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
+import { useTrailersResources } from "../../resources/useResources";
 
 interface TrailerFiltersProps {
   search: string;
@@ -36,6 +36,7 @@ export function TrailerFilters({
   viewMode,
   setViewMode,
 }: TrailerFiltersProps) {
+  const { trailerFilterText } = useTrailersResources();
   const handleReset = () => {
     setFilters({ marka: "", model: "", min_yil: "", max_yil: "" });
     setSearch("");

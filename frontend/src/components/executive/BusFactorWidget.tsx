@@ -1,9 +1,9 @@
 ﻿import { AlertCircle, Loader2, ShieldAlert, User2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useBusFactor } from "@/hooks/useExecutive";
 import type { BusFactorRisk } from "@/api/executive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
@@ -15,13 +15,13 @@ const RISK_STYLE: Record<BusFactorRisk, string> = {
   low: "bg-success/10 text-success border-success/30",
 };
 
-const RISK_LABEL: Record<BusFactorRisk, string> = {
-  high: executiveText.busFactor.riskHigh,
-  medium: executiveText.busFactor.riskMedium,
-  low: executiveText.busFactor.riskLow,
-};
-
 export function BusFactorWidget({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
+  const RISK_LABEL: Record<BusFactorRisk, string> = {
+    high: executiveText.busFactor.riskHigh,
+    medium: executiveText.busFactor.riskMedium,
+    low: executiveText.busFactor.riskLow,
+  };
   const { data, isLoading, error } = useBusFactor(3);
   const t = executiveText.busFactor;
 

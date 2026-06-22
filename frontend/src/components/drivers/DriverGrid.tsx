@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 import { BrainCircuit, Edit2, Star, Trash2 } from "lucide-react";
 
 import { Driver } from "../../types";
-import { driverGridText } from "../../resources/tr/drivers";
 import { cn } from "../../lib/utils";
+import { useDriversResources } from "../../resources/useResources";
 
 interface DriverGridProps {
   drivers: Driver[];
@@ -18,6 +18,7 @@ export function DriverGrid({
   onDelete,
   onPerformanceClick,
 }: DriverGridProps) {
+  const { driverGridText } = useDriversResources();
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {drivers.map((driver, index) => (

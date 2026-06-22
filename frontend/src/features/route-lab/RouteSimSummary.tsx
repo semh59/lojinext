@@ -1,6 +1,6 @@
 ﻿import { Card } from "@/components/ui/Card";
-import { routeLabText } from "@/resources/tr/routeLab";
 import type { RouteSimResponse } from "@/api/route-sim";
+import { useRouteLabResources } from "@/resources/useResources";
 
 interface Props {
   result: RouteSimResponse;
@@ -16,6 +16,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export function RouteSimSummary({ result }: Props) {
+  const { routeLabText } = useRouteLabResources();
   const t = routeLabText.summary;
   const s = result.summary;
   return (

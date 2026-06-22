@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useLocations } from "@/hooks/use-locations";
-import { routeLabText } from "@/resources/tr/routeLab";
 import type { RouteSimRequest } from "@/api/route-sim";
+import { useRouteLabResources } from "@/resources/useResources";
 
 interface Props {
   onSubmit: (req: RouteSimRequest) => void;
@@ -15,6 +15,7 @@ interface Props {
 type Mode = "location" | "coords";
 
 export function RouteSimForm({ onSubmit, submitting }: Props) {
+  const { routeLabText } = useRouteLabResources();
   const t = routeLabText.form;
   const [mode, setMode] = useState<Mode>("location");
   const [lokasyonId, setLokasyonId] = useState<string>("");

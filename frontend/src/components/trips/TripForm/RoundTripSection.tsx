@@ -3,9 +3,9 @@ import { UseFormRegister } from "react-hook-form";
 import { motion } from "framer-motion";
 import { ArrowLeftRight } from "lucide-react";
 
-import { tripRoundTripSectionText } from "../../../resources/tr/trips";
 import { TripFormData } from "../../../types";
 import { Input } from "../../ui/Input";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface RoundTripSectionProps {
   register: UseFormRegister<TripFormData>;
@@ -15,6 +15,7 @@ interface RoundTripSectionProps {
 
 export const RoundTripSection: React.FC<RoundTripSectionProps> = React.memo(
   ({ register, prefersReducedMotion, transitionProps }) => {
+    const { tripRoundTripSectionText } = useTripsResources();
     return (
       <motion.div
         initial={

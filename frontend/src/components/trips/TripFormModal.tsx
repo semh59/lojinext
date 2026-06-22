@@ -4,12 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { History, Route, Sparkles } from "lucide-react";
 import { PlanWizardStep, type PlanWizardSelection } from "./PlanWizardStep";
-import { tripPlannerText } from "../../resources/tr/tripPlanner";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { tripFormModalText } from "../../resources/tr/trips";
 import {
   driversApi,
   locationService,
@@ -43,71 +41,10 @@ import { TripTimeline } from "./TripTimeline";
 import { KilometreYakitSection, TripStatusSection } from "./TripFormSections";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
-
-export const tripSchema = z.object({
-  tarih: z.string().min(1, tripFormModalText.validation.dateRequired),
-  saat: z
-    .string()
-    .regex(
-      /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-      tripFormModalText.validation.invalidTime,
-    ),
-  sefer_no: z
-    .string()
-    .max(50, tripFormModalText.validation.tripNumberMax)
-    .optional()
-    .or(z.literal("")),
-
-  arac_id: z.coerce
-    .number()
-    .int()
-    .min(1, tripFormModalText.validation.vehicleRequired),
-  dorse_id: z.coerce.number().int().optional().or(z.literal(0)).nullable(),
-  sofor_id: z.coerce
-    .number()
-    .int()
-    .min(1, tripFormModalText.validation.driverRequired),
-  guzergah_id: z.coerce
-    .number()
-    .int()
-    .min(1, tripFormModalText.validation.routeRequired),
-
-  cikis_yeri: z.string().min(1, tripFormModalText.validation.departureRequired),
-  varis_yeri: z.string().min(1, tripFormModalText.validation.arrivalRequired),
-  mesafe_km: z.coerce
-    .number()
-    .min(0.1, tripFormModalText.validation.distancePositive),
-
-  bos_agirlik_kg: z.coerce
-    .number()
-    .min(0, tripFormModalText.validation.weightNonNegative)
-    .default(0),
-  dolu_agirlik_kg: z.coerce
-    .number()
-    .min(0, tripFormModalText.validation.weightNonNegative)
-    .default(0),
-  net_kg: z.coerce
-    .number()
-    .min(0, tripFormModalText.validation.weightNonNegative)
-    .default(0),
-
-  bos_sefer: z.boolean().default(false),
-  ascent_m: z.coerce.number().default(0),
-  descent_m: z.coerce.number().default(0),
-  flat_distance_km: z.coerce.number().default(0),
-  durum: z.enum(TRIP_STATUS_VALUES).default(TRIP_STATUS_PLANLANDI),
-  ton: z.coerce.number().optional(),
-  notlar: z.string().optional(),
-
-  baslangic_km: z.coerce.number().int().min(0).optional().nullable(),
-  bitis_km: z.coerce.number().int().min(0).optional().nullable(),
-  dagitilan_yakit: z.coerce.number().min(0).max(10000).optional().nullable(),
-  tuketim: z.coerce.number().min(0).max(1000).optional().nullable(),
-
-  is_round_trip: z.boolean().default(false),
-  return_net_kg: z.coerce.number().min(0).default(0),
-  return_sefer_no: z.string().optional(),
-});
+import {
+  useTripPlannerResources,
+  useTripsResources,
+} from "../../resources/useResources";
 
 interface TripFormModalProps {
   isOpen: boolean;
@@ -145,6 +82,68 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({
   initialTab = "details",
   isReadOnly = false,
 }) => {
+  const { tripPlannerText } = useTripPlannerResources();
+  const { tripFormModalText } = useTripsResources();
+  const tripSchema = z.object({
+    tarih: z.string().min(1, tripFormModalText.validation.dateRequired),
+    saat: z
+      .string()
+      .regex(
+        /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
+        tripFormModalText.validation.invalidTime,
+      ),
+    sefer_no: z
+      .string()
+      .max(50, tripFormModalText.validation.tripNumberMax)
+      .optional()
+      .or(z.literal("")),
+    arac_id: z.coerce
+      .number()
+      .int()
+      .min(1, tripFormModalText.validation.vehicleRequired),
+    dorse_id: z.coerce.number().int().optional().or(z.literal(0)).nullable(),
+    sofor_id: z.coerce
+      .number()
+      .int()
+      .min(1, tripFormModalText.validation.driverRequired),
+    guzergah_id: z.coerce
+      .number()
+      .int()
+      .min(1, tripFormModalText.validation.routeRequired),
+    cikis_yeri: z
+      .string()
+      .min(1, tripFormModalText.validation.departureRequired),
+    varis_yeri: z.string().min(1, tripFormModalText.validation.arrivalRequired),
+    mesafe_km: z.coerce
+      .number()
+      .min(0.1, tripFormModalText.validation.distancePositive),
+    bos_agirlik_kg: z.coerce
+      .number()
+      .min(0, tripFormModalText.validation.weightNonNegative)
+      .default(0),
+    dolu_agirlik_kg: z.coerce
+      .number()
+      .min(0, tripFormModalText.validation.weightNonNegative)
+      .default(0),
+    net_kg: z.coerce
+      .number()
+      .min(0, tripFormModalText.validation.weightNonNegative)
+      .default(0),
+    bos_sefer: z.boolean().default(false),
+    ascent_m: z.coerce.number().default(0),
+    descent_m: z.coerce.number().default(0),
+    flat_distance_km: z.coerce.number().default(0),
+    durum: z.enum(TRIP_STATUS_VALUES).default(TRIP_STATUS_PLANLANDI),
+    ton: z.coerce.number().optional(),
+    notlar: z.string().optional(),
+    baslangic_km: z.coerce.number().int().min(0).optional().nullable(),
+    bitis_km: z.coerce.number().int().min(0).optional().nullable(),
+    dagitilan_yakit: z.coerce.number().min(0).max(10000).optional().nullable(),
+    tuketim: z.coerce.number().min(0).max(1000).optional().nullable(),
+    is_round_trip: z.boolean().default(false),
+    return_net_kg: z.coerce.number().min(0).default(0),
+    return_sefer_no: z.string().optional(),
+  });
   type FormTab = "wizard" | "details" | "timeline";
   // Yeni sefer (initialData=null) için wizard default; edit ise details
   const defaultTab: FormTab = !initialData ? "wizard" : initialTab;

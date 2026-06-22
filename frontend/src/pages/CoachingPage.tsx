@@ -4,11 +4,12 @@ import { CoachingDriverList } from "../components/coaching/CoachingDriverList";
 import { CoachingInsightsPanel } from "../components/coaching/CoachingInsightsPanel";
 import { EffectivenessMiniCard } from "../components/coaching/EffectivenessMiniCard";
 import { SendCoachingDialog } from "../components/coaching/SendCoachingDialog";
-import { coachingPageText } from "../resources/tr/coaching";
 import { usePageTitle } from "../hooks/usePageTitle";
 import type { CoachingInsight } from "../api/coaching";
+import { useCoachingResources } from "../resources/useResources";
 
 export default function CoachingPage() {
+  const { coachingPageText } = useCoachingResources();
   usePageTitle("Koçluk");
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [activeInsight, setActiveInsight] = useState<CoachingInsight | null>(

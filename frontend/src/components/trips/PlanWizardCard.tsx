@@ -1,10 +1,10 @@
 ﻿import { AlertTriangle, BadgeCheck, Sparkles, User2 } from "lucide-react";
 import { cn } from "../../lib/utils";
-import { tripPlannerText } from "../../resources/tr/tripPlanner";
 import type {
   DriverSuggestion,
   VehicleSuggestion,
 } from "../../api/trip-planner";
+import { useTripPlannerResources } from "../../resources/useResources";
 
 type VehicleProps = {
   kind: "vehicle";
@@ -44,16 +44,16 @@ function ScoreBadge({ value }: { value: number }) {
   );
 }
 
-function ColdStartBadge({ kind }: { kind: "vehicle" | "driver" }) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-card border border-info/30 bg-info/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-info">
-      <Sparkles className="h-2.5 w-2.5" />
-      {tripPlannerText.coldStart[kind]}
-    </span>
-  );
-}
-
 export function PlanWizardCard(props: Props) {
+  const { tripPlannerText } = useTripPlannerResources();
+  function ColdStartBadge({ kind }: { kind: "vehicle" | "driver" }) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-card border border-info/30 bg-info/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-info">
+        <Sparkles className="h-2.5 w-2.5" />
+        {tripPlannerText.coldStart[kind]}
+      </span>
+    );
+  }
   const { data, selected, onSelect, onOpenXai, kind } = props;
   return (
     <div

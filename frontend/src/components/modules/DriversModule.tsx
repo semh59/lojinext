@@ -14,11 +14,10 @@ import { Driver } from "../../types";
 import { useNotify } from "../../context/NotificationContext";
 import { useUrlState } from "../../hooks/use-url-state";
 import { useDebounce } from "../../hooks/useDebounce";
-import { driverModuleText } from "../../resources/tr/drivers";
-
-const EHLIYET_OPTIONS = [...driverModuleText.licenseOptions];
-
+import { useDriversResources } from "../../resources/useResources";
 export function DriversModule() {
+  const { driverModuleText } = useDriversResources();
+  const EHLIYET_OPTIONS = [...driverModuleText.licenseOptions];
   const { notify } = useNotify();
   const queryClient = useQueryClient();
 

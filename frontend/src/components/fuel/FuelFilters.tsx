@@ -1,6 +1,5 @@
 import { Calendar, Search, Filter } from "lucide-react";
-import { fuelFilterText } from "../../resources/tr/fuel";
-
+import { useFuelResources } from "../../resources/useResources";
 interface FuelFiltersProps {
   startDate: string;
   setStartDate: (value: string) => void;
@@ -24,6 +23,7 @@ export function FuelFilters({
   onFilter,
   onReset,
 }: FuelFiltersProps) {
+  const { fuelFilterText } = useFuelResources();
   return (
     <div className="bg-surface p-4 flex flex-col md:flex-row gap-4 items-center justify-between border border-border rounded-2xl shadow-sm">
       <div className="flex items-center gap-4 w-full md:w-auto">

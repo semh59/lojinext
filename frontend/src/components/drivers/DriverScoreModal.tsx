@@ -4,8 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Save, Star, TrendingUp, X } from "lucide-react";
 
 import { Driver } from "../../types";
-import { driverScoreText } from "../../resources/tr/drivers";
-
+import { useDriversResources } from "../../resources/useResources";
 interface DriverScoreModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -31,50 +30,50 @@ const scoreToStars = (score: number): number => {
   return 1;
 };
 
-const getScoreLabel = (
-  score: number,
-): { label: string; color: string; bg: string } => {
-  if (score >= 1.8) {
-    return {
-      label: driverScoreText.levels.excellent,
-      color: "var(--success)",
-      bg: "rgba(var(--success-rgb), 0.1)",
-    };
-  }
-  if (score >= 1.5) {
-    return {
-      label: driverScoreText.levels.good,
-      color: "rgba(var(--accent-rgb), 1)",
-      bg: "rgba(var(--accent-rgb), 0.1)",
-    };
-  }
-  if (score >= 1.2) {
-    return {
-      label: driverScoreText.levels.medium,
-      color: "var(--warning)",
-      bg: "rgba(var(--warning-rgb), 0.1)",
-    };
-  }
-  if (score >= 0.8) {
-    return {
-      label: driverScoreText.levels.low,
-      color: "var(--danger)",
-      bg: "rgba(var(--danger-rgb), 0.1)",
-    };
-  }
-  return {
-    label: driverScoreText.levels.veryLow,
-    color: "var(--danger)",
-    bg: "rgba(var(--danger-rgb), 0.1)",
-  };
-};
-
 export function DriverScoreModal({
   isOpen,
   onClose,
   onSave,
   driver,
 }: DriverScoreModalProps) {
+  const { driverScoreText } = useDriversResources();
+  const getScoreLabel = (
+    score: number,
+  ): { label: string; color: string; bg: string } => {
+    if (score >= 1.8) {
+      return {
+        label: driverScoreText.levels.excellent,
+        color: "var(--success)",
+        bg: "rgba(var(--success-rgb), 0.1)",
+      };
+    }
+    if (score >= 1.5) {
+      return {
+        label: driverScoreText.levels.good,
+        color: "rgba(var(--accent-rgb), 1)",
+        bg: "rgba(var(--accent-rgb), 0.1)",
+      };
+    }
+    if (score >= 1.2) {
+      return {
+        label: driverScoreText.levels.medium,
+        color: "var(--warning)",
+        bg: "rgba(var(--warning-rgb), 0.1)",
+      };
+    }
+    if (score >= 0.8) {
+      return {
+        label: driverScoreText.levels.low,
+        color: "var(--danger)",
+        bg: "rgba(var(--danger-rgb), 0.1)",
+      };
+    }
+    return {
+      label: driverScoreText.levels.veryLow,
+      color: "var(--danger)",
+      bg: "rgba(var(--danger-rgb), 0.1)",
+    };
+  };
   const [score, setScore] = useState(1.0);
   const [isLoading, setIsLoading] = useState(false);
 

@@ -6,7 +6,7 @@ import { reportService } from "../../api/reports";
 import { vehicleService } from "../../api/vehicles";
 import { dorseService } from "../../services/dorseService";
 import { cn } from "../../lib/utils";
-import { fleetInsightsText } from "../../resources/tr/fleet";
+import { useFleetResources } from "../../resources/useResources";
 import { InspectionAlertModal } from "../vehicles/InspectionAlertModal";
 
 interface StatProps {
@@ -59,11 +59,19 @@ function StatCard({
   );
 }
 
-async function getNonVehicleSummary(activeTab: string) {
+interface FleetInsightsTextShape {
+  labels: { trailers: string; drivers: string; fallback: string };
+  cards: { inspectionHint: (expiring: number, overdue: number) => string };
+}
+
+async function getNonVehicleSummary(
+  activeTab: string,
+  t: FleetInsightsTextShape,
+) {
   if (activeTab === "trailers") {
     const stats = await dorseService.getFleetStats();
     return {
-      label: fleetInsightsText.labels.trailers,
+      label: t.labels.trailers,
       total: stats.total,
       active: stats.active,
       inspection_expiring: 0,
@@ -73,7 +81,7 @@ async function getNonVehicleSummary(activeTab: string) {
 
   const stats = await driverService.getFleetStats();
   return {
-    label: fleetInsightsText.labels.drivers,
+    label: t.labels.drivers,
     total: stats.total,
     active: stats.active,
     inspection_expiring: 0,
@@ -86,6 +94,7 @@ export function FleetInsights({
 }: {
   activeTab?: string;
 }) {
+  const { fleetInsightsText } = useFleetResources();
   const isVehiclesTab = activeTab === "vehicles";
   const [isInspectionModalOpen, setIsInspectionModalOpen] = useState(false);
 
@@ -98,7 +107,7 @@ export function FleetInsights({
 
   const { data: nonVehicleSummary, isLoading: isNonVehicleLoading } = useQuery({
     queryKey: ["fleet-non-vehicle-summary", activeTab],
-    queryFn: () => getNonVehicleSummary(activeTab),
+    queryFn: () => getNonVehicleSummary(activeTab, fleetInsightsText),
     enabled: !isVehiclesTab,
   });
 

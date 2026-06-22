@@ -27,9 +27,9 @@ import {
   TableRow,
 } from "@/components/ui/Table";
 import { cn } from "@/lib/utils";
-import { adminUsersText } from "@/resources/tr/admin";
 import { AdminUserRecord, adminRolesApi, adminUsersApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 type ModalMode = "create" | "edit";
 
@@ -77,6 +77,7 @@ function formatRolAd(rolAd?: string): string {
 }
 
 export default function AdminUsersPage() {
+  const { adminUsersText } = useAdminResources();
   usePageTitle("Kullanıcılar");
   const qc = useQueryClient();
 

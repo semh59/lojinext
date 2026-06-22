@@ -18,8 +18,8 @@ import {
 
 import { Location } from "../../types/location";
 import { cn } from "../../lib/utils";
-import { locationListText } from "../../resources/tr/locations";
 import { Button } from "../ui/Button";
+import { useLocationsResources } from "../../resources/useResources";
 
 interface LocationListProps {
   locations: Location[];
@@ -29,73 +29,6 @@ interface LocationListProps {
   onAnalyze: (location: Location) => void;
   onAdd: () => void;
   viewMode: "table" | "grid";
-}
-
-const getDifficultyConfig = (difficulty: string) => {
-  switch (difficulty) {
-    case "Zor":
-      return {
-        label: locationListText.difficulty.hard,
-        icon: <Mountain size={12} strokeWidth={3} />,
-        bg: "bg-danger/5 text-danger border-danger/30 shadow-danger/5",
-      };
-    case "Orta":
-      return {
-        label: locationListText.difficulty.medium,
-        icon: <TrendingUp size={12} strokeWidth={3} />,
-        bg: "bg-warning/5 text-warning border-warning/30 shadow-warning/5",
-      };
-    default:
-      return {
-        label: locationListText.difficulty.easy,
-        icon: <Wind size={12} strokeWidth={3} />,
-        bg: "bg-success/5 text-success border-success/30 shadow-success/5",
-      };
-  }
-};
-
-const getSourceConfig = (
-  source: string | undefined,
-  isCorrected: boolean | null | undefined,
-) => {
-  if (isCorrected) {
-    return {
-      label: locationListText.source.corrected,
-      bg: "bg-warning/5 text-warning border-warning/30",
-      icon: <AlertTriangle size={10} strokeWidth={3} />,
-    };
-  }
-  switch (source?.toLowerCase()) {
-    case "mapbox_hybrid":
-    case "mapbox":
-      return {
-        label: locationListText.source.verified,
-        bg: "bg-info/5 text-info border-info/30 shadow-info/5",
-        icon: <Zap size={10} strokeWidth={3} />,
-      };
-    default:
-      return {
-        label: locationListText.source.standard,
-        bg: "bg-elevated text-tertiary border-border/40",
-        icon: <Database size={10} strokeWidth={3} />,
-      };
-  }
-};
-
-function getAnalysisFreshness(lastApiCall: string | null | undefined): {
-  label: string;
-  isStale: boolean;
-} {
-  if (!lastApiCall)
-    return { label: locationListText.freshness.never, isStale: true };
-  const days = Math.floor(
-    (Date.now() - new Date(lastApiCall).getTime()) / 86_400_000,
-  );
-  if (days > 90)
-    return { label: locationListText.freshness.stale(days), isStale: true };
-  if (days > 30)
-    return { label: locationListText.freshness.old(days), isStale: false };
-  return { label: locationListText.freshness.fresh(days), isStale: false };
 }
 
 const SkeletonRow = () => (
@@ -132,6 +65,71 @@ export function LocationList({
   onAnalyze,
   onAdd,
 }: LocationListProps) {
+  const { locationListText } = useLocationsResources();
+  const getDifficultyConfig = (difficulty: string) => {
+    switch (difficulty) {
+      case "Zor":
+        return {
+          label: locationListText.difficulty.hard,
+          icon: <Mountain size={12} strokeWidth={3} />,
+          bg: "bg-danger/5 text-danger border-danger/30 shadow-danger/5",
+        };
+      case "Orta":
+        return {
+          label: locationListText.difficulty.medium,
+          icon: <TrendingUp size={12} strokeWidth={3} />,
+          bg: "bg-warning/5 text-warning border-warning/30 shadow-warning/5",
+        };
+      default:
+        return {
+          label: locationListText.difficulty.easy,
+          icon: <Wind size={12} strokeWidth={3} />,
+          bg: "bg-success/5 text-success border-success/30 shadow-success/5",
+        };
+    }
+  };
+  const getSourceConfig = (
+    source: string | undefined,
+    isCorrected: boolean | null | undefined,
+  ) => {
+    if (isCorrected) {
+      return {
+        label: locationListText.source.corrected,
+        bg: "bg-warning/5 text-warning border-warning/30",
+        icon: <AlertTriangle size={10} strokeWidth={3} />,
+      };
+    }
+    switch (source?.toLowerCase()) {
+      case "mapbox_hybrid":
+      case "mapbox":
+        return {
+          label: locationListText.source.verified,
+          bg: "bg-info/5 text-info border-info/30 shadow-info/5",
+          icon: <Zap size={10} strokeWidth={3} />,
+        };
+      default:
+        return {
+          label: locationListText.source.standard,
+          bg: "bg-elevated text-tertiary border-border/40",
+          icon: <Database size={10} strokeWidth={3} />,
+        };
+    }
+  };
+  function getAnalysisFreshness(lastApiCall: string | null | undefined): {
+    label: string;
+    isStale: boolean;
+  } {
+    if (!lastApiCall)
+      return { label: locationListText.freshness.never, isStale: true };
+    const days = Math.floor(
+      (Date.now() - new Date(lastApiCall).getTime()) / 86_400_000,
+    );
+    if (days > 90)
+      return { label: locationListText.freshness.stale(days), isStale: true };
+    if (days > 30)
+      return { label: locationListText.freshness.old(days), isStale: false };
+    return { label: locationListText.freshness.fresh(days), isStale: false };
+  }
   if (loading) {
     return (
       <div className="overflow-hidden rounded-[32px] border border-border/40 shadow-2xl glass">

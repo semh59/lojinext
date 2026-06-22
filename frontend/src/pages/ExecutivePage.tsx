@@ -9,9 +9,9 @@ import { DownloadPdfButton } from "@/components/executive/DownloadPdfButton";
 import { FleetEfficiencyCard } from "@/components/executive/FleetEfficiencyCard";
 import { WhatIfPanel } from "@/components/executive/WhatIfPanel";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { executiveText } from "@/resources/tr/executive";
-
+import { useExecutiveResources } from "@/resources/useResources";
 export default function ExecutivePage() {
+  const { executiveText } = useExecutiveResources();
   usePageTitle(executiveText.pageTitle);
   return (
     <div className="space-y-6 p-6">

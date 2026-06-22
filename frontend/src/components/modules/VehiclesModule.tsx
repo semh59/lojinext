@@ -12,11 +12,11 @@ import { Vehicle } from "../../types";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useNotify } from "../../context/NotificationContext";
 import { useUrlState } from "../../hooks/use-url-state";
-import { vehicleModuleText } from "../../resources/tr/vehicles";
-
+import { useVehiclesResources } from "../../resources/useResources";
 const ITEMS_PER_PAGE = 24;
 
 export function VehiclesModule() {
+  const { vehicleModuleText } = useVehiclesResources();
   const { notify } = useNotify();
   const queryClient = useQueryClient();
 

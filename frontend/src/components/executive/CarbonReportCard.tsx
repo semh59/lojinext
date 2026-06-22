@@ -1,14 +1,15 @@
 import { AlertCircle, Leaf, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { executiveText } from "@/resources/tr/executive";
 import { useCarbon } from "@/hooks/useExecutive";
+import { useExecutiveResources } from "@/resources/useResources";
 
 interface Props {
   className?: string;
 }
 
 export function CarbonReportCard({ className }: Props) {
+  const { executiveText } = useExecutiveResources();
   const { data, isLoading, error } = useCarbon(30);
   const t = executiveText.carbon;
 

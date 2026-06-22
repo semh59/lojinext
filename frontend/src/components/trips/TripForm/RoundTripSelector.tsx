@@ -1,8 +1,8 @@
 import React from "react";
 import { ArrowLeftRight, Weight } from "lucide-react";
 
-import { tripRoundTripSelectorText } from "../../../resources/tr/trips";
 import { cn } from "../../../lib/utils";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface RoundTripSelectorProps {
   returnType: "none" | "empty" | "loaded";
@@ -12,6 +12,7 @@ interface RoundTripSelectorProps {
 
 export const RoundTripSelector: React.FC<RoundTripSelectorProps> = React.memo(
   ({ returnType, setReturnType, isReadOnly = false }) => {
+    const { tripRoundTripSelectorText } = useTripsResources();
     return (
       <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-border bg-base p-2.5 shadow-inner md:flex-nowrap">
         <button

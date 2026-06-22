@@ -12,10 +12,10 @@ import {
 
 import { TelegramOnayPanel } from "@/components/admin/TelegramOnayPanel";
 import { Card } from "@/components/ui/Card";
-import { adminOverviewText } from "@/resources/tr/admin";
 import { adminHealthApi } from "@/api/admin";
 import { reportService } from "@/api/reports";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAdminResources } from "@/resources/useResources";
 
 const statusColor = (status?: string) => {
   if (status === "healthy" || status === "success") return "text-emerald-500";
@@ -38,6 +38,7 @@ const statusLabel = (status?: string) => {
 };
 
 export default function AdminOverviewPage() {
+  const { adminOverviewText } = useAdminResources();
   usePageTitle("Yönetim Paneli");
   const { data: dashboard } = useQuery({
     queryKey: ["admin-overview", "dashboard"],

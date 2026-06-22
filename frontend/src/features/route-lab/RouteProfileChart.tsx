@@ -12,8 +12,8 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
-import { routeLabText } from "@/resources/tr/routeLab";
 import type { SegmentSim } from "@/api/route-sim";
+import { useRouteLabResources } from "@/resources/useResources";
 
 interface Props {
   segments: SegmentSim[];
@@ -34,6 +34,7 @@ export function buildProfile(segments: SegmentSim[]) {
 }
 
 export function RouteProfileChart({ segments }: Props) {
+  const { routeLabText } = useRouteLabResources();
   const data = useMemo(() => buildProfile(segments), [segments]);
 
   return (

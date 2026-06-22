@@ -2,9 +2,9 @@ import React from "react";
 import { FieldErrors, UseFormRegister } from "react-hook-form";
 import { AlertCircle, Calendar, Clock, Hash } from "lucide-react";
 
-import { tripDateTimeSectionText } from "../../../resources/tr/trips";
 import { TripFormData } from "../../../types";
 import { Input } from "../../ui/Input";
+import { useTripsResources } from "../../../resources/useResources";
 
 interface DateTimeSectionProps {
   register: UseFormRegister<TripFormData>;
@@ -14,6 +14,7 @@ interface DateTimeSectionProps {
 
 export const DateTimeSection: React.FC<DateTimeSectionProps> = React.memo(
   ({ register, errors, isReadOnly = false }) => {
+    const { tripDateTimeSectionText } = useTripsResources();
     return (
       <div className="glass space-y-6 rounded-[28px] border-border/40 p-6">
         <h4 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-accent">

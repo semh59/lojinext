@@ -1,0 +1,860 @@
+"""
+TIR Yakıt Takip - RAG (Retrieval-Augmented Generation) Engine
+Sentence-BERT + FAISS ile vektör arama
+"""
+
+import asyncio
+import hashlib
+import json
+import threading
+import time
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+import numpy as np
+
+from app.config import settings
+from app.infrastructure.logging.logger import get_logger
+
+# Lazy imports for heavy dependencies
+SENTENCE_TRANSFORMERS_AVAILABLE = False
+FAISS_AVAILABLE = False
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
+else:
+    try:
+        from sentence_transformers import SentenceTransformer
+
+        SENTENCE_TRANSFORMERS_AVAILABLE = True
+    except ImportError:
+        SentenceTransformer = None
+
+try:
+    import faiss
+
+    FAISS_AVAILABLE = True
+except ImportError:
+    faiss = None
+
+
+logger = get_logger(__name__)
+
+
+@dataclass
+class SearchResult:
+    """Vektör arama sonucu"""
+
+    document: str
+    metadata: Dict
+    score: float
+    source_type: str  # 'vehicle', 'driver', 'trip', 'alert', 'log', 'event'
+
+
+class FAISSVectorStore:
+    """
+    FAISS tabanlı vektör veritabanı.
+    Yüksek performanslı similarity search.
+    THREAD-SAFE implementation for concurrent access.
+    """
+
+    # SECURITY: Index size limit (OOM önleme)
+    MAX_INDEX_SIZE = 1_000_000  # 1M döküman limiti (Hotfix: Improved capacity)
+
+    def __init__(self, embedding_dim: int = 384):
+        self.embedding_dim = embedding_dim
+        self.documents: Dict[int, str] = {}  # idx -> document
+        self.metadatas: Dict[int, Dict] = {}  # idx -> metadata
+        self.doc_id_to_idx: Dict[str, int] = {}  # doc_id -> idx
+        self.idx_to_doc_id: Dict[int, str] = {}  # idx -> doc_id
+        self.next_idx = 0
+        self._lock = threading.Lock()  # Thread-safe guard
+
+        if FAISS_AVAILABLE:
+            # L2 distance index (cosine similarity için normalize ediyoruz)
+            self.index = faiss.IndexFlatIP(embedding_dim)  # Inner Product
+        else:
+            self.index = None
+
+    def add(
+        self,
+        doc_id: str,
+        document: str,
+        embedding: np.ndarray,
+        metadata: Dict,
+        user_id: Optional[int] = None,
+    ):
+        """Döküman ekle/güncelle (Thread-safe)."""
+        if self.index is None:
+            return
+
+        # Paranoid Validation: Input validation
+        if not document or len(document) < 5:
+            logger.warning(f"Rejecting too short document for RAG: {doc_id}")
+            return
+
+        # SECURITY: Index size limit check
+        if self.count() >= self.MAX_INDEX_SIZE:
+            logger.warning(
+                "FAISS index full (%d docs). Learning silently stopped. doc_id=%s",
+                self.MAX_INDEX_SIZE,
+                doc_id,
+            )
+            return False
+
+        # Protection: Max document size (Do prevent OOM/DoS)
+        MAX_DOC_SIZE = 10000  # Hard limit for vector store
+        if len(document) > MAX_DOC_SIZE:
+            logger.warning(
+                f"Truncating document {doc_id} (size {len(document)} > {MAX_DOC_SIZE})"
+            )
+            document = document[:MAX_DOC_SIZE]
+
+        with self._lock:  # CRITICAL SECTION: Dicts and Index update
+            # Normalize for cosine similarity
+            embedding = embedding.astype(np.float32)
+            faiss.normalize_L2(embedding.reshape(1, -1))
+
+            # Metadata zenginleştirme (Multi-tenancy)
+            metadata = metadata.copy()
+            if user_id is not None:
+                metadata["user_id"] = user_id
+
+            # Mevcut doc_id varsa, eski kaydı "deleted" olarak işaretle (upsert)
+            if doc_id in self.doc_id_to_idx:
+                old_idx = self.doc_id_to_idx[doc_id]
+                # Eski metadata'yı "deleted" olarak işaretle (FAISS silme desteklemez)
+                self.metadatas[old_idx]["_deleted"] = True
+
+            idx = self.next_idx
+            self.next_idx += 1
+
+            self.documents[idx] = document
+            self.metadatas[idx] = metadata
+            self.doc_id_to_idx[doc_id] = idx
+            self.idx_to_doc_id[idx] = doc_id
+
+            self.index.add(embedding.reshape(1, -1))
+
+    def search(
+        self,
+        query_embedding: np.ndarray,
+        top_k: int = 5,
+        source_types: List[str] = None,
+        user_id: Optional[int] = None,
+    ) -> List[tuple]:
+        """Cosine similarity ile arama (Thread-safe)."""
+        if self.index is None or self.index.ntotal == 0:
+            return []
+
+        with (
+            self._lock
+        ):  # FAISS search itself is often thread-safe, but dict access is not
+            # Normalize query
+            query = query_embedding.astype(np.float32).reshape(1, -1)
+            faiss.normalize_L2(query)
+
+            # Search
+            k = min(
+                top_k * 5, self.index.ntotal
+            )  # Filtre için daha fazla al (user_id filtresi için pay bırak)
+            distances, indices = self.index.search(query, k)
+
+            results = []
+            for i, (dist, idx) in enumerate(zip(distances[0], indices[0])):
+                if idx == -1:  # Geçersiz index
+                    continue
+
+                metadata = self.metadatas.get(idx, {})
+
+                # 1. Silinmiş kayıtları atla
+                if metadata.get("_deleted"):
+                    continue
+
+                # 2. Multi-tenancy guard: Sadece ilgili kullanıcının verisi veya anonim veri
+                if user_id is not None and metadata.get("user_id") is not None:
+                    if metadata.get("user_id") != user_id:
+                        continue
+
+                # 3. Source type filtresi
+                if source_types and metadata.get("source_type") not in source_types:
+                    continue
+
+                results.append((idx, float(dist)))
+
+                if len(results) >= top_k:
+                    break
+
+            return results
+
+    def save_index(self, folder_path: str):
+        """İndeksi ve metadataları diske kaydet (Safe JSON + FAISS Native)"""
+        if self.index is None or not FAISS_AVAILABLE:
+            return
+
+        import json
+        from pathlib import Path
+
+        path = Path(folder_path)
+        path.mkdir(parents=True, exist_ok=True)
+
+        with self._lock:  # Prevent modification while saving
+            # 1. FAISS Index (Native)
+            faiss.write_index(self.index, str(path / "faiss.index"))
+
+            # 2. Metadata (JSON - Güvenli)
+            metadata_payload = {
+                "documents": self.documents,
+                "metadatas": self.metadatas,
+                "doc_id_to_idx": self.doc_id_to_idx,
+                "idx_to_doc_id": self.idx_to_doc_id,
+                "next_idx": self.next_idx,
+                "embedding_dim": self.embedding_dim,
+            }
+            with open(path / "metadata.json", "w", encoding="utf-8") as f:
+                json.dump(metadata_payload, f, ensure_ascii=False)
+
+        logger.info(f"FAISS index saved to {folder_path}")
+
+    def load_index(self, folder_path: str) -> bool:
+        """İndeksi ve metadataları diskten yükle"""
+        if not FAISS_AVAILABLE:
+            return False
+
+        import json
+        from pathlib import Path
+
+        path = Path(folder_path)
+        index_file = path / "faiss.index"
+        meta_file = path / "metadata.json"
+
+        if not index_file.exists() or not meta_file.exists():
+            return False
+
+        try:
+            with self._lock:  # Thread-safe reload
+                # 1. FAISS Index
+                # read_index → Index (supertype); runtime nesnesi IndexFlatIP.
+                # Lib stub'ı bu daralmayı ifade edemiyor.
+                self.index = faiss.read_index(str(index_file))  # type: ignore[assignment]
+
+                # 2. Metadata
+                with open(meta_file, encoding="utf-8") as f:
+                    data = json.load(f)
+
+                    # SECURITY/ROBUSTNESS: Dimension check
+                    loaded_dim = data.get("embedding_dim")
+                    if loaded_dim and loaded_dim != self.embedding_dim:
+                        logger.error(
+                            f"Dimension mismatch! Expected {self.embedding_dim}, "
+                            f"but loaded index has {loaded_dim}. Clearing index."
+                        )
+                        # Reset to expected state
+                        self.index = faiss.IndexFlatIP(self.embedding_dim)
+                        self.documents = {}
+                        self.metadatas = {}
+                        self.doc_id_to_idx = {}
+                        self.idx_to_doc_id = {}
+                        self.next_idx = 0
+                        return False
+
+                    # JSON anahtarları string gelir, int'e çevir
+                    self.documents = {int(k): v for k, v in data["documents"].items()}
+                    self.metadatas = {int(k): v for k, v in data["metadatas"].items()}
+                    self.doc_id_to_idx = data["doc_id_to_idx"]
+                    self.idx_to_doc_id = {
+                        int(k): v for k, v in data["idx_to_doc_id"].items()
+                    }
+                    self.next_idx = data["next_idx"]
+                    self.embedding_dim = data["embedding_dim"]
+
+            logger.info(
+                f"FAISS index loaded from {folder_path} ({self.count()} vectors)"
+            )
+            return True
+        except Exception as e:
+            logger.error(f"FAISS load error: {e}")
+            return False
+
+    def count(self) -> int:
+        with self._lock:
+            return self.index.ntotal if self.index else 0
+
+    def clear(self):
+        with self._lock:
+            if FAISS_AVAILABLE:
+                self.index = faiss.IndexFlatIP(self.embedding_dim)
+            self.documents.clear()
+            self.metadatas.clear()
+            self.doc_id_to_idx.clear()
+            self.idx_to_doc_id.clear()
+            self.next_idx = 0
+
+
+class RAGEngine:
+    """
+    Retrieval-Augmented Generation motoru.
+
+    1. Sefer, araç, şoför verilerini embedding'e çevirir
+    2. FAISS'te saklar
+    3. Kullanıcı sorusuna en yakın kayıtları bulur
+    4. Context olarak AI'ya verir
+
+    Embedding Model: paraphrase-multilingual-MiniLM-L12-v2
+    - Türkçe dahil 50+ dil desteği
+    - 384 boyutlu embedding
+    - Hızlı inference
+
+    Vector Store: FAISS
+    - Yüksek performanslı similarity search
+    - GPU desteği (opsiyonel)
+    - Milyonlarca vektör için optimize
+    """
+
+    # Config defaults (loaded from settings/env)
+    EMBEDDING_MODEL: Optional[str] = None
+    EMBEDDING_DIM: Optional[int] = None
+    RAG_MAX_CHARS: int = 4000
+    SIMILARITY_THRESHOLD: float = 0.35
+
+    def __init__(self):
+        self.embedder = None
+        self.vector_store = None
+        self.is_initialized = False
+        self.status = "offline"
+        self._init_lock = threading.Lock()
+        self._last_inference_time_ms: float = 0.0
+
+        # Prioritize settings/env over hardcoded defaults
+        self.EMBEDDING_MODEL = settings.AI_EMBEDDING_MODEL or "BAAI/bge-m3"
+        self.EMBEDDING_DIM = settings.AI_EMBEDDING_DIM or 1024
+        self.RAG_MAX_CHARS = settings.AI_RAG_MAX_CHARS or 4000
+        self.SIMILARITY_THRESHOLD = settings.AI_RAG_THRESHOLD or 0.35
+        self.MAX_DOCUMENT_CHARS = settings.AI_RAG_MAX_DOC_CHARS or 10000
+
+        if not SENTENCE_TRANSFORMERS_AVAILABLE or not FAISS_AVAILABLE:
+            logger.warning("RAG dependencies missing (sentence-transformers or faiss)")
+            return
+
+        # Start loading in background thread to avoid blocking FastAPI startup
+        self.status = "loading"
+        threading.Thread(target=self._initialize_sync, daemon=True).start()
+
+    def _initialize_sync(self):
+        """Synchronous initialization for background thread."""
+        with self._init_lock:
+            try:
+                # Embedding model - SECURITY: trust_remote_code=False explicit
+                logger.info(
+                    f"Loading embedding model in background: {self.EMBEDDING_MODEL}"
+                )
+                self.embedder = SentenceTransformer(
+                    self.EMBEDDING_MODEL,
+                    trust_remote_code=False,  # SECURITY FIX: No arbitrary code execution
+                )
+
+                # FAISS vector store
+                self.vector_store = FAISSVectorStore(self.EMBEDDING_DIM)
+                self.is_initialized = True
+
+                # Load persisted index before signalling ready so that
+                # wait_until_ready() guarantees disk state is applied.
+                self.load_from_disk()
+                self.status = "ready"
+                logger.info("RAG Engine background initialization complete")
+
+            except Exception as e:
+                logger.error(f"RAG Engine initialization failed: {e}")
+                self.is_initialized = False
+                self.status = "error"
+
+    def wait_until_ready(self, timeout: float = 60.0) -> bool:
+        """Wait until engine is ready (blocks until timeout)."""
+        start = time.time()
+        while time.time() - start < timeout:
+            if self.is_initialized and self.status == "ready":
+                return True
+            if self.status == "error":
+                return False
+            time.sleep(0.1)
+        return False
+
+    def save_to_disk(self, path: str = "data/vector_store"):
+        """Vektör dükkanını diske kaydet."""
+        if self.is_initialized and self.vector_store:
+            self.vector_store.save_index(path)
+
+    def load_from_disk(self, path: str = "data/vector_store"):
+        """Vektör dükkanını diskten yükle."""
+        if self.is_initialized and self.vector_store:
+            self.vector_store.load_index(path)
+
+    async def _generate_embedding(self, text: str) -> np.ndarray:
+        """Metin için embedding üret (CPU-bound, thread'de çalışır)."""
+        if not self.embedder:
+            raise RuntimeError("Embedding model not loaded")
+        return await asyncio.to_thread(self.embedder.encode, text)
+
+    def _create_document_id(self, source_type: str, source_id: int) -> str:
+        """Benzersiz document ID oluştur."""
+        return f"{source_type}_{source_id}"
+
+    async def index_vehicle(
+        self, vehicle_data: Dict, user_id: Optional[int] = None
+    ) -> bool:
+        """Araç verisini indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            # Paranoid validation
+            plaka = str(vehicle_data.get("plaka", "")).strip()[:20]
+            if not plaka:
+                return False
+
+            doc_id = self._create_document_id("vehicle", vehicle_data["id"])
+
+            text = f"""
+            Araç: {plaka}
+            Marka/Model: {str(vehicle_data.get("marka", ""))[:50]} {str(vehicle_data.get("model", ""))[:50]}
+            Yıl: {vehicle_data.get("yil", "Bilinmiyor")}
+            Hedef Tüketim: {vehicle_data.get("hedef_tuketim", 32.0)} L/100km
+            Tank Kapasitesi: {vehicle_data.get("tank_kapasitesi", 600)} litre
+            Durum: {"Aktif" if vehicle_data.get("aktif", True) else "Pasif"}
+            """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "vehicle",
+                "source_id": vehicle_data["id"],
+                "plaka": plaka,
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Vehicle indexing error: {e}")
+            return False
+
+    async def index_driver(
+        self,
+        driver_data: Dict,
+        stats: Optional[Dict] = None,
+        user_id: Optional[int] = None,
+    ) -> bool:
+        """Şoför verisini indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            # Paranoid validation
+            ad_soyad = str(driver_data.get("ad_soyad", "")).strip()[:100]
+            if not ad_soyad:
+                return False
+
+            doc_id = self._create_document_id("driver", driver_data["id"])
+
+            text = f"""
+            Şoför: {ad_soyad}
+            Ehliyet Sınıfı: {str(driver_data.get("ehliyet_sinifi", "E"))[:10]}
+            Performans Skoru: {driver_data.get("score", 1.0)}
+            Durum: {"Aktif" if driver_data.get("aktif", True) else "Pasif"}
+            """
+
+            if stats:
+                text += f"""
+                Toplam Sefer: {stats.get("toplam_sefer", 0)}
+                Toplam KM: {stats.get("toplam_km", 0)}
+                Ortalama Tüketim: {stats.get("ort_tuketim", 0)} L/100km
+                Filo Karşılaştırma: {stats.get("filo_karsilastirma", 0)}%
+                """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "driver",
+                "source_id": driver_data["id"],
+                "ad_soyad": ad_soyad,
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Driver indexing error: {e}")
+            return False
+
+    async def index_trip(self, trip_data: Dict, user_id: Optional[int] = None) -> bool:
+        """Sefer verisini indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            doc_id = self._create_document_id("trip", trip_data["id"])
+
+            tarih = trip_data.get("tarih", "")
+            if isinstance(tarih, date):
+                tarih = tarih.isoformat()
+
+            # Paranoid validation
+            cikis = str(trip_data.get("cikis_yeri", ""))[:100]
+            varis = str(trip_data.get("varis_yeri", ""))[:100]
+
+            text = f"""
+            Sefer #{trip_data["id"]}
+            Tarih: {tarih}
+            Güzergah: {cikis} → {varis}
+            Mesafe: {trip_data.get("mesafe_km", 0)} km
+            Yük: {trip_data.get("ton", 0)} ton
+            Tüketim: {trip_data.get("tuketim", "Bilinmiyor")} L/100km
+            Durum: {str(trip_data.get("durum", "Planlandı"))[:20]}
+            """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "trip",
+                "source_id": trip_data["id"],
+                "tarih": tarih,
+                "cikis_yeri": cikis,
+                "varis_yeri": varis,
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Trip indexing error: {e}")
+            return False
+
+    async def index_alert(
+        self, alert_data: Dict, user_id: Optional[int] = None
+    ) -> bool:
+        """Uyarı verisini indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            doc_id = self._create_document_id("alert", alert_data["id"])
+
+            # SECURITY: Input sanitization
+            title = str(alert_data.get("title", "Sistem Uyarısı"))[:100]
+            message = str(alert_data.get("message", ""))[:500]
+
+            text = f"""
+            Uyarı: {title}
+            Seviye: {alert_data.get("severity", "medium")}
+            Tip: {alert_data.get("alert_type", "system")}
+            Mesaj: {message}
+            Tarih: {alert_data.get("created_at", "")}
+            """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "alert",
+                "source_id": alert_data["id"],
+                "severity": alert_data.get("severity", "medium"),
+                "alert_type": alert_data.get("alert_type", "system"),
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # SECURITY FIX: user_id parametresi eklendi
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Alert indexing error: {e}")
+            return False
+
+    async def index_log(self, log_data: Dict, user_id: Optional[int] = None) -> bool:
+        """Sistem log kaydını indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            # log_data: {timestamp, level, message, module, func_name}
+            timestamp = log_data.get(
+                "timestamp", datetime.now(timezone.utc).isoformat()
+            )
+            level = log_data.get("level", "INFO")
+            msg = str(log_data.get("message", ""))[:1000]
+            module = log_data.get("module", "unknown")
+
+            # Unique ID için hash kullan (log kayıtlarının ID'si olmayabilir)
+            content_hash = hashlib.md5(f"{timestamp}{level}{msg}".encode()).hexdigest()
+            doc_id = f"log_{content_hash}"
+
+            text = f"""
+            LOG [{level}] - {timestamp}
+            Modül: {module}
+            Mesaj: {msg}
+            """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "log",
+                "level": level,
+                "module": module,
+                "timestamp": timestamp,
+                "indexed_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Log indexing error: {e}")
+            return False
+
+    async def index_event(
+        self, event_type: str, details: Dict, user_id: Optional[int] = None
+    ) -> bool:
+        """Önemli sistem olaylarını indeksle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            timestamp = datetime.now(timezone.utc).isoformat()
+            doc_id = f"event_{event_type}_{hashlib.md5(str(details).encode()).hexdigest()[:8]}"
+
+            text = f"""
+            Sistem Olayı: {event_type}
+            Zaman: {timestamp}
+            Detaylar: {json.dumps(details, ensure_ascii=False)}
+            """
+
+            embedding = await self._generate_embedding(text.strip())
+            metadata = {
+                "source_type": "event",
+                "event_type": event_type,
+                "timestamp": timestamp,
+                "indexed_at": timestamp,
+            }
+
+            self.vector_store.add(
+                doc_id, text.strip(), embedding, metadata, user_id=user_id
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Event indexing error: {e}")
+            return False
+
+    async def bulk_index(
+        self,
+        vehicles: List[Dict] = None,
+        drivers: List[Dict] = None,
+        trips: List[Dict] = None,
+        alerts: List[Dict] = None,
+    ) -> Dict:
+        """Toplu indeksleme."""
+        results = {"vehicles": 0, "drivers": 0, "trips": 0, "alerts": 0, "errors": 0}
+
+        if vehicles:
+            for v in vehicles:
+                if await self.index_vehicle(v):
+                    results["vehicles"] += 1
+                else:
+                    results["errors"] += 1
+
+        if drivers:
+            for d in drivers:
+                if await self.index_driver(d):
+                    results["drivers"] += 1
+                else:
+                    results["errors"] += 1
+
+        if trips:
+            for t in trips:
+                if await self.index_trip(t):
+                    results["trips"] += 1
+                else:
+                    results["errors"] += 1
+
+        if alerts:
+            for a in alerts:
+                if await self.index_alert(a):
+                    results["alerts"] += 1
+                else:
+                    results["errors"] += 1
+
+        results["total"] = sum(
+            [
+                results["vehicles"],
+                results["drivers"],
+                results["trips"],
+                results["alerts"],
+            ]
+        )
+
+        logger.info(f"Bulk indexing completed: {results}")
+        return results
+
+    async def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        source_types: List[str] = None,
+        user_id: Optional[int] = None,
+    ) -> List[SearchResult]:
+        """Vektör arama (Async & Multi-threaded)."""
+        if not self.is_initialized:
+            return []
+
+        t_start = time.perf_counter()
+        try:
+            # Input sanitization
+            query = str(query).strip()[:500]
+            if not query:
+                return []
+
+            # Guard: Limit top_k to prevent excessive resource usage
+            if top_k > 20:
+                top_k = 20
+
+            # Embedding üretimi zaten thread'de yapılıyor
+            query_embedding = await self._generate_embedding(query)
+
+            # FAISS'in kendi arama işlemi de thread'e alınmalı (CPU-bound)
+            results = await asyncio.to_thread(
+                self.vector_store.search,
+                query_embedding,
+                top_k,
+                source_types,
+                user_id=user_id,
+            )
+
+            search_results = []
+            for idx, score in results:
+                doc = self.vector_store.documents.get(idx, "")
+                metadata = self.vector_store.metadatas.get(idx, {})
+
+                search_results.append(
+                    SearchResult(
+                        document=doc,
+                        metadata=metadata,
+                        score=round(score, 4),
+                        source_type=metadata.get("source_type", "unknown"),
+                    )
+                )
+
+            elapsed_ms = (time.perf_counter() - t_start) * 1000
+            self._last_inference_time_ms = round(elapsed_ms, 2)
+            logger.info(
+                f"RAG search completed | query_len={len(query)} | "
+                f"results={len(search_results)} | time={self._last_inference_time_ms}ms"
+            )
+            return search_results
+
+        except Exception as e:
+            elapsed_ms = (time.perf_counter() - t_start) * 1000
+            logger.error(f"Search error ({elapsed_ms:.1f}ms): {e}")
+            return []
+
+    async def search_for_context(
+        self,
+        query: str,
+        top_k: int = 3,
+        max_chars: int = 4000,  # Context Window Guard
+        user_id: Optional[int] = None,
+    ) -> str:
+        """AI context için arama sonuçlarını formatla (Guard Katmanlı)."""
+        t_start = time.perf_counter()
+        results = await self.search(query, top_k, user_id=user_id)
+
+        if not results:
+            return ""
+
+        context_parts = ["### İlgili Geçmiş Veriler (RAG)"]
+        current_len = 0
+
+        for i, result in enumerate(results, 1):
+            source_map = {
+                "vehicle": "🚛 Araç",
+                "driver": "👤 Şoför",
+                "trip": "📍 Sefer",
+                "alert": "⚠️ Uyarı",
+                "log": "📋 Log",
+                "event": "⚡ Olay",
+            }
+            source_label = source_map.get(result.source_type, "📄 Kayıt")
+
+            # Guard: Similarity Threshold
+            if result.score < self.SIMILARITY_THRESHOLD:
+                logger.debug(f"Skipping result with low score: {result.score:.2f}")
+                continue
+
+            # Guard: Karakter bazlı limit kontrolü
+            entry = f"\n**{i}. {source_label}** (Benzerlik: {result.score:.0%})\n{result.document}"
+
+            if current_len + len(entry) > max_chars:
+                context_parts.append(
+                    "\n[... Diğer veriler bağlam sınırını aşmamak için dahil edilmedi ...]"
+                )
+                break
+
+            context_parts.append(entry)
+            current_len += len(entry)
+
+        elapsed_ms = (time.perf_counter() - t_start) * 1000
+        logger.info(
+            f"RAG context search | query_len={len(query)} | "
+            f"context_chars={current_len} | total_time={elapsed_ms:.1f}ms"
+        )
+        return "\n".join(context_parts)
+
+    def get_stats(self) -> Dict:
+        """İndeks istatistikleri."""
+        if not self.is_initialized:
+            return {"initialized": False}
+
+        return {
+            "initialized": True,
+            "total_documents": self.vector_store.count() if self.vector_store else 0,
+            "embedding_model": self.EMBEDDING_MODEL,
+            "vector_store": "FAISS",
+            "last_inference_time_ms": self._last_inference_time_ms,
+        }
+
+    def clear_index(self) -> bool:
+        """Tüm indeksi temizle."""
+        if not self.is_initialized:
+            return False
+
+        try:
+            self.vector_store.clear()
+            logger.info("RAG index cleared")
+            return True
+        except Exception as e:
+            logger.error(f"Clear index error: {e}")
+            return False
+
+
+# Singleton
+_rag_engine = None
+_rag_engine_lock = threading.Lock()
+
+
+def get_rag_engine() -> RAGEngine:
+    global _rag_engine
+    if _rag_engine is None:
+        with _rag_engine_lock:
+            if _rag_engine is None:  # Double-check locking
+                _rag_engine = RAGEngine()
+    return _rag_engine
+
+
+def is_rag_available() -> bool:
+    """RAG kullanılabilir mi kontrol et"""
+    return SENTENCE_TRANSFORMERS_AVAILABLE and FAISS_AVAILABLE

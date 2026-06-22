@@ -1,0 +1,136 @@
+groups:
+  - name: lojinext_availability
+    rules:
+      - alert: BackendDown
+        expr: up{job="lojinext_backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend servis çevrimdışı"
+          description: "lojinext_backend hedefi 1 dakikadır ulaşılamaz durumda."
+
+      - alert: WorkerDown
+        expr: up{job="celery_exporter"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Celery worker çevrimdışı"
+          description: "Celery exporter 2 dakikadır yanıt vermiyor — worker havuzu çalışmıyor olabilir."
+
+      - alert: DatabaseDown
+        expr: pg_up{job="postgres_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL veritabanı çevrimdışı"
+          description: "Postgres exporter 1 dakikadır veritabanına ulaşamıyor."
+
+      - alert: RedisDown
+        expr: redis_up{job="redis_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis çevrimdışı"
+          description: "Redis instance sağlık kontrollerine yanıt vermiyor."
+
+  - name: lojinext_errors
+    rules:
+      - alert: AnyHttpServerError
+        expr: increase(http_requests_total{job="lojinext_backend",status=~"5.."}[2m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "HTTP 5xx hatası devam ediyor"
+          description: "Son 2 dakikada {{ $value }} adet 5xx hatası tespit edildi (5 dakikadır devam ediyor)."
+
+      - alert: AnyCeleryFailure
+        expr: increase(celery_tasks_total{job="celery_exporter",state="FAILURE"}[2m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery görevi başarısız olmaya devam ediyor"
+          description: "Son 2 dakikada {{ $value }} adet Celery görevi hata ile bitti (5 dakikadır devam ediyor)."
+
+      - alert: BackendHighErrorRate
+        expr: >
+          sum(rate(http_requests_total{job="lojinext_backend",status=~"5.."}[5m]))
+          / sum(rate(http_requests_total{job="lojinext_backend"}[5m])) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend 5xx hata oranı %1 üzerinde"
+          description: "Son 5 dakikada hata oranı {{ $value | humanizePercentage }}."
+
+  - name: lojinext_performance
+    rules:
+      - alert: BackendHighLatency
+        expr: >
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="lojinext_backend"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend p95 gecikme 2s üzerinde"
+          description: "p95 istek gecikmesi {{ $value | humanizeDuration }}."
+
+      - alert: CeleryQueueBacklog
+        expr: celery_queue_length{job="celery_exporter"} > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery kuyruğu dolup taşıyor (>100 görev)"
+          description: "{{ $labels.queue }} kuyruğunda {{ $value }} bekleyen görev var."
+
+      - alert: CeleryHighFailureRate
+        expr: >
+          rate(celery_tasks_total{job="celery_exporter",state="FAILURE"}[5m])
+          / rate(celery_tasks_total{job="celery_exporter"}[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Celery görev hata oranı %10 üzerinde"
+          description: "Son 5 dakikada görev başarısızlık oranı {{ $value | humanizePercentage }}."
+
+  - name: lojinext_resources
+    rules:
+      - alert: BackendHighMemory
+        expr: process_resident_memory_bytes{job="lojinext_backend"} > 3.5e9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backend bellek kullanımı 3.5 GB üzerinde"
+          description: "Backend process RSS bellek kullanımı {{ $value | humanize1024 }}B."
+
+      - alert: DatabaseTooManyConnections
+        expr: >
+          sum(pg_stat_database_numbackends{job="postgres_exporter"})
+          / pg_settings_max_connections{job="postgres_exporter"} > 0.80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL bağlantıları kapasiteye yakın (%80)"
+          description: "Aktif bağlantılar max_connections'ın %{{ $value | humanizePercentage }}'ine ulaştı."
+
+      - alert: RedisHighMemory
+        expr: >
+          redis_memory_used_bytes{job="redis_exporter"}
+          / redis_memory_max_bytes{job="redis_exporter"} > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis bellek kullanımı %85 üzerinde"
+          description: "Redis, max belleğinin {{ $value | humanizePercentage }}'ini kullanıyor."

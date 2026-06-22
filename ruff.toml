@@ -1,0 +1,26 @@
+# Ruff configuration.
+#
+# Formatting target stays at 88 columns (ruff-format, applied via pre-commit and
+# CI) so auto-formatted code wraps tightly. The *linter* line-length check (E501)
+# is relaxed to 120: the only lines the formatter leaves long are unbreakable
+# literals — long SQL strings, URLs, regexes, log messages — and 88 would force
+# noise-only `# noqa` on hundreds of them. 120 lets CI enforce E501 (catching
+# genuinely egregious lines) without churn. Keep new code formatted to 88.
+line-length = 88
+
+[lint.pycodestyle]
+max-line-length = 120
+
+[lint.per-file-ignores]
+# sys.path manipulation must precede app imports in env/script entry points
+"alembic/env.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+"tests/test_chatbot.py" = ["E402"]
+# Legacy migration archive: historical SQL strings and long comments are unbreakable
+"alembic/legacy_versions_archive/*.py" = ["E501"]
+# Long f-string template inside list comprehension cannot be split without breaking logic
+"telegram_bot/driver_bot.py" = ["E501"]
+# SQL DDL string literal exceeds 120 chars; splitting would harm readability
+"tests/security/apply_model_changes.py" = ["E501"]
+# f-string in print() for test diagnostics; splitting adds no value
+"tests/unit/test_deep_validation.py" = ["E501"]

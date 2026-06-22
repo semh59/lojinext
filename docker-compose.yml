@@ -1,0 +1,376 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # DATABASE_URL override (use docker DNS 'db' instead of .env's 127.0.0.1)
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-lojinext_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      # No-password Redis URLs override the .env values (Redis container has no requirepass)
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DB_HOST=db
+      - DB_PORT=${DB_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - OTEL_ENABLED=false
+      - OTEL_EXPORTER_OTLP_ENDPOINT=
+      # Phase 5.0 — SeferFuelEstimator aktif (Mapbox + Open-Meteo + physics
+      # + adjustment factors). Sefer kaydında yeni pipeline çalışır,
+      # tahmin sefer satırında gözükür + route_simulation_id set edilir.
+      # Acil geri al: false yap, restart.
+      - USE_SEFER_FUEL_ESTIMATOR=true
+      # Allow requests from the nginx-served frontend on port 80
+      - CORS_ORIGINS=http://localhost,http://localhost:80,http://127.0.0.1
+    volumes:
+      - app_data:/app/app/data
+      - model_data:/app/models
+      - hf_cache:/root/.cache/huggingface
+      - ./backups:/app/storage/backups
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api/v1
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.background.celery_app worker -l info --hostname=lojinext-worker@%h
+    env_file:
+      - .env
+    environment:
+      - SERVICE_ROLE=worker
+      # DATABASE_URL override (use docker DNS 'db' instead of .env's 127.0.0.1)
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-lojinext_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DB_HOST=db
+      - DB_PORT=${DB_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - OTEL_ENABLED=false
+      - OTEL_EXPORTER_OTLP_ENDPOINT=
+      - OCR_SERVICE_URL=http://ocr-service:8001
+      - BELGELER_UPLOAD_DIR=/belgeler
+      # Phase 5.0 — backend ile aynı: worker'lar da bulk import / Celery
+      # task'larda yeni sefer yaratırken SeferFuelEstimator kullanır.
+      - USE_SEFER_FUEL_ESTIMATOR=true
+    volumes:
+      - app_data:/app/app/data
+      - model_data:/app/models
+      - hf_cache:/root/.cache/huggingface
+      - ./backups:/app/storage/backups
+      - belgeler_data:/belgeler
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # `celery inspect ping` ağır app modülünü (ML/AI) cold-import ediyor →
+      # CLI başlangıcı tek başına >10s sürebilir. Docker timeout + start_period
+      # buna göre geniş tutulur; aksi halde çalışan worker yanlışça unhealthy.
+      test: ["CMD", "celery", "-A", "app.infrastructure.background.celery_app", "inspect", "ping", "--timeout=10"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
+  db:
+    # Digest-pinned postgres:16-alpine (unified with prod; dev was 15.3) — resolved 2026-06-17.
+    image: postgres:16-alpine@sha256:d845e7f0ac8517b9d9868b6d20379f9688ba3676595e50ca7c0b664964b2a760
+    # max_connections raised 100→200: the multi-service stack (backend async+sync
+    # pools, celery worker, beat) summed over the 100 default → TooManyConnections
+    # ('too many clients already') on heavy endpoints (Sentry 19K/19J/19M).
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-change-me}
+      - POSTGRES_DB=${POSTGRES_DB:-lojinext_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lojinext_user} -d ${POSTGRES_DB:-lojinext_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lojinext_network
+
+  redis:
+    # Digest-pinned redis:7-alpine (7.4.9; dev was 7.0.11) — resolved 2026-06-17.
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - lojinext_network
+
+  prometheus:
+    image: prom/prometheus:v2.45.0@sha256:9309deb7c981e8a94584d9ed689fd62f7ac4549d816fd3881550311cf056a237
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.0.3@sha256:423040d62678074111e4e72d7dcef23480a94eb4f21b9173204d1a5ee972ec59
+    env_file:
+      - .env
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-change-me}
+    depends_on:
+      - prometheus
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  celery-exporter:
+    # Pinned by digest (upstream publishes no semver tag) — resolved 2026-06-17.
+    image: danihodovic/celery-exporter:latest@sha256:7e4622746e7d07eca0040a476ba4d904383f70ef7f90ef2db68a49bdf4c1b203
+    command: ["--broker-url=redis://redis:6379/0"]
+    ports:
+      - "9808:9808"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.86.0@sha256:2e9795be900db073e9475fdb9c5124db309b07a3e4e75a1770705cb03be1a1c8
+    command: ["--redis.addr=redis:6379"]
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  postgres-exporter:
+    # Pinned by digest (upstream :latest) — resolved 2026-06-17.
+    image: prometheuscommunity/postgres-exporter:latest@sha256:e96064f876226d94bb6ce48a4c4b3dd76edba91168ec1ab024e5c4b959310b0f
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-lojinext_db}?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:v0.25.0@sha256:fd4d9a3dd1fd0125108417be21be917f19cc76262347086509a0d43f29b80e98
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    ports:
+      - "9093:9093"
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  ocr-service:
+    build:
+      context: ./ocr_service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    volumes:
+      - easyocr_models:/root/.EasyOCR
+      - belgeler_data:/belgeler
+    environment:
+      - BELGELER_UPLOAD_DIR=/belgeler
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: celery -A app.infrastructure.background.celery_app beat -l info -s /tmp/celerybeat-schedule
+    env_file:
+      - .env
+    environment:
+      - SERVICE_ROLE=beat
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_DB=0
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DB_HOST=db
+      - DB_PORT=${DB_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - OTEL_ENABLED=false
+      - OTEL_EXPORTER_OTLP_ENDPOINT=
+    volumes:
+      - app_data:/app/app/data
+    healthcheck:
+      disable: true
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
+  telegram-ops-bot:
+    build:
+      context: ./telegram_bot
+      dockerfile: Dockerfile
+    environment:
+      - BOT_TYPE=ops
+      - TELEGRAM_OPS_BOT_TOKEN=${TELEGRAM_OPS_BOT_TOKEN}
+      - TELEGRAM_OPS_CHAT_ID=${TELEGRAM_OPS_CHAT_ID}
+      - BACKEND_URL=http://backend:8000
+      - PROMETHEUS_URL=http://prometheus:9090
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # read-only — prevents container escape via Docker API write ops
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      - prometheus
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  telegram-driver-bot:
+    build:
+      context: ./telegram_bot
+      dockerfile: Dockerfile
+    environment:
+      - BOT_TYPE=driver
+      - TELEGRAM_DRIVER_BOT_TOKEN=${TELEGRAM_DRIVER_BOT_TOKEN}
+      - BACKEND_URL=http://backend:8000
+      - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
+    volumes:
+      - belgeler_data:/belgeler
+    depends_on:
+      - backend
+      - ocr-service
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+networks:
+  lojinext_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_data:
+  model_data:
+  prometheus_data:
+  grafana_data:
+  hf_cache:
+  easyocr_models:
+  belgeler_data:

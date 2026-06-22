@@ -1,0 +1,63 @@
+export const maintenancePredictionsText = {
+  tabs: {
+    list: "Liste",
+    calendar: "Takvim",
+    history: "Geçmiş",
+  },
+  pageTitle: "Tahmine Dayalı Bakım",
+  calendarLegend: {
+    overdue: "Gecikmiş",
+    soon: "Yakında",
+    normal: "Normal",
+    low: "Düşük risk",
+    unpredictable: "Tahmin yok",
+  },
+  riskLabels: {
+    overdue: "Gecikmiş",
+    soon: "Yakında",
+    normal: "Normal",
+    low: "Düşük",
+  } as const,
+  table: {
+    columns: {
+      plaka: "Plaka",
+      bakim_tipi: "Bakım Tipi",
+      predicted_date: "Tahmini Tarih",
+      days_remaining: "Kalan Gün",
+      risk_level: "Risk",
+      confidence: "Güven",
+      savings: "Tasarruf",
+      actions: "İşlemler",
+    },
+    empty: "Henüz tahmin edilebilir bakım yok.",
+    unpredictable: "Tahmin için yetersiz veri",
+    notApplicable: "—",
+    downloadIcs: "Takvime Ekle",
+  },
+  drawer: {
+    title: "Bakım Tahmin Detayı",
+    sections: {
+      summary: "Özet",
+      reasons: "Sebepler",
+      actions: "İşlemler",
+    },
+    labels: {
+      plaka: "Plaka",
+      bakim_tipi: "Bakım Tipi",
+      predicted_date: "Tahmini Tarih",
+      days_remaining: "Kalan Gün",
+      confidence: "Güven",
+      risk: "Risk",
+      savings: "Tahmini Tasarruf",
+    },
+    downloadIcs: "Takvime İndir (.ics)",
+    close: "Kapat",
+    notPredictable: "Bu araç için yeterli veri yok; tahmin üretilemiyor.",
+    downloadError: "Takvim dosyası indirilemedi.",
+  },
+  errors: {
+    loadFailed: "Tahminler yüklenemedi.",
+    flagOff: "Bakım tahmin modülü devre dışı.",
+    forbidden: "Bu işlem için yetkiniz yok.",
+  },
+} as const;

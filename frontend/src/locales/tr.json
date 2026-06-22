@@ -1,0 +1,116 @@
+{
+  "common": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "loading": "Yükleniyor...",
+    "search": "Ara...",
+    "no_data": "Veri bulunamadı",
+    "actions": "İşlemler",
+    "admin": "Yönetici",
+    "active": "Aktif",
+    "passive": "Pasif",
+    "total": "Toplam",
+    "filter": "Filtrele",
+    "export": "Dışa Aktar",
+    "import": "İçe Aktar",
+    "add": "Ekle",
+    "close": "Kapat",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "next": "İleri",
+    "submit": "Gönder",
+    "refresh": "Yenile",
+    "details": "Detaylar",
+    "status": "Durum",
+    "date": "Tarih",
+    "note": "Not"
+  },
+  "dashboard": {
+    "title": "Filo Paneli",
+    "real_time_tracking": "Anlık Takip",
+    "total_vehicles": "Araçlar",
+    "active_trips": "Seferler",
+    "total_km": "Toplam KM",
+    "fuel_consumed": "Tüketilen Yakıt"
+  },
+  "auth": {
+    "login": "Giriş Yap",
+    "logout": "Çıkış Yap",
+    "username": "Kullanıcı Adı",
+    "password": "Şifre",
+    "login_failed": "Giriş başarısız",
+    "session_expired": "Oturum süreniz doldu, lütfen tekrar giriş yapın."
+  },
+  "fuel": {
+    "title": "Yakıt",
+    "record": "Yakıt Kaydı",
+    "records": "Yakıt Kayıtları",
+    "station": "İstasyon",
+    "litres": "Litre",
+    "price": "Fiyat",
+    "total": "Toplam Tutar",
+    "consumption": "Tüketim (L/100km)",
+    "add_record": "Yakıt Kaydı Ekle"
+  },
+  "locations": {
+    "title": "Lokasyonlar",
+    "route": "Güzergah",
+    "routes": "Güzergahlar",
+    "origin": "Çıkış Yeri",
+    "destination": "Varış Yeri",
+    "distance": "Mesafe (km)",
+    "duration": "Tahmini Süre",
+    "difficulty": "Zorluk",
+    "add_route": "Güzergah Ekle"
+  },
+  "reports": {
+    "title": "Raporlar",
+    "period": "Dönem",
+    "vehicle_report": "Araç Raporu",
+    "driver_report": "Şoför Raporu",
+    "fuel_report": "Yakıt Raporu",
+    "export_excel": "Excel İndir",
+    "export_pdf": "PDF İndir"
+  },
+  "admin": {
+    "title": "Yönetim",
+    "users": "Kullanıcılar",
+    "roles": "Roller",
+    "settings": "Ayarlar",
+    "system_health": "Sistem Sağlığı",
+    "audit_log": "Denetim Günlüğü"
+  },
+  "fleet": {
+    "title": "Filo",
+    "vehicle": "Araç",
+    "vehicles": "Araçlar",
+    "plate": "Plaka",
+    "brand": "Marka",
+    "model": "Model",
+    "year": "Yıl",
+    "target_consumption": "Hedef Tüketim",
+    "add_vehicle": "Araç Ekle"
+  },
+  "drivers": {
+    "title": "Şoförler",
+    "driver": "Şoför",
+    "license_class": "Ehliyet Sınıfı",
+    "score": "Performans Skoru",
+    "trips_count": "Sefer Sayısı",
+    "add_driver": "Şoför Ekle"
+  },
+  "trips": {
+    "title": "Seferler",
+    "trip": "Sefer",
+    "departure": "Kalkış",
+    "arrival": "Varış",
+    "distance": "Mesafe",
+    "weight": "Ağırlık (ton)",
+    "actual_consumption": "Gerçek Tüketim",
+    "predicted_consumption": "Tahmini Tüketim",
+    "status": "Durum",
+    "add_trip": "Sefer Ekle"
+  }
+}

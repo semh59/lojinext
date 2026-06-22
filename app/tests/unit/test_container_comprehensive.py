@@ -1,0 +1,658 @@
+"""
+DI Container - Kapsamlı Test Suite
+===================================
+
+Bu test modülü Container sınıfının Dependency Injection implementasyonunu
+kapsamlı şekilde test eder.
+
+Test Kategorileri:
+1. Singleton Pattern
+2. Initialization
+3. Dependency Injection Verification
+4. Mock Injection (Test Isolation)
+5. Factory Function Binding
+6. Thread-Safety
+7. Reset/Cleanup
+8. Edge Cases
+"""
+
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
+
+# Ensure app directory is in path
+APP_DIR = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(APP_DIR))
+
+
+# =============================================================================
+# FIXTURES
+# =============================================================================
+
+# NOT: pytest_configure ile modül seviyesinde container reset yapıyoruz
+# Bu sadece bu dosya için geçerli, diğer test dosyalarını etkilemez
+
+
+def setup_module(module):
+    """Modül başlangıcında container'ı sıfırla."""
+    from app.core.container import reset_container
+
+    reset_container()
+
+
+def teardown_module(module):
+    """Modül sonunda container'ı sıfırla."""
+    from app.core.container import reset_container
+
+    reset_container()
+
+
+@pytest.fixture
+def fresh_container():
+    """Her test için temiz container sağlar."""
+    from app.core.container import get_container, reset_container
+
+    reset_container()
+    container = get_container()
+    yield container
+    reset_container()
+
+
+@pytest.fixture
+def mock_event_bus():
+    """Mock EventBus for testing."""
+    mock = Mock()
+    mock.publish = Mock(return_value=1)
+    mock.subscribe = Mock()
+    return mock
+
+
+@pytest.fixture
+def mock_arac_repo():
+    """Mock AracRepository for testing."""
+    mock = Mock()
+    mock.get_all = Mock(return_value=[])
+    mock.get_by_id = Mock(return_value=None)
+    mock.add = Mock(return_value=1)
+    return mock
+
+
+@pytest.fixture
+def mock_sefer_repo():
+    """Mock SeferRepository for testing."""
+    mock = Mock()
+    mock.get_all = Mock(return_value=[])
+    mock.add = Mock(return_value=1)
+    return mock
+
+
+@pytest.fixture
+def mock_sofor_repo():
+    """Mock SoforRepository for testing."""
+    mock = Mock()
+    mock.get_all = Mock(return_value=[])
+    mock.add = Mock(return_value=1)
+    return mock
+
+
+@pytest.fixture
+def mock_yakit_repo():
+    """Mock YakitRepository for testing."""
+    mock = Mock()
+    mock.get_all = Mock(return_value=[])
+    mock.add = Mock(return_value=1)
+    mock.get_son_km = Mock(return_value=None)
+    return mock
+
+
+# =============================================================================
+# 1. SINGLETON PATTERN TESTS
+# =============================================================================
+
+
+class TestContainerSingleton:
+    """Container singleton pattern testleri."""
+
+    def test_get_container_returns_same_instance(self):
+        """get_container() her çağrıda aynı instance'ı döndürmeli."""
+        from app.core.container import get_container
+
+        container1 = get_container()
+        container2 = get_container()
+        container3 = get_container()
+
+        assert container1 is container2
+        assert container2 is container3
+        assert id(container1) == id(container2) == id(container3)
+
+    def test_singleton_preserves_state(self):
+        """Singleton instance state'i korumalı."""
+        from app.core.container import get_container
+
+        container1 = get_container()
+        # State'i kontrol et
+        original_sefer_service = container1.sefer_service
+
+        container2 = get_container()
+        # Aynı service instance olmalı
+        assert container2.sefer_service is original_sefer_service
+
+    def test_reset_clears_singleton(self):
+        """reset_container() singleton'ı temizlemeli."""
+        from app.core.container import get_container, reset_container
+
+        container1 = get_container()
+        original_id = id(container1)
+
+        reset_container()
+
+        container2 = get_container()
+        # Yeni instance olmalı
+        assert id(container2) != original_id
+        assert container1 is not container2
+
+
+# =============================================================================
+# 2. CONTAINER INITIALIZATION TESTS
+# =============================================================================
+
+
+class TestContainerInitialization:
+    """Container initialization testleri."""
+
+    def test_all_repositories_initialized(self):
+        """Tüm repository'ler initialize edilmeli."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.arac_repo is not None
+        assert container.sefer_repo is not None
+        assert container.sofor_repo is not None
+        assert container.yakit_repo is not None
+
+    def test_all_services_initialized(self):
+        """Tüm servisler initialize edilmeli."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.arac_service is not None
+        assert container.sofor_service is not None
+        assert container.sefer_service is not None
+        assert container.yakit_service is not None
+        assert container.analiz_service is not None
+        assert container.import_service is not None
+        assert container.report_service is not None
+
+    def test_event_bus_initialized(self):
+        """EventBus initialize edilmeli."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.event_bus is not None
+
+    def test_container_is_correct_type(self):
+        """Container doğru tipte olmalı."""
+        from app.core.container import Container, get_container
+
+        container = get_container()
+
+        assert isinstance(container, Container)
+
+
+# =============================================================================
+# 3. DEPENDENCY INJECTION VERIFICATION TESTS
+# =============================================================================
+
+
+class TestDependencyInjection:
+    """Bağımlılık enjeksiyonu doğrulama testleri."""
+
+    def test_sefer_service_has_correct_repo(self):
+        """SeferService doğru repository'yi almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.sefer_service.repo is container.sefer_repo
+
+    def test_yakit_service_has_correct_repo(self):
+        """YakitService doğru repository'yi almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.yakit_service.repo is container.yakit_repo
+
+    def test_arac_service_has_correct_repo(self):
+        """AracService doğru repository'yi almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.arac_service.repo is container.arac_repo
+
+    def test_sofor_service_has_correct_repo(self):
+        """SoforService doğru repository'yi almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.sofor_service.repo is container.sofor_repo
+
+    def test_analiz_service_has_all_repos(self):
+        """AnalizService tüm gerekli repository'leri almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.analiz_service.arac_repo is container.arac_repo
+        assert container.analiz_service.sefer_repo is container.sefer_repo
+        assert container.analiz_service.yakit_repo is container.yakit_repo
+
+    def test_import_service_has_services_and_repos(self):
+        """ImportService hem servis hem repo almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        # Repos
+        assert container.import_service.arac_repo is container.arac_repo
+        assert container.import_service.sofor_repo is container.sofor_repo
+        assert container.import_service.lokasyon_repo is container.lokasyon_repo
+        # Services
+        assert container.import_service.sefer_service is container.sefer_service
+        assert container.import_service.yakit_service is container.yakit_service
+
+    def test_report_service_has_all_repos(self):
+        """ReportService tüm repository'leri almalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        assert container.report_service.sefer_repo is container.sefer_repo
+        assert container.report_service.yakit_repo is container.yakit_repo
+        assert container.report_service.arac_repo is container.arac_repo
+        assert container.report_service.sofor_repo is container.sofor_repo
+
+    def test_all_services_share_same_event_bus(self):
+        """Event-publishing servisler aynı EventBus'ı paylaşmalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        # EventBus kullanan tüm servisler
+        event_bus = container.event_bus
+
+        assert container.sefer_service.event_bus is event_bus
+        assert container.yakit_service.event_bus is event_bus
+        assert container.arac_service.event_bus is event_bus
+        assert container.sofor_service.event_bus is event_bus
+
+
+# =============================================================================
+# 4. MOCK INJECTION TESTS (Test Isolation)
+# =============================================================================
+
+
+class TestMockInjection:
+    """Mock injection testleri - Test isolation için kritik."""
+
+    def test_sefer_service_accepts_mock_repo(self, mock_sefer_repo, mock_event_bus):
+        """SeferService mock repo kabul etmeli."""
+        from app.core.services.sefer_service import SeferService
+
+        service = SeferService(repo=mock_sefer_repo, event_bus=mock_event_bus)
+
+        assert service.repo is mock_sefer_repo
+        assert service.event_bus is mock_event_bus
+
+    def test_yakit_service_accepts_mock_repo(self, mock_yakit_repo, mock_event_bus):
+        """YakitService mock repo kabul etmeli."""
+        from app.core.services.yakit_service import YakitService
+
+        service = YakitService(repo=mock_yakit_repo, event_bus=mock_event_bus)
+
+        assert service.repo is mock_yakit_repo
+        assert service.event_bus is mock_event_bus
+
+    def test_arac_service_accepts_mock_repo(self, mock_arac_repo, mock_event_bus):
+        """AracService mock repo kabul etmeli."""
+        from app.core.services.arac_service import AracService
+
+        service = AracService(repo=mock_arac_repo, event_bus=mock_event_bus)
+
+        assert service.repo is mock_arac_repo
+        assert service.event_bus is mock_event_bus
+
+    def test_sofor_service_accepts_mock_repo(self, mock_sofor_repo, mock_event_bus):
+        """SoforService mock repo kabul etmeli."""
+        from app.core.services.sofor_service import SoforService
+
+        service = SoforService(repo=mock_sofor_repo, event_bus=mock_event_bus)
+
+        assert service.repo is mock_sofor_repo
+        assert service.event_bus is mock_event_bus
+
+    def test_analiz_service_accepts_mock_repos(
+        self, mock_arac_repo, mock_sefer_repo, mock_yakit_repo
+    ):
+        """AnalizService mock repo'lar kabul etmeli."""
+        from app.core.services.analiz_service import AnalizService
+
+        service = AnalizService(
+            arac_repo=mock_arac_repo,
+            sefer_repo=mock_sefer_repo,
+            yakit_repo=mock_yakit_repo,
+        )
+
+        assert service.arac_repo is mock_arac_repo
+        assert service.sefer_repo is mock_sefer_repo
+        assert service.yakit_repo is mock_yakit_repo
+
+    def test_import_service_accepts_mocks(
+        self, mock_arac_repo, mock_sofor_repo, mock_event_bus
+    ):
+        """ImportService mock bağımlılıklar kabul etmeli."""
+        from app.core.services.import_service import ImportService
+        from app.core.services.sefer_service import SeferService
+        from app.core.services.yakit_service import YakitService
+
+        mock_sefer_service = Mock(spec=SeferService)
+        mock_yakit_service = Mock(spec=YakitService)
+
+        service = ImportService(
+            arac_repo=mock_arac_repo,
+            sofor_repo=mock_sofor_repo,
+            sefer_service=mock_sefer_service,
+            yakit_service=mock_yakit_service,
+        )
+
+        assert service.arac_repo is mock_arac_repo
+        assert service.sofor_repo is mock_sofor_repo
+        assert service.sefer_service is mock_sefer_service
+        assert service.yakit_service is mock_yakit_service
+
+
+# =============================================================================
+# 5. FACTORY FUNCTION BINDING TESTS
+# =============================================================================
+
+
+class TestFactoryFunctions:
+    """Factory fonksiyonlarının Container ile bağlantısı."""
+
+    def test_get_sefer_service_returns_container_instance(self):
+        """get_sefer_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.sefer_service import get_sefer_service
+
+        container = get_container()
+        service = get_sefer_service()
+
+        assert service is container.sefer_service
+
+    def test_get_yakit_service_returns_container_instance(self):
+        """get_yakit_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.yakit_service import get_yakit_service
+
+        container = get_container()
+        service = get_yakit_service()
+
+        assert service is container.yakit_service
+
+    def test_get_arac_service_returns_container_instance(self):
+        """get_arac_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.arac_service import get_arac_service
+
+        container = get_container()
+        service = get_arac_service()
+
+        assert service is container.arac_service
+
+    def test_get_sofor_service_returns_container_instance(self):
+        """get_sofor_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.sofor_service import get_sofor_service
+
+        container = get_container()
+        service = get_sofor_service()
+
+        assert service is container.sofor_service
+
+    def test_get_import_service_returns_container_instance(self):
+        """get_import_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.import_service import get_import_service
+
+        container = get_container()
+        service = get_import_service()
+
+        assert service is container.import_service
+
+    def test_get_report_service_returns_container_instance(self):
+        """get_report_service() Container'daki instance'ı döndürmeli."""
+        from app.core.container import get_container
+        from app.core.services.report_service import get_report_service
+
+        container = get_container()
+        service = get_report_service()
+
+        assert service is container.report_service
+
+
+# =============================================================================
+# 6. THREAD-SAFETY TESTS
+# =============================================================================
+
+
+class TestThreadSafety:
+    """Thread-safety testleri."""
+
+    def test_concurrent_get_container_returns_same_instance(self):
+        """Concurrent get_container() çağrıları aynı instance döndürmeli."""
+        from app.core.container import get_container
+
+        results = []
+        num_threads = 20
+
+        def get_container_thread():
+            container = get_container()
+            return id(container)
+
+        with ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = [
+                executor.submit(get_container_thread) for _ in range(num_threads)
+            ]
+            results = [f.result() for f in as_completed(futures)]
+
+        # Tüm thread'ler aynı instance ID'yi almalı
+        assert len(set(results)) == 1, (
+            f"Farklı instance ID'leri bulundu: {set(results)}"
+        )
+
+    def test_concurrent_service_access(self):
+        """Concurrent servis erişimi thread-safe olmalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+        errors = []
+        num_threads = 10
+        iterations = 100
+
+        def access_services():
+            try:
+                for _ in range(iterations):
+                    # Çeşitli servislere erişim
+                    _ = container.sefer_service
+                    _ = container.yakit_service
+                    _ = container.arac_service
+                    _ = container.analiz_service
+            except Exception as e:
+                errors.append(str(e))
+
+        threads = [threading.Thread(target=access_services) for _ in range(num_threads)]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert len(errors) == 0, f"Thread-safety hataları: {errors}"
+
+
+# =============================================================================
+# 7. RESET/CLEANUP TESTS
+# =============================================================================
+
+
+class TestContainerReset:
+    """Container reset mekanizması testleri."""
+
+    def test_reset_clears_container(self):
+        """reset_container() container'ı temizlemeli."""
+        from app.core.container import get_container, reset_container
+
+        container1 = get_container()
+        service1 = container1.sefer_service
+
+        reset_container()
+
+        container2 = get_container()
+        service2 = container2.sefer_service
+
+        # Farklı container ve servis instance'ları olmalı
+        assert container1 is not container2
+        assert service1 is not service2
+
+    def test_multiple_resets_work(self):
+        """Birden fazla reset çalışmalı."""
+        from app.core.container import get_container, reset_container
+
+        containers = []
+        for i in range(3):
+            reset_container()
+            containers.append(get_container())
+
+        # Tüm container'lar farklı olmalı
+        assert len(set(id(c) for c in containers)) == 3
+
+    def test_fresh_container_after_reset_is_functional(self):
+        """Reset sonrası yeni container fonksiyonel olmalı."""
+        from app.core.container import get_container, reset_container
+
+        reset_container()
+        container = get_container()
+
+        # Tüm bileşenler çalışmalı
+        assert container.event_bus is not None
+        assert container.sefer_service is not None
+        assert container.sefer_service.repo is not None
+
+
+# =============================================================================
+# 8. EDGE CASE & ERROR TESTS
+# =============================================================================
+
+
+class TestEdgeCases:
+    """Edge case ve hata durumu testleri."""
+
+    def test_service_with_none_repo_uses_default(self):
+        """None repo geçilirse default kullanılmalı."""
+        from app.core.services.sefer_service import SeferService
+
+        service = SeferService(repo=None, event_bus=None)
+
+        # Default repo ve event_bus kullanılmalı
+        assert service.repo is not None
+        assert service.event_bus is not None
+
+    def test_container_initialization_is_idempotent(self):
+        """Container birden fazla kez oluşturulabilmeli (reset sonrası)."""
+        from app.core.container import Container, get_container, reset_container
+
+        # İlk oluşturma
+        container1 = get_container()
+        assert isinstance(container1, Container)
+
+        # Reset ve tekrar oluşturma
+        reset_container()
+        container2 = get_container()
+        assert isinstance(container2, Container)
+
+        # Her iki container da fonksiyonel olmalı
+        assert container1.sefer_service is not None
+        assert container2.sefer_service is not None
+
+    def test_container_services_are_not_none_after_init(self):
+        """Container init sonrası hiçbir servis None olmamalı (Property erişimi sonrası)."""
+        from app.core.container import Container
+
+        container = Container()
+
+        # Reflection ile tüm public property'leri kontrol et
+        # Private field'lar (_ ile başlayan) lazy loading nedeniyle None olabilir,
+        # ancak bunlara karşılık gelen property'ler erişildiğinde initialize edilmeli.
+        for attr_name in dir(container):
+            # Sadece property'leri ve public attribute'ları kontrol et
+            if (
+                attr_name.endswith("_service") or attr_name.endswith("_repo")
+            ) and not attr_name.startswith("_"):
+                attr_value = getattr(container, attr_name)
+                assert attr_value is not None, f"{attr_name} is None!"
+
+
+# =============================================================================
+# INTEGRATION SANITY CHECK
+# =============================================================================
+
+
+class TestContainerIntegration:
+    """Container entegrasyon testleri."""
+
+    def test_full_dependency_chain_works(self):
+        """Tam bağımlılık zinciri çalışmalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        # ImportService -> SeferService -> SeferRepo
+        # ImportService'in sefer_service'i, container'ın sefer_service'i olmalı
+        # ve o da container'ın sefer_repo'sunu kullanmalı
+        assert container.import_service.sefer_service.repo is container.sefer_repo
+
+        # ImportService -> YakitService -> YakitRepo
+        assert container.import_service.yakit_service.repo is container.yakit_repo
+
+    def test_event_bus_consistency(self):
+        """Tüm event-publishing servisler aynı bus'ı kullanmalı."""
+        from app.core.container import get_container
+
+        container = get_container()
+
+        # Tüm servisler aynı event_bus instance'ını kullanmalı
+        event_buses = [
+            container.event_bus,
+            container.sefer_service.event_bus,
+            container.yakit_service.event_bus,
+            container.arac_service.event_bus,
+            container.sofor_service.event_bus,
+        ]
+
+        # Hepsi aynı instance olmalı
+        first_bus = event_buses[0]
+        for bus in event_buses[1:]:
+            assert bus is first_bus
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

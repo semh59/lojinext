@@ -1,0 +1,31 @@
+title = "LojiNext Gitleaks Config"
+
+[extend]
+# Extend the default gitleaks ruleset
+useDefault = true
+
+[allowlist]
+description = "False-positive suppressions for test fixtures and known safe patterns"
+paths = [
+  # Test files contain fixture variable names like admin_auth_headers, auth_headers,
+  # async_superuser_token_headers that trigger generic-api-key false positives.
+  # These are Python parameter names / pytest fixtures, not real credentials.
+  '''app/tests/.*\.py$''',
+  '''tests/.*\.py$''',
+  # Setup scripts and their documentation contain example env var values
+  # (e.g. SECRET_KEY='test_key_...'). These are placeholder values for local dev,  # pragma: allowlist secret
+  # not real credentials.
+  '''scripts/.*''',
+  # Pre-commit baseline (contains detected-secret placeholders)
+  '''.secrets.baseline''',
+]
+
+# Suppress generic-api-key false positives on test fixture parameter names.
+# Real auth tokens are generated at runtime from settings.SECRET_KEY (env-injected)
+# and never stored in source.
+regexes = [
+  '''admin_auth_headers''',
+  '''async_superuser_token_headers''',
+  '''auth_headers''',
+  '''normal_auth_headers''',
+]

@@ -1,0 +1,210 @@
+# =============================================================================
+# Git Ignore - TIR Yakıt Takip Sistemi
+# =============================================================================
+
+# Environment Variables (CRITICAL - NEVER COMMIT)
+.env
+.env.prod
+.env.local
+.env.*.local
+*.env
+frontend/.env.test
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/
+# Inventory & gap report artifacts (generated, not committed)
+frontend/e2e/reports/
+
+# Database backups (postgres dumps, never commit)
+backups/
+*.dump
+*.sql.gz
+
+# =============================================================================
+# Python
+# =============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+# frontend/src/lib is intentionally tracked (utility modules)
+!frontend/src/lib/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# =============================================================================
+# IDE & Editors
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# =============================================================================
+# Testing & Coverage
+# =============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# =============================================================================
+# Logs & Databases
+# =============================================================================
+logs/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# =============================================================================
+# OS Generated
+# =============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project Specific
+# Model files (large binaries)
+models/*.gguf
+models/*.bin
+models/*.pt
+models/*.pth
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Test outputs & Reports
+test_*.txt
+final_test*.txt
+test_results*.json
+*_output.txt
+*_report.*
+all_test_results.txt
+fresh_test_output.txt
+full_test_*.txt
+
+# Build outputs
+*.spec
+build/
+dist/
+
+# Frontend Specific
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+.vite/
+
+# MCP & Agent Artifacts
+artifacts/
+_archive/
+tmp/
+*.txt
+!requirements.txt
+!app/requirements*.txt
+*.json
+!package.json
+!composer.json
+!frontend/src/locales/*.json
+!frontend/openapi.json
+# Mapbox sample raw JSON'ları büyük (3-4 MB her biri) — repo'da değil,
+# lokal probe artifact. _summary.md tüm bulguları taşıyor.
+docs/superpowers/plans/**/*-raw.json
+
+# Test / audit output artifacts
+test_export.xlsx
+*.xlsx
+FRONTEND_REVIEW.md
+*_REVIEW.md
+
+# Alembic & Database remnants
+# legacy_versions_archive is tracked: CI tests verify the migration chain
+alembic/migrations/
+# Note: 0001 and 0002 are required by the migration chain and must be tracked.
+
+# ML model binaries
+*.pkl
+*.joblib
+app/core/ml/models/*.pkl
+app/core/ml/models/backup_*
+app/models/
+
+# One-time audit / analysis scripts (Windows absolute paths, not production code)
+deep_audit.py
+final_audit.py
+run_final_audit.py
+super_audit.py
+targeted_audit.py
+scripts/create_plan_deep.py
+scripts/create_plan_md.py
+scripts/deep_scan.py
+scripts/executor_orphans.py
+scripts/extract_identifiers.py
+scripts/extract_words.py
+
+# Claude Code session data
+.claude/
+.claudeignore
+.claude_debug.py
+
+# Root-level node_modules (agentic tools / session artifacts)
+/node_modules/
+/package.json
+/package-lock.json
+
+# Build artifacts
+frontend/bundle-stats.html
+bundle-stats.html
+
+# Dead aspirational directories (root-level only)
+/services/
+/microservices-transformation/
+/monitoring/
+/LOJINEXTv2/
+
+# RAG runtime cache — backend her başlangıçta seed eder, sefer/yakıt
+# verisi eklendikçe büyür. Repo'da snapshot tutmak commit gürültüsü
+# yaratıyordu. Yoksa otomatik recreate edilir.
+data/ai_kb/faiss.index
+data/ai_kb/metadata.json
+
+# Orval generated — npm run codegen ile yeniden üretilir
+frontend/src/generated/

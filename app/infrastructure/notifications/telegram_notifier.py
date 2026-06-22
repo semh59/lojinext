@@ -1,0 +1,118 @@
+"""Fire-and-forget Telegram error notifications.
+
+Backend bileşenlerinden gelen hataları ops_bot webhook'una gönderir.
+Ops_bot URL: TELEGRAM_OPS_BOT_URL env var (varsayılan: http://telegram-ops-bot:8080)
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+
+from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+
+logger = logging.getLogger(__name__)
+
+_OPS_BOT_URL = os.environ.get("TELEGRAM_OPS_BOT_URL", "http://telegram-ops-bot:8080")
+_WEBHOOK_URL = f"{_OPS_BOT_URL}/webhook/error"
+_FEEDBACK_WEBHOOK_URL = f"{_OPS_BOT_URL}/webhook/feedback"
+_TIMEOUT = 10.0
+_MAX_RETRIES = 3
+_RETRY_DELAYS = (1.0, 3.0)  # saniye cinsinden, 3. deneme sonrası fallback
+
+
+async def notify_error(
+    *,
+    level: str,
+    message: str,
+    path: str = "",
+    trace_id: str = "",
+) -> None:
+    """ops_bot /webhook/error endpointine hata bildirimi gönderir.
+
+    3 deneme yapar (1s ve 3s aralıklarla). Hepsi başarısız olursa
+    error:sync_fallback listesine yazar — digest task daha sonra tüketir.
+    """
+    payload = {"level": level, "message": message, "path": path, "trace_id": trace_id}
+    last_exc: Exception | None = None
+
+    for attempt in range(_MAX_RETRIES):
+        try:
+            async with get_monitored_client(timeout=_TIMEOUT) as client:
+                resp = await client.post(_WEBHOOK_URL, json=payload)
+                resp.raise_for_status()
+                return
+        except Exception as exc:
+            last_exc = exc
+            if attempt < len(_RETRY_DELAYS):
+                await asyncio.sleep(_RETRY_DELAYS[attempt])
+
+    logger.warning(
+        "Telegram notify_error failed after %d attempts — ops bot unreachable at %s: %s",
+        _MAX_RETRIES,
+        _WEBHOOK_URL,
+        last_exc,
+    )
+    _push_to_sync_fallback(level=level, message=message, path=path, trace_id=trace_id)
+
+
+async def notify_feedback(
+    *,
+    message: str,
+    username: str = "",
+    page: str = "",
+) -> bool:
+    """Pilot kullanıcı geri bildirimini ops_bot /webhook/feedback'e iletir.
+
+    Best-effort: 2 deneme (1s ara). Başarısızsa False döner (endpoint yine 202).
+    Hata bildiriminden ayrı kanal — rate-limit/sync-fallback uygulanmaz.
+    """
+    payload = {"message": message, "username": username, "page": page}
+    for attempt in range(2):
+        try:
+            async with get_monitored_client(timeout=_TIMEOUT) as client:
+                resp = await client.post(_FEEDBACK_WEBHOOK_URL, json=payload)
+                resp.raise_for_status()
+                return True
+        except Exception as exc:
+            if attempt == 0:
+                await asyncio.sleep(1.0)
+            else:
+                logger.warning(
+                    "Telegram notify_feedback failed (ops bot %s): %s",
+                    _FEEDBACK_WEBHOOK_URL,
+                    exc,
+                )
+    return False
+
+
+def _push_to_sync_fallback(
+    *, level: str, message: str, path: str, trace_id: str
+) -> None:
+    """Tüm denemeler başarısız olunca sync_fallback listesine yazar."""
+    import json
+
+    try:
+        import redis as _redis
+
+        from app.config import settings
+
+        r = _redis.from_url(
+            settings.REDIS_URL, socket_connect_timeout=1, socket_timeout=1
+        )
+        payload = json.dumps(
+            {
+                "layer": "api",
+                "category": "telegram_delivery_failure",
+                "severity": level,
+                "message": message,
+                "path": path,
+                "trace_id": trace_id,
+                "metadata": {},
+            }
+        )
+        r.lpush("error:sync_fallback", payload)
+        r.ltrim("error:sync_fallback", 0, 999)
+    except Exception as fb_exc:
+        logger.debug("sync_fallback push failed: %s", fb_exc)

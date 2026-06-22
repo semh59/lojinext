@@ -1,0 +1,257 @@
+import json
+import logging
+from datetime import datetime
+from typing import Annotated, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import BaseModel
+
+from app.api.deps import get_current_active_user
+from app.config import settings
+from app.core.ml.maintenance_predictor import MaintenancePredictor
+from app.core.services.ics_generator import generate_ics_for_maintenance
+from app.core.services.maintenance_service import (
+    PREDICTIONS_CACHE_ALL,
+    MaintenanceService,
+)
+from app.database.models import BakimTipi, Kullanici
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.audit.audit_logger import log_audit_event
+from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
+from app.infrastructure.security.permission_checker import require_yetki
+from app.schemas.api_responses import (
+    MaintenanceAlertItem,
+    MaintenanceCompleteResponse,
+    MaintenanceRecordResponse,
+)
+from app.schemas.maintenance_prediction import MaintenancePrediction
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+async def _get_redis():
+    """Async Redis client; başarısızlıkta None."""
+    try:
+        import redis.asyncio as aioredis
+
+        return aioredis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+            socket_connect_timeout=1.0,
+            socket_timeout=1.0,
+        )
+    except Exception as exc:
+        logger.debug("Maintenance redis init failed: %s", exc)
+        return None
+
+
+class MaintenanceCreateSchema(BaseModel):
+    arac_id: int
+    bakim_tipi: BakimTipi
+    km_bilgisi: int
+    bakim_tarihi: datetime
+    maliyet: float = 0.0
+    detaylar: str = ""
+
+
+@router.post(
+    "/",
+    response_model=MaintenanceRecordResponse,
+    dependencies=[Depends(require_yetki(["bakim_ekle", "all", "*"]))],
+)
+async def create_maintenance(
+    data: MaintenanceCreateSchema,
+) -> MaintenanceRecordResponse:
+    """Admin: create a new maintenance record."""
+    service = MaintenanceService()
+    record = await service.create_maintenance_record(
+        arac_id=data.arac_id,
+        bakim_tipi=data.bakim_tipi,
+        km_bilgisi=data.km_bilgisi,
+        bakim_tarihi=data.bakim_tarihi,
+        maliyet=data.maliyet,
+        detaylar=data.detaylar,
+    )
+    return MaintenanceRecordResponse.model_validate(record)
+
+
+@router.get(
+    "/alerts",
+    response_model=List[MaintenanceAlertItem],
+    dependencies=[Depends(require_yetki(["admin", "super_admin", "fleet_manager"]))],
+)
+async def get_upcoming_alerts() -> List[MaintenanceAlertItem]:
+    """List maintenance tasks that are due or overdue."""
+    service = MaintenanceService()
+    alerts = await service.get_upcoming_alerts()
+    return [MaintenanceAlertItem.model_validate(a) for a in alerts]
+
+
+# ── Feature D — Tahmine Dayalı Bakım endpoint'leri ─────────────────────
+# NOT: `/predictions` literal route, `/{arac_id}` catch-all'dan ÖNCE
+# kayıtlı olmak zorundadır (FastAPI registration-order matching).
+
+
+@router.get(
+    "/predictions",
+    response_model=List[MaintenancePrediction],
+    dependencies=[
+        Depends(require_yetki(["bakim_oku", "admin", "super_admin", "fleet_manager"]))
+    ],
+)
+async def get_all_predictions(
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+) -> List[MaintenancePrediction]:
+    """Tüm aktif araçlar için PERIYODIK bakım tahmini.
+
+    Feature flag `MAINTENANCE_PREDICTOR_ENABLED=False` → 503.
+    Redis cache (TTL 1 saat); bakım create/complete'te invalidate edilir.
+    """
+    if not settings.MAINTENANCE_PREDICTOR_ENABLED:
+        raise HTTPException(status_code=503, detail="Bakım tahmin modülü devre dışı")
+
+    redis_client = await _get_redis()
+    if redis_client is not None:
+        try:
+            cached = await redis_client.get(PREDICTIONS_CACHE_ALL)
+            if cached:
+                return [
+                    MaintenancePrediction.model_validate_json(j)
+                    for j in json.loads(cached)
+                ]
+        except Exception as exc:
+            logger.warning("Predictions cache read failed: %s", exc)
+
+    predictor = MaintenancePredictor()
+    preds = await predictor.predict_all()
+    result = [MaintenancePrediction.model_validate(p) for p in preds]
+
+    if redis_client is not None:
+        try:
+            await redis_client.setex(
+                PREDICTIONS_CACHE_ALL,
+                settings.MAINTENANCE_PREDICTOR_CACHE_TTL_S,
+                json.dumps([p.model_dump_json() for p in result]),
+            )
+        except Exception as exc:
+            logger.warning("Predictions cache write failed: %s", exc)
+
+    creator_id = current_user.id if current_user.id and current_user.id > 0 else None
+    try:
+        await log_audit_event(
+            action="predictions_viewed",
+            module="maintenance",
+            entity_id=None,
+            user_id=creator_id,
+            new_value={"count": len(result), "scope": "all"},
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Audit log failed: %s", exc)
+
+    return result
+
+
+@router.get(
+    "/predictions/{arac_id}",
+    response_model=MaintenancePrediction,
+    dependencies=[
+        Depends(require_yetki(["bakim_oku", "admin", "super_admin", "fleet_manager"]))
+    ],
+)
+async def get_prediction_for_arac(
+    arac_id: int,
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+) -> MaintenancePrediction:
+    """Tek araç için PERIYODIK bakım tahmini."""
+    if not settings.MAINTENANCE_PREDICTOR_ENABLED:
+        raise HTTPException(status_code=503, detail="Bakım tahmin modülü devre dışı")
+    pred = await MaintenancePredictor().predict_for_arac(arac_id)
+    if pred is None:
+        raise HTTPException(status_code=404, detail="Araç bulunamadı")
+
+    creator_id = current_user.id if current_user.id and current_user.id > 0 else None
+    try:
+        await log_audit_event(
+            action="predictions_viewed",
+            module="maintenance",
+            entity_id=str(arac_id),
+            user_id=creator_id,
+            new_value={"scope": "single"},
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Audit log failed: %s", exc)
+
+    return MaintenancePrediction.model_validate(pred)
+
+
+@router.get(
+    "/{bakim_id}/ics",
+    dependencies=[
+        Depends(RateLimiterDependency("ics_download", rate=10.0, period=60.0)),
+        Depends(require_yetki(["bakim_oku", "admin", "super_admin", "fleet_manager"])),
+    ],
+)
+async def download_ics(
+    bakim_id: int,
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+) -> Response:
+    """RFC 5545 .ics dosyası — Outlook/Google Calendar için takvim aktarımı.
+
+    UTF-8 charset, line folding dahil; Türkçe karakterler korunur.
+    """
+    async with UnitOfWork() as uow:
+        from sqlalchemy import select
+
+        from app.database.models import Arac, AracBakim
+
+        bakim_row = (
+            await uow.session.execute(select(AracBakim).where(AracBakim.id == bakim_id))
+        ).scalar_one_or_none()
+        if bakim_row is None:
+            raise HTTPException(status_code=404, detail="Bakım bulunamadı")
+        arac_row: Optional[Arac] = None
+        if bakim_row.arac_id is not None:
+            arac_row = (
+                await uow.session.execute(
+                    select(Arac).where(Arac.id == bakim_row.arac_id)
+                )
+            ).scalar_one_or_none()
+
+    ics_body = generate_ics_for_maintenance(bakim_row, arac_row)
+    return Response(
+        content=ics_body.encode("utf-8"),
+        media_type="text/calendar; charset=utf-8",
+        headers={
+            "Content-Disposition": (f'attachment; filename="bakim-{bakim_id}.ics"'),
+        },
+    )
+
+
+# ── Mevcut endpoint'ler (route ordering için /predictions sonrası) ─────
+
+
+@router.get(
+    "/{arac_id}",
+    response_model=List[MaintenanceRecordResponse],
+    dependencies=[Depends(require_yetki(["admin", "super_admin", "fleet_manager"]))],
+)
+async def get_vehicle_history(arac_id: int) -> List[MaintenanceRecordResponse]:
+    """Full maintenance history for a single vehicle."""
+    service = MaintenanceService()
+    history = await service.get_vehicle_maintenance_history(arac_id)
+    return [MaintenanceRecordResponse.model_validate(r) for r in history]
+
+
+@router.patch(
+    "/{bakim_id}/complete",
+    response_model=MaintenanceCompleteResponse,
+    dependencies=[Depends(require_yetki(["bakim_duzenle", "all", "*"]))],
+)
+async def mark_complete(bakim_id: int) -> MaintenanceCompleteResponse:
+    """Mark a maintenance record as completed."""
+    service = MaintenanceService()
+    success = await service.mark_as_completed(bakim_id)
+    return MaintenanceCompleteResponse(success=success)

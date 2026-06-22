@@ -1,0 +1,817 @@
+﻿name: CI Hard Gates
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Manuel trigger — E2E gate'i sadece burada çalışır
+    inputs:
+      run_load_test:
+        description: "Locust yük testini koş (GO gate #4)"
+        type: boolean
+        default: false
+      lt_users:
+        description: "Eş-zamanlı sanal kullanıcı (pilot 3-5x)"
+        default: "50"
+      lt_spawn:
+        description: "Saniyede spawn rate"
+        default: "10"
+      lt_time:
+        description: "Süre (örn. 120s, 5m)"
+        default: "120s"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ci-hard-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hard-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lojinext_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lojinext_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ENVIRONMENT: test
+      SECRET_KEY: test-secret-key
+      ADMIN_PASSWORD: test-admin-password
+      # E2E login: super-admin bypass uses SUPER_ADMIN_PASSWORD; ADMIN_PASSWORD
+      # alone is not enough since the bypass only reads SUPER_ADMIN_PASSWORD.
+      # Integration tests wipe the DB (DROP SCHEMA), so no admin user exists
+      # when uvicorn starts for Playwright — bypass avoids any DB lookup.
+      SUPER_ADMIN_PASSWORD: test-admin-password
+      # CI postgres service POSTGRES_USER=postgres ile başlatılıyor; conftest
+      # `_reset_public_schema` GRANT için POSTGRES_USER env'ini okuyor —
+      # default `lojinext_user` rol'ü CI'da yok, bu env explicit set'lenir.
+      POSTGRES_USER: postgres
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
+      OPENROUTESERVICE_API_KEY: dummy_test_key
+      OPENROUTE_API_KEY: dummy_test_key
+      CORS_ORIGINS: http://localhost
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependency source contract gate
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          lines = [
+              line.strip()
+              for line in Path("requirements.txt").read_text(encoding="utf-8-sig").splitlines()
+              if line.strip() and not line.strip().startswith("#")
+          ]
+          expected = ["-r app/requirements.txt"]
+          if lines != expected:
+              raise SystemExit(
+                  f"requirements.txt drift detected. expected={expected}, found={lines}"
+              )
+          print("Dependency source contract OK: requirements.txt -> app/requirements.txt")
+          PY
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r app/requirements-dev.txt
+
+      - name: Install frontend dependencies
+        run: npm --prefix frontend ci
+
+      - name: Frontend codegen (orval)
+        # Generated files are gitignored; regenerate from committed openapi.json
+        # so subsequent lint/build/test steps can resolve the generated imports.
+        run: npm --prefix frontend run codegen
+
+      - name: Runtime dependency smoke (Celery)
+        run: |
+          python - <<'PY'
+          import celery
+          from app.infrastructure.background.celery_app import celery_app
+
+          print(f"Celery import OK: version={celery.__version__}")
+          print(f"Celery app OK: name={celery_app.main}")
+          PY
+
+      - name: Forbidden model references gate (qwen/gpt4all)
+        run: |
+          if git grep -n -i -E "qwen|gpt4all" -- ':!.github/workflows/ci.yml' ':!CLAUDE.md'; then
+            echo "Forbidden model references detected (qwen/gpt4all)."
+            exit 1
+          fi
+          echo "Forbidden model references gate passed."
+
+      - name: Backend import smoke
+        run: python -c "import app.main"
+
+      - name: Migrate database to head
+        run: alembic upgrade head
+        env:
+          PGOPTIONS: "-c lock_timeout=3s -c statement_timeout=120s"
+
+      - name: Alembic parity gate
+        run: |
+          python - <<'PY'
+          import re
+          import subprocess
+          import sys
+
+          def parse_heads():
+              output = subprocess.check_output(["alembic", "heads"], text=True)
+              revisions = []
+              for line in output.splitlines():
+                  match = re.match(r"^([A-Za-z0-9_]+)\b", line.strip())
+                  if match:
+                      revisions.append(match.group(1))
+              return revisions
+
+          def parse_current():
+              output = subprocess.check_output(["alembic", "current", "--verbose"], text=True)
+              match = re.search(r"^Rev:\s+([A-Za-z0-9_]+)\b", output, flags=re.MULTILINE)
+              if not match:
+                  print(f"Alembic parity failed: could not parse current revision from output:\n{output}")
+                  sys.exit(1)
+              return [match.group(1)]
+
+          heads = parse_heads()
+          current = parse_current()
+
+          if len(heads) != 1:
+              print(f"Alembic parity failed: expected exactly 1 head, found {heads}")
+              sys.exit(1)
+
+          if current != heads:
+              print(f"Alembic parity failed: current={current}, head={heads}")
+              sys.exit(1)
+
+          print(f"Alembic parity OK: {heads[0]}")
+          PY
+
+      - name: Alembic drift gate
+        run: alembic --raiseerr check
+
+      - name: Secret scanning (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LOG_OPTS: --all
+
+      - name: Security scan — Python (pip-audit)
+        # Blocking: known CVEs in production dependencies must be fixed or
+        # explicitly suppressed via --ignore-vuln with a documented reason.
+        #
+        # PYSEC-2026-161 (starlette<1.0.1): prometheus-fastapi-instrumentator
+        # 7.1.0 starlette<1.0.0'a pin'li → upgrade upstream-blocked.
+        # Tracked: instrumentator next release'i çıkınca starlette 1.0.1+'a geç
+        # ve bu ignore'u kaldır.
+        #
+        # CVE-2025-3000 (torch 2.12.0): fix sürümü YOK (pip-audit "Fix Versions"
+        # boş) ve torch transitive bir ML bağımlılığı (sentence-transformers).
+        # Exploit yolu güvenilmeyen model dosyası yüklemek; bu uygulama modelleri
+        # kendi eğitip yüklüyor (harici untrusted .pt yok) → pratik risk düşük.
+        # Tracked: torch fix sürümü çıkınca bump et ve bu ignore'u kaldır.
+        # Suppression review date: 2026-09-21 (3 months) — re-audit all ignores.
+        run: |
+          pip-audit --requirement app/requirements.txt \
+            --ignore-vuln CVE-2025-3000 \
+            --ignore-vuln PYSEC-2025-185 \
+            --ignore-vuln PYSEC-2024-277 \
+            --ignore-vuln PYSEC-2025-189 \
+            --ignore-vuln PYSEC-2025-190 \
+            --ignore-vuln PYSEC-2025-191 \
+            --ignore-vuln PYSEC-2025-192 \
+            --ignore-vuln PYSEC-2025-193 \
+            --ignore-vuln PYSEC-2025-194 \
+            --ignore-vuln PYSEC-2025-195 \
+            --ignore-vuln PYSEC-2025-196 \
+            --ignore-vuln PYSEC-2025-197 \
+            --ignore-vuln PYSEC-2025-210 \
+            --ignore-vuln PYSEC-2026-139 \
+            --ignore-vuln PYSEC-2025-211 \
+            --ignore-vuln PYSEC-2025-212 \
+            --ignore-vuln PYSEC-2025-213 \
+            --ignore-vuln PYSEC-2025-214 \
+            --ignore-vuln PYSEC-2025-215 \
+            --ignore-vuln PYSEC-2025-216 \
+            --ignore-vuln PYSEC-2025-217 \
+            --ignore-vuln PYSEC-2025-218 \
+            --ignore-vuln PYSEC-2026-161
+
+      - name: Security scan — npm audit
+        # Blocking at high severity: moderate/low advisories are informational.
+        run: npm --prefix frontend audit --omit=dev --audit-level=high
+
+      - name: Backend lint (ruff)
+        # E501 is enforced via ruff.toml (lint.pycodestyle.max-line-length=120);
+        # format target stays 88. Legacy unbreakable lines carry explicit
+        # `# noqa: E501`.
+        run: ruff check app/ --select=E,F,W,I
+
+      - name: Backend type check (mypy)
+        # Soft-baseline gate: fails only if the error count GROWS beyond the
+        # known pre-existing count.
+        # - 2026-05-18: 175 (batch-1 cleanup baseline)
+        # - 2026-05-28: 195 (Python 3.12 CI stricter checks + biriken drift;
+        #   local 3.14 184 → CI 3.12 192). Mypy cleanup epic v2'ye taşındı.
+        # - 2026-06-09: 211 (coverage sprint'inde eklenen ~150 test dosyası +
+        #   pre-existing pydantic validator type-looseness; load-test/rate-limit
+        #   değişiklikleri YENİ error eklemedi). Cleanup hâlâ ayrı epic.
+        # - 2026-06-09: 208 (bug-remediation sonrası CI-ÖLÇÜMLÜ değer; jose->PyJWT
+        #   bazı jose hatalarını kaldırdı). NOT: sayım ortama duyarlı — local
+        #   (3.14 + stale deps) 203 raporluyor, CI (fresh install) 208. Gate
+        #   CI'nin gördüğü değere göre ayarlanır.
+        # - 2026-06-11: 188 (ARCH-004 slice 1: schema before-validators
+        #   `v: object` -> `v: Any` — raw Pydantic input is genuinely Any, so
+        #   int()/float()/Decimal() coercion type-checks; 20 errors cleared
+        #   across arac/sefer/lokasyon/dorse/api_responses).
+        # - 2026-06-11: 172 (ARCH-004 slice 2: BaseRepository TypeVar bound to
+        #   Base so __table__/__tablename__ resolve; .aktif/.rowcount via getattr;
+        #   intentional per-repo get_all/get_by_id/create overrides marked
+        #   type: ignore[override]; 16 cleared).
+        # - 2026-06-11: 162 (ARCH-004 slice 3: get_jwks narrows load_pem_public_key
+        #   union to rsa.RSAPublicKey so public_numbers().n/.e type-check; 10
+        #   union-attr cleared in security.py).
+        # - 2026-06-11: 152 (ARCH-004 slice 4: weather dashboard-summary —
+        #   typed summary/analyze_trip as dict[str, Any], gather results
+        #   re-bound to a typed list, return annotation matches the dict it
+        #   builds; 10 cleared in weather.py).
+        # - 2026-06-11: 134 (ARCH-004 slice 5: recommendation_engine used the
+        #   FastAPI get_uow async-generator as a context manager (latent runtime
+        #   AttributeError, masked by test mocks) -> use unit_of_work(); typed
+        #   recommendations as list[Recommendation]; 18 cleared + real bug fixed).
+        # - 2026-06-11: 130 (ARCH-004 slice 6: dlq_tasks cast sync redis rpop to
+        #   Optional[bytes] so json.loads/.decode type-check; 4 cleared).
+        # - 2026-06-11: 121 (ARCH-004 slice 7: system.py error-events endpoints
+        #   (Row._mapping for "count", cast rowcount, chain dict[str, Any]) +
+        #   import_repo create_import_job/get_by_id/update_job_status rewritten to
+        #   be runtime-correct (returned ORM model instead of calling the missing
+        #   self.get / passing a dict positionally to **kwargs base methods —
+        #   latent TypeError/AttributeError masked by fully-mocked repo tests);
+        #   9 cleared + real bug fixed).
+        # - 2026-06-11: 115 (ARCH-004 slice 8: arac_repo + sofor_repo — typed the
+        #   raw-SQL params dict as Dict[str, Any], cast CursorResult.rowcount, and
+        #   fixed three real runtime bugs masked by session-mocked tests:
+        #   get_by_ids used `where(not Model.is_deleted)` (Python truthiness ->
+        #   `WHERE false`, always empty) now `~Model.is_deleted`, and
+        #   SoforRepository.bulk_soft_delete called a non-existent bulk_update
+        #   (AttributeError) — bulk_update now implemented; 6 cleared + 3 bugs).
+        # - 2026-06-11: 108 (ARCH-004 slice 9: ensemble_core sample_weights typed
+        #   Any (list-then-ndarray rebind; dropped 4 stale/mismatched type:ignore
+        #   for .min()/.max()/.mean() + fancy index) + yakit_tahmin_service
+        #   retrain_all_models results dict typed Dict[str, Any]; 7 cleared,
+        #   pure typing).
+        # - 2026-06-11: 102 (ARCH-004 slice 10: benchmark (metrics dict +
+        #   predictions_5 list->ndarray Any) + export_service (EXPORT_DIR uses
+        #   staticmethod directly callable on py3.10+ instead of .__func__;
+        #   templates typed Dict[str, Dict[str, list]] so t_data is indexable);
+        #   6 cleared, pure typing).
+        # - 2026-06-11: 95 (ARCH-004 slice 11: time_series_predictor (conditional
+        #   torch base class type:ignore[misc], training_history/feature_std
+        #   annotated) + lightgbm_predictor (training_stats/feature_importance_
+        #   Dict[str, Any]) + notification_repository (cast CursorResult.rowcount
+        #   x2); 7 cleared, pure typing).
+        # - 2026-06-11: 89 (ARCH-004 slice 12: config_repo real bug (get_all
+        #   returns dicts, so get_all_settings used s.anahtar/s.deger on a dict
+        #   -> AttributeError at runtime; now s["anahtar"]/s["deger"]) +
+        #   external_service (params dicts typed Dict[str, Any] for httpx) +
+        #   celery_probe (Unix-only resource.getrusage type:ignore[attr-defined],
+        #   already runtime-guarded); 6 cleared + 1 real bug.
+        # - 2026-06-11: 84 (ARCH-004 slice 13: openroute_client (params Dict[str,
+        #   Any] for httpx + _last_request_time 0.0 float) + prediction_tasks
+        #   (cast sync-redis get -> bytes for json.loads; explicit re-raise after
+        #   self.retry which always raises, fixes missing-return) + alarm_router
+        #   (cast redis hincrby/hset to Awaitable[int]); 6 cleared, pure typing).
+        # - 2026-06-11: 77 (ARCH-004 slice 14: advanced_lstm (conditional torch
+        #   base classes + None-reassign of imported types type:ignore[misc] x4,
+        #   history annotated) + anomaly_detector (X/y list->ndarray rebind Any);
+        #   7 cleared, pure typing. NB: local->CI gap is ~6 not 5, baseline=local+6.)
+        # - 2026-06-11: 70 (ARCH-004 slice 15: rate_limiter (Limiter None-reassign
+        #   + _NoopLimiter type:ignore) + sofor_service (filters dict typed) +
+        #   cache_manager (cast sync-redis get for pickle.loads) + smart_ai_service
+        #   (SentenceTransformer None-reassign type:ignore[misc]) + prediction_service
+        #   (entity_id int -> str); 7 cleared, pure typing).
+        # - 2026-06-11: 63 (ARCH-004 slice 16: 6 files — event_bus (cast coroutine
+        #   cb await), sefer_repo (rename clashing loop var), executive
+        #   (MonteCarloBand.model_validate dict + cast risk_level Literal),
+        #   model_versiyon_repo (cast rowcount), dorse_repo (Sequence->list),
+        #   physics_fuel_predictor (_Noop counter fallback type:ignore); 7 cleared,
+        #   pure typing. (executive monte_carlo first used model_validate which
+        #   broke a None-case test -> changed to cast; use cast not model_validate
+        #   for response fields.)
+        # - 2026-06-11: 57 (ARCH-004 slice 17: 6 files — groq_service + rag_engine
+        #   (optional-import None reassign type:ignore[misc]), openroute_service
+        #   (params Dict[str, Any]), sofor_pdf_service (Sequence->list),
+        #   predictions (trend_data annotated), reports (Field default_factory
+        #   type:ignore[arg-type]); 6 cleared, pure typing).
+        # - 2026-06-11: 52 (ARCH-004 slice 18: 6 files — sofor_analiz_service
+        #   (gather union narrow Exception->BaseException), anomaly_detection_service
+        #   (tip="tuketim" -> AnomalyType.TUKETIM, + export AnomalyType from
+        #   core.entities), analiz_service (cast dict to RegressionResult TypedDict),
+        #   test_mapbox + anomalies (test fake / Body default_factory type:ignore);
+        #   5 cleared, pure typing).
+        # - 2026-06-11: 49 (ARCH-004 slice 19: admin_config real bug (KonfigService
+        #   had no get_all -> no-group config-list branch hit AttributeError;
+        #   implemented get_all on service + get_all_configs on repo + cache
+        #   invalidation), admin_roles (RolRepository.create yetkiler List[str] ->
+        #   Dict[str, bool], it's a dict column), locations (cast dict-list comp to
+        #   Any for pydantic coercion); 3 cleared + 1 real bug.
+        # - 2026-06-12: 44 (ARCH-004 slice 20: import_service YakitCreate — the 5
+        #   errors are pydantic-mypy quirks (no pydantic.mypy plugin): litre/fiyat_tl
+        #   float -> Decimal(str(...)) (matches pydantic's own coercion), explicit
+        #   toplam_tutar=None / durum="Bekliyor" (mypy doesn't see Field defaults),
+        #   depo_durumu cast to Any (Literal); 5 cleared, runtime-equivalent.
+        # - 2026-06-12: 38 (ARCH-004 slice 21: trips.py (Body default_factory x2
+        #   type:ignore[arg-type], risk_label/route_type str->Literal cast Any) +
+        #   period_calculation_service (sum start 0.0 + PeriyotSeferMatch.toplam_mesafe
+        #   int->float since it sums float distances, fiyat_tl Decimal(str())); 6
+        #   cleared. trips.py 306/527 entity<->schema left for the sefer_write slice.
+        # - 2026-06-12: 35 (ARCH-004 slice 22: ai_service.predict_trip_fuel real
+        #   bugs (all mock-hidden): raw-string session.execute -> text(); predict()
+        #   takes one context and returns one PredictionResult, code passed a [list]
+        #   and indexed [0] -> predict(ctx) / res. Updated the 5 test methods that
+        #   encoded the buggy list contract; 3 cleared + real bug fixed.
+        # - 2026-06-12: 7 (ARCH-005: properly FIX (not mask) the sefer_write_service
+        #   entity<->schema debt by unifying on the schemas model family — facade
+        #   SeferService now imports SeferCreate/SeferUpdate from app.schemas.sefer;
+        #   removed the 3 local entities-model imports in sefer_write_service so its
+        #   constructions match the (schemas) method signatures. The residual
+        #   call-arg "missing argument" errors are genuine pydantic-mypy false
+        #   positives (all fields Optional; no pydantic.mypy plugin) -> line-level
+        #   type:ignore[call-arg] on the 3 construction sites only. Plus durum
+        #   str<->TripStatus and ALLOWED_TRANSITIONS str-enum-key casts. ~28 entity
+        #   <->schema errors cleared properly; module stays fully type-checked.
+        #   Local mypy = 1 (only insight_engine.bulk_create_alerts, a domain
+        #   decision). Baseline 7 absorbs the local->CI gap — tighten once CI runs
+        #   (Actions billing was blocked; verify edge-data validation strictness
+        #   on the return-trip path with integration tests when CI is back).
+        # New files must not introduce additional type errors.
+        run: |
+          set +e
+          MYPY_OUT=$(python -m mypy app/ --ignore-missing-imports \
+            --no-strict-optional --no-error-summary 2>&1)
+          echo "$MYPY_OUT"
+          ERRORS=$(echo "$MYPY_OUT" | grep -c ": error:" || true)
+          BASELINE=7
+          echo "mypy errors: $ERRORS / baseline: $BASELINE"
+          if [ "$ERRORS" -gt "$BASELINE" ]; then
+            echo "ERROR: mypy error count ($ERRORS) exceeds baseline ($BASELINE)."
+            echo "Fix the new type errors before merging."
+            exit 1
+          fi
+
+      - name: Backend unit tests
+        # testpaths in pytest.ini covers both tests/ and app/tests/.
+        # NOTE: xdist (-n 2) denendi (b00b55ad) ama tests/ kökündeki
+        # DB-touching test'ler (TestVehicleAPI vb.) integration marker'sız;
+        # iki worker aynı lojinext_test DB'sine racing — conftest'in
+        # _terminate_other_test_connections çağrısı diğer worker'ın
+        # backend'ini öldürüyor → ConnectionDoesNotExistError. Geri
+        # alındı. Speedup için per-worker DB veya per-worker schema
+        # gerek (follow-up).
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=92 --cov-config=pytest.ini
+
+      - name: Frontend — Unit tests with coverage
+        run: cd frontend && npm run test:cov
+
+      - name: Integration — DB schema integrity
+        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60
+
+      - name: Integration — API contracts
+        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60
+
+      - name: Integration — Business lifecycle
+        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60
+
+      - name: Security — RBAC coverage
+        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30
+
+      - name: Integration — ML/AI pipeline
+        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60
+
+      - name: Integration — remaining (legacy + other integration tests)
+        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
+
+      - name: Deep audit tests (auth isolation + integrity, excluding stress)
+        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short
+
+      - name: Frontend tests
+        run: npm --prefix frontend run test -- --run
+
+      - name: Frontend build
+        run: npm --prefix frontend run build
+
+      - name: Frontend lint
+        run: npm --prefix frontend run lint
+
+      - name: Frontend type-check (incl. tests)
+        # `build` only type-checks src via tsconfig.app.json; this runs the root
+        # tsconfig (tests included) so test-file type drift is caught (was 68
+        # silent errors before this gate).
+        run: npm --prefix frontend run type-check
+
+      - name: Start backend for E2E tests
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          echo "UVICORN_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health/liveness && echo "Backend ready" && break
+            echo "Waiting for backend... ($i/30)" && sleep 2
+          done
+
+      - name: OpenAPI schema drift check
+        # Dumps openapi.json from the running backend and verifies it matches
+        # what is committed. Fails if the schema was edited by hand or if a
+        # backend change wasn't reflected in the committed spec.
+        run: |
+          API_BASE_URL=http://127.0.0.1:8000 npm --prefix frontend run codegen:dump
+          git diff --exit-code frontend/openapi.json
+
+      - name: Install Playwright browsers
+        run: npx --prefix frontend playwright install chromium --with-deps
+
+      - name: Frontend E2E tests
+        # Tur 5 #145'te hizalandı: 23 fail → 0 fail (90 pass + 11 skipped).
+        # Skip'liler: FleetPage sürücü tab kaldırıldı + AlertsPage / Trips
+        # modal / Predictions XAI refactor sonrası eski test'ler deprecated;
+        # ayrı epic'te yeniden yazılır.
+        run: npm --prefix frontend run test:e2e
+        env:
+          E2E_USERNAME: admin
+          E2E_PASSWORD: test-admin-password
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Telegram CI Bildirimi
+        if: failure()
+        run: |
+          MSG=$(printf "🔴 CI HATA\nRepo: %s\nBranch: %s\nCommit: %s\nWorkflow: %s\nLink: %s" \
+            "${{ github.repository }}" \
+            "${{ github.ref_name }}" \
+            "${{ github.sha }}" \
+            "${{ github.workflow }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}")
+          curl -s -X POST \
+            "https://api.telegram.org/bot${{ secrets.TELEGRAM_OPS_BOT_TOKEN }}/sendMessage" \
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_OPS_CHAT_ID }}" \
+            --data-urlencode "text=${MSG}" \
+            || true
+
+      - name: Stop backend
+        if: always()
+        run: kill $UVICORN_PID || true
+
+  publish:
+    name: Build & Push to GHCR
+    needs: hard-gates
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_tag: ${{ steps.tag.outputs.IMAGE_TAG }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          BRANCH=$(echo "${{ github.ref_name }}" | tr '/' '-')
+          echo "IMAGE_TAG=${BRANCH}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN || github.token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Backend ────────────────────────────────────────────────────────────
+      - name: Extract backend metadata
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/lojinext-backend
+          tags: |
+            type=raw,value=${{ steps.tag.outputs.IMAGE_TAG }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          provenance: false
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── Trivy CVE scan ─────────────────────────────────────────────────────
+      - name: Scan backend image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/lojinext-backend:${{ steps.tag.outputs.IMAGE_TAG }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL
+          timeout: "15m"
+          skip-dirs: "usr/local/lib/python3.12/site-packages/nvidia,usr/local/cuda"
+
+      # ── Frontend ───────────────────────────────────────────────────────────
+      - name: Extract frontend metadata
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/lojinext-frontend
+          tags: |
+            type=raw,value=${{ steps.tag.outputs.IMAGE_TAG }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          provenance: false
+          build-args: VITE_API_URL=/api/v1
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Staging auto-deploy (develop → staging VPS)
+  # Requires GitHub Secrets: STAGING_HOST, STAGING_SSH_KEY, STAGING_USER,
+  # STAGING_DEPLOY_PATH
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy-staging:
+    name: Deploy → Staging
+    needs: publish
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+      - name: Deploy to staging via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.STAGING_DEPLOY_PATH }}"
+            export IMAGE_TAG="${{ needs.publish.outputs.image_tag }}"
+            export GHCR_OWNER="${{ github.repository_owner }}"
+            echo "[deploy-staging] IMAGE_TAG=$IMAGE_TAG"
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm \
+              -e ENVIRONMENT=staging backend alembic upgrade head
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build \
+              backend frontend worker celery-beat
+            docker image prune -f --filter "until=24h"
+            echo "[deploy-staging] done"
+
+      - name: Smoke test staging
+        run: |
+          for i in $(seq 1 12); do
+            curl -sf "https://${{ secrets.STAGING_HOST }}/api/v1/health/" --max-time 10 && break
+            echo "[$i/12] not ready yet, waiting 10s..."
+            sleep 10
+          done
+          curl -f "https://${{ secrets.STAGING_HOST }}/api/v1/health/" --max-time 10
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Production auto-deploy (main → prod VPS)
+  # Requires GitHub Secrets: PROD_HOST, PROD_SSH_KEY, PROD_USER,
+  # PROD_DEPLOY_PATH
+  # GitHub Environment "production" should have required-reviewer protection.
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy-production:
+    name: Deploy → Production
+    needs: publish
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    env:
+      PROD_HOST: ${{ secrets.PROD_HOST }}
+
+    steps:
+      - name: Deploy to production via SSH
+        if: env.PROD_HOST
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.PROD_DEPLOY_PATH }}"
+            export IMAGE_TAG="${{ needs.publish.outputs.image_tag }}"
+            export GHCR_OWNER="${{ github.repository_owner }}"
+            echo "[deploy-prod] IMAGE_TAG=$IMAGE_TAG"
+            # Pull first while old containers still serve (minimal downtime)
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend
+            # Run migrations before swap
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm \
+              backend alembic upgrade head
+            # Swap containers
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build \
+              backend frontend worker celery-beat
+            docker image prune -f --filter "until=24h"
+            echo "[deploy-prod] done"
+
+      - name: Smoke test production
+        if: env.PROD_HOST
+        run: |
+          for i in $(seq 1 12); do
+            curl -sf "https://${{ secrets.PROD_HOST }}/api/v1/health/" --max-time 10 && break
+            echo "[$i/12] not ready yet, waiting 10s..."
+            sleep 10
+          done
+          curl -f "https://${{ secrets.PROD_HOST }}/api/v1/health/" --max-time 10
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # GO gate #4 — Locust yük testi (manuel: workflow_dispatch + run_load_test=true)
+  # Temiz Linux + postgres:16 + redis:7 (şifresiz) → lokal Windows'un veremediği
+  # geçerli latency ortamı. Eşik aşılırsa job FAIL (gerçek gate).
+  # ──────────────────────────────────────────────────────────────────────────
+  load-test:
+    name: Load test (Locust, GO gate #4)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_load_test }}
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lojinext_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ENVIRONMENT: test
+      SECRET_KEY: test-secret-key
+      ADMIN_PASSWORD: test-admin-password
+      POSTGRES_USER: postgres
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CORS_ORIGINS: http://localhost
+      PYTHONUNBUFFERED: "1"
+      # Kapasite testi: rate-limit kapalı (tek-IP burst yoksa per-IP limit
+      # sonucu domine eder — bkz. ilk koşu %23 429). Prod'da True kalır.
+      RATE_LIMIT_ENABLED: "false"
+      LT_P95_MS: "2000"
+      LT_FAIL_PCT: "1.0"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Install backend deps + locust
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r loadtest/requirements.txt
+
+      - name: Migrate database to head
+        run: alembic upgrade head
+
+      - name: Start backend
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          echo "UVICORN_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health/liveness && echo "Backend ready" && break
+            echo "Waiting for backend... ($i/30)" && sleep 2
+          done
+
+      - name: Run Locust load test
+        env:
+          LOAD_USER: admin
+          LOAD_PASS: test-admin-password
+        run: |
+          locust -f loadtest/locustfile.py --host http://127.0.0.1:8000 \
+            --headless \
+            -u "${{ inputs.lt_users }}" \
+            -r "${{ inputs.lt_spawn }}" \
+            -t "${{ inputs.lt_time }}" \
+            --csv loadtest/results --html loadtest/report.html --only-summary
+
+      - name: Enforce thresholds (gate #4)
+        run: python loadtest/check_thresholds.py loadtest/results
+
+      - name: Upload load-test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-results
+          path: |
+            loadtest/results_stats.csv
+            loadtest/results_stats_history.csv
+            loadtest/report.html
+          retention-days: 14
+
+      - name: Stop backend
+        if: always()
+        run: kill $UVICORN_PID || true

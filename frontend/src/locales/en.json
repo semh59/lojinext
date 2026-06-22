@@ -1,0 +1,116 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "search": "Search...",
+    "no_data": "No data found",
+    "actions": "Actions",
+    "admin": "Administrator",
+    "active": "Active",
+    "passive": "Passive",
+    "total": "Total",
+    "filter": "Filter",
+    "export": "Export",
+    "import": "Import",
+    "add": "Add",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "refresh": "Refresh",
+    "details": "Details",
+    "status": "Status",
+    "date": "Date",
+    "note": "Note"
+  },
+  "dashboard": {
+    "title": "Fleet Dashboard",
+    "real_time_tracking": "Real-time Tracking",
+    "total_vehicles": "Fleet",
+    "active_trips": "Trips",
+    "total_km": "Total KM",
+    "fuel_consumed": "Fuel Consumed"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "login_failed": "Login failed",
+    "session_expired": "Your session has expired. Please log in again."
+  },
+  "fuel": {
+    "title": "Fuel",
+    "record": "Fuel Record",
+    "records": "Fuel Records",
+    "station": "Station",
+    "litres": "Litres",
+    "price": "Price",
+    "total": "Total Amount",
+    "consumption": "Consumption (L/100km)",
+    "add_record": "Add Fuel Record"
+  },
+  "locations": {
+    "title": "Locations",
+    "route": "Route",
+    "routes": "Routes",
+    "origin": "Origin",
+    "destination": "Destination",
+    "distance": "Distance (km)",
+    "duration": "Estimated Duration",
+    "difficulty": "Difficulty",
+    "add_route": "Add Route"
+  },
+  "reports": {
+    "title": "Reports",
+    "period": "Period",
+    "vehicle_report": "Vehicle Report",
+    "driver_report": "Driver Report",
+    "fuel_report": "Fuel Report",
+    "export_excel": "Download Excel",
+    "export_pdf": "Download PDF"
+  },
+  "admin": {
+    "title": "Administration",
+    "users": "Users",
+    "roles": "Roles",
+    "settings": "Settings",
+    "system_health": "System Health",
+    "audit_log": "Audit Log"
+  },
+  "fleet": {
+    "title": "Fleet",
+    "vehicle": "Vehicle",
+    "vehicles": "Vehicles",
+    "plate": "Plate",
+    "brand": "Brand",
+    "model": "Model",
+    "year": "Year",
+    "target_consumption": "Target Consumption",
+    "add_vehicle": "Add Vehicle"
+  },
+  "drivers": {
+    "title": "Drivers",
+    "driver": "Driver",
+    "license_class": "License Class",
+    "score": "Performance Score",
+    "trips_count": "Trip Count",
+    "add_driver": "Add Driver"
+  },
+  "trips": {
+    "title": "Trips",
+    "trip": "Trip",
+    "departure": "Departure",
+    "arrival": "Arrival",
+    "distance": "Distance",
+    "weight": "Weight (ton)",
+    "actual_consumption": "Actual Consumption",
+    "predicted_consumption": "Predicted Consumption",
+    "status": "Status",
+    "add_trip": "Add Trip"
+  }
+}

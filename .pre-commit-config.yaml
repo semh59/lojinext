@@ -1,0 +1,65 @@
+repos:
+  # ── Python ──────────────────────────────────────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
+    hooks:
+      - id: ruff
+        # NOT: args YAML list — virgülle ayrılmazsa her harf ayrı arg olur
+        args:
+          - "--select=E,F,W,I"
+          - "--fix"
+      - id: ruff-format
+
+  # NOT: mypy local pre-commit'ten kaldırıldı — 175 mevcut hata her commit'i
+  # spam ediyordu. CI'da baseline-aware kontrol var (.github/workflows/ci.yml).
+  # Manuel çalıştırmak için: `mypy app --ignore-missing-imports --no-strict-optional`
+
+  # ── Security ────────────────────────────────────────────────────────────────
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)
+          ^(\.env\.example|env\.prod\.example|app/requirements.*\.txt|requirements.*\.txt)$
+
+  # ── General ─────────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: "^(frontend/|alembic/)"
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      # no-commit-to-branch kaldırıldı — şu an küçük takım, main'e direkt
+      # commit yapılıyor. Feature branch + PR workflow'una geçilirse
+      # aşağıdaki satırı uncomment edin:
+      # - id: no-commit-to-branch
+      #   args: [--branch, main]
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  # Pinned to the stable prettier 3.x mirror: the v4.0.0-alpha.8 prerelease
+  # crashes with a V8 Zone-allocation OOM on node 20+/24 (parser scratch memory),
+  # which broke full-tree commits. Stable 3.1.0 runs cleanly. — 2026-06-17
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.1.0
+    hooks:
+      - id: prettier
+        types_or: [ts, tsx, css, json]
+        files: ^frontend/src/
+        exclude: ^frontend/node_modules/
+
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint (frontend)
+        language: system
+        entry: npm --prefix frontend run lint
+        pass_filenames: false
+        files: ^frontend/src/.*\.(ts|tsx)$

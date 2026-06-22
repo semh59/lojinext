@@ -1,0 +1,51 @@
+﻿import { useState } from "react";
+import { Download, Loader2 } from "lucide-react";
+
+import { useNotify } from "@/context/NotificationContext";
+import { executiveText } from "@/resources/tr/executive";
+import { executiveService } from "@/api/executive";
+
+export function DownloadPdfButton() {
+  const [downloading, setDownloading] = useState(false);
+  const { notify } = useNotify();
+  const t = executiveText.pdf;
+
+  const handleClick = async () => {
+    setDownloading(true);
+    try {
+      await executiveService.downloadPdf();
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number } };
+      if (e?.response?.status === 404 || e?.response?.status === 501) {
+        notify("warning", t.notReady, t.notReady);
+      } else {
+        notify("error", t.error, t.error);
+      }
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="flex justify-end">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={downloading}
+        className="inline-flex items-center gap-2 rounded-card bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:bg-accent/90 disabled:opacity-50"
+      >
+        {downloading ? (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {t.downloading}
+          </>
+        ) : (
+          <>
+            <Download className="h-3 w-3" />
+            {t.downloadButton}
+          </>
+        )}
+      </button>
+    </div>
+  );
+}

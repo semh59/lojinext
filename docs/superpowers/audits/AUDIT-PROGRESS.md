@@ -1,0 +1,1291 @@
+# AUDIT-PROGRESS — Kapsam Ledger'ı (2026-06-14)
+
+> ✅ **FAZ 1 (tespit) TAMAM — 2026-06-16.** Tüm üretim kodu denetlendi: 660/1275 dosya, 183 bulgu.
+> Kalan 615 `[ ]` = YALNIZ S10 testler (`app/tests/` + frontend `__tests__` + `frontend/src/test/`),
+> kullanıcı kararıyla KAPSAM DIŞI. Yönetici özeti: `AUDIT-SUMMARY.md`.
+>
+> 🛑 **FAZ 2 (düzeltme) yapacak oturum: ÖNCE `AUDIT-FIX-PROTOCOL.md` OKU.** Demir kurallar: (1) önce hatayı
+> doğrula, (2) fix başka yeri bozmaz (aile-kökü + tam kapı + blast-radius), (3) hayali/sahte kod yok. İhlal = fix reddedilir.
+
+Bir dosya tam okunup §5 kontrol listesi uygulanınca `- [ ]` → `- [x]` yapılır.
+Tüm satırlar `[x]` olmadan ilgili S-grubu BİTTİ sayılmaz.
+DÜZELTME (2026-06-14): glob 'app/**' kök dosyaları kaçırıyordu; 'app/*' ile yeniden üretildi (+18 dosya).
+
+## Üretim kodu (S1–S9) — 661
+- [x] app/__init__.py
+- [x] app/api/deps.py
+- [x] app/api/middleware/rate_limiter.py
+- [x] app/api/v1/api.py
+- [x] app/api/v1/endpoints/admin_attribution.py
+- [x] app/api/v1/endpoints/admin_calibration.py
+- [x] app/api/v1/endpoints/admin_config.py
+- [x] app/api/v1/endpoints/admin_fuel_accuracy.py
+- [x] app/api/v1/endpoints/admin_health.py
+- [x] app/api/v1/endpoints/admin_imports.py
+- [x] app/api/v1/endpoints/admin_maintenance.py
+- [x] app/api/v1/endpoints/admin_ml.py
+- [x] app/api/v1/endpoints/admin_notifications.py
+- [x] app/api/v1/endpoints/admin_pilot.py
+- [x] app/api/v1/endpoints/admin_predictions.py
+- [x] app/api/v1/endpoints/admin_roles.py
+- [x] app/api/v1/endpoints/admin_users.py
+- [x] app/api/v1/endpoints/admin_ws.py
+- [x] app/api/v1/endpoints/advanced_reports.py
+- [x] app/api/v1/endpoints/ai.py
+- [x] app/api/v1/endpoints/analytics.py
+- [x] app/api/v1/endpoints/anomalies.py
+- [x] app/api/v1/endpoints/auth.py
+- [x] app/api/v1/endpoints/coaching.py
+- [x] app/api/v1/endpoints/drivers.py
+- [x] app/api/v1/endpoints/error_stream.py
+- [x] app/api/v1/endpoints/executive.py
+- [x] app/api/v1/endpoints/feedback.py
+- [x] app/api/v1/endpoints/fleet_insights.py
+- [x] app/api/v1/endpoints/fuel.py
+- [x] app/api/v1/endpoints/health.py
+- [x] app/api/v1/endpoints/internal.py
+- [x] app/api/v1/endpoints/investigations.py
+- [x] app/api/v1/endpoints/locations.py
+- [x] app/api/v1/endpoints/predictions.py
+- [x] app/api/v1/endpoints/preferences.py
+- [x] app/api/v1/endpoints/push.py
+- [x] app/api/v1/endpoints/reports.py
+- [x] app/api/v1/endpoints/reports_studio.py
+- [x] app/api/v1/endpoints/routes.py
+- [x] app/api/v1/endpoints/system.py
+- [x] app/api/v1/endpoints/today_triage.py
+- [x] app/api/v1/endpoints/trailers.py
+- [x] app/api/v1/endpoints/trips.py
+- [x] app/api/v1/endpoints/users.py
+- [x] app/api/v1/endpoints/vehicles.py
+- [x] app/api/v1/endpoints/weather.py
+- [x] app/api/v1/endpoints/ws_ticket.py
+- [x] app/api/v1/utils.py
+- [x] app/config.py
+- [x] app/core/__init__.py
+- [x] app/core/ai/__init__.py
+- [x] app/core/ai/chatbot.py
+- [x] app/core/ai/context_builder.py
+- [x] app/core/ai/driver_coaching_engine.py
+- [x] app/core/ai/fuel_theft_classifier.py
+- [x] app/core/ai/groq_service.py
+- [x] app/core/ai/llm_client.py
+- [x] app/core/ai/prompt_tuner.py
+- [x] app/core/ai/rag_engine.py
+- [x] app/core/ai/rag_sync_service.py
+- [x] app/core/ai/recommendation_engine.py
+- [x] app/core/ai/trip_planner.py
+- [x] app/core/container.py
+- [x] app/core/entities/__init__.py
+- [x] app/core/entities/models.py
+- [x] app/core/entities/sofor_degerlendirme.py
+- [x] app/core/errors.py
+- [x] app/core/exceptions.py
+- [x] app/core/handlers/model_training_handler.py
+- [x] app/core/handlers/physics_handler.py
+- [x] app/core/integrations/__init__.py
+- [x] app/core/integrations/avl/__init__.py
+- [x] app/core/integrations/avl/base.py
+- [x] app/core/integrations/avl/mobiliz.py
+- [x] app/core/integrations/fuel/__init__.py
+- [x] app/core/integrations/fuel/base.py
+- [x] app/core/integrations/fuel/opet.py
+- [x] app/core/integrations/registry.py
+- [x] app/core/interfaces/__init__.py
+- [x] app/core/interfaces/repositories.py
+- [x] app/core/ml/adjustment_factors.py
+- [x] app/core/ml/advanced_lstm.py
+- [x] app/core/ml/anomaly_clustering.py
+- [x] app/core/ml/benchmark.py
+- [x] app/core/ml/bus_factor.py
+- [x] app/core/ml/carbon_footprint.py
+- [x] app/core/ml/driver_performance_ml.py
+- [x] app/core/ml/driver_route_profile.py
+- [x] app/core/ml/ensemble_core.py
+- [x] app/core/ml/ensemble_predictor.py
+- [x] app/core/ml/ensemble_service.py
+- [x] app/core/ml/ensemble_strategy.py
+- [x] app/core/ml/fleet_efficiency_index.py
+- [x] app/core/ml/fuel_predictor.py
+- [x] app/core/ml/kalman_estimator.py
+- [x] app/core/ml/lightgbm_predictor.py
+- [x] app/core/ml/maintenance_predictor.py
+- [x] app/core/ml/model_manager.py
+- [x] app/core/ml/physics_fuel_predictor.py
+- [x] app/core/ml/predictors/__init__.py
+- [x] app/core/ml/predictors/ensemble_predictor.py
+- [x] app/core/ml/route_similarity.py
+- [x] app/core/ml/segment_simulator.py
+- [x] app/core/ml/time_series_predictor.py
+- [x] app/core/ml/training/__init__.py
+- [x] app/core/ml/training/scheduler_task.py
+- [x] app/core/ml/training/trainer.py
+- [x] app/core/ml/vehicle_health_factor.py
+- [x] app/core/protocols.py
+- [x] app/core/security.py
+- [x] app/core/services/__init__.py
+- [x] app/core/services/admin_audit_service.py
+- [x] app/core/services/ai_service.py
+- [x] app/core/services/analiz_service.py
+- [x] app/core/services/anomaly_detection_service.py
+- [x] app/core/services/anomaly_detector.py
+- [x] app/core/services/arac_service.py
+- [x] app/core/services/attribution_service.py
+- [x] app/core/services/auth_service.py
+- [x] app/core/services/cashflow_projector.py
+- [x] app/core/services/compliance_scanner.py
+- [x] app/core/services/cost_analyzer.py
+- [x] app/core/services/cross_feature_aggregator.py
+- [x] app/core/services/dashboard_service.py
+- [x] app/core/services/dorse_service.py
+- [x] app/core/services/excel_column_map.py
+- [x] app/core/services/excel_exporter.py
+- [x] app/core/services/excel_parser.py
+- [x] app/core/services/excel_service.py
+- [x] app/core/services/executive_pdf_generator.py
+- [x] app/core/services/export_service.py
+- [x] app/core/services/fleet_comparison.py
+- [x] app/core/services/health_service.py
+- [x] app/core/services/ics_generator.py
+- [x] app/core/services/import_service.py
+- [x] app/core/services/insight_engine.py
+- [x] app/core/services/internal_service.py
+- [x] app/core/services/konfig_service.py
+- [x] app/core/services/license_service.py
+- [x] app/core/services/lokasyon_hydrator.py
+- [x] app/core/services/lokasyon_service.py
+- [x] app/core/services/maintenance_service.py
+- [x] app/core/services/ml_service.py
+- [x] app/core/services/notification_prioritizer.py
+- [x] app/core/services/notification_service.py
+- [x] app/core/services/openroute_service.py
+- [x] app/core/services/period_calculation_service.py
+- [x] app/core/services/prediction_backfill_service.py
+- [x] app/core/services/preference_service.py
+- [x] app/core/services/push_sender.py
+- [x] app/core/services/quiet_hours.py
+- [x] app/core/services/report_generator.py
+- [x] app/core/services/report_service.py
+- [x] app/core/services/route_calibration_service.py
+- [x] app/core/services/route_simulator.py
+- [x] app/core/services/route_validator.py
+- [x] app/core/services/security_service.py
+- [x] app/core/services/sefer_analiz_service.py
+- [x] app/core/services/sefer_fuel_estimator.py
+- [x] app/core/services/sefer_read_service.py
+- [x] app/core/services/sefer_service.py
+- [x] app/core/services/sefer_write_service.py
+- [x] app/core/services/segment_resampler.py
+- [x] app/core/services/sofor_analiz_service.py
+- [x] app/core/services/sofor_pdf_service.py
+- [x] app/core/services/sofor_service.py
+- [x] app/core/services/triage_aggregator.py
+- [x] app/core/services/user_service.py
+- [x] app/core/services/weather_service.py
+- [x] app/core/services/what_if_engine.py
+- [x] app/core/services/yakit_service.py
+- [x] app/core/services/yakit_tahmin_service.py
+- [x] app/core/unit_of_work.py
+- [x] app/core/utils/__init__.py
+- [x] app/core/utils/clock.py
+- [x] app/core/utils/polyline.py
+- [x] app/core/utils/sefer_status.py
+- [x] app/core/utils/trip_status.py
+- [x] app/core/utils/type_helpers.py
+- [x] app/database/__init__.py
+- [x] app/database/base_repository.py
+- [x] app/database/connection.py
+- [x] app/database/db_session.py
+- [x] app/database/init_db.py
+- [x] app/database/models.py
+- [x] app/database/repositories/__init__.py
+- [x] app/database/repositories/admin_config_repo.py
+- [x] app/database/repositories/analiz_repo.py
+- [x] app/database/repositories/arac_repo.py
+- [x] app/database/repositories/audit_repo.py
+- [x] app/database/repositories/config_repo.py
+- [x] app/database/repositories/dorse_repo.py
+- [x] app/database/repositories/import_repo.py
+- [x] app/database/repositories/kullanici_repo.py
+- [x] app/database/repositories/lokasyon_repo.py
+- [x] app/database/repositories/maintenance_repository.py
+- [x] app/database/repositories/ml_training_repo.py
+- [x] app/database/repositories/model_versiyon_repo.py
+- [x] app/database/repositories/notification_repository.py
+- [x] app/database/repositories/page_view_repo.py
+- [x] app/database/repositories/rol_repo.py
+- [x] app/database/repositories/route_repo.py
+- [x] app/database/repositories/sefer_repo.py
+- [x] app/database/repositories/session_repo.py
+- [x] app/database/repositories/setting_repository.py
+- [x] app/database/repositories/sofor_repo.py
+- [x] app/database/repositories/yakit_repo.py
+- [x] app/database/unit_of_work.py
+- [x] app/domain/services/route_analyzer.py
+- [x] app/infrastructure/__init__.py
+- [x] app/infrastructure/audit/__init__.py
+- [x] app/infrastructure/audit/audit_logger.py
+- [x] app/infrastructure/background/celery_app.py
+- [x] app/infrastructure/background/job_manager.py
+- [x] app/infrastructure/cache/__init__.py
+- [x] app/infrastructure/cache/cache_invalidation.py
+- [x] app/infrastructure/cache/cache_manager.py
+- [x] app/infrastructure/cache/redis_cache.py
+- [x] app/infrastructure/cache/redis_pubsub.py
+- [x] app/infrastructure/context/__init__.py
+- [x] app/infrastructure/context/correlation_middleware.py
+- [x] app/infrastructure/context/request_context.py
+- [x] app/infrastructure/database/backup_manager.py
+- [x] app/infrastructure/elevation/__init__.py
+- [x] app/infrastructure/elevation/open_meteo_client.py
+- [x] app/infrastructure/events/__init__.py
+- [x] app/infrastructure/events/contracts.py
+- [x] app/infrastructure/events/event_bus.py
+- [x] app/infrastructure/events/event_types.py
+- [x] app/infrastructure/events/outbox_service.py
+- [x] app/infrastructure/logging/audit_logger.py
+- [x] app/infrastructure/logging/logger.py
+- [x] app/infrastructure/metrics.py
+- [x] app/infrastructure/middleware/body_size_middleware.py
+- [x] app/infrastructure/middleware/logging_middleware.py
+- [x] app/infrastructure/middleware/rate_limit_middleware.py
+- [x] app/infrastructure/monitoring/__init__.py
+- [x] app/infrastructure/monitoring/activate.py
+- [x] app/infrastructure/monitoring/alarm_router.py
+- [x] app/infrastructure/monitoring/celery_probe.py
+- [x] app/infrastructure/monitoring/db_probe.py
+- [x] app/infrastructure/monitoring/event_bus.py
+- [x] app/infrastructure/monitoring/external_api_probe.py
+- [x] app/infrastructure/monitoring/ml_probe.py
+- [x] app/infrastructure/monitoring/models.py
+- [x] app/infrastructure/monitoring/security_probe.py
+- [x] app/infrastructure/monitoring/service_probe.py
+- [x] app/infrastructure/monitoring/silent_fallback_probe.py
+- [x] app/infrastructure/notifications/__init__.py
+- [x] app/infrastructure/notifications/telegram_notifier.py
+- [x] app/infrastructure/resilience/__init__.py
+- [x] app/infrastructure/resilience/circuit_breaker.py
+- [x] app/infrastructure/resilience/idempotency.py
+- [x] app/infrastructure/resilience/rate_limiter.py
+- [x] app/infrastructure/resilience/retry.py
+- [x] app/infrastructure/resilience/shutdown.py
+- [x] app/infrastructure/routing/__init__.py
+- [x] app/infrastructure/routing/mapbox_client.py
+- [x] app/infrastructure/routing/openroute_client.py
+- [x] app/infrastructure/security/jwt_handler.py
+- [x] app/infrastructure/security/permission_checker.py
+- [x] app/infrastructure/security/pii_scrubber.py
+- [x] app/infrastructure/security/token_blacklist.py
+- [x] app/main.py
+- [x] app/schemas/analytics.py
+- [x] app/schemas/api_responses.py
+- [x] app/schemas/arac.py
+- [x] app/schemas/attribution.py
+- [x] app/schemas/base.py
+- [x] app/schemas/coaching.py
+- [x] app/schemas/dorse.py
+- [x] app/schemas/executive.py
+- [x] app/schemas/fleet_insights.py
+- [x] app/schemas/investigation.py
+- [x] app/schemas/lokasyon.py
+- [x] app/schemas/maintenance_prediction.py
+- [x] app/schemas/ml_schemas.py
+- [x] app/schemas/prediction.py
+- [x] app/schemas/preference.py
+- [x] app/schemas/push.py
+- [x] app/schemas/report_template.py
+- [x] app/schemas/sefer.py
+- [x] app/schemas/sofor.py
+- [x] app/schemas/telegram.py
+- [x] app/schemas/today.py
+- [x] app/schemas/trip_planner.py
+- [x] app/schemas/user.py
+- [x] app/schemas/validators.py
+- [x] app/schemas/yakit.py
+- [x] app/scripts/backfill_route_pairs.py
+- [x] app/scripts/benchmark.py
+- [x] app/scripts/create_admin.py
+- [x] app/services/__init__.py
+- [x] app/services/api/__init__.py
+- [x] app/services/api/sefer_import_service.py
+- [x] app/services/external_service.py
+- [x] app/services/prediction_service.py
+- [x] app/services/route_service.py
+- [x] app/services/smart_ai_service.py
+- [x] app/services/time_series_service.py
+- [x] app/workers/__init__.py
+- [x] app/workers/tasks/__init__.py
+- [x] app/workers/tasks/analytics_tasks.py
+- [x] app/workers/tasks/anomaly_cluster_tasks.py
+- [x] app/workers/tasks/coaching_tasks.py
+- [x] app/workers/tasks/compliance_tasks.py
+- [x] app/workers/tasks/dlq_tasks.py
+- [x] app/workers/tasks/driver_tasks.py
+- [x] app/workers/tasks/error_digest.py
+- [x] app/workers/tasks/notification_tasks.py
+- [x] app/workers/tasks/ocr_tasks.py
+- [x] app/workers/tasks/outbox_tasks.py
+- [x] app/workers/tasks/prediction_backfill_tasks.py
+- [x] app/workers/tasks/prediction_tasks.py
+- [x] app/workers/tasks/theft_tasks.py
+- [x] frontend/src/App.tsx
+- [x] frontend/src/components/admin/TelegramOnayPanel.tsx
+- [x] frontend/src/components/admin/UserRolePanel.tsx
+- [x] frontend/src/components/admin/maintenance/MaintenanceCalendar.tsx
+- [x] frontend/src/components/admin/maintenance/MaintenanceDetailDrawer.tsx
+- [x] frontend/src/components/admin/maintenance/PredictionsTable.tsx
+- [x] frontend/src/components/ai/AiQueryPanel.tsx
+- [x] frontend/src/components/ai/ChatAssistant.tsx
+- [x] frontend/src/components/alerts/AnomalyClusters.tsx
+- [x] frontend/src/components/alerts/AnomalyTable.tsx
+- [x] frontend/src/components/alerts/InvestigationCard.tsx
+- [x] frontend/src/components/alerts/InvestigationDetailDialog.tsx
+- [x] frontend/src/components/alerts/InvestigationsKanban.tsx
+- [x] frontend/src/components/alerts/PatternList.tsx
+- [x] frontend/src/components/alerts/SeverityFilter.tsx
+- [x] frontend/src/components/auth/PrivateRoute.tsx
+- [x] frontend/src/components/auth/RequirePermission.tsx
+- [x] frontend/src/components/coaching/CoachingDriverList.tsx
+- [x] frontend/src/components/coaching/CoachingInsightsPanel.tsx
+- [x] frontend/src/components/coaching/EffectivenessMiniCard.tsx
+- [x] frontend/src/components/coaching/SendCoachingDialog.tsx
+- [x] frontend/src/components/common/ErrorBoundary.tsx
+- [x] frontend/src/components/common/LojiNextLogo.tsx
+- [x] frontend/src/components/common/Skeleton.tsx
+- [x] frontend/src/components/dashboard/AnomalyWidget.tsx
+- [x] frontend/src/components/dashboard/ConsumptionChart.tsx
+- [x] frontend/src/components/dashboard/KpiRow.tsx
+- [x] frontend/src/components/dashboard/KpiTrendBadge.tsx
+- [x] frontend/src/components/dashboard/TodaysActiveTrips.tsx
+- [x] frontend/src/components/drivers/DriverFilters.tsx
+- [x] frontend/src/components/drivers/DriverGrid.tsx
+- [x] frontend/src/components/drivers/DriverHeader.tsx
+- [x] frontend/src/components/drivers/DriverModal.tsx
+- [x] frontend/src/components/drivers/DriverPerformanceModal.tsx
+- [x] frontend/src/components/drivers/DriverRouteProfile.tsx
+- [x] frontend/src/components/drivers/DriverScoreBreakdown.tsx
+- [x] frontend/src/components/drivers/DriverScoreModal.tsx
+- [x] frontend/src/components/drivers/DriverTable.tsx
+- [x] frontend/src/components/executive/BusFactorWidget.tsx
+- [x] frontend/src/components/executive/CarbonReportCard.tsx
+- [x] frontend/src/components/executive/CashflowProjectionChart.tsx
+- [x] frontend/src/components/executive/ComplianceHeatmap.tsx
+- [x] frontend/src/components/executive/CrossFeatureSavings.tsx
+- [x] frontend/src/components/executive/DownloadPdfButton.tsx
+- [x] frontend/src/components/executive/FleetEfficiencyCard.tsx
+- [x] frontend/src/components/executive/WhatIfPanel.tsx
+- [x] frontend/src/components/feedback/FeedbackButton.tsx
+- [x] frontend/src/components/fleet-insights/PeriodComparisonCard.tsx
+- [x] frontend/src/components/fleet/FleetInsights.tsx
+- [x] frontend/src/components/fuel/ComparisonWidget.tsx
+- [x] frontend/src/components/fuel/CostTrendChart.tsx
+- [x] frontend/src/components/fuel/FuelAnomalyWidget.tsx
+- [x] frontend/src/components/fuel/FuelFilters.tsx
+- [x] frontend/src/components/fuel/FuelHeader.tsx
+- [x] frontend/src/components/fuel/FuelModal.tsx
+- [x] frontend/src/components/fuel/FuelPagination.tsx
+- [x] frontend/src/components/fuel/FuelStats.tsx
+- [x] frontend/src/components/fuel/FuelTable.tsx
+- [x] frontend/src/components/fuel/ReceiptUpload.tsx
+- [x] frontend/src/components/locations/AnalysisModal.tsx
+- [x] frontend/src/components/locations/CalibrationModal.tsx
+- [x] frontend/src/components/locations/LocationFormModal.tsx
+- [x] frontend/src/components/locations/LocationList.tsx
+- [x] frontend/src/components/locations/RouteAnalysisCard.tsx
+- [x] frontend/src/components/modules/DriversModule.tsx
+- [x] frontend/src/components/modules/TrailersModule.tsx
+- [x] frontend/src/components/modules/VehiclesModule.tsx
+- [x] frontend/src/components/monitoring/ConnectionStatus.tsx
+- [x] frontend/src/components/monitoring/ErrorEventsTab.tsx
+- [x] frontend/src/components/monitoring/NotificationFeed.tsx
+- [x] frontend/src/components/monitoring/NotificationsTab.tsx
+- [x] frontend/src/components/monitoring/TraceDetailDialog.tsx
+- [x] frontend/src/components/monitoring/TrainingTab.tsx
+- [x] frontend/src/components/monitoring/useErrorStream.ts
+- [x] frontend/src/components/monitoring/useMonitoringSocket.ts
+- [x] frontend/src/components/monitoring/useNotifications.ts
+- [x] frontend/src/components/monitoring/useTrainingSocket.ts
+- [x] frontend/src/components/predictions/AccuracyChart.tsx
+- [x] frontend/src/components/predictions/EnsembleStatusCard.tsx
+- [x] frontend/src/components/predictions/MetricCards.tsx
+- [x] frontend/src/components/predictions/PredictionResult.tsx
+- [x] frontend/src/components/predictions/PredictionSimulator.tsx
+- [x] frontend/src/components/predictions/TimeSeriesForecast.tsx
+- [x] frontend/src/components/predictions/TimeSeriesStatusCard.tsx
+- [x] frontend/src/components/predictions/TimeSeriesTrendSection.tsx
+- [x] frontend/src/components/predictions/XaiExplainPanel.tsx
+- [x] frontend/src/components/predictions/XaiPanel.tsx
+- [x] frontend/src/components/profile/PushNotificationToggle.tsx
+- [x] frontend/src/components/profile/QuietHoursSettings.tsx
+- [x] frontend/src/components/reports-studio/TemplateConfigPanel.tsx
+- [x] frontend/src/components/reports-studio/TemplateGallery.tsx
+- [x] frontend/src/components/reports/CostAnalysisChart.tsx
+- [x] frontend/src/components/reports/PeriodCostBreakdown.tsx
+- [x] frontend/src/components/reports/ROICalculator.tsx
+- [x] frontend/src/components/reports/ReportCards.tsx
+- [x] frontend/src/components/reports/SavingsPotentialCard.tsx
+- [x] frontend/src/components/shared/DataExportImport.tsx
+- [x] frontend/src/components/shared/ExcelUploadModal.tsx
+- [x] frontend/src/components/shared/ExportDialog.tsx
+- [x] frontend/src/components/today/QuickActionsBar.tsx
+- [x] frontend/src/components/today/TriageItemCard.tsx
+- [x] frontend/src/components/trailers/TrailerDeleteModal.tsx
+- [x] frontend/src/components/trailers/TrailerDetailModal.tsx
+- [x] frontend/src/components/trailers/TrailerFilters.tsx
+- [x] frontend/src/components/trailers/TrailerHeader.tsx
+- [x] frontend/src/components/trailers/TrailerModal.tsx
+- [x] frontend/src/components/trailers/TrailerTable.tsx
+- [x] frontend/src/components/trips/BulkActionBar.tsx
+- [x] frontend/src/components/trips/BulkCancelModal.tsx
+- [x] frontend/src/components/trips/BulkStatusModal.tsx
+- [x] frontend/src/components/trips/ImportProgressModal.tsx
+- [x] frontend/src/components/trips/PlanWizardCard.tsx
+- [x] frontend/src/components/trips/PlanWizardStep.tsx
+- [x] frontend/src/components/trips/PlanWizardXaiPanel.tsx
+- [x] frontend/src/components/trips/TelemetrySection.tsx
+- [x] frontend/src/components/trips/TripAnalytics.tsx
+- [x] frontend/src/components/trips/TripCostAnalysisModal.tsx
+- [x] frontend/src/components/trips/TripFilters.tsx
+- [x] frontend/src/components/trips/TripForm/DateTimeSection.tsx
+- [x] frontend/src/components/trips/TripForm/LoadManagementSection.tsx
+- [x] frontend/src/components/trips/TripForm/RoundTripSection.tsx
+- [x] frontend/src/components/trips/TripForm/RoundTripSelector.tsx
+- [x] frontend/src/components/trips/TripForm/RouteSelector.tsx
+- [x] frontend/src/components/trips/TripForm/StaffVehicleSection.tsx
+- [x] frontend/src/components/trips/TripForm/TelemetrySection.tsx
+- [x] frontend/src/components/trips/TripFormModal.tsx
+- [x] frontend/src/components/trips/TripFormSections.tsx
+- [x] frontend/src/components/trips/TripHeader.tsx
+- [x] frontend/src/components/trips/TripList.tsx
+- [x] frontend/src/components/trips/TripStats.tsx
+- [x] frontend/src/components/trips/TripTable.tsx
+- [x] frontend/src/components/trips/TripTimeline.tsx
+- [x] frontend/src/components/trips/TripsTodaySummary.tsx
+- [x] frontend/src/components/ui/Badge.tsx
+- [x] frontend/src/components/ui/Button.tsx
+- [x] frontend/src/components/ui/Card.tsx
+- [x] frontend/src/components/ui/EliteToaster.tsx
+- [x] frontend/src/components/ui/ErrorBoundary.tsx
+- [x] frontend/src/components/ui/Input.tsx
+- [x] frontend/src/components/ui/Modal.tsx
+- [x] frontend/src/components/ui/Skeleton.tsx
+- [x] frontend/src/components/ui/Table.tsx
+- [x] frontend/src/components/ui/Toast.tsx
+- [x] frontend/src/components/ui/Toggle.tsx
+- [x] frontend/src/components/vehicles/InspectionAlertModal.tsx
+- [x] frontend/src/components/vehicles/SkeletonTable.tsx
+- [x] frontend/src/components/vehicles/VehicleDeleteModal.tsx
+- [x] frontend/src/components/vehicles/VehicleDetailModal.tsx
+- [x] frontend/src/components/vehicles/VehicleFilters.tsx
+- [x] frontend/src/components/vehicles/VehicleHeader.tsx
+- [x] frontend/src/components/vehicles/VehicleModal.tsx
+- [x] frontend/src/components/vehicles/VehicleTable.tsx
+- [x] frontend/src/components/weather/WeatherAnalysisCard.tsx
+- [x] frontend/src/context/AuthContext.tsx
+- [x] frontend/src/context/NotificationContext.tsx
+- [x] frontend/src/features/route-lab/RouteHeatmap.tsx
+- [x] frontend/src/features/route-lab/RouteProfileChart.tsx
+- [x] frontend/src/features/route-lab/RouteSimForm.tsx
+- [x] frontend/src/features/route-lab/RouteSimSummary.tsx
+- [x] frontend/src/features/trips/TripsModule.tsx
+- [x] frontend/src/hooks/use-event-source.ts
+- [x] frontend/src/hooks/use-locations.ts
+- [x] frontend/src/hooks/use-render-guard.ts
+- [x] frontend/src/hooks/use-url-state.ts
+- [x] frontend/src/hooks/useAnomalyCount.ts
+- [x] frontend/src/hooks/useDebounce.ts
+- [x] frontend/src/hooks/useExecutive.ts
+- [x] frontend/src/hooks/useFleetInsights.ts
+- [x] frontend/src/hooks/useLocationForm.ts
+- [x] frontend/src/hooks/useLocationsPage.ts
+- [x] frontend/src/hooks/useMaintenancePredictions.ts
+- [x] frontend/src/hooks/usePageTitle.ts
+- [x] frontend/src/hooks/usePageViewTracking.ts
+- [x] frontend/src/hooks/usePlanWizard.ts
+- [x] frontend/src/hooks/usePushNotifications.ts
+- [x] frontend/src/hooks/useReportsStudio.ts
+- [x] frontend/src/hooks/useRouteSimulation.ts
+- [x] frontend/src/hooks/useTaskStatus.ts
+- [x] frontend/src/hooks/useTriage.ts
+- [x] frontend/src/hooks/useTripActions.ts
+- [x] frontend/src/hooks/useTripsData.ts
+- [x] frontend/src/hooks/useVehicleData.ts
+- [x] frontend/src/i18n.ts
+- [x] frontend/src/layouts/EliteLayout.tsx
+- [x] frontend/src/layouts/LanguageSwitcher.tsx
+- [x] frontend/src/layouts/navGroups.ts
+- [x] frontend/src/lib/api-validator.ts
+- [x] frontend/src/lib/chart-theme.ts
+- [x] frontend/src/lib/route-weather.ts
+- [x] frontend/src/lib/theme.ts
+- [x] frontend/src/lib/trip-status.ts
+- [x] frontend/src/lib/utils.ts
+- [x] frontend/src/lib/validations.ts
+- [x] frontend/src/main.tsx
+- [x] frontend/src/pages/AlertsPage.tsx
+- [x] frontend/src/pages/CoachingPage.tsx
+- [x] frontend/src/pages/DashboardPage.tsx
+- [x] frontend/src/pages/DriversPage.tsx
+- [x] frontend/src/pages/ExecutivePage.tsx
+- [x] frontend/src/pages/FleetInsightsPage.tsx
+- [x] frontend/src/pages/FleetPage.tsx
+- [x] frontend/src/pages/FuelPage.tsx
+- [x] frontend/src/pages/HomePage.tsx
+- [x] frontend/src/pages/LocationsPage.tsx
+- [x] frontend/src/pages/LoginPage.tsx
+- [x] frontend/src/pages/MonitoringPage.tsx
+- [x] frontend/src/pages/NotFoundPage.tsx
+- [x] frontend/src/pages/PredictionsPage.tsx
+- [x] frontend/src/pages/ProfilePage.tsx
+- [x] frontend/src/pages/ReportsPage.tsx
+- [x] frontend/src/pages/ReportsStudioPage.tsx
+- [x] frontend/src/pages/RouteLabPage.tsx
+- [x] frontend/src/pages/TodayPage.tsx
+- [x] frontend/src/pages/TripsPage.tsx
+- [x] frontend/src/pages/admin/AdminLayout.tsx
+- [x] frontend/src/pages/admin/AnalyticsPage.tsx
+- [x] frontend/src/pages/admin/BakimPage.tsx
+- [x] frontend/src/pages/admin/BildirimlerPage.tsx
+- [x] frontend/src/pages/admin/KonfigurasyonPage.tsx
+- [x] frontend/src/pages/admin/KullanicilarPage.tsx
+- [x] frontend/src/pages/admin/MLYonetimPage.tsx
+- [x] frontend/src/pages/admin/OverviewPage.tsx
+- [x] frontend/src/pages/admin/SistemSaglikPage.tsx
+- [x] frontend/src/pages/admin/VeriYonetimPage.tsx
+- [x] frontend/src/resources/tr/admin.ts
+- [x] frontend/src/resources/tr/coaching.ts
+- [x] frontend/src/resources/tr/drivers.ts
+- [x] frontend/src/resources/tr/executive.ts
+- [x] frontend/src/resources/tr/fleet.ts
+- [x] frontend/src/resources/tr/fuel.ts
+- [x] frontend/src/resources/tr/investigations.ts
+- [x] frontend/src/resources/tr/locations.ts
+- [x] frontend/src/resources/tr/maintenancePredictions.ts
+- [x] frontend/src/resources/tr/reports-studio.ts
+- [x] frontend/src/resources/tr/reports.ts
+- [x] frontend/src/resources/tr/routeLab.ts
+- [x] frontend/src/resources/tr/shared.ts
+- [x] frontend/src/resources/tr/today.ts
+- [x] frontend/src/resources/tr/trailers.ts
+- [x] frontend/src/resources/tr/tripPlanner.ts
+- [x] frontend/src/resources/tr/trips.ts
+- [x] frontend/src/resources/tr/vehicles.ts
+- [x] frontend/src/schemas/entities.ts
+- [x] frontend/src/schemas/services.ts
+- [x] frontend/src/services/api/admin-service.ts
+- [x] frontend/src/services/api/ai-service.ts
+- [x] frontend/src/services/api/analytics-service.ts
+- [x] frontend/src/services/api/anomaly-service.ts
+- [x] frontend/src/services/api/auth-service.ts
+- [x] frontend/src/services/api/axios-instance.ts
+- [x] frontend/src/services/api/coaching-service.ts
+- [x] frontend/src/services/api/driver-service.ts
+- [x] frontend/src/services/api/error-service.ts
+- [x] frontend/src/services/api/executive-service.ts
+- [x] frontend/src/services/api/feedback-service.ts
+- [x] frontend/src/services/api/fleet-insights-service.ts
+- [x] frontend/src/services/api/fuel-service.ts
+- [x] frontend/src/services/api/index.ts
+- [x] frontend/src/services/api/investigation-service.ts
+- [x] frontend/src/services/api/location-service.ts
+- [x] frontend/src/services/api/maintenance-predictions-service.ts
+- [x] frontend/src/services/api/notification-service.ts
+- [x] frontend/src/services/api/prediction-service.ts
+- [x] frontend/src/services/api/preference-service.ts
+- [x] frontend/src/services/api/push-service.ts
+- [x] frontend/src/services/api/report-service.ts
+- [x] frontend/src/services/api/reports-studio-service.ts
+- [x] frontend/src/services/api/route-sim-service.ts
+- [x] frontend/src/services/api/today-service.ts
+- [x] frontend/src/services/api/trip-planner-service.ts
+- [x] frontend/src/services/api/trip-service.ts
+- [x] frontend/src/services/api/vehicle-service.ts
+- [x] frontend/src/services/api/weather-service.ts
+- [x] frontend/src/services/api/ws-service.ts
+- [x] frontend/src/services/dorseService.ts
+- [x] frontend/src/services/error-middleware.ts
+- [x] frontend/src/services/error-tracker.ts
+- [x] frontend/src/services/storage-service.ts
+- [x] frontend/src/stores/use-ai-store.ts
+- [x] frontend/src/stores/use-trip-store.ts
+- [x] frontend/src/sw-push.ts
+- [ ] frontend/src/test/setup.ts
+- [ ] frontend/src/test/test-utils.tsx
+- [x] frontend/src/types/index.ts
+- [x] frontend/src/types/location.ts
+- [x] frontend/src/vite-env.d.ts
+- [x] alembic/env.py
+- [x] alembic/versions/0001_baseline_manual.py
+- [x] alembic/versions/0002_seed_and_bootstrap.py
+- [x] alembic/versions/0003_route_path_cache_contract.py
+- [x] alembic/versions/0004_composite_indexes.py
+- [x] alembic/versions/0005_fix_schema_drift.py
+- [x] alembic/versions/0006_fk_indexes_and_checks.py
+- [x] alembic/versions/0007_lokasyon_distributions.py
+- [x] alembic/versions/0008_telegram_integration.py
+- [x] alembic/versions/0009_onay_durumu_index.py
+- [x] alembic/versions/0010_sefer_istatistik_mv.py
+- [x] alembic/versions/0011_add_error_monitoring.py
+- [x] alembic/versions/0012_anomaly_action_fields.py
+- [x] alembic/versions/0013_coaching_delivery.py
+- [x] alembic/versions/0014_fuel_investigation.py
+- [x] alembic/versions/0015_push_subscriptions.py
+- [x] alembic/versions/0016_route_simulations.py
+- [x] alembic/versions/0017_lokasyon_segments.py
+- [x] alembic/versions/0018_route_simulations_lokasyon.py
+- [x] alembic/versions/0019_lokasyon_segments_drop_traffic.py
+- [x] alembic/versions/0020_seferler_route_simulation_fk.py
+- [x] alembic/versions/0021_fix_error_occurrences_partition.py
+- [x] alembic/versions/0022_durum_canonical_english.py
+- [x] alembic/versions/0023_schema_consistency_p2.py
+- [x] alembic/versions/0024_page_views.py
+- [x] alembic/versions/9728f5747de4_add_is_deleted_flags_v2_1.py
+- [x] alembic/versions/9cefef01eaec_add_error_events_notify_trigger.py
+- [x] alembic/versions/bc35e04ad0fd_add_idx_anomaly_kaynak_index_fix_schema_.py
+- [x] ocr_service/main.py
+- [x] ocr_service/ocr_processor.py
+- [x] scripts/__init__.py
+- [x] scripts/calibrate_physics.py
+- [x] scripts/cleanup_locations_normalization.py
+- [x] scripts/create_admin.py
+- [x] scripts/create_db.py
+- [x] scripts/e2e_error_smoke.py
+- [x] scripts/e2e_pilot_smoke.py
+- [x] scripts/elite_audit_backend.py
+- [x] scripts/enrich_existing_data.py
+- [x] scripts/enrich_metadata.py
+- [x] scripts/fix_partitions.py
+- [x] scripts/init_ml_db.py
+- [x] scripts/mapbox_phase0_probe.py
+- [x] scripts/mapbox_tilequery_phase0.py
+- [x] scripts/p51_real_world_validation.py
+- [x] scripts/reset_business_data.py
+- [x] scripts/reset_password.py
+- [x] scripts/retraining/deploy_new_models.py
+- [x] scripts/retraining/feature_engineering.py
+- [x] scripts/retraining/prepare_training_data.py
+- [x] scripts/retraining/retrain_models.py
+- [x] scripts/security_sanitizer.py
+- [x] scripts/seed_demo_data.py
+- [x] scripts/stress_import.py
+- [x] scripts/train_elite_ensemble.py
+- [x] scripts/train_model_with_route_features.py
+- [x] scripts/validate_tractive_offline.py
+- [x] telegram_bot/driver_bot.py
+- [x] telegram_bot/main.py
+- [x] telegram_bot/ops_bot.py
+
+## Test kodu (S10) — 613
+- [ ] app/tests/__init__.py
+- [ ] app/tests/_helpers/__init__.py
+- [ ] app/tests/_helpers/uow_mock.py
+- [ ] app/tests/api/__init__.py
+- [ ] app/tests/api/test_admin_attribution.py
+- [ ] app/tests/api/test_admin_calibration.py
+- [ ] app/tests/api/test_admin_config.py
+- [ ] app/tests/api/test_admin_fuel_accuracy_coverage.py
+- [ ] app/tests/api/test_admin_health_and_roles.py
+- [ ] app/tests/api/test_admin_imports.py
+- [ ] app/tests/api/test_admin_imports_coverage.py
+- [ ] app/tests/api/test_admin_maintenance.py
+- [ ] app/tests/api/test_admin_maintenance_coverage.py
+- [ ] app/tests/api/test_admin_ml.py
+- [ ] app/tests/api/test_admin_notifications.py
+- [ ] app/tests/api/test_admin_notifications_coverage.py
+- [ ] app/tests/api/test_admin_pilot.py
+- [ ] app/tests/api/test_admin_predictions.py
+- [ ] app/tests/api/test_admin_roles.py
+- [ ] app/tests/api/test_admin_users.py
+- [ ] app/tests/api/test_admin_ws.py
+- [ ] app/tests/api/test_admin_ws_coverage.py
+- [ ] app/tests/api/test_advanced_reports.py
+- [ ] app/tests/api/test_advanced_reports_coverage.py
+- [ ] app/tests/api/test_advanced_reports_more.py
+- [ ] app/tests/api/test_ai_query.py
+- [ ] app/tests/api/test_analytics_endpoints.py
+- [ ] app/tests/api/test_anomalies.py
+- [ ] app/tests/api/test_anomaly_clusters.py
+- [ ] app/tests/api/test_auth.py
+- [ ] app/tests/api/test_auth_coverage.py
+- [ ] app/tests/api/test_auth_logout_blacklist.py
+- [ ] app/tests/api/test_coaching_coverage.py
+- [ ] app/tests/api/test_drivers.py
+- [ ] app/tests/api/test_drivers_coverage.py
+- [ ] app/tests/api/test_drivers_more.py
+- [ ] app/tests/api/test_endpoints_audit.py
+- [ ] app/tests/api/test_error_stream.py
+- [ ] app/tests/api/test_error_stream_coverage.py
+- [ ] app/tests/api/test_error_stream_more.py
+- [ ] app/tests/api/test_executive_coverage.py
+- [ ] app/tests/api/test_executive_more.py
+- [ ] app/tests/api/test_feedback_endpoint.py
+- [ ] app/tests/api/test_fleet_insights.py
+- [ ] app/tests/api/test_fuel_coverage.py
+- [ ] app/tests/api/test_fuel_documents.py
+- [ ] app/tests/api/test_fuel_more.py
+- [ ] app/tests/api/test_fuel_ocr_preview.py
+- [ ] app/tests/api/test_health.py
+- [ ] app/tests/api/test_internal_coverage.py
+- [ ] app/tests/api/test_investigations_coverage.py
+- [ ] app/tests/api/test_investigations_more.py
+- [ ] app/tests/api/test_locations_coverage.py
+- [ ] app/tests/api/test_locations_more.py
+- [ ] app/tests/api/test_locations_more2.py
+- [ ] app/tests/api/test_low_coverage_endpoints.py
+- [ ] app/tests/api/test_predictions.py
+- [ ] app/tests/api/test_predictions_coverage.py
+- [ ] app/tests/api/test_predictions_more.py
+- [ ] app/tests/api/test_preferences.py
+- [ ] app/tests/api/test_push_coverage.py
+- [ ] app/tests/api/test_reports.py
+- [ ] app/tests/api/test_routes_coverage.py
+- [ ] app/tests/api/test_routes_more.py
+- [ ] app/tests/api/test_routes_serialize.py
+- [ ] app/tests/api/test_system.py
+- [ ] app/tests/api/test_system_coverage.py
+- [ ] app/tests/api/test_today_triage.py
+- [ ] app/tests/api/test_trailers.py
+- [ ] app/tests/api/test_trailers_coverage.py
+- [ ] app/tests/api/test_trips_coverage.py
+- [ ] app/tests/api/test_trips_more.py
+- [ ] app/tests/api/test_users.py
+- [ ] app/tests/api/test_vehicles_coverage.py
+- [ ] app/tests/api/test_vehicles_more.py
+- [ ] app/tests/api/test_weather.py
+- [ ] app/tests/api/test_weather_coverage.py
+- [ ] app/tests/conftest.py
+- [ ] app/tests/integration/test_activity_log.py
+- [ ] app/tests/integration/test_adversarial_stress.py
+- [ ] app/tests/integration/test_analiz_repo_alerts.py
+- [ ] app/tests/integration/test_analiz_repo_anomaly_table.py
+- [ ] app/tests/integration/test_anomaly_actions.py
+- [ ] app/tests/integration/test_api_audit.py
+- [ ] app/tests/integration/test_api_contracts.py
+- [ ] app/tests/integration/test_api_seferler.py
+- [ ] app/tests/integration/test_api_v5.py
+- [ ] app/tests/integration/test_business_lifecycle.py
+- [ ] app/tests/integration/test_coaching_effectiveness.py
+- [ ] app/tests/integration/test_coaching_endpoints.py
+- [ ] app/tests/integration/test_coaching_flow.py
+- [ ] app/tests/integration/test_concurrency_atomic.py
+- [ ] app/tests/integration/test_dashboard_analytics.py
+- [ ] app/tests/integration/test_dashboard_stats.py
+- [ ] app/tests/integration/test_db_schema_integrity.py
+- [ ] app/tests/integration/test_driver_route_profile.py
+- [ ] app/tests/integration/test_driver_score_breakdown.py
+- [ ] app/tests/integration/test_error_detector_integration.py
+- [ ] app/tests/integration/test_excel_deep.py
+- [ ] app/tests/integration/test_import_encoding.py
+- [ ] app/tests/integration/test_import_partial.py
+- [ ] app/tests/integration/test_import_partial_events.py
+- [ ] app/tests/integration/test_inspection_alerts.py
+- [ ] app/tests/integration/test_internal_coaching.py
+- [ ] app/tests/integration/test_investigations_crud.py
+- [ ] app/tests/integration/test_locations_api.py
+- [ ] app/tests/integration/test_logging_flow.py
+- [ ] app/tests/integration/test_maintenance_predictions.py
+- [ ] app/tests/integration/test_mapbox_client.py
+- [ ] app/tests/integration/test_ml_ai_pipeline.py
+- [ ] app/tests/integration/test_open_meteo_live.py
+- [ ] app/tests/integration/test_page_view_repo.py
+- [ ] app/tests/integration/test_phase4_live_apis_smoke.py
+- [ ] app/tests/integration/test_plan_wizard_endpoint.py
+- [ ] app/tests/integration/test_prediction_time_series_api.py
+- [ ] app/tests/integration/test_predictions_flow.py
+- [ ] app/tests/integration/test_rate_limiting.py
+- [ ] app/tests/integration/test_repos_concurrency.py
+- [ ] app/tests/integration/test_route_api.py
+- [ ] app/tests/integration/test_route_service_hybrid.py
+- [ ] app/tests/integration/test_routes_simulate_endpoint.py
+- [ ] app/tests/integration/test_sefer_backfill_repo.py
+- [ ] app/tests/integration/test_sefer_flow.py
+- [ ] app/tests/integration/test_sefer_repo_durum_filter.py
+- [ ] app/tests/integration/test_theft_alarm.py
+- [ ] app/tests/integration/test_theft_pattern_task.py
+- [ ] app/tests/integration/test_trips_deep.py
+- [ ] app/tests/integration/test_uow_after_error.py
+- [ ] app/tests/resilience/__init__.py
+- [ ] app/tests/resilience/test_distributed_cb.py
+- [ ] app/tests/resilience/test_jsonb_model.py
+- [ ] app/tests/resilience/test_model_constraints.py
+- [ ] app/tests/resilience/test_outbox_resilience.py
+- [ ] app/tests/sections/test_section_1_backend_core.py
+- [ ] app/tests/security/__init__.py
+- [ ] app/tests/security/test_ai_security.py
+- [ ] app/tests/security/test_api_auth.py
+- [ ] app/tests/security/test_api_security_details.py
+- [ ] app/tests/security/test_idor_notifications.py
+- [ ] app/tests/security/test_import_ownership.py
+- [ ] app/tests/security/test_rbac.py
+- [ ] app/tests/security/test_rbac_coverage.py
+- [ ] app/tests/test_ai_security.py
+- [ ] app/tests/test_business_flows.py
+- [ ] app/tests/test_core.py
+- [ ] app/tests/test_db_hardening.py
+- [ ] app/tests/test_detailed_scenarios.py
+- [ ] app/tests/test_integration.py
+- [ ] app/tests/test_routing.py
+- [ ] app/tests/test_sofor_analiz.py
+- [ ] app/tests/unit/__init__.py
+- [ ] app/tests/unit/conftest.py
+- [ ] app/tests/unit/test_adjustment_factors.py
+- [ ] app/tests/unit/test_admin_backend_operations.py
+- [ ] app/tests/unit/test_admin_fuel_accuracy_schema.py
+- [ ] app/tests/unit/test_advanced_lstm.py
+- [ ] app/tests/unit/test_ai/test_rag_and_ai_service.py
+- [ ] app/tests/unit/test_ai_deep_remediation.py
+- [ ] app/tests/unit/test_ai_privacy.py
+- [ ] app/tests/unit/test_ai_security.py
+- [ ] app/tests/unit/test_alembic_baseline_guard.py
+- [ ] app/tests/unit/test_analytics_prune_task.py
+- [ ] app/tests/unit/test_anomaly_cluster_task.py
+- [ ] app/tests/unit/test_anomaly_clustering.py
+- [ ] app/tests/unit/test_anomaly_sofor_filter.py
+- [ ] app/tests/unit/test_async_retry.py
+- [ ] app/tests/unit/test_audit_db_persist.py
+- [ ] app/tests/unit/test_backend_hygiene_sources.py
+- [ ] app/tests/unit/test_body_size_middleware.py
+- [ ] app/tests/unit/test_bulk_add_constraint_enrichment.py
+- [ ] app/tests/unit/test_bus_factor.py
+- [ ] app/tests/unit/test_cache_invalidation_coverage.py
+- [ ] app/tests/unit/test_cache_manager_redis.py
+- [ ] app/tests/unit/test_carbon_footprint.py
+- [ ] app/tests/unit/test_cashflow_projector.py
+- [ ] app/tests/unit/test_clock_injection.py
+- [ ] app/tests/unit/test_coaching_weekly_digest_timeout.py
+- [ ] app/tests/unit/test_compliance_final.py
+- [ ] app/tests/unit/test_compliance_scanner.py
+- [ ] app/tests/unit/test_config_routing.py
+- [ ] app/tests/unit/test_conftest_db_guard.py
+- [ ] app/tests/unit/test_container.py
+- [ ] app/tests/unit/test_container_comprehensive.py
+- [ ] app/tests/unit/test_context_builder_coverage.py
+- [ ] app/tests/unit/test_core_security_coverage.py
+- [ ] app/tests/unit/test_cost_analyzer.py
+- [ ] app/tests/unit/test_coverage_boost.py
+- [ ] app/tests/unit/test_cross_feature_aggregator.py
+- [ ] app/tests/unit/test_dashboard_report_import_contracts.py
+- [ ] app/tests/unit/test_db_connect_args.py
+- [ ] app/tests/unit/test_deps_coverage.py
+- [ ] app/tests/unit/test_driver_coaching_engine.py
+- [ ] app/tests/unit/test_driver_pdf_none_safe.py
+- [ ] app/tests/unit/test_driver_pdf_session.py
+- [ ] app/tests/unit/test_driver_route_profile.py
+- [ ] app/tests/unit/test_endpoint_redis_singleton.py
+- [ ] app/tests/unit/test_entities/test_models.py
+- [ ] app/tests/unit/test_error_digest.py
+- [ ] app/tests/unit/test_excel_await_and_clean.py
+- [ ] app/tests/unit/test_excel_column_mapper.py
+- [ ] app/tests/unit/test_exception_paths.py
+- [ ] app/tests/unit/test_executive_pdf.py
+- [ ] app/tests/unit/test_external_service_coverage.py
+- [ ] app/tests/unit/test_factor_caps.py
+- [ ] app/tests/unit/test_feedback_notifier.py
+- [ ] app/tests/unit/test_fleet_comparison.py
+- [ ] app/tests/unit/test_fleet_efficiency_index.py
+- [ ] app/tests/unit/test_fuel_theft_classifier.py
+- [ ] app/tests/unit/test_groq_service_coverage.py
+- [ ] app/tests/unit/test_ics_generator.py
+- [ ] app/tests/unit/test_infrastructure/test_audit_logger.py
+- [ ] app/tests/unit/test_infrastructure/test_cache_manager.py
+- [ ] app/tests/unit/test_infrastructure/test_circuit_breaker.py
+- [ ] app/tests/unit/test_infrastructure/test_circuit_breaker_more.py
+- [ ] app/tests/unit/test_infrastructure/test_event_bus.py
+- [ ] app/tests/unit/test_infrastructure/test_event_bus_more.py
+- [ ] app/tests/unit/test_infrastructure/test_job_manager.py
+- [ ] app/tests/unit/test_infrastructure/test_openroute_client.py
+- [ ] app/tests/unit/test_infrastructure/test_rate_limiter.py
+- [ ] app/tests/unit/test_infrastructure/test_retry.py
+- [ ] app/tests/unit/test_insight_engine_coverage.py
+- [ ] app/tests/unit/test_insight_serious_push.py
+- [ ] app/tests/unit/test_inspection_push_task.py
+- [ ] app/tests/unit/test_integrations_coverage.py
+- [ ] app/tests/unit/test_internal_image_signature.py
+- [ ] app/tests/unit/test_latent_bug_regressions.py
+- [ ] app/tests/unit/test_llm_client.py
+- [ ] app/tests/unit/test_logger_coverage.py
+- [ ] app/tests/unit/test_lokasyon_hydrator.py
+- [ ] app/tests/unit/test_lokasyon_schemas.py
+- [ ] app/tests/unit/test_lokasyon_segments_model.py
+- [ ] app/tests/unit/test_main_coverage.py
+- [ ] app/tests/unit/test_main_more.py
+- [ ] app/tests/unit/test_main_more2.py
+- [ ] app/tests/unit/test_maintenance_predictor.py
+- [ ] app/tests/unit/test_mapbox_client_coverage.py
+- [ ] app/tests/unit/test_mapbox_directions_cache.py
+- [ ] app/tests/unit/test_mapbox_road_class_reconcile.py
+- [ ] app/tests/unit/test_mapbox_segment_extractor.py
+- [ ] app/tests/unit/test_ml/test_advanced_lstm_coverage.py
+- [ ] app/tests/unit/test_ml/test_driver_performance_ml_coverage.py
+- [ ] app/tests/unit/test_ml/test_ensemble_core_coverage.py
+- [ ] app/tests/unit/test_ml/test_ensemble_predictor.py
+- [ ] app/tests/unit/test_ml/test_ensemble_service_coverage.py
+- [ ] app/tests/unit/test_ml/test_ensemble_service_more.py
+- [ ] app/tests/unit/test_ml/test_ensemble_strategy_coverage.py
+- [ ] app/tests/unit/test_ml/test_kalman_estimator_coverage.py
+- [ ] app/tests/unit/test_ml/test_lightgbm_coverage.py
+- [ ] app/tests/unit/test_ml/test_model_manager_coverage.py
+- [ ] app/tests/unit/test_ml/test_physics_calibration.py
+- [ ] app/tests/unit/test_ml/test_physics_fuel_predictor.py
+- [ ] app/tests/unit/test_ml/test_physics_more.py
+- [ ] app/tests/unit/test_ml/test_scheduler_task_coverage.py
+- [ ] app/tests/unit/test_ml/test_segment_simulator_tractive.py
+- [ ] app/tests/unit/test_ml/test_segment_speed_carry.py
+- [ ] app/tests/unit/test_ml/test_segment_tractive.py
+- [ ] app/tests/unit/test_ml/test_time_series_more.py
+- [ ] app/tests/unit/test_ml/test_time_series_predictor.py
+- [ ] app/tests/unit/test_ml_audit.py
+- [ ] app/tests/unit/test_ml_detective.py
+- [ ] app/tests/unit/test_ml_prediction_safety.py
+- [ ] app/tests/unit/test_ml_reliability.py
+- [ ] app/tests/unit/test_ml_speed_features.py
+- [ ] app/tests/unit/test_ml_train_user_audit.py
+- [ ] app/tests/unit/test_ml_training_contracts.py
+- [ ] app/tests/unit/test_monitoring/__init__.py
+- [ ] app/tests/unit/test_monitoring/test_alarm_router.py
+- [ ] app/tests/unit/test_monitoring/test_celery_probe.py
+- [ ] app/tests/unit/test_monitoring/test_celery_probe_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_celery_probe_more.py
+- [ ] app/tests/unit/test_monitoring/test_db_probe.py
+- [ ] app/tests/unit/test_monitoring/test_db_probe_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_db_probe_more.py
+- [ ] app/tests/unit/test_monitoring/test_event_bus.py
+- [ ] app/tests/unit/test_monitoring/test_event_bus_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_external_api_probe_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_ml_probe.py
+- [ ] app/tests/unit/test_monitoring/test_models.py
+- [ ] app/tests/unit/test_monitoring/test_security_probe.py
+- [ ] app/tests/unit/test_monitoring/test_security_probe_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_service_probe.py
+- [ ] app/tests/unit/test_monitoring/test_service_probe_coverage.py
+- [ ] app/tests/unit/test_monitoring/test_silent_fallback_probe.py
+- [ ] app/tests/unit/test_monitoring/test_sse_token.py
+- [ ] app/tests/unit/test_monitoring/test_telegram_notifier.py
+- [ ] app/tests/unit/test_notification_n1.py
+- [ ] app/tests/unit/test_notification_prioritizer.py
+- [ ] app/tests/unit/test_open_meteo_elevation.py
+- [ ] app/tests/unit/test_openroute_client_coverage.py
+- [ ] app/tests/unit/test_openroute_client_more.py
+- [ ] app/tests/unit/test_outbox_service_coverage.py
+- [ ] app/tests/unit/test_p51_neutral.py
+- [ ] app/tests/unit/test_phase4_ml_predictors_training_split.py
+- [ ] app/tests/unit/test_phase4_sefer_integration_helpers.py
+- [ ] app/tests/unit/test_prediction_accuracy.py
+- [ ] app/tests/unit/test_prediction_backfill_task.py
+- [ ] app/tests/unit/test_prediction_service_coverage.py
+- [ ] app/tests/unit/test_prediction_service_more.py
+- [ ] app/tests/unit/test_prediction_with_health.py
+- [ ] app/tests/unit/test_production_foundation_guards.py
+- [ ] app/tests/unit/test_prompt_tuner_coverage.py
+- [ ] app/tests/unit/test_protocols_coverage.py
+- [ ] app/tests/unit/test_push_broadcast.py
+- [ ] app/tests/unit/test_push_sender.py
+- [ ] app/tests/unit/test_quiet_hours.py
+- [ ] app/tests/unit/test_rag_engine_coverage.py
+- [ ] app/tests/unit/test_rag_engine_more.py
+- [ ] app/tests/unit/test_rag_sync_service_coverage.py
+- [ ] app/tests/unit/test_rate_limit_master_switch.py
+- [ ] app/tests/unit/test_rate_limit_middleware_coverage.py
+- [ ] app/tests/unit/test_recommendation_engine_coverage.py
+- [ ] app/tests/unit/test_recommendation_more.py
+- [ ] app/tests/unit/test_redis_cache_coverage.py
+- [ ] app/tests/unit/test_redis_pubsub_coverage.py
+- [ ] app/tests/unit/test_redis_pubsub_more.py
+- [ ] app/tests/unit/test_reports_silent_failure.py
+- [ ] app/tests/unit/test_reports_studio.py
+- [ ] app/tests/unit/test_repositories/test_admin_config_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_analiz_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_arac_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_audit_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_base_repository.py
+- [ ] app/tests/unit/test_repositories/test_base_repository_coverage.py
+- [ ] app/tests/unit/test_repositories/test_base_repository_more.py
+- [ ] app/tests/unit/test_repositories/test_dorse_repo.py
+- [ ] app/tests/unit/test_repositories/test_lokasyon_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_notification_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_route_repo_cache_contract.py
+- [ ] app/tests/unit/test_repositories/test_sefer_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_sefer_repo_stats.py
+- [ ] app/tests/unit/test_repositories/test_sofor_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_yakit_repo_coverage.py
+- [ ] app/tests/unit/test_repositories/test_yakit_repo_soft_delete.py
+- [ ] app/tests/unit/test_response_content_validation.py
+- [ ] app/tests/unit/test_response_shape_standard.py
+- [ ] app/tests/unit/test_rol_repository.py
+- [ ] app/tests/unit/test_route_analyzer.py
+- [ ] app/tests/unit/test_route_analyzer_coverage.py
+- [ ] app/tests/unit/test_route_service_coverage.py
+- [ ] app/tests/unit/test_route_similarity.py
+- [ ] app/tests/unit/test_route_simulation_models.py
+- [ ] app/tests/unit/test_route_simulator.py
+- [ ] app/tests/unit/test_route_validator.py
+- [ ] app/tests/unit/test_schemas/__init__.py
+- [ ] app/tests/unit/test_schemas/test_api_responses_more.py
+- [ ] app/tests/unit/test_schemas/test_arac_schema_coverage.py
+- [ ] app/tests/unit/test_schemas/test_dorse_schema_coverage.py
+- [ ] app/tests/unit/test_schemas/test_sefer_schema_coverage.py
+- [ ] app/tests/unit/test_schemas/test_sofor_schema_coverage.py
+- [ ] app/tests/unit/test_schemas/test_user_schema_coverage.py
+- [ ] app/tests/unit/test_schemas/test_yakit_schema_coverage.py
+- [ ] app/tests/unit/test_schemas_audit.py
+- [ ] app/tests/unit/test_schemas_coverage.py
+- [ ] app/tests/unit/test_sefer_audit_fixes.py
+- [ ] app/tests/unit/test_sefer_concurrent_edit.py
+- [ ] app/tests/unit/test_sefer_fuel_estimator.py
+- [ ] app/tests/unit/test_sefer_import_service.py
+- [ ] app/tests/unit/test_sefer_status_guards.py
+- [ ] app/tests/unit/test_segment_resampler.py
+- [ ] app/tests/unit/test_segment_simulator.py
+- [ ] app/tests/unit/test_sentry_startup.py
+- [ ] app/tests/unit/test_service_optimizations.py
+- [ ] app/tests/unit/test_services/__init__.py
+- [ ] app/tests/unit/test_services/conftest.py
+- [ ] app/tests/unit/test_services/test_admin_audit_service_coverage.py
+- [ ] app/tests/unit/test_services/test_ai_service.py
+- [ ] app/tests/unit/test_services/test_ai_service_coverage.py
+- [ ] app/tests/unit/test_services/test_ai_service_more.py
+- [ ] app/tests/unit/test_services/test_analiz_service.py
+- [ ] app/tests/unit/test_services/test_analiz_service_coverage.py
+- [ ] app/tests/unit/test_services/test_anomaly_detection_service.py
+- [ ] app/tests/unit/test_services/test_anomaly_detector_coverage.py
+- [ ] app/tests/unit/test_services/test_anomaly_detector_more.py
+- [ ] app/tests/unit/test_services/test_arac_service.py
+- [ ] app/tests/unit/test_services/test_arac_service_coverage.py
+- [ ] app/tests/unit/test_services/test_arac_service_reactivate.py
+- [ ] app/tests/unit/test_services/test_attribution_service.py
+- [ ] app/tests/unit/test_services/test_auth_service_coverage.py
+- [ ] app/tests/unit/test_services/test_excel_exporter_coverage.py
+- [ ] app/tests/unit/test_services/test_excel_parser.py
+- [ ] app/tests/unit/test_services/test_excel_parser_coverage.py
+- [ ] app/tests/unit/test_services/test_export_service.py
+- [ ] app/tests/unit/test_services/test_export_service_coverage.py
+- [ ] app/tests/unit/test_services/test_health_service.py
+- [ ] app/tests/unit/test_services/test_health_service_more.py
+- [ ] app/tests/unit/test_services/test_import_service.py
+- [ ] app/tests/unit/test_services/test_import_service_coverage.py
+- [ ] app/tests/unit/test_services/test_internal_service.py
+- [ ] app/tests/unit/test_services/test_internal_service_coverage.py
+- [ ] app/tests/unit/test_services/test_konfig_service.py
+- [ ] app/tests/unit/test_services/test_license_service.py
+- [ ] app/tests/unit/test_services/test_lokasyon_service.py
+- [ ] app/tests/unit/test_services/test_lokasyon_service_coverage.py
+- [ ] app/tests/unit/test_services/test_lokasyon_service_more.py
+- [ ] app/tests/unit/test_services/test_ml_service_coverage.py
+- [ ] app/tests/unit/test_services/test_notification_service_coverage.py
+- [ ] app/tests/unit/test_services/test_openroute_service_coverage.py
+- [ ] app/tests/unit/test_services/test_period_calculation_coverage.py
+- [ ] app/tests/unit/test_services/test_period_calculation_more.py
+- [ ] app/tests/unit/test_services/test_prediction_backfill_service.py
+- [ ] app/tests/unit/test_services/test_prediction_service_contracts.py
+- [ ] app/tests/unit/test_services/test_preference_service.py
+- [ ] app/tests/unit/test_services/test_report_generator_coverage.py
+- [ ] app/tests/unit/test_services/test_report_service_coverage.py
+- [ ] app/tests/unit/test_services/test_route_calibration_coverage.py
+- [ ] app/tests/unit/test_services/test_route_service.py
+- [ ] app/tests/unit/test_services/test_security_service.py
+- [ ] app/tests/unit/test_services/test_sefer_analiz_service.py
+- [ ] app/tests/unit/test_services/test_sefer_fuel_estimator.py
+- [ ] app/tests/unit/test_services/test_sefer_prediction_contract.py
+- [ ] app/tests/unit/test_services/test_sefer_read_service.py
+- [ ] app/tests/unit/test_services/test_sefer_service.py
+- [ ] app/tests/unit/test_services/test_sefer_service_coverage.py
+- [ ] app/tests/unit/test_services/test_sefer_write_more.py
+- [ ] app/tests/unit/test_services/test_sefer_write_more2.py
+- [ ] app/tests/unit/test_services/test_sefer_write_service_coverage.py
+- [ ] app/tests/unit/test_services/test_sefer_write_service_prediction_flows.py
+- [ ] app/tests/unit/test_services/test_sofor_analiz_coverage.py
+- [ ] app/tests/unit/test_services/test_sofor_pdf_service.py
+- [ ] app/tests/unit/test_services/test_sofor_service.py
+- [ ] app/tests/unit/test_services/test_sofor_service_coverage.py
+- [ ] app/tests/unit/test_services/test_sofor_service_delete_event.py
+- [ ] app/tests/unit/test_services/test_weather_service_coverage.py
+- [ ] app/tests/unit/test_services/test_weather_service_truthfulness.py
+- [ ] app/tests/unit/test_services/test_yakit_service.py
+- [ ] app/tests/unit/test_services/test_yakit_service_coverage.py
+- [ ] app/tests/unit/test_services/test_yakit_service_more.py
+- [ ] app/tests/unit/test_services/test_yakit_tahmin_service_coverage.py
+- [ ] app/tests/unit/test_singleton_thread_safety.py
+- [ ] app/tests/unit/test_smart_ai_service_coverage.py
+- [ ] app/tests/unit/test_smart_ai_service_remote.py
+- [ ] app/tests/unit/test_sofor_degerlendirme_coverage.py
+- [ ] app/tests/unit/test_sofor_degerlendirme_more.py
+- [ ] app/tests/unit/test_theft_alarm_text.py
+- [ ] app/tests/unit/test_theft_pattern_pii.py
+- [ ] app/tests/unit/test_time_series_service_coverage.py
+- [ ] app/tests/unit/test_time_series_truthfulness.py
+- [ ] app/tests/unit/test_token_blacklist.py
+- [ ] app/tests/unit/test_triage_aggregator.py
+- [ ] app/tests/unit/test_trip_endpoint_architecture_guards.py
+- [ ] app/tests/unit/test_trip_migration_chain_guards.py
+- [ ] app/tests/unit/test_trip_planner_engine.py
+- [ ] app/tests/unit/test_trip_planner_more.py
+- [ ] app/tests/unit/test_trip_planner_scoring.py
+- [ ] app/tests/unit/test_trip_planner_weather.py
+- [ ] app/tests/unit/test_type_helpers.py
+- [ ] app/tests/unit/test_unit_of_work_semantics.py
+- [ ] app/tests/unit/test_validators_more.py
+- [ ] app/tests/unit/test_vehicle_health_factor.py
+- [ ] app/tests/unit/test_weather_route_samples.py
+- [ ] app/tests/unit/test_weekly_digest_task.py
+- [ ] app/tests/unit/test_what_if_engine.py
+- [ ] app/tests/unit/test_worker_tasks.py
+- [ ] app/tests/unit/test_workers/test_celery_tasks.py
+- [ ] app/tests/unit/test_workers/test_coaching_tasks.py
+- [ ] app/tests/unit/test_workers/test_coaching_tasks_more.py
+- [ ] app/tests/unit/test_workers/test_driver_tasks.py
+- [ ] app/tests/unit/test_workers/test_error_digest_more.py
+- [ ] app/tests/unit/test_workers/test_error_digest_task.py
+- [ ] app/tests/unit/test_workers/test_ocr_tasks_coverage.py
+- [ ] app/tests/unit/test_workers/test_prediction_tasks.py
+- [ ] app/tests/unit/test_workers/test_theft_tasks.py
+- [ ] app/tests/unit/test_yakit_import_periyot_trigger.py
+- [ ] frontend/src/components/__tests__/I-all-components.test.tsx
+- [ ] frontend/src/components/admin/maintenance/__tests__/MaintenanceCalendar.test.tsx
+- [ ] frontend/src/components/admin/maintenance/__tests__/MaintenanceDetailDrawer.test.tsx
+- [ ] frontend/src/components/admin/maintenance/__tests__/PredictionsTable.test.tsx
+- [ ] frontend/src/components/ai/__tests__/AiQueryPanel.test.tsx
+- [ ] frontend/src/components/ai/__tests__/ChatAssistant.test.tsx
+- [ ] frontend/src/components/alerts/__tests__/AnomalyClusters.test.tsx
+- [ ] frontend/src/components/alerts/__tests__/InvestigationCard.test.tsx
+- [ ] frontend/src/components/alerts/__tests__/InvestigationDetailDialog.test.tsx
+- [ ] frontend/src/components/alerts/__tests__/InvestigationsKanban.test.tsx
+- [ ] frontend/src/components/alerts/__tests__/PatternList.test.tsx
+- [ ] frontend/src/components/auth/__tests__/RequirePermission.test.tsx
+- [ ] frontend/src/components/coaching/__tests__/CoachingInsightsPanel.test.tsx
+- [ ] frontend/src/components/coaching/__tests__/SendCoachingDialog.test.tsx
+- [ ] frontend/src/components/dashboard/__tests__/KpiTrendBadge.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverFilters.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverHeader.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverModal.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverPerformanceModal.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverRouteProfile.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverScoreBreakdown.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverScoreModal.test.tsx
+- [ ] frontend/src/components/drivers/__tests__/DriverTable.test.tsx
+- [ ] frontend/src/components/executive/__tests__/BusFactorWidget.test.tsx
+- [ ] frontend/src/components/executive/__tests__/CarbonReportCard.test.tsx
+- [ ] frontend/src/components/executive/__tests__/CashflowProjectionChart.test.tsx
+- [ ] frontend/src/components/executive/__tests__/ComplianceHeatmap.test.tsx
+- [ ] frontend/src/components/executive/__tests__/CrossFeatureSavings.test.tsx
+- [ ] frontend/src/components/executive/__tests__/DownloadPdfButton.test.tsx
+- [ ] frontend/src/components/executive/__tests__/FleetEfficiencyCard.test.tsx
+- [ ] frontend/src/components/executive/__tests__/WhatIfPanel.test.tsx
+- [ ] frontend/src/components/feedback/__tests__/FeedbackButton.test.tsx
+- [ ] frontend/src/components/fleet-insights/__tests__/PeriodComparisonCard.test.tsx
+- [ ] frontend/src/components/fleet/__tests__/FleetInsights.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/ComparisonWidget.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/CostTrendChart.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/FuelAnomalyWidget.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/FuelModal.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/FuelStats.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/FuelTable.test.tsx
+- [ ] frontend/src/components/fuel/__tests__/ReceiptUpload.test.tsx
+- [ ] frontend/src/components/locations/__tests__/CalibrationModal.test.tsx
+- [ ] frontend/src/components/locations/__tests__/LocationFormModal.test.tsx
+- [ ] frontend/src/components/locations/__tests__/LocationList.test.tsx
+- [ ] frontend/src/components/locations/__tests__/RouteAnalysisCard.test.tsx
+- [ ] frontend/src/components/modules/__tests__/TrailersModule.test.tsx
+- [ ] frontend/src/components/modules/__tests__/VehiclesModule.test.tsx
+- [ ] frontend/src/components/monitoring/__tests__/ErrorEventsTab.test.tsx
+- [ ] frontend/src/components/monitoring/__tests__/TraceDetailDialog.test.tsx
+- [ ] frontend/src/components/monitoring/__tests__/useMonitoringSocket.test.ts
+- [ ] frontend/src/components/predictions/__tests__/PredictionResult.test.tsx
+- [ ] frontend/src/components/predictions/__tests__/PredictionSimulator.test.tsx
+- [ ] frontend/src/components/predictions/__tests__/TimeSeriesForecast.test.tsx
+- [ ] frontend/src/components/predictions/__tests__/TimeSeriesStatusCard.test.tsx
+- [ ] frontend/src/components/predictions/__tests__/XaiPanel.test.tsx
+- [ ] frontend/src/components/profile/__tests__/QuietHoursSettings.test.tsx
+- [ ] frontend/src/components/reports/__tests__/CostAnalysisChart.test.tsx
+- [ ] frontend/src/components/reports/__tests__/PeriodCostBreakdown.test.tsx
+- [ ] frontend/src/components/reports/__tests__/ROICalculator.test.ts
+- [ ] frontend/src/components/reports/__tests__/ROICalculator.test.tsx
+- [ ] frontend/src/components/reports/__tests__/Reports.test.tsx
+- [ ] frontend/src/components/reports/__tests__/SavingsPotentialCard.test.tsx
+- [ ] frontend/src/components/shared/__tests__/ExportDialog.test.tsx
+- [ ] frontend/src/components/today/__tests__/TriageItemCard.test.tsx
+- [ ] frontend/src/components/trailers/__tests__/TrailerDetailModal.test.tsx
+- [ ] frontend/src/components/trailers/__tests__/TrailerModal.test.tsx
+- [ ] frontend/src/components/trailers/__tests__/TrailerTable.test.tsx
+- [ ] frontend/src/components/trips/__tests__/BrowserCompatibility.test.tsx
+- [ ] frontend/src/components/trips/__tests__/BulkActionBar.test.tsx
+- [ ] frontend/src/components/trips/__tests__/ErrorBoundaryCrash.test.tsx
+- [ ] frontend/src/components/trips/__tests__/ImportProgressModal.test.tsx
+- [ ] frontend/src/components/trips/__tests__/PlanWizardCard.test.tsx
+- [ ] frontend/src/components/trips/__tests__/PlanWizardStep.test.tsx
+- [ ] frontend/src/components/trips/__tests__/PlanWizardXaiPanel.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripAnalytics.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripFilters.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripSurface.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripTable.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripTableEnhancements.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripsEmptyState.test.tsx
+- [ ] frontend/src/components/trips/__tests__/TripsTodaySummary.test.tsx
+- [ ] frontend/src/components/trips/__tests__/route-weather.test.ts
+- [ ] frontend/src/components/vehicles/__tests__/InspectionAlertModal.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/VehicleDetailModal.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/VehicleDetailModalEnhancements.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/VehicleFilters.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/VehicleModal.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/VehicleTableEnhancements.test.tsx
+- [ ] frontend/src/components/vehicles/__tests__/Vehicles.test.tsx
+- [ ] frontend/src/context/__tests__/AuthContext.test.tsx
+- [ ] frontend/src/context/__tests__/NotificationContext.test.tsx
+- [ ] frontend/src/features/route-lab/__tests__/RouteHeatmap.test.tsx
+- [ ] frontend/src/features/route-lab/__tests__/RouteProfileChart.test.tsx
+- [ ] frontend/src/features/route-lab/__tests__/RouteSimSummary.test.tsx
+- [ ] frontend/src/features/trips/__tests__/TripsModule.test.tsx
+- [ ] frontend/src/features/trips/__tests__/TripsModuleResilience.test.tsx
+- [ ] frontend/src/hooks/__tests__/H-extra.test.ts
+- [ ] frontend/src/hooks/__tests__/H1-hooks.test.ts
+- [ ] frontend/src/hooks/__tests__/H2-H7-hooks.test.ts
+- [ ] frontend/src/hooks/__tests__/use-locations.test.tsx
+- [ ] frontend/src/hooks/__tests__/use-render-guard.test.ts
+- [ ] frontend/src/hooks/__tests__/usePageViewTracking.test.tsx
+- [ ] frontend/src/hooks/__tests__/usePushNotifications.test.ts
+- [ ] frontend/src/hooks/__tests__/useTaskStatus.test.tsx
+- [ ] frontend/src/hooks/__tests__/useTripsData.test.ts
+- [ ] frontend/src/hooks/__tests__/useTripsData.test.tsx
+- [ ] frontend/src/layouts/__tests__/EliteLayout.test.tsx
+- [ ] frontend/src/layouts/__tests__/navGroups.test.ts
+- [ ] frontend/src/lib/__tests__/safe-href.test.ts
+- [ ] frontend/src/pages/__tests__/AlertsPage.test.tsx
+- [ ] frontend/src/pages/__tests__/DashboardPage.test.tsx
+- [ ] frontend/src/pages/__tests__/FuelPage.test.tsx
+- [ ] frontend/src/pages/__tests__/HomePage.test.tsx
+- [ ] frontend/src/pages/__tests__/LocationsPage.test.tsx
+- [ ] frontend/src/pages/__tests__/LoginPage.test.tsx
+- [ ] frontend/src/pages/__tests__/PredictionsPage.test.tsx
+- [ ] frontend/src/pages/__tests__/ProfilePage.test.tsx
+- [ ] frontend/src/pages/__tests__/ReportsPage.test.tsx
+- [ ] frontend/src/pages/__tests__/ReportsStudioPage.test.tsx
+- [ ] frontend/src/pages/__tests__/RouteLabPage.test.tsx
+- [ ] frontend/src/pages/__tests__/TodayPage.test.tsx
+- [ ] frontend/src/pages/__tests__/smoke.test.ts
+- [ ] frontend/src/pages/admin/__tests__/AdminResourcePages.test.ts
+- [ ] frontend/src/pages/admin/__tests__/AnalyticsPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/BakimPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/BildirimlerPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/KonfigurasyonPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/KullanicilarPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/MLYonetimPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/OverviewPage.test.ts
+- [ ] frontend/src/pages/admin/__tests__/OverviewPage.test.tsx
+- [ ] frontend/src/pages/admin/__tests__/SistemSaglikPage.test.tsx
+- [ ] frontend/src/services/api/__tests__/G1-services.test.ts
+- [ ] frontend/src/services/api/__tests__/G2-services.test.ts
+- [ ] frontend/src/services/api/__tests__/G3-services.test.ts
+- [ ] frontend/src/services/api/__tests__/G4-services.test.ts
+- [ ] frontend/src/services/api/__tests__/G5-services.test.ts
+- [ ] frontend/src/services/api/__tests__/G6-G10-services.test.ts
+- [ ] frontend/src/services/api/__tests__/analytics-service.test.ts
+- [ ] frontend/src/services/api/__tests__/anomaly-service.test.ts
+- [ ] frontend/src/services/api/__tests__/auth-service.test.ts
+- [ ] frontend/src/services/api/__tests__/backend-contract.test.ts
+- [ ] frontend/src/services/api/__tests__/driver-service.test.ts
+- [ ] frontend/src/services/api/__tests__/feedback-service.test.ts
+- [ ] frontend/src/services/api/__tests__/location-service.test.ts
+- [ ] frontend/src/services/api/__tests__/prediction-service.test.ts
+- [ ] frontend/src/services/api/__tests__/route-sim-service.test.ts
+- [ ] frontend/src/services/api/__tests__/trip-service.contract.test.ts
+- [ ] frontend/src/stores/__tests__/use-ai-store.test.ts
+- [ ] frontend/src/stores/__tests__/use-trip-store.test.ts

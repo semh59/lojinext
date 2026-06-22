@@ -1,0 +1,70 @@
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Card } from "@/components/ui/Card";
+import { chartTheme } from "@/lib/chart-theme";
+
+interface Props {
+  data: Array<{ month: string; consumption: number }>;
+  isLoading?: boolean;
+}
+
+export function ConsumptionChart({ data, isLoading }: Props) {
+  return (
+    <Card padding="lg" className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-sm font-semibold text-primary">Tüketim Trendi</h2>
+        <p className="text-xs text-secondary">Aylık toplam yakıt tüketimi</p>
+      </div>
+      {isLoading ? (
+        <div className="h-48 animate-pulse rounded-card bg-elevated/50" />
+      ) : data.length === 0 ? (
+        <div className="flex h-48 items-center justify-center text-sm text-secondary">
+          Henüz veri yok
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={192}>
+          <LineChart data={data}>
+            <CartesianGrid {...chartTheme.grid} />
+            <XAxis
+              dataKey="month"
+              tick={chartTheme.tickSmall}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tick={chartTheme.tick}
+              unit=" L"
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              {...chartTheme.tooltip}
+              formatter={(v: number | undefined) => [
+                v != null
+                  ? `${v.toLocaleString("tr-TR", {
+                      maximumFractionDigits: 1,
+                    })} L`
+                  : "",
+                "Tüketim",
+              ]}
+            />
+            <Line
+              type="monotone"
+              dataKey="consumption"
+              stroke={chartTheme.colors.accent}
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+    </Card>
+  );
+}

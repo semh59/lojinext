@@ -1,0 +1,226 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap");
+
+/*
+  // LojiNext Design System v2.0 — [tüm proje sıfırdan en iyi versiyon için derin ve detaylı planla]
+*/
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* --- Elite Zen Color Palette (HSL) --- */
+    --h-brand: 22; /* Warm Bronze/Orange base */
+    --s-brand: 70%;
+    --l-brand: 48%;
+
+    /* Backgrounds */
+    --bg-base: hsl(40, 20%, 98%); /* Soft Paper/Sand */
+    --bg-surface: hsl(0, 0%, 100%); /* Pure White */
+    --surface-rgb: 255, 255, 255;
+    --bg-elevated: hsl(40, 15%, 95%); /* Subtle Depth */
+
+    /* Text */
+    --text-primary: hsl(24, 15%, 12%); /* Deep Ink */
+    --text-secondary: hsl(24, 10%, 45%); /* Muted Rock */
+    --text-tertiary: hsl(24, 5%, 65%); /* Soft Stone */
+
+    /* Accents & Status */
+    --accent: hsl(var(--h-brand), var(--s-brand), var(--l-brand));
+    --accent-soft: hsl(var(--h-brand), 40%, 94%);
+    --accent-dark: hsl(var(--h-brand), 75%, 35%);
+
+    --success: hsl(150, 60%, 35%);
+    --warning: hsl(35, 90%, 40%);
+    --danger: hsl(0, 70%, 45%);
+    --info: hsl(210, 60%, 45%);
+
+    --border: hsl(24, 15%, 90%);
+    --border-strong: hsl(24, 15%, 82%);
+
+    /* Shadows & Effects */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+  }
+
+  .dark {
+    /* Dark Mode - Elite Onyx Series */
+    --bg-base: hsl(240, 10%, 4%);
+    --bg-surface: hsl(240, 8%, 8%);
+    --bg-elevated: hsl(240, 8%, 12%);
+    --surface-rgb: 18, 18, 28; /* dark mode glass base — overrides light-mode 255,255,255 */
+
+    --text-primary: hsl(0, 0%, 96%);
+    --text-secondary: hsl(240, 5%, 75%);
+    --text-tertiary: hsl(240, 5%, 55%);
+
+    --border: hsl(240, 6%, 18%);
+    --border-strong: hsl(240, 6%, 28%);
+
+    --success: hsl(150, 55%, 42%);
+    --warning: hsl(38, 85%, 50%);
+    --danger: hsl(0, 65%, 55%);
+    --info: hsl(210, 60%, 55%);
+
+    --accent-soft: hsl(var(--h-brand), 25%, 15%);
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  body {
+    @apply bg-base text-primary antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Outfit", sans-serif;
+    @apply font-semibold tracking-tight;
+  }
+
+  /* Data numbers need tabular nums */
+  .tabular-data {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Focus rings - 200ms animation per rules */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-[#e85d2f]/40 border-accent transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(var(--surface-rgb), 0.75);
+    @apply backdrop-blur-md border border-border;
+    box-shadow: var(--shadow-glass);
+  }
+
+  .glass-dark {
+    background: rgba(var(--surface-rgb), 0.5);
+    @apply backdrop-blur-xl border border-border;
+    box-shadow: var(--shadow-glass);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .bg-gradient-soft {
+    background: linear-gradient(
+      135deg,
+      var(--bg-surface) 0%,
+      var(--bg-elevated) 100%
+    );
+  }
+
+  .skeleton {
+    @apply bg-elevated animate-pulse-lite rounded-md overflow-hidden relative;
+  }
+}
+
+@keyframes pulse-lite {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-lite {
+  animation: pulse-lite 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  /* fill-mode "backwards" (not "both"): the entrance animation still plays, but
+     the element does NOT retain a lingering `transform` afterward. A retained
+     transform makes this page wrapper a containing block for descendant
+     position:fixed modals, mispositioning every modal (araç-ekle overflow). The
+     end keyframe (translateY(0), opacity:1) equals the base style, so dropping
+     the retained transform is visually seamless. */
+  animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-from-bottom {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+  animation-duration: 0.4s;
+}
+
+.animate-in.fade-in {
+  animation-name: fade-in;
+}
+
+.animate-in.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom;
+}
+
+.animate-in.duration-500 {
+  animation-duration: 500ms;
+}
+
+@layer components {
+  /* Form input/select için tutarlı taban — predictions ve diğer formlarda kullanılır. */
+  .input-base {
+    @apply w-full rounded-card border border-border bg-surface px-3 py-2 text-sm text-primary outline-none transition-colors focus:border-accent;
+  }
+
+  /* Minimal & Premium Scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-tertiary);
+    border-radius: 10px;
+    opacity: 0.3;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+}

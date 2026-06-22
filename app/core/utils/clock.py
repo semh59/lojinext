@@ -1,0 +1,29 @@
+"""Test edilebilir saat/tarih sağlayıcı (clock injection).
+
+date.today() ve datetime.now() doğrudan kullanımı test izolasyonunu
+bozar (her test günü farklı sonuç, timezone bug'ı). Production kodu
+bu helper üzerinden çağırırsa testlerde monkeypatch ile sabitlenebilir:
+
+    monkeypatch.setattr(
+        "app.core.utils.clock.current_date",
+        lambda: date(2026, 6, 15),
+    )
+
+Audit (AUDIT_REPORT_FINAL) "Fake items: date.today()" olarak işaretlediği
+3 servis (dashboard_service, cost_analyzer, report_service) bu helper'ı
+kullanır.
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+
+
+def current_date() -> date:
+    """Bugünün tarihi — production: date.today(), test: monkeypatched."""
+    return date.today()
+
+
+def current_datetime_utc() -> datetime:
+    """Şu anki UTC datetime — production: datetime.now(tz=utc), test: monkeypatched."""
+    return datetime.now(timezone.utc)

@@ -1,0 +1,40 @@
+# TIR Yakıt Takip Sistemi - Pinned Dependencies
+# Generated: 2026-01-07
+# Bu dosya production deployment için sabit versiyonlarıdır
+
+# UI - Legacy
+customtkinter==5.2.2
+pillow==12.0.0
+matplotlib==3.10.8
+tkcalendar==1.6.1
+PyQt6==6.10.1
+pyqtgraph==0.14.0
+
+# Data & Validation
+openpyxl==3.1.5
+pydantic==2.12.5
+numpy==2.4.0
+
+# Security
+bcrypt==5.0.0
+python-dotenv==1.2.1
+
+# API Calls
+requests==2.32.5
+
+# ML - Ensemble Model
+# Note: scikit-learn ve scipy pip freeze'de görünmüyor ama gerekli
+# scikit-learn>=1.3.0
+# scipy>=1.11.0
+
+# PDF Raporlama
+# fpdf2 kurulu değil, gerekirse eklenecek
+
+# Development Tools
+pytest==9.0.1
+pytest-cov==7.0.0
+coverage==7.12.0
+
+# Optional - FastAPI (if API needed)
+# fastapi==0.123.0
+# uvicorn==0.38.0

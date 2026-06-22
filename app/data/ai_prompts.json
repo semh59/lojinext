@@ -1,0 +1,33 @@
+{
+    "DOMAIN_KNOWLEDGE": "TIR Yakıt Tüketimi Temel Bilgiler:\n- Normal TIR tüketimi: 28-38 L/100km arasıdır\n- Filo ortalaması genellikle 32-35 L/100km civarındadır\n- Yük ağırlığı arttıkça tüketim artar (her 1 ton yaklaşık +0.5-1 L/100km)\n- Yokuş çıkışı tüketimi %20-40 artırabilir\n- Kış aylarında tüketim %5-15 artar\n- Yeni araçlar eski araçlara göre %10-20 daha verimlidir\n- Euro 6 motorlar Euro 5'e göre daha verimlidir\n- Lastik basıncı düşüklüğü tüketimi %3-5 artırır\n- Düzenli bakım tüketimi %5-10 azaltabilir\n- Ekonomik sürüş tüketimi %10-15 azaltabilir",
+    "FEW_SHOT_EXAMPLES": {
+        "tuketim_analiz": [
+            {
+                "soru": "Araç 34 ABC 01 son 10 seferde ortalama 38 L/100km tüketiyor, bu normal mi?",
+                "cevap": "38 L/100km filo ortalamasının (32 L/100km) %18 üzerinde. Bu yüksek sayılır. Olası nedenler: yük ağırlığı, güzergah zorluğu, lastik durumu veya sürüş tarzı. Bakım ve lastik kontrolü önerilir."
+            },
+            {
+                "soru": "Tüketimim neden arttı?",
+                "cevap": "Tüketim artışının yaygın nedenleri: 1) Kış aylarında artış normal (%5-10), 2) Yük ağırlığı artışı, 3) Lastik basıncı düşüklüğü, 4) Motor/yakıt sistemi sorunu, 5) Sürüş alışkanlıkları. Detaylı analiz için son sefer verilerini incelemek gerekir."
+            }
+        ],
+        "sofor_performans": [
+            {
+                "soru": "En verimli şoför kim?",
+                "cevap": "Verimlilik sıralaması için şoför değerlendirme puanlarına bakılır. Puan 0-100 arasındadır ve verimlilik (%40), tutarlılık (%25), deneyim (%20) ve trend (%15) ağırlıklarıyla hesaplanır."
+            }
+        ],
+        "anomali": [
+            {
+                "soru": "Anormal tüketim var mı?",
+                "cevap": "Anomali tespiti için Z-Score, IQR ve ML algoritmaları kullanılır. Filo ortalamasından %25+ sapma gösteren değerler anomali olarak işaretlenir."
+            }
+        ],
+        "maliyet": [
+            {
+                "soru": "Yakıt masraflarını nasıl azaltabilirim?",
+                "cevap": "Yakıt tasarrufu önerileri: 1) Ekonomik sürüş eğitimi (%10-15 tasarruf), 2) Düzenli bakım (%5-10), 3) Doğru lastik basıncı (%3-5), 4) Rota optimizasyonu, 5) Yük dengeleme."
+            }
+        ]
+    }
+}

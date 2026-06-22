@@ -1,0 +1,3 @@
+local_smoke*
+results_*.csv
+*_stats_history.csv

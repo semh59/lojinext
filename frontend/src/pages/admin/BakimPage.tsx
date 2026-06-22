@@ -1,0 +1,452 @@
+﻿import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import {
+  CalendarDays,
+  CheckCircle,
+  List,
+  Plus,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Modal } from "@/components/ui/Modal";
+import { RequirePermission } from "@/components/auth/RequirePermission";
+import { adminMaintenanceApi, type BakimTipi } from "@/api/admin";
+import { vehicleService } from "@/api/vehicles";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/Table";
+import { useNotify } from "@/context/NotificationContext";
+import { adminMaintenanceText } from "@/resources/tr/admin";
+import { maintenancePredictionsText } from "@/resources/tr/maintenancePredictions";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { MaintenanceCalendar } from "@/components/admin/maintenance/MaintenanceCalendar";
+import { PredictionsTable } from "@/components/admin/maintenance/PredictionsTable";
+import { cn } from "@/lib/utils";
+
+const mapMaintenanceStatus = (status?: string) => {
+  switch (status) {
+    case "gecikmis":
+      return {
+        label: adminMaintenanceText.statusLabels.overdue,
+        variant: "danger" as const,
+      };
+    case "yaklasiyor":
+      return {
+        label: adminMaintenanceText.statusLabels.upcoming,
+        variant: "warning" as const,
+      };
+    default:
+      return {
+        label: adminMaintenanceText.statusLabels.default,
+        variant: "default" as const,
+      };
+  }
+};
+
+export default function AdminMaintenancePage() {
+  usePageTitle("Bakım & Onarım");
+  const qc = useQueryClient();
+  const { notify } = useNotify();
+
+  const { data: alerts = [], isLoading } = useQuery({
+    queryKey: ["adminMaintenanceAlerts"],
+    queryFn: () => adminMaintenanceApi.getAlerts(),
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: adminMaintenanceApi.markComplete,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["adminMaintenanceAlerts"] });
+      notify(
+        "success",
+        adminMaintenanceText.notifications.completeSuccessTitle,
+        adminMaintenanceText.notifications.completeSuccessMessage,
+      );
+    },
+    onError: (err: Error) => {
+      notify(
+        "error",
+        adminMaintenanceText.notifications.actionFailedTitle,
+        err.message || adminMaintenanceText.notifications.actionFailedFallback,
+      );
+    },
+  });
+
+  // ── Yeni bakım/arıza giriş formu ─────────────────────────────────
+  const [isEntryOpen, setEntryOpen] = useState(false);
+  const [entryForm, setEntryForm] = useState({
+    arac_id: "",
+    bakim_tipi: "PERIYODIK" as BakimTipi,
+    km_bilgisi: "",
+    bakim_tarihi: new Date().toISOString().slice(0, 10),
+    maliyet: "",
+    detaylar: "",
+  });
+  const [entryError, setEntryError] = useState<string | null>(null);
+
+  const { data: vehiclesResp } = useQuery({
+    queryKey: ["vehiclesForMaintenance"],
+    queryFn: () => vehicleService.getAll({ limit: 500 }),
+    enabled: isEntryOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  const vehicles = vehiclesResp?.items ?? [];
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      adminMaintenanceApi.create({
+        arac_id: Number(entryForm.arac_id),
+        bakim_tipi: entryForm.bakim_tipi,
+        km_bilgisi: Number(entryForm.km_bilgisi),
+        bakim_tarihi: new Date(entryForm.bakim_tarihi).toISOString(),
+        maliyet: Number(entryForm.maliyet || 0),
+        detaylar: entryForm.detaylar.trim(),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["adminMaintenanceAlerts"] });
+      void qc.invalidateQueries({ queryKey: ["maintenancePredictions"] });
+      notify(
+        "success",
+        "Kayıt eklendi",
+        "Bakım/arıza kaydı başarıyla oluşturuldu.",
+      );
+      setEntryOpen(false);
+    },
+    onError: (err: unknown) => {
+      const detail =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ?? "Kayıt oluşturulamadı";
+      setEntryError(detail);
+    },
+  });
+
+  const openEntry = () => {
+    setEntryForm({
+      arac_id: "",
+      bakim_tipi: "PERIYODIK",
+      km_bilgisi: "",
+      bakim_tarihi: new Date().toISOString().slice(0, 10),
+      maliyet: "",
+      detaylar: "",
+    });
+    setEntryError(null);
+    setEntryOpen(true);
+  };
+
+  const submitEntry = () => {
+    setEntryError(null);
+    if (!entryForm.arac_id) {
+      setEntryError("Araç seçin");
+      return;
+    }
+    // KM, bakım/arıza takibi için zorunlu — boş bırakılıp 0 kaydedilmesi
+    // aracın servis geçmişini bozar (sıfır km'lik servis kaydı anlamsız).
+    if (!entryForm.km_bilgisi || Number(entryForm.km_bilgisi) <= 0) {
+      setEntryError("KM bilgisi zorunlu (araç servis takibi için)");
+      return;
+    }
+    createMutation.mutate();
+  };
+
+  // URL state: ?view=calendar|predictions|history
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get("view") ?? "history";
+  const activeView: "history" | "predictions" | "calendar" =
+    viewParam === "calendar"
+      ? "calendar"
+      : viewParam === "predictions"
+        ? "predictions"
+        : "history";
+
+  const setView = (view: "history" | "predictions" | "calendar") => {
+    const next = new URLSearchParams(searchParams);
+    if (view === "history") {
+      next.delete("view");
+    } else {
+      next.set("view", view);
+    }
+    setSearchParams(next, { replace: true });
+  };
+
+  const tabs: Array<{
+    id: "history" | "predictions" | "calendar";
+    label: string;
+    icon: typeof List;
+  }> = [
+    {
+      id: "history",
+      label: maintenancePredictionsText.tabs.history,
+      icon: List,
+    },
+    {
+      id: "predictions",
+      label: maintenancePredictionsText.tabs.list,
+      icon: Sparkles,
+    },
+    {
+      id: "calendar",
+      label: maintenancePredictionsText.tabs.calendar,
+      icon: CalendarDays,
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">
+            {adminMaintenanceText.heading}
+          </h1>
+          <p className="mt-1 text-secondary">
+            {adminMaintenanceText.description}
+          </p>
+        </div>
+        <RequirePermission permission="bakim_ekle">
+          <Button onClick={openEntry}>
+            <Plus size={16} className="mr-2" /> Yeni Bakım / Arıza
+          </Button>
+        </RequirePermission>
+      </div>
+
+      {/* Tab switcher (D.3) */}
+      <div className="flex gap-1 rounded-xl border border-border bg-surface p-1 w-fit">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setView(t.id)}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                activeView === t.id
+                  ? "bg-accent text-white shadow-sm"
+                  : "text-secondary hover:text-primary",
+              )}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {activeView === "predictions" && <PredictionsTable />}
+      {activeView === "calendar" && <MaintenanceCalendar />}
+
+      {activeView === "history" && (
+        <Card padding="none">
+          <div className="flex items-center gap-2 border-b border-border bg-elevated/50 p-4">
+            <Wrench className="h-5 w-5 text-secondary" />
+            <h2 className="text-base font-bold text-primary">
+              {adminMaintenanceText.sectionTitle}
+            </h2>
+          </div>
+          {isLoading ? (
+            <div className="flex h-48 items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{adminMaintenanceText.headers.vehicle}</TableHead>
+                  <TableHead>
+                    {adminMaintenanceText.headers.maintenanceType}
+                  </TableHead>
+                  <TableHead>
+                    {adminMaintenanceText.headers.plannedDateOrKm}
+                  </TableHead>
+                  <TableHead>{adminMaintenanceText.headers.status}</TableHead>
+                  <TableHead className="text-right">
+                    {adminMaintenanceText.headers.actions}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {alerts.map((alert: any) => {
+                  const status = mapMaintenanceStatus(alert.durum);
+
+                  return (
+                    <TableRow key={alert.id}>
+                      <TableCell className="font-medium">
+                        {adminMaintenanceText.vehiclePrefix} #{alert.arac_id}
+                      </TableCell>
+                      <TableCell className="text-xs font-bold uppercase text-secondary">
+                        {alert.bakim_tipi}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {alert.bakim_tarihi
+                          ? new Date(alert.bakim_tarihi).toLocaleDateString(
+                              "tr-TR",
+                            )
+                          : "-"}
+                        {alert.km_bilgisi ? ` / ${alert.km_bilgisi} KM` : ""}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={status.variant}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 border-success/20 text-success hover:bg-success/5 hover:text-success/80"
+                          onClick={() => completeMutation.mutate(alert.id)}
+                          disabled={completeMutation.isPending}
+                        >
+                          <CheckCircle className="mr-2 h-3 w-3" />
+                          {adminMaintenanceText.completeAction}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {alerts.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-32 text-center text-secondary"
+                    >
+                      {adminMaintenanceText.empty}
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
+      )}
+
+      <Modal
+        isOpen={isEntryOpen}
+        onClose={() => setEntryOpen(false)}
+        title="Yeni Bakım / Arıza Girişi"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-secondary mb-1">
+              Araç
+            </label>
+            <select
+              value={entryForm.arac_id}
+              onChange={(e) =>
+                setEntryForm((f) => ({ ...f, arac_id: e.target.value }))
+              }
+              className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+            >
+              <option value="">Araç seçin…</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.plaka} {v.marka ? `— ${v.marka}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Tür
+              </label>
+              <select
+                value={entryForm.bakim_tipi}
+                onChange={(e) =>
+                  setEntryForm((f) => ({
+                    ...f,
+                    bakim_tipi: e.target.value as BakimTipi,
+                  }))
+                }
+                className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+              >
+                <option value="PERIYODIK">Periyodik Bakım</option>
+                <option value="ARIZA">Arıza</option>
+                <option value="ACIL">Acil</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Tarih
+              </label>
+              <input
+                type="date"
+                value={entryForm.bakim_tarihi}
+                onChange={(e) =>
+                  setEntryForm((f) => ({ ...f, bakim_tarihi: e.target.value }))
+                }
+                className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                KM <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={entryForm.km_bilgisi}
+                onChange={(e) =>
+                  setEntryForm((f) => ({ ...f, km_bilgisi: e.target.value }))
+                }
+                placeholder="Aracın güncel km'si"
+                className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-secondary mb-1">
+                Maliyet (TL)
+              </label>
+              <input
+                type="number"
+                value={entryForm.maliyet}
+                onChange={(e) =>
+                  setEntryForm((f) => ({ ...f, maliyet: e.target.value }))
+                }
+                className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-secondary mb-1">
+              Detaylar
+            </label>
+            <textarea
+              value={entryForm.detaylar}
+              onChange={(e) =>
+                setEntryForm((f) => ({ ...f, detaylar: e.target.value }))
+              }
+              rows={3}
+              className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
+            />
+          </div>
+
+          {entryError && <p className="text-sm text-danger">{entryError}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="ghost" onClick={() => setEntryOpen(false)}>
+              İptal
+            </Button>
+            <Button onClick={submitEntry} disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Kaydediliyor…" : "Kaydet"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}

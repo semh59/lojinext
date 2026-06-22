@@ -1,0 +1,103 @@
+# ── Version control ───────────────────────────────────────────
+.git
+.github
+.gitignore
+
+# ── IDE / editor ──────────────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+
+# ── Python build artefacts ────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+htmlcov/
+.coverage
+coverage.xml
+
+# ── Virtual environments ──────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Node / frontend build ─────────────────────────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/bundle-stats.html
+
+# ── Databases & local state ───────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+lojinext.db
+local.db
+backups/
+logs/
+
+# ── ML model binaries (loaded from volume at runtime) ─────────
+*.pkl
+*.joblib
+app/core/ml/models/
+models/
+
+# ── Temporary & generated files ───────────────────────────────
+tmp/
+tmp_*
+*.tmp
+*.temp
+*.bak
+*.xlsx
+*.csv
+data/ai_kb/faiss.index
+
+# ── One-time audit / planning scripts ─────────────────────────
+deep_audit.py
+final_audit.py
+run_final_audit.py
+super_audit.py
+targeted_audit.py
+PROD_READINESS.md
+FRONTEND_REVIEW.md
+docs/
+
+# ── Test artefacts (not needed in runtime image) ──────────────
+tests/
+app/tests/
+test_export.xlsx
+
+# ── Dead aspirational directories ─────────────────────────────
+services/
+microservices-transformation/
+LOJINEXTv2/
+_archive/
+
+# ── Secrets (should never be in image) ───────────────────────
+.env
+.env.*
+*.env
+
+# ── Misc ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.agent/
+.claude/
+
+# ── Explicit allow-list (override broad globs above) ──────────
+!alembic.ini
+!app/requirements.txt
+!app/requirements-dev.txt
+!frontend/package.json
+!frontend/package-lock.json

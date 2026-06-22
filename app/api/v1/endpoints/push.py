@@ -1,0 +1,127 @@
+"""Reports v2 RV2.PWA — Web Push endpoint'leri.
+
+Plan §7.2:
+- GET /push/vapid-public-key — frontend subscribe için public key
+- POST /push/subscribe — subscription kaydı (upsert by endpoint)
+- DELETE /push/subscribe?endpoint=... — subscription sil
+- POST /push/test — admin test push gönderir
+"""
+
+from __future__ import annotations
+
+import logging
+from datetime import datetime, timezone
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import delete, select
+
+from app.api.deps import get_current_active_admin, get_current_active_user
+from app.config import settings
+from app.core.services.push_sender import send_push_to_user
+from app.database.models import Kullanici, PushSubscription
+from app.database.unit_of_work import UnitOfWork
+from app.schemas.push import (
+    PushSendResult,
+    PushSubscriptionRequest,
+    PushSubscriptionResponse,
+    PushTestRequest,
+    VapidPublicKeyResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.get("/vapid-public-key", response_model=VapidPublicKeyResponse)
+async def get_vapid_public_key(
+    _current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+) -> VapidPublicKeyResponse:
+    """Frontend subscribe için VAPID public key.
+
+    push_enabled False ise frontend abone olmamalı.
+    """
+    push_enabled = bool(
+        settings.VAPID_PUBLIC_KEY
+        and settings.VAPID_PRIVATE_KEY
+        and settings.PUSH_NOTIFICATION_ENABLED
+    )
+    return VapidPublicKeyResponse(
+        public_key=settings.VAPID_PUBLIC_KEY,
+        push_enabled=push_enabled,
+    )
+
+
+@router.post(
+    "/subscribe",
+    response_model=PushSubscriptionResponse,
+    status_code=201,
+)
+async def subscribe(
+    payload: PushSubscriptionRequest,
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+) -> PushSubscriptionResponse:
+    """Yeni subscription kaydı (endpoint unique → upsert)."""
+    if not settings.PUSH_NOTIFICATION_ENABLED:
+        raise HTTPException(status_code=503, detail="Push bildirimleri devre dışı")
+
+    async with UnitOfWork() as uow:
+        existing = await uow.session.execute(
+            select(PushSubscription).where(
+                PushSubscription.endpoint == payload.endpoint
+            )
+        )
+        sub = existing.scalar_one_or_none()
+        now = datetime.now(timezone.utc)
+        if sub is not None:
+            sub.user_id = current_user.id
+            sub.p256dh = payload.keys.p256dh
+            sub.auth = payload.keys.auth
+            sub.user_agent = payload.user_agent
+            sub.last_used_at = now
+        else:
+            sub = PushSubscription(
+                user_id=current_user.id,
+                endpoint=payload.endpoint,
+                p256dh=payload.keys.p256dh,
+                auth=payload.keys.auth,
+                user_agent=payload.user_agent,
+                last_used_at=now,
+            )
+            uow.session.add(sub)
+        await uow.session.flush()
+        await uow.session.refresh(sub)
+        return PushSubscriptionResponse.model_validate(sub)
+
+
+@router.delete("/subscribe", status_code=204)
+async def unsubscribe(
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+    endpoint: str = Query(..., min_length=10),
+) -> None:
+    """Bir endpoint için subscription sil — yalnız kendi kayıtları."""
+    async with UnitOfWork() as uow:
+        await uow.session.execute(
+            delete(PushSubscription).where(
+                PushSubscription.endpoint == endpoint,
+                PushSubscription.user_id == current_user.id,
+            )
+        )
+
+
+@router.post("/test", response_model=PushSendResult)
+async def send_test_push(
+    payload: PushTestRequest,
+    current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
+) -> PushSendResult:
+    """Admin debugging — current_user'a test push gönderir."""
+    if not settings.PUSH_NOTIFICATION_ENABLED:
+        raise HTTPException(status_code=503, detail="Push bildirimleri devre dışı")
+
+    return await send_push_to_user(
+        current_user.id,
+        title=payload.title,
+        body=payload.body,
+        url=payload.url,
+    )

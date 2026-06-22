@@ -1,0 +1,79 @@
+﻿# Backend - API Framework
+# fastapi PINNED: 0.137 introduced the `_IncludedRouter` route object (new routing
+# model) which prometheus-fastapi-instrumentator 8.0.0 cannot resolve → every request
+# 500s ('_IncludedRouter' object has no attribute 'path'). 0.136.0 is the newest
+# release without it. Verified 2026-06-17 (health + /metrics 200). Bump only together
+# with an instrumentator release that supports the new model.
+fastapi==0.136.0
+# starlette pinned to the version the trio was verified against (instrumentator 8.0.0
+# requires starlette>=1.0; fastapi 0.136 accepts >=0.46) — keeps fresh builds reproducible.
+starlette==1.3.1
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# Database (PostgreSQL + Async)
+sqlalchemy[asyncio]>=2.0.25
+asyncpg>=0.29.0,<0.31.0
+psycopg2-binary>=2.9.9
+pydantic-settings>=2.1.0
+alembic>=1.13.0
+geoalchemy2>=0.14.0
+shapely>=2.0.0
+
+# Data & Validation
+pydantic>=2.6.0
+pydantic-core>=2.16.0
+numpy>=1.26.0
+pandas>=2.2.0
+
+# Security
+bcrypt>=4.1.0
+PyJWT[crypto]>=2.10.0
+passlib[bcrypt]>=1.7.4
+python-dotenv>=1.0.0
+
+# HTTP Client (External APIs)
+httpx>=0.27.0
+requests>=2.31.0
+
+# ML & AI
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+lightgbm>=4.0.0
+scipy>=1.12.0
+statsmodels>=0.14.0
+openai>=1.12.0
+
+# Utilities
+email-validator>=2.1.0
+
+# Cache (Redis)
+redis>=5.0.0
+
+# Reporting
+reportlab>=4.0.0
+matplotlib>=3.8.0
+
+
+# RAG (Retrieval-Augmented Generation)
+sentence-transformers>=2.2.0
+faiss-cpu>=1.7.0
+
+# Excel & Maps
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+openrouteservice>=2.3.0
+# FAZ 15 Observability
+sentry-sdk>=1.40.0
+# PINNED with fastapi above — 8.0.0 is the working pair (see fastapi pin note).
+prometheus-fastapi-instrumentator==8.0.0
+groq>=0.4.0
+celery>=5.3.0
+opentelemetry-sdk>=1.24.0
+opentelemetry-exporter-otlp>=1.24.0
+opentelemetry-instrumentation-fastapi>=0.45b0
+opentelemetry-instrumentation-sqlalchemy>=0.45b0
+opentelemetry-instrumentation-redis>=0.45b0
+slowapi>=0.1.9
+respx>=0.20.2
+pywebpush>=1.14.0

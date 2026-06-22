@@ -223,8 +223,17 @@ const AppLayout: React.FC = () => {
 
           {/* Bottom */}
           <div className="pt-6 border-t border-border mt-auto space-y-3">
-            <div className="px-4">
-              <LanguageSwitcher />
+            <div className="px-4 flex items-center gap-2">
+              <div className="flex-1">
+                <LanguageSwitcher />
+              </div>
+              <button
+                onClick={toggleDark}
+                className="p-2.5 text-secondary hover:bg-elevated rounded-xl transition-colors shrink-0"
+                aria-label={isDark ? "Açık moda geç" : "Koyu moda geç"}
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
             </div>
             <button
               onClick={handleLogout}
@@ -246,14 +255,6 @@ const AppLayout: React.FC = () => {
           <div />
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleDark}
-              className="p-2.5 text-secondary hover:bg-elevated rounded-xl transition-colors"
-              aria-label={isDark ? "Açık moda geç" : "Koyu moda geç"}
-            >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
             <div className="relative">
               <button
                 onClick={() => setNotifOpen((p) => !p)}

@@ -149,10 +149,6 @@ function App() {
                           element={<AdminAnalyticsPage />}
                         />
                         <Route
-                          path="bakim"
-                          element={<Navigate to="/maintenance" replace />}
-                        />
-                        <Route
                           path="veri"
                           element={<AdminDataManagementPage />}
                         />

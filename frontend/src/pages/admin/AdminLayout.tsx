@@ -14,7 +14,6 @@ import {
   Target,
   User as UserIcon,
   Users,
-  Wrench,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -44,11 +43,6 @@ const ADMIN_NAV = [
     path: "/admin/konfig",
     label: adminLayoutText.nav.configuration,
     icon: SlidersHorizontal,
-  },
-  {
-    path: "/admin/bakim",
-    label: adminLayoutText.nav.maintenance,
-    icon: Wrench,
   },
   {
     path: "/admin/atama",

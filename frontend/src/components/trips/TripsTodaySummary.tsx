@@ -10,6 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { tripService } from "../../api/trips";
 import { getTripStatusMeta } from "../../lib/status-labels";
+import { useLocale } from "../../hooks/useLocale";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -17,6 +18,7 @@ function todayIso(): string {
 
 export function TripsTodaySummary() {
   const { t } = useTranslation();
+  const locale = useLocale();
   const today = todayIso();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["trips", "stats", "today", today],
@@ -72,14 +74,14 @@ export function TripsTodaySummary() {
         />
         <Chip
           icon={CheckCircle2}
-          label={getTripStatusMeta("Completed").label}
+          label={getTripStatusMeta("Completed", locale).label}
           count={data.completed_count ?? 0}
           accent="text-success"
           bg="bg-success/10"
         />
         <Chip
           icon={Pause}
-          label={getTripStatusMeta("Planned").label}
+          label={getTripStatusMeta("Planned", locale).label}
           count={data.planned_count ?? 0}
           accent="text-info"
           bg="bg-info/10"
@@ -87,7 +89,7 @@ export function TripsTodaySummary() {
         {(data.cancelled_count ?? 0) > 0 && (
           <Chip
             icon={X}
-            label={getTripStatusMeta("Cancelled").label}
+            label={getTripStatusMeta("Cancelled", locale).label}
             count={data.cancelled_count}
             accent="text-danger"
             bg="bg-danger/10"

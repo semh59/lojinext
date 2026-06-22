@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -6,14 +6,13 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useTaskStatus } from "../../hooks/useTaskStatus";
 import { tripService } from "../../api/trips";
 
 interface ImportProgressModalProps {
-  /** null/undefined ise modal kapalı. Dosya verildiğinde async upload başlar. */
   file: File | null;
   onClose: () => void;
-  /** Başarı sonrası invalidate vb. tetiklemek için. */
   onComplete?: (summary: ImportSummary) => void;
 }
 
@@ -30,6 +29,7 @@ export function ImportProgressModal({
   onClose,
   onComplete,
 }: ImportProgressModalProps) {
+  const { t } = useTranslation();
   const [taskId, setTaskId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const task = useTaskStatus(taskId, { intervalMs: 1500 });
@@ -54,7 +54,7 @@ export function ImportProgressModal({
         if (cancelled) return;
         const detail =
           (err?.response?.data?.detail as string | undefined) ??
-          "İçe aktarma başlatılamadı.";
+          t("trips.import_start_failed", "Import could not be started.");
         setStartError(detail);
       });
 
@@ -63,7 +63,6 @@ export function ImportProgressModal({
     };
   }, [file]);
 
-  // SUCCESS sonrası dış callback'i bir kez tetikle.
   useEffect(() => {
     if (task.status === "SUCCESS" && task.result && onComplete) {
       onComplete(task.result as ImportSummary);
@@ -84,7 +83,7 @@ export function ImportProgressModal({
             <FileSpreadsheet className="h-5 w-5 text-accent" />
             <div>
               <h3 className="text-sm font-semibold text-primary">
-                Excel İçe Aktarma
+                {t("trips.import_modal_title", "Excel Import")}
               </h3>
               <p className="text-[11px] text-secondary truncate max-w-[280px]">
                 {file.name}
@@ -95,7 +94,7 @@ export function ImportProgressModal({
             onClick={onClose}
             disabled={task.status === "PROCESSING"}
             className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary disabled:opacity-30"
-            aria-label="Kapat"
+            aria-label={t("common.close", "Close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -110,19 +109,22 @@ export function ImportProgressModal({
           ) : task.status === "IDLE" || task.status === "PROCESSING" ? (
             <div className="flex flex-col items-center gap-3 py-6 text-secondary">
               <Loader2 className="h-8 w-8 animate-spin text-accent" />
-              <p className="text-sm font-semibold text-primary">İşleniyor…</p>
+              <p className="text-sm font-semibold text-primary">
+                {t("trips.import_processing", "Processing…")}
+              </p>
               <p className="text-[11px] text-tertiary text-center max-w-sm">
-                Excel satırları analiz ediliyor. Büyük dosyalar birkaç dakika
-                sürebilir.
+                {t(
+                  "trips.import_processing_hint",
+                  "Analysing Excel rows. Large files may take a few minutes.",
+                )}
               </p>
             </div>
           ) : task.status === "FAILED" ? (
             <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
               <AlertCircle className="h-4 w-4" />
-              {task.error ?? "İçe aktarma başarısız oldu."}
+              {task.error ?? t("trips.import_failed", "Import failed.")}
             </div>
           ) : (
-            // SUCCESS
             <>
               <div
                 className={`flex items-center gap-2 rounded-card px-4 py-3 text-sm ${
@@ -136,21 +138,34 @@ export function ImportProgressModal({
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                Tamamlandı: {summary?.success_count ?? 0} satır işlendi
-                {(summary?.failed_count ?? 0) > 0 &&
-                  `, ${summary?.failed_count} satır atlandı`}
-                .
+                {t(
+                  "trips.import_complete",
+                  "Done: {{n}} rows processed{{skipped}}.",
+                  {
+                    n: summary?.success_count ?? 0,
+                    skipped:
+                      (summary?.failed_count ?? 0) > 0
+                        ? `, ${summary?.failed_count} ${t(
+                            "trips.import_rows_skipped",
+                            "rows skipped",
+                          )}`
+                        : "",
+                  },
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-center">
-                <Stat label="Toplam" value={summary?.total_rows ?? 0} />
                 <Stat
-                  label="Başarılı"
+                  label={t("common.total", "Total")}
+                  value={summary?.total_rows ?? 0}
+                />
+                <Stat
+                  label={t("trips.import_success", "Successful")}
                   value={summary?.success_count ?? 0}
                   accent="text-success"
                 />
                 <Stat
-                  label="Atlandı"
+                  label={t("trips.import_skipped", "Skipped")}
                   value={summary?.failed_count ?? 0}
                   accent={
                     (summary?.failed_count ?? 0) > 0
@@ -163,7 +178,14 @@ export function ImportProgressModal({
               {displayErrors.length > 0 && (
                 <details className="rounded-card border border-border bg-elevated/30 p-3 text-xs">
                   <summary className="cursor-pointer font-semibold text-secondary">
-                    İlk {displayErrors.length} hata ({errors.length} toplam)
+                    {t(
+                      "trips.import_errors_summary",
+                      "First {{n}} errors ({{total}} total)",
+                      {
+                        n: displayErrors.length,
+                        total: errors.length,
+                      },
+                    )}
                   </summary>
                   <ul className="mt-2 space-y-1">
                     {displayErrors.map((err, idx) => (
@@ -183,7 +205,7 @@ export function ImportProgressModal({
                   onClick={onClose}
                   className="rounded-card bg-accent px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-accent/90"
                 >
-                  Kapat
+                  {t("common.close", "Close")}
                 </button>
               </div>
             </>

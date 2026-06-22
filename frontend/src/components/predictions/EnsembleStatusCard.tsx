@@ -1,4 +1,4 @@
-﻿import {
+import {
   BarChart,
   Bar,
   XAxis,
@@ -7,19 +7,22 @@
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
 import type { EnsembleStatusResponse } from "@/api/predictions";
 
-const MODEL_LABELS: Record<string, string> = {
-  physics: "Fizik",
-  lightgbm: "LightGBM",
-  xgboost: "XGBoost",
-  gradient_boosting: "Grad. Boost",
-  random_forest: "Rand. Forest",
-};
-
 export function EnsembleStatusCard({ data }: { data: EnsembleStatusResponse }) {
+  const { t } = useTranslation();
+
+  const MODEL_LABELS: Record<string, string> = {
+    physics: t("predictions.model_label_physics", "Physics"),
+    lightgbm: "LightGBM",
+    xgboost: "XGBoost",
+    gradient_boosting: "Grad. Boost",
+    random_forest: "Rand. Forest",
+  };
+
   const chartData = Object.entries(data.weights).map(([key, weight]) => ({
     name: MODEL_LABELS[key] ?? key,
     weight: Math.round(weight * 100),
@@ -30,10 +33,12 @@ export function EnsembleStatusCard({ data }: { data: EnsembleStatusResponse }) {
     <Card padding="lg" className="flex flex-col gap-4">
       <div>
         <h2 className="text-sm font-semibold text-primary">
-          Ensemble Model Ağırlıkları
+          {t("predictions.ensemble_weights_title", "Ensemble Model Weights")}
         </h2>
         <p className="text-xs text-secondary">
-          {data.total_models} aktif model
+          {t("predictions.ensemble_active_models", "{{n}} active models", {
+            n: data.total_models,
+          })}
         </p>
       </div>
       <ResponsiveContainer width="100%" height={180}>
@@ -58,7 +63,7 @@ export function EnsembleStatusCard({ data }: { data: EnsembleStatusResponse }) {
             {...chartTheme.tooltip}
             formatter={(v: number | undefined) => [
               v != null ? `${v}%` : "",
-              "Ağırlık",
+              t("predictions.weight_label", "Weight"),
             ]}
           />
           <Bar dataKey="weight" radius={[0, 4, 4, 0]}>

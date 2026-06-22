@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   /** Percentage change vs. previous period. Positive = increase, negative = decrease. */
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function KpiTrendBadge({ trend, invert = false }: Props) {
+  const { t } = useTranslation();
+
   if (trend === null || trend === undefined || Number.isNaN(trend)) {
     return null;
   }
@@ -27,7 +30,7 @@ export function KpiTrendBadge({ trend, invert = false }: Props) {
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded-card px-1.5 py-0.5 text-[10px] font-semibold ${colorClass}`}
-      title="Geçen aya göre değişim"
+      title={t("predictions.change_vs_prev_month", "Change vs. previous month")}
     >
       <Icon className="h-3 w-3" />
       {formatted}

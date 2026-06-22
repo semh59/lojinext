@@ -1,6 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Crosshair, Loader2, AlertCircle, CheckCircle2, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { locationService } from "../../api/locations";
 
 interface CalibrationModalProps {
@@ -14,6 +15,7 @@ export function CalibrationModal({
   onClose,
   routeLabel,
 }: CalibrationModalProps) {
+  const { t } = useTranslation();
   const [seferIdInput, setSeferIdInput] = useState("");
   const calibrate = useMutation({
     mutationFn: (seferId: number) => locationService.calibrateFromTrip(seferId),
@@ -26,7 +28,7 @@ export function CalibrationModal({
     seferIdInput.length > 0 && Number.isInteger(seferId) && seferId > 0;
   const errorDetail =
     (calibrate.error as any)?.response?.data?.detail ??
-    "Kalibrasyon başarısız oldu.";
+    t("locations.calibration_error");
 
   const handleClose = () => {
     setSeferIdInput("");
@@ -42,7 +44,7 @@ export function CalibrationModal({
             <Crosshair className="h-5 w-5 text-accent" />
             <div>
               <h3 className="text-sm font-semibold text-primary">
-                Güzergah Kalibrasyonu
+                {t("locations.calibration_title")}
               </h3>
               {routeLabel && (
                 <p className="text-[11px] font-mono text-secondary">
@@ -54,7 +56,7 @@ export function CalibrationModal({
           <button
             onClick={handleClose}
             className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-            aria-label="Kapat"
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -62,8 +64,7 @@ export function CalibrationModal({
 
         <div className="space-y-4 p-5">
           <p className="text-xs leading-relaxed text-secondary">
-            Bu güzergahın "Golden Path"i, seçilen seferin GPS verisiyle
-            güncellenir. Sonraki kalibrasyon kontrolleri buna göre yapılır.
+            {t("locations.calibration_description")}
           </p>
 
           <div>
@@ -71,7 +72,7 @@ export function CalibrationModal({
               htmlFor="calibration-trip-id"
               className="mb-1 block text-[11px] font-bold uppercase tracking-widest text-secondary"
             >
-              Sefer ID
+              {t("locations.calibration_trip_id")}
             </label>
             <input
               id="calibration-trip-id"
@@ -79,13 +80,12 @@ export function CalibrationModal({
               min={1}
               value={seferIdInput}
               onChange={(e) => setSeferIdInput(e.target.value)}
-              placeholder="Örn: 1234"
+              placeholder={t("locations.calibration_trip_placeholder")}
               className="input-base"
               disabled={calibrate.isPending}
             />
             <p className="mt-1 text-[10px] text-tertiary">
-              Sefer detayında ID'yi bulabilirsiniz. Sadece tamamlanmış, GPS
-              verisi olan seferler kalibrasyon için kullanılabilir.
+              {t("locations.calibration_hint")}
             </p>
           </div>
 
@@ -108,7 +108,7 @@ export function CalibrationModal({
               onClick={handleClose}
               className="rounded-card px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-elevated hover:text-primary"
             >
-              Kapat
+              {t("common.close")}
             </button>
             <button
               onClick={() => calibrate.mutate(seferId)}
@@ -118,7 +118,7 @@ export function CalibrationModal({
               {calibrate.isPending && (
                 <Loader2 className="h-3 w-3 animate-spin" />
               )}
-              Kalibre Et
+              {t("locations.calibrate_btn")}
             </button>
           </div>
         </div>

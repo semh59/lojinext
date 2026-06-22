@@ -1,26 +1,15 @@
-/**
- * Zod Validation Schemas
- *
- * Frontend form validation - mirrors backend Pydantic schemas
- * for consistent validation across the stack.
- */
-
 import { z } from "zod";
-
-// ============================================
-// Vehicle Schemas
-// ============================================
 
 export const vehicleSchema = z.object({
   plaka: z
     .string()
-    .min(3, "Plaka en az 3 karakter olmalı")
-    .max(20, "Plaka en fazla 20 karakter olabilir")
+    .min(3, "License plate must be at least 3 characters")
+    .max(20, "License plate cannot exceed 20 characters")
     .regex(
       /^[0-9A-Z]{1,5}\s?[0-9A-Z]{1,5}\s?[0-9A-Z]{1,5}$/,
-      "Geçersiz plaka formatı",
+      "Invalid license plate format",
     ),
-  marka: z.string().min(2, "Marka en az 2 karakter olmalı").max(50),
+  marka: z.string().min(2, "Brand must be at least 2 characters").max(50),
   model: z.string().max(50).optional(),
   yil: z
     .number()
@@ -41,17 +30,13 @@ export const vehicleSchema = z.object({
 
 export type VehicleFormData = z.infer<typeof vehicleSchema>;
 
-// ============================================
-// Driver Schemas
-// ============================================
-
 export const driverSchema = z.object({
   ad_soyad: z
     .string()
-    .min(3, "İsim en az 3 karakter olmalı")
-    .max(100, "İsim en fazla 100 karakter olabilir"),
+    .min(3, "Name must be at least 3 characters")
+    .max(100, "Name cannot exceed 100 characters"),
   telefon: z.string().max(20).optional(),
-  ise_baslama: z.string().optional(), // ISO date string
+  ise_baslama: z.string().optional(),
   ehliyet_sinifi: z.enum(["B", "C", "D", "E", "G"]).default("E"),
   score: z.number().min(0.1).max(2.0).default(1.0),
   manual_score: z.number().min(0.1).max(2.0).default(1.0),
@@ -63,20 +48,16 @@ export const driverSchema = z.object({
 
 export type DriverFormData = z.infer<typeof driverSchema>;
 
-// ============================================
-// Trip Schemas
-// ============================================
-
 export const tripSchema = z.object({
   tarih: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Geçersiz tarih formatı (YYYY-MM-DD)"),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
   saat: z
     .string()
-    .regex(/^\d{2}:\d{2}$/, "Geçersiz saat formatı (HH:MM)")
+    .regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)")
     .optional(),
-  arac_id: z.number().int().positive("Araç seçilmeli"),
-  sofor_id: z.number().int().positive("Şoför seçilmeli"),
+  arac_id: z.number().int().positive("Vehicle must be selected"),
+  sofor_id: z.number().int().positive("Driver must be selected"),
   cikis_yeri: z.string().min(2).max(100),
   varis_yeri: z.string().min(2).max(100),
   mesafe_km: z.number().positive().max(10000),
@@ -103,13 +84,9 @@ export const tripSchema = z.object({
 
 export type TripFormData = z.infer<typeof tripSchema>;
 
-// ============================================
-// Fuel Schemas
-// ============================================
-
 export const fuelSchema = z.object({
-  tarih: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Geçersiz tarih formatı"),
-  arac_id: z.number().int().positive("Araç seçilmeli"),
+  tarih: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  arac_id: z.number().int().positive("Vehicle must be selected"),
   istasyon: z.string().max(100).optional(),
   fiyat_tl: z.number().positive().max(1000),
   litre: z.number().positive().max(10000),
@@ -121,10 +98,6 @@ export const fuelSchema = z.object({
 });
 
 export type FuelFormData = z.infer<typeof fuelSchema>;
-
-// ============================================
-// Location/Route Schemas
-// ============================================
 
 export const locationSchema = z.object({
   cikis_yeri: z.string().min(2).max(100),

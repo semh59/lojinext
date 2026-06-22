@@ -1,6 +1,7 @@
 import React from "react";
 import { ChevronDown, Settings } from "lucide-react";
 import { UseFormRegister } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 
 import {
   TRIP_STATUS_IPTAL,
@@ -21,94 +22,97 @@ interface KilometreYakitSectionProps {
 
 export const KilometreYakitSection: React.FC<KilometreYakitSectionProps> = ({
   register,
-}) => (
-  <div className="glass space-y-4 rounded-[28px] border-border/40 p-6">
-    <label className="mb-4 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-tertiary">
-      <Settings size={14} strokeWidth={3} />
-      Kilometre &amp; Yakıt Takibi
-    </label>
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-          Başlangıç KM
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            min={0}
-            {...register("baslangic_km", {
-              setValueAs: (v) => (v === "" ? null : Number(v)),
-            })}
-            placeholder="0"
-            className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-10 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
-            km
-          </span>
+}) => {
+  const { t } = useTranslation();
+  return (
+    <div className="glass space-y-4 rounded-[28px] border-border/40 p-6">
+      <label className="mb-4 flex items-center gap-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-tertiary">
+        <Settings size={14} strokeWidth={3} />
+        {t("trips.km_fuel_section", "Kilometre & Fuel Tracking")}
+      </label>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+            {t("trips.start_km_label", "Start KM")}
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min={0}
+              {...register("baslangic_km", {
+                setValueAs: (v) => (v === "" ? null : Number(v)),
+              })}
+              placeholder="0"
+              className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-10 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
+              km
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-          Bitiş KM
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            min={0}
-            {...register("bitis_km", {
-              setValueAs: (v) => (v === "" ? null : Number(v)),
-            })}
-            placeholder="0"
-            className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-10 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
-            km
-          </span>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+            {t("trips.end_km_label", "End KM")}
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min={0}
+              {...register("bitis_km", {
+                setValueAs: (v) => (v === "" ? null : Number(v)),
+              })}
+              placeholder="0"
+              className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-10 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
+              km
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-          Dağıtılan Yakıt
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            step="0.1"
-            min={0}
-            {...register("dagitilan_yakit", {
-              setValueAs: (v) => (v === "" ? null : Number(v)),
-            })}
-            placeholder="0.0"
-            className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-8 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
-            L
-          </span>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+            {t("trips.distributed_fuel_label", "Distributed Fuel")}
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              {...register("dagitilan_yakit", {
+                setValueAs: (v) => (v === "" ? null : Number(v)),
+              })}
+              placeholder="0.0"
+              className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-8 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
+              L
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-          Gerçek Tüketim
-        </label>
-        <div className="relative">
-          <input
-            type="number"
-            step="0.1"
-            min={0}
-            {...register("tuketim", {
-              setValueAs: (v) => (v === "" ? null : Number(v)),
-            })}
-            placeholder="0.0"
-            className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-8 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
-            L
-          </span>
+        <div className="space-y-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-secondary">
+            {t("trips.actual_consumption", "Actual Consumption")}
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              step="0.1"
+              min={0}
+              {...register("tuketim", {
+                setValueAs: (v) => (v === "" ? null : Number(v)),
+              })}
+              placeholder="0.0"
+              className="h-10 w-full rounded-xl border border-border/60 bg-transparent pr-14 pl-4 text-sm font-bold text-primary outline-none transition-all focus:border-accent focus:ring-4 focus:ring-accent/5"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary">
+              L/100
+            </span>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // TripStatusSection

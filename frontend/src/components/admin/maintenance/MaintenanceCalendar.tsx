@@ -59,7 +59,7 @@ export function MaintenanceCalendar() {
     return (
       <div className="flex items-center gap-2 py-12 text-secondary">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Yükleniyor…</span>
+        <span className="text-sm">{t("common.loading")}</span>
       </div>
     );
   }

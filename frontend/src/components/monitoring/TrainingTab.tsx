@@ -7,6 +7,7 @@ import {
   WifiOff,
   Loader2,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { useTrainingSocket, type TrainingWsStatus } from "./useTrainingSocket";
 
@@ -17,6 +18,8 @@ function WsStatusBar({
   status: TrainingWsStatus;
   onReconnect: () => void;
 }) {
+  const { t } = useTranslation();
+
   const config: Record<
     TrainingWsStatus,
     {
@@ -29,35 +32,38 @@ function WsStatusBar({
   > = {
     connecting: {
       icon: Loader2,
-      label: "Bağlanıyor...",
+      label: t("monitoring.connecting", "Connecting..."),
       color: "text-warning",
       spin: true,
       reconnect: false,
     },
     idle: {
       icon: Wifi,
-      label: "Bağlı — Bekleniyor",
+      label: t("monitoring.training_idle", "Connected — Waiting"),
       color: "text-success",
       spin: false,
       reconnect: false,
     },
     training: {
       icon: Wifi,
-      label: "Bağlı — Eğitim devam ediyor",
+      label: t(
+        "monitoring.training_active",
+        "Connected — Training in progress",
+      ),
       color: "text-accent",
       spin: false,
       reconnect: false,
     },
     disconnected: {
       icon: WifiOff,
-      label: "Bağlantı kesildi",
+      label: t("monitoring.disconnected", "Disconnected"),
       color: "text-warning",
       spin: false,
       reconnect: true,
     },
     error: {
       icon: WifiOff,
-      label: "Bağlantı hatası",
+      label: t("monitoring.error", "Connection error"),
       color: "text-danger",
       spin: false,
       reconnect: true,
@@ -79,7 +85,7 @@ function WsStatusBar({
           className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-primary transition-colors"
         >
           <RefreshCw size={13} />
-          Tekrar Bağlan
+          {t("monitoring.reconnect", "Reconnect")}
         </button>
       )}
     </div>
@@ -87,6 +93,7 @@ function WsStatusBar({
 }
 
 export function TrainingTab() {
+  const { t } = useTranslation();
   const { wsStatus, progress, logs, reconnect } = useTrainingSocket();
 
   const pct = progress
@@ -102,9 +109,14 @@ export function TrainingTab() {
         <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-modal border border-dashed border-border text-secondary">
           <Brain size={32} strokeWidth={1.25} className="text-tertiary" />
           <div className="text-center">
-            <p className="text-sm font-medium">Aktif eğitim yok</p>
+            <p className="text-sm font-medium">
+              {t("monitoring.no_active_training", "No active training")}
+            </p>
             <p className="text-xs text-tertiary mt-0.5">
-              Model eğitimi başladığında burada görünecek
+              {t(
+                "monitoring.no_active_training_hint",
+                "Model training will appear here when active",
+              )}
             </p>
           </div>
         </div>
@@ -117,24 +129,24 @@ export function TrainingTab() {
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-primary">
-                  Model Eğitimi
+                  {t("monitoring.model_training", "Model Training")}
                 </h3>
                 {progress.status === "running" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-black">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                    DEVAM EDİYOR
+                    {t("monitoring.training_status_running", "IN PROGRESS")}
                   </span>
                 )}
                 {progress.status === "completed" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-black">
                     <CheckCircle size={10} />
-                    TAMAMLANDI
+                    {t("monitoring.training_status_completed", "COMPLETED")}
                   </span>
                 )}
                 {progress.status === "failed" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/10 text-danger text-[10px] font-black">
                     <XCircle size={10} />
-                    BAŞARISIZ
+                    {t("monitoring.training_status_failed", "FAILED")}
                   </span>
                 )}
               </div>
@@ -203,10 +215,12 @@ export function TrainingTab() {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-secondary uppercase tracking-wider">
-              Eğitim Günlüğü
+              {t("monitoring.training_log", "Training Log")}
             </h3>
             <span className="text-[10px] text-tertiary">
-              {logs.length} kayıt
+              {t("monitoring.log_entries_count", "{{n}} records", {
+                n: logs.length,
+              })}
             </span>
           </div>
           <div className="max-h-64 overflow-y-auto rounded-card border border-border bg-elevated p-3 space-y-1 font-mono">

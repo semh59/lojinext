@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
 }
 
 export function MetricCards({ mae, rmse, totalCompared, goodPct }: Props) {
+  const { t } = useTranslation();
+
   const metrics = [
     {
       label: "MAE",
@@ -22,15 +25,15 @@ export function MetricCards({ mae, rmse, totalCompared, goodPct }: Props) {
       color: "text-purple-500",
     },
     {
-      label: "Doğruluk",
+      label: t("predictions.accuracy_label", "Accuracy"),
       value: `${goodPct.toFixed(0)}%`,
-      unit: "iyi tahmin",
+      unit: t("predictions.good_prediction", "good predictions"),
       color: "text-emerald-500",
     },
     {
-      label: "Karşılaştırılan",
+      label: t("predictions.compared_label", "Compared"),
       value: totalCompared.toString(),
-      unit: "sefer",
+      unit: t("predictions.trip_unit", "trips"),
       color: "text-secondary",
     },
   ];

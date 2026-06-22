@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState } from "react";
 import { AlertCircle, Info, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { useMaintenancePredictions } from "@/hooks/useMaintenancePredictions";
@@ -25,6 +26,7 @@ const RISK_BADGE: Record<RiskLevel, string> = {
 };
 
 export function PredictionsTable() {
+  const { t } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   function formatDate(iso: string | null): string {
     if (!iso) return maintenancePredictionsText.table.notApplicable;
@@ -53,7 +55,7 @@ export function PredictionsTable() {
     return (
       <div className="flex items-center gap-2 py-12 text-secondary">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Yükleniyor…</span>
+        <span className="text-sm">{t("common.loading")}</span>
       </div>
     );
   }

@@ -13,6 +13,7 @@ import {
 import { cn, safeHref } from "@/lib/utils";
 import type { TriageCategory, TriageItem, TriageSeverity } from "@/api/today";
 import { useTodayResources } from "@/resources/useResources";
+import { useTranslation } from "react-i18next";
 
 const SEVERITY_STYLE: Record<TriageSeverity, string> = {
   critical: "border-l-danger bg-danger/5",
@@ -36,16 +37,21 @@ const CATEGORY_ICON: Record<TriageCategory, typeof AlertCircle> = {
   active_trip: RouteIcon,
 };
 
-function timeAgo(iso: string): string {
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 1) return "şimdi";
-  if (mins < 60) return `${mins} dk önce`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} sa önce`;
-  const days = Math.floor(hours / 24);
-  return `${days} g önce`;
+function useTimeAgo() {
+  const { t } = useTranslation();
+  return (iso: string): string => {
+    const d = new Date(iso);
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 1) return t("alerts.time_just_now", "just now");
+    if (mins < 60)
+      return t("alerts.time_mins_ago", "{{n}} min ago", { n: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24)
+      return t("alerts.time_hours_ago", "{{n}} hr ago", { n: hours });
+    const days = Math.floor(hours / 24);
+    return t("alerts.time_days_ago", "{{n}} day ago", { n: days });
+  };
 }
 
 interface Props {
@@ -54,6 +60,7 @@ interface Props {
 
 export function TriageItemCard({ item }: Props) {
   const { todayText } = useTodayResources();
+  const timeAgo = useTimeAgo();
   const navigate = useNavigate();
   const Icon = CATEGORY_ICON[item.category] ?? AlertCircle;
 

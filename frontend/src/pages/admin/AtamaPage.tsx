@@ -46,9 +46,7 @@ export default function AtamaPage() {
         reason: reason.trim(),
       }),
     onSuccess: () => {
-      toast.success(
-        "Sefer ataması güncellendi (ML/fizik yeniden hesaplanacak)",
-      );
+      toast.success(t("admin.assignment_success"));
       setSeferId("");
       setAracId("");
       setSoforId("");
@@ -57,7 +55,7 @@ export default function AtamaPage() {
     onError: (err: unknown) => {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Atama güncellenemedi";
+          ?.detail ?? t("admin.assignment_error");
       setError(detail);
     },
   });
@@ -65,15 +63,15 @@ export default function AtamaPage() {
   const submit = () => {
     setError(null);
     if (!seferId || Number(seferId) <= 0) {
-      setError("Geçerli bir Sefer ID girin");
+      setError(t("admin.assignment_trip_invalid"));
       return;
     }
     if (!aracId && !soforId) {
-      setError("En az araç veya şoför seçin");
+      setError(t("admin.assignment_fields_required"));
       return;
     }
     if (reason.trim().length < 5) {
-      setError("Gerekçe en az 5 karakter olmalı (denetim kaydı için)");
+      setError(t("admin.assignment_reason_min"));
       return;
     }
     overrideMutation.mutate();
@@ -86,11 +84,10 @@ export default function AtamaPage() {
           <Shuffle className="text-accent" size={24} />
           <div>
             <h1 className="text-xl font-bold text-primary">
-              Sefer Atama Düzeltme
+              {t("admin.assignment_title")}
             </h1>
             <p className="text-sm text-secondary">
-              Bir seferin aracını/şoförünü manuel değiştir. Değişiklik denetime
-              kaydedilir ve ML/fizik tahmini yeniden tetiklenir.
+              {t("admin.assignment_subtitle")}
             </p>
           </div>
         </div>
@@ -98,13 +95,13 @@ export default function AtamaPage() {
         <Card className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">
-              Sefer ID
+              Trip ID
             </label>
             <input
               type="number"
               value={seferId}
               onChange={(e) => setSeferId(e.target.value)}
-              placeholder="ör. 1042"
+              placeholder={t("admin.assignment_trip_placeholder")}
               className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
             />
           </div>
@@ -112,14 +109,14 @@ export default function AtamaPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                Yeni Araç (opsiyonel)
+                {t("admin.assignment_vehicle_label")}
               </label>
               <select
                 value={aracId}
                 onChange={(e) => setAracId(e.target.value)}
                 className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
               >
-                <option value="">Değiştirme</option>
+                <option value="">{t("admin.assignment_no_change")}</option>
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.plaka} {v.marka ? `— ${v.marka}` : ""}
@@ -129,14 +126,14 @@ export default function AtamaPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                Yeni Şoför (opsiyonel)
+                {t("admin.assignment_driver_label")}
               </label>
               <select
                 value={soforId}
                 onChange={(e) => setSoforId(e.target.value)}
                 className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
               >
-                <option value="">Değiştirme</option>
+                <option value="">{t("admin.assignment_no_change")}</option>
                 {drivers.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.ad_soyad}
@@ -148,13 +145,13 @@ export default function AtamaPage() {
 
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">
-              Gerekçe
+              {t("admin.assignment_reason_label")}
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={3}
-              placeholder="Neden değiştiriliyor? (denetim kaydına yazılır)"
+              placeholder={t("admin.assignment_reason_placeholder")}
               className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
             />
           </div>
@@ -166,14 +163,14 @@ export default function AtamaPage() {
               permission="attribution_duzenle"
               fallback={
                 <p className="text-sm text-tertiary">
-                  Bu işlem için yetkiniz yok.
+                  {t("admin.assignment_no_permission")}
                 </p>
               }
             >
               <Button onClick={submit} disabled={overrideMutation.isPending}>
                 {overrideMutation.isPending
-                  ? "Uygulanıyor…"
-                  : "Atamayı Güncelle"}
+                  ? t("common.applying")
+                  : t("admin.assignment_submit")}
               </Button>
             </RequirePermission>
           </div>

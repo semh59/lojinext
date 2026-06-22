@@ -1,11 +1,13 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { BrainCircuit, BarChart2 } from "lucide-react";
 import { predictionService } from "@/api/predictions";
 import { vehicleService } from "@/api/vehicles";
 
 export function EnsembleWeightsPanel() {
+  const { t } = useTranslation();
   const { data: ensemble, isLoading } = useQuery({
     queryKey: ["predictions-ensemble"],
     queryFn: () => predictionService.getEnsembleStatus(),
@@ -21,18 +23,25 @@ export function EnsembleWeightsPanel() {
         <BarChart2 className="h-5 w-5 text-accent" />
         <div>
           <h2 className="text-sm font-semibold text-primary">
-            Ensemble Model Ağırlıkları
+            {t("predictions.ensemble_weights_title", "Ensemble Model Weights")}
           </h2>
           <p className="text-xs text-secondary">
-            Her modelin tahmine katkı oranı
+            {t(
+              "predictions.ensemble_weights_subtitle",
+              "Each model's contribution to the prediction",
+            )}
           </p>
         </div>
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-secondary">Yükleniyor...</p>
+        <p className="text-sm text-secondary">
+          {t("common.loading", "Loading...")}
+        </p>
       ) : sortedWeights.length === 0 ? (
-        <p className="text-sm text-secondary">Henüz eğitim verisi yok.</p>
+        <p className="text-sm text-secondary">
+          {t("predictions.ensemble_no_data", "No training data yet")}
+        </p>
       ) : (
         <div className="space-y-3">
           {sortedWeights.map(([model, weight]) => (
@@ -53,8 +62,10 @@ export function EnsembleWeightsPanel() {
           ))}
           {ensemble && (
             <p className="pt-1 text-xs text-secondary">
-              Toplam model: {ensemble.total_models} • LightGBM:{" "}
-              {ensemble.lightgbm_available ? "✓" : "✗"} • XGBoost:{" "}
+              {t("predictions.ensemble_total_models", "Total models: {{n}}", {
+                n: ensemble.total_models,
+              })}{" "}
+              • LightGBM: {ensemble.lightgbm_available ? "✓" : "✗"} • XGBoost:{" "}
               {ensemble.xgboost_available ? "✓" : "✗"}
             </p>
           )}
@@ -65,6 +76,7 @@ export function EnsembleWeightsPanel() {
 }
 
 export function XaiPanel() {
+  const { t } = useTranslation();
   const [aracId, setAracId] = useState(0);
   const [mesafe, setMesafe] = useState(100);
   const [ton, setTon] = useState(0);
@@ -101,16 +113,42 @@ export function XaiPanel() {
   });
   const result = rawResult as ExplainResult | undefined;
 
+  const fields = [
+    {
+      label: t("predictions.distance_total_label", "Distance (km) *"),
+      value: mesafe,
+      setter: setMesafe,
+    },
+    {
+      label: t("predictions.load_label", "Load (ton)"),
+      value: ton,
+      setter: setTon,
+    },
+    {
+      label: t("predictions.climb_label", "Climb (m)"),
+      value: ascent,
+      setter: setAscent,
+    },
+    {
+      label: t("predictions.descent_label", "Descent (m)"),
+      value: descent,
+      setter: setDescent,
+    },
+  ];
+
   return (
     <Card padding="lg" className="flex flex-col gap-6">
       <div className="flex items-center gap-2">
         <BrainCircuit className="h-5 w-5 text-accent" />
         <div>
           <h2 className="text-sm font-semibold text-primary">
-            XAI — Tahmin Açıklama
+            {t("predictions.xai_title", "XAI — Prediction Explanation")}
           </h2>
           <p className="text-xs text-secondary">
-            Tüketim tahmininin faktörlerini görün
+            {t(
+              "predictions.xai_subtitle",
+              "See the factors behind the consumption prediction",
+            )}
           </p>
         </div>
       </div>
@@ -118,14 +156,16 @@ export function XaiPanel() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-secondary">
-            Araç
+            {t("predictions.xai_vehicle_label", "Vehicle")}
           </label>
           <select
             className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/30"
             value={aracId}
             onChange={(e) => setAracId(Number(e.target.value))}
           >
-            <option value={0}>Araç seçin</option>
+            <option value={0}>
+              {t("predictions.vehicle_placeholder", "Select vehicle")}
+            </option>
             {(vehicles?.items ?? []).map((v) => (
               <option key={v.id} value={v.id}>
                 {v.plaka}
@@ -133,12 +173,7 @@ export function XaiPanel() {
             ))}
           </select>
         </div>
-        {[
-          { label: "Mesafe (km)", value: mesafe, setter: setMesafe },
-          { label: "Yük (ton)", value: ton, setter: setTon },
-          { label: "Tırmanış (m)", value: ascent, setter: setAscent },
-          { label: "İniş (m)", value: descent, setter: setDescent },
-        ].map(({ label, value, setter }) => (
+        {fields.map(({ label, value, setter }) => (
           <div key={label}>
             <label className="mb-1 block text-xs font-medium text-secondary">
               {label}
@@ -159,19 +194,24 @@ export function XaiPanel() {
         disabled={isPending || aracId === 0}
         className="w-fit rounded-xl bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
       >
-        {isPending ? "Hesaplanıyor..." : "Tahmin Et + Açıkla"}
+        {isPending
+          ? t("predictions.calculating", "Calculating…")
+          : t("predictions.xai_calculate_btn", "Predict + Explain")}
       </button>
 
       {isError && (
         <p className="text-sm text-danger">
-          Tahmin hesaplanamadı. Araç verisi yeterli olmayabilir.
+          {t(
+            "predictions.xai_error",
+            "Prediction could not be calculated. There may not be enough vehicle data.",
+          )}
         </p>
       )}
 
       {result && (
         <div className="rounded-xl border border-border/60 bg-elevated/30 p-4 space-y-3">
           <p className="text-sm font-semibold text-primary">
-            Tahmini Tüketim:{" "}
+            {t("predictions.xai_estimated_label", "Estimated Consumption:")}{" "}
             <span className="text-accent">
               {Number(result.tahmini_tuketim ?? 0).toFixed(1)} L/100km
             </span>
@@ -181,7 +221,7 @@ export function XaiPanel() {
               0 && (
               <div className="space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-tertiary">
-                  Etki Faktörleri
+                  {t("predictions.xai_impact_factors", "Impact Factors")}
                 </p>
                 {Object.entries(
                   result.components as Record<string, number>,

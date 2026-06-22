@@ -2,6 +2,7 @@ import axiosInstance from "./axios-instance";
 import { storageService } from "../storage-service";
 import { validateResponse } from "../../lib/api-validator";
 import { LoginResponseSchema, MeResponseSchema } from "../../schemas/services";
+import i18n from "../../i18n";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
@@ -84,8 +85,10 @@ export const authApi = {
 
     if (!response.ok) {
       if (response.status === 401)
-        throw new Error("Kullanıcı adı veya şifre hatalı");
-      throw new Error("Giriş yapılamadı");
+        throw new Error(
+          i18n.t("errors.login_failed", "Username or password is incorrect."),
+        );
+      throw new Error(i18n.t("errors.login_error", "Login failed"));
     }
 
     const data = await response.json();

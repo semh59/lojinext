@@ -1,4 +1,5 @@
-﻿import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { AdminRoleRecord } from "@/api/admin";
@@ -43,43 +44,50 @@ export function UserRolePanel({
   onRolChange,
   onAktifToggle,
 }: UserRolePanelProps) {
+  const { t } = useTranslation();
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <Input
-        label="E-posta"
+        label={t("profile.email_label")}
         type="email"
-        placeholder="ornek@sirket.com"
+        placeholder="user@company.com"
         autoComplete="off"
         error={formError?.toLowerCase().includes("e-posta")}
         {...onFieldChange("email")}
       />
       <Input
-        label="Ad Soyad"
+        label={t("auth.name", "Full Name")}
         type="text"
-        placeholder="Ahmet Yılmaz"
+        placeholder="John Smith"
         error={formError?.toLowerCase().includes("ad")}
         {...onFieldChange("ad_soyad")}
       />
       <Input
-        label={modalMode === "create" ? "Şifre" : "Yeni Şifre (isteğe bağlı)"}
+        label={
+          modalMode === "create"
+            ? t("auth.password")
+            : t("profile.new_password") + " (" + t("common.optional") + ")"
+        }
         type="password"
         placeholder={
           modalMode === "create"
-            ? "En az 8 karakter"
-            : "Değiştirmek istemiyorsanız boş bırakın"
+            ? t("profile.req_length")
+            : t("admin.user_password_required")
         }
         autoComplete="new-password"
         error={formError?.toLowerCase().includes("şifre")}
         {...onFieldChange("sifre")}
       />
       <div className="flex flex-col gap-1.5">
-        <label className="text-[13px] font-medium text-primary">Rol</label>
+        <label className="text-[13px] font-medium text-primary">
+          {t("admin.roles")}
+        </label>
         <select
           value={form.rol_id}
           onChange={(e) => onRolChange(e.target.value)}
           className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/5"
         >
-          <option value="">Rol seçin...</option>
+          <option value="">{t("admin.user_role_label")}</option>
           {roles.map((r) => (
             <option key={r.id} value={String(r.id)}>
               {r.ad}
@@ -106,7 +114,9 @@ export function UserRolePanel({
           />
         </button>
         <span className="text-sm font-medium text-primary">
-          {form.aktif ? "Hesap Aktif" : "Hesap Pasif"}
+          {form.aktif
+            ? t("common.account_active")
+            : t("common.account_passive")}
         </span>
       </div>
 
@@ -123,14 +133,14 @@ export function UserRolePanel({
           onClick={onClose}
           disabled={isBusy}
         >
-          İptal
+          {t("common.cancel")}
         </Button>
         <Button type="submit" variant="primary" disabled={isBusy}>
           {isBusy
-            ? "Kaydediliyor..."
+            ? t("common.saving")
             : modalMode === "create"
-              ? "Oluştur"
-              : "Kaydet"}
+              ? t("common.create")
+              : t("common.save")}
         </Button>
       </div>
     </form>

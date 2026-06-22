@@ -7,6 +7,7 @@ import type { Driver } from "../../types";
 import { useDebounce } from "../../hooks/useDebounce";
 import { cn } from "../../lib/utils";
 import { useCoachingResources } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 interface CoachingDriverListProps {
   selectedDriverId: number | null;
   onSelect: (driver: Driver) => void;
@@ -16,6 +17,7 @@ export function CoachingDriverList({
   selectedDriverId,
   onSelect,
 }: CoachingDriverListProps) {
+  const { t } = useTranslation();
   const { coachingDriverListText, coachingPageText } = useCoachingResources();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
@@ -66,7 +68,9 @@ export function CoachingDriverList({
             <Loader2 className="h-4 w-4 animate-spin" />
           </div>
         ) : isError ? (
-          <p className="text-xs text-danger px-2 py-3">Şoförler yüklenemedi</p>
+          <p className="text-xs text-danger px-2 py-3">
+            {t("coaching.drivers_load_failed")}
+          </p>
         ) : drivers.length === 0 ? (
           <p className="text-xs text-secondary px-2 py-3">
             {coachingPageText.emptyDriverList}

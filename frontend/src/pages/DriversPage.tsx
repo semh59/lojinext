@@ -10,11 +10,10 @@ export default function DriversPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-primary">Şoförler</h1>
-        <p className="text-sm text-secondary">
-          Filo şoförlerini yönetin, performans takibi yapın ve bot
-          entegrasyonunu ayarlayın.
-        </p>
+        <h1 className="text-2xl font-bold text-primary">
+          {t("drivers.title")}
+        </h1>
+        <p className="text-sm text-secondary">{t("drivers.page_desc")}</p>
       </div>
 
       <ErrorBoundary>

@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Area,
   AreaChart,
@@ -15,6 +15,7 @@ import {
   Minus,
   TrendingUp,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
 import { predictionService } from "@/api/predictions";
@@ -24,31 +25,42 @@ interface TimeSeriesTrendSectionProps {
   days?: number;
 }
 
-const TREND_META = {
-  increasing: {
-    label: "Yükselişte",
-    icon: ArrowUpRight,
-    accent: "text-danger",
-    hint: "Son dönemde tüketim artıyor; performans takibi tavsiye edilir.",
-  },
-  decreasing: {
-    label: "Düşüşte",
-    icon: ArrowDownRight,
-    accent: "text-success",
-    hint: "Son dönemde tüketim azalıyor — pozitif sinyal.",
-  },
-  stable: {
-    label: "Stabil",
-    icon: Minus,
-    accent: "text-warning",
-    hint: "Tüketim son dönemde anlamlı bir değişim göstermiyor.",
-  },
-} as const;
-
 export function TimeSeriesTrendSection({
   aracId,
   days = 30,
 }: TimeSeriesTrendSectionProps) {
+  const { t } = useTranslation();
+
+  const TREND_META = {
+    increasing: {
+      label: t("predictions.trend_rising", "Rising"),
+      icon: ArrowUpRight,
+      accent: "text-danger",
+      hint: t(
+        "predictions.trend_hint_rising",
+        "Consumption is increasing recently; performance monitoring recommended.",
+      ),
+    },
+    decreasing: {
+      label: t("predictions.trend_falling", "Falling"),
+      icon: ArrowDownRight,
+      accent: "text-success",
+      hint: t(
+        "predictions.trend_hint_falling",
+        "Consumption is decreasing — positive signal.",
+      ),
+    },
+    stable: {
+      label: t("predictions.trend_stable", "Stable"),
+      icon: Minus,
+      accent: "text-warning",
+      hint: t(
+        "predictions.trend_hint_stable",
+        "No significant change in consumption recently.",
+      ),
+    },
+  } as const;
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["ts-trend", aracId ?? null, days],
     queryFn: () => predictionService.timeSeriesTrend(aracId ?? undefined, days),
@@ -61,21 +73,30 @@ export function TimeSeriesTrendSection({
         <TrendingUp className="h-5 w-5 text-accent" />
         <div>
           <h2 className="text-sm font-semibold text-primary">
-            Son {days} Gün Trendi
+            {t("predictions.trend_days_title", "Last {{days}} Days Trend", {
+              days,
+            })}
           </h2>
           <p className="text-xs text-secondary">
-            Tarihsel tüketim trendi; modelin geriye dönük analizi.
+            {t(
+              "predictions.trend_subtitle",
+              "Historical consumption trend; model's retrospective analysis.",
+            )}
           </p>
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-6 text-secondary text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Trend hesaplanıyor…
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("predictions.trend_loading", "Calculating trend…")}
         </div>
       ) : isError || !data?.success ? (
         <p className="text-sm text-secondary">
-          Trend analizi şu an üretilemiyor (yeterli geçmiş veri yok).
+          {t(
+            "predictions.trend_na",
+            "Trend analysis cannot be produced (insufficient historical data).",
+          )}
         </p>
       ) : (
         <>
@@ -90,12 +111,18 @@ export function TimeSeriesTrendSection({
                     <div className="flex-1">
                       <p className="text-sm">
                         <span className="font-semibold text-primary">
-                          Trend:{" "}
+                          {t("predictions.trend_label_inline", "Trend:")}{" "}
                         </span>
                         <span className={meta.accent}>{meta.label}</span>
                         {typeof data.slope === "number" && (
                           <span className="ml-2 font-mono text-[11px] text-secondary">
-                            eğim {data.slope.toFixed(3)} L/100km/gün
+                            {t(
+                              "predictions.trend_slope",
+                              "slope {{n}} L/100km/day",
+                              {
+                                n: data.slope.toFixed(3),
+                              },
+                            )}
                           </span>
                         )}
                       </p>
@@ -104,7 +131,7 @@ export function TimeSeriesTrendSection({
                     {typeof data.avg === "number" && (
                       <div className="text-right">
                         <p className="text-[9px] font-bold uppercase tracking-widest text-secondary">
-                          Ortalama
+                          {t("predictions.trend_average", "Average")}
                         </p>
                         <p className="text-sm font-mono font-semibold text-primary">
                           {data.avg.toFixed(1)} L/100km
@@ -161,7 +188,7 @@ export function TimeSeriesTrendSection({
                     {...chartTheme.tooltip}
                     formatter={(value) => [
                       `${Number(value ?? 0).toFixed(1)} L/100km`,
-                      "Tüketim",
+                      t("predictions.consumption_label", "Consumption"),
                     ]}
                   />
                   <Area

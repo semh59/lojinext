@@ -1,4 +1,5 @@
 ﻿import React, { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AiQueryPanel } from "./AiQueryPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +18,7 @@ import { cn } from "../../lib/utils";
 import { useAiStore } from "../../stores/use-ai-store";
 
 export const ChatAssistant: React.FC = () => {
+  const { t } = useTranslation();
   const {
     isOpen,
     toggleOpen,
@@ -72,7 +74,7 @@ export const ChatAssistant: React.FC = () => {
       addMessage(assistantMessage);
     } catch (error) {
       console.error("AI Chat Error:", error);
-      toast.error("AI yanıt veremedi. Lütfen bağlantınızı kontrol edin.");
+      toast.error(t("ai.error"));
     } finally {
       setIsLoading(false);
     }
@@ -122,14 +124,14 @@ export const ChatAssistant: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-lg leading-none tracking-tight text-primary mb-1.5">
-                    LojiNext AI Asistan
+                    {t("ai.title")}
                   </h3>
                   <div className="flex items-center gap-1.5">
                     {status === "ready" && (
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-success shadow-sm animate-pulse" />
                         <span className="text-[10px] font-bold text-success uppercase tracking-widest">
-                          Hazır
+                          {t("ai.ready")}
                         </span>
                       </>
                     )}
@@ -137,7 +139,7 @@ export const ChatAssistant: React.FC = () => {
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-warning shadow-sm animate-pulse" />
                         <span className="text-[10px] font-bold text-warning uppercase tracking-widest">
-                          Hazırlanıyor...
+                          {t("ai.initializing")}
                         </span>
                       </>
                     )}
@@ -145,7 +147,7 @@ export const ChatAssistant: React.FC = () => {
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-danger shadow-sm" />
                         <span className="text-[10px] font-bold text-danger uppercase tracking-widest">
-                          Hata
+                          {t("common.status")}
                         </span>
                       </>
                     )}
@@ -153,7 +155,7 @@ export const ChatAssistant: React.FC = () => {
                       <>
                         <span className="w-1.5 h-1.5 rounded-full bg-secondary" />
                         <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">
-                          Bağlanıyor...
+                          {t("ai.connecting")}
                         </span>
                       </>
                     )}
@@ -164,7 +166,7 @@ export const ChatAssistant: React.FC = () => {
                 <button
                   onClick={clearHistory}
                   className="p-2.5 hover:bg-elevated rounded-xl transition-colors text-secondary hover:text-danger"
-                  title="Sohbeti Temizle"
+                  title={t("ai.clear_chat")}
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -191,22 +193,22 @@ export const ChatAssistant: React.FC = () => {
             {messages.length === 0 && (
               <div className="px-6 py-4 flex gap-2 overflow-x-auto custom-scrollbar border-b border-border">
                 <button
-                  onClick={() => setInput("Tüm filonun sağlık durumu nedir?")}
+                  onClick={() => setInput(t("ai.quick_fleet_health"))}
                   className="bg-accent/10 border border-accent/20 px-4 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap text-accent hover:bg-accent/20 transition-all uppercase tracking-tight"
                 >
-                  Tüm filonun sağlık durumu nedir?
+                  {t("ai.quick_fleet_health")}
                 </button>
                 <button
-                  onClick={() => setInput("En verimli güzergah hangisi?")}
+                  onClick={() => setInput(t("ai.quick_best_route"))}
                   className="bg-accent/10 border border-accent/20 px-4 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap text-accent hover:bg-accent/20 transition-all uppercase tracking-tight"
                 >
-                  En verimli güzergah hangisi?
+                  {t("ai.quick_best_route")}
                 </button>
                 <button
-                  onClick={() => setInput("Bakım zamanı yaklaşanlar kimler?")}
+                  onClick={() => setInput(t("ai.quick_maintenance"))}
                   className="bg-accent/10 border border-accent/20 px-4 py-2 rounded-xl text-[11px] font-bold whitespace-nowrap text-accent hover:bg-accent/20 transition-all uppercase tracking-tight"
                 >
-                  Bakım zamanı yaklaşanlar
+                  {t("ai.quick_maintenance")}
                 </button>
               </div>
             )}
@@ -250,7 +252,7 @@ export const ChatAssistant: React.FC = () => {
                   <div className="bg-elevated text-accent px-5 py-4 rounded-2xl rounded-tl-none border border-border flex items-center gap-3">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     <span className="text-[10px] font-black uppercase tracking-widest">
-                      Düşünüyor...
+                      {t("ai.thinking")}
                     </span>
                   </div>
                 </div>
@@ -268,7 +270,7 @@ export const ChatAssistant: React.FC = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="LojiNext Asistan'a sor..."
+                  placeholder={t("ai.placeholder")}
                   className="w-full bg-surface border border-border rounded-2xl pl-5 pr-12 py-3.5 text-sm text-primary placeholder-secondary focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/30 transition-all shadow-inner"
                   disabled={isLoading}
                 />

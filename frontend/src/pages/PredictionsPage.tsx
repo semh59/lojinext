@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart3, BrainCircuit, CalendarRange } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { MetricCards } from "@/components/predictions/MetricCards";
 import { EnsembleStatusCard } from "@/components/predictions/EnsembleStatusCard";
 import { AccuracyChart } from "@/components/predictions/AccuracyChart";
@@ -12,14 +13,27 @@ import { predictionService } from "@/api/predictions";
 
 type Tab = "overview" | "simulator" | "timeseries";
 
-const TABS: Array<{ id: Tab; label: string; icon: typeof BarChart3 }> = [
-  { id: "overview", label: "Genel Bakış", icon: BarChart3 },
-  { id: "simulator", label: "Sefer Simülasyonu", icon: BrainCircuit },
-  { id: "timeseries", label: "Zaman Serisi", icon: CalendarRange },
-];
-
 export default function PredictionsPage() {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+
+  const TABS: Array<{ id: Tab; label: string; icon: typeof BarChart3 }> = [
+    {
+      id: "overview",
+      label: t("predictions.tab_overview", "Overview"),
+      icon: BarChart3,
+    },
+    {
+      id: "simulator",
+      label: t("predictions.tab_simulator", "Trip Simulation"),
+      icon: BrainCircuit,
+    },
+    {
+      id: "timeseries",
+      label: t("predictions.tab_timeseries", "Time Series"),
+      icon: CalendarRange,
+    },
+  ];
 
   const { data: ensemble } = useQuery({
     queryKey: ["predictions-ensemble"],
@@ -38,9 +52,14 @@ export default function PredictionsPage() {
   return (
     <div data-testid="predictions-page" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">ML Tahminler</h1>
+        <h1 className="text-2xl font-bold text-primary">
+          {t("predictions.page_title", "ML Predictions")}
+        </h1>
         <p className="text-sm text-secondary">
-          Model performansı, sefer simülasyonu ve zaman serisi tahminleri
+          {t(
+            "predictions.page_subtitle",
+            "Model performance, trip simulation, and time series forecasts",
+          )}
         </p>
       </div>
 

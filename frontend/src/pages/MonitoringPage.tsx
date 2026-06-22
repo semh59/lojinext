@@ -31,15 +31,22 @@ export default function MonitoringPage() {
   const tabs: TabConfig[] = [
     {
       id: "notifications",
-      label: "Bildirimler",
+      label: t("monitoring.tab_notifications", "Notifications"),
       icon: Bell,
       badge: notifications.length > 0 ? notifications.length : undefined,
     },
-    // Hata Olayları ve ML Eğitim sadece admin/super_admin için gösterilir
     ...(isAdmin
       ? ([
-          { id: "errors", label: "Hata Olayları", icon: AlertTriangle },
-          { id: "training", label: "ML Eğitim", icon: Brain },
+          {
+            id: "errors",
+            label: t("monitoring.tab_error_events", "Error Events"),
+            icon: AlertTriangle,
+          },
+          {
+            id: "training",
+            label: t("monitoring.tab_ml_training", "ML Training"),
+            icon: Brain,
+          },
         ] as TabConfig[])
       : []),
   ];
@@ -50,10 +57,13 @@ export default function MonitoringPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-primary tracking-tight">
-            Bildirimler
+            {t("monitoring.tab_notifications", "Notifications")}
           </h1>
           <p className="text-sm text-secondary mt-0.5">
-            Gerçek zamanlı sistem bildirimleri ve olay akışı
+            {t(
+              "monitoring.page_subtitle",
+              "Real-time system notifications and event stream",
+            )}
           </p>
         </div>
         {activeTab === "notifications" && notifications.length > 0 && (
@@ -64,7 +74,7 @@ export default function MonitoringPage() {
             className="flex items-center gap-2"
           >
             <Trash2 className="h-4 w-4" />
-            Canlı Akışı Temizle
+            {t("monitoring.clear_stream", "Clear Live Stream")}
           </Button>
         )}
       </div>

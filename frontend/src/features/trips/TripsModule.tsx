@@ -28,8 +28,10 @@ import { useTripStore } from "../../stores/use-trip-store";
 import { normalizeTripStatusOrEmpty } from "../../lib/trip-status";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTripsResources } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 export const TripsModule = () => {
+  const { t } = useTranslation();
   const { tripModuleText } = useTripsResources();
   const queryClient = useQueryClient();
   const {
@@ -94,12 +96,12 @@ export const TripsModule = () => {
     setIsBulkApproving(true);
     try {
       await Promise.all(selectedIds.map((id) => tripService.onayla(id)));
-      toast.success(`${selectedIds.length} sefer onaylandı`);
+      toast.success(t("trips.bulk_approved", { n: selectedIds.length }));
       queryClient.invalidateQueries({ queryKey: ["trips"] });
       queryClient.invalidateQueries({ queryKey: ["tripsBeklemede"] });
       clearSelection();
     } catch {
-      toast.error("Toplu onaylama başarısız");
+      toast.error(t("trips.bulk_approve_failed"));
     } finally {
       setIsBulkApproving(false);
     }

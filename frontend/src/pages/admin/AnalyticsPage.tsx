@@ -1,4 +1,5 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { fetchPageViewStats } from "../../api/analytics";
 
 function RouteList({
@@ -27,6 +28,7 @@ function RouteList({
 }
 
 export default function AnalyticsPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ["pageViewStats", 30],
     queryFn: () => fetchPageViewStats(30),
@@ -35,19 +37,32 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-primary">Kullanım Analitiği</h1>
+        <h1 className="text-xl font-bold text-primary">
+          {t("admin.analytics_title", "Usage Analytics")}
+        </h1>
         <span className="text-sm text-tertiary">
-          Son {data?.period_days ?? 30} gün — toplam {data?.total_views ?? 0}{" "}
-          görüntüleme
+          {t(
+            "admin.analytics_period",
+            "Last {{n}} days — {{total}} total views",
+            {
+              n: data?.period_days ?? 30,
+              total: data?.total_views ?? 0,
+            },
+          )}
         </span>
       </div>
       {isLoading ? (
-        <p className="text-sm text-tertiary">Yükleniyor…</p>
+        <p className="text-sm text-tertiary">
+          {t("admin.analytics_loading", "Loading…")}
+        </p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <RouteList title="En çok kullanılan" rows={data?.top_routes ?? []} />
           <RouteList
-            title="En az kullanılan"
+            title={t("admin.analytics_top_routes", "Most used")}
+            rows={data?.top_routes ?? []}
+          />
+          <RouteList
+            title={t("admin.analytics_bottom_routes", "Least used")}
             rows={data?.bottom_routes ?? []}
           />
         </div>

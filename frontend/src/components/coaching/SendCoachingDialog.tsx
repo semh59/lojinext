@@ -8,6 +8,7 @@ import {
 } from "../../api/coaching";
 import { useNotify } from "../../context/NotificationContext";
 import { useCoachingResources } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 interface SendCoachingDialogProps {
   soforId: number | null;
@@ -25,6 +26,7 @@ export function SendCoachingDialog({
   insight,
   onClose,
 }: SendCoachingDialogProps) {
+  const { t } = useTranslation();
   const { sendCoachingDialogText } = useCoachingResources();
   const { notify } = useNotify();
   const [message, setMessage] = useState("");
@@ -98,7 +100,7 @@ export function SendCoachingDialog({
             onClick={onClose}
             disabled={sendMutation.isPending}
             className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary disabled:opacity-30"
-            aria-label="Kapat"
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </button>

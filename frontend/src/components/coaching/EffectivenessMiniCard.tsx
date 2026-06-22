@@ -1,9 +1,11 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Info, Send, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "../ui/Card";
 import { coachingService } from "../../api/coaching";
 
 export function EffectivenessMiniCard({ days = 30 }: { days?: number }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ["coaching", "effectiveness", days],
     queryFn: () => coachingService.getEffectiveness(days),
@@ -14,24 +16,26 @@ export function EffectivenessMiniCard({ days = 30 }: { days?: number }) {
     <Card padding="md" className="space-y-2">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <h3 className="text-xs font-bold uppercase tracking-widest text-secondary">
-          Son {days} Gün Etkinliği
+          {t("coaching.effectiveness_title", { days })}
         </h3>
         {isLoading && (
-          <span className="text-[10px] text-tertiary">yükleniyor…</span>
+          <span className="text-[10px] text-tertiary">
+            {t("common.loading")}
+          </span>
         )}
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <Stat
           icon={Send}
-          label="Gönderilen"
+          label={t("coaching.stat_sent")}
           value={data?.total_sent ?? 0}
           accent="text-info"
           bg="bg-info/10"
         />
         <Stat
           icon={Sparkles}
-          label="İyileşme"
+          label={t("coaching.stat_improvement")}
           value={
             data?.improve_rate != null
               ? `%${Math.round(data.improve_rate * 100)}`
@@ -39,8 +43,11 @@ export function EffectivenessMiniCard({ days = 30 }: { days?: number }) {
           }
           sub={
             data && data.total_evaluated > 0
-              ? `${data.improved}/${data.total_evaluated} değerlendirildi`
-              : "Henüz değerlendirme yok"
+              ? t("coaching.stat_evaluated", {
+                  improved: data.improved,
+                  total: data.total_evaluated,
+                })
+              : t("coaching.stat_no_evaluation")
           }
           accent="text-success"
           bg="bg-success/10"
@@ -51,7 +58,7 @@ export function EffectivenessMiniCard({ days = 30 }: { days?: number }) {
               ? TrendingUp
               : TrendingDown
           }
-          label="Ortalama Δ"
+          label={t("coaching.stat_avg_delta")}
           value={
             data?.avg_score_delta_pct != null
               ? `${

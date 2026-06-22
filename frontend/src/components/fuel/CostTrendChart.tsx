@@ -13,6 +13,7 @@ import { Card } from "../ui/Card";
 import { chartTheme } from "../../lib/chart-theme";
 import { reportService } from "../../api/reports";
 import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 interface ChartPoint {
   label: string;
@@ -36,6 +37,7 @@ function buildPoints(
 }
 
 export function CostTrendChart() {
+  const { t } = useTranslation();
   const locale = useLocale();
   const {
     data: rows,
@@ -52,19 +54,23 @@ export function CostTrendChart() {
   return (
     <Card padding="lg">
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-primary">Maliyet Trendi</h2>
+        <h2 className="text-sm font-semibold text-primary">
+          {t("reports.cost_trend_title")}
+        </h2>
         <p className="text-xs text-secondary">
-          Aylık toplam litre ve litre başına ortalama fiyat
+          {t("reports.cost_trend_subtitle")}
         </p>
       </div>
 
       {isLoading ? (
         <div className="h-36 animate-pulse rounded-card bg-elevated/50" />
       ) : isError ? (
-        <p className="text-sm text-secondary">Maliyet trendi yüklenemedi</p>
+        <p className="text-sm text-secondary">
+          {t("reports.cost_trend_error")}
+        </p>
       ) : points.length === 0 ? (
         <p className="text-sm text-secondary">
-          Bu dönem için gösterilecek maliyet verisi yok
+          {t("reports.cost_trend_empty")}
         </p>
       ) : (
         <ResponsiveContainer width="100%" height={144}>
@@ -98,7 +104,7 @@ export function CostTrendChart() {
               {...chartTheme.tooltip}
               formatter={(value, name) => {
                 const num = Number(value ?? 0);
-                if (name === "Litre") {
+                if (name === t("reports.cost_trend_litres")) {
                   return [
                     `${num.toLocaleString(locale, {
                       maximumFractionDigits: 0,
@@ -122,7 +128,7 @@ export function CostTrendChart() {
               yAxisId="left"
               type="monotone"
               dataKey="fuel_liters"
-              name="Litre"
+              name={t("reports.cost_trend_litres")}
               stroke={chartTheme.colors.accent}
               strokeWidth={2}
               dot={false}
@@ -131,7 +137,7 @@ export function CostTrendChart() {
               yAxisId="right"
               type="monotone"
               dataKey="unit_price"
-              name="Birim Fiyat (₺/L)"
+              name={t("reports.cost_trend_unit_price")}
               stroke={chartTheme.colors.warning}
               strokeWidth={2}
               dot={false}

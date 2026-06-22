@@ -21,6 +21,7 @@ import { motion } from "framer-motion";
 import { PredictionComparisonResponse } from "../../types";
 import { useFuelResources } from "../../resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 interface VehicleOption {
   id: number;
@@ -42,22 +43,25 @@ export const ComparisonWidget: React.FC<ComparisonWidgetProps> = ({
   selectedVehicleId,
   onVehicleChange,
 }) => {
+  const { t } = useTranslation();
   const { fuelComparisonText } = useFuelResources();
   const locale = useLocale();
   const showVehicleSelect = !!vehicles && !!onVehicleChange;
 
   const vehicleSelect = showVehicleSelect ? (
     <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-secondary">
-      <span className="hidden sm:inline">Araç</span>
+      <span className="hidden sm:inline">
+        {t("fleet.vehicle_filter_label", "Vehicle")}
+      </span>
       <select
         value={selectedVehicleId ?? ""}
         onChange={(e) =>
           onVehicleChange?.(e.target.value ? Number(e.target.value) : null)
         }
         className="rounded-card border border-border bg-elevated px-2 py-1 text-xs font-semibold text-primary focus:border-accent focus:outline-none"
-        aria-label="Araç filtresi"
+        aria-label={t("fleet.vehicle_filter_aria", "Vehicle filter")}
       >
-        <option value="">Tüm Filo</option>
+        <option value="">{t("fleet.all_fleet", "All Fleet")}</option>
         {vehicles!.map((v) => (
           <option key={v.id} value={v.id}>
             {v.plaka}

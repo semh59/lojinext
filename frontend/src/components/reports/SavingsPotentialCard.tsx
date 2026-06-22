@@ -1,6 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { TrendingDown, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { reportService } from "@/api/reports";
 import { useLocale } from "../../hooks/useLocale";
@@ -40,6 +41,7 @@ const TRY = (v: number, locale: string) =>
   }).format(v);
 
 export function SavingsPotentialCard() {
+  const { t } = useTranslation();
   const [target, setTarget] = useState(30);
   const locale = useLocale();
 
@@ -64,10 +66,13 @@ export function SavingsPotentialCard() {
         <Sparkles className="h-5 w-5 text-success" />
         <div>
           <h2 className="text-sm font-semibold text-primary">
-            Tasarruf Potansiyeli
+            {t("reports.saving_title", "Savings Potential")}
           </h2>
           <p className="text-xs text-secondary">
-            Hedef tüketime indirildiğinde elde edilecek aylık/yıllık kazanım.
+            {t(
+              "reports.saving_subtitle",
+              "Monthly/annual gain when target consumption is reached.",
+            )}
           </p>
         </div>
       </div>
@@ -75,7 +80,7 @@ export function SavingsPotentialCard() {
       <div>
         <div className="mb-2 flex items-center justify-between">
           <label className="text-[11px] font-bold uppercase tracking-widest text-secondary">
-            Hedef Tüketim
+            {t("reports.saving_target_label", "Target Consumption")}
           </label>
           <span className="font-mono tabular-nums text-sm font-semibold text-primary">
             {target.toFixed(1)} L/100km
@@ -89,7 +94,7 @@ export function SavingsPotentialCard() {
           value={target}
           onChange={(e) => setTarget(Number(e.target.value))}
           className="h-2 w-full cursor-pointer accent-success"
-          aria-label="Hedef tüketim"
+          aria-label={t("reports.saving_target_aria", "Target consumption")}
         />
         <div className="mt-1 flex justify-between text-[10px] text-tertiary font-mono">
           <span>20</span>
@@ -100,35 +105,41 @@ export function SavingsPotentialCard() {
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-4 text-secondary text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Hesaplanıyor…
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("reports.saving_calculating", "Calculating…")}
         </div>
       ) : isConflict ? (
         <div className="flex items-center gap-2 rounded-card border border-warning/30 bg-warning/5 px-4 py-3 text-xs text-secondary">
           <AlertCircle className="h-4 w-4 text-warning" />
-          Gerçek maliyet verisi henüz yeterli değil — tasarruf hesabı pas
-          geçildi.
+          {t(
+            "reports.saving_no_data",
+            "Not enough real cost data — savings calculation skipped.",
+          )}
         </div>
       ) : isError ? (
         <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
-          <AlertCircle className="h-4 w-4" /> Tasarruf potansiyeli
-          hesaplanamadı.
+          <AlertCircle className="h-4 w-4" />
+          {t(
+            "reports.saving_error",
+            "Savings potential could not be calculated.",
+          )}
         </div>
       ) : data ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat
-            label="Aylık Potansiyel"
+            label={t("reports.saving_monthly", "Monthly Potential")}
             value={TRY(monthly, locale)}
             accent="text-success"
             bg="bg-success/10"
           />
           <Stat
-            label="Yıllık Projeksiyon"
+            label={t("reports.saving_annual", "Annual Projection")}
             value={TRY(annual, locale)}
             accent="text-accent"
             bg="bg-accent/10"
           />
           <Stat
-            label="İyileşme %"
+            label={t("reports.saving_improvement", "Improvement %")}
             value={`${pct.toFixed(1)}%`}
             accent={pct > 0 ? "text-success" : "text-tertiary"}
             bg={pct > 0 ? "bg-success/10" : "bg-elevated"}
@@ -139,7 +150,7 @@ export function SavingsPotentialCard() {
       {currentAvg != null && (
         <p className="flex items-center gap-2 text-[11px] text-secondary">
           <TrendingDown className="h-3 w-3 text-success" />
-          Mevcut ortalama:{" "}
+          {t("reports.saving_current_avg", "Current average:")}{" "}
           <span className="font-mono">
             {Number(currentAvg).toFixed(1)} L/100km
           </span>

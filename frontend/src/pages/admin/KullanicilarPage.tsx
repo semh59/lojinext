@@ -65,17 +65,11 @@ function isSuperAdmin(rolAd?: string) {
   return ["super_admin", "superadmin", "Super Admin"].includes(rolAd ?? "");
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Süper Admin",
-  superadmin: "Süper Admin",
-  admin: "Admin",
-  user: "Kullanıcı",
-  viewer: "İzleyici",
-};
-
-function formatRolAd(rolAd?: string): string {
+function formatRolAd(t: (k: string) => string, rolAd?: string): string {
   if (!rolAd) return "";
-  return ROLE_LABELS[rolAd.toLowerCase()] ?? rolAd;
+  const key = `admin.user_roles.${rolAd.toLowerCase()}`;
+  const translated = t(key);
+  return translated === key ? rolAd : translated;
 }
 
 export default function AdminUsersPage() {
@@ -131,7 +125,7 @@ export default function AdminUsersPage() {
     mutationFn: adminUsersApi.create,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adminUsers"] });
-      toast.success("Kullanıcı oluşturuldu");
+      toast.success(t("admin.user_created"));
       closeModal();
     },
     onError: (err: Error) => {
@@ -149,7 +143,7 @@ export default function AdminUsersPage() {
     }) => adminUsersApi.update(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adminUsers"] });
-      toast.success("Kullanıcı güncellendi");
+      toast.success(t("admin.user_updated"));
       closeModal();
     },
     onError: (err: Error) => {
@@ -161,7 +155,7 @@ export default function AdminUsersPage() {
     mutationFn: adminUsersApi.delete,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adminUsers"] });
-      toast.success("Kullanıcı silindi");
+      toast.success(t("admin.user_deleted"));
       setDeleteTarget(null);
     },
     onError: (err: Error) => {
@@ -175,14 +169,15 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setFormError(null);
 
-    if (!form.email.trim()) return setFormError("E-posta zorunludur");
-    if (!form.ad_soyad.trim()) return setFormError("Ad Soyad zorunludur");
+    if (!form.email.trim()) return setFormError(t("admin.user_email_required"));
+    if (!form.ad_soyad.trim())
+      return setFormError(t("admin.user_name_required"));
     if (modalMode === "create" && !form.sifre)
-      return setFormError("Şifre zorunludur");
-    if (!form.rol_id) return setFormError("Rol seçimi zorunludur");
+      return setFormError(t("admin.user_password_create_required"));
+    if (!form.rol_id) return setFormError(t("admin.user_role_required"));
 
     const rolId = Number(form.rol_id);
-    if (isNaN(rolId)) return setFormError("Geçerli bir rol seçin");
+    if (isNaN(rolId)) return setFormError(t("admin.user_role_invalid"));
 
     if (modalMode === "create") {
       createMutation.mutate({
@@ -274,7 +269,7 @@ export default function AdminUsersPage() {
                       </div>
                     </TableHead>
                     <TableHead className="py-4 pr-6 text-right text-[10px] font-black uppercase tracking-widest text-tertiary">
-                      İşlemler
+                      {t("common.actions")}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -309,7 +304,7 @@ export default function AdminUsersPage() {
                               : "border-slate-500 bg-slate-500/5 text-slate-500",
                           )}
                         >
-                          {formatRolAd(user.rol?.ad) ||
+                          {formatRolAd(t, user.rol?.ad) ||
                             adminUsersText.unassignedRole}
                         </Badge>
                       </TableCell>
@@ -368,7 +363,7 @@ export default function AdminUsersPage() {
                             size="sm"
                             onClick={() => setDeleteTarget(user)}
                             className="group/btn h-9 rounded-lg px-3 transition-all hover:bg-danger/5 hover:text-danger"
-                            aria-label="Sil"
+                            aria-label={t("common.delete")}
                           >
                             <Trash2
                               size={14}
@@ -404,8 +399,8 @@ export default function AdminUsersPage() {
         onClose={closeModal}
         title={
           modalMode === "create"
-            ? "Yeni Kullanıcı Oluştur"
-            : "Kullanıcıyı Düzenle"
+            ? t("admin.user_create_title")
+            : t("admin.user_edit_title")
         }
         size="md"
       >
@@ -431,15 +426,11 @@ export default function AdminUsersPage() {
       <Modal
         isOpen={deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
-        title="Kullanıcıyı Sil"
+        title={t("admin.user_delete_title")}
         size="sm"
       >
         <p className="mb-6 text-sm text-secondary">
-          <span className="font-bold text-primary">
-            {deleteTarget?.ad_soyad}
-          </span>{" "}
-          adlı kullanıcıyı kalıcı olarak silmek istediğinize emin misiniz? Bu
-          işlem geri alınamaz.
+          {t("admin.user_delete_confirm")}
         </p>
         <div className="flex justify-end gap-3">
           <Button
@@ -447,7 +438,7 @@ export default function AdminUsersPage() {
             onClick={() => setDeleteTarget(null)}
             disabled={deleteMutation.isPending}
           >
-            İptal
+            {t("common.cancel")}
           </Button>
           <Button
             variant="danger"
@@ -456,7 +447,9 @@ export default function AdminUsersPage() {
             }
             disabled={deleteMutation.isPending}
           >
-            {deleteMutation.isPending ? "Siliniyor..." : "Evet, Sil"}
+            {deleteMutation.isPending
+              ? t("common.deleting")
+              : t("common.delete_confirm_yes")}
           </Button>
         </div>
       </Modal>

@@ -123,15 +123,19 @@ export default function AdminMaintenancePage() {
       void qc.invalidateQueries({ queryKey: ["maintenancePredictions"] });
       notify(
         "success",
-        "Kayıt eklendi",
-        "Bakım/arıza kaydı başarıyla oluşturuldu.",
+        t("admin.bakim_created", "Record created"),
+        t(
+          "admin.bakim_created_detail",
+          "Maintenance/breakdown record successfully created.",
+        ),
       );
       setEntryOpen(false);
     },
     onError: (err: unknown) => {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Kayıt oluşturulamadı";
+          ?.detail ??
+        t("admin.bakim_create_failed", "Record could not be created.");
       setEntryError(detail);
     },
   });
@@ -152,13 +156,18 @@ export default function AdminMaintenancePage() {
   const submitEntry = () => {
     setEntryError(null);
     if (!entryForm.arac_id) {
-      setEntryError("Araç seçin");
+      setEntryError(t("admin.bakim_vehicle_required", "Select vehicle"));
       return;
     }
     // KM, bakım/arıza takibi için zorunlu — boş bırakılıp 0 kaydedilmesi
     // aracın servis geçmişini bozar (sıfır km'lik servis kaydı anlamsız).
     if (!entryForm.km_bilgisi || Number(entryForm.km_bilgisi) <= 0) {
-      setEntryError("KM bilgisi zorunlu (araç servis takibi için)");
+      setEntryError(
+        t(
+          "admin.bakim_km_required",
+          "KM is required (for vehicle service tracking)",
+        ),
+      );
       return;
     }
     createMutation.mutate();
@@ -219,7 +228,8 @@ export default function AdminMaintenancePage() {
         </div>
         <RequirePermission permission="bakim_ekle">
           <Button onClick={openEntry}>
-            <Plus size={16} className="mr-2" /> Yeni Bakım / Arıza
+            <Plus size={16} className="mr-2" />
+            {t("admin.bakim_add_btn", "New Maintenance / Breakdown")}
           </Button>
         </RequirePermission>
       </div>
@@ -336,12 +346,12 @@ export default function AdminMaintenancePage() {
       <Modal
         isOpen={isEntryOpen}
         onClose={() => setEntryOpen(false)}
-        title="Yeni Bakım / Arıza Girişi"
+        title={t("admin.bakim_form_title", "New Maintenance / Breakdown Entry")}
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">
-              Araç
+              {t("admin.bakim_vehicle_label", "Vehicle")}
             </label>
             <select
               value={entryForm.arac_id}
@@ -350,7 +360,9 @@ export default function AdminMaintenancePage() {
               }
               className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
             >
-              <option value="">Araç seçin…</option>
+              <option value="">
+                {t("admin.bakim_select_vehicle", "Select vehicle…")}
+              </option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.plaka} {v.marka ? `— ${v.marka}` : ""}
@@ -362,7 +374,7 @@ export default function AdminMaintenancePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                Tür
+                {t("admin.bakim_type_label", "Type")}
               </label>
               <select
                 value={entryForm.bakim_tipi}
@@ -374,14 +386,20 @@ export default function AdminMaintenancePage() {
                 }
                 className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
               >
-                <option value="PERIYODIK">Periyodik Bakım</option>
-                <option value="ARIZA">Arıza</option>
-                <option value="ACIL">Acil</option>
+                <option value="PERIYODIK">
+                  {t("admin.bakim_type_periodic", "Periodic Maintenance")}
+                </option>
+                <option value="ARIZA">
+                  {t("admin.bakim_type_breakdown", "Breakdown")}
+                </option>
+                <option value="ACIL">
+                  {t("admin.bakim_acil_type", "Emergency")}
+                </option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                Tarih
+                {t("admin.bakim_date_label", "Date")}
               </label>
               <input
                 type="date"
@@ -397,7 +415,8 @@ export default function AdminMaintenancePage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                KM <span className="text-red-500">*</span>
+                {t("admin.bakim_km_label", "KM")}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
@@ -407,13 +426,16 @@ export default function AdminMaintenancePage() {
                 onChange={(e) =>
                   setEntryForm((f) => ({ ...f, km_bilgisi: e.target.value }))
                 }
-                placeholder="Aracın güncel km'si"
+                placeholder={t(
+                  "admin.bakim_km_placeholder",
+                  "Vehicle's current km",
+                )}
                 className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                Maliyet (TL)
+                {t("admin.bakim_cost_label", "Cost (TL)")}
               </label>
               <input
                 type="number"
@@ -428,7 +450,7 @@ export default function AdminMaintenancePage() {
 
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">
-              Detaylar
+              {t("admin.bakim_details_label", "Details")}
             </label>
             <textarea
               value={entryForm.detaylar}
@@ -444,10 +466,12 @@ export default function AdminMaintenancePage() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setEntryOpen(false)}>
-              İptal
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button onClick={submitEntry} disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Kaydediliyor…" : "Kaydet"}
+              {createMutation.isPending
+                ? t("common.saving", "Saving...")
+                : t("common.save", "Save")}
             </Button>
           </div>
         </div>

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import {
   Eye,
@@ -18,22 +20,26 @@ import { LojiNextLogo } from "../components/common/LojiNextLogo";
 import { Input } from "../components/ui/Input";
 import { Button } from "../components/ui/Button";
 
-// Validation Schemas
-const loginSchema = z.object({
-  username: z.string().min(1, "Lütfen kullanıcı adı veya e-posta girin."),
-  password: z.string().min(1, "Lütfen şifrenizi girin."),
-});
+function getLoginSchema(t: TFunction) {
+  return z.object({
+    username: z.string().min(1, t("auth.username_required")),
+    password: z.string().min(1, t("auth.password_required")),
+  });
+}
 
-const forgotSchema = z.object({
-  email: z.string().email("Geçerli bir e-posta adresi girin."),
-});
+function getForgotSchema(t: TFunction) {
+  return z.object({
+    email: z.string().email(t("auth.email_invalid")),
+  });
+}
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-type ForgotFormValues = z.infer<typeof forgotSchema>;
+type LoginFormValues = { username: string; password: string };
+type ForgotFormValues = { email: string };
 
 type PageMode = "login" | "forgot";
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
   const [mode, setMode] = useState<PageMode>("login");
@@ -44,6 +50,9 @@ export default function LoginPage() {
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotLoading, setForgotLoading] = useState(false);
+
+  const loginSchema = useMemo(() => getLoginSchema(t), [t]);
+  const forgotSchema = useMemo(() => getForgotSchema(t), [t]);
 
   const {
     register,
@@ -62,14 +71,12 @@ export default function LoginPage() {
     resolver: zodResolver(forgotSchema),
   });
 
-  // Auto-redirect if already logged in (UX/Edge Case Fix)
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/trips", { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
-  // Rate Limiting Timer
   useEffect(() => {
     if (lockoutTime) {
       const timer = setInterval(() => {
@@ -96,7 +103,6 @@ export default function LoginPage() {
       });
       setForgotSuccess(true);
     } catch {
-      // Endpoint her zaman 200 döndürür; ağ hataları minimal
       setForgotSuccess(true);
     } finally {
       setForgotLoading(false);
@@ -121,9 +127,9 @@ export default function LoginPage() {
       if (err.response?.status === 429 || err.message?.includes("429")) {
         const waitTime = 30 * 1000;
         setLockoutTime(Date.now() + waitTime);
-        setError("Çok fazla başarısız deneme. Lütfen bir süre bekleyin.");
+        setError(t("auth.too_many_attempts"));
       } else {
-        setError(err.message || "Kullanıcı adı veya şifre hatalı.");
+        setError(err.message || t("auth.invalid_credentials"));
       }
     }
   };
@@ -135,7 +141,6 @@ export default function LoginPage() {
           <LojiNextLogo iconSize={44} textSize="text-2xl" />
         </div>
 
-        {/* Main Glass/Surface Card */}
         <div className="bg-surface p-10 sm:p-12 rounded-[24px] border border-border shadow-lg">
           <AnimatePresence mode="wait">
             {mode === "login" ? (
@@ -148,13 +153,12 @@ export default function LoginPage() {
                 onSubmit={handleSubmit(onSubmit)}
                 className="space-y-8"
               >
-                {/* Email / Username */}
                 <div className="space-y-1.5 relative">
                   <label
                     htmlFor="username"
                     className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
                   >
-                    E-Posta / Kullanıcı Adı
+                    {t("auth.username_label")}
                   </label>
                   <Input
                     id="username"
@@ -162,7 +166,7 @@ export default function LoginPage() {
                     {...register("username")}
                     disabled={isSubmitting || !!lockoutTime}
                     error={!!errors.username}
-                    placeholder="E-posta adresinizi girin"
+                    placeholder={t("auth.username_placeholder")}
                     autoComplete="username"
                   />
                   {errors.username && (
@@ -172,13 +176,12 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                {/* Password */}
                 <div className="space-y-1.5 relative">
                   <label
                     htmlFor="password"
                     className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
                   >
-                    Şifre
+                    {t("auth.password_label")}
                   </label>
 
                   <div className="relative">
@@ -200,7 +203,9 @@ export default function LoginPage() {
                       onClick={() => setShowPassword(!showPassword)}
                       disabled={isSubmitting || !!lockoutTime}
                       aria-label={
-                        showPassword ? "Şifreyi gizle" : "Şifreyi göster"
+                        showPassword
+                          ? t("auth.hide_password")
+                          : t("auth.show_password")
                       }
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-secondary hover:text-primary hover:bg-elevated rounded transition-colors focus:outline-none focus:ring-2 focus:ring-accent/5"
                     >
@@ -218,7 +223,6 @@ export default function LoginPage() {
                   )}
                 </div>
 
-                {/* Rate Limiting & Error Banner */}
                 <AnimatePresence mode="popLayout">
                   {error && (
                     <motion.div
@@ -230,13 +234,11 @@ export default function LoginPage() {
                       {lockoutTime ? (
                         <div className="flex flex-col items-center text-center gap-1.5 pt-1">
                           <span className="font-bold text-danger">
-                            Güvenlik Kilidi
+                            {t("auth.rate_limit_lock")}
                           </span>
-                          Lütfen tekrar denemek için{" "}
-                          <span className="font-black underline tabular-nums">
-                            {remainingSeconds}
-                          </span>{" "}
-                          saniye bekleyin.
+                          {t("auth.rate_limit_wait", {
+                            seconds: remainingSeconds,
+                          })}
                         </div>
                       ) : (
                         <p className="flex items-center justify-center text-center">
@@ -247,7 +249,6 @@ export default function LoginPage() {
                   )}
                 </AnimatePresence>
 
-                {/* Submit Button */}
                 <div className="pt-4 space-y-4">
                   <Button
                     type="submit"
@@ -261,11 +262,11 @@ export default function LoginPage() {
                           className="w-5 h-5 animate-spin-slow"
                           strokeWidth={2.5}
                         />
-                        <span>Giriş Yapılıyor...</span>
+                        <span>{t("auth.login_submitting")}</span>
                       </>
                     ) : (
                       <>
-                        <span>Sisteme Giriş Yap</span>
+                        <span>{t("auth.login_submit")}</span>
                         <ArrowRight
                           className="w-4 h-4 text-bg-base group-hover:translate-x-1 transition-transform ml-2"
                           strokeWidth={2.5}
@@ -274,14 +275,13 @@ export default function LoginPage() {
                     )}
                   </Button>
 
-                  {/* Forgot Password Link */}
                   <div className="text-center">
                     <button
                       type="button"
                       onClick={() => setMode("forgot")}
                       className="text-xs text-secondary hover:text-accent transition-colors font-medium underline underline-offset-2"
                     >
-                      Şifreni mi unuttun?
+                      {t("auth.forgot_password")}
                     </button>
                   </div>
                 </div>
@@ -301,11 +301,10 @@ export default function LoginPage() {
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-primary">
-                        E-posta adresinize sıfırlama talimatı gönderildi.
+                        {t("auth.forgot_success")}
                       </p>
                       <p className="text-xs text-secondary">
-                        Gelen kutunuzu kontrol edin. Birkaç dakika içinde
-                        ulaşmadıysa spam klasörünüze bakın.
+                        {t("auth.forgot_success_hint")}
                       </p>
                     </div>
                     <button
@@ -314,7 +313,7 @@ export default function LoginPage() {
                       className="flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors font-medium mx-auto"
                     >
                       <ArrowLeft className="w-3.5 h-3.5" />
-                      Giriş sayfasına dön
+                      {t("auth.back_to_login")}
                     </button>
                   </div>
                 ) : (
@@ -324,13 +323,13 @@ export default function LoginPage() {
                   >
                     <div className="space-y-1.5">
                       <p className="text-xs font-black text-secondary uppercase tracking-widest pl-1 mb-4">
-                        Şifre Sıfırlama
+                        {t("auth.forgot_title")}
                       </p>
                       <label
                         htmlFor="forgot-email"
                         className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
                       >
-                        E-Posta Adresi
+                        {t("auth.forgot_email_label")}
                       </label>
                       <Input
                         id="forgot-email"
@@ -338,7 +337,7 @@ export default function LoginPage() {
                         {...registerForgot("email")}
                         disabled={forgotLoading}
                         error={!!forgotErrors.email}
-                        placeholder="E-posta adresinizi girin"
+                        placeholder={t("auth.forgot_email_placeholder")}
                         autoComplete="email"
                       />
                       {forgotErrors.email && (
@@ -361,10 +360,10 @@ export default function LoginPage() {
                               className="w-5 h-5 animate-spin-slow"
                               strokeWidth={2.5}
                             />
-                            <span>Gönderiliyor...</span>
+                            <span>{t("auth.forgot_sending")}</span>
                           </>
                         ) : (
-                          <span>Sıfırlama Bağlantısı Gönder</span>
+                          <span>{t("auth.forgot_send_link")}</span>
                         )}
                       </Button>
 
@@ -375,7 +374,7 @@ export default function LoginPage() {
                           className="flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors font-medium mx-auto"
                         >
                           <ArrowLeft className="w-3.5 h-3.5" />
-                          Geri dön
+                          {t("common.back")}
                         </button>
                       </div>
                     </div>

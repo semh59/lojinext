@@ -1,6 +1,7 @@
 ﻿import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Loader2, Truck, X } from "lucide-react";
 import { vehicleService, type InspectionAlertItem } from "../../api/vehicles";
+import { useTranslation } from "react-i18next";
 
 interface InspectionAlertModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function InspectionAlertModal({
   onClose,
   withinDays = 30,
 }: InspectionAlertModalProps) {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["vehicles", "inspection-alerts", withinDays],
     queryFn: () => vehicleService.getInspectionAlerts(withinDays),
@@ -41,17 +43,17 @@ export function InspectionAlertModal({
             <AlertTriangle className="h-5 w-5 text-warning" />
             <div>
               <h3 className="text-sm font-semibold text-primary">
-                Muayene Uyarıları
+                {t("fleet.inspection_title")}
               </h3>
               <p className="text-[11px] text-secondary">
-                Önümüzdeki {withinDays} gün + geçmiş muayeneler
+                {t("fleet.inspection_subtitle", { n: withinDays })}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-            aria-label="Kapat"
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -61,31 +63,33 @@ export function InspectionAlertModal({
           {isLoading ? (
             <div className="flex items-center justify-center gap-3 py-12 text-secondary">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm">Yükleniyor…</span>
+              <span className="text-sm">{t("fleet.inspection_loading")}</span>
             </div>
           ) : isError ? (
             <div className="rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
-              Muayene listesi alınamadı.
+              {t("fleet.inspection_error")}
             </div>
           ) : totalCount === 0 ? (
             <div className="flex items-center gap-3 rounded-card border border-success/20 bg-success/5 px-4 py-3">
               <CheckCircle2 className="h-5 w-5 text-success" />
               <p className="text-sm text-secondary">
-                Yaklaşan veya geçmiş muayene yok. Filo bu konuda temiz.
+                {t("fleet.inspection_none")}
               </p>
             </div>
           ) : (
             <div className="space-y-6">
               <Section
-                title={`Geçmiş Muayene (${totalOverdue})`}
+                title={t("fleet.inspection_overdue_title", { n: totalOverdue })}
                 items={data?.overdue ?? []}
-                emptyText="Geçmiş muayene yok."
+                emptyText={t("fleet.inspection_overdue_empty")}
                 tone="danger"
               />
               <Section
-                title={`Yaklaşan Muayene (${totalExpiring})`}
+                title={t("fleet.inspection_expiring_title", {
+                  n: totalExpiring,
+                })}
                 items={data?.expiring ?? []}
-                emptyText="Yaklaşan muayene yok."
+                emptyText={t("fleet.inspection_expiring_empty")}
                 tone="warning"
               />
             </div>
@@ -107,6 +111,7 @@ function Section({
   emptyText: string;
   tone: "danger" | "warning";
 }) {
+  const { t } = useTranslation();
   const toneClass = tone === "danger" ? "text-danger" : "text-warning";
   const badgeBg =
     tone === "danger"
@@ -153,7 +158,7 @@ function Section({
                   )}
                 </p>
                 <p className="text-[11px] text-secondary">
-                  Muayene:{" "}
+                  {t("fleet.inspection_date_label")}{" "}
                   <span className="font-mono">
                     {formatDate(v.muayene_tarihi)}
                   </span>
@@ -165,8 +170,12 @@ function Section({
                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeBg} ${toneClass}`}
               >
                 {v.days_remaining < 0
-                  ? `${Math.abs(v.days_remaining)} gün geçmiş`
-                  : `${v.days_remaining} gün kaldı`}
+                  ? t("fleet.inspection_days_overdue", {
+                      n: Math.abs(v.days_remaining),
+                    })
+                  : t("fleet.inspection_days_remaining", {
+                      n: v.days_remaining,
+                    })}
               </span>
             )}
           </li>

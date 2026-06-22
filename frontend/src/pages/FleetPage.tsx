@@ -45,7 +45,7 @@ export default function FleetPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-primary">Araçlar & Dorseler</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("fleet.title")}</h1>
         <p className="text-sm text-secondary">{fleetPageText.description}</p>
       </div>
 

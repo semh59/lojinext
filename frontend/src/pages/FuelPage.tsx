@@ -315,9 +315,11 @@ export default function FuelPage() {
           <Card padding="lg">
             <div className="mb-4">
               <h2 className="text-sm font-semibold text-primary">
-                Aylık Tüketim Trendi
+                {t("fuel.monthly_trend_title")}
               </h2>
-              <p className="text-xs text-secondary">Aylık toplam litre</p>
+              <p className="text-xs text-secondary">
+                {t("fuel.monthly_trend_subtitle")}
+              </p>
             </div>
             {trendLoading ? (
               <div className="h-36 animate-pulse rounded-card bg-elevated/50" />
@@ -345,7 +347,7 @@ export default function FuelPage() {
                             maximumFractionDigits: 1,
                           })} L`
                         : "",
-                      "Tüketim",
+                      t("fuel.consumption_tooltip"),
                     ]}
                   />
                   <Line

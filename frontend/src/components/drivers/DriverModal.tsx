@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import * as z from "zod";
 
 import { Driver } from "../../types";
@@ -29,24 +30,34 @@ interface DriverModalProps {
   driver?: Driver | null;
 }
 
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  {
-    id: "temel",
-    label: "Temel Bilgiler",
-    icon: <User className="h-3.5 w-3.5" />,
-  },
-  { id: "kisisel", label: "Kişisel", icon: <Shield className="h-3.5 w-3.5" /> },
-  { id: "telegram", label: "Telegram", icon: <Send className="h-3.5 w-3.5" /> },
-];
-
 export function DriverModal({
   isOpen,
   onClose,
   onSave,
   driver,
 }: DriverModalProps) {
+  const { t } = useTranslation();
   const { driverFilterText, driverModalText, driverModuleText } =
     useDriversResources();
+
+  const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    {
+      id: "temel",
+      label: t("drivers.tab_basic"),
+      icon: <User className="h-3.5 w-3.5" />,
+    },
+    {
+      id: "kisisel",
+      label: t("drivers.tab_personal"),
+      icon: <Shield className="h-3.5 w-3.5" />,
+    },
+    {
+      id: "telegram",
+      label: t("drivers.tab_telegram"),
+      icon: <Send className="h-3.5 w-3.5" />,
+    },
+  ];
+
   const driverSchema = z.object({
     ad_soyad: z
       .string()
@@ -73,7 +84,7 @@ export function DriverModal({
     telegram_id: z
       .string()
       .max(50)
-      .regex(/^\d*$/, "Telegram ID yalnızca rakamlardan oluşmalıdır")
+      .regex(/^\d*$/, t("drivers.telegram_id_regex_error"))
       .optional()
       .nullable(),
   });
@@ -411,14 +422,14 @@ export function DriverModal({
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold uppercase tracking-widest text-secondary">
-                        TC Kimlik No
+                        {t("drivers.tc_no_label")}
                         <span className="ml-1 font-normal normal-case tracking-normal text-secondary/60">
-                          (isteğe bağlı)
+                          ({t("common.optional")})
                         </span>
                       </label>
                       <Input
                         {...register("tc_no")}
-                        placeholder="11 haneli TC kimlik numarası"
+                        placeholder={t("drivers.tc_no_label")}
                         maxLength={11}
                         className="border-transparent bg-elevated/50 text-primary focus:border-border"
                         error={!!errors.tc_no}
@@ -432,16 +443,16 @@ export function DriverModal({
 
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-bold uppercase tracking-widest text-secondary">
-                        Kan Grubu
+                        {t("drivers.blood_type_label")}
                         <span className="ml-1 font-normal normal-case tracking-normal text-secondary/60">
-                          (isteğe bağlı)
+                          ({t("common.optional")})
                         </span>
                       </label>
                       <select
                         {...register("kan_grubu")}
                         className="h-10 w-full rounded-[8px] border border-border bg-elevated px-3 text-xs font-bold text-primary outline-none transition-all focus:border-secondary"
                       >
-                        <option value="">Seçiniz</option>
+                        <option value="">{t("common.select")}</option>
                         {["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-"].map(
                           (kg) => (
                             <option key={kg} value={kg}>
@@ -456,9 +467,9 @@ export function DriverModal({
                   <div className="space-y-1.5">
                     <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-secondary">
                       <Calendar className="h-3.5 w-3.5" />
-                      Doğum Tarihi
+                      {t("drivers.birth_date_label")}
                       <span className="font-normal normal-case tracking-normal text-secondary/60">
-                        (isteğe bağlı)
+                        ({t("common.optional")})
                       </span>
                     </label>
                     <Input
@@ -478,24 +489,12 @@ export function DriverModal({
                     <MessageCircle className="mt-0.5 h-4 w-4 shrink-0 text-info" />
                     <div className="text-xs text-secondary">
                       <p className="font-semibold text-primary">
-                        Telegram botu nasıl kullanılır?
+                        {t("drivers.telegram_howto_title")}
                       </p>
                       <ol className="mt-2 space-y-1 text-secondary">
-                        <li>
-                          1. Şoför Telegram'da{" "}
-                          <span className="font-bold text-primary">
-                            @userinfobot
-                          </span>
-                          'a yaz
-                        </li>
-                        <li>
-                          2. Bot'tan gelen{" "}
-                          <span className="font-bold text-primary">
-                            numeric ID'yi
-                          </span>{" "}
-                          buraya gir
-                        </li>
-                        <li>3. Şoför artık belge fotoğrafı gönderebilir</li>
+                        <li>1. {t("drivers.telegram_howto_1")}</li>
+                        <li>2. {t("drivers.telegram_howto_2")}</li>
+                        <li>3. {t("drivers.telegram_howto_3")}</li>
                       </ol>
                     </div>
                   </div>
@@ -503,14 +502,14 @@ export function DriverModal({
                   <div className="space-y-1.5">
                     <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-secondary">
                       <Send className="h-3.5 w-3.5" />
-                      Telegram Kullanıcı ID
+                      {t("drivers.telegram_id_label")}
                       <span className="font-normal normal-case tracking-normal text-secondary/60">
-                        (isteğe bağlı)
+                        ({t("common.optional")})
                       </span>
                     </label>
                     <Input
                       {...register("telegram_id")}
-                      placeholder="Örn: 123456789"
+                      placeholder="e.g. 123456789"
                       className="border-transparent bg-elevated/50 text-primary focus:border-border"
                       error={!!errors.telegram_id}
                     />
@@ -522,7 +521,7 @@ export function DriverModal({
                     {telegramId && !errors.telegram_id && (
                       <div className="flex items-center gap-1.5 text-[10px] font-medium text-success">
                         <span className="h-1.5 w-1.5 rounded-full bg-success" />
-                        Telegram ID tanımlandı
+                        {t("drivers.telegram_id_set")}
                       </div>
                     )}
                   </div>

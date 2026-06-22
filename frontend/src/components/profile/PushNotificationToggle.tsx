@@ -1,4 +1,5 @@
 import { Bell, BellOff, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -6,6 +7,7 @@ import { usePushNotifications } from "../../hooks/usePushNotifications";
 import { cn } from "../../lib/utils";
 
 export function PushNotificationToggle() {
+  const { t } = useTranslation();
   const {
     supported,
     permission,
@@ -23,11 +25,13 @@ export function PushNotificationToggle() {
           <BellOff className="h-5 w-5 text-tertiary" />
           <div>
             <h3 className="text-sm font-semibold text-primary">
-              Push Bildirimleri
+              {t("profile.push_title", "Push Notifications")}
             </h3>
             <p className="mt-1 text-xs text-secondary">
-              Tarayıcınız Web Push desteklemiyor. iOS Safari 16.4+ veya
-              Chrome/Edge gereklidir.
+              {t(
+                "profile.push_unsupported",
+                "Your browser does not support Web Push. iOS Safari 16.4+ or Chrome/Edge is required.",
+              )}
             </p>
           </div>
         </div>
@@ -49,17 +53,25 @@ export function PushNotificationToggle() {
           />
           <div>
             <h3 className="text-sm font-semibold text-primary">
-              Push Bildirimleri
+              {t("profile.push_title", "Push Notifications")}
             </h3>
             <p className="mt-1 text-xs text-secondary">
               {subscribed
-                ? "Bu cihaz aboneliği aktif. Kritik anomali ve soruşturmalar push olarak gelir."
-                : "Mobil cihazınızda kritik uyarıları anında almak için açın."}
+                ? t(
+                    "profile.push_subscribed_desc",
+                    "This device subscription is active. Critical anomalies and investigations will be delivered as push notifications.",
+                  )
+                : t(
+                    "profile.push_unsubscribed_desc",
+                    "Enable to receive critical alerts instantly on your mobile device.",
+                  )}
             </p>
             {blocked && (
               <p className="mt-2 text-xs text-danger">
-                Bildirim izni reddedildi. Tarayıcı ayarlarından izin
-                vermelisiniz.
+                {t(
+                  "profile.push_permission_denied",
+                  "Notification permission denied. Please grant permission in your browser settings.",
+                )}
               </p>
             )}
             {error && !blocked && (
@@ -74,7 +86,7 @@ export function PushNotificationToggle() {
               disabled={enabling}
               onClick={() => void disable()}
             >
-              Kapat
+              {t("profile.push_disable_btn", "Disable")}
             </Button>
           ) : (
             <Button
@@ -85,10 +97,10 @@ export function PushNotificationToggle() {
               {enabling ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Bağlanıyor
+                  {t("profile.push_connecting", "Connecting")}
                 </>
               ) : (
-                "Etkinleştir"
+                t("profile.push_enable_btn", "Enable")
               )}
             </Button>
           )}

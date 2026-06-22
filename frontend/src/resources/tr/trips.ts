@@ -102,6 +102,7 @@ export const tripFilterText = {
   deleteSuccess: "Filtre silindi.",
   deleteError: "Filtre silinemedi.",
   resetSuccess: "Filtreler sıfırlandı.",
+  telegramApprovalLabel: "Telegram Onay Durumu",
   tabs: {
     all: "Tümü",
     planned: "Planlandı",

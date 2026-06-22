@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,6 +16,8 @@ import {
   KeyRound,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuth } from "../context/AuthContext";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Input";
@@ -25,42 +27,42 @@ import { QuietHoursSettings } from "../components/profile/QuietHoursSettings";
 import axiosInstance from "@/services/api/axios-instance";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useLocale } from "../hooks/useLocale";
-import { useTranslation } from "react-i18next";
 
-// ── Schemas ────────────────────────────────────────────────────────────────
+// ── Schema factories ────────────────────────────────────────────────────────
 
-const profileSchema = z.object({
-  ad_soyad: z.string().min(2, "İsim en az 2 karakter olmalıdır.").max(100),
-});
-
-const changePasswordSchema = z
-  .object({
-    current_password: z.string().min(1, "Mevcut şifrenizi girin."),
-    new_password: z
-      .string()
-      .min(8, "Yeni şifre en az 8 karakter olmalıdır.")
-      .max(128)
-      .regex(/[A-Z]/, "En az bir büyük harf içermelidir.")
-      .regex(/[a-z]/, "En az bir küçük harf içermelidir.")
-      .regex(/[0-9]/, "En az bir rakam içermelidir."),
-    confirm_password: z.string().min(1, "Şifre tekrarını girin."),
-  })
-  .refine((data) => data.new_password === data.confirm_password, {
-    message: "Şifreler eşleşmiyor.",
-    path: ["confirm_password"],
+function getProfileSchema(t: TFunction) {
+  return z.object({
+    ad_soyad: z.string().min(2, t("profile.req_length")).max(100),
   });
+}
 
-type ProfileFormValues = z.infer<typeof profileSchema>;
-type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
+function getChangePasswordSchema(t: TFunction) {
+  return z
+    .object({
+      current_password: z.string().min(1, t("auth.password_required")),
+      new_password: z
+        .string()
+        .min(8, t("profile.req_length"))
+        .max(128)
+        .regex(/[A-Z]/, t("profile.req_upper"))
+        .regex(/[a-z]/, t("profile.req_lower"))
+        .regex(/[0-9]/, t("profile.req_digit")),
+      confirm_password: z.string().min(1, t("auth.password_required")),
+    })
+    .refine((data) => data.new_password === data.confirm_password, {
+      message: t("auth.password_mismatch", "Passwords do not match."),
+      path: ["confirm_password"],
+    });
+}
+
+type ProfileFormValues = { ad_soyad: string };
+type ChangePasswordFormValues = {
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+};
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: "Süper Admin",
-  admin: "Admin",
-  driver: "Sürücü",
-  user: "Operatör",
-};
 
 const ROLE_COLORS: Record<string, string> = {
   super_admin: "bg-danger/10 text-danger",
@@ -69,16 +71,20 @@ const ROLE_COLORS: Record<string, string> = {
   user: "bg-secondary/10 text-secondary",
 };
 
-function formatRelative(iso: string | undefined, locale: string): string {
-  if (!iso) return "Bilinmiyor";
+function formatRelative(
+  iso: string | undefined,
+  locale: string,
+  t: TFunction,
+): string {
+  if (!iso) return t("profile.unknown");
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Az önce";
-  if (mins < 60) return `${mins} dakika önce`;
+  if (mins < 1) return t("profile.time_just_now");
+  if (mins < 60) return t("profile.time_minutes", { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} saat önce`;
+  if (hours < 24) return t("profile.time_hours", { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} gün önce`;
+  if (days < 30) return t("profile.time_days", { n: days });
   return new Date(iso).toLocaleDateString(locale);
 }
 
@@ -119,7 +125,6 @@ function getPasswordChecks(pw: string): PasswordChecks {
   };
 }
 
-const STRENGTH_LABELS = ["", "Zayıf", "Orta", "İyi", "Güçlü"];
 const STRENGTH_COLORS = [
   "",
   "bg-danger",
@@ -129,13 +134,21 @@ const STRENGTH_COLORS = [
 ];
 
 function PasswordStrengthBar({ password }: { password: string }) {
+  const { t } = useTranslation();
   if (!password) return null;
   const checks = getPasswordChecks(password);
   const score = Object.values(checks).filter(Boolean).length;
 
+  const strengthLabels = [
+    "",
+    t("profile.strength_weak"),
+    t("profile.strength_fair"),
+    t("profile.strength_good"),
+    t("profile.strength_strong"),
+  ];
+
   return (
     <div className="space-y-2 pt-1">
-      {/* Strength bar */}
       <div className="flex gap-1">
         {[1, 2, 3, 4].map((i) => (
           <div
@@ -147,7 +160,7 @@ function PasswordStrengthBar({ password }: { password: string }) {
         ))}
       </div>
       <p className="text-[11px] text-tertiary">
-        Şifre gücü:{" "}
+        {t("profile.password_strength")}{" "}
         <span
           className={`font-semibold ${
             score >= 3
@@ -157,16 +170,15 @@ function PasswordStrengthBar({ password }: { password: string }) {
                 : "text-danger"
           }`}
         >
-          {STRENGTH_LABELS[score] ?? ""}
+          {strengthLabels[score] ?? ""}
         </span>
       </p>
-      {/* Requirements checklist */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
         {[
-          { key: "length", label: "En az 8 karakter" },
-          { key: "upper", label: "Büyük harf" },
-          { key: "lower", label: "Küçük harf" },
-          { key: "digit", label: "Rakam" },
+          { key: "length", label: t("profile.req_length") },
+          { key: "upper", label: t("profile.req_upper") },
+          { key: "lower", label: t("profile.req_lower") },
+          { key: "digit", label: t("profile.req_digit") },
         ].map(({ key, label }) => {
           const met = checks[key as keyof PasswordChecks];
           return (
@@ -193,7 +205,7 @@ function PasswordStrengthBar({ password }: { password: string }) {
   );
 }
 
-// ── PasswordField ──────────────────────────────────────────────────────────
+// ── PasswordToggleButton ───────────────────────────────────────────────────
 
 function PasswordToggleButton({
   show,
@@ -202,12 +214,15 @@ function PasswordToggleButton({
   show: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
       onClick={onToggle}
       className="absolute right-3 top-1/2 -translate-y-1/2 text-tertiary hover:text-primary transition-colors"
-      aria-label={show ? "Şifreyi gizle" : "Şifreyi göster"}
+      aria-label={
+        show ? t("profile.hide_password") : t("profile.show_password")
+      }
     >
       {show ? (
         <EyeOff size={15} strokeWidth={2} />
@@ -223,14 +238,20 @@ function PasswordToggleButton({
 export default function ProfilePage() {
   const { t } = useTranslation();
   const locale = useLocale();
-  usePageTitle(t("common.my_profile", "My Profile"));
+  usePageTitle(t("common.my_profile"));
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const initials = getInitials(user?.full_name ?? user?.username ?? "?");
-  const roleLabel = ROLE_LABELS[user?.role ?? ""] ?? user?.role ?? "—";
+  const roleLabel = t(
+    `profile.roles.${user?.role ?? "user"}`,
+    user?.role ?? "—",
+  );
   const roleColor =
     ROLE_COLORS[user?.role ?? ""] ?? "bg-secondary/10 text-secondary";
+
+  const profileSchema = useMemo(() => getProfileSchema(t), [t]);
+  const changePasswordSchema = useMemo(() => getChangePasswordSchema(t), [t]);
 
   // ── Profile form ───────────────────────────────────────────────────────
   const {
@@ -265,7 +286,7 @@ export default function ProfilePage() {
   const onProfileSubmit = async (data: ProfileFormValues) => {
     try {
       await axiosInstance.patch("/users/me", { ad_soyad: data.ad_soyad });
-      toast.success("Profil bilgileri güncellendi.");
+      toast.success(t("profile.update_success"));
       queryClient.invalidateQueries({ queryKey: ["current-user"] });
     } catch {
       // axiosInstance interceptor already shows a toast on 4xx/5xx
@@ -278,7 +299,7 @@ export default function ProfilePage() {
         current_password: data.current_password,
         new_password: data.new_password,
       });
-      toast.success("Şifreniz başarıyla güncellendi.");
+      toast.success(t("profile.password_success"));
       resetPw();
     } catch {
       // axiosInstance interceptor handles error toasts
@@ -289,27 +310,24 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* ── Page Title ── */}
       <div className="mb-2">
         <h1 className="text-2xl font-bold text-primary tracking-tight">
-          Profilim
+          {t("profile.page_title")}
         </h1>
         <p className="text-sm text-secondary mt-1">
-          Hesap bilgilerinizi buradan güncelleyebilirsiniz.
+          {t("profile.page_subtitle")}
         </p>
       </div>
 
       {/* ── User Identity Hero ── */}
       <Card padding="lg">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
           <div className="w-16 h-16 rounded-2xl bg-accent flex items-center justify-center flex-shrink-0">
             <span className="text-xl font-black text-white tracking-tight">
               {initials}
             </span>
           </div>
 
-          {/* Info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-primary leading-tight truncate">
@@ -328,19 +346,18 @@ export default function ProfilePage() {
               </span>
             </p>
 
-            {/* Meta info row */}
             <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
               <span className="flex items-center gap-1.5 text-[11px] text-tertiary">
                 <Clock size={11} className="flex-shrink-0" />
-                Son giriş:{" "}
+                {t("profile.last_login")}{" "}
                 <span className="text-secondary font-medium">
-                  {formatRelative(user?.last_login, locale)}
+                  {formatRelative(user?.last_login, locale, t)}
                 </span>
               </span>
               {user?.son_giris_ip && (
                 <span className="flex items-center gap-1.5 text-[11px] text-tertiary">
                   <MapPin size={11} className="flex-shrink-0" />
-                  IP:{" "}
+                  {t("profile.ip_label")}{" "}
                   <span className="text-secondary font-medium font-mono">
                     {user.son_giris_ip}
                   </span>
@@ -349,7 +366,7 @@ export default function ProfilePage() {
               {user?.created_at && (
                 <span className="flex items-center gap-1.5 text-[11px] text-tertiary">
                   <User size={11} className="flex-shrink-0" />
-                  Hesap:{" "}
+                  {t("profile.account_label")}{" "}
                   <span className="text-secondary font-medium">
                     {formatDate(user.created_at, locale)}
                   </span>
@@ -358,9 +375,9 @@ export default function ProfilePage() {
               {user?.sifre_degisim_tarihi && (
                 <span className="flex items-center gap-1.5 text-[11px] text-tertiary">
                   <KeyRound size={11} className="flex-shrink-0" />
-                  Şifre:{" "}
+                  {t("profile.password_label")}{" "}
                   <span className="text-secondary font-medium">
-                    {formatRelative(user.sifre_degisim_tarihi, locale)}
+                    {formatRelative(user.sifre_degisim_tarihi, locale, t)}
                   </span>
                 </span>
               )}
@@ -372,7 +389,7 @@ export default function ProfilePage() {
       {/* ── RV2.PWA — Push Notification Toggle ── */}
       <PushNotificationToggle />
 
-      {/* ── Faz 5 — Sessiz saat ayarı ── */}
+      {/* ── Quiet hours settings ── */}
       <QuietHoursSettings />
 
       {/* ── Profile Info Card ── */}
@@ -383,10 +400,10 @@ export default function ProfilePage() {
           </div>
           <div>
             <h2 className="text-base font-bold text-primary">
-              Profil Bilgileri
+              {t("profile.info_card_title")}
             </h2>
             <p className="text-xs text-tertiary mt-0.5">
-              Ad soyad bilginizi güncelleyin
+              {t("profile.info_card_subtitle")}
             </p>
           </div>
         </div>
@@ -395,10 +412,9 @@ export default function ProfilePage() {
           onSubmit={handleSubmitProfile(onProfileSubmit)}
           className="space-y-5"
         >
-          {/* Email — readonly */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black text-secondary uppercase tracking-widest pl-1">
-              E-Posta
+              {t("profile.email_label")}
             </label>
             <Input
               type="text"
@@ -407,24 +423,23 @@ export default function ProfilePage() {
               className="cursor-not-allowed text-secondary"
             />
             <p className="text-[11px] text-tertiary pl-1">
-              E-posta yalnızca yönetici tarafından değiştirilebilir.
+              {t("profile.email_admin_only")}
             </p>
           </div>
 
-          {/* Ad Soyad */}
           <div className="space-y-1.5">
             <label
               htmlFor="ad_soyad"
               className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
             >
-              Ad Soyad
+              {t("auth.name", "Full Name")}
             </label>
             <Input
               id="ad_soyad"
               type="text"
               {...registerProfile("ad_soyad")}
               error={!!profileErrors.ad_soyad}
-              placeholder="Adınızı ve soyadınızı girin"
+              placeholder={t("profile.name_placeholder")}
               autoComplete="name"
             />
             {profileErrors.ad_soyad && (
@@ -447,10 +462,10 @@ export default function ProfilePage() {
                     className="w-4 h-4 animate-spin-slow"
                     strokeWidth={2.5}
                   />
-                  <span>Kaydediliyor...</span>
+                  <span>{t("profile.saving")}</span>
                 </>
               ) : (
-                <span>Kaydet</span>
+                <span>{t("profile.save")}</span>
               )}
             </Button>
           </div>
@@ -464,9 +479,11 @@ export default function ProfilePage() {
             <Shield size={20} strokeWidth={1.75} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-primary">Şifre Değiştir</h2>
+            <h2 className="text-base font-bold text-primary">
+              {t("profile.change_password")}
+            </h2>
             <p className="text-xs text-tertiary mt-0.5">
-              Güvenliğiniz için düzenli olarak güncelleyin
+              {t("profile.change_password_hint")}
             </p>
           </div>
         </div>
@@ -475,13 +492,12 @@ export default function ProfilePage() {
           onSubmit={handleSubmitPw(onChangePasswordSubmit)}
           className="space-y-5"
         >
-          {/* Current Password */}
           <div className="space-y-1.5">
             <label
               htmlFor="current_password"
               className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
             >
-              Mevcut Şifre
+              {t("profile.current_password")}
             </label>
             <div className="relative">
               <Input
@@ -505,13 +521,12 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* New Password */}
           <div className="space-y-1.5">
             <label
               htmlFor="new_password"
               className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
             >
-              Yeni Şifre
+              {t("profile.new_password")}
             </label>
             <div className="relative">
               <Input
@@ -536,13 +551,12 @@ export default function ProfilePage() {
             <PasswordStrengthBar password={newPwValue} />
           </div>
 
-          {/* Confirm Password */}
           <div className="space-y-1.5">
             <label
               htmlFor="confirm_password"
               className="block text-xs font-black text-secondary uppercase tracking-widest pl-1"
             >
-              Yeni Şifre Tekrar
+              {t("profile.confirm_password")}
             </label>
             <div className="relative">
               <Input
@@ -579,10 +593,10 @@ export default function ProfilePage() {
                     className="w-4 h-4 animate-spin-slow"
                     strokeWidth={2.5}
                   />
-                  <span>Güncelleniyor...</span>
+                  <span>{t("profile.updating")}</span>
                 </>
               ) : (
-                <span>Şifremi Güncelle</span>
+                <span>{t("profile.update_password")}</span>
               )}
             </Button>
           </div>

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Award, BrainCircuit, Edit2, Phone, Star, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { Driver } from "../../types";
 import { cn } from "../../lib/utils";
@@ -26,6 +27,7 @@ export function DriverTable({
   onToggleSelection,
   onToggleAll,
 }: DriverTableProps) {
+  const { t } = useTranslation();
   const { driverTableText } = useDriversResources();
   const showSelection = !!onToggleSelection;
   const gridTemplate = showSelection
@@ -52,7 +54,7 @@ export function DriverTable({
                 type="checkbox"
                 checked={allSelected}
                 onChange={() => onToggleAll?.(visibleIds, allSelected)}
-                aria-label="Tümünü seç"
+                aria-label={t("common.select_all", "Select all")}
                 className="h-4 w-4 cursor-pointer accent-accent"
               />
             )}
@@ -93,7 +95,9 @@ export function DriverTable({
                       onChange={() =>
                         driver.id != null && onToggleSelection?.(driver.id)
                       }
-                      aria-label={`${driver.ad_soyad} seç`}
+                      aria-label={t("common.select_item", "Select {{name}}", {
+                        name: driver.ad_soyad,
+                      })}
                       className="h-4 w-4 cursor-pointer accent-accent"
                       onClick={(e) => e.stopPropagation()}
                     />

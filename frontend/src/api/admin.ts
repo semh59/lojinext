@@ -1,4 +1,5 @@
 // Thin facade over orval-generated admin API functions.
+// KNOWN_PERMISSIONS group labels are translated at render time via useTranslation in RollerPage.
 // Preserves the same named exports and service object shapes as the original
 // frontend/src/services/api/admin-service.ts so callers need no changes.
 
@@ -150,16 +151,16 @@ export interface AttributionOverridePayload {
 
 export const KNOWN_PERMISSIONS: { group: string; keys: string[] }[] = [
   {
-    group: "Sefer",
+    group: "Trip",
     keys: ["sefer:read", "sefer:write", "sefer:onayla"],
   },
-  { group: "Yakıt & Şoför", keys: ["yakit:write", "sofor:write"] },
+  { group: "Fuel & Driver", keys: ["yakit:write", "sofor:write"] },
   {
-    group: "Anomali & Kalibrasyon",
+    group: "Anomaly & Calibration",
     keys: ["anomali:yonet", "kalibrasyon_goruntule"],
   },
   {
-    group: "Kullanıcı & Rol",
+    group: "User & Role",
     keys: [
       "kullanici_goruntule",
       "kullanici_ekle",
@@ -170,7 +171,7 @@ export const KNOWN_PERMISSIONS: { group: string; keys: string[] }[] = [
     ],
   },
   {
-    group: "Bakım & Atama",
+    group: "Maintenance & Assignment",
     keys: ["bakim_oku", "bakim_ekle", "attribution_duzenle"],
   },
   {

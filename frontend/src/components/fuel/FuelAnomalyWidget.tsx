@@ -1,9 +1,11 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { AlertTriangle, ChevronRight, CheckCircle2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "../ui/Card";
 import { Badge } from "../ui/Badge";
 import { anomalyService, type RecentAnomaly } from "../../api/anomalies";
+import { useLocale } from "../../hooks/useLocale";
 
 const SEVERITY_VARIANT: Record<
   RecentAnomaly["severity"],
@@ -15,39 +17,17 @@ const SEVERITY_VARIANT: Record<
   critical: "danger",
 };
 
-const SEVERITY_LABEL: Record<RecentAnomaly["severity"], string> = {
-  low: "Düşük",
-  medium: "Orta",
-  high: "Yüksek",
-  critical: "Kritik",
-};
-
-function formatDate(iso: string): string {
-  // Backend "YYYY-MM-DD" veya "YYYY-MM-DDTHH:mm:ss" formatında dönüyor.
-  // new Date(iso) "YYYY-MM-DD"yi UTC midnight olarak parse eder; TR+3'te bir önceki
-  // günü gösterebilir. Önce yyyy-mm-dd kısmını ayıklayıp manuel parçala — saat
-  // kaymasından bağımsız "doğru gün/ay" elde edilir.
+function formatDate(iso: string, locale: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!match) return iso;
-  const [, , month, day] = match;
-  const monthNames = [
-    "Oca",
-    "Şub",
-    "Mar",
-    "Nis",
-    "May",
-    "Haz",
-    "Tem",
-    "Ağu",
-    "Eyl",
-    "Eki",
-    "Kas",
-    "Ara",
-  ];
-  return `${day} ${monthNames[Number(month) - 1] ?? month}`;
+  const [, year, month, day] = match;
+  const d = new Date(Number(year), Number(month) - 1, Number(day));
+  return d.toLocaleDateString(locale, { day: "numeric", month: "short" });
 }
 
 export function FuelAnomalyWidget() {
+  const { t } = useTranslation();
+  const locale = useLocale();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["fuelAnomalyWidget", "tuketim", 30],
     queryFn: () =>
@@ -64,7 +44,7 @@ export function FuelAnomalyWidget() {
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-warning" />
           <h2 className="text-sm font-semibold text-primary">
-            Son Yakıt Anomalileri
+            {t("fuel.anomaly_title")}
           </h2>
           {total > 0 && (
             <span className="text-xs font-semibold text-secondary">
@@ -77,7 +57,7 @@ export function FuelAnomalyWidget() {
             to="/alerts?days=30&tip=tuketim"
             className="inline-flex items-center gap-0.5 text-xs font-medium text-accent hover:underline"
           >
-            Tüm Anomaliler <ChevronRight className="h-3 w-3" />
+            {t("fuel.all_anomalies")} <ChevronRight className="h-3 w-3" />
           </Link>
         )}
       </div>
@@ -92,13 +72,11 @@ export function FuelAnomalyWidget() {
           ))}
         </div>
       ) : isError ? (
-        <p className="text-sm text-secondary">Anomaliler yüklenemedi</p>
+        <p className="text-sm text-secondary">{t("fuel.anomaly_error")}</p>
       ) : items.length === 0 ? (
         <div className="flex items-center gap-2 rounded-card border border-success/20 bg-success/5 px-4 py-3">
           <CheckCircle2 className="h-4 w-4 text-success" />
-          <p className="text-sm text-secondary">
-            Son 30 günde yakıt anomalisi tespit edilmedi
-          </p>
+          <p className="text-sm text-secondary">{t("fuel.anomaly_none")}</p>
         </div>
       ) : (
         <ul className="space-y-2">
@@ -109,7 +87,7 @@ export function FuelAnomalyWidget() {
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-primary">
-                  {a.plaka ?? `Araç #${a.kaynak_id}`}
+                  {a.plaka ?? `#${a.kaynak_id}`}
                   {a.sofor_adi ? (
                     <span className="ml-2 text-xs text-secondary">
                       · {a.sofor_adi}
@@ -117,11 +95,11 @@ export function FuelAnomalyWidget() {
                   ) : null}
                 </p>
                 <p className="text-[11px] text-secondary">
-                  {formatDate(a.tarih)} · sapma %{a.sapma_yuzde.toFixed(1)}
+                  {formatDate(a.tarih, locale)} · +{a.sapma_yuzde.toFixed(1)}%
                 </p>
               </div>
               <Badge variant={SEVERITY_VARIANT[a.severity]}>
-                {SEVERITY_LABEL[a.severity]}
+                {t(`fuel.severity_${a.severity}`, a.severity)}
               </Badge>
             </li>
           ))}

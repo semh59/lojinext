@@ -6,12 +6,14 @@ import { useWhatIf } from "@/hooks/useExecutive";
 import type { WhatIfRequest, WhatIfScenarioType } from "@/api/executive";
 import { useExecutiveResources } from "@/resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   className?: string;
 }
 
 export function WhatIfPanel({ className }: Props) {
+  const { t } = useTranslation();
   const { executiveText } = useExecutiveResources();
   const locale = useLocale();
   const SCENARIOS: { id: WhatIfScenarioType; label: string }[] = [
@@ -25,7 +27,7 @@ export function WhatIfPanel({ className }: Props) {
       label: executiveText.whatIf.scenarios.route_portfolio,
     },
   ];
-  const t = executiveText.whatIf;
+  const wt = executiveText.whatIf;
   const [scenario, setScenario] = useState<WhatIfScenarioType>("fleet_renewal");
   // Senaryo input state'leri (default değerler)
   const [maxAge, setMaxAge] = useState(15);
@@ -77,7 +79,7 @@ export function WhatIfPanel({ className }: Props) {
       <div className="mb-4 flex items-center gap-2">
         <Wand2 className="h-4 w-4 text-accent" />
         <h3 className="text-xs font-bold uppercase tracking-widest text-secondary">
-          {t.title}
+          {wt.title}
         </h3>
       </div>
 
@@ -105,21 +107,21 @@ export function WhatIfPanel({ className }: Props) {
         {scenario === "fleet_renewal" && (
           <>
             <NumberInput
-              label={t.inputs.maxAgeYears}
+              label={wt.inputs.maxAgeYears}
               value={maxAge}
               onChange={setMaxAge}
               min={1}
               max={50}
             />
             <NumberInput
-              label={t.inputs.replacementCost}
+              label={wt.inputs.replacementCost}
               value={replCost}
               onChange={setReplCost}
               min={100_000}
               step={100_000}
             />
             <NumberInput
-              label={t.inputs.improvementPct}
+              label={wt.inputs.improvementPct}
               value={improvementFleet}
               onChange={setImprovementFleet}
               min={1}
@@ -130,14 +132,14 @@ export function WhatIfPanel({ className }: Props) {
         {scenario === "training" && (
           <>
             <NumberInput
-              label={t.inputs.improvementPct}
+              label={wt.inputs.improvementPct}
               value={improvementTraining}
               onChange={setImprovementTraining}
               min={1}
               max={30}
             />
             <NumberInput
-              label={t.inputs.trainingCost}
+              label={wt.inputs.trainingCost}
               value={trainingCost}
               onChange={setTrainingCost}
               min={500}
@@ -147,7 +149,7 @@ export function WhatIfPanel({ className }: Props) {
         )}
         {scenario === "route_portfolio" && (
           <NumberInput
-            label={t.inputs.dropBottomN}
+            label={wt.inputs.dropBottomN}
             value={dropBottomN}
             onChange={setDropBottomN}
             min={1}
@@ -164,12 +166,12 @@ export function WhatIfPanel({ className }: Props) {
             {mutation.isPending ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                {t.running}
+                {wt.running}
               </>
             ) : (
               <>
                 <Play className="h-3 w-3" />
-                {t.runButton}
+                {wt.runButton}
               </>
             )}
           </button>
@@ -188,12 +190,12 @@ export function WhatIfPanel({ className }: Props) {
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Metric
-              label={t.results.yearlySavings}
+              label={wt.results.yearlySavings}
               value={`₺${result.yearly_savings_tl.toLocaleString(locale)}`}
               highlight
             />
             <Metric
-              label={t.results.upfront}
+              label={wt.results.upfront}
               value={
                 result.upfront_cost_tl > 0
                   ? `₺${result.upfront_cost_tl.toLocaleString(locale)}`
@@ -201,15 +203,17 @@ export function WhatIfPanel({ className }: Props) {
               }
             />
             <Metric
-              label={t.results.payback}
+              label={wt.results.payback}
               value={
                 result.payback_years !== null && result.payback_years > 0
-                  ? `${result.payback_years.toFixed(1)} yıl`
+                  ? `${result.payback_years.toFixed(1)} ${t(
+                      "common.year_unit",
+                    )}`
                   : "—"
               }
             />
             <Metric
-              label={t.results.fiveYearRoi}
+              label={wt.results.fiveYearRoi}
               value={`${result.five_year_roi_pct.toFixed(1)}%`}
             />
           </div>
@@ -217,16 +221,16 @@ export function WhatIfPanel({ className }: Props) {
           {result.monte_carlo && (
             <div className="grid grid-cols-3 gap-2 rounded-card border border-border/40 bg-elevated/30 p-3">
               <Metric
-                label={t.results.monteCarloP10}
+                label={wt.results.monteCarloP10}
                 value={`₺${result.monte_carlo.p10.toLocaleString(locale)}`}
               />
               <Metric
-                label={t.results.monteCarloP50}
+                label={wt.results.monteCarloP50}
                 value={`₺${result.monte_carlo.p50.toLocaleString(locale)}`}
                 highlight
               />
               <Metric
-                label={t.results.monteCarloP90}
+                label={wt.results.monteCarloP90}
                 value={`₺${result.monte_carlo.p90.toLocaleString(locale)}`}
               />
             </div>
@@ -234,7 +238,7 @@ export function WhatIfPanel({ className }: Props) {
 
           {result.co2_reduction_kg > 0 && (
             <p className="text-[11px] text-success">
-              🌿 {t.results.co2Reduction}:{" "}
+              🌿 {wt.results.co2Reduction}:{" "}
               <span className="font-mono font-semibold">
                 {result.co2_reduction_kg.toLocaleString(locale)} kg
               </span>
@@ -250,13 +254,13 @@ export function WhatIfPanel({ className }: Props) {
           )}
 
           <p className="text-[10px] text-tertiary">
-            {t.results.confidence}: {(result.confidence * 100).toFixed(0)}%
+            {wt.results.confidence}: {(result.confidence * 100).toFixed(0)}%
           </p>
         </div>
       )}
 
       {!result && !mutation.isError && !mutation.isPending && (
-        <p className="text-[11px] italic text-tertiary">{t.empty}</p>
+        <p className="text-[11px] italic text-tertiary">{wt.empty}</p>
       )}
     </div>
   );

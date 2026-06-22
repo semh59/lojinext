@@ -9,6 +9,7 @@ import {
 } from "../../api/investigations";
 import { useNotify } from "../../context/NotificationContext";
 import { useInvestigationsResources } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 interface InvestigationDetailDialogProps {
   investigationId: number | null;
@@ -33,6 +34,7 @@ export function InvestigationDetailDialog({
   investigationId,
   onClose,
 }: InvestigationDetailDialogProps) {
+  const { t } = useTranslation();
   const { investigationsText } = useInvestigationsResources();
   const queryClient = useQueryClient();
   const { notify } = useNotify();
@@ -64,7 +66,11 @@ export function InvestigationDetailDialog({
   const update = useMutation({
     mutationFn: () => investigationService.update(data!.id, draft),
     onSuccess: () => {
-      notify("success", "Güncellendi", investigationsText.successUpdate);
+      notify(
+        "success",
+        t("investigations.updated_title"),
+        investigationsText.successUpdate,
+      );
       queryClient.invalidateQueries({ queryKey: ["investigations"] });
       onClose();
     },
@@ -73,14 +79,18 @@ export function InvestigationDetailDialog({
         err?.response?.data?.error?.message ??
         err?.response?.data?.detail ??
         investigationsText.errorUpdate;
-      notify("error", "Hata", detail);
+      notify("error", t("investigations.error_title"), detail);
     },
   });
 
   const closeMutation = useMutation({
     mutationFn: () => investigationService.close(data!.id),
     onSuccess: () => {
-      notify("success", "Kapatıldı", investigationsText.successClose);
+      notify(
+        "success",
+        t("investigations.closed_title"),
+        investigationsText.successClose,
+      );
       queryClient.invalidateQueries({ queryKey: ["investigations"] });
       onClose();
     },
@@ -104,13 +114,17 @@ export function InvestigationDetailDialog({
     if (!safeHref(url)) {
       notify(
         "warning",
-        "Geçersiz URL",
-        "Yalnızca http(s) / mailto bağlantıları eklenebilir.",
+        t("investigations.invalid_url_title"),
+        t("investigations.invalid_url_hint"),
       );
       return;
     }
     if (evidenceList.length >= 10) {
-      notify("warning", "Sınır", "En fazla 10 URL eklenebilir.");
+      notify(
+        "warning",
+        t("investigations.limit_title"),
+        t("investigations.limit_hint"),
+      );
       return;
     }
     setDraft((d) => ({
@@ -142,7 +156,7 @@ export function InvestigationDetailDialog({
         <div className="flex items-center justify-between border-b border-border bg-elevated/40 p-4">
           <div>
             <h3 className="text-sm font-semibold text-primary">
-              Soruşturma #{investigationId}
+              {t("investigations.detail_title", { id: investigationId })}
             </h3>
             {inv && (
               <p className="text-[11px] text-secondary">
@@ -158,7 +172,7 @@ export function InvestigationDetailDialog({
           <button
             onClick={onClose}
             className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-            aria-label="Kapat"
+            aria-label={t("common.close")}
           >
             <X className="h-5 w-5" />
           </button>
@@ -168,7 +182,7 @@ export function InvestigationDetailDialog({
           {isLoading ? (
             <div className="flex items-center gap-2 py-6 text-secondary">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Yükleniyor…
+              {t("common.loading")}
             </div>
           ) : isError || !inv ? (
             <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
@@ -180,7 +194,7 @@ export function InvestigationDetailDialog({
               {isClosed && (
                 <div className="flex items-center gap-2 rounded-card border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning">
                   <AlertCircle className="h-3.5 w-3.5" />
-                  Bu soruşturma kapatıldı; değişiklik yapılamaz.
+                  {t("investigations.closed_warning")}
                 </div>
               )}
 
@@ -241,7 +255,7 @@ export function InvestigationDetailDialog({
                         : "border-border text-secondary hover:bg-elevated"
                     }`}
                   >
-                    — yok —
+                    {t("investigations.no_resolution")}
                   </button>
                   {RESOLUTION_OPTIONS.map((r) => (
                     <button
@@ -271,7 +285,7 @@ export function InvestigationDetailDialog({
                     setDraft((d) => ({ ...d, notes: e.target.value }))
                   }
                   disabled={isClosed}
-                  placeholder="Soruşturma notları..."
+                  placeholder={t("investigations.notes_placeholder")}
                   maxLength={4000}
                   className="input-base text-sm"
                 />
@@ -281,7 +295,7 @@ export function InvestigationDetailDialog({
                 <div className="space-y-1.5">
                   {evidenceList.length === 0 && (
                     <p className="text-[11px] text-tertiary">
-                      — henüz kanıt yok —
+                      {t("investigations.no_evidence")}
                     </p>
                   )}
                   {evidenceList.map((url, idx) => (
@@ -301,7 +315,7 @@ export function InvestigationDetailDialog({
                         <button
                           onClick={() => handleRemoveEvidence(idx)}
                           className="rounded p-1 text-secondary hover:bg-danger/10 hover:text-danger"
-                          aria-label="Sil"
+                          aria-label={t("common.delete")}
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>

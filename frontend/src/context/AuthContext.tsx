@@ -8,6 +8,7 @@ import {
 import { authApi, tokenStorage } from "../services/api/auth-service";
 import { useAiStore } from "../stores/use-ai-store";
 import { User } from "../types";
+import i18n from "../i18n";
 
 interface AuthContextType {
   user: User | null;
@@ -95,7 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       useAiStore.getState().clearHistory();
       setUser(mapUserData(userData as Record<string, unknown>));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Giriş yapılamadı";
+      const message =
+        err instanceof Error
+          ? err.message
+          : i18n.t("errors.login_error", "Login failed");
       setError(message);
       throw err;
     } finally {

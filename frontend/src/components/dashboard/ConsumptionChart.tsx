@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import {
   LineChart,
   Line,
@@ -17,18 +18,21 @@ interface Props {
 }
 
 export function ConsumptionChart({ data, isLoading }: Props) {
+  const { t } = useTranslation();
   const locale = useLocale();
   return (
     <Card padding="lg" className="flex flex-col gap-4">
       <div>
-        <h2 className="text-sm font-semibold text-primary">Tüketim Trendi</h2>
-        <p className="text-xs text-secondary">Aylık toplam yakıt tüketimi</p>
+        <h2 className="text-sm font-semibold text-primary">
+          {t("dashboard.consumption_trend")}
+        </h2>
+        <p className="text-xs text-secondary">{t("dashboard.monthly_fuel")}</p>
       </div>
       {isLoading ? (
         <div className="h-48 animate-pulse rounded-card bg-elevated/50" />
       ) : data.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-sm text-secondary">
-          Henüz veri yok
+          {t("dashboard.no_data_yet")}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={192}>
@@ -54,7 +58,7 @@ export function ConsumptionChart({ data, isLoading }: Props) {
                       maximumFractionDigits: 1,
                     })} L`
                   : "",
-                "Tüketim",
+                t("dashboard.consumption"),
               ]}
             />
             <Line

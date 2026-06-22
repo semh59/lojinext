@@ -111,6 +111,7 @@ export const tripFilterText = {
   deleteSuccess: "Filter deleted.",
   deleteError: "Filter could not be deleted.",
   resetSuccess: "Filters reset.",
+  telegramApprovalLabel: "Telegram Approval Status",
   tabs: {
     all: "All",
     planned: "Planned",

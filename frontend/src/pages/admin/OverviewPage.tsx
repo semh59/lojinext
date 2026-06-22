@@ -26,23 +26,23 @@ const statusColor = (status?: string) => {
   return "text-rose-500";
 };
 
-const statusLabel = (status?: string) => {
-  if (!status) return "—";
-  const map: Record<string, string> = {
-    healthy: "Sağlıklı",
-    unhealthy: "Sorunlu",
-    degraded: "Kısıtlı",
-    success: "Başarılı",
-    missing: "Eksik",
-    error: "Hata",
-  };
-  return map[status] ?? status;
-};
-
 export default function AdminOverviewPage() {
   const { adminOverviewText } = useAdminResources();
   const { t } = useTranslation();
   const locale = useLocale();
+
+  const statusLabel = (status?: string) => {
+    if (!status) return "—";
+    const map: Record<string, string> = {
+      healthy: t("admin.status_healthy", "Healthy"),
+      unhealthy: t("admin.status_unhealthy", "Faulty"),
+      degraded: t("admin.status_degraded", "Degraded"),
+      success: t("admin.status_success", "Success"),
+      missing: t("admin.status_missing", "Missing"),
+      error: t("admin.status_error", "Error"),
+    };
+    return map[status] ?? status;
+  };
   usePageTitle(t("admin.overview", "Overview"));
   const { data: dashboard } = useQuery({
     queryKey: ["admin-overview", "dashboard"],
@@ -176,7 +176,7 @@ export default function AdminOverviewPage() {
                   <Tooltip
                     formatter={(v: number | undefined) => [
                       v != null ? `${v.toFixed(1)} L` : "",
-                      "Tüketim",
+                      t("admin.consumption_tooltip", "Consumption"),
                     ]}
                     contentStyle={{
                       backgroundColor: "var(--bg-surface)",

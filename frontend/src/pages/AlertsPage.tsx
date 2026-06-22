@@ -42,18 +42,18 @@ import { cn } from "@/lib/utils";
 import { useLocale } from "../hooks/useLocale";
 import { useTranslation } from "react-i18next";
 
-const DAY_OPTIONS = [
-  { label: "7 Gün", value: 7 },
-  { label: "14 Gün", value: 14 },
-  { label: "30 Gün", value: 30 },
-  { label: "60 Gün", value: 60 },
-  { label: "90 Gün", value: 90 },
-];
-
 export default function AlertsPage() {
   const { t } = useTranslation();
   const locale = useLocale();
-  usePageTitle(t("alerts.title", "Anomalies"));
+  usePageTitle(t("alerts.title"));
+
+  const DAY_OPTIONS = [
+    { label: t("alerts.period_7"), value: 7 },
+    { label: t("alerts.period_14"), value: 14 },
+    { label: t("alerts.period_30"), value: 30 },
+    { label: t("alerts.period_60"), value: 60 },
+    { label: t("alerts.period_90"), value: 90 },
+  ];
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<AlertTab>("all");
   const [days, setDays] = useState(30);
@@ -187,7 +187,7 @@ export default function AlertsPage() {
 
   const kpis = [
     {
-      label: "Yakıt Açığı",
+      label: t("alerts.leakage_label"),
       value: leakage ? `${Math.floor(leakage.fuel_gap_liters)} L` : "—",
       icon: Droplets,
       color: "text-warning",
@@ -195,7 +195,7 @@ export default function AlertsPage() {
       border: "border-warning/20",
     },
     {
-      label: "Güzergah Sapması",
+      label: t("alerts.route_deviation_label"),
       value: leakage ? `${leakage.route_deviation_km.toFixed(0)} km` : "—",
       icon: AlertTriangle,
       color: "text-danger",
@@ -203,7 +203,7 @@ export default function AlertsPage() {
       border: "border-danger/20",
     },
     {
-      label: "Toplam Maliyet Kaçağı",
+      label: t("alerts.total_cost_label"),
       value:
         totalLeakageCost > 0
           ? totalLeakageCost.toLocaleString(locale, {
@@ -218,7 +218,7 @@ export default function AlertsPage() {
       border: "border-danger/20",
     },
     {
-      label: "Bakım Adayı",
+      label: t("alerts.maintenance_candidates_label"),
       value: String(maintenanceCount),
       icon: Wrench,
       color: "text-info",
@@ -232,10 +232,10 @@ export default function AlertsPage() {
       {/* Başlık + Zaman Filtresi */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold text-primary">Anomaliler</h1>
-          <p className="text-sm text-secondary">
-            Filo yakıt sapmaları, bakım ihtiyaçları ve operasyonel riskler
-          </p>
+          <h1 className="text-2xl font-bold text-primary">
+            {t("alerts.title")}
+          </h1>
+          <p className="text-sm text-secondary">{t("alerts.fleet_summary")}</p>
         </div>
         <div className="flex items-center gap-1 rounded-xl border border-border bg-surface p-1">
           {DAY_OPTIONS.map((opt) => (
@@ -298,7 +298,7 @@ export default function AlertsPage() {
           <div className="mb-4 flex items-center gap-2">
             <BarChart2 size={16} className="text-secondary" />
             <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">
-              Anomali Trendi — Son {days} Gün
+              {t("alerts.trend_title", { days })}
             </h2>
           </div>
           {recentLoading ? (
@@ -342,26 +342,26 @@ export default function AlertsPage() {
                 />
                 <Bar
                   dataKey="critical"
-                  name="Kritik"
+                  name={t("alerts.severity_critical")}
                   stackId="a"
                   fill="var(--danger)"
                   radius={[0, 0, 0, 0]}
                 />
                 <Bar
                   dataKey="high"
-                  name="Yüksek"
+                  name={t("alerts.severity_high")}
                   stackId="a"
                   fill="var(--warning)"
                 />
                 <Bar
                   dataKey="medium"
-                  name="Orta"
+                  name={t("alerts.severity_medium")}
                   stackId="a"
                   fill="var(--info)"
                 />
                 <Bar
                   dataKey="low"
-                  name="Düşük"
+                  name={t("alerts.severity_low")}
                   stackId="a"
                   fill="var(--border)"
                   radius={[3, 3, 0, 0]}
@@ -371,10 +371,10 @@ export default function AlertsPage() {
           )}
           <div className="mt-3 flex items-center gap-4">
             {[
-              { label: "Kritik", color: "bg-danger" },
-              { label: "Yüksek", color: "bg-warning" },
-              { label: "Orta", color: "bg-info" },
-              { label: "Düşük", color: "bg-border" },
+              { label: t("alerts.chart_critical"), color: "bg-danger" },
+              { label: t("alerts.chart_high"), color: "bg-warning" },
+              { label: t("alerts.chart_medium"), color: "bg-info" },
+              { label: t("alerts.chart_low"), color: "bg-border" },
             ].map((l) => (
               <div key={l.label} className="flex items-center gap-1.5">
                 <div className={cn("h-2 w-2 rounded-full", l.color)} />
@@ -413,7 +413,7 @@ export default function AlertsPage() {
               <div className="mb-4 flex items-center gap-2">
                 <Droplets size={14} className="text-warning" />
                 <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">
-                  Yakıt Kaçağı Özeti
+                  {t("alerts.leakage_summary")}
                 </h2>
               </div>
               {leakage && leakage.fuel_gap_liters > 0 ? (
@@ -425,10 +425,10 @@ export default function AlertsPage() {
                   </div>
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-success">
-                      Temiz
+                      {t("alerts.clean")}
                     </p>
                     <p className="mt-0.5 text-sm text-secondary">
-                      Son {days} günde anormal yakıt tüketimi tespit edilmedi
+                      {t("alerts.leakage_none", { days })}
                     </p>
                   </div>
                 </div>
@@ -448,7 +448,7 @@ export default function AlertsPage() {
                   <div className="flex items-center gap-2">
                     <Wrench size={14} className="text-info" />
                     <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">
-                      Bakım Adayları
+                      {t("alerts.maintenance_title")}
                     </h2>
                   </div>
                   <div className="flex items-center gap-2">
@@ -458,12 +458,12 @@ export default function AlertsPage() {
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-danger opacity-75" />
                           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-danger" />
                         </span>
-                        {maintenance.urgent_count} Acil
+                        {maintenance.urgent_count} {t("alerts.acil")}
                       </span>
                     )}
                     {maintenance.warning_count > 0 && (
                       <span className="rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-warning">
-                        {maintenance.warning_count} Uyarı
+                        {maintenance.warning_count} {t("alerts.uyari")}
                       </span>
                     )}
                   </div>
@@ -475,10 +475,10 @@ export default function AlertsPage() {
                     </div>
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wider text-success">
-                        Temiz
+                        {t("alerts.clean")}
                       </p>
                       <p className="mt-0.5 text-sm text-secondary">
-                        Bakım gerektiren araç bulunmuyor
+                        {t("alerts.maintenance_none")}
                       </p>
                     </div>
                   </div>
@@ -500,7 +500,7 @@ export default function AlertsPage() {
               {/* Faz 8 — anomali kümeleri (DBSCAN pattern'leri) */}
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-secondary">
-                  Anomali Kümeleri
+                  {t("alerts.clusters_title")}
                 </h3>
                 <AnomalyClusters />
               </div>
@@ -519,7 +519,7 @@ export default function AlertsPage() {
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-secondary" />
                   <h2 className="text-xs font-bold uppercase tracking-widest text-secondary">
-                    Son Anomali Kayıtları
+                    {t("alerts.recent_title")}
                   </h2>
                 </div>
 
@@ -527,10 +527,16 @@ export default function AlertsPage() {
                 <div className="flex items-center gap-1 rounded-card border border-border bg-elevated p-0.5">
                   {(
                     [
-                      { id: undefined, label: "Tümü" },
-                      { id: "open" as const, label: "Açık" },
-                      { id: "acknowledged" as const, label: "Onaylı" },
-                      { id: "resolved" as const, label: "Çözüldü" },
+                      { id: undefined, label: t("alerts.status_all") },
+                      { id: "open" as const, label: t("alerts.status_open") },
+                      {
+                        id: "acknowledged" as const,
+                        label: t("alerts.status_acknowledged"),
+                      },
+                      {
+                        id: "resolved" as const,
+                        label: t("alerts.status_resolved"),
+                      },
                     ] as const
                   ).map((opt) => (
                     <button
@@ -557,22 +563,24 @@ export default function AlertsPage() {
                     )
                   }
                   className="rounded-card border border-border bg-elevated px-2 py-1 text-[11px] font-semibold text-primary outline-none focus:border-accent"
-                  aria-label="Anomali tipi"
+                  aria-label={t("common.filter")}
                 >
-                  <option value="">Tüm Tipler</option>
-                  <option value="tuketim">Tüketim</option>
-                  <option value="maliyet">Maliyet</option>
-                  <option value="sefer">Sefer</option>
+                  <option value="">{t("alerts.type_all")}</option>
+                  <option value="tuketim">
+                    {t("alerts.type_consumption")}
+                  </option>
+                  <option value="maliyet">{t("alerts.type_cost")}</option>
+                  <option value="sefer">{t("alerts.type_trip")}</option>
                 </select>
 
                 <span className="ml-auto text-[10px] font-bold text-secondary">
-                  {recentData.total} kayıt
+                  {t("alerts.record_count", { n: recentData.total })}
                 </span>
               </div>
 
               {recentData.anomalies.length === 0 && (
                 <div className="rounded-card border border-success/20 bg-success/5 px-4 py-3 text-sm text-secondary">
-                  Bu filtreyle eşleşen anomali yok.
+                  {t("alerts.no_match")}
                 </div>
               )}
 
@@ -642,12 +650,14 @@ export default function AlertsPage() {
                     <div className="mt-3 flex items-center justify-end gap-2 border-t border-border/40 pt-2">
                       {anomaly.resolved_at ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-success">
-                          <CheckCheck className="h-3 w-3" /> Çözüldü
+                          <CheckCheck className="h-3 w-3" />{" "}
+                          {t("alerts.resolved_badge_label")}
                         </span>
                       ) : anomaly.acknowledged_at ? (
                         <>
                           <span className="inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-info">
-                            <Check className="h-3 w-3" /> Onaylı
+                            <Check className="h-3 w-3" />{" "}
+                            {t("alerts.acknowledged_badge")}
                           </span>
                           <RequirePermission permission="anomali:yonet">
                             <button
@@ -660,7 +670,7 @@ export default function AlertsPage() {
                               }
                               className="rounded-card border border-success/30 bg-success/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-success transition-colors hover:bg-success/10"
                             >
-                              Çöz
+                              {t("alerts.resolve_btn")}
                             </button>
                           </RequirePermission>
                         </>
@@ -683,7 +693,7 @@ export default function AlertsPage() {
                             ) : (
                               <Check className="h-3 w-3" />
                             )}
-                            Onayla
+                            {t("alerts.acknowledge_btn")}
                           </button>
                           <button
                             type="button"
@@ -695,7 +705,8 @@ export default function AlertsPage() {
                             }
                             className="inline-flex items-center gap-1 rounded-card border border-success/30 bg-success/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-success transition-colors hover:bg-success/10"
                           >
-                            <CheckCheck className="h-3 w-3" /> Çöz
+                            <CheckCheck className="h-3 w-3" />{" "}
+                            {t("alerts.resolve_btn")}
                           </button>
                         </RequirePermission>
                       )}
@@ -704,7 +715,7 @@ export default function AlertsPage() {
                     {anomaly.resolution_notes && (
                       <p className="mt-2 rounded-card border border-success/20 bg-success/5 px-3 py-2 text-[11px] text-secondary">
                         <span className="font-semibold text-success">
-                          Çözüm:
+                          {t("alerts.resolution_label")}
                         </span>{" "}
                         {anomaly.resolution_notes}
                       </p>
@@ -722,7 +733,7 @@ export default function AlertsPage() {
           <div className="relative w-full max-w-md overflow-hidden rounded-modal border border-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-border bg-elevated/40 p-4">
               <h3 className="text-sm font-semibold text-primary">
-                Anomaliyi Çöz
+                {t("alerts.resolve_title")}
                 {resolveTarget.plaka && (
                   <span className="ml-2 font-mono text-xs text-secondary">
                     — {resolveTarget.plaka}
@@ -735,21 +746,21 @@ export default function AlertsPage() {
                   setResolveNotes("");
                 }}
                 className="rounded-full p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-                aria-label="Kapat"
+                aria-label={t("common.close")}
               >
                 <XIcon className="h-5 w-5" />
               </button>
             </div>
             <div className="space-y-3 p-4">
               <label className="block text-[11px] font-bold uppercase tracking-wider text-secondary">
-                Çözüm Notu (opsiyonel)
+                {t("alerts.resolve_notes_label")}
               </label>
               <textarea
                 value={resolveNotes}
                 onChange={(e) => setResolveNotes(e.target.value)}
                 rows={4}
                 maxLength={2000}
-                placeholder="Ne yapıldı? Sahte alarm mı, gerçek bulgu mu?"
+                placeholder={t("alerts.resolve_placeholder")}
                 className="w-full rounded-card border border-border bg-elevated px-3 py-2 text-sm text-primary outline-none focus:border-accent"
               />
               <div className="flex justify-end gap-2 pt-2">
@@ -760,7 +771,7 @@ export default function AlertsPage() {
                   }}
                   className="rounded-card px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-elevated hover:text-primary"
                 >
-                  İptal
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={() =>
@@ -775,7 +786,7 @@ export default function AlertsPage() {
                   {resolveMutation.isPending && (
                     <Loader2 className="h-3 w-3 animate-spin" />
                   )}
-                  Çöz
+                  {t("alerts.resolve_submit")}
                 </button>
               </div>
             </div>
@@ -787,6 +798,7 @@ export default function AlertsPage() {
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
+  const { t } = useTranslation();
   const styles: Record<string, string> = {
     critical: "border-danger/30 bg-danger/10 text-danger",
     high: "border-warning/30 bg-warning/10 text-warning",
@@ -794,10 +806,10 @@ function SeverityBadge({ severity }: { severity: string }) {
     low: "border-border bg-elevated text-secondary",
   };
   const labels: Record<string, string> = {
-    critical: "Kritik",
-    high: "Yüksek",
-    medium: "Orta",
-    low: "Düşük",
+    critical: t("alerts.severity_critical"),
+    high: t("alerts.severity_high"),
+    medium: t("alerts.severity_medium"),
+    low: t("alerts.severity_low"),
   };
   return (
     <span

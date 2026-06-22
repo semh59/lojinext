@@ -67,6 +67,7 @@ const severityVariant = (
 };
 
 function HataAnaliziTab() {
+  const { t } = useTranslation();
   const { notify } = useNotify();
   const locale = useLocale();
   const qc = useQueryClient();
@@ -104,9 +105,10 @@ function HataAnaliziTab() {
     mutationFn: (eventId: number) => errorService.resolveEvent(eventId),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["errorEvents"] });
-      notify("success", "Hata çözüldü olarak işaretlendi");
+      notify("success", t("monitoring.error_resolved_notify"));
     },
-    onError: (err: Error) => notify("error", err.message || "İşlem başarısız"),
+    onError: (err: Error) =>
+      notify("error", err.message || t("monitoring.op_failed")),
   });
 
   const [sseUrl, setSseUrl] = useState<string>("");
@@ -179,17 +181,20 @@ function HataAnaliziTab() {
       <div className="flex items-center gap-2">
         {sseStatus === "open" ? (
           <span className="flex items-center gap-1.5 text-xs font-medium text-success">
-            <Wifi className="h-3.5 w-3.5" /> Canlı akış bağlı
+            <Wifi className="h-3.5 w-3.5" />{" "}
+            {t("monitoring.live_stream_active")}
           </span>
         ) : (
           <span className="flex items-center gap-1.5 text-xs font-medium text-secondary">
             <WifiOff className="h-3.5 w-3.5" />
-            {sseStatus === "connecting" ? "Bağlanıyor…" : "Bağlantı kesildi"}
+            {sseStatus === "connecting"
+              ? t("monitoring.live_stream_connecting")
+              : t("monitoring.live_stream_disconnected")}
           </span>
         )}
         {liveEvents.length > 0 && (
           <Badge variant="danger" className="text-xs">
-            {liveEvents.length} yeni hata
+            {t("monitoring.live_errors_count", { n: liveEvents.length })}
           </Badge>
         )}
         {liveEvents.length > 0 && (
@@ -197,7 +202,7 @@ function HataAnaliziTab() {
             className="text-xs text-accent underline"
             onClick={() => setLiveEvents([])}
           >
-            temizle
+            {t("monitoring.clear")}
           </button>
         )}
         {(sseStatus === "error" || sseStatus === "closed") && sseUrl && (
@@ -213,7 +218,7 @@ function HataAnaliziTab() {
                 });
             }}
           >
-            yeniden bağlan
+            {t("monitoring.reconnect_stream")}
           </button>
         )}
       </div>
@@ -224,7 +229,7 @@ function HataAnaliziTab() {
           <div className="flex items-center gap-2 border-b border-danger/20 p-3">
             <AlertTriangle className="h-4 w-4 text-danger" />
             <span className="text-sm font-semibold text-primary">
-              Canlı hatalar
+              {t("monitoring.live_errors_title")}
             </span>
           </div>
           <div className="divide-y divide-border">
@@ -255,15 +260,15 @@ function HataAnaliziTab() {
       <Card padding="md" className="flex flex-col gap-4">
         <div>
           <h3 className="text-sm font-semibold text-primary">
-            Saatlik Hata Dağılımı
+            {t("monitoring.hourly_errors")}
           </h3>
-          <p className="text-xs text-secondary">Son 12 saat</p>
+          <p className="text-xs text-secondary">{t("monitoring.last_12h")}</p>
         </div>
         {statsLoading ? (
           <div className="h-48 animate-pulse rounded-xl bg-elevated/50" />
         ) : chartData.length === 0 ? (
           <div className="flex h-48 items-center justify-center text-sm text-secondary">
-            Henüz veri yok
+            {t("monitoring.no_data_yet")}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={192}>
@@ -304,19 +309,19 @@ function HataAnaliziTab() {
                 dataKey="critical"
                 stackId="a"
                 fill="var(--danger)"
-                name="Kritik"
+                name={t("monitoring.bar_critical")}
               />
               <Bar
                 dataKey="error"
                 stackId="a"
                 fill="var(--warning)"
-                name="Hata"
+                name={t("monitoring.bar_error")}
               />
               <Bar
                 dataKey="warning"
                 stackId="a"
                 fill="var(--info)"
-                name="Uyarı"
+                name={t("monitoring.bar_warning")}
                 radius={[3, 3, 0, 0]}
               />
             </BarChart>
@@ -340,7 +345,7 @@ function HataAnaliziTab() {
                   : "bg-elevated text-secondary hover:bg-border"
               }`}
             >
-              {l || "Tümü"}
+              {l || t("common.all")}
             </button>
           ))}
         </div>
@@ -358,7 +363,7 @@ function HataAnaliziTab() {
                   : "bg-elevated text-secondary hover:bg-border"
               }`}
             >
-              {s || "Tüm öncelik"}
+              {s || t("monitoring.all_severities")}
             </button>
           ))}
         </div>
@@ -369,10 +374,12 @@ function HataAnaliziTab() {
         <div className="flex items-center justify-between border-b border-border bg-elevated/50 p-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-secondary" />
-            <h2 className="text-base font-bold text-primary">Hata Olayları</h2>
+            <h2 className="text-base font-bold text-primary">
+              {t("monitoring.error_events")}
+            </h2>
             {events && (
               <span className="text-xs text-secondary">
-                ({events.total} toplam)
+                ({events.total} {t("common.total").toLowerCase()})
               </span>
             )}
           </div>
@@ -383,19 +390,21 @@ function HataAnaliziTab() {
           </div>
         ) : eventsError ? (
           <div className="flex h-32 items-center justify-center text-sm text-danger">
-            Hata listesi yüklenemedi. Lütfen sayfayı yenileyin.
+            {t("monitoring.error_load_failed")}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Öncelik</TableHead>
-                <TableHead>Katman</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Mesaj</TableHead>
-                <TableHead>Sayı</TableHead>
-                <TableHead>Son görülme</TableHead>
-                <TableHead className="text-right">İşlem</TableHead>
+                <TableHead>{t("monitoring.col_severity")}</TableHead>
+                <TableHead>{t("monitoring.col_layer")}</TableHead>
+                <TableHead>{t("monitoring.col_category")}</TableHead>
+                <TableHead>{t("monitoring.col_message")}</TableHead>
+                <TableHead>{t("monitoring.col_count")}</TableHead>
+                <TableHead>{t("monitoring.col_last_seen")}</TableHead>
+                <TableHead className="text-right">
+                  {t("common.actions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -444,7 +453,7 @@ function HataAnaliziTab() {
                         disabled={resolveMutation.isPending}
                       >
                         <CheckCircle className="mr-1 h-3 w-3" />
-                        Çözüldü
+                        {t("monitoring.resolved_action")}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -455,7 +464,7 @@ function HataAnaliziTab() {
                     colSpan={7}
                     className="h-32 text-center text-secondary"
                   >
-                    Bu filtre için hata bulunamadı
+                    {t("monitoring.no_events")}
                   </TableCell>
                 </TableRow>
               )}
@@ -467,7 +476,10 @@ function HataAnaliziTab() {
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-border p-3">
             <span className="text-xs text-secondary">
-              Sayfa {page} / {totalPages}
+              {t("monitoring.page_of", "Page {{page}} / {{total}}", {
+                page,
+                total: totalPages,
+              })}
             </span>
             <div className="flex gap-2">
               <Button
@@ -477,7 +489,7 @@ function HataAnaliziTab() {
                 disabled={page <= 1}
                 onClick={() => setPage((p) => p - 1)}
               >
-                Önceki
+                {t("monitoring.prev", "Previous")}
               </Button>
               <Button
                 variant="outline"
@@ -486,7 +498,7 @@ function HataAnaliziTab() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >
-                Sonraki
+                {t("monitoring.next", "Next")}
               </Button>
             </div>
           </div>
@@ -496,22 +508,22 @@ function HataAnaliziTab() {
   );
 }
 
-const statusLabel = (status?: string) => {
-  if (!status) return "—";
-  const map: Record<string, string> = {
-    healthy: "Sağlıklı",
-    unhealthy: "Sorunlu",
-    degraded: "Kısıtlı",
-    success: "Başarılı",
-    missing: "Eksik",
-    error: "Hata",
-  };
-  return map[status] ?? status;
-};
-
 export default function SystemHealthPage() {
   const { t } = useTranslation();
   const { adminHealthText } = useAdminResources();
+
+  const statusLabel = (status?: string) => {
+    if (!status) return "—";
+    const map: Record<string, string> = {
+      healthy: t("monitoring.status_healthy", "Healthy"),
+      unhealthy: t("monitoring.status_unhealthy", "Faulty"),
+      degraded: t("monitoring.status_degraded", "Degraded"),
+      success: t("monitoring.status_success", "Success"),
+      missing: t("monitoring.status_missing", "Missing"),
+      error: t("monitoring.status_error", "Error"),
+    };
+    return map[status] ?? status;
+  };
   usePageTitle(t("admin.system_health", "System Health"));
   const qc = useQueryClient();
   const { notify } = useNotify();
@@ -599,7 +611,7 @@ export default function SystemHealthPage() {
               : "text-secondary hover:text-primary"
           }`}
         >
-          Sistem Durumu
+          {t("monitoring.tab_health", "System Status")}
         </button>
         <button
           onClick={() => setActiveTab("errors")}
@@ -609,7 +621,7 @@ export default function SystemHealthPage() {
               : "text-secondary hover:text-primary"
           }`}
         >
-          Hata Analizi
+          {t("monitoring.tab_errors", "Error Analysis")}
         </button>
       </div>
 

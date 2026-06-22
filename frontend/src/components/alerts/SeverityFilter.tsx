@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 export type AlertTab = "all" | "leakage" | "maintenance" | "investigations";
@@ -10,13 +11,6 @@ interface Props {
   investigationsCount?: number;
 }
 
-const tabs: { id: AlertTab; label: string }[] = [
-  { id: "all", label: "Tümü" },
-  { id: "leakage", label: "Yakıt Kaçağı" },
-  { id: "maintenance", label: "Bakım Adayı" },
-  { id: "investigations", label: "Soruşturmalar" },
-];
-
 export function SeverityFilter({
   active,
   onChange,
@@ -24,6 +18,15 @@ export function SeverityFilter({
   maintenanceCount,
   investigationsCount = 0,
 }: Props) {
+  const { t } = useTranslation();
+
+  const tabs: { id: AlertTab; label: string }[] = [
+    { id: "all", label: t("alerts.filter_all") },
+    { id: "leakage", label: t("alerts.filter_leakage") },
+    { id: "maintenance", label: t("alerts.filter_maintenance") },
+    { id: "investigations", label: t("alerts.filter_investigations") },
+  ];
+
   const counts: Record<AlertTab, number | string> = {
     all: (leakageHasAlert ? 1 : 0) + maintenanceCount + investigationsCount,
     leakage: leakageHasAlert ? 1 : 0,

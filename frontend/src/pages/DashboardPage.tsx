@@ -1,5 +1,6 @@
 ﻿import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Activity,
   Truck,
@@ -18,6 +19,7 @@ import { predictionService } from "@/api/predictions";
 import { tripService } from "@/api/trips";
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const { data: stats } = useQuery({
@@ -58,7 +60,7 @@ export default function DashboardPage() {
 
   const kpiItems = [
     {
-      label: "Toplam Sefer",
+      label: t("trips.title"),
       value: tripStats?.total_count ?? "—",
       icon: Activity,
       color: "text-info",
@@ -66,36 +68,35 @@ export default function DashboardPage() {
       trend: stats?.trends?.sefer,
     },
     {
-      label: "Aktif Araç",
+      label: t("dashboard.active_vehicles"),
       value: stats?.aktif_arac ?? "—",
       icon: Truck,
       color: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
-      label: "Bugün",
+      label: t("common.today"),
       value: stats?.bugun_sefer ?? "—",
       icon: CalendarDays,
       color: "text-info",
       bgColor: "bg-info/10",
-      // Günlük metrik için aylık trend yanıltıcı — bilinçli olarak eklenmedi.
     },
     {
-      label: "Bakım Adayı",
+      label: t("dashboard.maintenance_candidates"),
       value: totalAlerts,
       icon: AlertTriangle,
       color: "text-warning",
       bgColor: "bg-warning/10",
     },
     {
-      label: "Yoldaki Sefer",
+      label: t("dashboard.in_progress"),
       value: tripStats?.in_progress_count ?? "—",
       icon: Route,
       color: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
-      label: "ML Doğruluk",
+      label: t("dashboard.ml_accuracy"),
       value: comparison
         ? `${comparison.accuracy_distribution.good_pct.toFixed(0)}%`
         : "—",
@@ -108,8 +109,10 @@ export default function DashboardPage() {
   return (
     <div data-testid="dashboard-page" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary">Filo Paneli</h1>
-        <p className="text-sm text-secondary">Filo genel durumu ve özeti</p>
+        <h1 className="text-2xl font-bold text-primary">
+          {t("dashboard.title")}
+        </h1>
+        <p className="text-sm text-secondary">{t("dashboard.subtitle")}</p>
       </div>
 
       <KpiRow items={kpiItems} />
@@ -120,7 +123,7 @@ export default function DashboardPage() {
           type="button"
           onClick={() => navigate("/alerts?days=30")}
           className="text-left rounded-modal focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-          aria-label="Tüm uyarıları görüntüle"
+          aria-label={t("dashboard.all_alerts_aria")}
         >
           <AnomalyWidget data={insights} isLoading={insightsLoading} />
         </button>

@@ -1,6 +1,7 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Target, TrendingUp, Activity, Gauge } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/Table";
 import { adminFuelAccuracyApi, type FuelAccuracyStats } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { useTranslation } from "react-i18next";
 
 const PERIODS = [7, 30, 90] as const;
 
@@ -66,10 +66,13 @@ export default function DogrulukPage() {
             <Target className="text-accent" size={24} />
             <div>
               <h1 className="text-xl font-bold text-primary">
-                Yakıt Tahmin Doğruluğu
+                {t("admin.accuracy_title", "Fuel Forecast Accuracy")}
               </h1>
               <p className="text-sm text-secondary">
-                MAPE / RMSE / sapma — tamamlanmış seferler (tahmin vs gerçek)
+                {t(
+                  "admin.accuracy_subtitle",
+                  "MAPE / RMSE / bias — completed trips (forecast vs actual)",
+                )}
               </p>
             </div>
           </div>
@@ -84,7 +87,7 @@ export default function DogrulukPage() {
                     : "text-secondary hover:text-primary"
                 }`}
               >
-                {p} gün
+                {t("admin.accuracy_days", "{{n}} days", { n: p })}
               </button>
             ))}
           </div>
@@ -96,7 +99,10 @@ export default function DogrulukPage() {
           </div>
         ) : !data || data.sample_size === 0 ? (
           <Card className="p-10 text-center text-secondary">
-            Seçili dönemde tahmin/gerçek karşılaştırması için yeterli veri yok.
+            {t(
+              "admin.accuracy_no_data",
+              "Not enough data for forecast/actual comparison in the selected period.",
+            )}
           </Card>
         ) : (
           <>
@@ -105,7 +111,10 @@ export default function DogrulukPage() {
                 icon={Target}
                 label="MAPE"
                 value={fmt(data.mape_pct, "%")}
-                hint="Ort. mutlak yüzde hata (düşük = iyi)"
+                hint={t(
+                  "admin.accuracy_mape_hint",
+                  "Avg. absolute percentage error (lower = better)",
+                )}
               />
               <MetricCard
                 icon={Gauge}
@@ -114,27 +123,29 @@ export default function DogrulukPage() {
               />
               <MetricCard
                 icon={TrendingUp}
-                label="Sapma (bias)"
+                label={t("admin.accuracy_bias_label", "Bias")}
                 value={fmt(data.bias_pct, "%")}
-                hint="Tahmin − gerçek"
+                hint={t("admin.accuracy_bias_hint", "Prediction − Actual")}
               />
               <MetricCard
                 icon={Activity}
-                label="Kapsam"
+                label={t("admin.accuracy_coverage_label", "Coverage")}
                 value={fmt(data.coverage_pct, "%")}
-                hint={`${data.sample_size} sefer örneklemi`}
+                hint={t("admin.accuracy_coverage_hint", "{{n}} trip sample", {
+                  n: data.sample_size,
+                })}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <MetricCard
                 icon={Gauge}
-                label="Ortalama Tahmin"
+                label={t("admin.accuracy_mean_predicted", "Average Forecast")}
                 value={fmt(data.mean_predicted, " L/100km")}
               />
               <MetricCard
                 icon={Gauge}
-                label="Ortalama Gerçek"
+                label={t("admin.accuracy_actual_avg", "Average Actual")}
                 value={fmt(data.mean_actual, " L/100km")}
               />
             </div>
@@ -142,14 +153,18 @@ export default function DogrulukPage() {
             <Card className="p-0 overflow-hidden">
               <div className="border-b border-border bg-elevated/50 p-4">
                 <h2 className="text-base font-bold text-primary">
-                  Araç Bazında Doğruluk
+                  {t("admin.accuracy_vehicle_section", "Vehicle Breakdown")}
                 </h2>
               </div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Araç</TableHead>
-                    <TableHead>Örneklem</TableHead>
+                    <TableHead>
+                      {t("admin.accuracy_col_vehicle", "Vehicle")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.accuracy_col_sample", "Sample")}
+                    </TableHead>
                     <TableHead>MAPE</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -160,7 +175,10 @@ export default function DogrulukPage() {
                         colSpan={3}
                         className="text-center text-secondary"
                       >
-                        Araç kırılımı yok
+                        {t(
+                          "admin.accuracy_no_breakdown",
+                          "No vehicle breakdown",
+                        )}
                       </TableCell>
                     </TableRow>
                   ) : (

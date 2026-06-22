@@ -60,14 +60,16 @@ export default function RollerPage() {
         : adminRolesApi.create(body);
     },
     onSuccess: () => {
-      toast.success(mode === "edit" ? "Rol güncellendi" : "Rol oluşturuldu");
+      toast.success(
+        mode === "edit" ? t("admin.role_updated") : t("admin.role_created"),
+      );
       qc.invalidateQueries({ queryKey: ["adminRoles"] });
       setModalOpen(false);
     },
     onError: (err: unknown) => {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "İşlem başarısız";
+          ?.detail ?? t("admin.operation_failed");
       setFormError(detail);
     },
   });
@@ -75,14 +77,14 @@ export default function RollerPage() {
   const deleteMutation = useMutation({
     mutationFn: (roleId: number) => adminRolesApi.remove(roleId),
     onSuccess: () => {
-      toast.success("Rol silindi");
+      toast.success(t("admin.role_deleted"));
       qc.invalidateQueries({ queryKey: ["adminRoles"] });
       setDeleteTarget(null);
     },
     onError: (err: unknown) => {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Rol silinemedi";
+          ?.detail ?? t("admin.role_delete_failed");
       toast.error(detail);
       setDeleteTarget(null);
     },
@@ -112,11 +114,11 @@ export default function RollerPage() {
   const handleSubmit = () => {
     setFormError(null);
     if (ad.trim().length < 2) {
-      setFormError("Rol adı en az 2 karakter olmalı");
+      setFormError(t("admin.role_name_min"));
       return;
     }
     if (!Object.values(perms).some(Boolean)) {
-      setFormError("En az bir yetki seçin");
+      setFormError(t("admin.role_permission_required"));
       return;
     }
     saveMutation.mutate();
@@ -129,15 +131,17 @@ export default function RollerPage() {
           <div className="flex items-center gap-3">
             <Shield className="text-accent" size={24} />
             <div>
-              <h1 className="text-xl font-bold text-primary">Roller</h1>
+              <h1 className="text-xl font-bold text-primary">
+                {t("admin.roles")}
+              </h1>
               <p className="text-sm text-secondary">
-                Sistem rolleri ve yetkileri
+                {t("admin.roles_subtitle")}
               </p>
             </div>
           </div>
           <RequirePermission permission="rol_yaz">
             <Button onClick={openCreate}>
-              <ShieldPlus size={16} className="mr-2" /> Yeni Rol
+              <ShieldPlus size={16} className="mr-2" /> {t("admin.role_new")}
             </Button>
           </RequirePermission>
         </div>
@@ -146,23 +150,25 @@ export default function RollerPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Rol</TableHead>
-                <TableHead>Yetki Sayısı</TableHead>
-                <TableHead>Yetkiler</TableHead>
-                <TableHead className="text-right">İşlem</TableHead>
+                <TableHead>{t("admin.role_col_name")}</TableHead>
+                <TableHead>{t("admin.role_col_count")}</TableHead>
+                <TableHead>{t("admin.role_col_permissions")}</TableHead>
+                <TableHead className="text-right">
+                  {t("common.actions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-secondary">
-                    Yükleniyor…
+                    {t("common.loading")}
                   </TableCell>
                 </TableRow>
               ) : roles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-secondary">
-                    Henüz rol yok
+                    {t("admin.role_empty")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -177,12 +183,14 @@ export default function RollerPage() {
                         {role.ad}
                         {isProtected && (
                           <Badge variant="info" className="ml-2">
-                            sistem
+                            {t("admin.role_system")}
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        {keys.includes("*") ? "Tümü (*)" : keys.length}
+                        {keys.includes("*")
+                          ? t("admin.role_all_perms")
+                          : keys.length}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -205,14 +213,14 @@ export default function RollerPage() {
                               <button
                                 onClick={() => openEdit(role)}
                                 className="p-2 rounded-card text-secondary hover:bg-elevated hover:text-accent transition-colors"
-                                title="Düzenle"
+                                title={t("common.edit")}
                               >
                                 <Pencil size={15} />
                               </button>
                               <button
                                 onClick={() => setDeleteTarget(role)}
                                 className="p-2 rounded-card text-secondary hover:bg-danger/10 hover:text-danger transition-colors"
-                                title="Sil"
+                                title={t("common.delete")}
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -232,17 +240,21 @@ export default function RollerPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
-        title={mode === "edit" ? "Rolü Düzenle" : "Yeni Rol Oluştur"}
+        title={
+          mode === "edit"
+            ? t("admin.role_edit_title")
+            : t("admin.role_create_title")
+        }
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-secondary mb-1">
-              Rol Adı
+              {t("admin.role_name_label")}
             </label>
             <input
               value={ad}
               onChange={(e) => setAd(e.target.value)}
-              placeholder="ör. operasyon_yonetici"
+              placeholder={t("admin.role_name_placeholder")}
               className="w-full bg-elevated border border-border rounded-card px-3 py-2 text-sm text-primary focus:outline-none focus:border-accent"
             />
           </div>
@@ -286,14 +298,14 @@ export default function RollerPage() {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="ghost" onClick={() => setModalOpen(false)}>
-              İptal
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleSubmit} disabled={saveMutation.isPending}>
               {saveMutation.isPending
-                ? "Kaydediliyor…"
+                ? t("common.saving")
                 : mode === "edit"
-                  ? "Güncelle"
-                  : "Oluştur"}
+                  ? t("common.update")
+                  : t("common.create")}
             </Button>
           </div>
         </div>
@@ -302,17 +314,15 @@ export default function RollerPage() {
       <Modal
         isOpen={deleteTarget != null}
         onClose={() => setDeleteTarget(null)}
-        title="Rolü Sil"
+        title={t("admin.role_delete_title")}
       >
         <div className="space-y-4">
           <p className="text-sm text-secondary">
-            <strong className="text-primary">{deleteTarget?.ad}</strong> rolünü
-            silmek istediğinize emin misiniz? Bu role atanmış kullanıcı varsa
-            silme reddedilir.
+            {t("admin.role_delete_body", { name: deleteTarget?.ad ?? "" })}
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-              İptal
+              {t("common.cancel")}
             </Button>
             <Button
               variant="danger"
@@ -321,7 +331,9 @@ export default function RollerPage() {
               }
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Siliniyor…" : "Sil"}
+              {deleteMutation.isPending
+                ? t("common.deleting")
+                : t("common.delete")}
             </Button>
           </div>
         </div>

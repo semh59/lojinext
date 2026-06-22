@@ -27,6 +27,7 @@ import { cn } from "../../lib/utils";
 import { DataExportImport } from "../shared/DataExportImport";
 import { Button } from "../ui/Button";
 import { useTripsResources } from "../../resources/useResources";
+import { useLocale } from "../../hooks/useLocale";
 
 interface TripFiltersProps {
   onExport: () => Promise<void>;
@@ -42,6 +43,7 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
   dataUpdatedAt,
 }) => {
   const { tripFilterText, tripModuleText } = useTripsResources();
+  const locale = useLocale();
   const STATUS_TABS: Array<{ label: string; value: TripStatus | "" }> = [
     { label: tripFilterText.tabs.all, value: "" },
     { label: tripFilterText.tabs.planned, value: TRIP_STATUS_PLANLANDI },
@@ -259,25 +261,28 @@ export const TripFilters: React.FC<TripFiltersProps> = ({
 
                 <div className="space-y-3">
                   <label className="text-xs font-black uppercase tracking-[0.2em] text-tertiary">
-                    Telegram Onay Durumu
+                    {tripFilterText.telegramApprovalLabel}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {(
                       [
-                        { label: "Tümü", value: "" },
+                        { label: tripFilterText.tabs.all, value: "" },
                         {
-                          label: getOnayDurumMeta("beklemede").label,
+                          label: getOnayDurumMeta("beklemede", locale).label,
                           value: "beklemede",
                         },
                         {
-                          label: getOnayDurumMeta("onaylandi").label,
+                          label: getOnayDurumMeta("onaylandi", locale).label,
                           value: "onaylandi",
                         },
                         {
-                          label: getOnayDurumMeta("reddedildi").label,
+                          label: getOnayDurumMeta("reddedildi", locale).label,
                           value: "reddedildi",
                         },
-                      ] as const
+                      ] as {
+                        label: string;
+                        value: "" | "beklemede" | "onaylandi" | "reddedildi";
+                      }[]
                     ).map((opt) => (
                       <button
                         key={opt.value}

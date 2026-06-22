@@ -1,4 +1,4 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Route as RouteIcon, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -6,15 +6,6 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { tripService } from "@/api/trips";
 import type { StatusMeta } from "@/lib/status-labels";
-
-// normalizeTripStatus hâlâ Türkçe döndürdüğü için bu harita burada yaşar.
-// TripStatus İngilizce'ye migrasyon yapıldığında getTripStatusMeta() ile değişir.
-const TURKISH_STATUS_META: Record<string, StatusMeta> = {
-  Planlandı: { label: "Planlandı", variant: "info" },
-  Yolda: { label: "Yolda", variant: "warning" },
-  Tamamlandı: { label: "Tamamlandı", variant: "success" },
-  İptal: { label: "İptal", variant: "danger" },
-};
 
 export function TodaysActiveTrips() {
   const { t } = useTranslation();
@@ -24,6 +15,23 @@ export function TodaysActiveTrips() {
     staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
+
+  // Keys are Turkish DB enum values — labels are translated.
+  const TURKISH_STATUS_META: Record<string, StatusMeta> = {
+    Planlandı: { label: t("trips.status_planned", "Planned"), variant: "info" },
+    Yolda: {
+      label: t("trips.status_in_progress", "En Route"),
+      variant: "warning",
+    },
+    Tamamlandı: {
+      label: t("trips.status_completed", "Completed"),
+      variant: "success",
+    },
+    İptal: {
+      label: t("trips.status_cancelled", "Cancelled"),
+      variant: "danger",
+    },
+  };
 
   // ISO YYYY-MM-DD; TripsPage useUrlState'in `start`/`end` paramlarına filter olarak gider.
   const todayIso = new Date().toISOString().slice(0, 10);

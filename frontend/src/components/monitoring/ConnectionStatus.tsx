@@ -1,4 +1,5 @@
 import { Wifi, WifiOff, Loader2, RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ConnectionStatus } from "./useMonitoringSocket";
 
 interface Props {
@@ -12,38 +13,40 @@ export function ConnectionStatus({
   notificationCount,
   onReconnect,
 }: Props) {
+  const { t } = useTranslation();
+
   const config = {
     connecting: {
       icon: Loader2,
-      label: "Bağlanıyor...",
+      label: t("monitoring.connecting"),
       color: "text-warning",
       spin: true,
       showReconnect: false,
     },
     connected: {
       icon: Wifi,
-      label: `Bağlı — ${notificationCount} bildirim`,
+      label: t("monitoring.connected", { n: notificationCount }),
       color: "text-success",
       spin: false,
       showReconnect: false,
     },
     disconnected: {
       icon: WifiOff,
-      label: "Bağlantı kesildi, yeniden bağlanıyor...",
+      label: t("monitoring.disconnected"),
       color: "text-warning",
       spin: false,
       showReconnect: false,
     },
     error: {
       icon: WifiOff,
-      label: "Bağlantı hatası",
+      label: t("monitoring.error"),
       color: "text-danger",
       spin: false,
       showReconnect: true,
     },
     max_retries: {
       icon: WifiOff,
-      label: "Bağlantı kurulamadı — maksimum deneme aşıldı",
+      label: t("monitoring.max_retries"),
       color: "text-danger",
       spin: false,
       showReconnect: true,
@@ -73,7 +76,7 @@ export function ConnectionStatus({
           className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-primary transition-colors"
         >
           <RefreshCw size={13} />
-          Tekrar Bağlan
+          {t("monitoring.reconnect")}
         </button>
       )}
     </div>

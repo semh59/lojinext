@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
 import { AlertCircle, Download, Loader2, Wrench, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
 import { useNotify } from "@/context/NotificationContext";
@@ -23,6 +24,7 @@ interface DrawerProps {
 }
 
 export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
+  const { t } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   function formatDate(iso: string | null): string {
     if (!iso) return maintenancePredictionsText.table.notApplicable;
@@ -40,11 +42,7 @@ export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
     // Kullanıcı bunu çözmek için "tamamlanmamış" gelecek bakım kaydı
     // oluşturmalı; v1'de butonu disabled bırakıyoruz ve mesaj veriyoruz.
     // İleriki sürümde: POST /admin/maintenance → ID al → ICS indir.
-    notify(
-      "info",
-      "Henüz hazır değil",
-      "Önce planlanmış bakım kaydı oluşturulmalı.",
-    );
+    notify("info", t("maintenance.not_ready"), t("maintenance.not_ready_hint"));
     try {
       setIsDownloading(true);
       // Bakım ID'si placeholder: prediction.arac_id (gerçek bakım ID değil)
@@ -121,7 +119,9 @@ export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
                     }
                     value={
                       prediction.days_remaining != null
-                        ? `${prediction.days_remaining} gün`
+                        ? `${prediction.days_remaining} ${t(
+                            "maintenance.day_unit",
+                          )}`
                         : "—"
                     }
                     accent={prediction.is_overdue ? "danger" : undefined}

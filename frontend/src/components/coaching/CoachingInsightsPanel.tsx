@@ -18,6 +18,7 @@ import {
 } from "../../api/coaching";
 import { useCoachingResources } from "../../resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 interface CoachingInsightsPanelProps {
   soforId: number | null;
@@ -48,6 +49,7 @@ export function CoachingInsightsPanel({
   soforId,
   onSendClick,
 }: CoachingInsightsPanelProps) {
+  const { t } = useTranslation();
   const { coachingCategoryLabels, coachingPageText, coachingPriorityLabels } =
     useCoachingResources();
   const locale = useLocale();
@@ -84,7 +86,7 @@ export function CoachingInsightsPanel({
       >
         <div className="flex items-center gap-2 text-secondary text-sm">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Öneriler hazırlanıyor…
+          {t("coaching.insights_loading")}
         </div>
       </Card>
     );
@@ -118,7 +120,9 @@ export function CoachingInsightsPanel({
                 priority.text,
               )}
             >
-              {coachingPriorityLabels[data.priority]} öncelik
+              {t("coaching.priority_badge", {
+                label: coachingPriorityLabels[data.priority],
+              })}
             </span>
           </div>
           <p className="text-sm text-secondary leading-relaxed">
@@ -181,7 +185,7 @@ export function CoachingInsightsPanel({
                   </span>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-                      Etki
+                      {t("coaching.impact_label")}
                     </span>
                     <div className="h-1.5 w-16 overflow-hidden rounded-full bg-elevated">
                       <div
@@ -220,7 +224,7 @@ export function CoachingInsightsPanel({
                       className="inline-flex items-center gap-1.5 rounded-card border border-accent/30 bg-accent/5 px-3 py-1.5 text-xs font-semibold text-accent transition-colors hover:bg-accent/10"
                     >
                       <Send className="h-3 w-3" />
-                      Telegram'a gönder
+                      {t("coaching.send_telegram")}
                     </button>
                   </div>
                 )}

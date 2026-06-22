@@ -1,4 +1,5 @@
 ﻿import { AlertTriangle, User2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import type { Investigation, SuspicionLevel } from "../../api/investigations";
 import { useInvestigationsResources } from "../../resources/useResources";
@@ -26,16 +27,21 @@ const LEVEL_STYLE: Record<
   },
 };
 
-function formatRelativeShort(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const diffMs = Date.now() - d.getTime();
-  const mins = Math.floor(diffMs / 60_000);
-  if (mins < 60) return `${mins} dk önce`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} sa önce`;
-  const days = Math.floor(hours / 24);
-  return `${days} gün önce`;
+function useTimeAgo() {
+  const { t } = useTranslation();
+  return (iso: string): string => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const diffMs = Date.now() - d.getTime();
+    const mins = Math.floor(diffMs / 60_000);
+    if (mins < 60)
+      return t("alerts.time_mins_ago", "{{n}} min ago", { n: mins });
+    const hours = Math.floor(mins / 60);
+    if (hours < 24)
+      return t("alerts.time_hours_ago", "{{n}} hr ago", { n: hours });
+    const days = Math.floor(hours / 24);
+    return t("alerts.time_days_ago", "{{n}} day ago", { n: days });
+  };
 }
 
 export function InvestigationCard({
@@ -43,6 +49,7 @@ export function InvestigationCard({
   onClick,
 }: InvestigationCardProps) {
   const { investigationsText } = useInvestigationsResources();
+  const formatRelativeShort = useTimeAgo();
   const level = (investigation.suspicion_level ?? "unknown") as SuspicionLevel;
   const style = LEVEL_STYLE[level];
   const sapma = investigation.sapma_yuzde;

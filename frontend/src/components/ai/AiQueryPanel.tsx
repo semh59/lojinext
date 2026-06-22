@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import {
   Line,
@@ -11,11 +12,6 @@ import {
 import { aiApi, type AiQueryResponse } from "../../api/ai";
 import { useLocale } from "../../hooks/useLocale";
 
-const CATEGORIES = [
-  { value: "general", label: "Genel" },
-  { value: "fuel_trend", label: "Yakıt Trendi" },
-];
-
 type SpeechRecognitionCtor = new () => {
   lang: string;
   onresult: (e: { results: { 0: { 0: { transcript: string } } } }) => void;
@@ -27,8 +23,14 @@ type SpeechRecognitionCtor = new () => {
  * otomatik grafik + aksiyon linkleri + Web Speech sesli komut.
  */
 export function AiQueryPanel() {
+  const { t } = useTranslation();
   const [category, setCategory] = useState("general");
   const locale = useLocale();
+
+  const CATEGORIES = [
+    { value: "general", label: t("common.all") },
+    { value: "fuel_trend", label: t("ai.category_fuel_trend") },
+  ];
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<AiQueryResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,7 +62,7 @@ export function AiQueryPanel() {
     <div className="rounded-modal border border-border bg-surface p-4 space-y-3">
       <div className="flex gap-2">
         <select
-          aria-label="Sorgu kategorisi"
+          aria-label={t("ai.query_category")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className="rounded-card border border-border bg-elevated px-2 py-1 text-sm"
@@ -72,7 +74,7 @@ export function AiQueryPanel() {
           ))}
         </select>
         <input
-          placeholder="Filo hakkında sor…"
+          placeholder={t("ai.query_placeholder")}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           className="flex-1 rounded-card border border-border bg-elevated px-2 py-1 text-sm"
@@ -80,7 +82,7 @@ export function AiQueryPanel() {
         <button
           type="button"
           onClick={startVoice}
-          aria-label="Sesli komut"
+          aria-label={t("ai.voice_input")}
           className="rounded-card bg-elevated px-2 py-1 text-sm"
         >
           🎤
@@ -90,7 +92,7 @@ export function AiQueryPanel() {
           onClick={run}
           className="rounded-card bg-elevated px-3 py-1 text-sm text-primary"
         >
-          {loading ? "…" : "Sorgula"}
+          {loading ? "…" : t("ai.query_submit")}
         </button>
       </div>
 

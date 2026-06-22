@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CalendarRange,
@@ -10,14 +10,13 @@ import {
   Route as RouteIcon,
   Wallet,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { reportService } from "@/api/reports";
 import { useLocale } from "../../hooks/useLocale";
 
 interface PeriodCostBreakdownProps {
-  /** Drill-down için tek araca sabitlemek. */
   aracId?: number;
-  /** Drill-down başlığında plakayı göstermek için. */
   plakaLabel?: string;
 }
 
@@ -38,6 +37,7 @@ export function PeriodCostBreakdown({
   aracId,
   plakaLabel,
 }: PeriodCostBreakdownProps) {
+  const { t } = useTranslation();
   const locale = useLocale();
   const [startDate, setStartDate] = useState(todayIso(-30));
   const [endDate, setEndDate] = useState(todayIso());
@@ -56,7 +56,7 @@ export function PeriodCostBreakdown({
           <CalendarRange className="h-5 w-5 text-accent" />
           <div>
             <h2 className="text-sm font-semibold text-primary">
-              Dönem Maliyet Detayı
+              {t("reports.breakdown_title", "Period Cost Detail")}
               {plakaLabel && (
                 <span className="ml-2 rounded-card bg-elevated px-2 py-0.5 font-mono text-[11px] text-secondary">
                   {plakaLabel}
@@ -64,8 +64,15 @@ export function PeriodCostBreakdown({
               )}
             </h2>
             <p className="text-xs text-secondary">
-              Seçili tarih aralığında {aracId ? "aracın" : "filonun"}{" "}
-              yakıt/maliyet özeti.
+              {aracId
+                ? t(
+                    "reports.breakdown_subtitle_vehicle",
+                    "Fuel/cost summary for the vehicle in the selected date range.",
+                  )
+                : t(
+                    "reports.breakdown_subtitle_fleet",
+                    "Fuel/cost summary for the fleet in the selected date range.",
+                  )}
             </p>
           </div>
         </div>
@@ -76,7 +83,7 @@ export function PeriodCostBreakdown({
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="input-base !w-40"
-            aria-label="Başlangıç tarihi"
+            aria-label={t("reports.breakdown_start_date", "Start date")}
           />
           <span className="text-secondary">→</span>
           <input
@@ -84,7 +91,7 @@ export function PeriodCostBreakdown({
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="input-base !w-40"
-            aria-label="Bitiş tarihi"
+            aria-label={t("reports.breakdown_end_date", "End date")}
           />
         </div>
       </div>
@@ -92,51 +99,56 @@ export function PeriodCostBreakdown({
       {startDate > endDate && (
         <div className="flex items-center gap-2 rounded-card border border-warning/30 bg-warning/5 px-4 py-2 text-xs text-warning">
           <AlertCircle className="h-4 w-4" />
-          Başlangıç tarihi bitiş tarihinden büyük olamaz.
+          {t(
+            "reports.breakdown_date_error",
+            "Start date cannot be later than end date.",
+          )}
         </div>
       )}
 
       {isLoading ? (
         <div className="flex items-center gap-2 py-6 text-secondary text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Hesaplanıyor…
+          <Loader2 className="h-4 w-4 animate-spin" />
+          {t("reports.breakdown_loading", "Calculating…")}
         </div>
       ) : isError ? (
         <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
-          <AlertCircle className="h-4 w-4" /> Dönem maliyeti alınamadı.
+          <AlertCircle className="h-4 w-4" />
+          {t("reports.breakdown_error", "Could not load period cost.")}
         </div>
       ) : data ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           <Tile
             icon={Receipt}
-            label="Yakıt Maliyeti"
+            label={t("reports.breakdown_fuel_cost", "Fuel Cost")}
             value={TRY(Number(data.fuel_cost ?? 0), locale)}
             accent="text-warning"
             bg="bg-warning/10"
           />
           <Tile
             icon={Wallet}
-            label="₺ / km"
+            label={t("reports.breakdown_cost_per_km", "₺ / km")}
             value={`${Number(data.cost_per_km ?? 0).toFixed(2)} ₺`}
             accent="text-accent"
             bg="bg-accent/10"
           />
           <Tile
             icon={Fuel}
-            label="₺ / Litre"
+            label={t("reports.breakdown_cost_per_liter", "₺ / Litre")}
             value={`${Number(data.avg_price_per_liter ?? 0).toFixed(2)} ₺`}
             accent="text-info"
             bg="bg-info/10"
           />
           <Tile
             icon={RouteIcon}
-            label="Toplam Sefer"
+            label={t("reports.breakdown_total_trips", "Total Trips")}
             value={Number(data.trip_count ?? 0).toLocaleString(locale)}
             accent="text-secondary"
             bg="bg-elevated"
           />
           <Tile
             icon={MapPin}
-            label="Toplam km"
+            label={t("reports.breakdown_total_km", "Total km")}
             value={`${Number(data.total_distance ?? 0).toLocaleString(locale, {
               maximumFractionDigits: 0,
             })} km`}

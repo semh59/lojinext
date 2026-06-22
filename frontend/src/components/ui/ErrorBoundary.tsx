@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
+import i18n from "../../i18n";
 
 interface Props {
   children?: ReactNode;
@@ -43,11 +44,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="w-8 h-8 text-danger" />
           </div>
           <h2 className="text-xl font-bold text-primary mb-2 text-center">
-            {this.props.fallbackMessage || "Bir şeyler ters gitti"}
+            {this.props.fallbackMessage ||
+              i18n.t("common.error_something_wrong", "Something went wrong")}
           </h2>
           <p className="text-sm text-secondary text-center max-w-md mb-8">
-            Bu bölüm yüklenirken beklenmedik bir hata oluştu. Lütfen sayfayı
-            yenilemeyi veya bileşeni yeniden başlatmayı deneyin.
+            {i18n.t(
+              "common.error_boundary_desc",
+              "An unexpected error occurred while loading this section. Please try refreshing the page or restarting the component.",
+            )}
           </p>
 
           <div className="flex gap-4">
@@ -56,7 +60,7 @@ export class ErrorBoundary extends Component<Props, State> {
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent text-bg-base font-medium hover:bg-accent/80 transition-colors shadow-lg shadow-accent/20 active:scale-95"
             >
               <RefreshCw className="w-4 h-4" />
-              Yeniden Dene
+              {i18n.t("common.retry", "Try Again")}
             </button>
           </div>
 

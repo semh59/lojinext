@@ -1,4 +1,5 @@
-﻿import { cn } from "@/lib/utils";
+﻿import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -19,24 +20,25 @@ interface LeakageStat {
 }
 
 export function LeakageSummary({ leakage }: { leakage: LeakageStats }) {
+  const { t } = useTranslation();
   const stats: LeakageStat[] = [
     {
-      label: "Güzergah Sapması",
+      label: t("alerts.route_deviation"),
       value: leakage.route_deviation_km.toFixed(0),
       unit: "km",
     },
     {
-      label: "Sapma Maliyeti",
+      label: t("alerts.deviation_cost"),
       value: leakage.route_deviation_cost.toFixed(0),
       unit: "₺",
     },
     {
-      label: "Yakıt Açığı",
+      label: t("alerts.fuel_gap"),
       value: leakage.fuel_gap_liters.toFixed(0),
       unit: "L",
     },
     {
-      label: "Yakıt Açığı Maliyeti",
+      label: t("alerts.fuel_gap_cost"),
       value: leakage.fuel_gap_cost.toFixed(0),
       unit: "₺",
     },
@@ -67,6 +69,7 @@ export function LeakageSummary({ leakage }: { leakage: LeakageStats }) {
 // ─── Severity Badge ───────────────────────────────────────────────────────────
 
 function SeverityBadge({ severity }: { severity: string }) {
+  const { t } = useTranslation();
   const styles: Record<string, string> = {
     critical: "border-danger/30 bg-danger/10 text-danger",
     high: "border-warning/30 bg-warning/10 text-warning",
@@ -74,10 +77,10 @@ function SeverityBadge({ severity }: { severity: string }) {
     low: "border-border bg-elevated text-secondary",
   };
   const labels: Record<string, string> = {
-    critical: "Kritik",
-    high: "Acil",
-    medium: "Uyarı",
-    low: "Düşük",
+    critical: t("alerts.severity_critical"),
+    high: t("alerts.severity_high"),
+    medium: t("alerts.severity_medium"),
+    low: t("alerts.severity_low"),
   };
   return (
     <span
@@ -104,11 +107,12 @@ export function MaintenanceTable({
 }: {
   vehicles: MaintenanceVehicle[];
 }) {
+  const { t } = useTranslation();
   const locale = useLocale();
   if (vehicles.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-secondary">
-        Bakım adayı araç bulunmuyor.
+        {t("alerts.maintenance_empty")}
       </p>
     );
   }
@@ -117,10 +121,10 @@ export function MaintenanceTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Araç</TableHead>
-          <TableHead>Nedenler</TableHead>
-          <TableHead>Toplam Km</TableHead>
-          <TableHead>Önem</TableHead>
+          <TableHead>{t("alerts.maintenance_table_vehicle")}</TableHead>
+          <TableHead>{t("alerts.maintenance_table_reason")}</TableHead>
+          <TableHead>{t("alerts.maintenance_table_km")}</TableHead>
+          <TableHead>{t("alerts.maintenance_table_severity")}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

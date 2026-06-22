@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { WsNotification } from "./useMonitoringSocket";
 import { useLocale } from "../../hooks/useLocale";
+import { useTranslation } from "react-i18next";
 
 function formatTime(iso: string, locale: string) {
   try {
@@ -60,13 +61,14 @@ export function NotificationFeed({
 }: {
   notifications: WsNotification[];
 }) {
+  const { t } = useTranslation();
   const locale = useLocale();
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   if (notifications.length === 0) {
     return (
       <div className="flex h-48 items-center justify-center rounded-modal border border-dashed border-border text-sm text-secondary">
-        Henüz bildirim yok
+        {t("monitoring.no_notifications")}
       </div>
     );
   }
@@ -92,7 +94,7 @@ export function NotificationFeed({
                 : "bg-elevated text-secondary hover:text-primary"
             }`}
           >
-            Tümü ({notifications.length})
+            {t("monitoring.filter_all")} ({notifications.length})
           </button>
           {types.map((type) => {
             const cfg = getEventConfig(type);

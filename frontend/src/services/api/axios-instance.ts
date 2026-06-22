@@ -6,6 +6,7 @@ import axios, {
 import { toast } from "sonner";
 import { storageService } from "../storage-service";
 import { errorTracker } from "../error-tracker";
+import i18n from "../../i18n";
 
 interface ApiErrorResponse {
   error?: { code: string; message: string; trace_id?: string };
@@ -83,7 +84,12 @@ axiosInstance.interceptors.response.use(
           if (window.location.pathname !== "/login")
             window.location.href = "/login";
           return Promise.reject(
-            new Error("Oturum süresi doldu, lütfen tekrar giriş yapın."),
+            new Error(
+              i18n.t(
+                "auth.session_expired",
+                "Session expired, please log in again.",
+              ),
+            ),
           );
         }
 
@@ -120,7 +126,12 @@ axiosInstance.interceptors.response.use(
           if (window.location.pathname !== "/login")
             window.location.href = "/login";
           return Promise.reject(
-            new Error("Oturum süresi doldu, lütfen tekrar giriş yapın."),
+            new Error(
+              i18n.t(
+                "auth.session_expired",
+                "Session expired, please log in again.",
+              ),
+            ),
           );
         } finally {
           isRefreshing = false;
@@ -128,7 +139,12 @@ axiosInstance.interceptors.response.use(
       }
 
       if (status === 403) {
-        toast.error("Bu işlemi yapmak için yetkiniz bulunmamaktadır.");
+        toast.error(
+          i18n.t(
+            "errors.forbidden",
+            "You do not have permission to perform this action.",
+          ),
+        );
       }
 
       if (status === 400) {
@@ -136,7 +152,7 @@ axiosInstance.interceptors.response.use(
         const message =
           errData?.error?.message ??
           (typeof errData?.detail === "string" ? errData.detail : undefined) ??
-          "Geçersiz işlem";
+          i18n.t("errors.invalid_operation", "Invalid operation");
         toast.error(message);
       }
 
@@ -147,19 +163,22 @@ axiosInstance.interceptors.response.use(
         } else if (Array.isArray(errData?.detail)) {
           toast.error(
             (errData.detail as Array<{ msg: string }>)[0]?.msg ||
-              "Geçersiz veri girişi",
+              i18n.t("errors.invalid_input", "Invalid data input"),
           );
         } else {
           toast.error(
             (typeof errData?.detail === "string" ? errData.detail : null) ??
-              "Doğrulama hatası",
+              i18n.t("errors.validation_error", "Validation error"),
           );
         }
       }
 
       if (status >= 500) {
         toast.error(
-          "Sunucu tarafında bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
+          i18n.t(
+            "errors.server_error",
+            "A server error occurred. Please try again later.",
+          ),
         );
       }
 
@@ -185,7 +204,12 @@ axiosInstance.interceptors.response.use(
         errorCode,
       });
     } else if (error.request) {
-      toast.error("Sunucuya ulaşılamıyor. İnternet bağlantınızı kontrol edin.");
+      toast.error(
+        i18n.t(
+          "errors.network_error",
+          "Cannot reach server. Please check your internet connection.",
+        ),
+      );
       errorTracker.captureApiError({
         severity: "fatal",
         path: error.config?.url ?? "unknown",

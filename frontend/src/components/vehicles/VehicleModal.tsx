@@ -7,6 +7,7 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { useVehicleData, YAKIT_TIPLERI } from "../../hooks/useVehicleData";
 import { useVehiclesResources } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export function VehicleModal({
   onSave,
   vehicle,
 }: VehicleModalProps) {
+  const { t } = useTranslation();
   const { vehicleModalText } = useVehiclesResources();
   const {
     showAdvanced,
@@ -207,7 +209,7 @@ export function VehicleModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                    Yakıt Tipi
+                    {t("fleet.fuel_type_label")}
                   </label>
                   <select
                     {...register("yakit_tipi")}
@@ -222,7 +224,7 @@ export function VehicleModal({
                 </div>
                 <div className="space-y-1.5">
                   <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                    Dingil Sayısı
+                    {t("fleet.axle_count_label")}
                   </label>
                   <Input
                     type="number"
@@ -235,14 +237,14 @@ export function VehicleModal({
 
               <div className="space-y-1.5">
                 <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                  Muayene Geçerlilik Tarihi
+                  {t("fleet.inspection_validity_label")}
                 </label>
                 <Input type="date" {...register("muayene_tarihi")} />
               </div>
 
               <div className="space-y-1.5">
                 <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                  Sigorta Geçerlilik Tarihi
+                  {t("fleet.insurance_validity_label")}
                 </label>
                 <Input
                   type="date"
@@ -259,11 +261,11 @@ export function VehicleModal({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                    Motor No
+                    {t("fleet.engine_no_label")}
                   </label>
                   <Input
                     {...register("motor_no")}
-                    placeholder="Motor numarası"
+                    placeholder={t("fleet.engine_no_placeholder")}
                     className="border-transparent bg-elevated/50 text-primary focus:border-border"
                     error={!!errors.motor_no}
                   />
@@ -275,11 +277,11 @@ export function VehicleModal({
                 </div>
                 <div className="space-y-1.5">
                   <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-                    Şasi No
+                    {t("fleet.chassis_no_label")}
                   </label>
                   <Input
                     {...register("sasi_no")}
-                    placeholder="Şasi numarası"
+                    placeholder={t("fleet.chassis_no_placeholder")}
                     className="border-transparent bg-elevated/50 text-primary focus:border-border"
                     error={!!errors.sasi_no}
                   />

@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { errorTracker } from "../../services/error-tracker";
+import i18n from "../../i18n";
 
 interface Props {
   children?: ReactNode;
@@ -55,12 +56,11 @@ class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <h1 className="text-3xl font-bold text-primary mb-4 tracking-tight">
-              Sistem Kesintisi
+              {i18n.t("errors.system_outage")}
             </h1>
 
             <p className="text-secondary mb-10 leading-relaxed text-lg px-4 font-medium opacity-80">
-              Beklenmedik bir hata tespit edildi. Veri güvenliğiniz için oturum
-              askıya alındı. Teknik ekip anlık olarak bilgilendirildi.
+              {i18n.t("errors.system_outage_desc")}
             </p>
 
             <div className="grid grid-cols-1 gap-4">
@@ -69,7 +69,9 @@ class ErrorBoundary extends Component<Props, State> {
                 className="group relative h-14 bg-accent hover:bg-accent-hover text-white font-bold rounded-2xl transition-all shadow-lg shadow-accent/20 flex items-center justify-center gap-3 overflow-hidden active:scale-[0.98]"
               >
                 <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
-                <span className="relative z-10">Sistemi Yeniden Başlat</span>
+                <span className="relative z-10">
+                  {i18n.t("errors.restart_system")}
+                </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
               </button>
 
@@ -78,7 +80,7 @@ class ErrorBoundary extends Component<Props, State> {
                 className="h-14 bg-surface hover:bg-elevated border border-border text-secondary hover:text-primary font-bold rounded-2xl transition-all flex items-center justify-center gap-3 active:scale-[0.98]"
               >
                 <Home className="w-5 h-5" />
-                Ana Sayfaya Dön
+                {i18n.t("errors.go_home")}
               </button>
             </div>
 
@@ -86,7 +88,7 @@ class ErrorBoundary extends Component<Props, State> {
               <div className="mt-10 p-6 bg-black/20 border border-white/5 rounded-2xl text-left overflow-auto max-h-48 custom-scrollbar group">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold text-danger uppercase tracking-widest opacity-60">
-                    Geliştirici Detayları
+                    {i18n.t("errors.dev_details")}
                   </span>
                   <span className="text-[10px] bg-danger/10 text-danger px-2 py-0.5 rounded-full font-bold">
                     CRITICAL

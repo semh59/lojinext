@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { CheckCheck, Bell, BellOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/Button";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { useNotifications } from "./useNotifications";
@@ -47,6 +48,7 @@ export function NotificationsTab({
   wsStatus,
   onReconnect,
 }: Props) {
+  const { t } = useTranslation();
   const { notifications, unreadCount, isLoading, markRead, markAllRead } =
     useNotifications(wsNotifications);
   const locale = useLocale();
@@ -71,7 +73,7 @@ export function NotificationsTab({
             className="shrink-0 flex items-center gap-1.5"
           >
             <CheckCheck size={14} />
-            Tümünü Okundu İşaretle ({unreadCount})
+            {t("monitoring.mark_all_read", { n: unreadCount })}
           </Button>
         )}
       </div>
@@ -89,7 +91,7 @@ export function NotificationsTab({
       ) : notifications.length === 0 ? (
         <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-modal border border-dashed border-border text-secondary">
           <BellOff size={24} strokeWidth={1.5} />
-          <p className="text-sm">Henüz bildirim yok</p>
+          <p className="text-sm">{t("monitoring.no_notifications")}</p>
         </div>
       ) : (
         <div className="space-y-2 max-h-[65vh] overflow-y-auto pr-1">
@@ -117,7 +119,8 @@ export function NotificationsTab({
                           n.olay_tipi,
                         )}`}
                       >
-                        {n.olay_tipi || "BİLDİRİM"}
+                        {n.olay_tipi ||
+                          t("monitoring.notification_badge", "NOTIFICATION")}
                       </span>
                       <span className="text-[10px] text-tertiary">
                         {formatTime(n.olusturma_tarihi, locale)}
@@ -134,7 +137,7 @@ export function NotificationsTab({
                       disabled={markRead.isPending}
                       className="shrink-0 text-[11px] font-semibold text-tertiary hover:text-accent transition-colors mt-0.5"
                     >
-                      Okundu
+                      {t("monitoring.mark_read")}
                     </button>
                   )}
                 </div>

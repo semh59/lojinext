@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { getTripStatusMeta } from "../../lib/status-labels";
+import { useLocale } from "../../hooks/useLocale";
 import { Trip } from "../../types";
 import { cn } from "../../lib/utils";
 import { Button } from "../ui/Button";
@@ -114,14 +115,24 @@ export function TripTable({
   onClearFilters,
 }: TripTableProps) {
   const { tripTableText } = useTripsResources();
+  const locale = useLocale();
   const getStatusConfig = (status?: string) => {
     switch (normalizeTripStatus(status)) {
       case TRIP_STATUS_TAMAMLANDI:
-        return { text: getTripStatusMeta("Completed").label, progress: 100 };
+        return {
+          text: getTripStatusMeta("Completed", locale).label,
+          progress: 100,
+        };
       case TRIP_STATUS_PLANLANDI:
-        return { text: getTripStatusMeta("Planned").label, progress: 35 };
+        return {
+          text: getTripStatusMeta("Planned", locale).label,
+          progress: 35,
+        };
       case TRIP_STATUS_IPTAL:
-        return { text: getTripStatusMeta("Cancelled").label, progress: 0 };
+        return {
+          text: getTripStatusMeta("Cancelled", locale).label,
+          progress: 0,
+        };
       default:
         return {
           text: status?.toUpperCase() || tripTableText.unknownValue,

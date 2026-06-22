@@ -3,6 +3,14 @@ import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import { withErrorTracking } from "../services/error-middleware";
 import { ChatMessage, aiApi } from "../api/ai";
 import { storageService } from "../services/storage-service";
+import i18n from "../i18n";
+
+function aiWelcomeMessage(): string {
+  return i18n.t(
+    "ai.welcome_message",
+    "Hello! I'm the LojiNext Assistant. How can I help you with your fleet data, fuel consumption, or operational analysis?",
+  );
+}
 
 const userScopedStorage: StateStorage = {
   getItem: (name: string) => {
@@ -41,8 +49,7 @@ export const useAiStore = create<AiState>()(
       messages: [
         {
           role: "assistant",
-          content:
-            "Merhaba! Ben LojiNext Asistan. Filo verileriniz, yakıt tüketimi veya operasyonel analizler hakkında size nasıl yardımcı olabilirim?",
+          content: aiWelcomeMessage(),
         },
       ],
       isOpen: false,
@@ -77,8 +84,7 @@ export const useAiStore = create<AiState>()(
           messages: [
             {
               role: "assistant",
-              content:
-                "Merhaba! Ben LojiNext Asistan. Filo verileriniz, yakıt tüketimi veya operasyonel analizler hakkında size nasıl yardımcı olabilirim?",
+              content: aiWelcomeMessage(),
             },
           ],
         }),

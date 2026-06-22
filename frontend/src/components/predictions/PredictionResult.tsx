@@ -1,4 +1,5 @@
 import { Droplet, TrendingUp, Wallet } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import type { PredictionResult as PredictionResultModel } from "@/types";
 import { useLocale } from "../../hooks/useLocale";
@@ -17,6 +18,7 @@ export function PredictionResult({
   mesafeKm,
   unitPriceTL = DEFAULT_UNIT_PRICE,
 }: PredictionResultProps) {
+  const { t } = useTranslation();
   const locale = useLocale();
   const tuketim = Number(result.tahmini_tuketim ?? 0); // L/100km
   const totalLiters = result.tahmini_litre ?? (tuketim * mesafeKm) / 100;
@@ -34,41 +36,51 @@ export function PredictionResult({
 
   return (
     <Card padding="lg" className="space-y-4">
-      <h3 className="text-sm font-semibold text-primary">Tahmin Sonucu</h3>
+      <h3 className="text-sm font-semibold text-primary">
+        {t("predictions.result_title", "Prediction Result")}
+      </h3>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Tile
           icon={Droplet}
-          label="Tahmini Tüketim"
+          label={t(
+            "predictions.estimated_consumption",
+            "Estimated Consumption",
+          )}
           value={`${tuketim.toFixed(1)} L/100km`}
-          sub={`Toplam ≈ ${totalLiters.toLocaleString(locale, {
-            maximumFractionDigits: 1,
-          })} L`}
+          sub={t("predictions.total_approx", "Total ≈ {{n}} L", {
+            n: totalLiters.toLocaleString(locale, { maximumFractionDigits: 1 }),
+          })}
           accent="text-info"
           bg="bg-info/10"
         />
         <Tile
           icon={Wallet}
-          label="Maliyet Projeksiyonu"
+          label={t("predictions.cost_projection", "Cost Projection")}
           value={projectedCost.toLocaleString(locale, {
             style: "currency",
             currency: "TRY",
             maximumFractionDigits: 0,
           })}
-          sub={`${unitPriceTL.toFixed(2)} ₺/L referansı`}
+          sub={t("predictions.unit_price_ref", "{{price}} ₺/L reference", {
+            price: unitPriceTL.toFixed(2),
+          })}
           accent="text-warning"
           bg="bg-warning/10"
         />
         <Tile
           icon={TrendingUp}
-          label="Güven Skoru"
+          label={t("predictions.confidence_score", "Confidence Score")}
           value={confidence != null ? `%${confidence}` : "—"}
           sub={
             result.confidence_low != null && result.confidence_high != null
               ? `${result.confidence_low.toFixed(
                   1,
                 )} – ${result.confidence_high.toFixed(1)} L/100km`
-              : "güven aralığı dönmedi"
+              : t(
+                  "predictions.confidence_missing",
+                  "confidence interval not returned",
+                )
           }
           accent="text-success"
           bg="bg-success/10"

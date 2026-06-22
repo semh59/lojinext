@@ -1,5 +1,6 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
 import { predictionService } from "@/api/predictions";
@@ -33,6 +34,7 @@ const INITIAL: SimulatorState = {
 };
 
 export function PredictionSimulator() {
+  const { t } = useTranslation();
   const [form, setForm] = useState<SimulatorState>(INITIAL);
   const [showExplain, setShowExplain] = useState(false);
 
@@ -86,17 +88,19 @@ export function PredictionSimulator() {
           <BrainCircuit className="h-5 w-5 text-accent" />
           <div>
             <h2 className="text-sm font-semibold text-primary">
-              Sefer Simülasyonu
+              {t("predictions.simulator_title", "Trip Simulation")}
             </h2>
             <p className="text-xs text-secondary">
-              Hipotetik bir sefer için tahmini yakıt tüketimini ve maliyet
-              projeksiyonunu hesaplayın.
+              {t(
+                "predictions.simulator_subtitle",
+                "Calculate estimated fuel consumption and cost projection for a hypothetical trip.",
+              )}
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Field label="Araç *">
+          <Field label={t("predictions.vehicle_label", "Vehicle *")}>
             <select
               className="input-base"
               value={form.aracId}
@@ -104,7 +108,9 @@ export function PredictionSimulator() {
                 setForm({ ...form, aracId: Number(e.target.value) })
               }
             >
-              <option value={0}>Araç seçin</option>
+              <option value={0}>
+                {t("predictions.vehicle_placeholder", "Select vehicle")}
+              </option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.plaka}
@@ -112,7 +118,7 @@ export function PredictionSimulator() {
               ))}
             </select>
           </Field>
-          <Field label="Şoför">
+          <Field label={t("predictions.driver_label", "Driver")}>
             <select
               className="input-base"
               value={form.soforId ?? 0}
@@ -120,7 +126,9 @@ export function PredictionSimulator() {
                 setForm({ ...form, soforId: Number(e.target.value) || null })
               }
             >
-              <option value={0}>(opsiyonel)</option>
+              <option value={0}>
+                {t("predictions.driver_optional", "(optional)")}
+              </option>
               {drivers.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.ad_soyad}
@@ -128,7 +136,7 @@ export function PredictionSimulator() {
               ))}
             </select>
           </Field>
-          <Field label="Zorluk">
+          <Field label={t("predictions.difficulty_label", "Difficulty")}>
             <select
               className="input-base"
               value={form.zorluk}
@@ -136,13 +144,19 @@ export function PredictionSimulator() {
                 setForm({ ...form, zorluk: e.target.value as Difficulty })
               }
             >
-              <option value="Normal">Normal</option>
-              <option value="Orta">Orta</option>
-              <option value="Zor">Zor</option>
+              <option value="Normal">
+                {t("predictions.difficulty_normal", "Normal")}
+              </option>
+              <option value="Orta">
+                {t("predictions.difficulty_medium", "Medium")}
+              </option>
+              <option value="Zor">
+                {t("predictions.difficulty_hard", "Hard")}
+              </option>
             </select>
           </Field>
           <NumberField
-            label="Mesafe (km) *"
+            label={t("predictions.distance_total_label", "Distance (km) *")}
             value={form.mesafe}
             onChange={(v) =>
               setForm({
@@ -156,22 +170,22 @@ export function PredictionSimulator() {
             }
           />
           <NumberField
-            label="Yük (ton)"
+            label={t("predictions.load_label", "Load (ton)")}
             value={form.ton}
             onChange={(v) => setForm({ ...form, ton: v })}
           />
           <NumberField
-            label="Tırmanış (m)"
+            label={t("predictions.climb_label", "Climb (m)")}
             value={form.ascent}
             onChange={(v) => setForm({ ...form, ascent: v })}
           />
           <NumberField
-            label="İniş (m)"
+            label={t("predictions.descent_label", "Descent (m)")}
             value={form.descent}
             onChange={(v) => setForm({ ...form, descent: v })}
           />
           <NumberField
-            label="Düz Mesafe (km)"
+            label={t("predictions.distance_label", "Flat Distance (km)")}
             value={form.flatDistance}
             onChange={(v) => setForm({ ...form, flatDistance: v })}
           />
@@ -186,10 +200,11 @@ export function PredictionSimulator() {
           >
             {predict.isPending ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Hesaplanıyor…
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("predictions.calculating", "Calculating…")}
               </span>
             ) : (
-              "Tahmini Hesapla"
+              t("predictions.calculate_btn", "Calculate Estimate")
             )}
           </button>
           {predict.data && (
@@ -198,7 +213,9 @@ export function PredictionSimulator() {
               onClick={() => setShowExplain((s) => !s)}
               className="rounded-card border border-border bg-surface px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-elevated"
             >
-              {showExplain ? "Açıklamayı Gizle" : "Açıkla"}
+              {showExplain
+                ? t("predictions.explain_hide", "Hide Explanation")
+                : t("predictions.explain_show", "Explain")}
             </button>
           )}
         </div>
@@ -206,7 +223,10 @@ export function PredictionSimulator() {
         {predict.isError && (
           <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
             <AlertCircle className="h-4 w-4" />
-            Tahmin hesaplanamadı. Araç için yeterli model verisi olmayabilir.
+            {t(
+              "predictions.predict_error",
+              "Prediction could not be calculated. There may not be enough model data for the vehicle.",
+            )}
           </div>
         )}
       </Card>

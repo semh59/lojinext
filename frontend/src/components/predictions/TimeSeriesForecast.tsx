@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Area,
@@ -19,27 +19,33 @@ import {
   Minus,
   AlertCircle,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
 import { predictionService } from "@/api/predictions";
 import { vehicleService } from "@/api/vehicles";
 
-const TREND_META = {
-  increasing: {
-    label: "Yükselişte",
-    icon: ArrowUpRight,
-    accent: "text-danger",
-  },
-  decreasing: {
-    label: "Düşüşte",
-    icon: ArrowDownRight,
-    accent: "text-success",
-  },
-  stable: { label: "Stabil", icon: Minus, accent: "text-warning" },
-} as const;
-
 export function TimeSeriesForecast() {
+  const { t } = useTranslation();
   const [aracId, setAracId] = useState<number | null>(null);
+
+  const TREND_META = {
+    increasing: {
+      label: t("predictions.trend_rising", "Rising"),
+      icon: ArrowUpRight,
+      accent: "text-danger",
+    },
+    decreasing: {
+      label: t("predictions.trend_falling", "Falling"),
+      icon: ArrowDownRight,
+      accent: "text-success",
+    },
+    stable: {
+      label: t("predictions.trend_stable", "Stable"),
+      icon: Minus,
+      accent: "text-warning",
+    },
+  } as const;
 
   const { data: vehiclesData } = useQuery({
     queryKey: ["ts-vehicles"],
@@ -91,17 +97,20 @@ export function TimeSeriesForecast() {
           <CalendarRange className="h-5 w-5 text-accent" />
           <div>
             <h2 className="text-sm font-semibold text-primary">
-              Haftalık Tahmin
+              {t("predictions.weekly_title", "Weekly Forecast")}
             </h2>
             <p className="text-xs text-secondary">
-              7 günlük tüketim projeksiyonu + güven aralığı
+              {t(
+                "predictions.weekly_subtitle",
+                "7-day consumption projection + confidence interval",
+              )}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <label className="text-[11px] font-bold uppercase tracking-widest text-secondary">
-            Araç
+            {t("predictions.xai_vehicle_label", "Vehicle")}
           </label>
           <select
             className="input-base !w-44"
@@ -110,7 +119,7 @@ export function TimeSeriesForecast() {
               setAracId(e.target.value ? Number(e.target.value) : null)
             }
           >
-            <option value="">Tüm Filo</option>
+            <option value="">{t("predictions.fleet_all", "All Fleet")}</option>
             {vehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.plaka}
@@ -125,10 +134,11 @@ export function TimeSeriesForecast() {
           >
             {forecast.isPending ? (
               <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Hesaplanıyor…
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t("predictions.calculating", "Calculating…")}
               </span>
             ) : (
-              "Tahmin Et"
+              t("predictions.forecast_btn", "Forecast")
             )}
           </button>
         </div>
@@ -137,8 +147,10 @@ export function TimeSeriesForecast() {
       {forecast.isError && (
         <div className="flex items-center gap-2 rounded-card border border-danger/30 bg-danger/5 px-4 py-3 text-sm text-danger">
           <AlertCircle className="h-4 w-4" />
-          Tahmin oluşturulamadı. Model henüz eğitim için yeterli veriye sahip
-          olmayabilir.
+          {t(
+            "predictions.forecast_error",
+            "Could not create forecast. Model may not have enough training data.",
+          )}
         </div>
       )}
 
@@ -187,24 +199,29 @@ export function TimeSeriesForecast() {
                   {...chartTheme.tooltip}
                   formatter={(value) => [
                     `${Number(value ?? 0).toFixed(1)} L`,
-                    "Tahmin",
+                    t("predictions.forecast_series_name", "Forecast"),
                   ]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                {/* Güven bandı (varsa) */}
                 <Area
                   type="monotone"
                   dataKey="confidence_high"
                   stroke="transparent"
                   fill="url(#confidenceBand)"
-                  name="Üst güven sınırı"
+                  name={t(
+                    "predictions.confidence_upper",
+                    "Upper confidence band",
+                  )}
                 />
                 <Area
                   type="monotone"
                   dataKey="confidence_low"
                   stroke="transparent"
                   fill="var(--surface)"
-                  name="Alt güven sınırı"
+                  name={t(
+                    "predictions.confidence_lower",
+                    "Lower confidence band",
+                  )}
                 />
                 <Line
                   type="monotone"
@@ -212,7 +229,7 @@ export function TimeSeriesForecast() {
                   stroke={chartTheme.colors.accent}
                   strokeWidth={2}
                   dot={{ r: 3 }}
-                  name="Tahmin"
+                  name={t("predictions.forecast_series_name", "Forecast")}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -222,11 +239,13 @@ export function TimeSeriesForecast() {
             <div className="flex items-center gap-2 rounded-card border border-border/60 bg-elevated/30 px-4 py-3">
               <TrendIcon className={`h-5 w-5 ${trendMeta.accent}`} />
               <div className="text-xs">
-                <span className="font-semibold text-primary">Trend: </span>
+                <span className="font-semibold text-primary">
+                  {t("predictions.trend_label_inline", "Trend:")}{" "}
+                </span>
                 <span className={trendMeta.accent}>{trendMeta.label}</span>
                 {forecast.data.method && (
                   <span className="ml-2 text-secondary">
-                    · yöntem:{" "}
+                    · {t("predictions.trend_method_label", "method:")}{" "}
                     <span className="font-mono">{forecast.data.method}</span>
                   </span>
                 )}
@@ -244,7 +263,10 @@ export function TimeSeriesForecast() {
         <p className="text-sm text-secondary">
           {forecast.isPending
             ? ""
-            : "“Tahmin Et” butonuyla projeksiyonu oluşturabilirsiniz."}
+            : t(
+                "predictions.hint_use_button",
+                'Use the "Predict" button to generate the projection.',
+              )}
         </p>
       )}
     </Card>

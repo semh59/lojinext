@@ -106,6 +106,8 @@ function MetricRow({
 export function PeriodComparisonCard({ period, className }: Props) {
   const { data, isLoading, error } = useFleetComparison(period);
 
+  const { t } = useTranslation();
+
   if (isLoading) {
     return (
       <div
@@ -116,7 +118,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
       >
         <Loader2 className="h-4 w-4 animate-spin text-secondary" />
         <span className="text-sm text-secondary">
-          Karşılaştırma yükleniyor…
+          {t("fleet.comparison_loading", "Loading comparison…")}
         </span>
       </div>
     );
@@ -131,12 +133,15 @@ export function PeriodComparisonCard({ period, className }: Props) {
         )}
       >
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-        Karşılaştırma yüklenemedi
+        {t("fleet.comparison_error", "Comparison could not be loaded")}
       </div>
     );
   }
 
-  const periodLabel = period === "week" ? "Bu Hafta" : "Bu Ay";
+  const periodLabel =
+    period === "week"
+      ? t("fleet.period_week", "This Week")
+      : t("fleet.period_month", "This Month");
 
   return (
     <div
@@ -147,7 +152,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
     >
       <div className="mb-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-secondary">
-          {periodLabel} vs Geçen
+          {periodLabel} {t("fleet.period_vs_prev", "vs Last")}
         </h3>
         <p className="mt-0.5 text-[10px] text-tertiary">
           {data.current_start} → {data.current_end}
@@ -157,7 +162,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
       <div className="space-y-2">
         <MetricRow
           Icon={Fuel}
-          label="Yakıt"
+          label={t("fleet.metric_fuel", "Fuel")}
           current={data.current.fuel_l}
           previous={data.previous.fuel_l}
           deltaPct={data.fuel_l_delta_pct}
@@ -166,7 +171,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
         />
         <MetricRow
           Icon={Receipt}
-          label="Yakıt Maliyeti"
+          label={t("fleet.metric_fuel_cost", "Fuel Cost")}
           current={data.current.fuel_cost_tl}
           previous={data.previous.fuel_cost_tl}
           deltaPct={data.fuel_cost_delta_pct}
@@ -175,7 +180,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
         />
         <MetricRow
           Icon={RouteIcon}
-          label="Tamamlanan Sefer"
+          label={t("fleet.metric_trips", "Completed Trips")}
           current={data.current.trip_count}
           previous={data.previous.trip_count}
           deltaPct={data.trip_delta_pct}
@@ -184,7 +189,7 @@ export function PeriodComparisonCard({ period, className }: Props) {
         />
         <MetricRow
           Icon={AlertTriangle}
-          label="Anomali (öncelikli)"
+          label={t("fleet.metric_anomalies", "Anomalies (priority)")}
           current={data.current.anomaly_count}
           previous={data.previous.anomaly_count}
           deltaPct={data.anomaly_delta_pct}

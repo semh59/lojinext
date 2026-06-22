@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { preferenceService } from "../../api/preferences";
 
 interface QuietHours {
@@ -9,11 +10,8 @@ interface QuietHours {
 
 const DEFAULT: QuietHours = { enabled: false, start: "22:00", end: "07:00" };
 
-/**
- * Faz 5 — sessiz saat ayarı. /preferences (modul='bildirim',
- * ayar_tipi='quiet_hours') üzerinden saklanır.
- */
 export function QuietHoursSettings() {
+  const { t } = useTranslation();
   const [qh, setQh] = useState<QuietHours>(DEFAULT);
   const [saved, setSaved] = useState(false);
 
@@ -47,31 +45,39 @@ export function QuietHoursSettings() {
 
   return (
     <div className="rounded-modal border border-border bg-surface p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-secondary">Sessiz Saatler</h3>
+      <h3 className="text-sm font-semibold text-secondary">
+        {t("profile.quiet_hours_title", "Quiet Hours")}
+      </h3>
       <label className="flex items-center gap-2 text-sm text-primary">
         <input
           type="checkbox"
           checked={qh.enabled}
           onChange={(e) => setQh({ ...qh, enabled: e.target.checked })}
         />
-        Sessiz saatlerde bildirim gönderme
+        {t(
+          "profile.quiet_hours_no_notify",
+          "Do not send notifications during quiet hours",
+        )}
       </label>
       <div className="flex items-center gap-3">
         <label className="text-sm text-tertiary">
-          Başlangıç
+          {t("profile.quiet_hours_start", "Start")}
           <input
             type="time"
-            aria-label="Sessiz saat başlangıç"
+            aria-label={t(
+              "profile.quiet_hours_start_aria",
+              "Quiet hours start",
+            )}
             value={qh.start}
             onChange={(e) => setQh({ ...qh, start: e.target.value })}
             className="ml-2 rounded-card border border-border bg-elevated px-2 py-1"
           />
         </label>
         <label className="text-sm text-tertiary">
-          Bitiş
+          {t("profile.quiet_hours_end", "End")}
           <input
             type="time"
-            aria-label="Sessiz saat bitiş"
+            aria-label={t("profile.quiet_hours_end_aria", "Quiet hours end")}
             value={qh.end}
             onChange={(e) => setQh({ ...qh, end: e.target.value })}
             className="ml-2 rounded-card border border-border bg-elevated px-2 py-1"
@@ -83,7 +89,9 @@ export function QuietHoursSettings() {
         onClick={save}
         className="rounded-card bg-elevated px-3 py-1 text-sm text-primary"
       >
-        {saved ? "Kaydedildi ✓" : "Sessiz saatleri kaydet"}
+        {saved
+          ? t("profile.quiet_hours_saved", "Saved ✓")
+          : t("profile.quiet_hours_save", "Save quiet hours")}
       </button>
     </div>
   );

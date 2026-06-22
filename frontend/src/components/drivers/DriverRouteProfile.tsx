@@ -15,6 +15,7 @@ import {
   driverService,
   type DriverRouteProfile as RouteProfileData,
 } from "../../api/drivers";
+import { useTranslation } from "react-i18next";
 
 interface DriverRouteProfileProps {
   driverId: number;
@@ -27,6 +28,7 @@ function findBestLabel(data: RouteProfileData): string | null {
 }
 
 export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["driverRouteProfile", driverId],
     queryFn: () => driverService.getRouteProfile(driverId),
@@ -37,7 +39,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
     return (
       <div className="flex items-center justify-center gap-3 py-12 text-secondary">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Güzergah profili hesaplanıyor…</span>
+        <span className="text-sm">{t("drivers.route_profile_loading")}</span>
       </div>
     );
   }
@@ -46,7 +48,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
     return (
       <div className="flex items-center justify-center gap-3 py-12 text-danger">
         <AlertCircle className="h-5 w-5" />
-        <span className="text-sm">Güzergah profili alınamadı</span>
+        <span className="text-sm">{t("drivers.route_profile_error")}</span>
       </div>
     );
   }
@@ -72,11 +74,9 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
       <div className="flex items-start gap-2 rounded-card border border-info/20 bg-info/5 px-4 py-3">
         <Info className="h-4 w-4 shrink-0 text-info mt-0.5" />
         <p className="text-xs leading-relaxed text-secondary">
-          Her güzergah tipi için ortalama tüketim, modelin beklediği değerle
-          karşılaştırılır. Negatif sapma şoförün tahminden daha iyi performans
-          gösterdiği anlamına gelir. En iyi performans, en az{" "}
-          <span className="font-mono">{data.min_trips_for_best}</span> seferi
-          olan profiller arasından seçilir.
+          {t("drivers.route_profile_description", {
+            n: data.min_trips_for_best,
+          })}
         </p>
       </div>
 
@@ -85,7 +85,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
           <Trophy className="h-5 w-5 text-success" />
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-secondary">
-              En Güçlü Güzergah Tipi
+              {t("drivers.route_best_type")}
             </p>
             <p className="text-sm font-semibold text-primary">{bestLabel}</p>
           </div>
@@ -93,8 +93,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
       ) : (
         <div className="rounded-card border border-warning/20 bg-warning/5 px-4 py-3">
           <p className="text-xs text-secondary">
-            Henüz en güçlü güzergah tipini belirlemek için yeterli veri yok (≥
-            {data.min_trips_for_best} sefer gerekir).
+            {t("drivers.route_no_best", { n: data.min_trips_for_best })}
           </p>
         </div>
       )}
@@ -126,9 +125,15 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
                   const item = (payload as any)?.payload as
                     | RouteProfileData["profiles"][number]
                     | undefined;
-                  if (!item) return [`${num.toFixed(1)}%`, "Sapma"];
+                  if (!item)
+                    return [
+                      `${num.toFixed(1)}%`,
+                      t("drivers.route_tooltip_deviation"),
+                    ];
                   return [
-                    `${num.toFixed(1)}% (${item.trip_count} sefer)`,
+                    `${num.toFixed(1)}% (${t("drivers.route_trip_count", {
+                      n: item.trip_count,
+                    })})`,
                     item.label,
                   ];
                 }}
@@ -143,7 +148,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
         </div>
       ) : (
         <p className="text-sm text-secondary text-center py-6">
-          Bu şoför için henüz rota analizli sefer bulunmuyor.
+          {t("drivers.route_no_trips")}
         </p>
       )}
 
@@ -157,7 +162,7 @@ export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
               {p.label}
             </span>
             <div className="font-mono tabular-nums text-xs text-secondary flex items-center gap-3">
-              <span>{p.trip_count} sefer</span>
+              <span>{t("drivers.route_trip_count", { n: p.trip_count })}</span>
               {p.trip_count > 0 ? (
                 <>
                   <span>

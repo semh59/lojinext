@@ -1,5 +1,6 @@
-﻿import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Info, Loader2, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { driverService } from "../../api/drivers";
 
 interface DriverScoreBreakdownProps {
@@ -42,6 +43,7 @@ function Row({
 }
 
 export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
+  const { t } = useTranslation();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["driverScoreBreakdown", driverId],
     queryFn: () => driverService.getScoreBreakdown(driverId),
@@ -52,7 +54,7 @@ export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
     return (
       <div className="flex items-center justify-center gap-3 py-12 text-secondary">
         <Loader2 className="h-5 w-5 animate-spin" />
-        <span className="text-sm">Skor kırılımı hesaplanıyor…</span>
+        <span className="text-sm">{t("drivers.score_loading")}</span>
       </div>
     );
   }
@@ -61,7 +63,7 @@ export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
     return (
       <div className="flex items-center justify-center gap-3 py-12 text-danger">
         <AlertCircle className="h-5 w-5" />
-        <span className="text-sm">Skor kırılımı alınamadı</span>
+        <span className="text-sm">{t("drivers.score_error")}</span>
       </div>
     );
   }
@@ -71,34 +73,31 @@ export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
       <div className="flex items-start gap-2 rounded-card border border-info/20 bg-info/5 px-4 py-3">
         <Info className="h-4 w-4 shrink-0 text-info mt-0.5" />
         <p className="text-xs leading-relaxed text-secondary">
-          Hibrit skor, manuel verilen değerlendirme ile geçmiş seferlerden
-          türetilen performans skorunun ağırlıklı toplamıdır. Performans
-          bileşeni, araç hedef tüketimi yerine sabit bir filo referansı (
-          <span className="font-mono">
-            {data.target_reference.toFixed(1)} L/100km
-          </span>
-          ) üzerinden hesaplanır.
+          {t("drivers.score_description_before")}
+          <span className="font-mono">{data.target_reference.toFixed(1)}</span>
+          {t("drivers.score_description_after")}
         </p>
       </div>
 
       <div className="space-y-2">
         <Row
-          label="Manuel Puan"
+          label={t("drivers.manual_score_label")}
           score={data.manual}
           weight={data.manual_weight}
-          extra="yönetici değerlendirmesi"
+          extra={t("drivers.score_manual_label")}
           accent="text-accent"
         />
         <Row
-          label="Otomatik Puan"
+          label={t("drivers.auto_score_label")}
           score={data.auto}
           weight={data.auto_weight}
           extra={
             data.has_trips
-              ? `${data.trip_count} sefer · ort. ${data.avg_consumption.toFixed(
-                  1,
-                )} L/100km`
-              : "henüz yeterli sefer verisi yok → manuel puana eşit"
+              ? t("drivers.trips_and_avg", {
+                  count: data.trip_count,
+                  avg: data.avg_consumption.toFixed(1),
+                })
+              : t("drivers.score_auto_label")
           }
           accent={data.has_trips ? "text-success" : "text-warning"}
         />
@@ -106,7 +105,7 @@ export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
 
       <div className="flex items-baseline justify-between gap-4 rounded-modal border border-accent/20 bg-accent/5 px-4 py-3">
         <span className="text-[11px] font-bold uppercase tracking-widest text-secondary">
-          Toplam Hibrit Skor
+          {t("drivers.total_hybrid_score")}
         </span>
         <span className="font-mono tabular-nums text-2xl font-black text-accent">
           {data.total.toFixed(2)}
@@ -115,8 +114,7 @@ export function DriverScoreBreakdown({ driverId }: DriverScoreBreakdownProps) {
 
       {!data.has_trips && (
         <p className="text-[11px] text-secondary text-center">
-          Yeterli geçmiş sefer biriktiğinde otomatik puan ayrışacak ve toplam
-          değişebilir.
+          {t("drivers.score_note")}
         </p>
       )}
     </div>

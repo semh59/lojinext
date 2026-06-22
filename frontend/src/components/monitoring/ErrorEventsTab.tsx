@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart,
@@ -124,6 +125,7 @@ function FilterChip({
 // ── Main component ─────────────────────────────────────────────────────────
 
 export function ErrorEventsTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const locale = useLocale();
   const [layer, setLayer] = useState<string | null>(null);
@@ -184,9 +186,11 @@ export function ErrorEventsTab() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold text-primary">
-              Saatlik Hata Dağılımı
+              {t("monitoring.hourly_errors")}
             </h3>
-            <p className="text-xs text-tertiary mt-0.5">Son 24 saat</p>
+            <p className="text-xs text-tertiary mt-0.5">
+              {t("monitoring.last_24h")}
+            </p>
           </div>
           <div className="flex items-center gap-1.5 text-[10px] text-tertiary">
             <span
@@ -197,15 +201,15 @@ export function ErrorEventsTab() {
               }`}
             />
             {sseStatus === "connected"
-              ? "Canlı akış aktif"
-              : "Canlı akış bekleniyor"}
+              ? t("monitoring.stream_active")
+              : t("monitoring.stream_waiting")}
           </div>
         </div>
         {statsLoading ? (
           <div className="h-40 animate-pulse rounded-card bg-elevated/50" />
         ) : chartData.length === 0 ? (
           <div className="flex h-40 items-center justify-center text-sm text-secondary">
-            Henüz hata verisi yok
+            {t("monitoring.no_errors")}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={160}>
@@ -244,10 +248,10 @@ export function ErrorEventsTab() {
         <div className="flex items-center gap-2 flex-wrap">
           <Filter size={13} className="text-tertiary" />
           <span className="text-xs font-bold text-secondary uppercase tracking-wider">
-            Katman:
+            {t("monitoring.layer_label")}
           </span>
           <FilterChip
-            label="Tümü"
+            label={t("monitoring.filter_all")}
             active={layer === null}
             onClick={() => {
               setLayer(null);
@@ -269,10 +273,10 @@ export function ErrorEventsTab() {
         <div className="flex items-center gap-2 flex-wrap">
           <AlertTriangle size={13} className="text-tertiary" />
           <span className="text-xs font-bold text-secondary uppercase tracking-wider">
-            Önem:
+            {t("monitoring.severity_label")}
           </span>
           <FilterChip
-            label="Tümü"
+            label={t("monitoring.filter_all")}
             active={severity === null}
             onClick={() => {
               setSeverity(null);
@@ -291,7 +295,11 @@ export function ErrorEventsTab() {
             />
           ))}
           <FilterChip
-            label={showResolved ? "Çözülenler dahil" : "Sadece açık"}
+            label={
+              showResolved
+                ? t("monitoring.filter_resolved")
+                : t("monitoring.filter_open_only")
+            }
             active={showResolved}
             onClick={() => setShowResolved((v) => !v)}
           />
@@ -311,7 +319,7 @@ export function ErrorEventsTab() {
       ) : items.length === 0 ? (
         <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-modal border border-dashed border-border text-secondary">
           <CheckCircle size={24} strokeWidth={1.5} className="text-success" />
-          <p className="text-sm">Aktif hata olayı bulunamadı</p>
+          <p className="text-sm">{t("monitoring.no_active_errors")}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -348,7 +356,7 @@ export function ErrorEventsTab() {
                     )}
                     {evt.resolved_at && (
                       <span className="text-[10px] text-success font-semibold">
-                        ✓ Çözüldü
+                        {t("monitoring.resolved_badge")}
                       </span>
                     )}
                   </div>
@@ -361,14 +369,17 @@ export function ErrorEventsTab() {
                     </p>
                   )}
                   <div className="mt-1 flex items-center gap-3 text-[10px] text-tertiary">
-                    <span>İlk: {formatTime(evt.first_seen, locale)}</span>
-                    <span>Son: {formatTime(evt.last_seen, locale)}</span>
+                    <span>
+                      {t("monitoring.first_seen")}{" "}
+                      {formatTime(evt.first_seen, locale)}
+                    </span>
+                    <span>Last: {formatTime(evt.last_seen, locale)}</span>
                     {evt.trace_id && (
                       <button
                         type="button"
                         onClick={() => setTraceDialog(evt.trace_id ?? null)}
                         className="inline-flex items-center gap-1 text-accent hover:underline"
-                        title="Trace zincirini göster"
+                        title={t("monitoring.show_trace")}
                         data-testid="trace-open-btn"
                       >
                         <Search size={10} />
@@ -387,7 +398,7 @@ export function ErrorEventsTab() {
                     disabled={resolve.isPending}
                     className="shrink-0 text-xs"
                   >
-                    Çözüldü
+                    {t("monitoring.resolved_action")}
                   </Button>
                 )}
               </div>
@@ -397,7 +408,9 @@ export function ErrorEventsTab() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-tertiary">{total} kayıt</p>
+              <p className="text-xs text-tertiary">
+                {t("monitoring.record_count", { n: total })}
+              </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -405,7 +418,7 @@ export function ErrorEventsTab() {
                   onClick={() => setPage((p) => p - 1)}
                   disabled={page <= 1}
                 >
-                  Önceki
+                  {t("monitoring.prev")}
                 </Button>
                 <span className="flex items-center px-3 text-xs text-secondary">
                   {page} / {totalPages}
@@ -416,7 +429,7 @@ export function ErrorEventsTab() {
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= totalPages}
                 >
-                  Sonraki
+                  {t("common.next")}
                 </Button>
               </div>
             </div>

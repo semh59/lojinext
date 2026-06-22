@@ -8,6 +8,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { chartTheme } from "@/lib/chart-theme";
 
@@ -18,15 +19,21 @@ interface TrendPoint {
 }
 
 export function AccuracyChart({ data }: { data: TrendPoint[] }) {
+  const { t } = useTranslation();
+
   return (
     <Card padding="lg" className="flex flex-col gap-4">
       <div>
-        <h2 className="text-sm font-semibold text-primary">Gerçek vs Tahmin</h2>
-        <p className="text-xs text-secondary">Son 30 gün, L/100km</p>
+        <h2 className="text-sm font-semibold text-primary">
+          {t("predictions.actual_vs_predicted", "Actual vs Predicted")}
+        </h2>
+        <p className="text-xs text-secondary">
+          {t("predictions.last_30_days", "Last 30 days, L/100km")}
+        </p>
       </div>
       {data.length === 0 ? (
         <div className="flex h-48 items-center justify-center text-sm text-secondary">
-          Veri yok
+          {t("predictions.no_data", "No data")}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={192}>
@@ -80,7 +87,7 @@ export function AccuracyChart({ data }: { data: TrendPoint[] }) {
             <Area
               type="monotone"
               dataKey="actual"
-              name="Gerçek"
+              name={t("predictions.actual_series", "Actual")}
               stroke={chartTheme.colors.info}
               fill="url(#actualGrad)"
               strokeWidth={2}
@@ -89,7 +96,7 @@ export function AccuracyChart({ data }: { data: TrendPoint[] }) {
             <Area
               type="monotone"
               dataKey="predicted"
-              name="Tahmin"
+              name={t("predictions.forecast_series_name", "Forecast")}
               stroke={chartTheme.colors.success}
               fill="url(#predictedGrad)"
               strokeWidth={2}

@@ -45,6 +45,7 @@ import {
   useTripPlannerResources,
   useTripsResources,
 } from "../../resources/useResources";
+import { useTranslation } from "react-i18next";
 
 interface TripFormModalProps {
   isOpen: boolean;
@@ -83,6 +84,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({
   isReadOnly = false,
 }) => {
   const { tripPlannerText } = useTripPlannerResources();
+  const { t } = useTranslation();
   const { tripFormModalText } = useTripsResources();
   const tripSchema = z.object({
     tarih: z.string().min(1, tripFormModalText.validation.dateRequired),
@@ -432,8 +434,10 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({
                   onSelectAndContinue={handleWizardSelect}
                 />
                 <div className="rounded-card border border-border bg-elevated/30 p-3 text-[11px] text-secondary">
-                  Önce sağdaki tarih + güzergah alanlarını doldurun, sonra
-                  "Önerileri Getir" ile akıllı plan sunulsun.
+                  {t(
+                    "trips.wizard_hint",
+                    'Fill in the date + route fields on the right, then use "Get Suggestions" to get a smart plan.',
+                  )}
                 </div>
                 <fieldset className="m-0 space-y-4 border-none p-0">
                   <RouteSelector

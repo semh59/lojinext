@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { adminNotificationsApi, adminRolesApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useTranslation } from "react-i18next";
 
 const CHANNELS = ["EMAIL", "PUSH", "TELEGRAM", "SMS"] as const;
 
@@ -39,6 +40,7 @@ const EMPTY_RULE_FORM: RuleForm = {
 
 export default function AdminNotificationsPage() {
   const { adminNotificationsText } = useAdminResources();
+  const { t } = useTranslation();
   usePageTitle(adminNotificationsText.heading);
   const qc = useQueryClient();
   const [isModalOpen, setModalOpen] = useState(false);
@@ -61,7 +63,9 @@ export default function AdminNotificationsPage() {
     mutationFn: adminNotificationsApi.createRule,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["adminNotificationRules"] });
-      toast.success("Bildirim kuralı oluşturuldu");
+      toast.success(
+        t("admin.bildirim_create_success", "Notification rule created"),
+      );
       setModalOpen(false);
       setForm(EMPTY_RULE_FORM);
     },
@@ -82,10 +86,18 @@ export default function AdminNotificationsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-    if (!form.olay_tipi.trim()) return setFormError("Olay tipi zorunludur");
+    if (!form.olay_tipi.trim())
+      return setFormError(
+        t("admin.bildirim_event_required", "Event type is required"),
+      );
     if (form.kanallar.length === 0)
-      return setFormError("En az bir kanal seçin");
-    if (!form.alici_rol_id) return setFormError("Hedef rol zorunludur");
+      return setFormError(
+        t("admin.bildirim_channel_required", "Select at least one channel"),
+      );
+    if (!form.alici_rol_id)
+      return setFormError(
+        t("admin.bildirim_role_required", "Target role is required"),
+      );
     createMutation.mutate({
       olay_tipi: form.olay_tipi.trim(),
       kanallar: form.kanallar,
@@ -199,14 +211,17 @@ export default function AdminNotificationsPage() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
-        title="Yeni Bildirim Kuralı"
+        title={t("admin.bildirim_form_title", "New Notification Rule")}
         size="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Olay Tipi"
+            label={t("admin.bildirim_event_type_label", "Event Type")}
             type="text"
-            placeholder="örn. FUEL_ANOMALY, TRIP_DELAY"
+            placeholder={t(
+              "admin.bildirim_event_placeholder",
+              "e.g. FUEL_ANOMALY, TRIP_DELAY",
+            )}
             value={form.olay_tipi}
             onChange={(e) =>
               setForm((prev) => ({ ...prev, olay_tipi: e.target.value }))
@@ -215,7 +230,7 @@ export default function AdminNotificationsPage() {
 
           <div className="flex flex-col gap-2">
             <label className="text-[13px] font-medium text-primary">
-              Kanallar
+              {t("admin.bildirim_channels_label", "Channels")}
             </label>
             <div className="flex flex-wrap gap-2">
               {CHANNELS.map((ch) => (
@@ -238,7 +253,7 @@ export default function AdminNotificationsPage() {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-[13px] font-medium text-primary">
-              Hedef Rol
+              {t("admin.bildirim_target_role_label", "Target Role")}
             </label>
             <select
               value={form.alici_rol_id}
@@ -247,7 +262,9 @@ export default function AdminNotificationsPage() {
               }
               className="flex h-10 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-primary outline-none focus:border-accent focus:ring-2 focus:ring-accent/5"
             >
-              <option value="">Rol seçin...</option>
+              <option value="">
+                {t("admin.bildirim_select_role", "Select role...")}
+              </option>
               {roles.map((r: any) => (
                 <option key={r.id} value={String(r.id)}>
                   {r.ad}
@@ -277,7 +294,9 @@ export default function AdminNotificationsPage() {
               />
             </button>
             <span className="text-sm font-medium text-primary">
-              {form.aktif ? "Kural Aktif" : "Kural Pasif"}
+              {form.aktif
+                ? t("admin.bildirim_rule_active", "Rule Active")
+                : t("admin.bildirim_rule_passive", "Rule Inactive")}
             </span>
           </div>
 
@@ -294,14 +313,16 @@ export default function AdminNotificationsPage() {
               onClick={() => setModalOpen(false)}
               disabled={createMutation.isPending}
             >
-              İptal
+              {t("common.cancel", "Cancel")}
             </Button>
             <Button
               type="submit"
               variant="primary"
               disabled={createMutation.isPending}
             >
-              {createMutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+              {createMutation.isPending
+                ? t("admin.bildirim_creating", "Creating...")
+                : t("common.create", "Create")}
             </Button>
           </div>
         </form>

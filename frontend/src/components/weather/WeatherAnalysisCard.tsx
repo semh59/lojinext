@@ -1,5 +1,6 @@
 import React from "react";
 import { CloudRain, Wind, Sun } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 
 interface WeatherAnalysisCardProps {
@@ -11,20 +12,29 @@ export const WeatherAnalysisCard: React.FC<WeatherAnalysisCardProps> = ({
   weatherImpact,
   weatherLoading,
 }) => {
+  const { t } = useTranslation();
   if (weatherImpact === null && !weatherLoading) return null;
 
   const getWeatherDescription = (factor: number) => {
     if (factor > 1.1)
       return {
-        text: "Yüksek Tüketim Riski",
+        text: t("weather.high_risk", "High Consumption Risk"),
         color: "text-danger",
         icon: CloudRain,
       };
     if (factor > 1.02)
-      return { text: "Hafif Artış", color: "text-warning", icon: Wind };
+      return {
+        text: t("weather.slight_increase", "Slight Increase"),
+        color: "text-warning",
+        icon: Wind,
+      };
     if (factor < 0.98)
-      return { text: "Optimal Tasarruf", color: "text-success", icon: Sun };
-    return { text: "Normal Koşullar", color: "text-accent", icon: Sun };
+      return { text: "Optimal Savings", color: "text-success", icon: Sun };
+    return {
+      text: t("weather.normal", "Normal Conditions"),
+      color: "text-accent",
+      icon: Sun,
+    };
   };
 
   const info = weatherImpact
@@ -61,7 +71,7 @@ export const WeatherAnalysisCard: React.FC<WeatherAnalysisCardProps> = ({
         </div>
         <div>
           <div className="text-[10px] font-black uppercase text-secondary">
-            Hava Analizi
+            {t("weather.analysis_label", "Weather Analysis")}
           </div>
           <div
             className={cn(
@@ -69,14 +79,16 @@ export const WeatherAnalysisCard: React.FC<WeatherAnalysisCardProps> = ({
               weatherLoading ? "text-secondary" : "text-primary",
             )}
           >
-            {weatherLoading ? "Hesaplanıyor..." : info.text}
+            {weatherLoading
+              ? t("weather.calculating", "Calculating...")
+              : info.text}
           </div>
         </div>
       </div>
       {!weatherLoading && weatherImpact !== null && (
         <div className="text-right">
           <div className="text-[10px] font-black uppercase text-secondary">
-            Etki
+            {t("weather.impact_label", "Impact")}
           </div>
           <div
             className={cn(

@@ -1,29 +1,26 @@
-﻿import { useState } from "react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { fuelService, type OcrPreview } from "../../api/fuel";
 
 type ParsedFields = OcrPreview["yapilandirilmis"];
 
 interface Props {
-  /** OCR alanları onaylandığında üst bileşene iletir (yakıt kaydı oluşturma). */
   onConfirm: (fields: ParsedFields) => void;
 }
 
-const FIELD_LABELS: Record<keyof ParsedFields, string> = {
-  istasyon: "İstasyon",
-  litre: "Litre",
-  tutar: "Tutar",
-  km: "Km",
-  tarih: "Tarih",
-};
-
-/**
- * Faz 6 — fiş fotoğrafı yükle → OCR önizleme → düzenle → onayla.
- * OCR best-effort: servis hatasında kullanıcı alanları elle doldurabilir.
- */
 export function ReceiptUpload({ onConfirm }: Props) {
+  const { t } = useTranslation();
   const [fields, setFields] = useState<ParsedFields | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const FIELD_LABELS: Record<keyof ParsedFields, string> = {
+    istasyon: t("fuel.receipt_field"),
+    litre: t("fuel.litres"),
+    tutar: t("fuel.total"),
+    km: "Km",
+    tarih: t("common.date"),
+  };
 
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,7 +31,7 @@ export function ReceiptUpload({ onConfirm }: Props) {
       const res = await fuelService.ocrPreview(file);
       setFields(res.yapilandirilmis);
     } catch {
-      setError("OCR okunamadı; alanları elle girebilirsiniz.");
+      setError(t("fuel.ocr_error"));
       setFields({
         litre: null,
         tutar: null,
@@ -52,18 +49,22 @@ export function ReceiptUpload({ onConfirm }: Props) {
 
   return (
     <div className="rounded-modal border border-border bg-surface p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-secondary">Fiş Yükle (OCR)</h3>
+      <h3 className="text-sm font-semibold text-secondary">
+        {t("fuel.receipt_label")}
+      </h3>
       <label className="block text-sm text-tertiary">
-        Fiş fotoğrafı
+        {t("fuel.receipt_label")}
         <input
           type="file"
           accept="image/*"
-          aria-label="Fiş fotoğrafı"
+          aria-label={t("fuel.receipt_label")}
           onChange={onFile}
           className="mt-1 block"
         />
       </label>
-      {loading && <p className="text-sm text-tertiary">OCR okunuyor…</p>}
+      {loading && (
+        <p className="text-sm text-tertiary">{t("common.loading")}</p>
+      )}
       {error && <p className="text-sm text-warning">{error}</p>}
       {fields && (
         <div className="space-y-2">
@@ -85,7 +86,7 @@ export function ReceiptUpload({ onConfirm }: Props) {
             onClick={() => fields && onConfirm(fields)}
             className="rounded-card bg-elevated px-3 py-1 text-sm text-primary"
           >
-            Onayla ve kaydet
+            {t("common.confirm")}
           </button>
         </div>
       )}

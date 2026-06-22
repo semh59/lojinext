@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import {
   TRIP_STATUS_IPTAL,
@@ -33,6 +34,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 export function useTripActions() {
+  const { t } = useTranslation();
   const { tripModuleText } = useTripsResources();
   const queryClient = useQueryClient();
   const { filters, selectedTrip, setSelectedTrip, toggleForm, clearSelection } =
@@ -157,19 +159,21 @@ export function useTripActions() {
   const onaylaMutation = useMutation({
     mutationFn: (id: number) => tripService.onayla(id),
     onSuccess: (_, id) => {
-      toast.success(`Sefer #${id} onaylandı`);
+      toast.success(t("trips.trip_approved", "Trip #{{id}} approved", { id }));
       queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
-    onError: () => toast.error("Onaylama başarısız"),
+    onError: () =>
+      toast.error(t("trips.trip_approve_failed", "Approval failed")),
   });
 
   const reddetMutation = useMutation({
     mutationFn: (id: number) => tripService.reddet(id),
     onSuccess: (_, id) => {
-      toast.success(`Sefer #${id} reddedildi`);
+      toast.success(t("trips.trip_rejected", "Trip #{{id}} rejected", { id }));
       queryClient.invalidateQueries({ queryKey: ["trips"] });
     },
-    onError: () => toast.error("Reddetme başarısız"),
+    onError: () =>
+      toast.error(t("trips.trip_reject_failed", "Rejection failed")),
   });
 
   const bulkDeleteMutation = useMutation({

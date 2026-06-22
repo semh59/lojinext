@@ -125,7 +125,9 @@
     "forgot_send_link": "Sıfırlama Bağlantısı Gönder",
     "forgot_success": "E-posta adresinize sıfırlama talimatı gönderildi.",
     "forgot_success_hint": "Gelen kutunuzu kontrol edin. Birkaç dakika içinde ulaşmadıysa spam klasörünüze bakın.",
-    "back_to_login": "Giriş sayfasına dön"
+    "back_to_login": "Giriş sayfasına dön",
+    "name": "Ad Soyad",
+    "password_mismatch": "Şifreler uyuşmuyor."
   },
   "profile": {
     "title": "Hesabım",
@@ -216,7 +218,10 @@
     "severity_high": "Yüksek",
     "receipt_label": "Fiş Yükle (OCR)",
     "receipt_field": "İstasyon",
-    "ocr_error": "OCR okunamadı; alanları elle girebilirsiniz."
+    "ocr_error": "OCR okunamadı; alanları elle girebilirsiniz.",
+    "monthly_trend_title": "Aylık Tüketim Trendi",
+    "monthly_trend_subtitle": "Aylık toplam litre",
+    "consumption_tooltip": "Tüketim"
   },
   "locations": {
     "title": "Lokasyonlar",
@@ -234,10 +239,7 @@
     "calibration_trip_id": "Sefer ID",
     "calibration_hint": "Sefer detayında ID'yi bulabilirsiniz. Sadece tamamlanmış, GPS verisi olan seferler kalibrasyon için kullanılabilir.",
     "calibrate_btn": "Kalibre Et",
-    "calibration_trip_placeholder": "Örn: 1234",
-    "monthly_trend_title": "Aylık Tüketim Trendi",
-    "monthly_trend_subtitle": "Aylık toplam litre",
-    "consumption_tooltip": "Tüketim"
+    "calibration_trip_placeholder": "Örn: 1234"
   },
   "reports": {
     "saving_target_aria": "Hedef tüketim",
@@ -791,6 +793,7 @@
     "aria_label": "Geri bildirim gönder"
   },
   "predictions": {
+    "title": "ML Tahminleri",
     "ensemble_weights_title": "Ensemble Model Ağırlıkları",
     "ensemble_weights_subtitle": "Her modelin tahmine katkı oranı",
     "ensemble_no_data": "Henüz eğitim verisi yok",
@@ -875,6 +878,7 @@
     "ts_insufficient_data": "Yeterli veri yok",
     "ts_insufficient_hint": "Tahmin oluşturmak için en az birkaç haftalık tamamlanmış sefer geçmişi gerekir.",
     "model_label_physics": "Fizik",
+    "model_label_physics_short": "Fizik",
     "ensemble_active_models": "{{n}} aktif model",
     "xai_panel_title": "Tahmin Açıklaması (XAI)",
     "xai_panel_loading": "Faktörler analiz ediliyor…",

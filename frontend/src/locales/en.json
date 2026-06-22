@@ -125,7 +125,9 @@
     "forgot_send_link": "Send Reset Link",
     "forgot_success": "Reset instructions sent to your email.",
     "forgot_success_hint": "Check your inbox. If it doesn't arrive within a few minutes, check your spam folder.",
-    "back_to_login": "Back to login"
+    "back_to_login": "Back to login",
+    "name": "Full Name",
+    "password_mismatch": "Passwords do not match."
   },
   "profile": {
     "title": "My Account",
@@ -216,7 +218,10 @@
     "severity_high": "High",
     "receipt_label": "Receipt (OCR)",
     "receipt_field": "Station",
-    "ocr_error": "OCR failed; you can fill in the fields manually."
+    "ocr_error": "OCR failed; you can fill in the fields manually.",
+    "monthly_trend_title": "Monthly Consumption Trend",
+    "monthly_trend_subtitle": "Monthly total litres",
+    "consumption_tooltip": "Consumption"
   },
   "locations": {
     "title": "Locations",
@@ -234,10 +239,7 @@
     "calibration_trip_id": "Trip ID",
     "calibration_hint": "You can find the ID in the trip detail. Only completed trips with GPS data can be used for calibration.",
     "calibrate_btn": "Calibrate",
-    "calibration_trip_placeholder": "e.g. 1234",
-    "monthly_trend_title": "Monthly Consumption Trend",
-    "monthly_trend_subtitle": "Monthly total litres",
-    "consumption_tooltip": "Consumption"
+    "calibration_trip_placeholder": "e.g. 1234"
   },
   "reports": {
     "saving_target_aria": "Target consumption",
@@ -791,6 +793,7 @@
     "aria_label": "Send feedback"
   },
   "predictions": {
+    "title": "ML Predictions",
     "ensemble_weights_title": "Ensemble Model Weights",
     "ensemble_weights_subtitle": "Each model's contribution to the prediction",
     "ensemble_no_data": "No training data yet",

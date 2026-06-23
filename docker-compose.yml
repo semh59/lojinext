@@ -304,6 +304,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - OTEL_ENABLED=false
       - OTEL_EXPORTER_OTLP_ENDPOINT=
+      - HOME=/app
     volumes:
       - app_data:/app/app/data
     healthcheck:

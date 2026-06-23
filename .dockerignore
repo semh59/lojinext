@@ -60,7 +60,9 @@ tmp_*
 *.bak
 *.xlsx
 *.csv
-data/ai_kb/faiss.index
+app/data/ai_kb/faiss.index
+app/data/ai_kb/metadata.json
+app/data/vector_store/
 
 # ── One-time audit / planning scripts ─────────────────────────
 deep_audit.py

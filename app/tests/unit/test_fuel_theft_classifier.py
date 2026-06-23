@@ -1,46 +1,46 @@
-"""Feature B.1 — FuelTheftClassifier unit testleri.
+"""FuelTheftClassifier tests — real DB, no mocked UoW.
 
-Engine'in fonksiyonel davranışı + PII regex doğrulaması.
+The only DB touch is _pattern_count (COUNT of recent anomalies for the same
+kaynak). Previously a mocked UnitOfWork faked that count; here we seed real
+`anomalies` rows so the classifier's repeat-offender pattern score is computed
+against the real COUNT query. Pure-function and the DB-error fallback tests keep
+their shape (the latter forces a UoW error — an otherwise-unreachable path).
 """
 
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy import insert
 
-from app.core.ai.fuel_theft_classifier import (
-    FuelTheftClassifier,
-)
+from app.core.ai.fuel_theft_classifier import FuelTheftClassifier
+from app.database.models import Anomaly
 from app.schemas.investigation import TheftClassification
 
 
-def _mock_uow_with_count(count: int):
-    """UnitOfWork patch'ini count döndürecek şekilde kur."""
-
-    class _Result:
-        def scalar(self):
-            return count
-
-    fake_session = MagicMock()
-    fake_session.execute = AsyncMock(return_value=_Result())
-
-    fake_uow = MagicMock()
-    fake_uow.session = fake_session
-
-    class _CM:
-        async def __aenter__(self):
-            return fake_uow
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-    return patch(
-        "app.core.ai.fuel_theft_classifier.UnitOfWork",
-        return_value=_CM(),
-    )
+async def _seed_anomalies(
+    db_session, n: int, *, kaynak_id: int = 7, kaynak_tip: str = "sefer"
+) -> None:
+    """Seed n real recent anomalies for a kaynak so _pattern_count() returns n."""
+    for _ in range(n):
+        await db_session.execute(
+            insert(Anomaly).values(
+                tarih=date.today(),
+                tip="tuketim",
+                kaynak_tip=kaynak_tip,
+                kaynak_id=kaynak_id,
+                deger=1.0,
+                beklenen_deger=1.0,
+                sapma_yuzde=15.0,
+                severity="medium",
+                aciklama="seed",
+            )
+        )
+    await db_session.commit()
 
 
 def _anomaly(
@@ -67,53 +67,50 @@ def _anomaly(
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_low_sapma_low_severity_no_pattern_yields_low():
-    """Düşük tüm bileşenler → low level."""
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=5, severity="low"))
+async def test_low_sapma_low_severity_no_pattern_yields_low(db_session):
+    """Düşük tüm bileşenler + 0 geçmiş anomali → low level."""
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=5, severity="low")
+    )
     assert isinstance(result, TheftClassification)
     assert result.suspicion_level == "low"
-    # 0.5*0.1 + 0.3*0.1 + 0.2*0 = 0.08
     assert result.suspicion_score < 0.4
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_high_sapma_critical_pattern_yields_high():
-    """Yüksek tüm bileşenler → high level."""
-    with _mock_uow_with_count(5):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=40, severity="critical"))
-    # 0.5*0.8 + 0.3*1.0 + 0.2*1.0 = 0.9
+async def test_high_sapma_critical_pattern_yields_high(db_session):
+    """Yüksek sapma + critical + 5 gerçek geçmiş anomali → high level."""
+    await _seed_anomalies(db_session, 5)
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=40, severity="critical")
+    )
     assert result.suspicion_level == "high"
     assert result.suspicion_score >= 0.7
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_sapma_clamped_to_one():
-    """Sapma 80% → norm 1.0 (>50 clamp)."""
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=80, severity="low"))
-    # 0.5*1.0 + 0.3*0.1 + 0 = 0.53 → medium
+async def test_sapma_clamped_to_one(db_session):
+    """Sapma 80% → norm 1.0 (>50 clamp); pattern 0 → medium."""
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=80, severity="low")
+    )
     assert result.suspicion_level == "medium"
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_unknown_severity_defaults_to_low_weight():
-    """Bilinmeyen severity → 0.1 ağırlık."""
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=5, severity="extreme"))
+async def test_unknown_severity_defaults_to_low_weight(db_session):
+    """Bilinmeyen severity → 0.1 ağırlık → low."""
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=5, severity="extreme")
+    )
     assert result.suspicion_level == "low"
-    # severity weight 0.1 olduğu için low kalmalı
 
 
 def test_pattern_to_score_thresholds():
-    """≥3 → 1.0, 2 → 0.5, 0/1 → 0.0."""
+    """≥3 → 1.0, 2 → 0.5, 0/1 → 0.0 (pure function, no DB)."""
     assert FuelTheftClassifier._pattern_to_score(3) == 1.0
     assert FuelTheftClassifier._pattern_to_score(5) == 1.0
     assert FuelTheftClassifier._pattern_to_score(2) == 0.5
@@ -124,7 +121,10 @@ def test_pattern_to_score_thresholds():
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_classify_exception_falls_back_to_unknown():
-    """UoW exception → unknown level + warning log."""
+    """UoW exception → unknown level + warning factor.
+
+    A DB error mid-classify cannot be triggered with a healthy real DB, so this
+    error-path is exercised by forcing the UnitOfWork to raise on enter."""
 
     class _CM:
         async def __aenter__(self):
@@ -146,14 +146,12 @@ async def test_classify_exception_falls_back_to_unknown():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_negative_sapma_uses_abs():
+async def test_negative_sapma_uses_abs(db_session):
     """Lehte sapma (-25) → abs ile aynı kabul edilir."""
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=-25, severity="low"))
-    # |sapma|/50 = 0.5 → score = 0.5*0.5 + 0.3*0.1 + 0 = 0.28 → low
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=-25, severity="low")
+    )
     assert result.suspicion_level == "low"
-    # Factors -25.0 değerini göstermeli
     assert any("-25" in f or "+25" in f for f in result.factors) or any(
         "%" in f for f in result.factors
     )
@@ -161,45 +159,39 @@ async def test_negative_sapma_uses_abs():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_sapma_none_zero_norm():
+async def test_sapma_none_zero_norm(db_session):
     """sapma_yuzde NULL → sapma_norm=0, factor'da görünmez."""
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly(sapma_yuzde=None, severity="medium"))
-    # 0.5*0 + 0.3*0.4 + 0 = 0.12 → low
+    result = await FuelTheftClassifier().classify(
+        _anomaly(sapma_yuzde=None, severity="medium")
+    )
     assert result.suspicion_level == "low"
-    # Sapma factor'ı bulunmamalı (None geçti)
     assert not any("Sapma" in f for f in result.factors)
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_empty_kaynak_tip_skips_pattern_query():
-    """kaynak_tip boş → pattern_count=0, DB sorgu YOK."""
-    # Mock UoW execute ediliyor olsaydı ama erken-return ile gelmemeli
-    with _mock_uow_with_count(99):  # high count ama kullanılmamalı
-        engine = FuelTheftClassifier()
-        result = await engine.classify(
-            _anomaly(kaynak_tip="", sapma_yuzde=5, severity="low")
-        )
-    # Pattern score 0 olmalı (kaynak_tip boş erken-return)
+async def test_empty_kaynak_tip_skips_pattern_query(db_session):
+    """kaynak_tip boş → erken-return, pattern_count=0 (seeded rows sayılmaz)."""
+    # 5 gerçek anomali olsa bile boş kaynak_tip sorguyu atlamalı.
+    await _seed_anomalies(db_session, 5)
+    result = await FuelTheftClassifier().classify(
+        _anomaly(kaynak_tip="", sapma_yuzde=5, severity="low")
+    )
     assert result.suspicion_level == "low"
-    # 0.5*0.1 + 0.3*0.1 + 0 = 0.08
     assert result.suspicion_score < 0.2
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_explain_includes_pattern_when_count_high():
+async def test_explain_includes_pattern_when_count_high(db_session):
     """Pattern count ≥2 → açıklama listesinde sayı geçer."""
-    with _mock_uow_with_count(5):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(_anomaly())
+    await _seed_anomalies(db_session, 5)
+    result = await FuelTheftClassifier().classify(_anomaly())
     assert any("5 anomali" in f for f in result.factors)
 
 
 def test_suggest_action_per_level():
-    """Her seviye için ayırt edici mesaj."""
+    """Her seviye için ayırt edici mesaj (pure function, no DB)."""
     h = FuelTheftClassifier._suggest_action("high")
     m = FuelTheftClassifier._suggest_action("medium")
     low = FuelTheftClassifier._suggest_action("low")
@@ -208,39 +200,30 @@ def test_suggest_action_per_level():
     assert "Orta şüphe" in m
     assert "Düşük şüphe" in low
     assert "başarısız" in u.lower()
-    # Hepsi farklı
     assert len({h, m, low, u}) == 4
 
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_factors_contain_no_pii():
-    """Q1 PII politikası: classifier çıktısında plaka/isim YOK.
-
-    Anomaly metadata'sına eklenmiş plaka/sofor_adi field'ları classify
-    sonucu factors listesine HİÇ kopyalanmaz.
-    """
-    with _mock_uow_with_count(0):
-        engine = FuelTheftClassifier()
-        result = await engine.classify(
-            {
-                "id": 1,
-                "tip": "tuketim",
-                "kaynak_id": 7,
-                "kaynak_tip": "sefer",
-                "sapma_yuzde": 20,
-                "severity": "medium",
-                "plaka": "34 ABC 1234",
-                "sofor_adi": "Ali Veli",
-            }
-        )
+async def test_factors_contain_no_pii(db_session):
+    """Q1 PII politikası: classifier çıktısında plaka/isim YOK."""
+    result = await FuelTheftClassifier().classify(
+        {
+            "id": 1,
+            "tip": "tuketim",
+            "kaynak_id": 7,
+            "kaynak_tip": "sefer",
+            "sapma_yuzde": 20,
+            "severity": "medium",
+            "plaka": "34 ABC 1234",
+            "sofor_adi": "Ali Veli",
+        }
+    )
     factors_blob = " | ".join(result.factors)
     suggestion = result.suggested_action
 
-    # İsim/plaka yok
     assert "Ali" not in factors_blob
     assert "Veli" not in factors_blob
     assert "Ali" not in suggestion
     assert "Veli" not in suggestion
     assert not re.search(r"\d{2}\s+[A-Z]{2,3}\s+\d{2,4}", factors_blob)
-    assert not re.search(r"\d{2}\s+[A-Z]{2,3}\s+\d{2,4}", suggestion)

@@ -562,6 +562,12 @@ class Sefer(Base):
         String(20), default="Planned", server_default=text("'Planned'")
     )
     notlar: Mapped[Optional[str]] = mapped_column(String(255))
+    # Manual attribution override audit (AttributionService.override_attribution):
+    # marks a trip whose arac/sofor was manually re-assigned, with the reason.
+    is_corrected: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=text("false"), nullable=False
+    )
+    correction_reason: Mapped[Optional[str]] = mapped_column(Text)
 
     # Fuel & API Data
     dagitilan_yakit: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))

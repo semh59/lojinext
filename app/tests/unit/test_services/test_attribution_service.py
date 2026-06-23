@@ -1,156 +1,202 @@
+"""AttributionService tests — real DB, no mocked UoW.
+
+Previously these mocked the UnitOfWork/sefer_repo and asserted inner calls
+(sefer_repo.update.assert_awaited_once(), commit.assert_awaited_once()). Here the
+service runs against the real test DB (db_session monkeypatches AsyncSessionLocal,
+so the service's `async with self.uow:` uses the test session) and we assert the real
+seferler row (arac_id/sofor_id/is_corrected actually changed). Only the event bus
+(external Redis pub/sub) is stubbed.
+"""
+
+from datetime import date
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import insert, select
+
+from app.core.services.attribution_service import AttributionService
+from app.database.models import Arac, Sefer, Sofor
+from app.database.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
 
-def _make_uow(sefer=None, update_result=True):
-    """Helper: build a mock UnitOfWork that behaves as an async context manager."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.sefer_repo = AsyncMock()
-    mock_uow.sefer_repo.get_by_id = AsyncMock(return_value=sefer)
-    mock_uow.sefer_repo.update = AsyncMock(return_value=update_result)
-    mock_uow.commit = AsyncMock()
-    return mock_uow
+async def _seed_arac(db_session, plaka: str) -> int:
+    return (
+        await db_session.execute(insert(Arac).values(plaka=plaka, marka="M"))
+    ).inserted_primary_key[0]
 
 
-def _make_service(uow, event_bus=None):
-    from app.core.services.attribution_service import AttributionService
+async def _seed_sofor(db_session, ad: str) -> int:
+    return (
+        await db_session.execute(insert(Sofor).values(ad_soyad=ad))
+    ).inserted_primary_key[0]
 
-    if event_bus is None:
-        event_bus = AsyncMock()
-        event_bus.publish_async = AsyncMock()
 
-    with patch(
-        "app.core.services.attribution_service.get_event_bus", return_value=event_bus
-    ):
-        svc = AttributionService(uow=uow)
-    svc.event_bus = event_bus
+async def _seed_sefer(db_session, arac_id: int, sofor_id: int) -> int:
+    sid = (
+        await db_session.execute(
+            insert(Sefer).values(
+                arac_id=arac_id,
+                sofor_id=sofor_id,
+                cikis_yeri="A",
+                varis_yeri="B",
+                mesafe_km=100.0,
+                bos_agirlik_kg=8000,
+                dolu_agirlik_kg=20000,
+                net_kg=12000,
+                durum="Planned",
+                tarih=date.today(),
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return sid
+
+
+async def _get_sefer(db_session, sid):
+    return (
+        await db_session.execute(select(Sefer).where(Sefer.id == sid))
+    ).scalar_one_or_none()
+
+
+def _service() -> AttributionService:
+    # The event bus is external infra → stub it; the UoW/DB is real.
+    svc = AttributionService(UnitOfWork())
+    svc.event_bus = AsyncMock()
+    svc.event_bus.publish_async = AsyncMock()
     return svc
 
 
 class TestAttributionService:
     def test_service_exists(self):
-        from app.core.services.attribution_service import AttributionService
-
         assert AttributionService is not None
 
     async def test_basic_initialization(self):
-        mock_uow = _make_uow()
-        svc = _make_service(mock_uow)
+        uow = UnitOfWork()
+        svc = AttributionService(uow)
+        assert svc.uow is uow
 
-        from app.core.services.attribution_service import AttributionService
+    async def test_happy_path_override_arac(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 111")
+        a2 = await _seed_arac(db_session, "34 BBB 222")
+        s = await _seed_sofor(db_session, "Sofor A")
+        sefer_id = await _seed_sefer(db_session, a1, s)
 
-        assert isinstance(svc, AttributionService)
-        assert svc.uow is mock_uow
-
-    async def test_happy_path_override_arac(self):
-        sefer = {"id": 1, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        svc = _make_service(mock_uow)
-
-        result = await svc.override_attribution(sefer_id=1, arac_id=99, reason="Test")
-
-        assert result is True
-        mock_uow.sefer_repo.update.assert_awaited_once()
-        mock_uow.commit.assert_awaited_once()
-
-    async def test_happy_path_override_sofor(self):
-        sefer = {"id": 1, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        svc = _make_service(mock_uow)
-
-        result = await svc.override_attribution(
-            sefer_id=1, sofor_id=55, reason="Sürücü değişti"
+        result = await _service().override_attribution(
+            sefer_id=sefer_id, arac_id=a2, reason="Test"
         )
 
         assert result is True
-        call_kwargs = mock_uow.sefer_repo.update.call_args
-        assert call_kwargs.kwargs.get("sofor_id") == 55 or 55 in call_kwargs.args
+        row = await _get_sefer(db_session, sefer_id)
+        assert row.arac_id == a2
+        assert row.is_corrected is True
 
-    async def test_error_handling_sefer_not_found(self):
-        mock_uow = _make_uow(sefer=None)
-        svc = _make_service(mock_uow)
+    async def test_happy_path_override_sofor(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 333")
+        s1 = await _seed_sofor(db_session, "Sofor B")
+        s2 = await _seed_sofor(db_session, "Sofor C")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
 
+        result = await _service().override_attribution(
+            sefer_id=sefer_id, sofor_id=s2, reason="Sürücü değişti"
+        )
+
+        assert result is True
+        row = await _get_sefer(db_session, sefer_id)
+        assert row.sofor_id == s2
+
+    async def test_error_handling_sefer_not_found(self, db_session):
         with pytest.raises(HTTPException) as exc_info:
-            await svc.override_attribution(sefer_id=999)
-
+            await _service().override_attribution(sefer_id=999999)
         assert exc_info.value.status_code == 404
 
-    async def test_edge_case_update_returns_false(self):
-        """When repo.update returns False the method should return False without commit."""
-        sefer = {"id": 1, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=False)
-        svc = _make_service(mock_uow)
+    async def test_edge_case_update_returns_false(self, db_session):
+        """Defensive branch: if repo.update reports failure, return False, no commit.
 
-        result = await svc.override_attribution(sefer_id=1, arac_id=99)
+        A real UPDATE on an existing row always succeeds, so this otherwise-unreachable
+        guard is exercised by forcing the repo method's return value (error-path only)."""
+        from app.database.repositories.sefer_repo import SeferRepository
+
+        a1 = await _seed_arac(db_session, "34 AAA 444")
+        s1 = await _seed_sofor(db_session, "Sofor D")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
+
+        with patch.object(SeferRepository, "update", AsyncMock(return_value=False)):
+            result = await _service().override_attribution(
+                sefer_id=sefer_id, arac_id=a1
+            )
 
         assert result is False
-        mock_uow.commit.assert_not_awaited()
+        # No correction was committed.
+        row = await _get_sefer(db_session, sefer_id)
+        assert row.is_corrected in (False, None)
 
-    async def test_event_published_on_success(self):
-        sefer = {"id": 5, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        event_bus = AsyncMock()
-        event_bus.publish_async = AsyncMock()
-        svc = _make_service(mock_uow, event_bus=event_bus)
+    async def test_event_published_on_success(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 555")
+        a2 = await _seed_arac(db_session, "34 BBB 666")
+        s1 = await _seed_sofor(db_session, "Sofor E")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
 
-        await svc.override_attribution(sefer_id=5, arac_id=77, reason="Nakil")
+        svc = _service()
+        await svc.override_attribution(sefer_id=sefer_id, arac_id=a2, reason="Nakil")
 
-        event_bus.publish_async.assert_awaited_once()
-        published_event = event_bus.publish_async.call_args[0][0]
-        assert published_event.data["sefer_id"] == 5
-        assert published_event.data["new_arac_id"] == 77
+        svc.event_bus.publish_async.assert_awaited_once()
+        published_event = svc.event_bus.publish_async.call_args[0][0]
+        assert published_event.data["sefer_id"] == sefer_id
+        assert published_event.data["new_arac_id"] == a2
 
-    async def test_bulk_override_returns_count(self):
-        sefer = {"id": 1, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        svc = _make_service(mock_uow)
+    async def test_bulk_override_returns_count(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 777")
+        a2 = await _seed_arac(db_session, "34 BBB 888")
+        s1 = await _seed_sofor(db_session, "Sofor F")
+        s2 = await _seed_sofor(db_session, "Sofor G")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
 
-        overrides = [
-            {"sefer_id": 1, "arac_id": 11, "reason": "r1"},
-            {"sefer_id": 1, "sofor_id": 22, "reason": "r2"},
-        ]
-        count = await svc.bulk_override(overrides)
+        count = await _service().bulk_override(
+            [
+                {"sefer_id": sefer_id, "arac_id": a2, "reason": "r1"},
+                {"sefer_id": sefer_id, "sofor_id": s2, "reason": "r2"},
+            ]
+        )
 
         assert count == 2
+        row = await _get_sefer(db_session, sefer_id)
+        assert row.arac_id == a2
+        assert row.sofor_id == s2
 
-    async def test_bulk_override_partial_failure(self):
-        """Bulk override swallows individual errors and still counts successes."""
-        mock_uow = _make_uow(sefer=None)  # sefer not found → raises HTTPException
-        svc = _make_service(mock_uow)
-
-        overrides = [
-            {"sefer_id": 999, "arac_id": 11},
-            {"sefer_id": 999, "sofor_id": 22},
-        ]
-        count = await svc.bulk_override(overrides)
-
+    async def test_bulk_override_partial_failure(self, db_session):
+        """Bulk swallows individual errors (missing sefer) and counts only successes."""
+        count = await _service().bulk_override(
+            [
+                {"sefer_id": 999999, "arac_id": 1},
+                {"sefer_id": 999998, "sofor_id": 2},
+            ]
+        )
         assert count == 0
 
-    async def test_integration_with_mock(self):
-        """Both arac_id and sofor_id can be overridden together."""
-        sefer = {"id": 3, "arac_id": 1, "sofor_id": 2}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        svc = _make_service(mock_uow)
+    async def test_override_both_arac_and_sofor(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 999")
+        a2 = await _seed_arac(db_session, "34 BBB 000")
+        s1 = await _seed_sofor(db_session, "Sofor H")
+        s2 = await _seed_sofor(db_session, "Sofor I")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
 
-        result = await svc.override_attribution(
-            sefer_id=3, arac_id=100, sofor_id=200, reason="Full override"
+        result = await _service().override_attribution(
+            sefer_id=sefer_id, arac_id=a2, sofor_id=s2, reason="Full override"
         )
 
         assert result is True
-        call_kwargs = mock_uow.sefer_repo.update.call_args
-        assert call_kwargs.kwargs.get("is_corrected") is True
+        row = await _get_sefer(db_session, sefer_id)
+        assert row.is_corrected is True
+        assert row.arac_id == a2 and row.sofor_id == s2
 
-    async def test_return_type_validation(self):
-        sefer = {"id": 1, "arac_id": 10, "sofor_id": 20}
-        mock_uow = _make_uow(sefer=sefer, update_result=True)
-        svc = _make_service(mock_uow)
+    async def test_return_type_validation(self, db_session):
+        a1 = await _seed_arac(db_session, "34 AAA 121")
+        s1 = await _seed_sofor(db_session, "Sofor J")
+        sefer_id = await _seed_sefer(db_session, a1, s1)
 
-        result = await svc.override_attribution(sefer_id=1, arac_id=5)
+        result = await _service().override_attribution(sefer_id=sefer_id, arac_id=a1)
         assert isinstance(result, bool)
         assert result is True

@@ -140,12 +140,14 @@ from app.infrastructure.resilience.shutdown import (  # noqa: E402
 @worker_process_init.connect
 def init_worker(*args, **kwargs):
     register_shutdown_handlers()
-    # After fork, the parent's async connection pool is invalid in the child
-    # process because asyncpg connections are bound to the parent's event loop.
-    # Disposing here ensures each worker starts with a clean pool.
+    # After fork, the parent's asyncpg connections are bound to the parent's
+    # event loop which is dead in the child process.  close=False abandons the
+    # inherited handles without trying to close them (which would crash with
+    # MissingGreenlet).  The child then opens fresh connections on its own
+    # event loop when the first task runs.
     try:
         from app.database.connection import engine
 
-        engine.sync_engine.dispose()
+        engine.sync_engine.pool.dispose(close=False)
     except Exception:
         pass

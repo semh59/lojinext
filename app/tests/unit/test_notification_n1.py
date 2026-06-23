@@ -1,14 +1,25 @@
-"""Tests that notification_service uses bulk query instead of N+1."""
+"""NotificationService N+1 guard — real DB, no mocked UoW/session.
 
-from unittest.mock import AsyncMock, MagicMock, patch
+Previously this mocked the UnitOfWork/repos and asserted that add_all received 5
+*mock* notification objects — the real persistence was never exercised. Here the
+service runs against the real test DB (seeded roles/users/rules), so we assert the
+real bildirim_gecmisi rows it creates. The N+1 guarantee is preserved by spying on
+the REAL get_by_rol_ids (wraps the real method, just counts calls) — not by mocking
+it. Only the WebSocket manager (external delivery channel) is stubbed.
+"""
+
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import insert, select
+
+from app.database.models import BildirimGecmisi, BildirimKurali, Kullanici, Rol
 
 pytestmark = pytest.mark.asyncio
 
 
 async def test_kullanici_repo_has_get_by_rol_ids():
-    """KullaniciRepository must have a get_by_rol_ids bulk method."""
+    """KullaniciRepository must expose a get_by_rol_ids bulk method."""
     from app.database.repositories.kullanici_repo import KullaniciRepository
 
     assert hasattr(KullaniciRepository, "get_by_rol_ids"), (
@@ -16,72 +27,82 @@ async def test_kullanici_repo_has_get_by_rol_ids():
     )
 
 
-async def test_notification_uses_bulk_query_not_per_rule():
-    """handle_event must call get_by_rol_ids once, not get_by_rol_id per rule."""
+async def _seed_role(db_session, ad: str) -> int:
+    return (
+        await db_session.execute(insert(Rol).values(ad=ad, yetkiler={}))
+    ).inserted_primary_key[0]
+
+
+async def _seed_user(db_session, email: str, rol_id: int) -> int:
+    return (
+        await db_session.execute(
+            insert(Kullanici).values(
+                email=email,
+                ad_soyad="N1 User",
+                sifre_hash="x",
+                rol_id=rol_id,
+                aktif=True,
+            )
+        )
+    ).inserted_primary_key[0]
+
+
+async def _seed_rule(db_session, olay_tipi, rol_id, kanallar):
+    await db_session.execute(
+        insert(BildirimKurali).values(
+            olay_tipi=olay_tipi, alici_rol_id=rol_id, kanallar=kanallar, aktif=True
+        )
+    )
+
+
+async def test_notification_uses_bulk_query_not_per_rule(db_session):
+    """handle_event fetches users with ONE bulk query and persists exactly the
+    right notifications to the real DB (no N+1 per rule)."""
+    import app.core.services.notification_service as ns_mod
     from app.core.services.notification_service import NotificationService
+    from app.database.repositories.kullanici_repo import KullaniciRepository
+    from app.infrastructure.events.event_bus import Event
+    from app.infrastructure.events.event_types import EventType
 
-    mock_rule1 = MagicMock()
-    mock_rule1.alici_rol_id = 1
-    mock_rule1.kanallar = ["UI"]
+    event_type = EventType.SEFER_ADDED
+    olay = event_type.value
 
-    mock_rule2 = MagicMock()
-    mock_rule2.alici_rol_id = 2
-    mock_rule2.kanallar = ["UI"]
+    # 2 roles; rol1 has 2 users, rol2 has 1 user.
+    rol1 = await _seed_role(db_session, "n1_rol_1")
+    rol2 = await _seed_role(db_session, "n1_rol_2")
+    await _seed_user(db_session, "n1a@test", rol1)
+    await _seed_user(db_session, "n1b@test", rol1)
+    await _seed_user(db_session, "n1c@test", rol2)
+    # 3 rules for the same event: rol1/UI, rol2/UI, rol1/EMAIL.
+    await _seed_rule(db_session, olay, rol1, ["UI"])
+    await _seed_rule(db_session, olay, rol2, ["UI"])
+    await _seed_rule(db_session, olay, rol1, ["EMAIL"])
+    await db_session.commit()
 
-    mock_rule3 = MagicMock()
-    mock_rule3.alici_rol_id = 1
-    mock_rule3.kanallar = ["EMAIL"]
+    # Spy (not mock) the real bulk method: it really runs against the DB; we only
+    # count calls to assert the N+1 pattern is avoided (one bulk fetch, not per-rule).
+    orig = KullaniciRepository.get_by_rol_ids
+    calls: list = []
 
-    users_by_rol = {
-        1: [MagicMock(id=10), MagicMock(id=11)],
-        2: [MagicMock(id=20)],
-    }
+    async def _spy(self, rol_ids):
+        calls.append(rol_ids)
+        return await orig(self, rol_ids)
 
-    with patch("app.core.services.notification_service.UnitOfWork") as MockUoW:
-        mock_uow = AsyncMock()
-        MockUoW.return_value.__aenter__ = AsyncMock(return_value=mock_uow)
-        MockUoW.return_value.__aexit__ = AsyncMock(return_value=False)
-        mock_uow.notification_repo.get_rules_by_event = AsyncMock(
-            return_value=[mock_rule1, mock_rule2, mock_rule3]
-        )
-        mock_uow.kullanici_repo.get_by_rol_ids = AsyncMock(return_value=users_by_rol)
-        mock_uow.session.add_all = MagicMock()
-        mock_uow.session.flush = AsyncMock()
-        mock_uow.commit = AsyncMock()
+    # WebSocket delivery is external infra → stub it (the DB write is what we verify).
+    original_ws = ns_mod.notification_ws_manager
+    ns_mod.notification_ws_manager = AsyncMock()
+    try:
+        with patch.object(KullaniciRepository, "get_by_rol_ids", _spy):
+            await NotificationService().handle_event(Event(type=event_type, data={}))
+    finally:
+        ns_mod.notification_ws_manager = original_ws
 
-        service = NotificationService()
-        test_event = MagicMock()
-        test_event.type.value = "TEST_EVENT"
-        test_event.type = MagicMock()
+    # N+1 guard: the bulk method was called exactly once (not once per rule).
+    assert len(calls) == 1
 
-        # Patch _format_message and WS manager to avoid side effects
-        service._format_message = MagicMock(return_value=("Title", "Content"))
-
-        import app.core.services.notification_service as ns_mod
-
-        original_ws = ns_mod.notification_ws_manager
-        mock_ws = AsyncMock()
-        ns_mod.notification_ws_manager = mock_ws
-        try:
-            await service.handle_event(test_event)
-        finally:
-            ns_mod.notification_ws_manager = original_ws
-
-        # Must call bulk method exactly once
-        mock_uow.kullanici_repo.get_by_rol_ids.assert_called_once()
-        # Must NOT call single-role method
-        assert (
-            not mock_uow.kullanici_repo.get_by_rol_id.called
-            if hasattr(mock_uow.kullanici_repo, "get_by_rol_id")
-            else True
-        )
-
-        # add_all should be called with notifications
-        # rol_id=1 has 2 users × 2 rules (UI + EMAIL) = 4 notifs
-        # rol_id=2 has 1 user × 1 rule (UI) = 1 notif
-        # Total = 5
-        mock_uow.session.add_all.assert_called_once()
-        notifications = mock_uow.session.add_all.call_args[0][0]
-        assert (
-            len(notifications) == 5
-        )  # (2+2) users for rol_id=1 × 2 rules + 1 user for rol_id=2
+    # Business outcome: real notifications persisted.
+    # rol1 (2 users) × {UI rule, EMAIL rule} = 4  +  rol2 (1 user) × {UI rule} = 1  → 5
+    rows = (await db_session.execute(select(BildirimGecmisi))).scalars().all()
+    assert len(rows) == 5
+    assert {r.olay_tipi for r in rows} == {olay}
+    assert {r.kanal for r in rows} == {"UI", "EMAIL"}

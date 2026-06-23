@@ -1,6 +1,7 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
+from sqlalchemy import select
 
 from app.core.ai.chatbot import get_chatbot
 from app.core.ai.rag_engine import get_rag_engine
@@ -10,6 +11,7 @@ from app.core.services.anomaly_detector import (
     AnomalyType,
     SeverityEnum,
 )
+from app.database.models import Anomaly
 
 
 @pytest.mark.asyncio
@@ -30,8 +32,10 @@ async def test_chatbot_singleton_instance():
 
 
 @pytest.mark.asyncio
-async def test_anomaly_bulk_insert():
-    """Bulk insert mantığının SQL çağrısını doğrula"""
+async def test_anomaly_bulk_insert(db_session):
+    """Bulk insert gerçekten 2 anomaly satırı yazmalı (mock execute çağrısı değil,
+    gerçek anomalies satırları — eski test yalnız session.execute.call_args'ı
+    doğruluyordu, persist'i değil)."""
     detector = AnomalyDetector()
     anomalies = [
         AnomalyResult(
@@ -42,20 +46,17 @@ async def test_anomaly_bulk_insert():
         ),
     ]
 
-    with patch("app.core.services.anomaly_detector.UnitOfWork") as mock_uow_class:
-        # Async context manager mock'la
-        uow_instance = MagicMock()
-        uow_instance.session.execute = AsyncMock()
-        uow_instance.commit = AsyncMock()
-        mock_uow_class.return_value.__aenter__.return_value = uow_instance
+    count = await detector.save_anomalies(anomalies)
 
-        await detector.save_anomalies(anomalies)
-
-        # execute'un çağrıldığını ve params_list'in geçtiğini doğrula
-        args, kwargs = uow_instance.session.execute.call_args
-        assert len(args[1]) == 2  # 2 elemanlı liste geçmiş olmalı
-        assert args[1][0]["kaynak_id"] == 1
-        assert args[1][1]["kaynak_id"] == 2
+    assert count == 2
+    rows = (
+        (await db_session.execute(select(Anomaly).order_by(Anomaly.kaynak_id)))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 2
+    assert [r.kaynak_id for r in rows] == [1, 2]
+    assert [r.deger for r in rows] == [35.0, 45.0]
 
 
 @pytest.mark.asyncio

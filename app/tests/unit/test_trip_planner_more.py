@@ -309,7 +309,7 @@ async def test_score_vehicles_all_zero_liters():
 
     mock_predictor = MagicMock()
     mock_predictor.predict_consumption = AsyncMock(
-        return_value={"prediction_liters": 0.0, "fallback_triggered": True}
+        return_value={"tahmini_litre": 0.0, "fallback_triggered": True}
     )
 
     engine = TripPlannerEngine(prediction_service=mock_predictor)

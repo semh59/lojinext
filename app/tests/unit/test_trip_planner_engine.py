@@ -23,7 +23,7 @@ class _FakePredictor:
         self, *, arac_id: int, **kwargs: Any
     ) -> Dict[str, Any]:
         return {
-            "prediction_liters": self._map.get(arac_id, 0.0),
+            "tahmini_litre": self._map.get(arac_id, 0.0),
             "model_used": "physics",
             "status": "success",
         }

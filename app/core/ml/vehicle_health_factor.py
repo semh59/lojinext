@@ -195,11 +195,20 @@ def apply_maintenance_factor(
     if factor == 1.0:
         return payload
     try:
-        payload["prediction_liters"] = round(
-            float(payload.get("prediction_liters") or 0) * factor, 2
-        )
+        if payload.get("tahmini_tuketim"):
+            payload["tahmini_tuketim"] = round(
+                float(payload["tahmini_tuketim"]) * factor, 2
+            )
+        if payload.get("tahmini_litre"):
+            payload["tahmini_litre"] = round(
+                float(payload["tahmini_litre"]) * factor, 2
+            )
+        if payload.get("prediction_liters"):
+            payload["prediction_liters"] = round(
+                float(payload["prediction_liters"]) * factor, 2
+            )
     except (TypeError, ValueError):
-        return payload  # prediction_liters yoksa veya numeric değilse
+        return payload
 
     faktorler = payload.setdefault("faktorler", {})
     if isinstance(faktorler, dict):

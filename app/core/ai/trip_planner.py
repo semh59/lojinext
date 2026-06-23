@@ -345,7 +345,7 @@ class TripPlannerEngine:
                 logger.warning(
                     "predict_consumption failed for arac %s: %s", v.get("id"), exc
                 )
-                return {"prediction_liters": 0.0, "fallback_triggered": True}
+                return {"tahmini_litre": 0.0, "fallback_triggered": True}
 
         # Paralel tahmin + benzer sefer sayımı
         preds, sim_counts = await asyncio.gather(
@@ -353,7 +353,7 @@ class TripPlannerEngine:
             asyncio.gather(*[self._count_similar(inp) for _ in vehicles]),
         )
 
-        liters = [float(p.get("prediction_liters") or 0.0) for p in preds]
+        liters = [float(p.get("tahmini_litre") or 0.0) for p in preds]
         # NB: 0 değerleri normalize'ı bozmasın — yine de en az 1'lik spread garanti
         positive_liters = [v for v in liters if v > 0]
         if positive_liters:
@@ -366,7 +366,7 @@ class TripPlannerEngine:
 
         out: List[VehicleCandidate] = []
         for v, pred, sim_count in zip(vehicles, preds, sim_counts):
-            litres = float(pred.get("prediction_liters") or 0.0)
+            litres = float(pred.get("tahmini_litre") or 0.0)
             if litres <= 0:
                 fuel_score = 0.0
             else:

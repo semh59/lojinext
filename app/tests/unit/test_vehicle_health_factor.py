@@ -161,11 +161,18 @@ def test_apply_factor_one_is_noop():
     assert "maintenance_factor" not in out["faktorler"]
 
 
-def test_apply_factor_multiplies_prediction_liters():
+def test_apply_factor_multiplies_all_primary_keys():
     from app.core.ml.vehicle_health_factor import apply_maintenance_factor
 
-    payload = {"prediction_liters": 100.0, "faktorler": {}}
+    payload = {
+        "tahmini_tuketim": 30.0,
+        "tahmini_litre": 100.0,
+        "prediction_liters": 100.0,
+        "faktorler": {},
+    }
     out = apply_maintenance_factor(payload, 1.07, "PERIYODIK gecikti (400 gün)")
+    assert out["tahmini_tuketim"] == pytest.approx(32.1, abs=0.01)
+    assert out["tahmini_litre"] == 107.0
     assert out["prediction_liters"] == 107.0
     assert out["faktorler"]["maintenance_factor"] == 1.07
     assert "Bakım faktörü" in out["explanation_summary"]

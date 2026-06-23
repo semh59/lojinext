@@ -51,12 +51,10 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     # Connection pool sizing (ARCH-005). Tune relative to PostgreSQL
     # max_connections AND the number of app/worker replicas:
-    #   total_conns ≈ replicas * (DB_POOL_SIZE + DB_MAX_OVERFLOW
-    #                             + DB_SYNC_POOL_SIZE + DB_SYNC_MAX_OVERFLOW)
+    #   total_conns ≈ replicas * (DB_POOL_SIZE + DB_MAX_OVERFLOW)
+    # Sync engine is now the async engine's internal wrapper — no separate pool.
     DB_POOL_SIZE: int = 40
     DB_MAX_OVERFLOW: int = 5
-    DB_SYNC_POOL_SIZE: int = 10
-    DB_SYNC_MAX_OVERFLOW: int = 5
     # Per-statement timeout (seconds) for the async/asyncpg engine. A single
     # query (including lock waits) running longer than this is cancelled, so a
     # runaway or stuck statement cannot hold a pool connection indefinitely and

@@ -5,10 +5,8 @@ Public surface:
     AsyncSessionLocal     — async session factory
     get_db()              — FastAPI dependency yielding AsyncSession
     session_scope()       — async context manager yielding AsyncSession
-
-Sync wrapper (kept solely for `app.infrastructure.routing.openroute_client`,
-which still issues blocking SQL inside threadpool calls). Targeted for
-removal in Phase-2 once that client becomes async.
+    sync_engine           — async engine's internal sync wrapper (no extra pool)
+    SyncSessionLocal      — sync session factory (scripts + tests only)
 """
 
 from __future__ import annotations
@@ -17,7 +15,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, contextmanager
 from typing import Iterator
 
-from sqlalchemy import create_engine
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -104,27 +101,10 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
             raise
 
 
-# ── Sync wrapper (DEPRECATED — Phase-2 removal) ───────────────────────────────
-_sync_url = (
-    _url.set(drivername=_url.drivername.replace("+asyncpg", ""))
-    if "+asyncpg" in _url.drivername
-    else _url
-)
-sync_engine = create_engine(
-    _sync_url,
-    echo=settings.SQL_ECHO,
-    pool_pre_ping=True,
-    pool_size=settings.DB_SYNC_POOL_SIZE,  # ARCH-005: configurable (default 10)
-    max_overflow=settings.DB_SYNC_MAX_OVERFLOW,  # ARCH-005: configurable (default 5)
-    pool_timeout=30,
-    pool_recycle=1800,
-    **(
-        {"connect_args": {"sslmode": "require"}}
-        if settings.ENVIRONMENT == "prod"
-        and _sync_url.drivername.startswith("postgresql")
-        else {}
-    ),
-)
+# ── Sync wrapper (ARCH-005: no separate pool — reuses async engine's internal sync engine)
+# Production code must not use this for request-path SQL; it exists for
+# scripts (benchmark.py) and test fixtures (conftest.py patches SyncSessionLocal).
+sync_engine = engine.sync_engine
 SyncSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
 

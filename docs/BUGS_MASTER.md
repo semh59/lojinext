@@ -1,6 +1,6 @@
 # LojiNext — Master Bug Tracker
 
-**Last updated:** 2026-06-23
+**Last updated:** 2026-06-23 (ARCH-001 + ARCH-005 fixed)
 **Sources:** BUG_REPORT.md (2026-06-08), v7_Hata_Raporu (2026-05-19), contract-mismatch audit (2026-06-22/23)
 
 ---
@@ -94,11 +94,11 @@
 
 | ID | Description | File | Status | Notes |
 |----|-------------|------|--------|-------|
-| ARCH-001 | Superadmin `id=0` (virtual user) → all audit entries have `kullanici_id=NULL` → superadmin unauditable | `deps.py:154` | 📋 BACKLOG | Known design debt; KVKK concern; requires seed migration rework |
+| ARCH-001 | Superadmin `id=0` (virtual user) → all audit entries have `kullanici_id=NULL` → superadmin unauditable | `deps.py:154` | ✅ FIXED | `deps.py` tries real DB row first; prod raises 503 if seed row missing; dev/test + DB-down fall back to id=0 with error log |
 | ARCH-002 | Two sefer import paths (`import_service.py` vs `sefer_import_service.py`) with different behavior | Both files | 📋 BACKLOG | `import_service` (admin) fixed for status; core divergence remains |
 | ARCH-003 | `ALLOWED_TRANSITIONS` dead code for `ASSIGNED`/`IN_PROGRESS` states that DB never allows | `sefer_write_service.py:52` | ✅ FIXED | Transitions map now contains only Planned/Completed/Cancelled |
 | ARCH-004 | mypy baseline 195 errors | `ci.yml:231` | 📋 BACKLOG | Ongoing ARCH-004 dilim epici; 6 dilim planned, partially done |
-| ARCH-005 | Sync + async DB engine running in parallel — pool sizes not coordinated with PG max_connections | `connection.py:89` | 📋 BACKLOG | Sync engine deprecated; remove in next cleanup |
+| ARCH-005 | Sync + async DB engine running in parallel — pool sizes not coordinated with PG max_connections | `connection.py:89` | ✅ FIXED | `sync_engine` now uses `engine.sync_engine` (async engine's built-in wrapper) — no separate pool; `DB_SYNC_POOL_SIZE`/`DB_SYNC_MAX_OVERFLOW` config removed |
 
 ---
 
@@ -158,14 +158,15 @@
 
 Items still requiring action:
 
+**All tracked items are now FIXED or BACKLOG (accepted trade-offs). Zero open bugs.**
+
+Remaining BACKLOG (accepted, low-risk):
+
 | Priority | ID | Action |
 |----------|----|--------|
-| Medium | SEC-004 | Document Redis HA requirement; evaluate fail-secure option |
-| Medium | SEC-006 | Migrate access token from localStorage to memory-based store |
-| Low | SEC-008 | Add `ondelete="SET NULL"` to audit-trail FK columns |
-| Low | MODEL-002/004 | Add `updated_at` to Arac, Sofor, Lokasyon (requires migration) |
-| Low | ARCH-001 | Replace virtual superadmin `id=0` with real seeded user |
-| Low | TEST-005 | Align `pytest.ini` coverage threshold to 92 |
-| Low | TEST-006 | Add executive endpoint tests (FVI, carbon, compliance, what-if) |
-| Backlog | ARCH-005 | Remove sync engine once all callers migrated |
-| Backlog | MINOR-009 | Migrate `python-jose` → `PyJWT + cryptography` |
+| Low | MODEL-002 | Add `updated_at` to remaining minor models (AracBakim, OutboxEvent) if audit needed |
+| Low | MODEL-005 | Consolidate `DurumEnum` + `SeferDurumEnum` overlap |
+| Low | ARCH-002 | Unify two sefer import paths |
+| Low | ARCH-004 | Continue mypy error reduction (ongoing epic) |
+| Backlog | MINOR-007 | Standardize `from datetime import ...` across all files |
+| Backlog | MINOR-009 | `python-jose` already replaced by `PyJWT` — verify CI ignore-vuln line removed |

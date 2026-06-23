@@ -164,9 +164,12 @@ async def get_current_user(
 
             # ARCH-001: Resolve the env break-glass superadmin to the real seed
             # admin row (email == SUPER_ADMIN_USERNAME) so audit captures a real
-            # user_id instead of NULL. Fall back to a virtual user (id=0) when the
-            # row is absent (unseeded DB) OR unreachable (DB outage) — preserving
-            # bootstrap-resilience for the break-glass account.
+            # user_id instead of NULL.
+            #
+            # Two failure modes handled differently:
+            #   DB DOWN (Exception)  → keep break-glass usable in all envs
+            #   ROW MISSING (None)   → seed issue; fail in prod, warn in dev/test
+            _db_down = False
             try:
                 _res = await db.execute(
                     select(Kullanici)
@@ -174,24 +177,40 @@ async def get_current_user(
                     .where(Kullanici.email == settings.SUPER_ADMIN_USERNAME)
                 )
                 real_admin = _res.scalar_one_or_none()
-            except Exception as _e:  # DB down — keep break-glass usable
-                logger.warning(f"Superadmin DB resolve failed, using virtual: {_e}")
+            except Exception as _e:
+                logger.error(
+                    "Superadmin DB resolve failed (DB unreachable?), "
+                    "using virtual id=0 break-glass: %s",
+                    _e,
+                )
                 real_admin = None
+                _db_down = True
 
-            # isinstance (not just `is not None`): a real seed row resolves to a
-            # real id; anything else (None, or a mock/coroutine from a test that
-            # stubs the session) safely falls back to the virtual user.
             if isinstance(real_admin, Kullanici):
-                # Mark the session as the env break-glass superadmin (used by
-                # change-password to block API password edits on this account).
-                # Transient runtime flag (not an ORM column) — setattr keeps the
-                # type checker happy.
                 setattr(real_admin, "is_env_superadmin", True)
                 return real_admin
 
+            # Row not found — seed migration missing or DB outage.
+            if not _db_down and settings.ENVIRONMENT == "prod":
+                # Production must always have seed row. Fail loudly so ops
+                # knows to run `alembic upgrade head` / seed migration.
+                logger.error(
+                    "ARCH-001: Superadmin seed row absent in prod DB "
+                    "(SUPER_ADMIN_USERNAME=%s). Run seed migration.",
+                    settings.SUPER_ADMIN_USERNAME,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Superadmin account not seeded. Contact administrator.",
+                )
+
+            # Dev / test / DB-down: fall back to virtual id=0 (break-glass).
             logger.warning(
                 "Superadmin row not resolvable; using virtual id=0 "
-                "(audit for this session will be anonymous)."
+                "(audit for this session will be anonymous). "
+                "db_down=%s env=%s",
+                _db_down,
+                settings.ENVIRONMENT,
             )
             super_role = Rol(
                 id=0,

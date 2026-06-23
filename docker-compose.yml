@@ -31,10 +31,12 @@ services:
       - USE_SEFER_FUEL_ESTIMATOR=true
       # Allow requests from the nginx-served frontend on port 80
       - CORS_ORIGINS=http://localhost,http://localhost:80,http://127.0.0.1
+      - HF_HOME=/app/.cache/huggingface
+      - HOME=/app
     volumes:
       - app_data:/app/app/data
       - model_data:/app/models
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/app/.cache/huggingface
       - ./backups:/app/storage/backups
     restart: unless-stopped
     healthcheck:
@@ -94,10 +96,12 @@ services:
       # Phase 5.0 — backend ile aynı: worker'lar da bulk import / Celery
       # task'larda yeni sefer yaratırken SeferFuelEstimator kullanır.
       - USE_SEFER_FUEL_ESTIMATOR=true
+      - HF_HOME=/app/.cache/huggingface
+      - HOME=/app
     volumes:
       - app_data:/app/app/data
       - model_data:/app/models
-      - hf_cache:/root/.cache/huggingface
+      - hf_cache:/app/.cache/huggingface
       - ./backups:/app/storage/backups
       - belgeler_data:/belgeler
     depends_on:

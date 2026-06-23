@@ -1,189 +1,123 @@
-"""AracService reactivate / delete / deactivate unit tests."""
+"""AracService reactivate / delete / deactivate tests — real DB, no mocked UoW.
 
-from unittest.mock import AsyncMock, MagicMock, patch
+Previously these mocked the UnitOfWork and asserted on inner repo calls
+(`mock_uow.arac_repo.update.assert_called_once()`), which verifies *that a method
+was called* rather than *the business outcome*. That is the P0-class blind spot: a
+contract bug inside the repo/service would still satisfy a call-count assertion.
+
+Here the service runs against the real test DB (db_session monkeypatches
+AsyncSessionLocal, so AracService's internal `UnitOfWork()` uses the test session)
+and we assert the real persisted outcome (the row's aktif flag, its absence after a
+hard delete, etc.). Only the event bus stays a MagicMock — it is external infra.
+"""
+
+from unittest.mock import MagicMock
 
 import pytest
+from sqlalchemy import insert, select
+
+from app.core.entities.models import AracCreate
+from app.core.services.arac_service import AracService
+from app.database.models import Arac
 
 pytestmark = pytest.mark.unit
 
 
-def _make_mock_uow(arac_dict=None):
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.commit = AsyncMock()
-    mock_uow.session = MagicMock()
-    mock_uow.session.add = MagicMock()
-    mock_uow.session.flush = AsyncMock()
+async def _seed_arac(db_session, plaka: str, *, aktif: bool = True) -> int:
+    res = await db_session.execute(
+        insert(Arac).values(plaka=plaka, marka="Mercedes", model="Actros", aktif=aktif)
+    )
+    await db_session.commit()
+    return res.inserted_primary_key[0]
 
-    mock_uow.arac_repo = MagicMock()
-    default_arac = arac_dict or {"id": 1, "plaka": "34ABC123", "aktif": True}
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=default_arac)
-    mock_uow.arac_repo.get_by_plaka = AsyncMock(return_value=None)
-    mock_uow.arac_repo.add = AsyncMock(return_value=MagicMock(id=99))
-    mock_uow.arac_repo.update = AsyncMock(return_value=True)
-    mock_uow.arac_repo.hard_delete = AsyncMock(return_value=True)
-    mock_uow.arac_repo.hard_delete_all = AsyncMock(return_value=5)
-    mock_uow.arac_repo.get_all = AsyncMock(return_value=[])
-    mock_uow.arac_repo.count_all = AsyncMock(return_value=0)
-    mock_uow.arac_repo.get_arac_with_stats = AsyncMock(return_value=None)
-    mock_uow.arac_repo.get_aktif_plakalar = AsyncMock(return_value=[])
-    mock_uow.arac_repo.bulk_create = AsyncMock(return_value=[])
-    return mock_uow
+
+async def _get_arac(db_session, arac_id: int):
+    return (
+        await db_session.execute(select(Arac).where(Arac.id == arac_id))
+    ).scalar_one_or_none()
+
+
+def _service() -> AracService:
+    # event_bus is external infra → MagicMock is legitimate; the UoW/DB is real.
+    return AracService(event_bus=MagicMock())
 
 
 class TestAracServiceReactivate:
     def test_service_exists(self):
         """AracService class is importable."""
-        from app.core.services.arac_service import AracService
-
         assert AracService is not None
 
     async def test_basic_initialization(self):
-        """AracService initializes without a real DB."""
-        from app.core.services.arac_service import AracService
-
+        """AracService wires the injected repo and event_bus (DI contract)."""
         mock_repo = MagicMock()
         mock_eb = MagicMock()
         svc = AracService(repo=mock_repo, event_bus=mock_eb)
         assert svc.repo is mock_repo
         assert svc.event_bus is mock_eb
 
-    async def test_create_arac_reactivates_passive_vehicle(self):
+    async def test_create_arac_reactivates_passive_vehicle(self, db_session):
         """create_arac re-activates an existing passive vehicle instead of inserting."""
-        from app.core.entities.models import AracCreate
-        from app.core.services.arac_service import AracService
+        plaka = "34 XYZ 999"
+        seeded_id = await _seed_arac(db_session, plaka, aktif=False)
 
-        existing = {"id": 5, "plaka": "34 XYZ 999", "aktif": False}
-        mock_uow = _make_mock_uow(arac_dict=existing)
-        mock_uow.arac_repo.get_by_plaka = AsyncMock(return_value=existing)
-
-        mock_eb = MagicMock()
-        mock_eb.publish = MagicMock()
-        svc = AracService(repo=MagicMock(), event_bus=mock_eb)
-
-        # Valid Turkish plate: 34 + 3 letters + 3 digits
         data = AracCreate(
-            plaka="34 XYZ 999",
-            marka="Mercedes",
-            model="Actros",
-            yil=2020,
-            tank_kapasitesi=600,
+            plaka=plaka, marka="Mercedes", model="Actros", yil=2020, tank_kapasitesi=600
         )
+        result = await _service().create_arac(data)
 
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.create_arac(data)
+        # Returns the existing id (no new insert)…
+        assert result == seeded_id
+        # …and the real row is now active — the business outcome, not a mock call.
+        row = await _get_arac(db_session, seeded_id)
+        assert row is not None and row.aktif is True
 
-        assert result == 5
-        mock_uow.arac_repo.update.assert_called_once()
-        # Should set aktif=True
-        call_kwargs = mock_uow.arac_repo.update.call_args
-        assert call_kwargs[1].get("aktif") is True or (
-            len(call_kwargs[0]) > 1 and call_kwargs[0][1] is True
-        )
+    async def test_create_arac_raises_for_existing_active_plate(self, db_session):
+        """create_arac raises for a duplicate ACTIVE vehicle plate."""
+        plaka = "34 ABC 1234"
+        await _seed_arac(db_session, plaka, aktif=True)
 
-    async def test_create_arac_raises_for_existing_active_plate(self):
-        """create_arac raises ValueError for duplicate active vehicle plate."""
-        from app.core.entities.models import AracCreate
-        from app.core.services.arac_service import AracService
-
-        existing = {"id": 3, "plaka": "34 ABC 1234", "aktif": True}
-        mock_uow = _make_mock_uow()
-        mock_uow.arac_repo.get_by_plaka = AsyncMock(return_value=existing)
-
-        mock_eb = MagicMock()
-        svc = AracService(repo=MagicMock(), event_bus=mock_eb)
-
-        # Use a valid Turkish plate format: 2 digits + 1-3 letters + 2-4 digits
         data = AracCreate(
-            plaka="34 ABC 1234",
-            marka="Mercedes",
-            model="Actros",
-            yil=2020,
-            tank_kapasitesi=600,
+            plaka=plaka, marka="Mercedes", model="Actros", yil=2020, tank_kapasitesi=600
         )
+        with pytest.raises(ValueError, match="already exists"):
+            await _service().create_arac(data)
 
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            with pytest.raises(ValueError, match="already exists"):
-                await svc.create_arac(data)
-
-    async def test_delete_arac_active_vehicle_deactivates(self):
+    async def test_delete_arac_active_vehicle_deactivates(self, db_session):
         """delete_arac on an active vehicle sets aktif=False (soft delete)."""
-        from app.core.services.arac_service import AracService
+        arac_id = await _seed_arac(db_session, "34 ABC 100", aktif=True)
 
-        mock_uow = _make_mock_uow(arac_dict={"id": 1, "plaka": "34ABC", "aktif": True})
-        mock_eb = MagicMock()
-        mock_eb.publish = MagicMock()
-        svc = AracService(repo=MagicMock(), event_bus=mock_eb)
-
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.delete_arac(1)
+        result = await _service().delete_arac(arac_id)
 
         assert result is True
-        mock_uow.arac_repo.update.assert_called()
+        row = await _get_arac(db_session, arac_id)
+        assert row is not None and row.aktif is False
 
-    async def test_delete_arac_passive_vehicle_hard_deletes(self):
-        """delete_arac on a passive vehicle performs a hard delete."""
-        from app.core.services.arac_service import AracService
+    async def test_delete_arac_passive_vehicle_hard_deletes(self, db_session):
+        """delete_arac on a passive vehicle performs a hard delete (row removed)."""
+        arac_id = await _seed_arac(db_session, "34 DEF 200", aktif=False)
 
-        mock_uow = _make_mock_uow(arac_dict={"id": 2, "plaka": "34DEF", "aktif": False})
-        mock_eb = MagicMock()
-        mock_eb.publish = MagicMock()
-        svc = AracService(repo=MagicMock(), event_bus=mock_eb)
-
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.delete_arac(2)
+        result = await _service().delete_arac(arac_id)
 
         assert result is True
-        mock_uow.arac_repo.hard_delete.assert_called_once_with(2)
+        assert await _get_arac(db_session, arac_id) is None
 
-    async def test_delete_arac_not_found_returns_false(self):
-        """delete_arac returns False when vehicle not found."""
-        from app.core.services.arac_service import AracService
-
-        mock_uow = _make_mock_uow()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-        mock_eb = MagicMock()
-        mock_eb.publish = MagicMock()
-        svc = AracService(repo=MagicMock(), event_bus=mock_eb)
-
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.delete_arac(9999)
-
+    async def test_delete_arac_not_found_returns_false(self, db_session):
+        """delete_arac returns False when the vehicle does not exist."""
+        result = await _service().delete_arac(999999)
         assert result is False
 
-    async def test_get_all_paged_returns_dict(self):
-        """get_all_paged returns dict with 'items' and 'total'."""
-        from app.core.services.arac_service import AracService
-
-        mock_uow = _make_mock_uow()
-        mock_uow.arac_repo.get_all = AsyncMock(return_value=[])
-        mock_uow.arac_repo.count_all = AsyncMock(return_value=0)
-        svc = AracService(repo=MagicMock(), event_bus=MagicMock())
-
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.get_all_paged()
-
+    async def test_get_all_paged_returns_dict(self, db_session):
+        """get_all_paged returns a dict with 'items' and 'total' against a real DB."""
+        result = await _service().get_all_paged()
         assert "items" in result
         assert "total" in result
 
     async def test_bulk_add_arac_empty_list(self):
-        """bulk_add_arac returns 0 when given empty list."""
-        from app.core.services.arac_service import AracService
-
-        svc = AracService(repo=MagicMock(), event_bus=MagicMock())
-        result = await svc.bulk_add_arac([])
+        """bulk_add_arac returns 0 when given an empty list (no UoW needed)."""
+        result = await _service().bulk_add_arac([])
         assert result == 0
 
-    async def test_edge_case_get_by_id_returns_none(self):
+    async def test_edge_case_get_by_id_returns_none(self, db_session):
         """get_by_id returns None for a non-existent arac_id."""
-        from app.core.services.arac_service import AracService
-
-        mock_uow = _make_mock_uow()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-        svc = AracService(repo=MagicMock(), event_bus=MagicMock())
-
-        with patch("app.core.services.arac_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.get_by_id(9999)
-
+        result = await _service().get_by_id(999999)
         assert result is None

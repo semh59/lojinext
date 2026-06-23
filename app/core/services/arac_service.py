@@ -114,6 +114,11 @@ class AracService:
                         details=f"Passive vehicle reactivated: {data.plaka}",
                         uow=uow,
                     )
+                    # Persist the reactivation. Without this the UnitOfWork's
+                    # ghost-transaction guard rolls back the aktif=True update and
+                    # the event log on __aexit__, so the vehicle silently stays
+                    # passive (the insert path below already commits at line ~160).
+                    await uow.commit()
                     return existing["id"]
                 else:
                     raise ValueError(

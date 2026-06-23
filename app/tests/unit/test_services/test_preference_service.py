@@ -1,123 +1,148 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+"""PreferenceService tests — real DB, no mocked UoW.
+
+Previously these mocked the UnitOfWork/session and asserted on inner calls
+(`session.add.assert_called()`, `setting_repo.update.assert_called()`), which
+verifies *that a method was called* rather than *the persisted result*. Here the
+service runs against the real test DB (db_session monkeypatches AsyncSessionLocal,
+so PreferenceService's internal `UnitOfWork()` uses the test session) and we assert
+the real KullaniciAyari rows (created / updated / deleted / default-flagged).
+"""
 
 import pytest
+from sqlalchemy import insert, select
 
 from app.core.services.preference_service import PreferenceService
-from app.database.models import KullaniciAyari
+from app.database.models import Kullanici, KullaniciAyari, Rol
 
 pytestmark = pytest.mark.unit
 
 
-@pytest.fixture
-def mock_uow():
-    uow = MagicMock()
-    uow.__aenter__ = AsyncMock(return_value=uow)
-    uow.__aexit__ = AsyncMock(return_value=None)
-    uow.setting_repo = MagicMock()
-    # The service now creates/fetches the ORM row via the session directly
-    # (session.add is sync; session.get is awaited).
-    uow.session = MagicMock()
-    uow.session.add = MagicMock()
-    uow.commit = AsyncMock()
-    return uow
+async def _seed_user(db_session) -> int:
+    rid = (
+        await db_session.execute(insert(Rol).values(ad="pref_role", yetkiler={}))
+    ).inserted_primary_key[0]
+    uid = (
+        await db_session.execute(
+            insert(Kullanici).values(
+                email="pref@lojinext.test",
+                ad_soyad="Pref User",
+                sifre_hash="x",
+                rol_id=rid,
+                aktif=True,
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return uid
+
+
+async def _seed_setting(
+    db_session, user_id, modul, ayar_tipi, deger, *, is_default=False
+) -> int:
+    sid = (
+        await db_session.execute(
+            insert(KullaniciAyari).values(
+                kullanici_id=user_id,
+                modul=modul,
+                ayar_tipi=ayar_tipi,
+                deger=deger,
+                is_default=is_default,
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return sid
+
+
+async def _get_setting(db_session, sid):
+    return (
+        await db_session.execute(select(KullaniciAyari).where(KullaniciAyari.id == sid))
+    ).scalar_one_or_none()
 
 
 class TestPreferenceService:
-    async def test_get_preferences_happy_path(self, mock_uow):
-        mock_setting = MagicMock(spec=KullaniciAyari)
-        mock_setting.deger = "dark"
-        mock_uow.setting_repo.get_user_settings = AsyncMock(return_value=[mock_setting])
+    async def test_get_preferences_happy_path(self, db_session):
+        uid = await _seed_user(db_session)
+        await _seed_setting(db_session, uid, "dashboard", "filter", {"theme": "dark"})
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.get_preferences(user_id=1, modul="dashboard")
-            assert len(result) == 1
-            assert result[0].deger == "dark"
+        result = await PreferenceService().get_preferences(
+            user_id=uid, modul="dashboard"
+        )
 
-    async def test_get_preferences_not_found(self, mock_uow):
-        mock_uow.setting_repo.get_user_settings = AsyncMock(return_value=[])
+        assert len(result) == 1
+        assert result[0].deger == {"theme": "dark"}
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.get_preferences(user_id=1, modul="trips")
-            assert result == []
+    async def test_get_preferences_not_found(self, db_session):
+        uid = await _seed_user(db_session)
+        result = await PreferenceService().get_preferences(user_id=uid, modul="trips")
+        assert result == []
 
-    async def test_save_preference_happy_path(self, mock_uow):
-        mock_uow.setting_repo.get_user_settings = AsyncMock(return_value=[])
-        mock_pref = MagicMock(spec=KullaniciAyari)
-        mock_pref.id = 1
-        mock_uow.session.get = AsyncMock(return_value=mock_pref)
-        mock_uow.commit = AsyncMock()
+    async def test_save_preference_happy_path(self, db_session):
+        uid = await _seed_user(db_session)
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.save_preference(
-                user_id=1,
-                modul="dashboard",
-                ayar_tipi="filter",
-                deger={"theme": "dark"},
+        result = await PreferenceService().save_preference(
+            user_id=uid, modul="dashboard", ayar_tipi="filter", deger={"theme": "dark"}
+        )
+
+        assert result is not None
+        # Real row persisted with the given value — the business outcome.
+        row = await _get_setting(db_session, result.id)
+        assert row is not None
+        assert row.kullanici_id == uid
+        assert row.deger == {"theme": "dark"}
+
+    async def test_save_preference_with_existing(self, db_session):
+        uid = await _seed_user(db_session)
+        sid = await _seed_setting(
+            db_session, uid, "dashboard", "sutun", {"cols": ["old"]}
+        )
+
+        result = await PreferenceService().save_preference(
+            user_id=uid, modul="dashboard", ayar_tipi="sutun", deger={"cols": ["new"]}
+        )
+
+        assert result is not None
+        # The existing row was updated in place (no duplicate insert).
+        row = await _get_setting(db_session, sid)
+        assert row.deger == {"cols": ["new"]}
+        all_rows = (
+            (
+                await db_session.execute(
+                    select(KullaniciAyari).where(KullaniciAyari.kullanici_id == uid)
+                )
             )
-            assert result is not None
-            mock_uow.session.add.assert_called()
+            .scalars()
+            .all()
+        )
+        assert len(all_rows) == 1
 
-    async def test_save_preference_with_existing(self, mock_uow):
-        existing = MagicMock(spec=KullaniciAyari)
-        existing.id = 1
-        mock_uow.setting_repo.get_user_settings = AsyncMock(return_value=[existing])
-        mock_uow.setting_repo.update = AsyncMock(return_value=True)
-        mock_uow.session.get = AsyncMock(return_value=existing)
-        mock_uow.commit = AsyncMock()
+    async def test_delete_preference(self, db_session):
+        uid = await _seed_user(db_session)
+        sid = await _seed_setting(db_session, uid, "dashboard", "filter", {"a": 1})
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.save_preference(
-                user_id=1, modul="dashboard", ayar_tipi="sutun", deger=["col1", "col2"]
-            )
-            assert result is not None
-            mock_uow.setting_repo.update.assert_called()
+        result = await PreferenceService().delete_preference(user_id=uid, pref_id=sid)
 
-    async def test_delete_preference(self, mock_uow):
-        pref = MagicMock(spec=KullaniciAyari)
-        pref.kullanici_id = 1
-        mock_uow.session.get = AsyncMock(return_value=pref)
-        mock_uow.setting_repo.delete = AsyncMock(return_value=True)
-        mock_uow.commit = AsyncMock()
+        assert result is True
+        assert await _get_setting(db_session, sid) is None
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.delete_preference(user_id=1, pref_id=1)
-            assert result is True
-            mock_uow.setting_repo.delete.assert_called()
+    async def test_delete_preference_not_found(self, db_session):
+        uid = await _seed_user(db_session)
+        result = await PreferenceService().delete_preference(
+            user_id=uid, pref_id=999999
+        )
+        assert result is False
 
-    async def test_delete_preference_not_found(self, mock_uow):
-        mock_uow.session.get = AsyncMock(return_value=None)
+    async def test_set_default(self, db_session):
+        uid = await _seed_user(db_session)
+        sid = await _seed_setting(
+            db_session, uid, "dashboard", "filter", {"a": 1}, is_default=False
+        )
 
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.delete_preference(user_id=1, pref_id=999)
-            assert result is False
+        result = await PreferenceService().set_default(user_id=uid, pref_id=sid)
 
-    async def test_set_default(self, mock_uow):
-        pref = MagicMock(spec=KullaniciAyari)
-        pref.kullanici_id = 1
-        pref.modul = "dashboard"
-        pref.ayar_tipi = "filter"
-        mock_uow.session.get = AsyncMock(return_value=pref)
-        mock_uow.setting_repo.clear_default = AsyncMock()
-        mock_uow.setting_repo.update = AsyncMock(return_value=True)
-        mock_uow.commit = AsyncMock()
-
-        with patch("app.core.services.preference_service.UnitOfWork") as MockUoW:
-            MockUoW.return_value.__aenter__.return_value = mock_uow
-            service = PreferenceService()
-            result = await service.set_default(user_id=1, pref_id=1)
-            assert result is True
+        assert result is True
+        row = await _get_setting(db_session, sid)
+        assert row.is_default is True
 
     def test_service_instantiation(self):
         service = PreferenceService()

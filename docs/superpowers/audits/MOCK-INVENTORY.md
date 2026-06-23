@@ -144,3 +144,23 @@ gerçek çevrilebilir iç-seam çıktı (çevrildi+yeşil); kalan 3'ün mock'u m
 **Sonuç:** Integration katmanında "her seam mock'suz" hedefi pratikte 3 dosyada
 gerçekleşti; kalan 3 ya meşru harici-izolasyon ya obsolete-skip ya call-contract
 sınırı — hiçbiri P0-tipi gizli-kontrat riski taşımıyor.
+
+---
+
+## 7. Unit-test FakeUnitOfWork de-mock — dilim dilim (2026-06-23+)
+
+~30 unit dosyası mock'lu UoW kullanıyor (P0'ı gizleyen sınıf). Her dilim: mock'lanan
+UoW/session/repo → gerçek test DB; iç-çağrı assertion (`x.assert_called()`) → gerçek
+iş-sonucu assertion (DB satırı). Harici servisler (event bus/Redis/httpx) meşru mock
+kalır. Çok-oturumlu.
+
+| Dilim | Sonuç |
+|-------|-------|
+| `test_services/test_arac_service_reactivate` | ✅ + **GERÇEK PROD BUG**: `create_arac` reactivate yolu commit etmiyordu → ghost-rollback → pasif araç sessizce yeniden-aktifleşmiyor. Fix'lendi (`commit(143a116`). Eski mock testi `update.assert_called_once()` ile gizliyordu. |
+| `test_services/test_preference_service` | ✅ temiz (gerçek KullaniciAyari CRUD); prod doğru. |
+| `test_outbox_service_coverage` | ✅ temiz (gerçek OutboxEvent save/relay/retry); event bus mock'u korundu (harici Redis). |
+
+**Kalan:** ~27 dosya (test_notification_n1, test_anomaly_detector_coverage,
+test_recommendation_*, test_insight_engine_coverage, test_ai_service_*, …). Her biri
+gerçek per-file iş. Push edilen prod değişikliği full-suite gate'ten geçer
+(arac dilimi: 6517 pass/0 fail flag=false ile doğrulandı).

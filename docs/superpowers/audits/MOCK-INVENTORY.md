@@ -97,3 +97,28 @@ ARCH-004 mypy epic'indeki kademeli-merge yöntemi:
 
 - **Her CI'da canlı dış API ≠ deterministik.** Open-Meteo rate-limit kanıtlı (bkz. CLAUDE.md gotcha). Bu yüzden default CI = gerçek-yerel-stub (in-process mock değil, gerçek ağ), canlı API = gated kulvar. Bu "0 in-process mock" ilkesini korur; "her koşuda canlı API" demez (kasıtlı, gerekçeli).
 - **Süre:** ~268 backend + ~123 frontend dosya. Tek oturum değil. İlerleme bu dokümana ve task listesine işlenecek; hiçbir dilim koşulmadan "bitti" denmeyecek.
+
+---
+
+## 6. Integration-test mock triyajı (2026-06-23) — 16/55 dosya
+
+`app/tests/integration/` mock kullanan 16 dosya kanıt-bazlı sınıflandı:
+
+**A — FALSE POSITIVE (gerçek mock yok, aksiyon gerekmez):**
+`test_api_seferler` (`async_client.patch()` HTTP, mock import yok), `test_ml_ai_pipeline`
+(`monkeypatch.setenv` invalid GROQ — gerçek failure-path testi).
+
+**B — MEŞRU harici-API / feature-flag izolasyonu (KORU):** `test_mapbox_client`,
+`test_coaching_effectiveness`, `test_coaching_endpoints`, `test_theft_alarm`,
+`test_internal_coaching`, `test_investigations_crud`, `test_maintenance_predictions`,
+`test_plan_wizard_endpoint` — httpx (Telegram/Mapbox) veya `settings.*_ENABLED` flag.
+
+**C — İÇ SEAM mock'u (P0-tipi risk → gerçeğe çevir), öncelik sırası:**
+1. `test_route_service_hybrid` — mocked UoW (`get_uow`) + mocked prediction
+   (`{"prediction_liters":30.0}`). **→ ÇEVRİLDİ (2026-06-23): real UoW (db_session) +
+   real prediction_service; harici ORS/Mapbox mock'u korundu.**
+2. `test_route_api` — `AsyncSessionLocal` (DB) + iç `PolylineDecoder.decode`.
+3. `test_prediction_time_series_api` — `StubTimeSeriesService` (iç servis stub).
+4. `test_error_detector_integration` — `event_bus._bus` + Redis.
+5. `test_import_partial_events` — MagicMock event-bus `publish()`.
+6. `test_activity_log` — `log_audit_event` patch.

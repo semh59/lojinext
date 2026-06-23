@@ -36,12 +36,16 @@ async def seed_sofor(
     *,
     ad_soyad: str = "Ali Veli",
     aktif: bool = True,
+    telegram_id: str | None = None,
+    **extra,
 ) -> Sofor:
     """Insert a minimal Sofor row and flush. Returns the ORM instance."""
     sofor = Sofor(
         ad_soyad=ad_soyad,
         aktif=aktif,
         is_deleted=False,
+        telegram_id=telegram_id,
+        **extra,
     )
     session.add(sofor)
     await session.flush()

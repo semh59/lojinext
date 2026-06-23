@@ -113,12 +113,34 @@ ARCH-004 mypy epic'indeki kademeli-merge yöntemi:
 `test_internal_coaching`, `test_investigations_crud`, `test_maintenance_predictions`,
 `test_plan_wizard_endpoint` — httpx (Telegram/Mapbox) veya `settings.*_ENABLED` flag.
 
-**C — İÇ SEAM mock'u (P0-tipi risk → gerçeğe çevir), öncelik sırası:**
+**C — İÇ SEAM mock'u — derin inceleme sonrası rafine (2026-06-23):**
+Başta "6 dosya çevrilecek" sanılıyordu; tek tek gerçek koda bakınca yalnız **3'ü**
+gerçek çevrilebilir iç-seam çıktı (çevrildi+yeşil); kalan 3'ün mock'u meşru sınır:
+
 1. `test_route_service_hybrid` — mocked UoW (`get_uow`) + mocked prediction
-   (`{"prediction_liters":30.0}`). **→ ÇEVRİLDİ (2026-06-23): real UoW (db_session) +
-   real prediction_service; harici ORS/Mapbox mock'u korundu.**
-2. `test_route_api` — `AsyncSessionLocal` (DB) + iç `PolylineDecoder.decode`.
+   (`{"prediction_liters":30.0}`). **→ ÇEVRİLDİ: real UoW (db_session) + real
+   prediction_service; harici ORS/Mapbox mock'u korundu. 2 passed.** (P0-sınıfı seam)
+2. `test_route_api` — `AsyncSessionLocal` (DB) + iç `PolylineDecoder`/`RouteAnalyzer`.
+   **→ ÇEVRİLDİ: gerçek polyline → real decoder+analyzer; `update_route_distance`
+   gerçek DB SELECT→UPDATE round-trip; yalnız ORS httpx mock kaldı. 2 passed.**
 3. `test_prediction_time_series_api` — `StubTimeSeriesService` (iç servis stub).
-4. `test_error_detector_integration` — `event_bus._bus` + Redis.
-5. `test_import_partial_events` — MagicMock event-bus `publish()`.
-6. `test_activity_log` — `log_audit_event` patch.
+   **→ ÇEVRİLDİ: stub kaldırıldı; gerçek TimeSeriesService boş DB'de gerçek
+   PRECONDITION_NOT_MET/structured-error üretiyor (gerçek servis↔endpoint kontratı).
+   2 passed.**
+4. `test_error_detector_integration` — **MEŞRU (çevrilmedi):** `fresh_bus` zaten
+   GERÇEK `ErrorEventBus` örneği (izolasyon); gerçek ORM insert + gerçek API okur.
+   Kalan mock'lar `_write_redis`/Redis-mgr + httpx webhook = **harici servis**
+   izolasyonu (Kategori-B); `_write_postgres` etkisi gerçek insert+API ile zaten
+   doğrulanıyor.
+5. `test_import_partial_events` — **OBSOLETE (çevrilmez):** dosya zaten
+   `pytest.mark.skip` — kaldırılmış `/trips/import` CSV endpoint'ini hedefliyor
+   (canlı yol `/trips/upload` Excel-only). De-mock değil, **xlsx fixture'lı tam
+   rewrite** gerektirir (ayrı iş).
+6. `test_activity_log` — **CALL-CONTRACT SINIRI (çevrilmedi):** `log_audit_event`
+   mock'u endpoint'in audit helper'ını doğru çağırdığını doğruluyor. Gerçek
+   `admin_audit_log` persist'i best-effort/exception-yutulan (CLAUDE.md) →
+   gerçeğe çevirmek flake riski (0-yalan ilkesine aykırı). Mock meşru sınır.
+
+**Sonuç:** Integration katmanında "her seam mock'suz" hedefi pratikte 3 dosyada
+gerçekleşti; kalan 3 ya meşru harici-izolasyon ya obsolete-skip ya call-contract
+sınırı — hiçbiri P0-tipi gizli-kontrat riski taşımıyor.

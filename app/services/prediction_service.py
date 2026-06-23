@@ -604,6 +604,17 @@ class PredictionService:
         if not target_date:
             target_date = date.today()
 
+        # Nullable Sefer columns (ascent_m / descent_m / flat_distance_km) can
+        # arrive as None even though the signature declares ``float`` — e.g. a
+        # manually-entered trip with no route analysis. Coalesce at the boundary
+        # so downstream physics/ensemble arithmetic (physics_fuel_predictor:
+        # ``ascent_m + descent_m``, ensemble ``net_elevation``) never hits
+        # ``None + None``. Without this the elite-score path silently swallows
+        # the TypeError and returns no score for such drivers.
+        ascent_m = float(ascent_m or 0.0)
+        descent_m = float(descent_m or 0.0)
+        flat_distance_km = float(flat_distance_km or 0.0)
+
         normalized_route = self._normalize_route_analysis(route_analysis)
 
         # ── 1. Fetch entities ─────────────────────────────────────────────────

@@ -58,7 +58,8 @@ class OpenRouteClient:
 
         if not self.api_key:
             logger.warning(
-                "OPENROUTE_API_KEY tanımlanmamış! API çağrıları başarısız olacak."
+                "OPENROUTESERVICE_API_KEY tanımlanmamış (legacy OPENROUTE_API_KEY de "
+                "yok)! API çağrıları başarısız olacak."
             )
 
         self._client: Optional[httpx.AsyncClient] = None

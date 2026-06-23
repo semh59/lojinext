@@ -33,7 +33,6 @@ async def _create_arac(db_session) -> int:
             yil=2021,
             aktif=True,
             bos_agirlik_kg=8000.0,
-            euro_sinifi="EURO6",
         )
     )
     await db_session.commit()
@@ -205,27 +204,30 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
     sofor_id = await _create_sofor(db_session)
 
     # Insert real sefer rows so the service has data to work with
-    async with UnitOfWork() as uow:
-        for i in range(3):
-            await uow.session.execute(
-                insert(Sefer).values(
-                    arac_id=arac_id,
-                    sofor_id=sofor_id,
-                    baslangic_lokasyon="Ankara",
-                    bitis_lokasyon="Istanbul",
-                    mesafe_km=450.0,
-                    gercek_tuketim=28.0,
-                    net_kg=18000,
-                    dolu_agirlik_kg=26000,
-                    bos_agirlik_kg=8000,
-                    tarih=date.today() - timedelta(days=i + 1),
-                    durum="tamamlandi",
-                    aktif=True,
-                )
+    for i in range(3):
+        await db_session.execute(
+            insert(Sefer).values(
+                arac_id=arac_id,
+                sofor_id=sofor_id,
+                cikis_yeri="Ankara",
+                varis_yeri="Istanbul",
+                mesafe_km=450.0,
+                tuketim=28.0,
+                net_kg=18000,
+                dolu_agirlik_kg=26000,
+                bos_agirlik_kg=8000,
+                tarih=date.today() - timedelta(days=i + 1),
+                durum="Completed",
             )
+        )
+    await db_session.commit()
 
-    service = SoforAnalizService()
-    score = await service._calculate_elite_score(sofor_id=sofor_id, arac_id=arac_id)
+    async with UnitOfWork() as uow:
+        seferler = await uow.sefer_repo.get_all(
+            filters={"sofor_id": sofor_id}, limit=50
+        )
+        service = SoforAnalizService(uow=uow)
+        score = await service._calc_elite_from_trips(seferler)
 
     assert score is not None, (
         "Elite score is None — sofor_analiz_service is reading wrong key "
@@ -245,27 +247,29 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
 
-    async with UnitOfWork() as uow:
-        for i in range(5):
-            await uow.session.execute(
-                insert(Sefer).values(
-                    arac_id=arac_id,
-                    sofor_id=sofor_id,
-                    baslangic_lokasyon="Konya",
-                    bitis_lokasyon="Bursa",
-                    mesafe_km=380.0,
-                    gercek_tuketim=26.0,
-                    net_kg=16000,
-                    dolu_agirlik_kg=24000,
-                    bos_agirlik_kg=8000,
-                    tarih=date.today() - timedelta(days=i + 1),
-                    durum="tamamlandi",
-                    aktif=True,
-                )
+    for i in range(5):
+        await db_session.execute(
+            insert(Sefer).values(
+                arac_id=arac_id,
+                sofor_id=sofor_id,
+                cikis_yeri="Konya",
+                varis_yeri="Bursa",
+                mesafe_km=380.0,
+                tuketim=26.0,
+                net_kg=16000,
+                dolu_agirlik_kg=24000,
+                bos_agirlik_kg=8000,
+                tarih=date.today() - timedelta(days=i + 1),
+                durum="Completed",
             )
+        )
+    await db_session.commit()
 
-    service = SoforAnalizService()
-    score = await service.calculate_elite_performance_score(sofor_id=sofor_id)
+    async with UnitOfWork() as uow:
+        service = SoforAnalizService(uow=uow)
+        score = await service.calculate_elite_performance_score(
+            sofor_id=sofor_id, uow=uow
+        )
 
     assert score is not None, (
         "calculate_elite_performance_score returned None with real trip data — "

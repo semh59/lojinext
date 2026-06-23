@@ -194,9 +194,10 @@ async def test_simulate_endpoint_502_when_provider_fails(
         app.dependency_overrides.pop(get_route_simulator, None)
 
     assert resp.status_code == 502
-    assert (
-        "Mapbox" in resp.json()["detail"] or "provider" in resp.json()["detail"].lower()
-    )
+    # Error responses use the project envelope {"error": {"code", "message", ...}},
+    # not FastAPI's default {"detail": ...} (HTTPException handler in main.py).
+    message = resp.json()["error"]["message"]
+    assert "Mapbox" in message or "provider" in message.lower()
 
 
 @pytest.mark.asyncio

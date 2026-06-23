@@ -27,7 +27,6 @@ async def _insert_arac(db_session) -> int:
             yil=2022,
             aktif=True,
             bos_agirlik_kg=8000.0,
-            euro_sinifi="EURO6",
         )
     )
     await db_session.commit()
@@ -56,15 +55,14 @@ async def _insert_sefer(
         insert(Sefer).values(
             arac_id=arac_id,
             sofor_id=sofor_id,
-            baslangic_lokasyon="Ankara",
-            bitis_lokasyon="Istanbul",
+            cikis_yeri="Ankara",
+            varis_yeri="Istanbul",
             mesafe_km=450.0,
             net_kg=18000,
             dolu_agirlik_kg=26000,
             bos_agirlik_kg=8000,
             tarih=tarih,
             durum=durum,
-            aktif=True,
             tahmini_tuketim=tahmini_tuketim,
         )
     )
@@ -92,7 +90,7 @@ async def test_project_cashflow_counts_planned_trips(db_session):
     async with UnitOfWork() as uow:
         result = await project_cashflow(uow, horizon_days=30, diesel_price_tl=50.0)
 
-    total_fuel = sum(w.fuel_liters for w in result.weeks)
+    total_fuel = sum(w.fuel_tl for w in result.weeks)
     assert total_fuel > 0, (
         "BUG-002: project_cashflow returned 0 total fuel for 3 Planned trips — "
         "SQL may still use 'Planlandı' instead of 'Planned'"
@@ -126,7 +124,7 @@ async def test_project_cashflow_excludes_completed_trips(db_session):
             uow, horizon_days=30, diesel_price_tl=50.0
         )
 
-    total_fuel_completed = sum(w.fuel_liters for w in result_completed_only.weeks)
+    total_fuel_completed = sum(w.fuel_tl for w in result_completed_only.weeks)
 
     # Now add a Planned trip with a distinct value
     await _insert_sefer(
@@ -138,7 +136,7 @@ async def test_project_cashflow_excludes_completed_trips(db_session):
             uow, horizon_days=30, diesel_price_tl=50.0
         )
 
-    total_with_planned = sum(w.fuel_liters for w in result_with_planned.weeks)
+    total_with_planned = sum(w.fuel_tl for w in result_with_planned.weeks)
 
     assert total_with_planned > total_fuel_completed, (
         "Adding a Planned trip must increase projected fuel (Completed trips must be excluded)"

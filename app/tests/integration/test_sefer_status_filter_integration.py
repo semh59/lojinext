@@ -28,7 +28,6 @@ async def _create_arac(db_session) -> int:
             yil=2021,
             aktif=True,
             bos_agirlik_kg=8000.0,
-            euro_sinifi="EURO6",
         )
     )
     await db_session.commit()
@@ -56,15 +55,14 @@ async def _insert_sefer(
         insert(Sefer).values(
             arac_id=arac_id,
             sofor_id=sofor_id,
-            baslangic_lokasyon="Ankara",
-            bitis_lokasyon="Konya",
+            cikis_yeri="Ankara",
+            varis_yeri="Konya",
             mesafe_km=mesafe_km,
             net_kg=15000,
             dolu_agirlik_kg=23000,
             bos_agirlik_kg=8000,
             tarih=date.today() - timedelta(days=days_ago),
             durum=durum,
-            aktif=True,
         )
     )
     await db_session.commit()
@@ -155,7 +153,7 @@ async def test_get_cost_leakage_stats_finds_completed_trips(db_session, sefer_re
     assert "route_deviation_km" in result, (
         f"Missing route_deviation_km key: {list(result)}"
     )
-    assert "fuel_diff_liters" in result, f"Missing fuel_diff_liters key: {list(result)}"
+    assert "fuel_gap_liters" in result, f"Missing fuel_gap_liters key: {list(result)}"
 
 
 async def test_get_cost_leakage_stats_excludes_planned_trips(db_session, sefer_repo):

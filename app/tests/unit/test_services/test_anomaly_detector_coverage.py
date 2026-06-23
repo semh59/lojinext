@@ -289,8 +289,8 @@ class TestDetectTripAnomalyUnit:
     async def test_anomaly_above_20pct(self):
         mock_pred = AsyncMock(
             return_value={
-                "prediction_l_100km": 25.0,
-                "method": "ensemble",
+                "tahmini_tuketim": 25.0,
+                "model_used": "ensemble",
             }
         )
         with patch(
@@ -320,8 +320,8 @@ class TestDetectTripAnomalyUnit:
     async def test_within_20pct_returns_none(self):
         mock_pred = AsyncMock(
             return_value={
-                "prediction_l_100km": 30.0,
-                "method": "physics",
+                "tahmini_tuketim": 30.0,
+                "model_used": "physics",
             }
         )
         with patch(
@@ -353,7 +353,7 @@ class TestDetectAnomalyHybrid:
 
     async def test_within_threshold_returns_none(self):
         mock_pred = AsyncMock(
-            return_value={"prediction_l_100km": 30.0, "method": "physics"}
+            return_value={"tahmini_tuketim": 30.0, "model_used": "physics"}
         )
         with patch(
             "app.core.services.anomaly_detector.get_prediction_service"
@@ -369,7 +369,7 @@ class TestDetectAnomalyHybrid:
 
     async def test_above_threshold_rule_based_severity(self):
         mock_pred = AsyncMock(
-            return_value={"prediction_l_100km": 20.0, "method": "ensemble"}
+            return_value={"tahmini_tuketim": 20.0, "model_used": "ensemble"}
         )
         with patch(
             "app.core.services.anomaly_detector.get_prediction_service"
@@ -390,7 +390,7 @@ class TestDetectAnomalyHybrid:
     async def test_hybrid_uses_lgb_when_trained(self):
         """When lgb_trained=True, predict_severity_lgb is called."""
         mock_pred = AsyncMock(
-            return_value={"prediction_l_100km": 20.0, "method": "ensemble"}
+            return_value={"tahmini_tuketim": 20.0, "model_used": "ensemble"}
         )
         with patch(
             "app.core.services.anomaly_detector.get_prediction_service"

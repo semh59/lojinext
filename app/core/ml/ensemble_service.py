@@ -600,11 +600,16 @@ class EnsemblePredictorService:
 
         result = await asyncio.to_thread(predictor.predict, sefer)
 
+        interval = result.confidence_high - result.confidence_low
+        confidence_score = max(
+            0.0, min(1.0, 1 - interval / (2 * max(result.tahmin_l_100km, 1e-6)))
+        )
         return {
             "success": True,
             "tahmin_l_100km": result.tahmin_l_100km,
             "tahmin_litre": round(mesafe_km * result.tahmin_l_100km / 100, 1),
             "guven_araligi": (result.confidence_low, result.confidence_high),
+            "confidence_score": round(confidence_score, 3),
             "physics_only": result.physics_only,
             "ml_correction": result.ml_correction,
             "factors": {

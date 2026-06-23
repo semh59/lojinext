@@ -427,7 +427,7 @@ class TestCalculateElitePerformanceScore:
 
         mock_pred_svc = MagicMock()
         mock_pred_svc.predict_consumption = AsyncMock(
-            return_value={"prediction_l_100km": 30.0}
+            return_value={"tahmini_tuketim": 30.0}
         )
 
         with patch(
@@ -457,7 +457,7 @@ class TestCalculateElitePerformanceScore:
 
         mock_pred_svc = MagicMock()
         mock_pred_svc.predict_consumption = AsyncMock(
-            return_value={"prediction_l_100km": 30.0}
+            return_value={"tahmini_tuketim": 30.0}
         )
 
         with patch(
@@ -535,7 +535,7 @@ class TestCalculateElitePerformanceScore:
 
         mock_pred_svc = MagicMock()
         mock_pred_svc.predict_consumption = AsyncMock(
-            return_value={"prediction_l_100km": 100.0}
+            return_value={"tahmini_tuketim": 100.0}
         )
 
         with patch(

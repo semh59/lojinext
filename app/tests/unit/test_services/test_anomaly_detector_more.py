@@ -164,7 +164,7 @@ class TestDetectTripAnomalyExtended:
     async def test_zero_expected_no_anomaly(self):
         """expected=0 → deviation=0 → no anomaly (abs(0) < 20)."""
         mock_pred = AsyncMock(
-            return_value={"prediction_l_100km": 0.0, "method": "physics"}
+            return_value={"tahmini_tuketim": 0.0, "model_used": "physics"}
         )
         with patch(
             "app.core.services.anomaly_detector.get_prediction_service"
@@ -181,7 +181,7 @@ class TestDetectTripAnomalyExtended:
     async def test_no_tarih_in_result(self):
         """When tarih not in trip_data, result.tarih is today."""
         mock_pred = AsyncMock(
-            return_value={"prediction_l_100km": 20.0, "method": "physics"}
+            return_value={"tahmini_tuketim": 20.0, "model_used": "physics"}
         )
         with patch(
             "app.core.services.anomaly_detector.get_prediction_service"

@@ -194,11 +194,12 @@ class AnomalyDetector:
             sofor_id=trip_data.get("sofor_id"),
         )
 
-        expected = prediction["prediction_l_100km"]
+        expected = prediction["tahmini_tuketim"]
         deviation = ((consumption - expected) / expected) * 100 if expected > 0 else 0
 
         if abs(deviation) > 20:  # %20 sapma anomali kabul edilir
             severity = self._calculate_severity(abs(deviation))
+            model_used = prediction.get("model_used", "ensemble")
             return AnomalyResult(
                 tip=AnomalyType.SEFER,
                 kaynak_tip="sefer",
@@ -207,7 +208,7 @@ class AnomalyDetector:
                 beklenen_deger=round(expected, 2),
                 sapma_yuzde=round(deviation, 1),
                 severity=severity,
-                aciklama=f"Tahminden Şaşma: {deviation:+.1f}% ({prediction['method']})",
+                aciklama=f"Tahminden Şaşma: {deviation:+.1f}% ({model_used})",
                 tarih=trip_data.get("tarih"),
             )
         return None
@@ -554,7 +555,7 @@ class AnomalyDetector:
             sofor_id=trip_data.get("sofor_id"),
         )
 
-        expected = prediction["prediction_l_100km"]
+        expected = prediction["tahmini_tuketim"]
         deviation = ((consumption - expected) / expected) * 100 if expected > 0 else 0
 
         # Anomali eşiği: %20

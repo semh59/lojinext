@@ -352,7 +352,7 @@ class SoforAnalizService:
                         descent_m=trip.get("descent_m", 0),
                         sofor_id=trip.get("sofor_id"),
                     )
-                    expected = pred.get("prediction_l_100km", 0)
+                    expected = pred.get("tahmini_tuketim", 0)
                     if expected <= 0:
                         return None
                     return ((actual - expected) / expected) * 100
@@ -413,7 +413,7 @@ class SoforAnalizService:
                         sofor_id=sofor_id,
                     )
 
-                    expected = pred.get("prediction_l_100km", 0)
+                    expected = pred.get("tahmini_tuketim", 0)
                     if expected <= 0:
                         return None
 

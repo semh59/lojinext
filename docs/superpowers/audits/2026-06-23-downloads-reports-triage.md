@@ -193,14 +193,23 @@ Endpoint provider başarısızlığında **doğru** 502 dönüyor, ama test `res
 #   fix sonrası: 229 passed, 8 skipped, 1 error in 96s   (FAILED yok)
 ```
 
-### Kapsam dışı: 1 test-izolasyon flake (kod bug'ı DEĞİL)
-`test_prediction_time_series_api.py::test_time_series_forecast_returns_structured_precondition_error`
-tam suite'te "setup'ta error" veriyor ama **tek başına koşunca PASS** (2 passed).
-Kök: bir önceki stress/error testi (`test_adversarial_stress` / `test_concurrency_atomic`)
-paylaşılan session'ı `PendingRollbackError` (sqlalche.me/e/20/rvf5) durumunda bırakıyor →
-sonraki testin setup DELETE'i patlıyor. Session-scoped event loop + paylaşılan fixture
-session kaynaklı **önceden var olan cross-test kirlenmesi**; ürün davranışıyla veya bu
-oturumun fix'leriyle ilgisiz, Downloads raporları kapsamı dışında. İstenirse ayrı ele alınabilir.
+### TEST-ISOLATION-01 · pool'da abort olmuş bağlantının yeniden kullanılması → FIXED
+`test_prediction_time_series_api.py::...precondition_error` tam suite'te "setup'ta error"
+veriyordu ama **tek başına PASS** ediyordu (kod bug'ı değil). Kök neden: test engine'i
+default async QueuePool kullanıyordu; bir testin mid-flush exception'ında abort olan
+(`current transaction is aborted` / PendingRollbackError) bağlantı pool'a geri dönüp
+**deterministik olmayan** şekilde sonraki bir testin `db_session` DELETE-all setup'ında
+patlıyordu (`pool_pre_ping` yalnız canlılık bakar, abort-tx temizlemez).
+
+**Fix:** `app/tests/conftest.py` test engine'i `poolclass=NullPool` — her bağlantı
+return'de kapanır, asla yeniden kullanılmaz → cross-test kirlenmesi yapısal olarak imkânsız.
+
+**Ampirik:** fix öncesi 229 passed + **1 error** (2/2 tam koşuda); fix sonrası
+**230 passed, 0 error, 0 failed** (147s; NullPool'un test-başına bağlantı maliyeti).
+
+> Not: interpreter-shutdown'daki "garbage collector ... non-checked-in connection /
+> Event loop is closed" log gürültüsü **APP** engine'inden (app.database.connection
+> QueuePool, app.main import'unda) gelir; test sonucunu etkilemez, ayrı bir kalemdir.
 
 ---
 

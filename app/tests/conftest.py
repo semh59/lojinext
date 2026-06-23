@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import LargeBinary, create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 # Suppress deprecation warnings during test bootstrap.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -200,10 +201,19 @@ def temp_db_url():
 
 @pytest.fixture(scope="session")
 async def async_db_engine(temp_db_url):
+    # NullPool: never reuse connections across tests. The default async
+    # QueuePool can hand a later test a pooled connection left in an aborted
+    # ("current transaction is aborted" / PendingRollbackError) state by an
+    # earlier test that raised mid-flush — surfacing as a non-deterministic
+    # "ERROR at setup" on whichever test happens to check that connection out.
+    # NullPool disposes each connection on return, so every test starts on a
+    # fresh backend connection. It also eliminates the "garbage collector is
+    # trying to clean up non-checked-in connection" / "Event loop is closed"
+    # teardown noise from pooled async connections outliving the event loop.
     engine = create_async_engine(
         temp_db_url,
         echo=False,
-        pool_pre_ping=True,
+        poolclass=NullPool,
         connect_args={"command_timeout": 10},
     )
 

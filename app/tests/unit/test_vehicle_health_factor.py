@@ -201,10 +201,17 @@ def test_apply_factor_explanation_not_duplicated():
 
 
 def test_apply_factor_handles_missing_prediction_liters():
-    """prediction_liters yoksa graceful return."""
+    """prediction_liters yoksa graceful no-op.
+
+    apply_maintenance_factor yalnızca MEVCUT alanları çarpar (tahmini_tuketim,
+    tahmini_litre, prediction_liters hepsi `if payload.get(...)` ile korunur).
+    Eksik bir alanı 0.0 olarak UYDURMAK yanlış olur — "0 litre tahmin" gibi sahte
+    bir veri üretirdi. Doğru davranış: yokken yok kalsın, faktör yine de yazılsın.
+    """
     from app.core.ml.vehicle_health_factor import apply_maintenance_factor
 
     payload: dict = {"faktorler": {}}
     out = apply_maintenance_factor(payload, 1.10, "x")
-    # 0 * 1.10 → 0.0, ama faktör de yazılır
-    assert out.get("prediction_liters") == 0.0
+    # Absent stays absent (no fabricated 0.0); maintenance_factor still recorded.
+    assert "prediction_liters" not in out
+    assert out["faktorler"]["maintenance_factor"] == 1.1

@@ -1,6 +1,19 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+
+# A component sources its Turkish copy from resource files if it either imports the
+# domain resource module directly (resources/tr/<domain>) OR consumes the
+# locale-aware use<Domain>Resources hook (backed by resources/useResources). Both
+# satisfy the "no hardcoded Turkish copy" guard; the hook is the current pattern.
+_RESOURCE_HOOK_RE = re.compile(r"use[A-Z]\w*Resources")
+
+
+def _sources_copy_from_resources(text: str, direct_import: str) -> bool:
+    return direct_import in text or bool(_RESOURCE_HOOK_RE.search(text))
+
+
 LEGACY_REAL_FLAG = "is" + "_real"
 LEGACY_REAL_FIELD = "is" + "_real: bool = Field(True)"
 LEGACY_REAL_OPTIONAL = "is" + "_real: Optional[bool] = None"
@@ -116,7 +129,8 @@ def test_reports_route_uses_resource_only_turkish_copy():
         / "ROICalculator.tsx": "resources/tr/reports",
     }
     for path, resource_import in expected_resource_imports.items():
-        assert resource_import in path.read_text(encoding="utf-8"), path
+        text = path.read_text(encoding="utf-8")
+        assert _sources_copy_from_resources(text, resource_import), path
 
 
 def test_active_foundation_routes_use_resource_only_turkish_copy():
@@ -477,7 +491,8 @@ def test_active_foundation_routes_use_resource_only_turkish_copy():
         / "LoadManagementSection.tsx": "resources/tr/trips",
     }
     for path, resource_import in expected_resource_imports.items():
-        assert resource_import in path.read_text(encoding="utf-8"), path
+        text = path.read_text(encoding="utf-8")
+        assert _sources_copy_from_resources(text, resource_import), path
 
 
 def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():

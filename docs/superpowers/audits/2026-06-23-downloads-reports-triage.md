@@ -213,6 +213,43 @@ return'de kapanır, asla yeniden kullanılmaz → cross-test kirlenmesi yapısal
 
 ---
 
+## DEFERRED kalemlerin nihai disposition'ı (2026-06-23, ikinci tur)
+
+### SEC-008 (`iceri_aktarim_gecmisi.yukleyen_id` FK ondelete) → FIXED ✅
+FK `ondelete` politikası yoktu → RESTRICT → import çalıştırmış bir kullanıcı
+silinemiyordu (ForeignKeyViolation). Diğer audit FK'ları (Arac.olusturan_id,
+Sefer.created_by_id, anomalies.*_by) zaten SET NULL. Fix: model `ondelete="SET NULL"`
++ migration **0032_iceri_aktarim_fk_ondelete** (naming-convention adı
+`fk_iceri_aktarim_gecmisi_yukleyen_id_kullanicilar` ile drop+re-add).
+**Doğrulama:** tek alembic head, `upgrade head` OK, **`alembic check` → "No new
+upgrade operations detected"** (CI drift gate temiz).
+
+### P1-1 (physics yaş etkisi çift uygulama) → BUG DEĞİL, kalibrasyon-validasyon gerektirir
+İki yaş etkisi **mekanistik olarak ayrı**, aynı niceliğin çift sayımı değil:
+- `physics_fuel_predictor._get_gravity_recovery(arac_yasi)` (satır 174) — yalnız
+  **iniş segmentlerinde** geri kazanılan enerjiyi ölçekler (0.90→0.60); regen/coast
+  verimliliği.
+- `ensemble_core.py:964` `yas_faktoru` — genel motor/lastik/bakım aşınması için
+  **tüm çıktıyı** ölçekler.
+Hilly rotada eski araç ikisini de görür; bunun "çift ceza" mı yoksa iki ayrı gerçek
+etkinin doğru modeli mi olduğu **ampirik** bir soru. Çarpanı körü körüne kaldırmak
+**tüm tahminleri + sürücü skorlarını + anomali eşiklerini** kaydırır ve
+`scripts/p51_real_world_validation.py` literatür bandlarını bozabilir. Kanıtsız model
+davranışı değiştirilmedi. **Çözüm yolu:** p51'i 10+ yaş araç ağırlıklı bir filoda
+koşup eski-araç tahmininin bandda kalıp kalmadığını ölçmek; bandı aşıyorsa o zaman
+double-penalty teyitlenir ve `yas_faktoru` yalnız iniş-dışı bileşene uygulanır.
+
+### P1-4 (`sefer_write_service.py:171` `prediction_liters` fallback) → BUG DEĞİL, bilinçli alias
+`prediction_liters` **ölü değil**: `prediction_service.py:556` onu canonical
+`tahmini_litre` ile **birlikte** "Deprecated alias for transition period" olarak
+üretiyor ve `vehicle_health_factor.py:206` tüketiyor. sefer_write'taki fallback,
+`tahmini_litre` her zaman mevcut olduğu için ulaşılamaz ama zararsız savunma kodu.
+Asıl temizlik = alias'ı proje-geneli kaldırmak; bu **frontend koordinasyonu** ister
+(FE bu key'i okuyor olabilir) ve ayrı bir deprecation kalemidir. Tek satırlık fallback'i
+churn etmek sıfır fayda + ufak risk → değiştirilmedi.
+
+---
+
 ## Çalıştırma reçetesi (real-object, mock'suz)
 
 ```bash

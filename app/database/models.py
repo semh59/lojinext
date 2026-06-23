@@ -1145,7 +1145,7 @@ class IceriAktarimGecmisi(Base):
     hatalar: Mapped[Optional[dict]] = mapped_column(JSONB)  # Detailed errors per row
 
     yukleyen_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id"), index=True
+        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
     )
 
     baslama_zamani: Mapped[datetime] = mapped_column(

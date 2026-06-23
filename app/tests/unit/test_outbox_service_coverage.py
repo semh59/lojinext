@@ -1,393 +1,203 @@
-"""
-Coverage tests for app/infrastructure/events/outbox_service.py
-Tests OutboxService.save_event, relay_pending_events, get_outbox_service.
+"""OutboxService tests — real DB, no mocked UoW/session.
+
+The transactional outbox is a reliability-critical seam, so previously mocking the
+UnitOfWork/session and asserting inner calls (session.add.assert_called_once(),
+mock_uow.commit.assert_called_once()) hid the actual persistence contract. Here the
+service runs against the real test DB (db_session monkeypatches AsyncSessionLocal,
+so both save_event's UoW and relay_pending_events' internal UnitOfWork use the test
+session) and we assert the real outbox_events rows (saved / processed / retried).
+
+Only the event bus (external Redis pub/sub) and the shutdown flag are stubbed —
+calling those for real would mean live Redis / process-shutdown machinery.
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
+from sqlalchemy import insert, select
+
+from app.database.models import OutboxEvent
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.events.outbox_service import OutboxService, get_outbox_service
 
 pytestmark = pytest.mark.unit
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+_BUS = "app.infrastructure.events.outbox_service.get_event_bus"
+_STOPPING = "app.infrastructure.events.outbox_service.is_stopping"
 
 
-def _make_uow(session=None):
-    """Build a mock UnitOfWork context manager."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
-    mock_uow.commit = AsyncMock()
-    mock_uow.session = session or AsyncMock()
-    return mock_uow
+async def _seed_outbox(
+    db_session,
+    event_type="sefer_added",
+    payload=None,
+    *,
+    processed=False,
+    retry_count=0,
+) -> int:
+    oid = (
+        await db_session.execute(
+            insert(OutboxEvent).values(
+                event_type=event_type,
+                payload=payload or {},
+                processed=processed,
+                retry_count=retry_count,
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return oid
 
 
-def _fake_outbox_event(
-    id=1, event_type="sefer_added", payload=None, processed=False, retry_count=0
-):
-    obj = MagicMock()
-    obj.id = id
-    obj.event_type = event_type
-    obj.payload = payload or {}
-    obj.processed = processed
-    obj.retry_count = retry_count
-    obj.correlation_id = "corr-123"
-    obj.error_message = None
-    obj.processed_at = None
-    return obj
+async def _get_outbox(db_session, oid):
+    return (
+        await db_session.execute(select(OutboxEvent).where(OutboxEvent.id == oid))
+    ).scalar_one_or_none()
 
 
-# ---------------------------------------------------------------------------
-# OutboxService.save_event
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- #
+# save_event                                                                   #
+# --------------------------------------------------------------------------- #
 
 
-async def test_save_event_returns_id():
-    """Happy path: event is added to session, id returned."""
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
+async def test_save_event_returns_id(db_session):
+    """save_event persists a real outbox_events row and returns its id."""
+    async with UnitOfWork() as uow:
+        result = await OutboxService(uow=uow).save_event("sefer_added", {"sefer_id": 1})
+        await uow.commit()
 
-    mock_uow = _make_uow(session)
-
-    from app.infrastructure.events.outbox_service import OutboxService
-
-    svc = OutboxService(uow=mock_uow)
-
-    # Make db_event.id accessible after flush
-    def fake_add(obj):
-        obj.id = 42
-
-    session.add.side_effect = fake_add
-
-    result = await svc.save_event("sefer_added", {"sefer_id": 1})
-
-    assert result == 42
-    session.add.assert_called_once()
-    session.flush.assert_called_once()
+    assert isinstance(result, int) and result > 0
+    row = await _get_outbox(db_session, result)
+    assert row is not None
+    assert row.event_type == "sefer_added"
+    assert row.payload == {"sefer_id": 1}
+    assert row.processed is False
 
 
 async def test_save_event_raises_without_uow():
-    """No UoW → RuntimeError."""
-    from app.infrastructure.events.outbox_service import OutboxService
-
-    svc = OutboxService()  # no uow
-
+    """No UoW → RuntimeError (no DB needed)."""
     with pytest.raises(RuntimeError, match="UnitOfWork"):
-        await svc.save_event("test_event", {})
+        await OutboxService().save_event("test_event", {})
 
 
-async def test_save_event_uses_passed_uow_over_instance_uow():
-    """Explicit uow param overrides self.uow."""
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
+async def test_save_event_uses_passed_uow_over_instance_uow(db_session):
+    """An explicit uow param is honoured and the event is persisted through it."""
+    async with UnitOfWork() as uow:
+        result = await OutboxService().save_event("yakit_added", {"x": 1}, uow=uow)
+        await uow.commit()
 
-    passed_uow = _make_uow(session)
-    instance_uow = _make_uow()  # should not be used
-
-    from app.infrastructure.events.outbox_service import OutboxService
-
-    svc = OutboxService(uow=instance_uow)
-
-    def fake_add(obj):
-        obj.id = 7
-
-    session.add.side_effect = fake_add
-
-    result = await svc.save_event("test_event", {"x": 1}, uow=passed_uow)
-
-    assert result == 7
-    # instance_uow session should NOT have been called
-    instance_uow.session.add.assert_not_called()
+    row = await _get_outbox(db_session, result)
+    assert row is not None and row.event_type == "yakit_added"
 
 
-async def test_save_event_uses_correlation_id():
-    """correlation_id from context is attached to the OutboxEvent."""
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    mock_uow = _make_uow(session)
-
-    captured = {}
-
-    def fake_add(obj):
-        obj.id = 1
-        captured["correlation_id"] = obj.correlation_id
-
-    session.add.side_effect = fake_add
-
+async def test_save_event_uses_correlation_id(db_session):
+    """correlation_id from the request context is stored on the real row."""
     with patch(
         "app.infrastructure.events.outbox_service.get_correlation_id",
         return_value="test-correlation-xyz",
     ):
-        from app.infrastructure.events.outbox_service import OutboxService
+        async with UnitOfWork() as uow:
+            result = await OutboxService(uow=uow).save_event("yakit_added", {"lt": 100})
+            await uow.commit()
 
-        svc = OutboxService(uow=mock_uow)
-        await svc.save_event("yakit_added", {"lt": 100})
-
-    assert captured["correlation_id"] == "test-correlation-xyz"
-
-
-async def test_save_event_payload_stored():
-    """payload dict is set on the OutboxEvent."""
-    session = AsyncMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    mock_uow = _make_uow(session)
-
-    captured = {}
-
-    def fake_add(obj):
-        obj.id = 5
-        captured["payload"] = obj.payload
-
-    session.add.side_effect = fake_add
-
-    from app.infrastructure.events.outbox_service import OutboxService
-
-    svc = OutboxService(uow=mock_uow)
-    await svc.save_event("arac_updated", {"arac_id": 3, "plaka": "34ABC"})
-
-    assert captured["payload"] == {"arac_id": 3, "plaka": "34ABC"}
+    row = await _get_outbox(db_session, result)
+    assert row.correlation_id == "test-correlation-xyz"
 
 
-# ---------------------------------------------------------------------------
-# OutboxService.relay_pending_events
-# ---------------------------------------------------------------------------
+async def test_save_event_payload_stored(db_session):
+    """The payload dict is persisted verbatim on the real row."""
+    async with UnitOfWork() as uow:
+        result = await OutboxService(uow=uow).save_event(
+            "arac_updated", {"arac_id": 3, "plaka": "34ABC"}
+        )
+        await uow.commit()
+
+    row = await _get_outbox(db_session, result)
+    assert row.payload == {"arac_id": 3, "plaka": "34ABC"}
 
 
-async def test_relay_pending_events_returns_zero_when_empty():
-    """No pending events → returns 0 immediately (no commit)."""
-    import app.database.unit_of_work as uow_mod
+# --------------------------------------------------------------------------- #
+# relay_pending_events                                                         #
+# --------------------------------------------------------------------------- #
 
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
 
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = _make_uow(mock_session)
-
-    original = uow_mod.UnitOfWork
-
-    class _FakeUoW:
-        async def __aenter__(self):
-            return mock_uow
-
-        async def __aexit__(self, *a):
-            pass
-
-    uow_mod.UnitOfWork = _FakeUoW
-    try:
-        from app.infrastructure.events.outbox_service import OutboxService
-
-        svc = OutboxService()
-        count = await svc.relay_pending_events()
-    finally:
-        uow_mod.UnitOfWork = original
-
+async def test_relay_pending_events_returns_zero_when_empty(db_session):
+    """No pending rows → 0 (and the bus is never consulted)."""
+    count = await OutboxService().relay_pending_events()
     assert count == 0
 
 
-def _patch_uow(mock_uow_inner):
-    """
-    Context manager that replaces UnitOfWork in app.database.unit_of_work
-    with a fake that uses mock_uow_inner as the async-with result.
-    The local import inside relay_pending_events picks this up.
-    """
-    import contextlib
-
-    import app.database.unit_of_work as uow_mod
-
-    class _FakeUoW:
-        async def __aenter__(self):
-            return mock_uow_inner
-
-        async def __aexit__(self, *a):
-            pass
-
-    @contextlib.contextmanager
-    def _ctx():
-        original = uow_mod.UnitOfWork
-        uow_mod.UnitOfWork = _FakeUoW
-        try:
-            yield
-        finally:
-            uow_mod.UnitOfWork = original
-
-    return _ctx()
-
-
-async def test_relay_pending_events_processes_events():
-    """Events are published and marked as processed."""
-    ev1 = _fake_outbox_event(id=1, event_type="sefer_added", payload={"id": 1})
-
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [ev1]
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_uow = _make_uow(mock_session)
+async def test_relay_pending_events_processes_events(db_session):
+    """A pending row is dispatched and marked processed in the real DB."""
+    oid = await _seed_outbox(db_session, "sefer_added", {"id": 1})
 
     mock_bus = AsyncMock()
     mock_bus.publish_async = AsyncMock()
-
-    with (
-        _patch_uow(mock_uow),
-        patch(
-            "app.infrastructure.events.outbox_service.get_event_bus",
-            return_value=mock_bus,
-        ),
-        patch(
-            "app.infrastructure.events.outbox_service.is_stopping", return_value=False
-        ),
-    ):
-        from app.infrastructure.events.outbox_service import OutboxService
-
-        svc = OutboxService()
-        count = await svc.relay_pending_events()
+    with patch(_BUS, return_value=mock_bus), patch(_STOPPING, return_value=False):
+        count = await OutboxService().relay_pending_events()
 
     assert count == 1
-    assert ev1.processed is True
-    assert ev1.processed_at is not None
     mock_bus.publish_async.assert_called_once()
+    row = await _get_outbox(db_session, oid)
+    assert row.processed is True
+    assert row.processed_at is not None
 
 
-async def test_relay_pending_events_increments_retry_on_failure():
-    """If publish fails, retry_count is incremented and error_message set."""
-    ev1 = _fake_outbox_event(id=2, event_type="sefer_added", retry_count=0)
-
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [ev1]
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_uow = _make_uow(mock_session)
+async def test_relay_pending_events_increments_retry_on_failure(db_session):
+    """If publish fails, the real row's retry_count/error_message are updated."""
+    oid = await _seed_outbox(db_session, "sefer_added", {}, retry_count=0)
 
     mock_bus = AsyncMock()
     mock_bus.publish_async = AsyncMock(side_effect=RuntimeError("bus error"))
-
-    with (
-        _patch_uow(mock_uow),
-        patch(
-            "app.infrastructure.events.outbox_service.get_event_bus",
-            return_value=mock_bus,
-        ),
-        patch(
-            "app.infrastructure.events.outbox_service.is_stopping", return_value=False
-        ),
-    ):
-        from app.infrastructure.events.outbox_service import OutboxService
-
-        svc = OutboxService()
-        count = await svc.relay_pending_events()
+    with patch(_BUS, return_value=mock_bus), patch(_STOPPING, return_value=False):
+        count = await OutboxService().relay_pending_events()
 
     assert count == 0
-    assert ev1.retry_count == 1
-    assert "bus error" in ev1.error_message
+    row = await _get_outbox(db_session, oid)
+    assert row.retry_count == 1
+    assert row.processed is False
+    assert "bus error" in (row.error_message or "")
 
 
-async def test_relay_pending_events_stops_on_shutdown():
-    """is_stopping() returns True on first check → breaks before processing."""
-    ev1 = _fake_outbox_event(id=10, event_type="sefer_added")
-    ev2 = _fake_outbox_event(id=11, event_type="sefer_updated")
-
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [ev1, ev2]
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_uow = _make_uow(mock_session)
+async def test_relay_pending_events_stops_on_shutdown(db_session):
+    """is_stopping() True → break before processing; no row is touched."""
+    oid = await _seed_outbox(db_session, "sefer_added", {})
 
     mock_bus = AsyncMock()
     mock_bus.publish_async = AsyncMock()
+    with patch(_BUS, return_value=mock_bus), patch(_STOPPING, return_value=True):
+        count = await OutboxService().relay_pending_events()
 
-    call_count = 0
-
-    def stopping_side_effect():
-        nonlocal call_count
-        # Returns True immediately → no events processed
-        call_count += 1
-        return True
-
-    with (
-        _patch_uow(mock_uow),
-        patch(
-            "app.infrastructure.events.outbox_service.get_event_bus",
-            return_value=mock_bus,
-        ),
-        patch(
-            "app.infrastructure.events.outbox_service.is_stopping",
-            side_effect=stopping_side_effect,
-        ),
-    ):
-        from app.infrastructure.events.outbox_service import OutboxService
-
-        svc = OutboxService()
-        count = await svc.relay_pending_events()
-
-    # is_stopping was True from the start → 0 processed
     assert count == 0
     mock_bus.publish_async.assert_not_called()
+    row = await _get_outbox(db_session, oid)
+    assert row.processed is False
 
 
-async def test_relay_pending_events_commits():
-    """UoW.commit is called after relay loop when events exist."""
-    ev1 = _fake_outbox_event(id=5, event_type="sefer_added", payload={})
-
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = [ev1]
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_uow = _make_uow(mock_session)
+async def test_relay_pending_events_commits(db_session):
+    """The processed flag is persisted (relay commits the real transaction)."""
+    oid = await _seed_outbox(db_session, "sefer_added", {})
 
     mock_bus = AsyncMock()
     mock_bus.publish_async = AsyncMock()
+    with patch(_BUS, return_value=mock_bus), patch(_STOPPING, return_value=False):
+        await OutboxService().relay_pending_events()
 
-    with (
-        _patch_uow(mock_uow),
-        patch(
-            "app.infrastructure.events.outbox_service.get_event_bus",
-            return_value=mock_bus,
-        ),
-        patch(
-            "app.infrastructure.events.outbox_service.is_stopping", return_value=False
-        ),
-    ):
-        from app.infrastructure.events.outbox_service import OutboxService
-
-        svc = OutboxService()
-        await svc.relay_pending_events()
-
-    mock_uow.commit.assert_called_once()
+    row = await _get_outbox(db_session, oid)
+    assert row.processed is True
 
 
-# ---------------------------------------------------------------------------
-# get_outbox_service factory
-# ---------------------------------------------------------------------------
+# --------------------------------------------------------------------------- #
+# get_outbox_service factory                                                   #
+# --------------------------------------------------------------------------- #
 
 
 def test_get_outbox_service_returns_instance():
-    from app.infrastructure.events.outbox_service import (
-        OutboxService,
-        get_outbox_service,
-    )
-
     svc = get_outbox_service()
     assert isinstance(svc, OutboxService)
     assert svc.uow is None
 
 
 def test_get_outbox_service_returns_new_each_time():
-    from app.infrastructure.events.outbox_service import get_outbox_service
-
-    svc1 = get_outbox_service()
-    svc2 = get_outbox_service()
-    assert svc1 is not svc2
+    assert get_outbox_service() is not get_outbox_service()

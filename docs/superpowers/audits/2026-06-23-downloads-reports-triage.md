@@ -239,6 +239,16 @@ davranışı değiştirilmedi. **Çözüm yolu:** p51'i 10+ yaş araç ağırlı
 koşup eski-araç tahmininin bandda kalıp kalmadığını ölçmek; bandı aşıyorsa o zaman
 double-penalty teyitlenir ve `yas_faktoru` yalnız iniş-dışı bileşene uygulanır.
 
+**p51 koşuldu (2026-06-23, `docs/validation/p51-validation-results-2026-06-23.md`):**
+Aggregate **8/10 GREEN, 1 YELLOW, 1 RED, sanity 10/10**. ÖNEMLİ: referans araç
+yil=2022 → **tüm rotalarda `vehicle_age=1.0`** (yaş faktörü nötr), yani p51 eski-araç
+yaş-bileşimini **tetiklemiyor** → P1-1'i ampirik kapatmaz. Ayrıca gözlenen sapma
+**düşük-tahmin** yönünde (RED `VAL-KON-AKS-150` -17.8%, ağır 23t yük; YELLOW -7.8%);
+P1-1'in korktuğu **fazla-tahmin** (double-penalty) bu veriyle daha az olası. P1-1'i
+gerçekten kapatmak için referans aracı yil≈2014/2010 yapıp p51'i tekrar koşmak gerekir.
+> Yan bulgu (rapor kapsamı dışı, kalibrasyon): heavy-load `VAL-KON-AKS-150` ve uzun
+> `VAL-IST-ANK-450` (elevation_coverage %62) düşük-tahmin eğilimli — ayrı kalibrasyon kalemi.
+
 ### P1-4 (`sefer_write_service.py:171` `prediction_liters` fallback) → BUG DEĞİL, bilinçli alias
 `prediction_liters` **ölü değil**: `prediction_service.py:556` onu canonical
 `tahmini_litre` ile **birlikte** "Deprecated alias for transition period" olarak

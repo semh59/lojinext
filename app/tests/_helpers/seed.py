@@ -5,7 +5,14 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from app.database.models import Arac, Sefer, SistemKonfig, Sofor, YakitAlimi
+from app.database.models import (
+    Arac,
+    Lokasyon,
+    Sefer,
+    SistemKonfig,
+    Sofor,
+    YakitAlimi,
+)
 
 
 async def seed_arac(
@@ -50,6 +57,26 @@ async def seed_sofor(
     session.add(sofor)
     await session.flush()
     return sofor
+
+
+async def seed_lokasyon(
+    session,
+    *,
+    cikis_yeri: str = "Istanbul",
+    varis_yeri: str = "Ankara",
+    mesafe_km: float = 450.0,
+    **extra,
+) -> Lokasyon:
+    """Insert a minimal Lokasyon row and flush. Returns the ORM instance."""
+    lok = Lokasyon(
+        cikis_yeri=cikis_yeri,
+        varis_yeri=varis_yeri,
+        mesafe_km=mesafe_km,
+        **extra,
+    )
+    session.add(lok)
+    await session.flush()
+    return lok
 
 
 async def seed_sefer(

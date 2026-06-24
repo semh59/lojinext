@@ -7,12 +7,49 @@ from decimal import Decimal
 
 from app.database.models import (
     Arac,
+    Kullanici,
     Lokasyon,
+    Rol,
     Sefer,
     SistemKonfig,
     Sofor,
     YakitAlimi,
 )
+
+_seq = {"n": 0}
+
+
+async def seed_kullanici(
+    session,
+    *,
+    ad_soyad: str = "Test Kullanici",
+    email: str | None = None,
+    rol_ad: str | None = None,
+    aktif: bool = True,
+    **extra,
+) -> Kullanici:
+    """Insert a Rol + Kullanici and flush. Returns the user ORM instance.
+
+    Satisfies the iceri_aktarim_gecmisi.yukleyen_id FK (and any other
+    kullanicilar FK) for import/audit tests. Email/rol adı çakışmasını
+    önlemek için tekil sayaç eklenir.
+    """
+    _seq["n"] += 1
+    n = _seq["n"]
+    rol = Rol(ad=rol_ad or f"test-rol-{n}", yetkiler={})
+    session.add(rol)
+    await session.flush()
+    user = Kullanici(
+        ad_soyad=ad_soyad,
+        email=email or f"user{n}@test.local",
+        sifre_hash="x",
+        rol_id=rol.id,
+        aktif=aktif,
+        **extra,
+    )
+    session.add(user)
+    await session.flush()
+    return user
 
 
 async def seed_arac(

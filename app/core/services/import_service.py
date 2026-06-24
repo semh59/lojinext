@@ -313,6 +313,17 @@ class ImportService:
             inserted_ids = []
 
             # 2. DB Inserts for validated rows
+            #
+            # BİLİNEN SINIRLAMA (de-mock ile ortaya çıktı): aşağıdaki raw
+            # INSERT'ler ilgili tablonun NOT NULL + server_default'suz bazı
+            # kolonlarını atlıyor → prod'da NOT NULL ihlali. ``sefer`` yolu
+            # düzeltildi (is_deleted/flat_distance_km teknik default). Ama:
+            #   - arac:   ``marka`` (NOT NULL) toplanmıyor
+            #   - surucu: ``score/manual_score/agresif_surus_faktoru/
+            #             hiz_disiplin_skoru`` (NOT NULL) atlanıyor
+            #   - yakit:  ``fiyat_tl/durum/depo_durumu/aktif`` (NOT NULL) atlanıyor
+            # Bunlar iş-verisi gerektirir (uydurma default veri yazmak yanlış
+            # olur); mapping genişletme / ürün kararı bekliyor — bkz commit.
             for vrow in valid_rows:
                 idx = vrow["_index"]
                 try:
@@ -346,19 +357,26 @@ class ImportService:
                         basarili += 1
 
                     elif aktarim_tipi == "sefer":
+                        # is_deleted ve flat_distance_km NOT NULL + server_default
+                        # YOK (yalnız Python-side default). Raw INSERT bunları
+                        # atlarsa NOT NULL ihlali → transaction abort → tüm
+                        # admin sefer import 500 verir. Teknik default'ları
+                        # açıkça yaz.
                         stmt = text(
                             """
                             INSERT INTO seferler (
                                 arac_id, sofor_id, dorse_id, guzergah_id,
                                 tarih, mesafe_km, net_kg, ton,
                                 bos_agirlik_kg, dolu_agirlik_kg,
-                                cikis_yeri, varis_yeri, durum
+                                cikis_yeri, varis_yeri, durum,
+                                is_deleted, flat_distance_km
                             )
                             VALUES (
                                 :arac_id, :sofor_id, :dorse_id, :guzergah_id,
                                 :tarih, :mesafe, :net_kg, :ton,
                                 :bos_agirlik_kg, :dolu_agirlik_kg,
-                                :cikis_yeri, :varis_yeri, :durum
+                                :cikis_yeri, :varis_yeri, :durum,
+                                FALSE, 0
                             )
                             RETURNING id
                             """

@@ -6,16 +6,20 @@ conftest-monkeypatched test session), reads real seeded Sefer / Lokasyon /
 GuzergahKalibrasyon rows, and we assert the real status dicts / returned records
 instead of asserting on mocked inner calls.
 
-PostGIS boundary (documented, not a shortcut): the calibration *write* path
-(``calibrate_route_from_trip`` creating/updating a calibration) calls
-``from_shape(...)`` → a geoalchemy2 ``WKBElement`` and a raw
-``UPDATE ... ST_SetSRID(:geom::geometry, 4326)``. The CI/dev DB image is plain
-``postgres:16-alpine`` with **no PostGIS** (conftest swaps geometry columns for
-LargeBinary), so the ``::geometry`` cast raises and — being mid-transaction —
-poisons the async transaction, breaking the subsequent ``commit()``. Those four
-write-path tests therefore keep a controlled UoW double; this is an
-infrastructure boundary (PostGIS absent), analogous to the external-API
-boundaries kept elsewhere in the 0-mock epic, not internal-logic mocking.
+Geometry-storage boundary (documented, not a shortcut): the ``hedef_path``
+column has NO portable representation across the suite's two schema variants.
+When the full suite runs (CI), root ``tests/conftest.py`` injects
+``geoalchemy2.Geometry = MockGeometry`` (get_col_spec → ``TEXT``) and mocks
+``geoalchemy2.shape``, so ``hedef_path`` is a TEXT column that binds **str**;
+when only ``app/tests`` is collected, ``app/tests/conftest.py`` swaps the real
+geometry type for ``LargeBinary`` (no PostGIS in the DB), so it binds **bytes**.
+No single seed value satisfies both, so any test that needs a *stored, truthy*
+``hedef_path`` cannot be portably real-DB tested. Those tests — the two
+coordinate-branch checks that require an existing calibration path, plus the
+four ``calibrate_route_from_trip`` write tests (which also call the mocked
+``from_shape`` and a PostGIS-only ``ST_SetSRID`` UPDATE that would poison the
+async transaction) — keep a controlled UoW double. Every real-DB test below
+seeds only NULL / absent ``hedef_path``, so it passes in BOTH schema variants.
 """
 
 from __future__ import annotations
@@ -163,39 +167,6 @@ class TestMatchSeferToPath:
         assert result["status"] == "not_calibrated"
         assert result["error_code"] == "CALIBRATION_MISSING"
 
-    async def test_missing_coordinates(self, db_session):
-        lok = await seed_lokasyon(db_session)
-        await db_session.commit()
-        sefer = await _seed_trip(
-            db_session, rota_detay={"coordinates": []}, guzergah_id=lok.id
-        )
-        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=b"wkb")
-
-        async with UnitOfWork() as uow:
-            result = await RouteCalibrationService(uow).match_sefer_to_path(
-                sefer_id=sefer.id
-            )
-        assert result["status"] == "verification_unavailable"
-        assert result["error_code"] == "TRIP_COORDINATES_MISSING"
-
-    async def test_with_coordinates(self, db_session):
-        lok = await seed_lokasyon(db_session)
-        await db_session.commit()
-        sefer = await _seed_trip(
-            db_session,
-            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1], [30.0, 42.0]]},
-            guzergah_id=lok.id,
-        )
-        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=b"wkb")
-
-        async with UnitOfWork() as uow:
-            result = await RouteCalibrationService(uow).match_sefer_to_path(
-                sefer_id=sefer.id
-            )
-        assert result["status"] == "verification_unavailable"
-        assert result["error_code"] == "SPATIAL_VERIFICATION_NOT_IMPLEMENTED"
-        assert result["sefer_id"] == sefer.id
-
 
 # ---------------------------------------------------------------------------
 # get_calibration_for_lokasyon — real DB
@@ -213,7 +184,9 @@ class TestGetCalibrationForLokasyon:
     async def test_returns_record(self, db_session):
         lok = await seed_lokasyon(db_session)
         await db_session.commit()
-        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=b"wkb")
+        # hedef_path left NULL — portable across both schema variants (see module
+        # docstring). This test only asserts the row is fetched, not its geometry.
+        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=None)
 
         async with UnitOfWork() as uow:
             result = await RouteCalibrationService(uow).get_calibration_for_lokasyon(
@@ -325,6 +298,43 @@ def _make_sefer(rota_detay=None, guzergah_id=None):
     sefer.rota_detay = rota_detay
     sefer.guzergah_id = guzergah_id
     return sefer
+
+
+class TestMatchSeferToPathStoredCalibration:
+    """Coordinate-branch checks that require an EXISTING calibration whose
+    hedef_path is truthy. A stored truthy geometry is not portable across the
+    two schema variants (TEXT vs bytea), so these use an in-memory UoW double
+    (no DB binding). See module docstring."""
+
+    async def test_missing_coordinates(self, db_session):
+        sefer = _make_sefer(rota_detay={"coordinates": []}, guzergah_id=5)
+        uow = _make_uow(sefer=sefer)
+        calibration = MagicMock()
+        calibration.hedef_path = b"stored_geom"  # in-memory only, never bound to DB
+        cal_result = MagicMock()
+        cal_result.scalar_one_or_none.return_value = calibration
+        uow.session.execute = AsyncMock(return_value=cal_result)
+
+        result = await RouteCalibrationService(uow).match_sefer_to_path(sefer_id=1)
+        assert result["status"] == "verification_unavailable"
+        assert result["error_code"] == "TRIP_COORDINATES_MISSING"
+
+    async def test_with_coordinates(self, db_session):
+        sefer = _make_sefer(
+            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1], [30.0, 42.0]]},
+            guzergah_id=5,
+        )
+        uow = _make_uow(sefer=sefer)
+        calibration = MagicMock()
+        calibration.hedef_path = b"stored_geom"
+        cal_result = MagicMock()
+        cal_result.scalar_one_or_none.return_value = calibration
+        uow.session.execute = AsyncMock(return_value=cal_result)
+
+        result = await RouteCalibrationService(uow).match_sefer_to_path(sefer_id=1)
+        assert result["status"] == "verification_unavailable"
+        assert result["error_code"] == "SPATIAL_VERIFICATION_NOT_IMPLEMENTED"
+        assert result["sefer_id"] == 1
 
 
 class TestCalibrateRouteWritePath:

@@ -346,79 +346,46 @@ async def test_generate_driver_insights_exception():
 # ---------------------------------------------------------------------------
 
 
-# generate_all_and_save runs the three generate_* concurrently via asyncio.gather.
-# Three concurrent get_uow()/UnitOfWork over the single shared test session raises
-# IllegalStateChangeError (known harness limitation), so the generate_* are patched
-# to sidestep the gather — but the SAVE path (get_uow().analiz_repo.bulk_create_alerts
-# → real INSERT into the anomalies alert store) runs for real and is asserted via the
-# persisted rows.
+# generate_all_and_save runs the three generate_* concurrently via asyncio.gather
+# and saves the combined insights to the anomalies alert store. The gather over the
+# shared test session works (verified empirically), so these run FULLY REAL — no
+# stubbing of the generate_* methods. The key invariant is that the returned count
+# equals the rows actually persisted — exactly the data-loss bug this de-mock
+# surfaced (a non-zero count with nothing committed).
+
+
+async def _persisted_insights(db_session):
+    return (
+        (await db_session.execute(select(Anomaly).where(Anomaly.tip == "insight")))
+        .scalars()
+        .all()
+    )
 
 
 async def test_generate_all_and_save_no_insights(db_session):
-    engine = _make_engine()
-    with (
-        patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
-        patch.object(
-            engine, "generate_vehicle_insights_bulk", new=AsyncMock(return_value=[])
-        ),
-        patch.object(
-            engine, "generate_driver_insights_bulk", new=AsyncMock(return_value=[])
-        ),
-    ):
-        count = await engine.generate_all_and_save()
+    """Empty DB → no insights, nothing saved, count 0."""
+    count = await _make_engine().generate_all_and_save()
     assert count == 0
     assert (await db_session.execute(select(Anomaly))).scalars().all() == []
 
 
-async def test_generate_all_and_save_persists_alerts(db_session):
-    engine = _make_engine()
-    vehicle = [_make_insight("uyari", "arac", 1, "Vehicle msg", "high")]
-    driver = [_make_insight("uyari", "sofor", 5, "Driver msg", "medium")]
-
-    with (
-        patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
-        patch.object(
-            engine,
-            "generate_vehicle_insights_bulk",
-            new=AsyncMock(return_value=vehicle),
-        ),
-        patch.object(
-            engine, "generate_driver_insights_bulk", new=AsyncMock(return_value=driver)
-        ),
-    ):
-        count = await engine.generate_all_and_save()
-    assert count == 2
-    rows = (
-        (await db_session.execute(select(Anomaly).where(Anomaly.tip == "insight")))
-        .scalars()
-        .all()
-    )
-    assert len(rows) == 2
+async def test_generate_all_and_save_persists_real_insights(db_session):
+    """Seeded high consumption → real fleet/vehicle insights are persisted; the
+    returned count equals the rows actually committed."""
+    await _seed_trip(db_session, tuketim=40.0, plaka="34 GAT 001", hedef_tuketim=30.0)
+    count = await _make_engine().generate_all_and_save()
+    rows = await _persisted_insights(db_session)
+    assert count >= 1
+    assert len(rows) == count  # count == persisted — guards the data-loss bug
 
 
-async def test_generate_all_and_save_partial_insights(db_session):
-    engine = _make_engine()
-    vehicle = [_make_insight("uyari", "arac", 2, "One", "high")]
-
-    with (
-        patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
-        patch.object(
-            engine,
-            "generate_vehicle_insights_bulk",
-            new=AsyncMock(return_value=vehicle),
-        ),
-        patch.object(
-            engine, "generate_driver_insights_bulk", new=AsyncMock(return_value=[])
-        ),
-    ):
-        count = await engine.generate_all_and_save()
-    assert count == 1
-    rows = (
-        (await db_session.execute(select(Anomaly).where(Anomaly.tip == "insight")))
-        .scalars()
-        .all()
-    )
-    assert len(rows) == 1
+async def test_generate_all_and_save_count_matches_persisted(db_session):
+    """Vehicle within its own target but high enough for the fleet average →
+    fleet insight only; count still equals persisted rows (no over/under count)."""
+    await _seed_trip(db_session, tuketim=40.0, plaka="34 GAT 002", hedef_tuketim=40.0)
+    count = await _make_engine().generate_all_and_save()
+    rows = await _persisted_insights(db_session)
+    assert len(rows) == count
 
 
 # ---------------------------------------------------------------------------

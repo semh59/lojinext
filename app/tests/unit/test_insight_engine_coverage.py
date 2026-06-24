@@ -9,8 +9,29 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import select
+
+from app.database.models import Anomaly
+from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
 pytestmark = pytest.mark.unit
+
+
+# ---------------------------------------------------------------------------
+# Real-DB seed helper: generate_*_insights run a real UnitOfWork (get_uow →
+# UnitOfWork → conftest-monkeypatched test session) whose analiz_repo aggregates
+# real seferler. Seed a trip with a given consumption so the aggregate hits a
+# known value.
+# ---------------------------------------------------------------------------
+
+
+async def _seed_trip(db_session, *, tuketim, plaka="34 ABC 123", hedef_tuketim=25.0):
+    arac = await seed_arac(db_session, plaka=plaka, hedef_tuketim=hedef_tuketim)
+    sofor = await seed_sofor(db_session, ad_soyad=f"Sofor {plaka}")
+    await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id, tuketim=tuketim)
+    await db_session.commit()
+    return arac
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -163,55 +184,34 @@ async def test_safe_await_list():
 # ---------------------------------------------------------------------------
 
 
-def _uow_with_dashboard(stats):
-    """AUDIT-094: generate_fleet_insights artık get_uow() kullanır (session'sız
-    get_analiz_repo değil). Dashboard stats sağlayan mock uow context döndürür."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.analiz_repo = MagicMock()
-    mock_uow.analiz_repo.get_dashboard_stats = AsyncMock(return_value=stats)
-    return mock_uow
-
-
-async def test_generate_fleet_insights_high_avg():
-    engine = _make_engine()
-    mock_uow = _uow_with_dashboard({"filo_ortalama": 40.0})
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_fleet_insights()
-
+async def test_generate_fleet_insights_high_avg(db_session):
+    """Real filo_ortalama = AVG(seferler.tuketim) > 38 → one high 'filo' insight."""
+    await _seed_trip(db_session, tuketim=40.0)
+    insights = await _make_engine().generate_fleet_insights()
     assert len(insights) == 1
     assert insights[0].seviye == "high"
     assert insights[0].hedef_tur == "filo"
 
 
-async def test_generate_fleet_insights_normal_avg():
-    engine = _make_engine()
-    mock_uow = _uow_with_dashboard({"filo_ortalama": 34.0})
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_fleet_insights()
-
+async def test_generate_fleet_insights_normal_avg(db_session):
+    """Real avg 34 (≤ 38) → no insight."""
+    await _seed_trip(db_session, tuketim=34.0)
+    insights = await _make_engine().generate_fleet_insights()
     assert insights == []
 
 
-async def test_generate_fleet_insights_zero_avg():
-    engine = _make_engine()
-    mock_uow = _uow_with_dashboard({"filo_ortalama": 0})
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_fleet_insights()
-
+async def test_generate_fleet_insights_low_avg_empty_db(db_session):
+    """No trips → COALESCE to DEFAULT_FILO_ORTALAMA (32) ≤ 38 → no insight."""
+    insights = await _make_engine().generate_fleet_insights()
     assert insights == []
 
 
 async def test_generate_fleet_insights_exception():
-    engine = _make_engine()
+    """The DB-error guard returns [] (defensive branch; forced via get_uow error)."""
     mock_uow = AsyncMock()
     mock_uow.__aenter__ = AsyncMock(side_effect=RuntimeError("DB error"))
     with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_fleet_insights()
+        insights = await _make_engine().generate_fleet_insights()
     assert insights == []
 
 
@@ -220,64 +220,32 @@ async def test_generate_fleet_insights_exception():
 # ---------------------------------------------------------------------------
 
 
-def _make_mock_uow_ctx(rows):
-    """Returns a mock UoW context manager that provides analiz_repo."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.analiz_repo = MagicMock()
-    mock_uow.analiz_repo.get_all_vehicles_consumption_stats = AsyncMock(
-        return_value=rows
-    )
-    return mock_uow
-
-
-async def test_generate_vehicle_insights_over_target():
-    engine = _make_engine()
-    rows = [
-        {"arac_id": 1, "plaka": "34ABC", "hedef_tuketim": 30.0, "ort_tuketim": 35.0},
-    ]
-    mock_uow = _make_mock_uow_ctx(rows)
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_vehicle_insights_bulk()
-
+async def test_generate_vehicle_insights_over_target(db_session):
+    """Real ort_tuketim (35) > hedef*1.10 (33) → one high insight naming the plate."""
+    await _seed_trip(db_session, tuketim=35.0, plaka="34 ABC 123", hedef_tuketim=30.0)
+    insights = await _make_engine().generate_vehicle_insights_bulk()
     assert len(insights) == 1
-    assert "34ABC" in insights[0].mesaj
+    assert "34 ABC 123" in insights[0].mesaj
     assert insights[0].seviye == "high"
 
 
-async def test_generate_vehicle_insights_within_target():
-    engine = _make_engine()
-    rows = [
-        {"arac_id": 2, "plaka": "06XYZ", "hedef_tuketim": 30.0, "ort_tuketim": 30.5},
-    ]
-    mock_uow = _make_mock_uow_ctx(rows)
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_vehicle_insights_bulk()
-
+async def test_generate_vehicle_insights_within_target(db_session):
+    """Real ort 30.5 ≤ hedef*1.10 (33) → no insight."""
+    await _seed_trip(db_session, tuketim=30.5, plaka="06 XYZ 789", hedef_tuketim=30.0)
+    insights = await _make_engine().generate_vehicle_insights_bulk()
     assert insights == []
 
 
-async def test_generate_vehicle_insights_zero_hedef():
-    engine = _make_engine()
-    rows = [{"arac_id": 3, "plaka": "35YY", "hedef_tuketim": 0, "ort_tuketim": 40.0}]
-    mock_uow = _make_mock_uow_ctx(rows)
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_vehicle_insights_bulk()
-
+async def test_generate_vehicle_insights_zero_hedef(db_session):
+    """hedef_tuketim ≤ 0 → vehicle skipped regardless of consumption."""
+    await _seed_trip(db_session, tuketim=40.0, plaka="35 YY 12", hedef_tuketim=0.0)
+    insights = await _make_engine().generate_vehicle_insights_bulk()
     assert insights == []
 
 
-async def test_generate_vehicle_insights_empty_rows():
-    engine = _make_engine()
-    mock_uow = _make_mock_uow_ctx([])
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_vehicle_insights_bulk()
-
+async def test_generate_vehicle_insights_empty_rows(db_session):
+    """No vehicles → no insights."""
+    insights = await _make_engine().generate_vehicle_insights_bulk()
     assert insights == []
 
 
@@ -299,6 +267,15 @@ async def test_generate_vehicle_insights_exception():
 
 
 def _make_mock_uow_ctx_drivers(rows):
+    """Inject the (currently UNIMPLEMENTED) driver-stats repo method.
+
+    The real ``analiz_repo`` has no ``get_all_drivers_consumption_stats`` —
+    ``generate_driver_insights_bulk`` getattr-guards it and returns [] in reality
+    (see test_generate_driver_insights_no_method, which runs against the real DB).
+    These low/good/zero-score tests therefore inject the future method to verify
+    the score<50 → 'sofor' insight contract for when the repo method lands. This
+    is a documented future-capability boundary, not internal-logic mocking.
+    """
     mock_uow = AsyncMock()
     mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
     mock_uow.__aexit__ = AsyncMock(return_value=None)
@@ -345,18 +322,10 @@ async def test_generate_driver_insights_zero_score():
     assert insights == []
 
 
-async def test_generate_driver_insights_no_method():
-    """When analiz_repo lacks get_all_drivers_consumption_stats, returns []."""
-    engine = _make_engine()
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    # analiz_repo without that method
-    mock_uow.analiz_repo = MagicMock(spec=[])  # empty spec → no attributes
-
-    with patch("app.core.services.insight_engine.get_uow", return_value=mock_uow):
-        insights = await engine.generate_driver_insights_bulk()
-
+async def test_generate_driver_insights_no_method(db_session):
+    """Against the REAL DB the analiz_repo has no get_all_drivers_consumption_stats,
+    so the getattr-guard returns [] — the genuine production behaviour today."""
+    insights = await _make_engine().generate_driver_insights_bulk()
     assert insights == []
 
 
@@ -377,7 +346,15 @@ async def test_generate_driver_insights_exception():
 # ---------------------------------------------------------------------------
 
 
-async def test_generate_all_and_save_no_insights():
+# generate_all_and_save runs the three generate_* concurrently via asyncio.gather.
+# Three concurrent get_uow()/UnitOfWork over the single shared test session raises
+# IllegalStateChangeError (known harness limitation), so the generate_* are patched
+# to sidestep the gather — but the SAVE path (get_uow().analiz_repo.bulk_create_alerts
+# → real INSERT into the anomalies alert store) runs for real and is asserted via the
+# persisted rows.
+
+
+async def test_generate_all_and_save_no_insights(db_session):
     engine = _make_engine()
     with (
         patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
@@ -390,31 +367,16 @@ async def test_generate_all_and_save_no_insights():
     ):
         count = await engine.generate_all_and_save()
     assert count == 0
+    assert (await db_session.execute(select(Anomaly))).scalars().all() == []
 
 
-def _uow_with_repo(mock_repo):
-    """AUDIT-094: generate_all_and_save kaydetme yolu get_uow().analiz_repo kullanır."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.analiz_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    return mock_uow
-
-
-async def test_generate_all_and_save_with_insights():
+async def test_generate_all_and_save_persists_alerts(db_session):
     engine = _make_engine()
-    fleet = [_make_insight("uyari", "filo", None, "Fleet msg", "high")]
     vehicle = [_make_insight("uyari", "arac", 1, "Vehicle msg", "high")]
     driver = [_make_insight("uyari", "sofor", 5, "Driver msg", "medium")]
 
-    mock_repo = MagicMock()
-    mock_repo.bulk_create_alerts = AsyncMock(return_value=3)
-
     with (
-        patch.object(
-            engine, "generate_fleet_insights", new=AsyncMock(return_value=fleet)
-        ),
+        patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
         patch.object(
             engine,
             "generate_vehicle_insights_bulk",
@@ -423,39 +385,40 @@ async def test_generate_all_and_save_with_insights():
         patch.object(
             engine, "generate_driver_insights_bulk", new=AsyncMock(return_value=driver)
         ),
-        patch(
-            "app.core.services.insight_engine.get_uow",
-            return_value=_uow_with_repo(mock_repo),
-        ),
     ):
         count = await engine.generate_all_and_save()
-    assert count == 3
+    assert count == 2
+    rows = (
+        (await db_session.execute(select(Anomaly).where(Anomaly.tip == "insight")))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 2
 
 
-async def test_generate_all_and_save_partial_insights():
+async def test_generate_all_and_save_partial_insights(db_session):
     engine = _make_engine()
-    fleet = [_make_insight("bilgi", "filo", None, "Info", "low")]
-
-    mock_repo = MagicMock()
-    mock_repo.bulk_create_alerts = AsyncMock(return_value=1)
+    vehicle = [_make_insight("uyari", "arac", 2, "One", "high")]
 
     with (
+        patch.object(engine, "generate_fleet_insights", new=AsyncMock(return_value=[])),
         patch.object(
-            engine, "generate_fleet_insights", new=AsyncMock(return_value=fleet)
-        ),
-        patch.object(
-            engine, "generate_vehicle_insights_bulk", new=AsyncMock(return_value=[])
+            engine,
+            "generate_vehicle_insights_bulk",
+            new=AsyncMock(return_value=vehicle),
         ),
         patch.object(
             engine, "generate_driver_insights_bulk", new=AsyncMock(return_value=[])
         ),
-        patch(
-            "app.core.services.insight_engine.get_uow",
-            return_value=_uow_with_repo(mock_repo),
-        ),
     ):
         count = await engine.generate_all_and_save()
     assert count == 1
+    rows = (
+        (await db_session.execute(select(Anomaly).where(Anomaly.tip == "insight")))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1
 
 
 # ---------------------------------------------------------------------------

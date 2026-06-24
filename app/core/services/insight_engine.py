@@ -124,6 +124,12 @@ class InsightEngine:
         payload = [self._to_alert_payload(i) for i in insights]
         async with get_uow() as uow:
             saved = int(await _safe_await(uow.analiz_repo.bulk_create_alerts(payload)))
+            # bulk_create_alerts uses a core INSERT and only self-commits when it
+            # owns its session; via the UoW the repo has a session, so the owning
+            # UoW must commit here — otherwise __aexit__'s ghost-guard (which only
+            # inspects ORM session.new/dirty, not core inserts) treats it as a
+            # clean read-only exit and rolls the alerts back (silent data loss).
+            await uow.commit()
         # Faz 4 — kritik/yüksek seviyeli uyarılarda filo geneli push tetikle.
         await _notify_serious_alerts(payload)
         return saved

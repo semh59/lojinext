@@ -40,7 +40,7 @@ function MetricRow({
   lowerIsBetter,
 }: RowProps) {
   const { t, i18n } = useTranslation();
-  const locale = i18n.language.startsWith("en") ? "en-US" : "tr-TR";
+  const locale = (i18n.language ?? "tr").startsWith("en") ? "en-US" : "tr-TR";
   const hasData = deltaPct !== null;
   const isImprovement = hasData
     ? lowerIsBetter

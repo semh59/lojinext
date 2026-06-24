@@ -63,7 +63,7 @@ describe("FuelAnomalyWidget", () => {
       expect(screen.getByText("34 ABC 123")).toBeInTheDocument(),
     );
     expect(screen.getByText(/Ali Veli/)).toBeInTheDocument();
-    expect(screen.getByText(/sapma %33\.7/)).toBeInTheDocument();
+    expect(screen.getByText(/\+33\.7%/)).toBeInTheDocument();
     expect(screen.getByText("Yüksek")).toBeInTheDocument();
   });
 

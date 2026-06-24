@@ -34,7 +34,7 @@ describe("Admin foundation source guards", () => {
 
     for (const page of pages) {
       const source = readFileSync(resolve(process.cwd(), page.path), "utf-8");
-      expect(source).toContain("resources/tr/admin");
+      expect(source).toContain("useAdminResources");
       expect(source).not.toMatch(page.forbidden);
     }
   });

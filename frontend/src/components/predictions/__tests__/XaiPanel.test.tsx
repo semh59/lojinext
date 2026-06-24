@@ -161,7 +161,7 @@ describe("EnsembleWeightsPanel", () => {
 
     render(<EnsembleWeightsPanel />);
     await waitFor(() => {
-      expect(screen.getByText("Henüz eğitim verisi yok.")).toBeInTheDocument();
+      expect(screen.getByText("Henüz eğitim verisi yok")).toBeInTheDocument();
     });
   });
 });

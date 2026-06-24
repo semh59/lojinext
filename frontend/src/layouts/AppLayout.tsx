@@ -47,7 +47,7 @@ function NotificationPanel({
 }) {
   const { t, i18n } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
-  const locale = i18n.language.startsWith("en") ? "en-US" : "tr-TR";
+  const locale = (i18n.language ?? "tr").startsWith("en") ? "en-US" : "tr-TR";
 
   function eventTypeLabel(olay_tipi: string): string {
     if (olay_tipi.includes("ANOMALY"))

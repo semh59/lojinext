@@ -138,7 +138,7 @@ describe("TimeSeriesForecast", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tahmin Et" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Stabil")).toBeInTheDocument();
+      expect(screen.getByText("Kararlı")).toBeInTheDocument();
     });
   });
 

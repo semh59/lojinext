@@ -141,7 +141,9 @@ describe("ChatAssistant", () => {
     expect(
       screen.getByText("En verimli güzergah hangisi?"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Bakım zamanı yaklaşanlar")).toBeInTheDocument();
+    expect(
+      screen.getByText("Bakım zamanı yaklaşanlar kimler?"),
+    ).toBeInTheDocument();
   });
 
   it("renders the assistant initial message", async () => {

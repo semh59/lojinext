@@ -19,14 +19,6 @@ vi.mock("../LanguageSwitcher", () => ({
   default: () => <button data-testid="language-switcher">Lang</button>,
 }));
 
-// react-i18next — minimal translation mock
-vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (_key: string, fallback?: string) => fallback ?? _key,
-    i18n: { language: "tr" },
-  }),
-}));
-
 // Outlet — render placeholder content
 vi.mock("react-router-dom", async () => {
   const actual =
@@ -137,7 +129,7 @@ describe("AppLayout", () => {
 
   it("renders Sistem Yönetimi nav item for admin user", () => {
     render(<AppLayout />);
-    expect(screen.getByText("Sistem Yönetimi")).toBeInTheDocument();
+    expect(screen.getByText("Yönetim")).toBeInTheDocument();
   });
 
   it("opens notification panel when bell is clicked", async () => {

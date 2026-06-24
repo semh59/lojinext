@@ -189,9 +189,7 @@ describe("DriverModal — edit mode", () => {
     );
     const kisiselTab = screen.getByText("Kişisel");
     fireEvent.click(kisiselTab);
-    expect(
-      screen.getByPlaceholderText("11 haneli TC kimlik numarası"),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("TC Kimlik No")).toBeInTheDocument();
   });
 
   it("switches to Telegram tab and shows helper text", () => {

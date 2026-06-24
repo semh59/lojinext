@@ -24,7 +24,7 @@ describe("ReceiptUpload", () => {
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], "fis.jpg", {
       type: "image/jpeg",
     });
-    const input = screen.getByLabelText(/fiş fotoğrafı/i) as HTMLInputElement;
+    const input = screen.getByLabelText(/fiş yükle/i) as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
     expect(await screen.findByDisplayValue("45.5")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("PETROL OFISI")).toBeInTheDocument();
@@ -37,10 +37,10 @@ describe("ReceiptUpload", () => {
     const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], "fis.jpg", {
       type: "image/jpeg",
     });
-    fireEvent.change(screen.getByLabelText(/fiş fotoğrafı/i), {
+    fireEvent.change(screen.getByLabelText(/fiş yükle/i), {
       target: { files: [file] },
     });
-    const btn = await screen.findByText("Onayla ve kaydet");
+    const btn = await screen.findByText("Onayla");
     fireEvent.click(btn);
     expect(onConfirm).toHaveBeenCalledWith(
       expect.objectContaining({ istasyon: "PETROL OFISI", litre: 45.5 }),

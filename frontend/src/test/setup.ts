@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom";
 
+// Initialise i18next once for the whole test run so components that read
+// translations via useTranslation()/t() resolve real strings (default locale
+// tr) instead of returning the raw key. Without this, t()-based components
+// render translation keys and text assertions fail.
+import "../i18n";
+
 // Polyfill for ResizeObserver
 class ResizeObserver {
   observe() {}

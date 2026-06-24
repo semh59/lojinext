@@ -32,7 +32,7 @@ import { useLocale } from "../hooks/useLocale";
 
 function getProfileSchema(t: TFunction) {
   return z.object({
-    ad_soyad: z.string().min(2, t("profile.req_length")).max(100),
+    ad_soyad: z.string().min(2, t("profile.name_min")).max(100),
   });
 }
 

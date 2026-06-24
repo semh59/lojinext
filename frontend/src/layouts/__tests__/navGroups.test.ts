@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import i18n from "../../i18n";
 import { buildNavGroups } from "../navGroups";
+
+// Labels are now i18n-driven; resolve them through the real (tr) instance.
+const t = (key: string, fallback?: string): string =>
+  i18n.t(key, { defaultValue: fallback ?? "" });
 
 describe("buildNavGroups — RV2.9 sidebar", () => {
   it("admin: Bugün + Sistem + Filo İçgörü + Strategic Cockpit görünür", () => {
-    const groups = buildNavGroups({ role: "admin" });
+    const groups = buildNavGroups({ role: "admin" }, t);
 
     // 1. grup (label null): Bugün
     expect(groups[0].label).toBeNull();
@@ -30,7 +35,7 @@ describe("buildNavGroups — RV2.9 sidebar", () => {
   });
 
   it("fleet_manager: Bugün + İçgörü görünür, Sistem yok", () => {
-    const groups = buildNavGroups({ role: "fleet_manager" });
+    const groups = buildNavGroups({ role: "fleet_manager" }, t);
 
     expect(groups[0].items[0].label).toBe("Bugün");
     expect(groups.find((g) => g.label === "Sistem")).toBeUndefined();
@@ -42,10 +47,10 @@ describe("buildNavGroups — RV2.9 sidebar", () => {
   });
 
   it("user (non-triage): Panel görünür, Filo İçgörü ve Strategic Cockpit gizli", () => {
-    const groups = buildNavGroups({ role: "user" });
+    const groups = buildNavGroups({ role: "user" }, t);
 
     // Panel (canSeeTriage=false branch)
-    expect(groups[0].items[0].label).toBe("Panel");
+    expect(groups[0].items[0].label).toBe("Filo Paneli");
     expect(groups[0].items[0].path).toBe("/");
 
     // Sistem yok
@@ -63,9 +68,9 @@ describe("buildNavGroups — RV2.9 sidebar", () => {
   });
 
   it("null user: Panel, gizli admin/triage öğeleri yok", () => {
-    const groups = buildNavGroups(null);
+    const groups = buildNavGroups(null, t);
 
-    expect(groups[0].items[0].label).toBe("Panel");
+    expect(groups[0].items[0].label).toBe("Filo Paneli");
     expect(groups.find((g) => g.label === "Sistem")).toBeUndefined();
 
     // Bakım operasyon altında her zaman var (genel kullanıcı yetkisi yetersiz değil)

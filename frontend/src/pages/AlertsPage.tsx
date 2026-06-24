@@ -563,7 +563,7 @@ export default function AlertsPage() {
                     )
                   }
                   className="rounded-card border border-border bg-elevated px-2 py-1 text-[11px] font-semibold text-primary outline-none focus:border-accent"
-                  aria-label={t("common.filter")}
+                  aria-label={t("alerts.type_filter_label")}
                 >
                   <option value="">{t("alerts.type_all")}</option>
                   <option value="tuketim">

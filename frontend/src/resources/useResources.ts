@@ -39,7 +39,9 @@ import * as enMaintenancePredictions from "./en/maintenancePredictions";
 
 function useIsEn(): boolean {
   const { i18n } = useTranslation();
-  return i18n.language.startsWith("en");
+  // i18n.language can be undefined before i18next initialises (e.g. in tests
+  // that don't mount I18nextProvider); default to the app's base locale (tr).
+  return (i18n.language ?? "tr").startsWith("en");
 }
 
 export function useTripsResources() {

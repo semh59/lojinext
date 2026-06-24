@@ -81,7 +81,7 @@ describe("PeriodComparisonCard", () => {
     render(<PeriodComparisonCard period="week" />);
     await waitFor(() => screen.getByText(/Bu Hafta vs Geçen/));
     // "veri yok" tüm metriklerde
-    expect(screen.getAllByText("veri yok").length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText("Veri yok").length).toBeGreaterThanOrEqual(4);
   });
 
   it('hata durumu → "yüklenemedi" mesajı', async () => {

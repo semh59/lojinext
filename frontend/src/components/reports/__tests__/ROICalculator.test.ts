@@ -8,7 +8,7 @@ describe("ROICalculator source guards", () => {
       "utf-8",
     );
 
-    expect(source).toContain("resources/tr/reports");
+    expect(source).toContain("useReportsResources");
     expect(source).not.toContain("Yatırım Simülasyonu");
   });
 });

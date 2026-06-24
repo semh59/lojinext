@@ -9,7 +9,7 @@ describe("OverviewPage source guard", () => {
     const source = readFileSync(filePath, "utf-8");
 
     expect(source).not.toMatch(/çok yakında/i);
-    expect(source).toContain("resources/tr/admin");
+    expect(source).toContain("useAdminResources");
     expect(source).not.toMatch(/Sistem Genel Bakış/i);
   });
 });

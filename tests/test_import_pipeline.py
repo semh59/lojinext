@@ -38,6 +38,13 @@ async def test_import_execution_and_rollback():
         mock_uow.session.flush = AsyncMock()
         mock_uow.commit = AsyncMock()
 
+        # execute_import wraps each row in a SAVEPOINT (begin_nested) so a
+        # failed row rolls back alone; the mocked session must support it.
+        mock_savepoint = MagicMock()
+        mock_savepoint.commit = AsyncMock()
+        mock_savepoint.rollback = AsyncMock()
+        mock_uow.session.begin_nested = AsyncMock(return_value=mock_savepoint)
+
         # Use AsyncMock for all awaited methods
         mock_uow.import_repo.create_import_job = AsyncMock(return_value=mock_job)
         mock_uow.import_repo.update_job_status = AsyncMock()

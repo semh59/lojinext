@@ -1,32 +1,21 @@
-"""Tests for app/core/services/route_calibration_service.py.
+"""Tests for app/core/services/route_calibration_service.py — fully real DB.
 
-De-mocked to the real test DB for every path that does NOT write PostGIS
-geometry: the service constructs a real ``UnitOfWork`` (whose session is the
-conftest-monkeypatched test session), reads real seeded Sefer / Lokasyon /
-GuzergahKalibrasyon rows, and we assert the real status dicts / returned records
-instead of asserting on mocked inner calls.
+Every test runs the service against a real ``UnitOfWork`` (whose session is the
+conftest-monkeypatched test session) over real seeded Sefer / Lokasyon /
+GuzergahKalibrasyon rows, and asserts the real status dicts / persisted records.
 
-Geometry-storage boundary (documented, not a shortcut): the ``hedef_path``
-column has NO portable representation across the suite's two schema variants.
-When the full suite runs (CI), root ``tests/conftest.py`` injects
-``geoalchemy2.Geometry = MockGeometry`` (get_col_spec → ``TEXT``) and mocks
-``geoalchemy2.shape``, so ``hedef_path`` is a TEXT column that binds **str**;
-when only ``app/tests`` is collected, ``app/tests/conftest.py`` swaps the real
-geometry type for ``LargeBinary`` (no PostGIS in the DB), so it binds **bytes**.
-No single seed value satisfies both, so any test that needs a *stored, truthy*
-``hedef_path`` cannot be portably real-DB tested. Those tests — the two
-coordinate-branch checks that require an existing calibration path, plus the
-four ``calibrate_route_from_trip`` write tests (which also call the mocked
-``from_shape`` and a PostGIS-only ``ST_SetSRID`` UPDATE that would poison the
-async transaction) — keep a controlled UoW double. Every real-DB test below
-seeds only NULL / absent ``hedef_path``, so it passes in BOTH schema variants.
+``hedef_path`` is now a plain BYTEA column (``_LINESTRING_TYPE = LargeBinary``):
+the previous geoalchemy2 Geometry type bound writes through PostGIS functions
+(ST_GeomFromEWKB) that crash without the extension — a real production bug, now
+fixed so calibrate_route_from_trip stores raw WKB bytes. Because the column is
+bytea in every schema variant, the calibration write path round-trips for real
+here, so there is no mocked-UoW boundary left.
 """
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
+from sqlalchemy import select
 
 from app.core.services.route_calibration_service import RouteCalibrationService
 from app.database.models import GuzergahKalibrasyon
@@ -261,80 +250,50 @@ class TestGetSefer:
         assert RouteCalibrationService._get_value(result, "id") == sefer.id
 
 
-# ===========================================================================
-# calibrate_route_from_trip — geometry WRITE path.
+# ---------------------------------------------------------------------------
+# match_sefer_to_path — with an EXISTING stored calibration (real DB)
 #
-# PostGIS boundary: see module docstring. The dev/CI DB has no PostGIS, so the
-# ST_SetSRID(:geom::geometry) UPDATE would poison the async transaction and
-# break commit(). These four write-path tests keep a controlled UoW double to
-# exercise the new-vs-existing / match_count / add-vs-update branch logic; the
-# shapely geometry encoding (from_shape) is patched because it produces a
-# WKBElement that only a PostGIS column can store.
-# ===========================================================================
-
-
-def _make_uow(sefer=None, lokasyon=None):
-    """UnitOfWork-like double for the PostGIS-bound write path only."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.commit = AsyncMock()
-
-    mock_uow.sefer_repo = AsyncMock()
-    mock_uow.sefer_repo.get_by_id = AsyncMock(return_value=sefer)
-    mock_uow.lokasyon_repo = AsyncMock()
-    mock_uow.lokasyon_repo.get_by_id = AsyncMock(return_value=lokasyon)
-
-    mock_uow.session = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_uow.session.execute = AsyncMock(return_value=mock_result)
-    mock_uow.session.add = MagicMock()
-    return mock_uow
-
-
-def _make_sefer(rota_detay=None, guzergah_id=None):
-    sefer = MagicMock()
-    sefer.rota_detay = rota_detay
-    sefer.guzergah_id = guzergah_id
-    return sefer
+# hedef_path is now a plain BYTEA column everywhere (the prod fix dropped the
+# PostGIS-bound geoalchemy2 type), so a stored calibration round-trips for real.
+# ---------------------------------------------------------------------------
 
 
 class TestMatchSeferToPathStoredCalibration:
-    """Coordinate-branch checks that require an EXISTING calibration whose
-    hedef_path is truthy. A stored truthy geometry is not portable across the
-    two schema variants (TEXT vs bytea), so these use an in-memory UoW double
-    (no DB binding). See module docstring."""
-
     async def test_missing_coordinates(self, db_session):
-        sefer = _make_sefer(rota_detay={"coordinates": []}, guzergah_id=5)
-        uow = _make_uow(sefer=sefer)
-        calibration = MagicMock()
-        calibration.hedef_path = b"stored_geom"  # in-memory only, never bound to DB
-        cal_result = MagicMock()
-        cal_result.scalar_one_or_none.return_value = calibration
-        uow.session.execute = AsyncMock(return_value=cal_result)
-
-        result = await RouteCalibrationService(uow).match_sefer_to_path(sefer_id=1)
+        lok = await seed_lokasyon(db_session)
+        await db_session.commit()
+        sefer = await _seed_trip(
+            db_session, rota_detay={"coordinates": []}, guzergah_id=lok.id
+        )
+        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=b"wkb")
+        async with UnitOfWork() as uow:
+            result = await RouteCalibrationService(uow).match_sefer_to_path(
+                sefer_id=sefer.id
+            )
         assert result["status"] == "verification_unavailable"
         assert result["error_code"] == "TRIP_COORDINATES_MISSING"
 
     async def test_with_coordinates(self, db_session):
-        sefer = _make_sefer(
+        lok = await seed_lokasyon(db_session)
+        await db_session.commit()
+        sefer = await _seed_trip(
+            db_session,
             rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1], [30.0, 42.0]]},
-            guzergah_id=5,
+            guzergah_id=lok.id,
         )
-        uow = _make_uow(sefer=sefer)
-        calibration = MagicMock()
-        calibration.hedef_path = b"stored_geom"
-        cal_result = MagicMock()
-        cal_result.scalar_one_or_none.return_value = calibration
-        uow.session.execute = AsyncMock(return_value=cal_result)
-
-        result = await RouteCalibrationService(uow).match_sefer_to_path(sefer_id=1)
+        await _seed_calibration(db_session, lokasyon_id=lok.id, hedef_path=b"wkb")
+        async with UnitOfWork() as uow:
+            result = await RouteCalibrationService(uow).match_sefer_to_path(
+                sefer_id=sefer.id
+            )
         assert result["status"] == "verification_unavailable"
         assert result["error_code"] == "SPATIAL_VERIFICATION_NOT_IMPLEMENTED"
-        assert result["sefer_id"] == 1
+        assert result["sefer_id"] == sefer.id
+
+
+# ---------------------------------------------------------------------------
+# calibrate_route_from_trip — real WKB-bytes write (no PostGIS required)
+# ---------------------------------------------------------------------------
 
 
 class TestCalibrateRouteWritePath:
@@ -344,103 +303,63 @@ class TestCalibrateRouteWritePath:
         if mod.LineString is None:
             pytest.skip("shapely not installed")
 
-        sefer = _make_sefer(
+        lok = await seed_lokasyon(db_session)
+        await db_session.commit()
+        sefer = await _seed_trip(
+            db_session,
             rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1], [30.0, 42.0]]},
-            guzergah_id=5,
+            guzergah_id=lok.id,
         )
-        uow = _make_uow(sefer=sefer)
-        with (
-            patch.object(mod, "LineString", return_value=MagicMock()),
-            patch.object(mod, "from_shape", return_value=b"wkb_bytes"),
-        ):
-            result = await mod.RouteCalibrationService(uow).calibrate_route_from_trip(
-                sefer_id=1
+        async with UnitOfWork() as uow:
+            result = await RouteCalibrationService(uow).calibrate_route_from_trip(
+                sefer_id=sefer.id
             )
         assert result is True
-        uow.commit.assert_awaited_once()
-        uow.session.add.assert_called_once()
+        row = (
+            await db_session.execute(
+                select(GuzergahKalibrasyon).where(
+                    GuzergahKalibrasyon.lokasyon_id == lok.id
+                )
+            )
+        ).scalar_one()
+        # Real WKB bytes persisted to the BYTEA column — no PostGIS, no crash.
+        assert row.hedef_path is not None
+        assert len(bytes(row.hedef_path)) > 0
 
-    async def test_updates_existing_calibration(self, db_session):
+    async def test_updates_existing_calibration_resets_match_count(self, db_session):
         from app.core.services import route_calibration_service as mod
 
         if mod.LineString is None:
             pytest.skip("shapely not installed")
 
-        sefer = _make_sefer(
-            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1]]}, guzergah_id=3
+        lok = await seed_lokasyon(db_session)
+        await db_session.commit()
+        db_session.add(
+            GuzergahKalibrasyon(
+                lokasyon_id=lok.id,
+                buffer_meters=250.0,
+                match_count=5,
+                hedef_path=b"old",
+            )
         )
-        uow = _make_uow(sefer=sefer)
-        existing = MagicMock()
-        existing.match_count = 5
-        existing_result = MagicMock()
-        existing_result.scalar_one_or_none.return_value = existing
-        uow.session.execute = AsyncMock(return_value=existing_result)
-
-        with (
-            patch.object(mod, "LineString", return_value=MagicMock()),
-            patch.object(mod, "from_shape", return_value=b"updated_wkb"),
-        ):
-            result = await mod.RouteCalibrationService(uow).calibrate_route_from_trip(
-                sefer_id=2
+        await db_session.commit()
+        sefer = await _seed_trip(
+            db_session,
+            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1]]},
+            guzergah_id=lok.id,
+        )
+        async with UnitOfWork() as uow:
+            result = await RouteCalibrationService(uow).calibrate_route_from_trip(
+                sefer_id=sefer.id
             )
         assert result is True
-        assert existing.match_count == 1  # reset to 1
-        uow.commit.assert_awaited_once()
-        uow.session.add.assert_not_called()
-
-    async def test_updates_lokasyon_object(self, db_session):
-        from app.core.services import route_calibration_service as mod
-
-        if mod.LineString is None:
-            pytest.skip("shapely not installed")
-
-        sefer = _make_sefer(
-            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1]]}, guzergah_id=3
-        )
-        uow = _make_uow(sefer=sefer, lokasyon=MagicMock())
-        existing = MagicMock()
-        existing.match_count = 0
-        existing_result = MagicMock()
-        existing_result.scalar_one_or_none.return_value = existing
-        uow.session.execute = AsyncMock(return_value=existing_result)
-
-        with (
-            patch.object(mod, "LineString", return_value=MagicMock()),
-            patch.object(mod, "from_shape", return_value=b"wkb"),
-        ):
-            result = await mod.RouteCalibrationService(uow).calibrate_route_from_trip(
-                sefer_id=2
+        row = (
+            await db_session.execute(
+                select(GuzergahKalibrasyon).where(
+                    GuzergahKalibrasyon.lokasyon_id == lok.id
+                )
             )
-        assert result is True
-
-    async def test_updates_lokasyon_dict_attempts_geom_update(self, db_session):
-        from app.core.services import route_calibration_service as mod
-
-        if mod.LineString is None:
-            pytest.skip("shapely not installed")
-
-        sefer = _make_sefer(
-            rota_detay={"coordinates": [[28.9, 41.0], [29.0, 41.1]]}, guzergah_id=3
-        )
-        uow = _make_uow(sefer=sefer, lokasyon={"id": 3, "rota_geom": None})
-        existing = MagicMock()
-        existing.match_count = 0
-        existing_result = MagicMock()
-        existing_result.scalar_one_or_none.return_value = existing
-        uow.session.execute = AsyncMock(return_value=existing_result)
-
-        with (
-            patch.object(mod, "LineString", return_value=MagicMock()),
-            patch.object(mod, "from_shape", return_value=b"wkb"),
-        ):
-            result = await mod.RouteCalibrationService(uow).calibrate_route_from_trip(
-                sefer_id=2
-            )
-        assert result is True
-        # AUDIT-068: rota_geom persists via SQL UPDATE (not silent dict mutation).
-        geom_updates = [
-            call
-            for call in uow.session.execute.call_args_list
-            if "rota_geom" in str(call.args[0])
-        ]
-        assert geom_updates, "rota_geom için SQL UPDATE bekleniyordu"
+        ).scalar_one()
+        await db_session.refresh(row)
+        assert row.match_count == 1  # reset on recalibration
+        assert bytes(row.hedef_path) != b"old"  # path updated

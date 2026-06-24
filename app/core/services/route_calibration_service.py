@@ -119,9 +119,13 @@ class RouteCalibrationService:
         if len(coord_data) < 2:
             return False
 
-        # Create Shapely LineString
+        # Build the LineString and store its WKB as raw bytes. hedef_path is a
+        # plain BYTEA column (no PostGIS anywhere), so we persist the WKB bytes
+        # directly rather than a geoalchemy2 WKBElement — the latter binds via
+        # ST_GeomFromEWKB and raised UndefinedFunction without PostGIS, breaking
+        # this method in production.
         line = LineString(coord_data)
-        geom_wkb = from_shape(line, srid=4326)
+        geom_bytes = bytes(from_shape(line, srid=4326).data)
 
         # Update or create calibration
         stmt = select(GuzergahKalibrasyon).where(
@@ -131,30 +135,15 @@ class RouteCalibrationService:
         calibration = result.scalar_one_or_none()
 
         if calibration:
-            setattr(calibration, "hedef_path", geom_wkb)
+            calibration.hedef_path = geom_bytes
             calibration.match_count = 1
         else:
             calibration = GuzergahKalibrasyon(
                 lokasyon_id=guzergah_id,
                 buffer_meters=250.0,
+                hedef_path=geom_bytes,
             )
-            setattr(calibration, "hedef_path", geom_wkb)
             self.uow.session.add(calibration)
-
-        # Also persist rota_geom on the Lokasyon row (PostGIS column; skip if absent)
-        try:
-            from sqlalchemy import text as _text
-
-            await self.uow.session.execute(
-                _text(
-                    "UPDATE lokasyonlar SET rota_geom = ST_SetSRID(:geom::geometry, 4326)"
-                    " WHERE id = :id"
-                ),
-                {"geom": geom_wkb, "id": guzergah_id},
-            )
-        except Exception as _e:
-            # Column may not exist in non-PostGIS deployments — log and continue.
-            logger.debug("rota_geom update skipped (PostGIS unavailable?): %s", _e)
 
         await self.uow.commit()
         return True

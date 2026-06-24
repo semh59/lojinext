@@ -25,18 +25,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.dialects.postgresql import JSONB
-
-# Conditional GeoAlchemy2 import — uses MockGeometry in tests, real Geometry in production
-try:
-    from geoalchemy2 import Geometry as _GeoType
-
-    # spatial_index=False: alembic autogenerate won't try to create a GIST index;
-    # the column is stored as BYTEA on plain PostgreSQL (no PostGIS in CI).
-    _LINESTRING_TYPE = _GeoType("LINESTRING", srid=4326, spatial_index=False)
-except Exception:
-    # Fallback: store WKB as bytes; spatial queries via raw SQL when needed
-    _LINESTRING_TYPE = LargeBinary()
-
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase,
@@ -45,6 +33,15 @@ from sqlalchemy.orm import (
     relationship,
     validates,
 )
+
+# hedef_path stores a route's "golden path" as raw WKB bytes in a BYTEA column.
+# There is no PostGIS in dev/CI/prod (verified: pg_extension has no postgis,
+# the column is bytea), and geoalchemy2's Geometry type binds/reads through
+# PostGIS functions (ST_GeomFromEWKB) that raise on writes without the
+# extension — which broke calibrate_route_from_trip in production. Use a plain
+# LargeBinary so writes store the WKB bytes directly; no PostGIS required and
+# no DDL change (the column was already BYTEA).
+_LINESTRING_TYPE = LargeBinary()
 
 
 def get_utc_now(ctx=None, *args, **kwargs):

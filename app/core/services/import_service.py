@@ -314,18 +314,22 @@ class ImportService:
 
             # 2. DB Inserts for validated rows
             #
-            # BİLİNEN SINIRLAMA (de-mock ile ortaya çıktı): aşağıdaki raw
-            # INSERT'ler ilgili tablonun NOT NULL + server_default'suz bazı
-            # kolonlarını atlıyor → prod'da NOT NULL ihlali. ``sefer`` yolu
-            # düzeltildi (is_deleted/flat_distance_km teknik default). Ama:
-            #   - arac:   ``marka`` (NOT NULL) toplanmıyor
-            #   - surucu: ``score/manual_score/agresif_surus_faktoru/
-            #             hiz_disiplin_skoru`` (NOT NULL) atlanıyor
-            #   - yakit:  ``fiyat_tl/durum/depo_durumu/aktif`` (NOT NULL) atlanıyor
-            # Bunlar iş-verisi gerektirir (uydurma default veri yazmak yanlış
-            # olur); mapping genişletme / ürün kararı bekliyor — bkz commit.
+            # NOT (de-mock ile ortaya çıktı): raw INSERT'ler ilgili tablonun
+            # NOT NULL + server_default'suz kolonlarını atlarsa prod'da NOT NULL
+            # ihlali → import 500. sefer/surucu/yakit yolları teknik default'lar
+            # (sefer: is_deleted/flat_distance_km; surucu: skorlar=1.0; yakit:
+            # aktif/durum/depo + tutar/litre'den türetilen fiyat_tl) ile
+            # düzeltildi. KALAN BİLİNEN SINIR — ``arac``: ``marka`` (NOT NULL)
+            # import'ta TOPLANMIYOR; uydurma marka yazmak yanlış olur → mapping
+            # genişletme / marka'yı nullable yapma ürün kararı bekliyor.
             for vrow in valid_rows:
                 idx = vrow["_index"]
+                # Her satır kendi SAVEPOINT'inde — başarısız bir satır (örn.
+                # NOT NULL ihlali) yalnız kendini geri alır, tüm transaction'ı
+                # abort ETMEZ. Aksi halde sonraki update_job_status
+                # InFailedSQLTransactionError ile patlar → COMPLETED_WITH_ERRORS
+                # durumu erişilemez + tek hatalı satır tüm import'u 500 yapar.
+                savepoint = await uow.session.begin_nested()
                 try:
                     if aktarim_tipi == "arac":
                         stmt = text(
@@ -339,10 +343,17 @@ class ImportService:
                         basarili += 1
 
                     elif aktarim_tipi == "surucu":
+                        # score/manual_score/hiz_disiplin_skoru/
+                        # agresif_surus_faktoru NOT NULL + server_default YOK
+                        # (yalnız Python default=1.0). Raw INSERT atlarsa NOT
+                        # NULL ihlali → tüm surucu import 500. Teknik default 1.0.
                         stmt = text(
                             "INSERT INTO soforler"
-                            " (ad_soyad, ehliyet_sinifi, telefon, aktif)"
-                            " VALUES (:ad_soyad, :ehliyet, :tel, TRUE)"
+                            " (ad_soyad, ehliyet_sinifi, telefon, aktif,"
+                            "  score, manual_score, hiz_disiplin_skoru,"
+                            "  agresif_surus_faktoru)"
+                            " VALUES (:ad_soyad, :ehliyet, :tel, TRUE,"
+                            "  1.0, 1.0, 1.0, 1.0)"
                             " RETURNING id"
                         )
                         result = await uow.session.execute(
@@ -417,10 +428,20 @@ class ImportService:
                         )
 
                     elif aktarim_tipi == "yakit":
+                        # aktif/durum/depo_durumu NOT NULL (teknik default) +
+                        # fiyat_tl NOT NULL ama toplanmıyor → tutar/litre'den
+                        # türet. Hepsi atlanırsa NOT NULL ihlali → yakit import
+                        # 500. fiyat_tl>0 constraint'i: litre/tutar 0 ise satır
+                        # zaten hatalı (per-row except'e düşer).
+                        _litre = vrow["litre"] or 0
+                        _tutar = vrow["tutar"] or 0
+                        fiyat_tl = round(_tutar / _litre, 2) if _litre else 0
                         stmt = text(
                             "INSERT INTO yakit_alimlari"
-                            " (arac_id, tarih, litre, toplam_tutar, km_sayac)"
-                            " VALUES (:arac_id, :tarih, :litre, :tutar, :km)"
+                            " (arac_id, tarih, litre, toplam_tutar, km_sayac,"
+                            "  fiyat_tl, aktif, durum, depo_durumu)"
+                            " VALUES (:arac_id, :tarih, :litre, :tutar, :km,"
+                            "  :fiyat_tl, TRUE, 'Bekliyor', 'Bilinmiyor')"
                             " RETURNING id"
                         )
                         result = await uow.session.execute(
@@ -431,12 +452,15 @@ class ImportService:
                                 "litre": vrow["litre"],
                                 "tutar": vrow["tutar"],
                                 "km": vrow["km"],
+                                "fiyat_tl": fiyat_tl,
                             },
                         )
                         inserted_ids.append(result.scalar())
                         basarili += 1
 
+                    await savepoint.commit()
                 except Exception as e:
+                    await savepoint.rollback()
                     hatali += 1
                     hatalar[str(idx)] = str(e)
 

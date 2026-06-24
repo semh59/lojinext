@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from app.database.models import (
     Arac,
+    Dorse,
     Kullanici,
     Lokasyon,
     Rol,
@@ -98,6 +99,20 @@ async def seed_sofor(
     session.add(sofor)
     await session.flush()
     return sofor
+
+
+async def seed_dorse(
+    session,
+    *,
+    plaka: str = "34DRS001",
+    aktif: bool = True,
+    **extra,
+) -> Dorse:
+    """Insert a minimal Dorse (trailer) row and flush."""
+    dorse = Dorse(plaka=plaka, aktif=aktif, is_deleted=False, **extra)
+    session.add(dorse)
+    await session.flush()
+    return dorse
 
 
 async def seed_lokasyon(

@@ -153,6 +153,18 @@ jobs:
           fi
           echo "Forbidden model references gate passed."
 
+      - name: Forbidden FakeUnitOfWork helper gate
+        run: |
+          # The shared FakeUnitOfWork/patch_unit_of_work helper was deleted in
+          # the 0-mock epic: it let unit tests fake the DB transaction and hid
+          # real prod bugs (admin import NOT-NULL 500s). DB-touching unit tests
+          # must seed real rows (app/tests/_helpers/seed.py) instead.
+          if git grep -n -E "patch_unit_of_work|app\.tests\._helpers\.uow_mock" -- ':!.github/workflows/ci.yml'; then
+            echo "Re-introduced FakeUnitOfWork helper — use real seeded rows instead."
+            exit 1
+          fi
+          echo "FakeUnitOfWork helper gate passed."
+
       - name: Backend import smoke
         run: python -c "import app.main"
 

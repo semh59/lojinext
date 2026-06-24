@@ -22,8 +22,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pandas as pd
 import pytest
+from sqlalchemy import func, select
 
 from app.core.services.import_service import ImportService
+from app.database.models import Sefer, Sofor, YakitAlimi
+from app.tests._helpers.seed import (
+    seed_arac,
+    seed_dorse,
+    seed_kullanici,
+    seed_lokasyon,
+    seed_sofor,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -35,7 +44,12 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture
 def svc():
-    """ImportService with all deps as AsyncMock/MagicMock."""
+    """ImportService with all deps as AsyncMock/MagicMock.
+
+    Used by pure-logic tests and by process_*/execute_import tests whose
+    master data now comes from the REAL UoW (``real_master`` fixture seeds
+    it); only the bulk_add_* domain services stay mocked (separate boundary).
+    """
     return ImportService(
         sefer_service=AsyncMock(),
         yakit_service=AsyncMock(),
@@ -46,6 +60,26 @@ def svc():
         dorse_repo=AsyncMock(),
         lokasyon_repo=AsyncMock(),
     )
+
+
+@pytest.fixture
+async def real_master(db_session):
+    """Seed standard master rows + a user into the real test DB.
+
+    ImportService.execute_import / process_*_import fetch master lists from
+    their own ``async with UnitOfWork()`` which (via conftest monkeypatch)
+    reuses this session — so the seeded rows drive real FK resolution and the
+    raw INSERTs run for real. "Not found" cases are produced with non-matching
+    input data, so this one standard master serves every test.
+    """
+    arac = await seed_arac(
+        db_session, plaka="34ABC123", marka="Mercedes", bos_agirlik_kg=0
+    )
+    sofor = await seed_sofor(db_session, ad_soyad="Ahmet Yilmaz")
+    lok = await seed_lokasyon(db_session, cikis_yeri="Ankara", varis_yeri="Istanbul")
+    user = await seed_kullanici(db_session)
+    await db_session.commit()
+    return SimpleNamespace(db=db_session, arac=arac, sofor=sofor, lok=lok, user=user)
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +314,8 @@ class _FakeUoW:
 
 
 class TestExecuteImport:
+    """execute_import arac/surucu/yakit — gerçek UoW + gerçek raw INSERT."""
+
     def _upload(self, df):
         buf = io.BytesIO()
         df.to_excel(buf, index=False)
@@ -289,28 +325,30 @@ class TestExecuteImport:
             read=AsyncMock(return_value=buf.read()),
         )
 
-    async def test_arac_import_happy_path(self, svc):
-        df = pd.DataFrame([{"plaka": "34ABC123"}])
+    async def test_arac_import_known_marka_gap(self, svc, real_master):
+        """BİLİNEN SINIR: arac raw INSERT ``marka`` (NOT NULL) toplamıyor →
+        satır gerçek DB'de NOT NULL ihlaliyle düşer. Mock'lu eski test bunu
+        sahte başarı (scalar=101) ile gizliyordu; gerçek davranışı kanıtla."""
+        df = pd.DataFrame([{"plaka": "34NEW999"}])  # seeded değil → unique değil
         upload = self._upload(df)
-        mapping = {"plaka": "plaka"}
 
-        fake_uow = _FakeUoW()
+        result = await svc.execute_import(
+            upload, "arac", real_master.user.id, {"plaka": "plaka"}
+        )
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
-        ):
-            result = await svc.execute_import(upload, "arac", 1, mapping)
+        assert result["basarili"] == 0
+        assert result["hatali"] >= 1
 
-        assert result["basarili"] == 1
-        assert result["hatali"] == 0
-
-    async def test_surucu_import_happy_path(self, svc):
+    async def test_surucu_import_happy_path(self, svc, real_master):
+        """surucu INSERT artık skor kolonlarını yazıyor → gerçek satır eklenir."""
         df = pd.DataFrame(
+            # telefon string biçimde (xlsx round-trip salt-rakamı int'e çevirir;
+            # soforler.telefon VARCHAR — bu type sorunu skor-kolon fix'inden ayrı).
             [
                 {
-                    "ad_soyad": "Ali Veli",
+                    "ad_soyad": "Yeni Surucu",
                     "ehliyet_sinifi": "E",
-                    "telefon": "5551234567",
+                    "telefon": "0555 123 4567",
                 }
             ]
         )
@@ -321,20 +359,28 @@ class TestExecuteImport:
             "telefon": "telefon",
         }
 
-        fake_uow = _FakeUoW()
-
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
-        ):
-            result = await svc.execute_import(upload, "surucu", 1, mapping)
+        result = await svc.execute_import(
+            upload, "surucu", real_master.user.id, mapping
+        )
 
         assert result["basarili"] == 1
+        db = real_master.db
+        db.expire_all()
+        count = (
+            await db.execute(
+                select(func.count())
+                .select_from(Sofor)
+                .where(Sofor.ad_soyad == "Yeni Surucu")
+            )
+        ).scalar_one()
+        assert count == 1
 
-    async def test_yakit_import_happy_path(self, svc):
+    async def test_yakit_import_happy_path(self, svc, real_master):
+        """yakit INSERT artık fiyat_tl (tutar/litre) + teknik default'ları yazıyor."""
         df = pd.DataFrame(
             [
                 {
-                    "plaka": "34ABC123",
+                    "plaka": "34ABC123",  # seeded arac → resolve
                     "tarih": str(date.today()),
                     "litre": 500.0,
                     "toplam_tutar": 10000.0,
@@ -351,14 +397,17 @@ class TestExecuteImport:
             "km_sayac": "km_sayac",
         }
 
-        fake_uow = _FakeUoW()
-
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
-        ):
-            result = await svc.execute_import(upload, "yakit", 1, mapping)
+        result = await svc.execute_import(upload, "yakit", real_master.user.id, mapping)
 
         assert result["basarili"] == 1
+        db = real_master.db
+        db.expire_all()
+        row = (
+            await db.execute(
+                select(YakitAlimi).where(YakitAlimi.arac_id == real_master.arac.id)
+            )
+        ).scalar_one()
+        assert float(row.fiyat_tl) == 20.0  # 10000 / 500
 
     async def test_unsupported_type_raises_http_400(self, svc):
         from fastapi import HTTPException
@@ -370,32 +419,17 @@ class TestExecuteImport:
             await svc.execute_import(upload, "unknown", 1, {})
         assert exc_info.value.status_code == 400
 
-    async def test_completed_with_errors_status(self, svc):
-        """When some rows fail during DB insert, job status = COMPLETED_WITH_ERRORS."""
-        df = pd.DataFrame([{"plaka": "34ABC123"}])
+    async def test_completed_with_errors_status(self, svc, real_master):
+        """arac satırı marka-eksiğinden düşünce job COMPLETED_WITH_ERRORS olur."""
+        df = pd.DataFrame([{"plaka": "34NEW888"}])
         upload = self._upload(df)
 
-        fake_uow = _FakeUoW()
-        job_updates = []
-
-        async def capture_update(job_id, durum=None, **kwargs):
-            job_updates.append(durum)
-
-        # Make the DB insert raise to trigger hatali path
-        async def failing_execute(stmt, params=None):
-            raise RuntimeError("unique constraint")
-
-        fake_uow.session.execute = failing_execute
-        fake_uow.import_repo.update_job_status = capture_update
-
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
-        ):
-            result = await svc.execute_import(upload, "arac", 1, {"plaka": "plaka"})
+        result = await svc.execute_import(
+            upload, "arac", real_master.user.id, {"plaka": "plaka"}
+        )
 
         assert result["hatali"] >= 1
-        if job_updates:
-            assert job_updates[0] in ("COMPLETED_WITH_ERRORS", "COMPLETED")
+        assert result["basarili"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -563,9 +597,10 @@ class TestRollbackImport:
 
 class TestProcessSeferImportExtra:
     @patch("app.core.services.import_service.ExcelService")
-    async def test_with_dorse_plaka(self, MockExcelService, svc, monkeypatch):
-        """Row with dorse_plakasi resolves dorse_id."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
+    async def test_with_dorse_plaka(self, MockExcelService, svc, real_master):
+        """Row with dorse_plakasi resolves dorse_id (real seeded trailer)."""
+        await seed_dorse(real_master.db, plaka="34DRS001")
+        await real_master.db.commit()
 
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
@@ -583,16 +618,6 @@ class TestProcessSeferImportExtra:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[{"id": 5, "plaka": "34DRS001"}],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
         svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
 
         count, errors = await svc.process_sefer_import(b"fake")
@@ -601,11 +626,9 @@ class TestProcessSeferImportExtra:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_value_error_row_field_mapping(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """ValueError from row processing maps to correct field."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -618,16 +641,6 @@ class TestProcessSeferImportExtra:
                     "net_kg": 20000,
                 }
             ]
-        )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
         )
 
         count, errors = await svc.process_sefer_import(b"fake")
@@ -643,11 +656,9 @@ class TestProcessSeferImportExtra:
 class TestProcessYakitImportExtra:
     @patch("app.core.services.import_service.ExcelService")
     async def test_empty_plaka_row_becomes_error(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """Blank plaka row → ValueError → errors list."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_yakit_excel = AsyncMock(
             return_value=[
                 {
@@ -659,11 +670,6 @@ class TestProcessYakitImportExtra:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[],
-        )
         svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=0)
 
         count, errors = await svc.process_yakit_import(b"fake")
@@ -673,11 +679,9 @@ class TestProcessYakitImportExtra:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_missing_tarih_becomes_error(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """None tarih → ValueError → errors list."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_yakit_excel = AsyncMock(
             return_value=[
                 {
@@ -689,11 +693,6 @@ class TestProcessYakitImportExtra:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-        )
         svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=0)
 
         count, errors = await svc.process_yakit_import(b"fake")
@@ -702,11 +701,9 @@ class TestProcessYakitImportExtra:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_period_recalc_skip_on_import_error(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """period recalc failure doesn't propagate — returns count normally."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_yakit_excel = AsyncMock(
             return_value=[
                 {
@@ -717,11 +714,6 @@ class TestProcessYakitImportExtra:
                     "km_sayac": 100000,
                 }
             ]
-        )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
         )
         svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=1)
 
@@ -798,8 +790,8 @@ class TestExecuteImportSeferPath:
             read=AsyncMock(return_value=buf.read()),
         )
 
-    async def test_sefer_execute_import(self, svc):
-        """Sefer import fetches master lists and inserts row."""
+    async def test_sefer_execute_import(self, svc, real_master):
+        """Sefer execute_import: gerçek master + gerçek INSERT INTO seferler."""
         df = pd.DataFrame(
             [
                 {
@@ -824,27 +816,24 @@ class TestExecuteImportSeferPath:
             "ton": "ton",
         }
 
-        fake_uow = _FakeUoW()
-        fake_uow.sofor_repo.get_all = AsyncMock(
-            return_value=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}]
-        )
-        fake_uow.lokasyon_repo.get_all = AsyncMock(
-            return_value=[{"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}]
-        )
-
-        event_bus_mock = AsyncMock()
-        event_bus_mock.publish_async = AsyncMock()
-
-        with (
-            patch("app.core.services.import_service.UnitOfWork", return_value=fake_uow),
-            patch(
-                "app.infrastructure.events.event_bus.get_event_bus",
-                return_value=event_bus_mock,
-            ),
+        with patch(
+            "app.infrastructure.events.event_bus.get_event_bus",
+            return_value=SimpleNamespace(publish_async=AsyncMock()),
         ):
-            result = await svc.execute_import(upload, "sefer", 1, mapping)
+            result = await svc.execute_import(
+                upload, "sefer", real_master.user.id, mapping
+            )
 
         assert result["basarili"] == 1
+        db = real_master.db
+        db.expire_all()
+        sefer = (
+            await db.execute(
+                select(Sefer).where(Sefer.sofor_id == real_master.sofor.id)
+            )
+        ).scalar_one()
+        assert sefer.arac_id == real_master.arac.id
+        assert sefer.guzergah_id == real_master.lok.id
 
     async def test_rollback_db_error_raises_500(self, svc):
         """DB error during rollback → HTTPException 500."""
@@ -884,10 +873,8 @@ class TestExecuteImportSeferPath:
 class TestProcessSeferImportErrorBranches:
     @patch("app.core.services.import_service.ExcelService")
     async def test_invalid_plaka_maps_to_plaka_field(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -901,16 +888,6 @@ class TestProcessSeferImportErrorBranches:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
 
         count, errors = await svc.process_sefer_import(b"fake")
         assert count == 0
@@ -919,10 +896,8 @@ class TestProcessSeferImportErrorBranches:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_route_not_found_maps_to_guzergah_field(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -936,16 +911,6 @@ class TestProcessSeferImportErrorBranches:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
 
         count, errors = await svc.process_sefer_import(b"fake")
         assert len(errors) >= 1
@@ -953,10 +918,8 @@ class TestProcessSeferImportErrorBranches:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_invalid_numeric_maps_to_net_kg_field(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -970,16 +933,6 @@ class TestProcessSeferImportErrorBranches:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
 
         count, errors = await svc.process_sefer_import(b"fake")
         assert len(errors) >= 1
@@ -988,10 +941,8 @@ class TestProcessSeferImportErrorBranches:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_generic_exception_maps_to_genel_field(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -1005,16 +956,6 @@ class TestProcessSeferImportErrorBranches:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
 
         # Make bulk_add_sefer raise after validation passes
         svc.sefer_service.bulk_add_sefer = AsyncMock(
@@ -1027,11 +968,9 @@ class TestProcessSeferImportErrorBranches:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_value_error_plaka_msg_maps_field(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """ValueError with Plaka in message → plaka field."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_sefer_excel = AsyncMock(
             return_value=[
                 {
@@ -1045,16 +984,6 @@ class TestProcessSeferImportErrorBranches:
                 }
             ]
         )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[{"id": 1, "plaka": "34ABC123"}],
-            sofor_repo_get_all=[{"id": 1, "ad_soyad": "Ahmet Yilmaz"}],
-            dorse_repo_get_all=[],
-            lokasyon_repo_get_all=[
-                {"id": 10, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"}
-            ],
-        )
 
         count, errors = await svc.process_sefer_import(b"fake")
         assert len(errors) >= 1
@@ -1067,17 +996,10 @@ class TestProcessSeferImportErrorBranches:
 
 class TestProcessVehicleImportExtra:
     @patch("app.core.services.import_service.ExcelService")
-    async def test_system_error_returns_error(self, MockExcelService, svc, monkeypatch):
+    async def test_system_error_returns_error(self, MockExcelService, svc, real_master):
         """System exception → (0, ['Sistem hatası...'])"""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_vehicle_data = AsyncMock(
             side_effect=Exception("unexpected crash")
-        )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[],
         )
 
         count, errors = await svc.process_vehicle_import(b"fake")
@@ -1085,16 +1007,9 @@ class TestProcessVehicleImportExtra:
         assert "Sistem hatası" in errors[0]
 
     @patch("app.core.services.import_service.ExcelService")
-    async def test_empty_data_returns_error(self, MockExcelService, svc, monkeypatch):
+    async def test_empty_data_returns_error(self, MockExcelService, svc, real_master):
         """Empty vehicle data → (0, ['Excel dosyasında veri bulunamadı.'])"""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_vehicle_data = AsyncMock(return_value=[])
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[],
-        )
 
         count, errors = await svc.process_vehicle_import(b"fake")
         assert count == 0
@@ -1102,18 +1017,11 @@ class TestProcessVehicleImportExtra:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_invalid_plaka_in_vehicle_row(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master
     ):
         """Invalid plaka → error row."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_vehicle_data = AsyncMock(
             return_value=[{"plaka": "BAD", "marka": "Mercedes"}]
-        )
-        patch_unit_of_work(
-            monkeypatch,
-            "app.core.services.import_service",
-            arac_repo_get_all=[],
         )
 
         count, errors = await svc.process_vehicle_import(b"fake")
@@ -1176,11 +1084,9 @@ class TestImportRoutesExtra:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_row_exception_adds_to_errors(
-        self, MockExcelService, svc, monkeypatch
+        self, MockExcelService, svc, real_master, monkeypatch
     ):
         """Row-level exception → partial count + error entry."""
-        from app.tests._helpers.uow_mock import patch_unit_of_work
-
         MockExcelService.parse_route_excel = AsyncMock(
             return_value=[
                 {"cikis_yeri": "X", "varis_yeri": "Y", "mesafe_km": 100},
@@ -1205,8 +1111,6 @@ class TestImportRoutesExtra:
             "app.core.services.lokasyon_service.LokasyonService",
             _make_lokasyon_service,
         )
-
-        patch_unit_of_work(monkeypatch, "app.core.services.import_service")
 
         count, errors = await svc.import_routes(b"fake")
         # At least the first row should succeed or an error should be reported

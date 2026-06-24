@@ -79,28 +79,35 @@ def _real_request(path="/x", ip="1.2.3.4"):
 # ---------------------------------------------------------------------------
 
 
-async def test_get_current_user_blacklisted_token(db_session):
-    """A blacklisted token → 401 at the deps blacklist gate (real get_current_user).
+async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
+    """A really-blacklisted token → 401 (real blacklist + real Redis round-trip).
 
-    Boundary (documented): the real Redis round-trip via the redis_pubsub
-    val-store does not persist under the pytest conftest harness (the pub/sub
-    val-store is not wired to the test Redis the way CacheManager is — it
-    round-trips fine standalone but returns None here). Wiring redis_pubsub's
-    val-store into the test harness is tracked under the Category-A internal
-    Redis de-mock. Here we exercise the *deps.py* blacklist branch for real by
-    making the real blacklist report the token revoked; everything else
-    (decode, request, response) is real.
+    conftest's autouse ``bypass_token_blacklist`` fixture monkeypatches
+    is_blacklisted → False so ordinary test tokens aren't rejected. This test
+    restores the REAL is_blacklisted for itself and blacklists the token through
+    the real Redis-backed store, then asserts get_current_user rejects it — the
+    full deps blacklist gate, end to end, no stub.
     """
-    from unittest.mock import AsyncMock, patch
+    from datetime import datetime, timedelta, timezone
 
     from fastapi import HTTPException
 
     from app.api import deps
+    from app.infrastructure.security.token_blacklist import TokenBlacklist, blacklist
+
+    # Undo the autouse bypass for THIS test → real is_blacklisted.
+    monkeypatch.setattr(
+        blacklist,
+        "is_blacklisted",
+        TokenBlacklist.is_blacklisted.__get__(blacklist, TokenBlacklist),
+    )
 
     token = _make_token()
-    with patch.object(deps.blacklist, "is_blacklisted", AsyncMock(return_value=True)):
-        with pytest.raises(HTTPException) as exc:
-            await deps.get_current_user(_real_request(), db_session, token)
+    await blacklist.add(token, datetime.now(timezone.utc) + timedelta(minutes=30))
+    assert await blacklist.is_blacklisted(token) is True  # real Redis round-trip
+
+    with pytest.raises(HTTPException) as exc:
+        await deps.get_current_user(_real_request(), db_session, token)
     assert exc.value.status_code == 401
     assert "blacklisted" in str(exc.value.detail).lower()
 

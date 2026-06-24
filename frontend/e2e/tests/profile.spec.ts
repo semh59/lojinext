@@ -46,8 +46,9 @@ test.describe('Profil sayfası', () => {
         await page.goto('/profile')
         await expect(page.getByRole('button', { name: 'Şifremi Güncelle' })).toBeVisible({ timeout: 15_000 })
         await page.getByRole('button', { name: 'Şifremi Güncelle' }).click()
-        // Her iki alan da hata verebilir → .first() strict mode ihlalini önler
-        await expect(page.getByText('Mevcut şifrenizi girin.').or(page.getByText('Şifre tekrarını girin.')).first()).toBeVisible({ timeout: 5_000 })
+        // Boş current/confirm alanları auth.password_required mesajını verir
+        // ("Lütfen şifrenizi girin."); iki alan da aynı metni gösterir → .first()
+        await expect(page.getByText('Lütfen şifrenizi girin.').first()).toBeVisible({ timeout: 5_000 })
     })
 
     test('şifre değiştirme — yeni şifre eşleşmezse hata gösterilir', async ({ authedPage: page }) => {

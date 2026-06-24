@@ -165,6 +165,7 @@
     "req_lower": "Lowercase letter",
     "req_digit": "Number",
     "req_length": "Min. 8 characters",
+    "name_min": "Name must be at least 2 characters.",
     "updating": "Updating...",
     "update_password": "Update Password",
     "personal_tab": "Personal",

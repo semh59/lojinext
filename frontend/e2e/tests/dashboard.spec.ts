@@ -69,8 +69,9 @@ test.describe('Dashboard', () => {
         await page.goto('/legacy-dashboard')
         await page.waitForLoadState('networkidle')
 
-        // "Toplam Sefer" KPI kartı 34 göstermeli (bugun_sefer:0 değil)
-        await expect(page.getByText('Toplam Sefer')).toBeVisible()
+        // Sefer KPI kartı 34 göstermeli (bugun_sefer:0 değil). Etiket artık
+        // i18n trips.title = "Seferler" (sidebar'da da geçer → .first()).
+        await expect(page.getByText('Seferler').first()).toBeVisible()
         await expect(page.getByText('34', { exact: true }).first()).toBeVisible()
     })
 

@@ -27,12 +27,42 @@ Covers:
 - get_recommendation_engine singleton
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor, seed_yakit
+
 pytestmark = pytest.mark.unit
+
+
+# ---------------------------------------------------------------------------
+# Real-DB seed helpers (vehicle/fleet/cost recommendations run raw SQL over
+# real seferler / yakit_alimlari).
+# ---------------------------------------------------------------------------
+
+
+async def _seed_vehicle_trips(db_session, *, plaka, hedef_tuketim, yil, tuketimler):
+    """Seed an arac (+sofor) and one sefer per consumption value (tarih=today)."""
+    arac = await seed_arac(
+        db_session, plaka=plaka, hedef_tuketim=hedef_tuketim, yil=yil
+    )
+    sofor = await seed_sofor(db_session, ad_soyad=f"Sofor {plaka}")
+    for t in tuketimler:
+        await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id, tuketim=t)
+    await db_session.commit()
+    return arac
+
+
+async def _seed_trip_on(db_session, *, arac_id, sofor_id, tuketim, days_ago):
+    await seed_sefer(
+        db_session,
+        arac_id=arac_id,
+        sofor_id=sofor_id,
+        tuketim=tuketim,
+        tarih=date.today() - timedelta(days=days_ago),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -168,70 +198,36 @@ def test_is_cache_valid_expired_entry():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_vehicle_recommendations_not_found():
-    """get_vehicle_recommendations returns [] when vehicle not found."""
-    engine = _make_engine()
-    mock_uow = _make_uow_ctx()
-    mock_uow.arac_repo = MagicMock()
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_vehicle_recommendations(arac_id=999)
+async def test_get_vehicle_recommendations_not_found(db_session):
+    """Returns [] when the vehicle does not exist (real empty DB)."""
+    result = await _make_engine().get_vehicle_recommendations(arac_id=999999)
     assert result == []
 
 
-async def test_get_vehicle_recommendations_high_consumption_critical():
-    """get_vehicle_recommendations returns priority 4 when >20% above target."""
-    engine = _make_engine()
-
-    arac = {"plaka": "34ABC01", "hedef_tuketim": 30.0, "yil": 2020}
-    row = _make_row(ort=39.0, sayi=5)  # 30% above → priority 4
-
-    execute_mock = AsyncMock(return_value=_fetchone_result(row))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
-    mock_uow.arac_repo = MagicMock()
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_vehicle_recommendations(arac_id=1)
-
-    assert any(r.oncelik == 4 for r in result)
-    assert any(r.kategori == "verimlilik" for r in result)
+async def test_get_vehicle_recommendations_high_consumption_critical(db_session):
+    """Real AVG(tuketim) ~30% above target → priority-4 verimlilik rec."""
+    arac = await _seed_vehicle_trips(
+        db_session, plaka="34 ABC 001", hedef_tuketim=30.0, yil=2020, tuketimler=[39.0]
+    )
+    result = await _make_engine().get_vehicle_recommendations(arac_id=arac.id)
+    assert any(r.oncelik == 4 and r.kategori == "verimlilik" for r in result)
 
 
-async def test_get_vehicle_recommendations_moderate_deviation():
-    """get_vehicle_recommendations returns priority 3 when 10-20% above target."""
-    engine = _make_engine()
-
-    arac = {"plaka": "34XYZ01", "hedef_tuketim": 30.0, "yil": 2020}
-    row = _make_row(ort=33.5, sayi=3)  # ~11.6% above → priority 3
-
-    execute_mock = AsyncMock(return_value=_fetchone_result(row))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
-    mock_uow.arac_repo = MagicMock()
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_vehicle_recommendations(arac_id=2)
-
+async def test_get_vehicle_recommendations_moderate_deviation(db_session):
+    """Real ~11.6% above target → priority-3 rec."""
+    arac = await _seed_vehicle_trips(
+        db_session, plaka="34 XYZ 001", hedef_tuketim=30.0, yil=2020, tuketimler=[33.5]
+    )
+    result = await _make_engine().get_vehicle_recommendations(arac_id=arac.id)
     assert any(r.oncelik == 3 for r in result)
 
 
-async def test_get_vehicle_recommendations_old_vehicle():
-    """get_vehicle_recommendations adds maintenance rec for old vehicle."""
-    engine = _make_engine()
-
-    arac = {"plaka": "34OLD01", "hedef_tuketim": 30.0, "yil": 2010}  # 16 years old
-    row = _make_row(ort=None, sayi=0)  # No consumption data
-
-    execute_mock = AsyncMock(return_value=_fetchone_result(row))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
-    mock_uow.arac_repo = MagicMock()
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_vehicle_recommendations(arac_id=3)
-
+async def test_get_vehicle_recommendations_old_vehicle(db_session):
+    """A >=10-year-old vehicle gets a maintenance rec (no trip data needed)."""
+    arac = await _seed_vehicle_trips(
+        db_session, plaka="34 OLD 001", hedef_tuketim=30.0, yil=2010, tuketimler=[]
+    )
+    result = await _make_engine().get_vehicle_recommendations(arac_id=arac.id)
     assert any(r.kategori == "bakim" for r in result)
 
 
@@ -258,6 +254,14 @@ async def test_get_vehicle_recommendations_cache_hit():
 
 # ---------------------------------------------------------------------------
 # get_driver_recommendations
+#
+# These delegate to get_container().degerlendirme_service.evaluate_driver(), a
+# separate service (DegerlendirmeService) that computes a full driver evaluation
+# from trips. The tests below isolate the recommendation engine's branching on
+# that evaluation (score<50, worsening trend, below-fleet-average); de-mocking
+# evaluate_driver to a real seeded computation is the DegerlendirmeService
+# de-mock — a dedicated slice, not done here. (vehicle/fleet/cost above are now
+# fully real DB.)
 # ---------------------------------------------------------------------------
 
 
@@ -397,62 +401,32 @@ async def test_get_driver_recommendations_cache_hit():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_fleet_recommendations_consumption_increase():
-    """get_fleet_recommendations returns rec when this month > last month by >5%."""
-    engine = _make_engine()
-
-    bu_ay_row = _make_row(ort=35.0)
-    gecen_ay_row = _make_row(ort=32.0)  # (35-32)/32 * 100 = 9.375% > 5%
-    kotu_row = _make_row(plaka="34BAD01", ort=38.0)  # <40, so no critical rec
-
-    call_count = 0
-
-    async def multi_execute(stmt, *args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            return _fetchone_result(bu_ay_row)
-        elif call_count == 2:
-            return _fetchone_result(gecen_ay_row)
-        else:
-            return _fetchone_result(kotu_row)
-
-    mock_uow = _make_uow_ctx(
-        session_execute_side_effect=AsyncMock(side_effect=multi_execute)
+async def test_get_fleet_recommendations_consumption_increase(db_session):
+    """Real this-month AVG (35) vs last-month AVG (32) → +9.4% > 5% verimlilik rec."""
+    arac = await seed_arac(db_session, plaka="34 FLT 001")
+    sofor = await seed_sofor(db_session, ad_soyad="Fleet Sofor")
+    await _seed_trip_on(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, tuketim=35.0, days_ago=5
     )
+    await _seed_trip_on(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, tuketim=32.0, days_ago=45
+    )
+    await db_session.commit()
 
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_fleet_recommendations()
-
+    result = await _make_engine().get_fleet_recommendations()
     assert any(r.kategori == "verimlilik" and r.hedef_tip == "filo" for r in result)
 
 
-async def test_get_fleet_recommendations_worst_vehicle_critical():
-    """get_fleet_recommendations flags vehicle with >40 L consumption."""
-    engine = _make_engine()
-
-    bu_ay_row = _make_row(ort=None)
-    kotu_row = _make_row(plaka="34WORST", ort=45.0)  # >40
-
-    call_count = 0
-
-    async def multi_execute(stmt, *args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        if call_count == 1:
-            return _fetchone_result(bu_ay_row)
-        elif call_count == 2:
-            return _fetchone_result(None)
-        else:
-            return _fetchone_result(kotu_row)
-
-    mock_uow = _make_uow_ctx(
-        session_execute_side_effect=AsyncMock(side_effect=multi_execute)
+async def test_get_fleet_recommendations_worst_vehicle_critical(db_session):
+    """A vehicle whose real AVG(tuketim) > 40 → priority-5 bakim rec."""
+    arac = await seed_arac(db_session, plaka="34 WST 001")
+    sofor = await seed_sofor(db_session, ad_soyad="Worst Sofor")
+    await _seed_trip_on(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, tuketim=45.0, days_ago=5
     )
+    await db_session.commit()
 
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_fleet_recommendations()
-
+    result = await _make_engine().get_fleet_recommendations()
     assert any(r.kategori == "bakim" and r.oncelik == 5 for r in result)
 
 
@@ -482,50 +456,43 @@ async def test_get_fleet_recommendations_cache_hit():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_cost_saving_suggestions_with_stations():
-    """get_cost_saving_suggestions returns rec when price diff > 1 TL."""
-    engine = _make_engine()
+async def _seed_fuel(db_session, *, istasyon, fiyat_tl, km):
+    arac = await seed_arac(db_session, plaka=f"34 F {km:03d}")
+    await seed_yakit(
+        db_session,
+        arac_id=arac.id,
+        km_sayac=km,
+        litre=100.0,
+        fiyat_tl=fiyat_tl,
+        istasyon=istasyon,
+    )
 
-    pahali = _make_row(istasyon="Pahalı İstasyon", ort_fiyat=15.0)
-    ucuz = _make_row(istasyon="Ucuz İstasyon", ort_fiyat=13.0)  # diff=2.0
 
-    execute_mock = AsyncMock(return_value=_fetchall_result([pahali, ucuz]))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
+async def test_get_cost_saving_suggestions_with_stations(db_session):
+    """Real AVG(fiyat_tl) per istasyon, diff > 1 TL → one maliyet rec."""
+    await _seed_fuel(db_session, istasyon="Pahalı İstasyon", fiyat_tl=15.0, km=100)
+    await _seed_fuel(db_session, istasyon="Ucuz İstasyon", fiyat_tl=13.0, km=200)
+    await db_session.commit()
 
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_cost_saving_suggestions()
-
+    result = await _make_engine().get_cost_saving_suggestions()
     assert len(result) == 1
     assert result[0].kategori == "maliyet"
     assert "Ucuz İstasyon" in result[0].mesaj
 
 
-async def test_get_cost_saving_suggestions_no_stations():
-    """get_cost_saving_suggestions returns [] when less than 2 stations."""
-    engine = _make_engine()
-
-    execute_mock = AsyncMock(return_value=_fetchall_result([]))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_cost_saving_suggestions()
-
+async def test_get_cost_saving_suggestions_no_stations(db_session):
+    """Fewer than 2 stations → []."""
+    result = await _make_engine().get_cost_saving_suggestions()
     assert result == []
 
 
-async def test_get_cost_saving_suggestions_small_price_diff():
-    """get_cost_saving_suggestions returns [] when price diff <= 1."""
-    engine = _make_engine()
+async def test_get_cost_saving_suggestions_small_price_diff(db_session):
+    """Price diff <= 1 TL → no suggestion."""
+    await _seed_fuel(db_session, istasyon="Stasyon A", fiyat_tl=14.5, km=100)
+    await _seed_fuel(db_session, istasyon="Stasyon B", fiyat_tl=14.0, km=200)
+    await db_session.commit()
 
-    pahali = _make_row(istasyon="Stasyon A", ort_fiyat=14.5)
-    ucuz = _make_row(istasyon="Stasyon B", ort_fiyat=14.0)  # diff=0.5 <= 1
-
-    execute_mock = AsyncMock(return_value=_fetchall_result([pahali, ucuz]))
-    mock_uow = _make_uow_ctx(session_execute_side_effect=execute_mock)
-
-    with patch("app.core.ai.recommendation_engine.unit_of_work", return_value=mock_uow):
-        result = await engine.get_cost_saving_suggestions()
-
+    result = await _make_engine().get_cost_saving_suggestions()
     assert result == []
 
 

@@ -22,7 +22,9 @@ async def seed_arac(
     marka: str = "MAN",
     bos_agirlik_kg: float = 14000.0,
     hedef_tuketim: float = 25.0,
+    yil: int = 2020,
     aktif: bool = True,
+    **extra,
 ) -> Arac:
     """Insert a minimal Arac row and flush. Returns the ORM instance."""
     arac = Arac(
@@ -30,8 +32,10 @@ async def seed_arac(
         marka=marka,
         bos_agirlik_kg=bos_agirlik_kg,
         hedef_tuketim=hedef_tuketim,
+        yil=yil,
         aktif=aktif,
         is_deleted=False,
+        **extra,
     )
     session.add(arac)
     await session.flush()

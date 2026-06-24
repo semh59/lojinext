@@ -15,6 +15,7 @@ from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from sqlalchemy import insert, select
 
 from app.core.services.anomaly_detector import (
     AnomalyDetector,
@@ -22,8 +23,77 @@ from app.core.services.anomaly_detector import (
     AnomalyType,
     SeverityEnum,
 )
+from app.database.models import Anomaly, Kullanici, Rol
 
 pytestmark = pytest.mark.unit
+
+
+# ---------------------------------------------------------------------------
+# Real-DB seed helpers (the save/get/ack/resolve methods run a real UnitOfWork
+# against the conftest-monkeypatched test session).
+# ---------------------------------------------------------------------------
+
+
+async def _seed_anomaly(
+    db_session,
+    *,
+    tip: str = "tuketim",
+    kaynak_tip: str = "arac",
+    kaynak_id: int = 1,
+    severity: str = "high",
+    tarih: date | None = None,
+    acknowledged_at: datetime | None = None,
+    acknowledged_by: int | None = None,
+    resolved_at: datetime | None = None,
+) -> int:
+    aid = (
+        await db_session.execute(
+            insert(Anomaly).values(
+                tarih=tarih or date.today(),
+                tip=tip,
+                kaynak_tip=kaynak_tip,
+                kaynak_id=kaynak_id,
+                deger=30.0,
+                beklenen_deger=20.0,
+                sapma_yuzde=50.0,
+                severity=severity,
+                aciklama="test",
+                acknowledged_at=acknowledged_at,
+                acknowledged_by=acknowledged_by,
+                resolved_at=resolved_at,
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return aid
+
+
+async def _seed_user(db_session, email: str = "anom-op@lojinext.test") -> int:
+    rid = (
+        await db_session.execute(insert(Rol).values(ad="anom_op", yetkiler={}))
+    ).inserted_primary_key[0]
+    uid = (
+        await db_session.execute(
+            insert(Kullanici).values(
+                email=email,
+                sifre_hash="x",
+                ad_soyad="Anom Op",
+                rol_id=rid,
+                aktif=True,
+            )
+        )
+    ).inserted_primary_key[0]
+    await db_session.commit()
+    return uid
+
+
+async def _get_anomaly(db_session, aid: int) -> Anomaly:
+    row = (
+        await db_session.execute(select(Anomaly).where(Anomaly.id == aid))
+    ).scalar_one()
+    await db_session.refresh(row)
+    return row
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -491,7 +561,7 @@ class TestGetDetectorStatus:
 
 
 # ---------------------------------------------------------------------------
-# save_anomalies (mocked DB)
+# save_anomalies — real DB bulk insert
 # ---------------------------------------------------------------------------
 
 
@@ -500,81 +570,42 @@ class TestSaveAnomalies:
         self.d = make_detector()
 
     async def test_empty_list_returns_zero(self):
-        result = await self.d.save_anomalies([])
-        assert result == 0
+        assert await self.d.save_anomalies([]) == 0
 
-    async def test_saves_anomalies_and_returns_count(self):
+    async def test_saves_anomalies_and_returns_count(self, db_session):
         anomalies = [
-            AnomalyResult(
-                tip=AnomalyType.TUKETIM,
-                kaynak_tip="arac",
-                kaynak_id=1,
-                deger=30.0,
-                beklenen_deger=20.0,
-                sapma_yuzde=50.0,
-                severity=SeverityEnum.HIGH,
-                aciklama="test",
-            ),
-            AnomalyResult(
+            make_anomaly_result(kaynak_tip="arac", kaynak_id=1),
+            make_anomaly_result(
                 tip=AnomalyType.SEFER,
                 kaynak_tip="sefer",
                 kaynak_id=2,
-                deger=40.0,
-                beklenen_deger=25.0,
-                sapma_yuzde=60.0,
                 severity=SeverityEnum.CRITICAL,
-                aciklama="critical test",
             ),
         ]
 
-        mock_session = AsyncMock()
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            result = await self.d.save_anomalies(anomalies)
+        result = await self.d.save_anomalies(anomalies)
 
         assert result == 2
-        mock_session.execute.assert_called_once()
-        mock_uow.commit.assert_called_once()
+        rows = (await db_session.execute(select(Anomaly))).scalars().all()
+        assert len(rows) == 2
+        assert {r.kaynak_id for r in rows} == {1, 2}
+        assert {r.severity for r in rows} == {"high", "critical"}
 
-    async def test_rca_populated_before_save(self):
-        """save_anomalies calls _generate_heuristic_rca for each anomaly."""
-        anomaly = AnomalyResult(
-            tip=AnomalyType.TUKETIM,
-            kaynak_tip="arac",
-            kaynak_id=1,
-            deger=30.0,
-            beklenen_deger=20.0,
-            sapma_yuzde=55.0,
-            severity=SeverityEnum.CRITICAL,
-            aciklama="test",
-        )
+    async def test_rca_populated_before_save(self, db_session):
+        """save_anomalies fills RCA on each anomaly and persists it."""
+        anomaly = make_anomaly_result(sapma_yuzde=55.0, severity=SeverityEnum.CRITICAL)
         assert anomaly.rca_summary == "Analiz ediliyor..."
 
-        mock_session = AsyncMock()
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
+        await self.d.save_anomalies([anomaly])
 
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            await self.d.save_anomalies([anomaly])
-
-        # rca_summary should be overwritten from the default placeholder
         assert anomaly.rca_summary != "Analiz ediliyor..."
+        row = (await db_session.execute(select(Anomaly))).scalar_one()
+        assert row.rca_summary == anomaly.rca_summary
+        assert row.suggested_action == anomaly.suggested_action
 
 
 # ---------------------------------------------------------------------------
-# get_recent_anomalies (mocked DB)
+# get_recent_anomalies — real DB
 # ---------------------------------------------------------------------------
 
 
@@ -582,98 +613,61 @@ class TestGetRecentAnomalies:
     def setup_method(self):
         self.d = make_detector()
 
-    def _make_mock_uow(self, rows: list):
-        mock_row = MagicMock()
-        mock_row._mapping = {"id": 1, "severity": "high", "sofor_id": None}
-
-        mock_result = MagicMock()
-        mock_result.fetchall.return_value = rows
-
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
-        return mock_uow
-
-    async def test_returns_list_of_dicts(self):
-        row = MagicMock()
-        row._mapping = {"id": 1, "severity": "high"}
-        mock_uow = self._make_mock_uow([row])
-
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(days=30)
-
+    async def test_returns_list_of_dicts(self, db_session):
+        aid = await _seed_anomaly(db_session, severity="high")
+        results = await self.d.get_recent_anomalies(days=30)
         assert isinstance(results, list)
-        assert results[0]["id"] == 1
+        match = next(r for r in results if r["id"] == aid)
+        assert match["severity"] == "high"
 
-    async def test_days_clamped_min(self):
-        """days < 1 is clamped to 1."""
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(days=0)
+    async def test_days_clamped_min(self, db_session):
+        """days < 1 is clamped to 1 (real query, no crash)."""
+        results = await self.d.get_recent_anomalies(days=0)
         assert isinstance(results, list)
 
-    async def test_days_clamped_max(self):
-        """days > 365 is clamped to 365."""
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(days=9999)
+    async def test_days_clamped_max(self, db_session):
+        """days > 365 is clamped to 365 (real query, no crash)."""
+        await _seed_anomaly(db_session)
+        results = await self.d.get_recent_anomalies(days=9999)
         assert isinstance(results, list)
+        assert len(results) >= 1
 
-    async def test_severity_filter_appended(self):
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(
-                days=7, severity=SeverityEnum.HIGH
-            )
-        assert isinstance(results, list)
+    async def test_severity_filter_appended(self, db_session):
+        await _seed_anomaly(db_session, severity="high", kaynak_id=1)
+        await _seed_anomaly(db_session, severity="low", kaynak_id=2)
+        results = await self.d.get_recent_anomalies(days=7, severity=SeverityEnum.HIGH)
+        assert results  # at least the high one
+        assert all(r["severity"] == "high" for r in results)
 
-    async def test_status_open_filter(self):
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(status="open")
-        assert isinstance(results, list)
+    async def test_status_open_filter(self, db_session):
+        await _seed_anomaly(db_session)  # open: no acknowledged_at/resolved_at
+        results = await self.d.get_recent_anomalies(status="open")
+        assert all(r["acknowledged_at"] is None for r in results)
+        assert all(r["resolved_at"] is None for r in results)
 
-    async def test_status_acknowledged_filter(self):
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(status="acknowledged")
-        assert isinstance(results, list)
+    async def test_status_acknowledged_filter(self, db_session):
+        await _seed_anomaly(db_session, acknowledged_at=datetime.now(timezone.utc))
+        results = await self.d.get_recent_anomalies(status="acknowledged")
+        assert results
+        assert all(r["acknowledged_at"] is not None for r in results)
+        assert all(r["resolved_at"] is None for r in results)
 
-    async def test_status_resolved_filter(self):
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(status="resolved")
-        assert isinstance(results, list)
+    async def test_status_resolved_filter(self, db_session):
+        await _seed_anomaly(db_session, resolved_at=datetime.now(timezone.utc))
+        results = await self.d.get_recent_anomalies(status="resolved")
+        assert results
+        assert all(r["resolved_at"] is not None for r in results)
 
-    async def test_sofor_id_filter(self):
-        mock_uow = self._make_mock_uow([])
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            results = await self.d.get_recent_anomalies(sofor_id=99)
+    async def test_sofor_id_filter(self, db_session):
+        """sofor_id filter joins seferler; with no matching sefer → empty list."""
+        await _seed_anomaly(db_session, kaynak_tip="arac", kaynak_id=1)
+        results = await self.d.get_recent_anomalies(sofor_id=99)
         assert isinstance(results, list)
+        assert results == []
 
 
 # ---------------------------------------------------------------------------
-# acknowledge
+# acknowledge — real DB
 # ---------------------------------------------------------------------------
 
 
@@ -681,53 +675,33 @@ class TestAcknowledge:
     def setup_method(self):
         self.d = make_detector()
 
-    def _make_uow_with_row(self, row):
-        mock_session = AsyncMock()
-        mock_session.get = AsyncMock(return_value=row)
-        mock_session.execute = AsyncMock()
+    async def test_anomaly_not_found_raises(self, db_session):
+        with pytest.raises(ValueError, match="bulunamadı"):
+            await self.d.acknowledge(anomaly_id=999, user_id=10)
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-        return mock_uow
+    async def test_already_resolved_raises(self, db_session):
+        aid = await _seed_anomaly(db_session, resolved_at=datetime.now(timezone.utc))
+        with pytest.raises(ValueError, match="Çözülmüş"):
+            await self.d.acknowledge(anomaly_id=aid, user_id=10)
 
-    async def test_anomaly_not_found_raises(self):
-        mock_uow = self._make_uow_with_row(None)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            with pytest.raises(ValueError, match="bulunamadı"):
-                await self.d.acknowledge(anomaly_id=1, user_id=10)
+    async def test_acknowledge_success_persists(self, db_session):
+        uid = await _seed_user(db_session)
+        aid = await _seed_anomaly(db_session)
 
-    async def test_already_resolved_raises(self):
-        row = MagicMock()
-        row.resolved_at = datetime.now(timezone.utc)
-        mock_uow = self._make_uow_with_row(row)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            with pytest.raises(ValueError, match="Çözülmüş"):
-                await self.d.acknowledge(anomaly_id=1, user_id=10)
+        result = await self.d.acknowledge(anomaly_id=aid, user_id=uid)
 
-    async def test_acknowledge_success_returns_dict(self):
-        row = MagicMock()
-        row.resolved_at = None
-        mock_uow = self._make_uow_with_row(row)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            result = await self.d.acknowledge(anomaly_id=5, user_id=42)
-
-        assert result["id"] == 5
+        assert result["id"] == aid
         assert result["status"] == "acknowledged"
-        assert result["acknowledged_by"] == 42
-        assert "acknowledged_at" in result
+        assert result["acknowledged_by"] == uid
+        # Real row updated.
+        row = await _get_anomaly(db_session, aid)
+        assert row.acknowledged_at is not None
+        assert row.acknowledged_by == uid
+        assert row.resolved_at is None
 
 
 # ---------------------------------------------------------------------------
-# resolve
+# resolve — real DB
 # ---------------------------------------------------------------------------
 
 
@@ -735,67 +709,51 @@ class TestResolve:
     def setup_method(self):
         self.d = make_detector()
 
-    def _make_uow_with_row(self, row):
-        mock_session = AsyncMock()
-        mock_session.get = AsyncMock(return_value=row)
-        mock_session.execute = AsyncMock()
+    async def test_anomaly_not_found_raises(self, db_session):
+        with pytest.raises(ValueError, match="bulunamadı"):
+            await self.d.resolve(anomaly_id=999, user_id=1)
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-        return mock_uow
+    async def test_resolve_success_persists(self, db_session):
+        uid = await _seed_user(db_session)
+        aid = await _seed_anomaly(
+            db_session, acknowledged_at=datetime.now(timezone.utc)
+        )
 
-    async def test_anomaly_not_found_raises(self):
-        mock_uow = self._make_uow_with_row(None)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            with pytest.raises(ValueError, match="bulunamadı"):
-                await self.d.resolve(anomaly_id=99, user_id=1)
+        result = await self.d.resolve(
+            anomaly_id=aid, user_id=uid, notes="Fixed the sensor"
+        )
 
-    async def test_resolve_success_returns_dict(self):
-        row = MagicMock()
-        row.acknowledged_at = datetime.now(timezone.utc)
-        mock_uow = self._make_uow_with_row(row)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            result = await self.d.resolve(
-                anomaly_id=7, user_id=3, notes="Fixed the sensor"
-            )
-
-        assert result["id"] == 7
+        assert result["id"] == aid
         assert result["status"] == "resolved"
-        assert result["resolved_by"] == 3
+        assert result["resolved_by"] == uid
         assert result["resolution_notes"] == "Fixed the sensor"
+        row = await _get_anomaly(db_session, aid)
+        assert row.resolved_at is not None
+        assert row.resolved_by == uid
+        assert row.resolution_notes == "Fixed the sensor"
 
-    async def test_resolve_auto_acknowledges_when_not_acknowledged(self):
-        """resolve without prior ack should also set acknowledged_at."""
-        row = MagicMock()
-        row.acknowledged_at = None  # not yet acknowledged
-        mock_uow = self._make_uow_with_row(row)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            result = await self.d.resolve(anomaly_id=8, user_id=5)
+    async def test_resolve_auto_acknowledges_when_not_acknowledged(self, db_session):
+        """resolve without prior ack also sets acknowledged_at (real row)."""
+        uid = await _seed_user(db_session)
+        aid = await _seed_anomaly(db_session)  # acknowledged_at is NULL
+
+        result = await self.d.resolve(anomaly_id=aid, user_id=uid)
 
         assert result["status"] == "resolved"
-        # session.execute should have been called with values including acknowledged_at
-        call_args = mock_uow.session.execute.call_args
-        # The values dict passed to .values(**values) should include acknowledged_at
-        assert call_args is not None
+        row = await _get_anomaly(db_session, aid)
+        assert row.resolved_at is not None
+        assert row.acknowledged_at is not None  # auto-acknowledged
+        assert row.acknowledged_by == uid
 
-    async def test_resolve_no_notes(self):
-        row = MagicMock()
-        row.acknowledged_at = datetime.now(timezone.utc)
-        mock_uow = self._make_uow_with_row(row)
-        with patch(
-            "app.core.services.anomaly_detector.UnitOfWork", return_value=mock_uow
-        ):
-            result = await self.d.resolve(anomaly_id=3, user_id=2)
+    async def test_resolve_no_notes(self, db_session):
+        uid = await _seed_user(db_session)
+        aid = await _seed_anomaly(
+            db_session, acknowledged_at=datetime.now(timezone.utc)
+        )
+        result = await self.d.resolve(anomaly_id=aid, user_id=uid)
         assert result["resolution_notes"] is None
+        row = await _get_anomaly(db_session, aid)
+        assert row.resolution_notes is None
 
 
 # ---------------------------------------------------------------------------

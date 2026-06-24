@@ -30,7 +30,9 @@ async def test_calibrate_route_from_trip_logic():
         patch("app.core.services.route_calibration_service.from_shape") as mock_shape,
     ):
         mock_line.return_value = MagicMock()
-        mock_shape.return_value = "WKB"
+        # calibrate now stores bytes(from_shape(...).data) — a plain BYTEA column,
+        # no PostGIS. Return a WKBElement-like object exposing .data.
+        mock_shape.return_value = SimpleNamespace(data=b"WKB")
 
         service = RouteCalibrationService(uow)
         success = await service.calibrate_route_from_trip(1)

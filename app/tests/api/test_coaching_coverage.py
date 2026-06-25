@@ -473,30 +473,21 @@ class TestSendCoaching:
                     )
         assert exc.value.status_code == 502
 
-    async def test_send_success_returns_response(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import send_coaching
+    async def test_send_success_returns_response(
+        self, monkeypatch, async_client, admin_auth_headers, db_session
+    ):
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from app.database.models import Sofor
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
-        mock_sofor = _make_sofor(sofor_id=3, telegram_id="111222333")
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
-        payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
-        admin = _make_admin(admin_id=5)
+
+        sofor = Sofor(ad_soyad="Koç Test Şoförü Slice14", telegram_id="999111222")
+        db_session.add(sofor)
+        await db_session.flush()
 
         mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()  # No error
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = MagicMock()
-        mock_uow.session.add = MagicMock()
-        mock_uow.session.flush = AsyncMock()
-        mock_uow.session.refresh = AsyncMock()
-        mock_uow.commit = AsyncMock()
+        mock_response.raise_for_status = MagicMock()
 
         mock_svc = MagicMock()
         mock_svc.get_score_breakdown = AsyncMock(return_value={"total": 75.0})
@@ -513,19 +504,20 @@ class TestSendCoaching:
                 "app.api.v1.endpoints.coaching.log_audit_event", new=AsyncMock()
             ):
                 with patch(
-                    "app.database.unit_of_work.UnitOfWork", return_value=mock_uow
+                    "app.core.services.sofor_service.SoforService",
+                    return_value=mock_svc,
                 ):
-                    with patch(
-                        "app.core.services.sofor_service.SoforService",
-                        return_value=mock_svc,
-                    ):
-                        result = await send_coaching(
-                            sofor_id=3, payload=payload, db=mock_db, current_admin=admin
-                        )
+                    resp = await async_client.post(
+                        f"/api/v1/coaching/{sofor.id}/send",
+                        json={"message": "Bu mesaj yeterince uzun olmalı!"},
+                        headers=admin_auth_headers,
+                    )
 
-        assert result.sent is True
-        assert result.channel == "telegram"
-        assert result.sent_at is not None
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sent"] is True
+        assert data["channel"] == "telegram"
+        assert data["sent_at"] is not None
 
 
 # ---------------------------------------------------------------------------

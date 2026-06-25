@@ -8,6 +8,18 @@ class SeferOnayRequest(BaseModel):
     onay_notu: Optional[str] = Field(None, max_length=500)
 
 
+class DriverBreakdownRequest(BaseModel):
+    """Sürücü botu /ariza komutu gövdesi.
+
+    Araç, sürücünün en son seferinden backend tarafında otomatik çözülür —
+    sürücü plaka girmez. `acil=True` → ACIL kaydı, aksi halde ARIZA.
+    """
+
+    telegram_id: str = Field(..., min_length=1)
+    detaylar: str = Field("", max_length=1000)
+    acil: bool = False
+
+
 class SeferBelgeResponse(BaseModel):
     id: int
     sofor_id: int

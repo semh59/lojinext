@@ -23,7 +23,11 @@ from fastapi.responses import StreamingResponse
 from app.config import settings
 from app.core.services.internal_service import InternalService, get_internal_service
 from app.infrastructure.metrics import telegram_belge_upload_total
-from app.schemas.telegram import SeferBelgeResponse, SoforTelegramInfo
+from app.schemas.telegram import (
+    DriverBreakdownRequest,
+    SeferBelgeResponse,
+    SoforTelegramInfo,
+)
 
 
 async def _require_internal_token(
@@ -193,6 +197,26 @@ async def sofor_seferler(
         }
         for s in seferler
     ]
+
+
+# ── Arıza bildirimi (bot /ariza komutu) ──────────────────────────────────────
+
+
+@router.post("/driver-breakdown", status_code=201)
+async def driver_breakdown(
+    payload: DriverBreakdownRequest,
+    svc: InternalService = Depends(get_internal_service),
+) -> dict:
+    """Sürücünün son seferindeki araç için açık arıza/acil kaydı oluşturur.
+
+    Araç otomatik çözülür (sürücünün en yeni seferi). Çözülemezse 404.
+    """
+    try:
+        return await svc.report_driver_breakdown(
+            payload.telegram_id, detaylar=payload.detaylar, acil=payload.acil
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
 
 
 # ── PDF indirme ──────────────────────────────────────────────────────────────

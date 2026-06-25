@@ -168,9 +168,54 @@ async def cmd_yardim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "  /pdf YYYY-AA-GG YYYY-AA-GG — PDF indir\n"
         "  /score — Skorun + bu haftanın özeti\n"
         "  /oneriler — Aktif koçluk önerileri\n"
+        "  /ariza <açıklama> — Aracında arıza bildir (acil için başına 'acil')\n"
         "  /yardim — Bu mesaj"
     )
     await update.message.reply_text(metin)  # type: ignore[union-attr]
+
+
+async def cmd_ariza(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Sürücünün son seferindeki araç için açık arıza/acil kaydı açar.
+
+    Kullanım: /ariza fren sesi geliyor   → ARIZA
+              /ariza acil lastik patladı → ACIL
+    Araç sürücünün en son seferinden otomatik çözülür (plaka girilmez).
+    """
+    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    detaylar = " ".join(context.args).strip() if context.args else ""
+    acil = detaylar.lower().startswith("acil")
+
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.post(
+                f"{BACKEND_URL}/api/v1/internal/driver-breakdown",
+                json={"telegram_id": telegram_id, "detaylar": detaylar, "acil": acil},
+                headers=_internal_headers(),
+            )
+    except Exception as exc:
+        logger.warning("Arıza bildirimi gönderilemedi: %s", exc)
+        await update.message.reply_text(  # type: ignore[union-attr]
+            "❌ Arıza bildirimi şu an gönderilemedi, lütfen tekrar deneyin."
+        )
+        return
+
+    if r.status_code == 201:
+        data = r.json()
+        plaka = data.get("arac_plakasi") or f"#{data.get('arac_id')}"
+        tip = "ACİL" if data.get("bakim_tipi") == "ACIL" else "Arıza"
+        await update.message.reply_text(  # type: ignore[union-attr]
+            f"✅ {tip} kaydı açıldı: {html.escape(str(plaka))}\n"
+            "Operasyon ekibi bilgilendirildi."
+        )
+    elif r.status_code == 404:
+        await update.message.reply_text(  # type: ignore[union-attr]
+            "❌ Aracınız çözülemedi. Telegram ID'niz kayıtlı değilse veya hiç "
+            "seferiniz yoksa yöneticinizle iletişime geçin."
+        )
+    else:
+        await update.message.reply_text(  # type: ignore[union-attr]
+            "❌ Arıza bildirimi alınamadı, lütfen tekrar deneyin."
+        )
 
 
 # ── Feature A.4 — koçluk komutları ──────────────────────────────────────────
@@ -277,5 +322,6 @@ def run_driver_bot() -> None:
     app.add_handler(CommandHandler("yardim", cmd_yardim))
     app.add_handler(CommandHandler("score", cmd_score))
     app.add_handler(CommandHandler("oneriler", cmd_oneriler))
+    app.add_handler(CommandHandler("ariza", cmd_ariza))
     logger.info("Şoför botu başlatılıyor (polling modu)...")
     app.run_polling()

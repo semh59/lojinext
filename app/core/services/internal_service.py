@@ -115,6 +115,53 @@ class InternalService:
         sofor = await self._sofor_repo.get_by_telegram_id(telegram_id)
         return sofor["id"] if sofor else None
 
+    async def report_driver_breakdown(
+        self, telegram_id: str, *, detaylar: str = "", acil: bool = False
+    ) -> Dict:
+        """Sürücünün en son seferindeki araç için açık arıza/acil kaydı açar.
+
+        Araç çözümü (ürün kararı A): en yeni sefer → arac_id. Sürücü plaka
+        girmez. ValueError fırlatır: bilinmeyen telegram_id / sürücünün hiç
+        seferi yok / son seferde araç tanımsız — endpoint bunları 404'e çevirir.
+        """
+        from app.core.services.maintenance_service import MaintenanceService
+        from app.database.models import BakimTipi
+
+        sofor = await self._sofor_repo.get_by_telegram_id(telegram_id)
+        if sofor is None:
+            raise ValueError("Telegram ID kayıtlı şoför bulunamadı")
+
+        seferler = await self._sefer_repo.get_by_sofor_id(sofor["id"], limit=1)
+        if not seferler:
+            raise ValueError("Şoföre ait sefer yok — araç otomatik çözülemiyor")
+        arac_id = seferler[0].get("arac_id")
+        if not arac_id:
+            raise ValueError("Son seferde araç tanımlı değil — arıza bildirilemiyor")
+
+        tip = BakimTipi.ACIL if acil else BakimTipi.ARIZA
+        rec = await MaintenanceService().create_breakdown(
+            bakim_tipi=tip, arac_id=int(arac_id), detaylar=detaylar
+        )
+        return {
+            "bakim_id": rec.id,
+            "arac_id": int(arac_id),
+            "arac_plakasi": await self._arac_plaka(int(arac_id)),
+            "bakim_tipi": tip.value,
+        }
+
+    async def _arac_plaka(self, arac_id: int) -> Optional[str]:
+        """Onay mesajı için aracın plakasını best-effort getirir (yoksa None)."""
+        try:
+            async with UnitOfWork() as uow:
+                arac = await uow.arac_repo.get_by_id(arac_id)
+        except Exception:
+            return None
+        if arac is None:
+            return None
+        if isinstance(arac, dict):
+            return arac.get("plaka")
+        return getattr(arac, "plaka", None)
+
     async def olustur_pdf(
         self, telegram_id: str, baslangic: date, bitis: date
     ) -> Optional[bytes]:

@@ -210,7 +210,6 @@ async def test_kpi_redis_cache_read_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.gather_fvi_inputs", new_callable=AsyncMock
         ) as mock_gather,
@@ -226,10 +225,6 @@ async def test_kpi_redis_cache_read_exception_swallowed(
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_gather.return_value = fvi_inputs
 
         resp = await async_client.get(f"{BASE}/kpi", headers=admin_auth_headers)
@@ -248,7 +243,6 @@ async def test_kpi_redis_setex_exception_swallowed(async_client, admin_auth_head
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.gather_fvi_inputs", new_callable=AsyncMock
         ) as mock_gather,
@@ -264,10 +258,6 @@ async def test_kpi_redis_setex_exception_swallowed(async_client, admin_auth_head
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_gather.return_value = fvi_inputs
 
         resp = await async_client.get(f"{BASE}/kpi", headers=admin_auth_headers)
@@ -289,7 +279,6 @@ async def test_carbon_redis_read_exception_swallowed(async_client, admin_auth_he
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_fleet_carbon",
             new_callable=AsyncMock,
@@ -305,10 +294,6 @@ async def test_carbon_redis_read_exception_swallowed(async_client, admin_auth_he
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_carbon.return_value = carbon_report
 
         resp = await async_client.get(
@@ -327,7 +312,6 @@ async def test_carbon_redis_setex_exception_swallowed(async_client, admin_auth_h
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_fleet_carbon",
             new_callable=AsyncMock,
@@ -343,10 +327,6 @@ async def test_carbon_redis_setex_exception_swallowed(async_client, admin_auth_h
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_carbon.return_value = carbon_report
 
         resp = await async_client.get(
@@ -371,7 +351,6 @@ async def test_compliance_redis_read_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.scan_compliance", new_callable=AsyncMock
         ) as mock_scan,
@@ -386,10 +365,6 @@ async def test_compliance_redis_read_exception_swallowed(
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_scan.return_value = [item]
 
         resp = await async_client.get(
@@ -409,7 +384,6 @@ async def test_compliance_redis_setex_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.scan_compliance", new_callable=AsyncMock
         ) as mock_scan,
@@ -424,10 +398,6 @@ async def test_compliance_redis_setex_exception_swallowed(
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_scan.return_value = [item]
 
         resp = await async_client.get(
@@ -452,7 +422,6 @@ async def test_cashflow_redis_read_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.project_cashflow", new_callable=AsyncMock
         ) as mock_project,
@@ -469,10 +438,6 @@ async def test_cashflow_redis_read_exception_swallowed(
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_project.return_value = projection
 
         resp = await async_client.get(
@@ -492,7 +457,6 @@ async def test_cashflow_redis_setex_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.project_cashflow", new_callable=AsyncMock
         ) as mock_project,
@@ -509,10 +473,6 @@ async def test_cashflow_redis_setex_exception_swallowed(
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_project.return_value = projection
 
         resp = await async_client.get(
@@ -537,7 +497,6 @@ async def test_cross_feature_redis_read_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.aggregate_cross_feature",
             new_callable=AsyncMock,
@@ -554,10 +513,6 @@ async def test_cross_feature_redis_read_exception_swallowed(
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_agg.return_value = impact
 
         resp = await async_client.get(
@@ -577,7 +532,6 @@ async def test_cross_feature_redis_setex_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.aggregate_cross_feature",
             new_callable=AsyncMock,
@@ -594,10 +548,6 @@ async def test_cross_feature_redis_setex_exception_swallowed(
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_agg.return_value = impact
 
         resp = await async_client.get(
@@ -622,7 +572,6 @@ async def test_bus_factor_redis_read_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_bus_factor", new_callable=AsyncMock
         ) as mock_bus,
@@ -638,10 +587,6 @@ async def test_bus_factor_redis_read_exception_swallowed(
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_bus.return_value = report
 
         resp = await async_client.get(
@@ -661,7 +606,6 @@ async def test_bus_factor_redis_setex_exception_swallowed(
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_bus_factor", new_callable=AsyncMock
         ) as mock_bus,
@@ -677,10 +621,6 @@ async def test_bus_factor_redis_setex_exception_swallowed(
         mock_redis_client.setex = AsyncMock(side_effect=RuntimeError("setex fail"))
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
         mock_bus.return_value = report
 
         resp = await async_client.get(

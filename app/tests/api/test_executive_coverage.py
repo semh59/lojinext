@@ -339,16 +339,10 @@ async def test_what_if_fleet_renewal_missing_inputs(async_client, admin_auth_hea
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
         mock_redis.return_value = None
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         resp = await async_client.post(
             f"{BASE}/what-if",
@@ -369,16 +363,10 @@ async def test_what_if_training_missing_inputs(async_client, admin_auth_headers)
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
         mock_redis.return_value = None
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         resp = await async_client.post(
             f"{BASE}/what-if",
@@ -397,16 +385,10 @@ async def test_what_if_route_portfolio_missing_inputs(async_client, admin_auth_h
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
         mock_redis.return_value = None
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         resp = await async_client.post(
             f"{BASE}/what-if",
@@ -433,7 +415,6 @@ async def test_kpi_200_no_cache(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.gather_fvi_inputs",
             new_callable=AsyncMock,
@@ -453,11 +434,6 @@ async def test_kpi_200_no_cache(async_client, admin_auth_headers):
         mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_gather.return_value = fvi_inputs
 
@@ -514,7 +490,6 @@ async def test_carbon_200_no_cache(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_fleet_carbon",
             new_callable=AsyncMock,
@@ -532,11 +507,6 @@ async def test_carbon_200_no_cache(async_client, admin_auth_headers):
         mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_carbon.return_value = carbon_report
 
@@ -559,7 +529,6 @@ async def test_compliance_200_with_items(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.scan_compliance",
             new_callable=AsyncMock,
@@ -577,11 +546,6 @@ async def test_compliance_200_with_items(async_client, admin_auth_headers):
         mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_scan.return_value = [soon_item, overdue_item]
 
@@ -604,7 +568,6 @@ async def test_cashflow_200(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.project_cashflow",
             new_callable=AsyncMock,
@@ -624,11 +587,6 @@ async def test_cashflow_200(async_client, admin_auth_headers):
         mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_project.return_value = projection
 
@@ -650,7 +608,6 @@ async def test_cross_feature_200(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.aggregate_cross_feature",
             new_callable=AsyncMock,
@@ -669,11 +626,6 @@ async def test_cross_feature_200(async_client, admin_auth_headers):
         mock_redis_client.get = AsyncMock(return_value=None)
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_agg.return_value = impact
 
@@ -695,7 +647,6 @@ async def test_bus_factor_200(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_bus_factor",
             new_callable=AsyncMock,
@@ -715,11 +666,6 @@ async def test_bus_factor_200(async_client, admin_auth_headers):
         mock_redis_client.setex = AsyncMock()
         mock_redis.return_value = mock_redis_client
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
-
         mock_bus.return_value = report
 
         resp = await async_client.get(
@@ -738,7 +684,6 @@ async def test_what_if_fleet_renewal_200(async_client, admin_auth_headers):
     result = _make_what_if_result()
 
     with (
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.simulate_fleet_renewal",
             new_callable=AsyncMock,
@@ -751,11 +696,6 @@ async def test_what_if_fleet_renewal_200(async_client, admin_auth_headers):
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_sim.return_value = result
 
@@ -785,7 +725,6 @@ async def test_what_if_training_200(async_client, admin_auth_headers):
     result.scenario_type = "training"
 
     with (
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.simulate_training_program",
             new_callable=AsyncMock,
@@ -798,11 +737,6 @@ async def test_what_if_training_200(async_client, admin_auth_headers):
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_sim.return_value = result
 
@@ -828,7 +762,6 @@ async def test_what_if_route_portfolio_200(async_client, admin_auth_headers):
     result.scenario_type = "route_portfolio"
 
     with (
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.simulate_route_portfolio",
             new_callable=AsyncMock,
@@ -841,11 +774,6 @@ async def test_what_if_route_portfolio_200(async_client, admin_auth_headers):
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_sim.return_value = result
 
@@ -875,7 +803,6 @@ async def test_pdf_200(async_client, admin_auth_headers):
     fake_pdf = b"%PDF-1.4 fake content"
 
     with (
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.gather_fvi_inputs",
             new_callable=AsyncMock,
@@ -902,11 +829,6 @@ async def test_pdf_200(async_client, admin_auth_headers):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.LITRE_DIESEL_TL = 50.0
         mock_settings.AVG_BAKIM_COST_TL = 2000.0
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_gather.return_value = fvi_inputs
         mock_cashflow.return_value = cashflow
@@ -941,7 +863,6 @@ async def test_carbon_redis_none(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.compute_fleet_carbon",
             new_callable=AsyncMock,
@@ -955,11 +876,6 @@ async def test_carbon_redis_none(async_client, admin_auth_headers):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
         mock_redis.return_value = None  # no redis
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_carbon.return_value = carbon_report
 
@@ -979,7 +895,6 @@ async def test_compliance_redis_none(async_client, admin_auth_headers):
         patch(
             "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.UnitOfWork") as mock_uow_cls,
         patch(
             "app.api.v1.endpoints.executive.scan_compliance",
             new_callable=AsyncMock,
@@ -993,11 +908,6 @@ async def test_compliance_redis_none(async_client, admin_auth_headers):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
         mock_redis.return_value = None
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
-        mock_uow_cls.return_value = mock_uow
 
         mock_scan.return_value = [item]
 

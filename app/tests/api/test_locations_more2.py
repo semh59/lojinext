@@ -81,37 +81,6 @@ def _override_lokasyon_service(mock_svc):
         app.dependency_overrides.pop(get_lokasyon_service, None)
 
 
-@contextmanager
-def _override_uow(mock_uow):
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
-
-
-def _make_mock_uow(lokasyon_dict=None):
-    if lokasyon_dict is None:
-        lokasyon_dict = _make_lokasyon_dict()
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=lokasyon_dict)
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-    mock_uow.event_bus = None
-    return mock_uow
-
-
 # ---------------------------------------------------------------------------
 # GET /route-info — success path (proper mock)
 # ---------------------------------------------------------------------------
@@ -205,33 +174,10 @@ async def test_route_info_error_without_provider_status(
 
 
 async def test_stale_custom_days(async_client, admin_auth_headers):
-    """GET /stale?days=30 → 200 with threshold_days=30."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_mapping_list = MagicMock()
-    mock_mapping_list.all.return_value = [{"id": 1, "cikis_yeri": "IST"}]
-    mock_result = MagicMock()
-    mock_result.mappings.return_value = mock_mapping_list
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/stale?days=30", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /stale?days=30 → 200 with threshold_days=30 (real DB, empty returns threshold)."""
+    resp = await async_client.get(
+        "/api/v1/locations/stale?days=30", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -507,77 +453,22 @@ async def test_get_segments_empty(async_client, admin_auth_headers):
 
 
 async def test_search_by_route_found_routes(async_client, admin_auth_headers):
-    """GET /search/by-route returns found=True when routes match."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    lok_dict = _make_lokasyon_dict(id=1)
-
-    # Build a fake ORM-like object
-    fake_lok = MagicMock()
-    for k, v in lok_dict.items():
-        setattr(fake_lok, k, v)
-    # LokasyonResponse.model_validate calls dict() on it if it's an ORM model
-    # The endpoint iterates .scalars().all()
-
-    mock_scalars = MagicMock()
-    mock_scalars.all.return_value = [lok_dict]
-    mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalars
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/search/by-route?cikis=Istanbul&varis=Ankara",
-            headers=admin_auth_headers,
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /search/by-route → 200 (real DB, empty DB returns count=0)."""
+    resp = await async_client.get(
+        "/api/v1/locations/search/by-route?cikis=Istanbul&varis=Ankara",
+        headers=admin_auth_headers,
+    )
 
     assert resp.status_code == 200
 
 
 async def test_search_by_route_special_chars(async_client, admin_auth_headers):
-    """GET /search/by-route with % and _ in query params → sanitised."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_scalars = MagicMock()
-    mock_scalars.all.return_value = []
-    mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalars
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        # % and _ should be escaped
-        resp = await async_client.get(
-            "/api/v1/locations/search/by-route?cikis=IST%25ANK&varis=A_B",
-            headers=admin_auth_headers,
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /search/by-route with % and _ in query params → sanitised (real DB)."""
+    # % and _ should be escaped before ILIKE
+    resp = await async_client.get(
+        "/api/v1/locations/search/by-route?cikis=IST%25ANK&varis=A_B",
+        headers=admin_auth_headers,
+    )
 
     assert resp.status_code == 200
 
@@ -589,51 +480,42 @@ async def test_search_by_route_special_chars(async_client, admin_auth_headers):
 
 async def test_analyze_value_error_with_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze ValueError containing 'Analiz' → 503."""
-    mock_uow = _make_mock_uow()
-
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(side_effect=ValueError("Analiz sağlayıcı çevrimdışı")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=ValueError("Analiz sağlayıcı çevrimdışı")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (503, 500)
 
 
 async def test_analyze_value_error_without_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze ValueError not containing 'Analiz' → 400."""
-    mock_uow = _make_mock_uow()
-
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(side_effect=ValueError("koordinat geçersiz")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=ValueError("koordinat geçersiz")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (400, 500)
 
 
 async def test_analyze_generic_exception(async_client, admin_auth_headers):
     """POST /{id}/analyze generic exception → 500."""
-    mock_uow = _make_mock_uow()
-
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(side_effect=RuntimeError("unexpected")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=RuntimeError("unexpected")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (500,)
 
@@ -644,23 +526,20 @@ async def test_analyze_generic_exception(async_client, admin_auth_headers):
 
 
 async def test_create_generic_exception(async_client, admin_auth_headers):
-    """POST / generic exception → 500."""
-    mock_uow = _make_mock_uow()
-
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
-            new=AsyncMock(side_effect=RuntimeError("db crash")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/",
-                json={
-                    "cikis_yeri": "Istanbul",
-                    "varis_yeri": "Ankara",
-                    "mesafe_km": 450.0,
-                },
-                headers=admin_auth_headers,
-            )
+    """POST / generic exception → 500 (exception raised before UoW fetch needed)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
+        new=AsyncMock(side_effect=RuntimeError("db crash")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/",
+            json={
+                "cikis_yeri": "Istanbul",
+                "varis_yeri": "Ankara",
+                "mesafe_km": 450.0,
+            },
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (500,)
 
@@ -671,19 +550,16 @@ async def test_create_generic_exception(async_client, admin_auth_headers):
 
 
 async def test_update_generic_exception(async_client, admin_auth_headers):
-    """PUT /{id} generic exception → 500."""
-    mock_uow = _make_mock_uow()
-
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
-            new=AsyncMock(side_effect=RuntimeError("db crash")),
-        ):
-            resp = await async_client.put(
-                "/api/v1/locations/1",
-                json={"mesafe_km": 460.0},
-                headers=admin_auth_headers,
-            )
+    """PUT /{id} generic exception → 500 (exception raised before UoW post-update fetch)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
+        new=AsyncMock(side_effect=RuntimeError("db crash")),
+    ):
+        resp = await async_client.put(
+            "/api/v1/locations/1",
+            json={"mesafe_km": 460.0},
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (500,)
 
@@ -693,41 +569,53 @@ async def test_update_generic_exception(async_client, admin_auth_headers):
 # ---------------------------------------------------------------------------
 
 
-async def test_delete_inactive_hard_delete(async_client, admin_auth_headers):
+async def test_delete_inactive_hard_delete(
+    async_client, admin_auth_headers, db_session
+):
     """DELETE /{id} inactive location → Hard Delete header set."""
-    lok_dict = _make_lokasyon_dict(aktif=False)
-    mock_uow = _make_mock_uow(lok_dict)
+    from app.database.models import Lokasyon
 
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
-            new=AsyncMock(return_value=True),
-        ):
-            resp = await async_client.delete(
-                "/api/v1/locations/1",
-                headers=admin_auth_headers,
-            )
+    lok = Lokasyon(
+        cikis_yeri="DelInactiveC",
+        varis_yeri="DelInactiveV",
+        mesafe_km=100.0,
+        aktif=False,
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    # Hard delete path sets X-Delete-Type header, mode="Hard"
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        new=AsyncMock(return_value=True),
+    ):
+        resp = await async_client.delete(
+            f"/api/v1/locations/{lok.id}",
+            headers=admin_auth_headers,
+        )
+
     assert resp.status_code in (200, 500)
     if resp.status_code == 200:
         assert resp.json()["mode"] == "Hard"
 
 
-async def test_delete_generic_exception(async_client, admin_auth_headers):
-    """DELETE /{id} generic exception → 500."""
-    lok_dict = _make_lokasyon_dict(aktif=True)
-    mock_uow = _make_mock_uow(lok_dict)
+async def test_delete_generic_exception(async_client, admin_auth_headers, db_session):
+    """DELETE /{id} generic exception → 500 (exception raised after fetch succeeds)."""
+    from app.database.models import Lokasyon
 
-    with _override_uow(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
-            new=AsyncMock(side_effect=RuntimeError("unexpected")),
-        ):
-            resp = await async_client.delete(
-                "/api/v1/locations/1",
-                headers=admin_auth_headers,
-            )
+    lok = Lokasyon(
+        cikis_yeri="DelExcC", varis_yeri="DelExcV", mesafe_km=100.0, aktif=True
+    )
+    db_session.add(lok)
+    await db_session.flush()
+
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        new=AsyncMock(side_effect=RuntimeError("unexpected")),
+    ):
+        resp = await async_client.delete(
+            f"/api/v1/locations/{lok.id}",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (500,)
 

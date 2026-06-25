@@ -98,6 +98,15 @@ test("design audit screenshots", async ({ page }) => {
   await snap(page, "/maintenance", "03-bakim", true);
   // new Muayene (inspection) tab — vehicles + trailers
   await snap(page, "/maintenance?view=muayene", "03b-muayene", true);
+  // new "Arıza Bildir" quick-report modal
+  await page.goto("/maintenance");
+  await page.waitForTimeout(1200);
+  const reportBtn = page.getByRole("button", { name: /Arıza Bildir/i }).first();
+  if (await reportBtn.count()) {
+    await reportBtn.click();
+    await page.waitForTimeout(700);
+    await page.screenshot({ path: `${OUT}/03c-ariza-bildir.png` });
+  }
   // live error page
   await snap(page, "/monitoring", "04-monitoring", true);
   // admin "similar" error/health page

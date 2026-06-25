@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle,
+  AlertTriangle,
   List,
   Plus,
   ShieldCheck,
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { BreakdownReportModal } from "@/components/maintenance/BreakdownReportModal";
 import { InspectionTab } from "@/components/admin/maintenance/InspectionTab";
 import { MaintenanceCalendar } from "@/components/admin/maintenance/MaintenanceCalendar";
 import { PredictionsTable } from "@/components/admin/maintenance/PredictionsTable";
@@ -101,6 +103,7 @@ export default function AdminMaintenancePage() {
     detaylar: "",
   });
   const [entryError, setEntryError] = useState<string | null>(null);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const { data: vehiclesResp } = useQuery({
     queryKey: ["vehiclesForMaintenance"],
@@ -237,12 +240,19 @@ export default function AdminMaintenancePage() {
             {adminMaintenanceText.description}
           </p>
         </div>
-        <RequirePermission permission="bakim_ekle">
-          <Button onClick={openEntry}>
-            <Plus size={16} className="mr-2" />
-            {t("admin.bakim_add_btn", "New Maintenance / Breakdown")}
+        <div className="flex items-center gap-2">
+          {/* Arıza Bildir — herkese açık (operatör/sürücü); izin gerektirmez */}
+          <Button variant="danger" onClick={() => setBreakdownOpen(true)}>
+            <AlertTriangle size={16} className="mr-2" />
+            {t("admin.bakim_report_btn", "Arıza Bildir")}
           </Button>
-        </RequirePermission>
+          <RequirePermission permission="bakim_ekle">
+            <Button variant="outline" onClick={openEntry}>
+              <Plus size={16} className="mr-2" />
+              {t("admin.bakim_add_btn", "New Maintenance / Breakdown")}
+            </Button>
+          </RequirePermission>
+        </div>
       </div>
 
       {/* Tab switcher (D.3) */}
@@ -488,6 +498,11 @@ export default function AdminMaintenancePage() {
           </div>
         </div>
       </Modal>
+
+      <BreakdownReportModal
+        isOpen={breakdownOpen}
+        onClose={() => setBreakdownOpen(false)}
+      />
     </div>
   );
 }

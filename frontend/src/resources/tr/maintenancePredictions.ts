@@ -3,6 +3,17 @@ export const maintenancePredictionsText = {
     list: "Liste",
     calendar: "Takvim",
     history: "Geçmiş",
+    muayene: "Muayene",
+  },
+  inspection: {
+    vehicles: "Araçlar",
+    trailers: "Dorseler",
+    overdue: "Muayenesi Geçmiş",
+    expiring: "Muayenesi Yaklaşan",
+    daysOverdue: (n: number) => `${Math.abs(n)} gün gecikmiş`,
+    daysLeft: (n: number) => `${n} gün kaldı`,
+    noAlerts: "Muayene uyarısı yok.",
+    loadFailed: "Muayene verisi yüklenemedi.",
   },
   pageTitle: "Tahmine Dayalı Bakım",
   calendarLegend: {

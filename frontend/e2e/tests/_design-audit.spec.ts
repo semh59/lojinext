@@ -47,7 +47,26 @@ test.beforeEach(async ({ page }) => {
     r.fulfill(json([])),
   );
   await page.route("**/api/v1/vehicles/inspection-alerts**", (r) =>
-    r.fulfill(json({ expiring: [], overdue: [] })),
+    r.fulfill(
+      json({
+        expiring: [
+          { id: 1, plaka: "34 ABC 03", marka: "Mercedes", model: "Actros", muayene_tarihi: "2026-07-12", days_remaining: 17 },
+        ],
+        overdue: [
+          { id: 2, plaka: "06 XYZ 99", marka: "Volvo", model: "FH16", muayene_tarihi: "2026-06-10", days_remaining: -15 },
+        ],
+      }),
+    ),
+  );
+  await page.route("**/api/v1/trailers/inspection-alerts**", (r) =>
+    r.fulfill(
+      json({
+        expiring: [
+          { id: 5, plaka: "34 DRS 01", marka: "Kassbohrer", tipi: "Tenteli", muayene_tarihi: "2026-07-20", days_remaining: 25 },
+        ],
+        overdue: [],
+      }),
+    ),
   );
   await page.route("**/api/v1/errors/**", (r) => r.fulfill(json([])));
   await page.route("**/api/v1/monitoring/**", (r) => r.fulfill(json([])));
@@ -77,6 +96,8 @@ test("design audit screenshots", async ({ page }) => {
   await snap(page, "/admin", "02-admin-overview", true);
   // bakım page (muayene to be added; general layout)
   await snap(page, "/maintenance", "03-bakim", true);
+  // new Muayene (inspection) tab — vehicles + trailers
+  await snap(page, "/maintenance?view=muayene", "03b-muayene", true);
   // live error page
   await snap(page, "/monitoring", "04-monitoring", true);
   // admin "similar" error/health page

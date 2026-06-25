@@ -3,6 +3,17 @@ export const maintenancePredictionsText = {
     list: "List",
     calendar: "Calendar",
     history: "History",
+    muayene: "Inspection",
+  },
+  inspection: {
+    vehicles: "Vehicles",
+    trailers: "Trailers",
+    overdue: "Inspection Overdue",
+    expiring: "Inspection Due Soon",
+    daysOverdue: (n: number) => `${Math.abs(n)} days overdue`,
+    daysLeft: (n: number) => `${n} days left`,
+    noAlerts: "No inspection alerts.",
+    loadFailed: "Failed to load inspection data.",
   },
   pageTitle: "Predictive Maintenance",
   calendarLegend: {

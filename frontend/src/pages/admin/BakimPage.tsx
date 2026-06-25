@@ -6,6 +6,7 @@ import {
   CheckCircle,
   List,
   Plus,
+  ShieldCheck,
   Sparkles,
   Wrench,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/Table";
 import { useNotify } from "@/context/NotificationContext";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { InspectionTab } from "@/components/admin/maintenance/InspectionTab";
 import { MaintenanceCalendar } from "@/components/admin/maintenance/MaintenanceCalendar";
 import { PredictionsTable } from "@/components/admin/maintenance/PredictionsTable";
 import { cn } from "@/lib/utils";
@@ -176,14 +178,18 @@ export default function AdminMaintenancePage() {
   // URL state: ?view=calendar|predictions|history
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get("view") ?? "history";
-  const activeView: "history" | "predictions" | "calendar" =
+  const activeView: "history" | "predictions" | "calendar" | "muayene" =
     viewParam === "calendar"
       ? "calendar"
       : viewParam === "predictions"
         ? "predictions"
-        : "history";
+        : viewParam === "muayene"
+          ? "muayene"
+          : "history";
 
-  const setView = (view: "history" | "predictions" | "calendar") => {
+  const setView = (
+    view: "history" | "predictions" | "calendar" | "muayene",
+  ) => {
     const next = new URLSearchParams(searchParams);
     if (view === "history") {
       next.delete("view");
@@ -194,7 +200,7 @@ export default function AdminMaintenancePage() {
   };
 
   const tabs: Array<{
-    id: "history" | "predictions" | "calendar";
+    id: "history" | "predictions" | "calendar" | "muayene";
     label: string;
     icon: typeof List;
   }> = [
@@ -212,6 +218,11 @@ export default function AdminMaintenancePage() {
       id: "calendar",
       label: maintenancePredictionsText.tabs.calendar,
       icon: CalendarDays,
+    },
+    {
+      id: "muayene",
+      label: maintenancePredictionsText.tabs.muayene,
+      icon: ShieldCheck,
     },
   ];
 
@@ -259,6 +270,7 @@ export default function AdminMaintenancePage() {
 
       {activeView === "predictions" && <PredictionsTable />}
       {activeView === "calendar" && <MaintenanceCalendar />}
+      {activeView === "muayene" && <InspectionTab />}
 
       {activeView === "history" && (
         <Card padding="none">

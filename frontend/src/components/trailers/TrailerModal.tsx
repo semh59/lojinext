@@ -65,7 +65,10 @@ export function TrailerModal({
     event.preventDefault();
     setLoading(true);
     try {
-      await onSave(formData);
+      // Empty date input -> omit it (backend Optional[date] rejects "").
+      const payload = { ...formData };
+      if (!payload.muayene_tarihi) delete payload.muayene_tarihi;
+      await onSave(payload);
       onClose();
     } catch (saveError) {
       console.error("Trailer save error:", saveError);
@@ -216,6 +219,18 @@ export function TrailerModal({
                         type="number"
                         name="yil"
                         value={formData.yil ?? ""}
+                        onChange={handleChange}
+                        className="w-full rounded-xl border border-border bg-base px-4 py-3 text-primary transition-all focus:border-accent focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-secondary">
+                        {trailerModalText.fields.inspectionDate}
+                      </label>
+                      <input
+                        type="date"
+                        name="muayene_tarihi"
+                        value={formData.muayene_tarihi ?? ""}
                         onChange={handleChange}
                         className="w-full rounded-xl border border-border bg-base px-4 py-3 text-primary transition-all focus:border-accent focus:outline-none"
                       />

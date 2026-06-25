@@ -141,6 +141,7 @@ export const trailerModalText = {
     brand: "Marka",
     type: "Tip",
     modelYear: "Model Yılı",
+    inspectionDate: "Muayene Tarihi",
     emptyWeight: "Boş Ağırlık (kg)",
     payload: "Yük Kapasitesi (kg)",
     tireCount: "Lastik Sayısı",

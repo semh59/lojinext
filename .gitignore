@@ -209,3 +209,4 @@ data/ai_kb/metadata.json
 # Orval generated — npm run codegen ile yeniden üretilir
 frontend/src/generated/
 .local/
+.cache/

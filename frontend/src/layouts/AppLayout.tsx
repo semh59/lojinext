@@ -228,14 +228,13 @@ const AppLayout: React.FC = () => {
 
           {/* Bottom */}
           <div className="pt-6 border-t border-border mt-auto space-y-3">
-            <div className="px-4 flex items-center gap-2">
-              <div className="flex-1">
-                <LanguageSwitcher />
-              </div>
+            <div className="px-4 flex items-center gap-1">
+              <LanguageSwitcher />
               <button
                 onClick={toggleDark}
-                className="p-2.5 text-secondary hover:bg-elevated rounded-xl transition-colors shrink-0"
+                className="flex items-center rounded-xl p-2.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
                 aria-label={isDark ? "Açık moda geç" : "Koyu moda geç"}
+                title={isDark ? "Açık moda geç" : "Koyu moda geç"}
               >
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>

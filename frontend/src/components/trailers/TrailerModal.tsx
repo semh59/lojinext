@@ -116,9 +116,9 @@ export function TrailerModal({
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="relative w-full max-w-2xl overflow-hidden rounded-[32px] border border-accent/20 bg-surface shadow-lg"
+          className="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[32px] border border-accent/20 bg-surface shadow-lg"
         >
-          <div className="flex items-center justify-between border-b border-border bg-gradient-to-r from-accent/5 to-transparent p-8">
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-gradient-to-r from-accent/5 to-transparent p-8">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-primary">
                 {trailer
@@ -141,7 +141,7 @@ export function TrailerModal({
 
           <form
             onSubmit={handleSubmit}
-            className="custom-scrollbar max-h-[70vh] overflow-y-auto p-8"
+            className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-8"
           >
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
               <div className="space-y-6">

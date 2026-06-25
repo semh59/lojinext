@@ -7,7 +7,7 @@ export default defineConfig({
     testDir: './e2e/tests',
     // inventory.spec.ts normal suite'e dahil değil — ayrıca çalıştırılır:
     //   npx playwright test --config playwright.inventory.config.ts
-    testIgnore: ['**/inventory.spec.ts'],
+    testIgnore: ['**/inventory.spec.ts', '**/_design-audit.spec.ts'],
     timeout: 30_000,
     expect: { timeout: 8_000 },
     fullyParallel: true,

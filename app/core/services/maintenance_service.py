@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import Any, Dict, List
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException, status
 
@@ -86,6 +86,48 @@ class MaintenanceService:
         # D.2 — yeni bakım eklendi, tahmin cache'i geçersiz
         await _invalidate_predictions_cache()
         return created_bakim
+
+    async def create_breakdown(
+        self,
+        *,
+        bakim_tipi: BakimTipi,
+        arac_id: Optional[int] = None,
+        dorse_id: Optional[int] = None,
+        km_bilgisi: int = 0,
+        detaylar: str = "",
+    ) -> AracBakim:
+        """Açık arıza kaydı — araç VEYA dorse (tam biri). 404 yoksa."""
+        if (arac_id is None) == (dorse_id is None):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="arac_id veya dorse_id'den tam biri verilmeli",
+            )
+        async with UnitOfWork() as uow:
+            if arac_id is not None:
+                if not await uow.arac_repo.get_by_id(arac_id):
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Araç bulunamadı: {arac_id}",
+                    )
+            else:
+                if not await uow.dorse_repo.get_by_id(dorse_id):
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail=f"Dorse bulunamadı: {dorse_id}",
+                    )
+            bakim = AracBakim(
+                arac_id=arac_id,
+                dorse_id=dorse_id,
+                bakim_tipi=bakim_tipi,
+                km_bilgisi=km_bilgisi,
+                bakim_tarihi=datetime.now(timezone.utc),
+                detaylar=detaylar,
+                tamamlandi=False,
+            )
+            created = await uow.maintenance_repo.add(bakim)
+            await uow.commit()
+        await _invalidate_predictions_cache()
+        return created
 
     async def get_vehicle_maintenance_history(self, arac_id: int) -> List[AracBakim]:
         """Retrieve full maintenance history for a vehicle."""

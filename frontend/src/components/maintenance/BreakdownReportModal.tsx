@@ -5,6 +5,7 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { vehicleService } from "@/api/vehicles";
+import { dorseService } from "@/services/dorseService";
 import axiosInstance from "@/services/api/axios-instance";
 import { useNotify } from "@/context/NotificationContext";
 
@@ -14,13 +15,15 @@ interface Props {
 }
 
 /**
- * Operatör/sürücü "Arıza Bildir" hızlı formu. İzin gerektirmez — açık
- * ARIZA/ACIL kaydı oluşturur (POST /maintenance/report-breakdown).
+ * Operatör/sürücü "Arıza Bildir" hızlı formu. İzin gerektirmez — araç VEYA
+ * dorse için açık ARIZA/ACIL kaydı oluşturur (POST /maintenance/report-breakdown).
  */
 export function BreakdownReportModal({ isOpen, onClose }: Props) {
   const { notify } = useNotify();
   const qc = useQueryClient();
+  const [target, setTarget] = useState<"arac" | "dorse">("arac");
   const [aracId, setAracId] = useState("");
+  const [dorseId, setDorseId] = useState("");
   const [tip, setTip] = useState<"ARIZA" | "ACIL">("ARIZA");
   const [detaylar, setDetaylar] = useState("");
   const [km, setKm] = useState("");
@@ -34,8 +37,18 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
   });
   const vehicles = vehiclesResp?.items ?? [];
 
+  const { data: dorseList } = useQuery({
+    queryKey: ["dorsesForBreakdown"],
+    queryFn: () => dorseService.getAll({ aktif_only: true }),
+    enabled: isOpen,
+    staleTime: 5 * 60 * 1000,
+  });
+  const dorses = dorseList ?? [];
+
   const reset = () => {
+    setTarget("arac");
     setAracId("");
+    setDorseId("");
     setTip("ARIZA");
     setDetaylar("");
     setKm("");
@@ -45,7 +58,9 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
   const mutation = useMutation({
     mutationFn: () =>
       axiosInstance.post("/maintenance/report-breakdown", {
-        arac_id: Number(aracId),
+        ...(target === "arac"
+          ? { arac_id: Number(aracId) }
+          : { dorse_id: Number(dorseId) }),
         bakim_tipi: tip,
         detaylar: detaylar.trim(),
         km_bilgisi: Number(km || 0),
@@ -66,8 +81,12 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
   const submit = () => {
     setError(null);
-    if (!aracId) {
+    if (target === "arac" && !aracId) {
       setError("Araç seçiniz.");
+      return;
+    }
+    if (target === "dorse" && !dorseId) {
+      setError("Dorse seçiniz.");
       return;
     }
     mutation.mutate();
@@ -75,6 +94,12 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
   const inputCls =
     "w-full rounded-xl border border-border bg-base px-4 py-3 text-primary transition-all focus:border-accent focus:outline-none";
+  const toggleCls = (active: boolean) =>
+    `flex-1 rounded-xl border px-4 py-2.5 text-sm font-bold transition-all ${
+      active
+        ? "border-accent bg-accent-soft text-accent"
+        : "border-border text-secondary hover:bg-elevated"
+    }`;
 
   return (
     <Modal
@@ -90,21 +115,63 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
       <div className="space-y-4">
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-            Araç
+            Tür
           </label>
-          <select
-            value={aracId}
-            onChange={(e) => setAracId(e.target.value)}
-            className={inputCls}
-          >
-            <option value="">Araç seçiniz…</option>
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.plaka} {v.marka ? `— ${v.marka}` : ""}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTarget("arac")}
+              className={toggleCls(target === "arac")}
+            >
+              Araç
+            </button>
+            <button
+              type="button"
+              onClick={() => setTarget("dorse")}
+              className={toggleCls(target === "dorse")}
+            >
+              Dorse
+            </button>
+          </div>
         </div>
+
+        {target === "arac" ? (
+          <div className="space-y-1.5">
+            <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
+              Araç
+            </label>
+            <select
+              value={aracId}
+              onChange={(e) => setAracId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Araç seçiniz…</option>
+              {vehicles.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.plaka} {v.marka ? `— ${v.marka}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
+              Dorse
+            </label>
+            <select
+              value={dorseId}
+              onChange={(e) => setDorseId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">Dorse seçiniz…</option>
+              {dorses.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.plaka} {d.tipi ? `— ${d.tipi}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
@@ -130,19 +197,17 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-              KM (opsiyonel)
-            </label>
-            <input
-              type="number"
-              value={km}
-              onChange={(e) => setKm(e.target.value)}
-              placeholder="0"
-              className={inputCls}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
+            KM (opsiyonel)
+          </label>
+          <input
+            type="number"
+            value={km}
+            onChange={(e) => setKm(e.target.value)}
+            placeholder="0"
+            className={inputCls}
+          />
         </div>
 
         <div className="space-y-1.5">

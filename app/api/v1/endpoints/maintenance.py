@@ -7,11 +7,10 @@ fuel factor and the maintenance predictions. Admin/scheduled-maintenance
 management stays under /admin/maintenance (require_yetki bakim_ekle/ariza_bildir).
 """
 
-from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.deps import get_current_active_user
 from app.core.services.maintenance_service import MaintenanceService
@@ -24,7 +23,8 @@ _BREAKDOWN_TYPES = {"ARIZA", "ACIL"}
 
 
 class BreakdownReport(BaseModel):
-    arac_id: int = Field(..., description="Arızalı araç id")
+    arac_id: Optional[int] = Field(None, description="Arızalı araç id")
+    dorse_id: Optional[int] = Field(None, description="Arızalı dorse id")
     bakim_tipi: str = Field("ARIZA", description="ARIZA | ACIL")
     detaylar: str = Field("", max_length=2000, description="Arıza açıklaması")
     km_bilgisi: int = Field(0, ge=0, description="Bilinmiyorsa 0")
@@ -36,6 +36,12 @@ class BreakdownReport(BaseModel):
             raise ValueError("bakim_tipi yalnız ARIZA veya ACIL olabilir")
         return v
 
+    @model_validator(mode="after")
+    def _one_target(self) -> "BreakdownReport":
+        if (self.arac_id is None) == (self.dorse_id is None):
+            raise ValueError("arac_id veya dorse_id'den tam biri verilmeli")
+        return self
+
 
 @router.post("/report-breakdown", status_code=201)
 async def report_breakdown(
@@ -44,19 +50,21 @@ async def report_breakdown(
 ) -> dict:
     """Arıza bildir — herhangi bir aktif kullanıcı (operatör/sürücü).
 
-    Açık (tamamlanmamış) ARIZA/ACIL kaydı oluşturur. 404 araç yoksa.
+    Araç VEYA dorse için açık (tamamlanmamış) ARIZA/ACIL kaydı oluşturur.
+    404 araç/dorse yoksa.
     """
     svc = MaintenanceService()
-    rec = await svc.create_maintenance_record(
+    rec = await svc.create_breakdown(
         arac_id=body.arac_id,
+        dorse_id=body.dorse_id,
         bakim_tipi=BakimTipi(body.bakim_tipi),
         km_bilgisi=body.km_bilgisi,
-        bakim_tarihi=datetime.now(timezone.utc),
         detaylar=body.detaylar,
     )
     return {
         "id": rec.id,
         "arac_id": rec.arac_id,
+        "dorse_id": rec.dorse_id,
         "bakim_tipi": rec.bakim_tipi,
         "tamamlandi": rec.tamamlandi,
     }

@@ -65,3 +65,44 @@ class TestReportBreakdown:
             headers=admin_auth_headers,
         )
         assert resp.status_code == 404, resp.text
+
+    async def _create_dorse(self, async_client, admin_auth_headers) -> int:
+        plaka = f"34 DZ {int(uuid.uuid4().hex[:4], 16) % 10000:04d}"
+        resp = await async_client.post(
+            "/api/v1/trailers/",
+            json={
+                "plaka": plaka,
+                "tipi": "Tenteli",
+                "bos_agirlik_kg": 7000.0,
+                "maks_yuk_kapasitesi_kg": 27000,
+                "lastik_sayisi": 6,
+            },
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        return int(resp.json()["data"]["id"])
+
+    async def test_dorse_breakdown_creates_open_record(
+        self, async_client, admin_auth_headers
+    ):
+        """Dilim 3: dorse arızası — arac_id yerine dorse_id."""
+        dorse_id = await self._create_dorse(async_client, admin_auth_headers)
+        resp = await async_client.post(
+            "/api/v1/maintenance/report-breakdown",
+            json={"dorse_id": dorse_id, "bakim_tipi": "ACIL", "detaylar": "lastik"},
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["dorse_id"] == dorse_id
+        assert body["arac_id"] is None
+        assert body["tamamlandi"] is False
+
+    async def test_neither_target_422(self, async_client, admin_auth_headers):
+        """Ne araç ne dorse → 422 (tam biri zorunlu)."""
+        resp = await async_client.post(
+            "/api/v1/maintenance/report-breakdown",
+            json={"bakim_tipi": "ARIZA", "detaylar": "x"},
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 422, resp.text

@@ -10,7 +10,7 @@ async def test_maintenance_requires_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_maintenance_list_success(async_client, admin_auth_headers, monkeypatch):
+async def test_maintenance_list_success(async_client, admin_auth_headers):
     """Test listing maintenance records."""
     response = await async_client.get(
         "/api/v1/admin/maintenance/alerts",

@@ -142,39 +142,16 @@ async def test_create_location_success(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_create_location_value_error(async_client, admin_auth_headers):
-    """POST / with service raising ValueError → 400."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
-                new=AsyncMock(side_effect=ValueError("duplicate route")),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/",
-                json=_VALID_CREATE_PAYLOAD,
-                headers=admin_auth_headers,
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """POST / with service raising ValueError → 400 (ValueError raised before UoW needed)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
+        new=AsyncMock(side_effect=ValueError("duplicate route")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/",
+            json=_VALID_CREATE_PAYLOAD,
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (400, 500)
 
@@ -230,41 +207,16 @@ async def test_update_location_success(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_update_location_not_found(async_client, admin_auth_headers):
-    """PUT /{id} when service returns False → 404."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
-                new=AsyncMock(return_value=False),
-            ),
-        ):
-            resp = await async_client.put(
-                "/api/v1/locations/9999",
-                json={"mesafe_km": 500.0},
-                headers=admin_auth_headers,
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """PUT /{id} when service returns False → 404 (real DB, patched update returns False)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
+        new=AsyncMock(return_value=False),
+    ):
+        resp = await async_client.put(
+            "/api/v1/locations/9999",
+            json={"mesafe_km": 500.0},
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (404, 500)
 
@@ -317,41 +269,10 @@ async def test_delete_location_success_active(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_delete_location_not_found(async_client, admin_auth_headers):
-    """DELETE when service.repo returns None → 404."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=None)
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
-                new=AsyncMock(return_value=True),
-            ),
-        ):
-            resp = await async_client.delete(
-                "/api/v1/locations/9999", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
-
-    # repo.get_by_id returns None → 404 (or 500 if mock resolution differs)
+    """DELETE non-existent id → 404 (real DB, no row with id=9999)."""
+    resp = await async_client.delete(
+        "/api/v1/locations/9999", headers=admin_auth_headers
+    )
     assert resp.status_code in (404, 200, 500)
 
 
@@ -403,53 +324,28 @@ async def test_delete_location_value_error(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_analyze_location_success(async_client, admin_auth_headers):
-    """POST /{id}/analyze → 200 with route data."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-                new=AsyncMock(
-                    return_value={
-                        "distance_km": 450.0,
-                        "duration_min": 300.0,
-                        "ascent_m": 100,
-                        "descent_m": 100,
-                        "otoban_mesafe_km": 400.0,
-                        "sehir_ici_mesafe_km": 50.0,
-                        "source": "mapbox",
-                        "is_corrected": False,
-                        "correction_reason": None,
-                        "route_analysis": {},
-                        "elevation_profile": [],
-                    }
-                ),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """POST /{id}/analyze → 200 with route data (analyze_route patched, real DB commit)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(
+            return_value={
+                "distance_km": 450.0,
+                "duration_min": 300.0,
+                "ascent_m": 100,
+                "descent_m": 100,
+                "otoban_mesafe_km": 400.0,
+                "sehir_ici_mesafe_km": 50.0,
+                "source": "mapbox",
+                "is_corrected": False,
+                "correction_reason": None,
+                "route_analysis": {},
+                "elevation_profile": [],
+            }
+        ),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (200, 500)
 
@@ -457,38 +353,13 @@ async def test_analyze_location_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_analyze_location_error_result(async_client, admin_auth_headers):
     """POST /{id}/analyze when route analysis returns error dict → 503."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-                new=AsyncMock(return_value={"error": "Mapbox unavailable"}),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(return_value={"error": "Mapbox unavailable"}),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (503, 500)
 
@@ -496,38 +367,13 @@ async def test_analyze_location_error_result(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_analyze_location_value_error_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze with ValueError containing 'Analiz' → 503."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-                new=AsyncMock(side_effect=ValueError("Analiz başarısız")),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=ValueError("Analiz başarısız")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (400, 503, 500)
 
@@ -535,38 +381,13 @@ async def test_analyze_location_value_error_analiz(async_client, admin_auth_head
 @pytest.mark.asyncio
 async def test_analyze_location_value_error_other(async_client, admin_auth_headers):
     """POST /{id}/analyze with ValueError without 'Analiz' → 400."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-                new=AsyncMock(side_effect=ValueError("bad coordinates")),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=ValueError("bad coordinates")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (400, 503, 500)
 
@@ -574,38 +395,13 @@ async def test_analyze_location_value_error_other(async_client, admin_auth_heade
 @pytest.mark.asyncio
 async def test_analyze_location_unexpected_exception(async_client, admin_auth_headers):
     """POST /{id}/analyze unexpected error → 500."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict())
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    mock_svc = AsyncMock()
-    mock_svc.event_bus = None
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        with (
-            _override_lokasyon_service(mock_svc),
-            patch(
-                "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-                new=AsyncMock(side_effect=RuntimeError("crash")),
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze", headers=admin_auth_headers
-            )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=RuntimeError("crash")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code == 500
 
@@ -777,33 +573,10 @@ async def test_upload_locations_success(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_stale_custom_days(async_client, admin_auth_headers):
-    """GET /stale?days=30 → 200 with threshold_days=30."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_mapping_list = MagicMock()
-    mock_mapping_list.all.return_value = []
-    mock_result = MagicMock()
-    mock_result.mappings.return_value = mock_mapping_list
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/stale?days=30", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /stale?days=30 → 200 with threshold_days=30 (real DB, empty returns threshold)."""
+    resp = await async_client.get(
+        "/api/v1/locations/stale?days=30", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 200
     assert resp.json()["threshold_days"] == 30

@@ -60,7 +60,7 @@ class MaintenanceCreateSchema(BaseModel):
 @router.post(
     "/",
     response_model=MaintenanceRecordResponse,
-    dependencies=[Depends(require_yetki(["bakim_ekle", "all", "*"]))],
+    dependencies=[Depends(require_yetki(["ariza_bildir", "bakim_ekle", "all", "*"]))],
 )
 async def create_maintenance(
     data: MaintenanceCreateSchema,

@@ -86,6 +86,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Gitleaks scans the pushed commit range (firstCommit^..lastCommit).
+          # The default shallow clone (depth 1) omits the range base, so a
+          # multi-commit push fails with "unknown revision". Full history makes
+          # the real secret scan run over the whole range instead of erroring.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5

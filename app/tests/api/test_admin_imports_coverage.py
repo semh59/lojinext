@@ -6,7 +6,7 @@ error paths and edge cases not in the existing test_admin_imports.py.
 
 import json
 from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -285,33 +285,20 @@ class TestRollbackImport:
 
 class TestImportHistoryWithData:
     async def test_history_returns_mapped_items(
-        self, async_client, admin_auth_headers, monkeypatch
+        self, async_client, admin_auth_headers, db_session
     ):
-        from datetime import datetime, timezone
+        from app.database.models import IceriAktarimGecmisi
 
-        job = MagicMock()
-        job.id = 1
-        job.dosya_adi = "vehicles.xlsx"
-        job.aktarim_tipi = "arac"
-        job.durum = "tamamlandi"
-        job.toplam_kayit = 10
-        job.basarili_kayit = 9
-        job.hatali_kayit = 1
-        job.baslama_zamani = datetime.now(timezone.utc)
-        job.yukleyen_id = 3
-
-        mock_import_repo = AsyncMock()
-        mock_import_repo.get_recent_jobs = AsyncMock(return_value=[job])
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.import_repo = mock_import_repo
-
-        monkeypatch.setattr(
-            "app.api.v1.endpoints.admin_imports.UnitOfWork",
-            lambda: mock_uow,
+        row = IceriAktarimGecmisi(
+            dosya_adi="vehicles.xlsx",
+            aktarim_tipi="arac",
+            durum="tamamlandi",
+            toplam_kayit=10,
+            basarili_kayit=9,
+            hatali_kayit=1,
         )
+        db_session.add(row)
+        await db_session.flush()
 
         response = await async_client.get(
             "/api/v1/admin/imports/history",
@@ -321,7 +308,6 @@ class TestImportHistoryWithData:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
-        assert data[0]["id"] == 1
         assert data[0]["dosya_adi"] == "vehicles.xlsx"
         assert data[0]["basarili"] == 9
         assert data[0]["hatali"] == 1

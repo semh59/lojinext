@@ -77,6 +77,72 @@ async def get_dorse_fleet_stats(
     return {"total": row["total"], "active": row["active"]}
 
 
+@router.get("/inspection-alerts")
+async def get_dorse_inspection_alerts(
+    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+    db: SessionDep,
+    within_days: int = Query(30, ge=1, le=180),
+):
+    """Muayenesi yaklaşan veya geçmiş dorselerin listesi.
+
+    Yanıt: ``{ expiring: [...], overdue: [...], within_days }``. Araç
+    ``inspection-alerts`` ile aynı sözleşme (dorse'de model yok, tipi var).
+    Aktif + soft-delete edilmemiş dorselerle sınırlı.
+    """
+    from sqlalchemy import text
+
+    query = text(
+        """
+        SELECT
+            id,
+            plaka,
+            marka,
+            tipi,
+            yil,
+            muayene_tarihi,
+            CASE
+                WHEN muayene_tarihi < CURRENT_DATE THEN 'overdue'
+                ELSE 'expiring'
+            END AS bucket,
+            (muayene_tarihi - CURRENT_DATE) AS days_remaining
+        FROM dorseler
+        WHERE aktif = TRUE
+          AND is_deleted = FALSE
+          AND muayene_tarihi IS NOT NULL
+          AND (
+              muayene_tarihi < CURRENT_DATE
+              OR muayene_tarihi <= CURRENT_DATE + (:within_days || ' days')::interval
+          )
+        ORDER BY muayene_tarihi ASC
+        """
+    )
+    result = await db.execute(query, {"within_days": str(within_days)})
+    rows = result.mappings().all()
+
+    expiring: list[dict] = []
+    overdue: list[dict] = []
+    for row in rows:
+        item = {
+            "id": row["id"],
+            "plaka": row["plaka"],
+            "marka": row["marka"],
+            "tipi": row["tipi"],
+            "yil": row["yil"],
+            "muayene_tarihi": row["muayene_tarihi"].isoformat()
+            if row["muayene_tarihi"]
+            else None,
+            "days_remaining": int(row["days_remaining"])
+            if row["days_remaining"] is not None
+            else None,
+        }
+        if row["bucket"] == "overdue":
+            overdue.append(item)
+        else:
+            expiring.append(item)
+
+    return {"expiring": expiring, "overdue": overdue, "within_days": within_days}
+
+
 @router.post("/", response_model=StandardResponse[DorseResponse], status_code=201)
 async def create_dorse(
     dorse: DorseCreate,

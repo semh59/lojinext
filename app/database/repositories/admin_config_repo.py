@@ -46,7 +46,9 @@ class AdminConfigRepository(BaseRepository[SistemKonfig]):
 
         old_value = config.deger
         config.deger = new_value
-        config.guncelleyen_id = updated_by_id
+        config.guncelleyen_id = (
+            updated_by_id if updated_by_id and updated_by_id > 0 else None
+        )
 
         history = KonfigGecmis(
             anahtar=key,

@@ -171,6 +171,12 @@ export function VehicleTable({
                         ? vehicleTableText.status.active
                         : vehicleTableText.status.inactive}
                     </Badge>
+                    {(vehicle.acik_ariza ?? 0) > 0 && (
+                      <span className="flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-danger">
+                        <AlertTriangle className="h-2.5 w-2.5" />
+                        {vehicle.acik_ariza} açık arıza
+                      </span>
+                    )}
                     {inspection.type === "expired" && (
                       <span className="flex items-center gap-1 rounded-full border border-danger/30 bg-danger/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-danger">
                         <ShieldAlert className="h-2.5 w-2.5" />

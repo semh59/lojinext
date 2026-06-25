@@ -208,6 +208,7 @@ class AracResponse(AracBase):
     toplam_km: float = 0.0
     toplam_sefer: int = 0
     ort_tuketim: float = 0.0
+    acik_ariza: int = 0  # açık (tamamlanmamış) ARIZA/ACIL sayısı
 
     @field_validator("plaka", mode="before")
     @classmethod

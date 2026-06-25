@@ -40,6 +40,7 @@ export interface Vehicle {
   motor_verimliligi?: number | null;
   lastik_direnc_katsayisi?: number | null;
   notlar?: string | null;
+  acik_ariza?: number; // açık (tamamlanmamış) ARIZA/ACIL sayısı
 }
 
 export interface Dorse {

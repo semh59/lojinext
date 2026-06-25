@@ -101,7 +101,10 @@ class AracRepository(BaseRepository[Arac]):
                 a.*,
                 COALESCE(SUM(s.mesafe_km), 0) as toplam_km,
                 COUNT(s.id) as toplam_sefer,
-                COALESCE(AVG(s.tuketim), 0.0) as ort_tuketim
+                COALESCE(AVG(s.tuketim), 0.0) as ort_tuketim,
+                (SELECT COUNT(*) FROM arac_bakimlari b
+                 WHERE b.arac_id = a.id AND b.tamamlandi = false
+                   AND b.bakim_tipi IN ('ARIZA', 'ACIL')) as acik_ariza
             FROM araclar a
             LEFT JOIN seferler s ON a.id = s.arac_id AND s.tuketim IS NOT NULL
             WHERE 1=1

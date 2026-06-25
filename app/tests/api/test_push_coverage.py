@@ -9,7 +9,7 @@ Targets uncovered branches:
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -95,51 +95,20 @@ async def test_subscribe_503_when_push_disabled(
 
 
 async def test_subscribe_creates_new_subscription(
-    async_client, admin_auth_headers, monkeypatch
+    async_client, normal_auth_headers, monkeypatch
 ):
-    """POST /subscribe with push enabled → attempts to upsert and not 503/401."""
+    """POST /subscribe with push enabled → inserts real PushSubscription row."""
     monkeypatch.setattr(
         "app.api.v1.endpoints.push.settings.PUSH_NOTIFICATION_ENABLED", True
     )
-    from datetime import datetime
-
-    from app.schemas.push import PushSubscriptionResponse
-
-    fake_response = PushSubscriptionResponse(
-        id=1,
-        endpoint="https://push.example.com/endpoint/new123456",
-        created_at=datetime(2026, 1, 1, 0, 0, 0),
-        last_used_at=None,
+    payload = {
+        "endpoint": "https://push.example.com/endpoint/new123456",
+        "keys": {"p256dh": "a" * 15, "auth": "b" * 8},
+        "user_agent": "Mozilla/5.0 Test",
+    }
+    resp = await async_client.post(
+        f"{_PUSH_PREFIX}/subscribe", json=payload, headers=normal_auth_headers
     )
-
-    fake_result = MagicMock()
-    fake_result.scalar_one_or_none = MagicMock(return_value=None)
-
-    fake_session = AsyncMock()
-    fake_session.execute = AsyncMock(return_value=fake_result)
-    fake_session.add = MagicMock()
-    fake_session.flush = AsyncMock()
-    fake_session.refresh = AsyncMock()
-
-    fake_uow = AsyncMock()
-    fake_uow.__aenter__ = AsyncMock(return_value=fake_uow)
-    fake_uow.__aexit__ = AsyncMock(return_value=False)
-    fake_uow.session = fake_session
-    fake_uow.commit = AsyncMock()
-
-    with patch("app.api.v1.endpoints.push.UnitOfWork", return_value=fake_uow):
-        with patch(
-            "app.api.v1.endpoints.push.PushSubscriptionResponse.model_validate",
-            return_value=fake_response,
-        ):
-            payload = {
-                "endpoint": "https://push.example.com/endpoint/new123456",
-                "keys": {"p256dh": "a" * 15, "auth": "b" * 8},
-                "user_agent": "Mozilla/5.0 Test",
-            }
-            resp = await async_client.post(
-                f"{_PUSH_PREFIX}/subscribe", json=payload, headers=admin_auth_headers
-            )
 
     # Should not be 503 (disabled) or 401 (unauthorized)
     assert resp.status_code in (201, 200, 500)
@@ -159,22 +128,12 @@ async def test_unsubscribe_requires_auth(async_client):
     assert resp.status_code == 401
 
 
-async def test_unsubscribe_success(async_client, admin_auth_headers, monkeypatch):
-    """DELETE /subscribe calls delete on session."""
-    fake_session = AsyncMock()
-    fake_session.execute = AsyncMock()
-
-    fake_uow = AsyncMock()
-    fake_uow.__aenter__ = AsyncMock(return_value=fake_uow)
-    fake_uow.__aexit__ = AsyncMock(return_value=False)
-    fake_uow.session = fake_session
-    fake_uow.commit = AsyncMock()
-
-    with patch("app.api.v1.endpoints.push.UnitOfWork", return_value=fake_uow):
-        resp = await async_client.delete(
-            f"{_PUSH_PREFIX}/subscribe?endpoint=https://push.example.com/test1234567890",
-            headers=admin_auth_headers,
-        )
+async def test_unsubscribe_success(async_client, normal_auth_headers):
+    """DELETE /subscribe executes DELETE on real test DB (empty → 0 rows → 204)."""
+    resp = await async_client.delete(
+        f"{_PUSH_PREFIX}/subscribe?endpoint=https://push.example.com/test1234567890",
+        headers=normal_auth_headers,
+    )
     # 204 or something else, but not 401
     assert resp.status_code in (204, 500)
 

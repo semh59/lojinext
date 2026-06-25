@@ -67,7 +67,9 @@ class HealthResult:
 
 # ── Saf yardımcılar ────────────────────────────────────────────────────
 def _periyodik_age_factor(
-    last_dt: Optional[datetime], now: Optional[datetime] = None
+    last_dt: Optional[datetime],
+    now: Optional[datetime] = None,
+    no_history_factor: float = NO_HISTORY_FACTOR,
 ) -> Tuple[float, str]:
     """PERIYODIK bakım tarihinden bugüne kadar geçen güne göre çarpan döndür.
 
@@ -79,7 +81,7 @@ def _periyodik_age_factor(
         (factor, human-readable reason)
     """
     if last_dt is None:
-        return NO_HISTORY_FACTOR, "PERIYODIK kaydi yok"
+        return no_history_factor, "PERIYODIK kaydi yok"
     if last_dt.tzinfo is None:
         last_dt = last_dt.replace(tzinfo=timezone.utc)
     if now is None:
@@ -96,10 +98,20 @@ def _periyodik_age_factor(
 
 
 def compute_maintenance_factor(
-    inp: HealthInput, *, now: Optional[datetime] = None
+    inp: HealthInput,
+    *,
+    now: Optional[datetime] = None,
+    no_history_factor: float = NO_HISTORY_FACTOR,
 ) -> HealthResult:
-    """Bakım statüsünden 0.95..1.25 arası yakıt çarpanı üret."""
-    base, reason = _periyodik_age_factor(inp.last_periyodik_date, now=now)
+    """Bakım statüsünden 0.95..1.25 arası yakıt çarpanı üret.
+
+    no_history_factor: PERIYODIK kaydı olmayan araç için taban. Varsayılan
+    1.05 (belirsizlik cezası). Sefer yakıt tahmini bunu 1.0 geçer → verisiz
+    araç nötr kalır, sadece gerçek açık ARIZA/ACIL sinyali faktörü oynatır.
+    """
+    base, reason = _periyodik_age_factor(
+        inp.last_periyodik_date, now=now, no_history_factor=no_history_factor
+    )
     ariza_part = OPEN_ARIZA_PENALTY if inp.open_ariza_count > 0 else 1.0
     acil_part = OPEN_ACIL_PENALTY if inp.open_acil_count > 0 else 1.0
     raw = base * ariza_part * acil_part

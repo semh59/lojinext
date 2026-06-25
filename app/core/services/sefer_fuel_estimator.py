@@ -26,6 +26,7 @@ from datetime import date as dt_date
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.config import settings
 from app.core.ml.adjustment_factors import (
     combine_factors,
     weather_precipitation_factor,
@@ -191,6 +192,7 @@ class SeferFuelEstimator:
             cikis_lon, cikis_lat, varis_lon, varis_lat = await self._resolve_route(
                 db, inp
             )
+            maintenance_factor = await self._fetch_maintenance_factor(db, arac.id)
         # DB connection released — external IO follows without holding a pool slot.
 
         if cikis_lon is None:
@@ -228,6 +230,7 @@ class SeferFuelEstimator:
             arac=arac,
             weather_samples=weather_samples,
             target_date=inp.target_date,
+            maintenance_factor=maintenance_factor,
         )
 
         # 6. ML correction — cold start bypass (Phase 5'te aktif)
@@ -365,6 +368,30 @@ class SeferFuelEstimator:
         years = today.year - ut.year - ((today.month, today.day) < (ut.month, ut.day))
         return max(0, years)
 
+    async def _fetch_maintenance_factor(self, db: Any, arac_id: int) -> float:
+        """Bakım/arıza verisinden yakıt çarpanı (D.4).
+
+        Flag kapalı veya hata → 1.0 (nötr). ``no_history_factor=1.0`` ile
+        PERIYODIK kaydı olmayan araç (şu an çoğu) tam 1.0 = bugünkü davranışla
+        birebir → p51/tahmin kayması YOK; sadece gerçek açık ARIZA/ACIL +
+        tamamlanmış PERIYODIK sinyali faktörü oynatır.
+        """
+        if not settings.MAINTENANCE_FACTOR_ENABLED:
+            return 1.0
+        try:
+            from types import SimpleNamespace
+
+            from app.core.ml.vehicle_health_factor import (
+                compute_maintenance_factor,
+                fetch_health_input,
+            )
+
+            health = await fetch_health_input(SimpleNamespace(session=db), arac_id)
+            return compute_maintenance_factor(health, no_history_factor=1.0).factor
+        except Exception as e:  # tahmini asla bozma
+            logger.warning("maintenance_factor hesaplanamadı: %s", e)
+            return 1.0
+
     def _compute_factors(
         self,
         *,
@@ -373,6 +400,7 @@ class SeferFuelEstimator:
         arac: Optional[Arac],
         weather_samples: List[Optional[WeatherSample]],
         target_date: dt_date,
+        maintenance_factor: float = 1.0,
     ) -> FactorBreakdown:
         """Adjustment factors hesabı (driver/age/maintenance/weather*3/seasonal)."""
         # Driver — predict_consumption:677 formülü reuse
@@ -391,10 +419,9 @@ class SeferFuelEstimator:
             age_factor = 1.05 + (arac_yasi - 10) * 0.01
         age_factor = min(1.15, age_factor)
 
-        # Maintenance — feature flag MAINTENANCE_FACTOR_ENABLED dışında 1.0
-        # Mevcut compute_maintenance_factor için HealthInput gerekir; bu Phase 4.3
-        # iskelet için TODO. Phase 4.4'te sefer akışı bağlandığında inject edilir.
-        maintenance_factor = 1.0
+        # Maintenance (D.4) — caller'dan inject edilir (_fetch_maintenance_factor).
+        # Flag kapalı / veri yok → 1.0 (nötr); gerçek açık ARIZA/ACIL + PERIYODIK
+        # sinyali olan araçta devreye girer.
 
         # Weather — sample listesini ortalama
         avg_temp: Optional[float] = self._avg(

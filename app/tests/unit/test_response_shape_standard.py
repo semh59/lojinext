@@ -134,8 +134,8 @@ async def test_driver_delete_returns_success_true():
     assert "status" not in result, f"Eski format 'status' key hâlâ var: {result}"
 
 
-async def test_calibration_returns_success_true():
-    """POST calibrate/{sefer_id}: {success: True, message: ...} olmalı."""
+async def test_calibration_returns_success_true(db_session):
+    """POST calibrate/{sefer_id}: {success: True, message: ...} olmalı (real DB)."""
     from unittest.mock import AsyncMock as AM
     from unittest.mock import patch as stdlib_patch
 
@@ -144,13 +144,10 @@ async def test_calibration_returns_success_true():
     mock_service_instance = AM()
     mock_service_instance.calibrate_route_from_trip = AM(return_value=True)
 
-    mock_db = AM()
-
     with stdlib_patch.object(
         cal_mod, "RouteCalibrationService", return_value=mock_service_instance
     ):
-        with stdlib_patch.object(cal_mod, "UnitOfWork", return_value=MagicMock()):
-            result = await cal_mod.calibrate_route_from_trip(sefer_id=1, db=mock_db)
+        result = await cal_mod.calibrate_route_from_trip(sefer_id=1, db=db_session)
 
     assert isinstance(result, dict), f"Dict beklendi, geldi: {type(result)}"
     assert "success" in result, f"'success' key beklendi, geldi: {result}"

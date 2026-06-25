@@ -551,88 +551,37 @@ async def test_upload_no_auth(async_client):
 
 
 # ---------------------------------------------------------------------------
-# POST /locations/ — create with full UoW mock
+# POST /locations/ — create
 # ---------------------------------------------------------------------------
-
-
-@contextmanager
-def _override_uow_for_create(mock_uow):
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
-
-
-def _make_mock_uow_with_lokasyon(lokasyon_dict=None):
-    """Build a full UoW mock where LokasyonService gets wired."""
-    if lokasyon_dict is None:
-        lokasyon_dict = _make_lokasyon_dict()
-
-    mock_repo = AsyncMock()
-    mock_repo.get_by_id = AsyncMock(return_value=lokasyon_dict)
-
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.commit = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-    mock_uow.event_bus = None
-    return mock_uow
 
 
 @pytest.mark.asyncio
 async def test_create_location_success(async_client, admin_auth_headers):
-    """POST / with valid body, mocked UoW and LokasyonService → 201."""
-    mock_uow = _make_mock_uow_with_lokasyon()
+    """POST / with valid body → 201 (real DB insert via test session)."""
+    with patch(
+        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/",
+            json={"cikis_yeri": "Istanbul", "varis_yeri": "Ankara", "mesafe_km": 450.0},
+            headers=admin_auth_headers,
+        )
 
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
-            new=AsyncMock(return_value=1),
-        ):
-            with patch(
-                "app.infrastructure.audit.log_audit_event",
-                new=AsyncMock(return_value=None),
-            ):
-                resp = await async_client.post(
-                    "/api/v1/locations/",
-                    json={
-                        "cikis_yeri": "Istanbul",
-                        "varis_yeri": "Ankara",
-                        "mesafe_km": 450.0,
-                    },
-                    headers=admin_auth_headers,
-                )
-
-    assert resp.status_code in (201, 400, 500)
+    assert resp.status_code == 201
 
 
 @pytest.mark.asyncio
 async def test_create_location_value_error(async_client, admin_auth_headers):
-    """POST / service raises ValueError → 400."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
-            new=AsyncMock(side_effect=ValueError("cikis == varis")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/",
-                json={
-                    "cikis_yeri": "Istanbul",
-                    "varis_yeri": "Ankara",
-                    "mesafe_km": 450.0,
-                },
-                headers=admin_auth_headers,
-            )
+    """POST / service raises ValueError → 400 (exception before UoW needed)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
+        new=AsyncMock(side_effect=ValueError("cikis == varis")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/",
+            json={"cikis_yeri": "Istanbul", "varis_yeri": "Ankara", "mesafe_km": 450.0},
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (400, 500)
 
@@ -643,43 +592,38 @@ async def test_create_location_value_error(async_client, admin_auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_update_location_success(async_client, admin_auth_headers):
-    """PUT /{id} with mocked UoW + service → 200."""
-    mock_uow = _make_mock_uow_with_lokasyon()
+async def test_update_location_success(async_client, admin_auth_headers, db_session):
+    """PUT /{id} → 200 (real DB: seeds Lokasyon, real update via test session)."""
+    from app.database.models import Lokasyon
 
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
-            new=AsyncMock(return_value=True),
-        ):
-            with patch(
-                "app.infrastructure.audit.log_audit_event",
-                new=AsyncMock(return_value=None),
-            ):
-                resp = await async_client.put(
-                    "/api/v1/locations/1",
-                    json={"mesafe_km": 460.0},
-                    headers=admin_auth_headers,
-                )
+    lok = Lokasyon(cikis_yeri="UpdSucc", varis_yeri="UpdSuccV", mesafe_km=450.0)
+    db_session.add(lok)
+    await db_session.flush()
+
+    with patch(
+        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+    ):
+        resp = await async_client.put(
+            f"/api/v1/locations/{lok.id}",
+            json={"mesafe_km": 460.0},
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (200, 404, 500)
 
 
 @pytest.mark.asyncio
 async def test_update_location_not_found(async_client, admin_auth_headers):
-    """PUT /{id} service returns False → 404."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
-            new=AsyncMock(return_value=False),
-        ):
-            resp = await async_client.put(
-                "/api/v1/locations/999",
-                json={"mesafe_km": 460.0},
-                headers=admin_auth_headers,
-            )
+    """PUT /{id} service returns False → 404 (real empty DB, id=999 not found)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
+        new=AsyncMock(return_value=False),
+    ):
+        resp = await async_client.put(
+            "/api/v1/locations/999",
+            json={"mesafe_km": 460.0},
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code in (404, 500)
 
@@ -690,54 +634,53 @@ async def test_update_location_not_found(async_client, admin_auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_delete_location_active_success(async_client, admin_auth_headers):
-    """DELETE /{id} active location → soft-delete → 200."""
-    lok_dict = _make_lokasyon_dict(aktif=True)
-    mock_uow = _make_mock_uow_with_lokasyon(lok_dict)
+async def test_delete_location_active_success(
+    async_client, admin_auth_headers, db_session
+):
+    """DELETE /{id} active location → soft-delete → 200 (real DB via test session)."""
+    from app.database.models import Lokasyon
 
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
-            new=AsyncMock(return_value=True),
-        ):
-            resp = await async_client.delete(
-                "/api/v1/locations/1",
-                headers=admin_auth_headers,
-            )
+    lok = Lokasyon(
+        cikis_yeri="DelSuA", varis_yeri="DelSuB", mesafe_km=100.0, aktif=True
+    )
+    db_session.add(lok)
+    await db_session.flush()
+
+    resp = await async_client.delete(
+        f"/api/v1/locations/{lok.id}", headers=admin_auth_headers
+    )
 
     assert resp.status_code in (200, 500)
 
 
 @pytest.mark.asyncio
 async def test_delete_location_not_found(async_client, admin_auth_headers):
-    """DELETE /{id} non-existent → 404."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-    mock_uow.lokasyon_repo.get_by_id = AsyncMock(return_value=None)
-
-    with _override_uow_for_create(mock_uow):
-        resp = await async_client.delete(
-            "/api/v1/locations/9999",
-            headers=admin_auth_headers,
-        )
+    """DELETE /{id} non-existent → 404 (real empty DB, id=9999 not found)."""
+    resp = await async_client.delete(
+        "/api/v1/locations/9999", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 404
 
 
 @pytest.mark.asyncio
-async def test_delete_location_value_error(async_client, admin_auth_headers):
+async def test_delete_location_value_error(
+    async_client, admin_auth_headers, db_session
+):
     """DELETE /{id} service raises ValueError (active trips) → 409."""
-    lok_dict = _make_lokasyon_dict(aktif=True)
-    mock_uow = _make_mock_uow_with_lokasyon(lok_dict)
+    from app.database.models import Lokasyon
 
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
-            new=AsyncMock(side_effect=ValueError("sefer kayıtları mevcut")),
-        ):
-            resp = await async_client.delete(
-                "/api/v1/locations/1",
-                headers=admin_auth_headers,
-            )
+    lok = Lokasyon(cikis_yeri="DelVE", varis_yeri="DelVEB", mesafe_km=100.0, aktif=True)
+    db_session.add(lok)
+    await db_session.flush()
+
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        new=AsyncMock(side_effect=ValueError("sefer kayıtları mevcut")),
+    ):
+        resp = await async_client.delete(
+            f"/api/v1/locations/{lok.id}", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (409, 500)
 
@@ -787,32 +730,28 @@ async def test_search_by_route_found(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_analyze_success(async_client, admin_auth_headers):
-    """POST /{id}/analyze with mocked service → 200."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(
-                return_value={
-                    "distance_km": 450.0,
-                    "duration_min": 300.0,
-                    "ascent_m": 500.0,
-                    "descent_m": 500.0,
-                    "otoban_mesafe_km": 400.0,
-                    "sehir_ici_mesafe_km": 50.0,
-                    "source": "mapbox",
-                    "is_corrected": False,
-                    "correction_reason": None,
-                    "route_analysis": {},
-                    "elevation_profile": [],
-                }
-            ),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    """POST /{id}/analyze with mocked analyze_route → 200 (UoW not needed; analyze_route patched)."""
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(
+            return_value={
+                "distance_km": 450.0,
+                "duration_min": 300.0,
+                "ascent_m": 500.0,
+                "descent_m": 500.0,
+                "otoban_mesafe_km": 400.0,
+                "sehir_ici_mesafe_km": 50.0,
+                "source": "mapbox",
+                "is_corrected": False,
+                "correction_reason": None,
+                "route_analysis": {},
+                "elevation_profile": [],
+            }
+        ),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (200, 500)
 
@@ -820,17 +759,13 @@ async def test_analyze_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_analyze_error_result(async_client, admin_auth_headers):
     """POST /{id}/analyze when service returns error dict → 503."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(return_value={"error": "Route provider down"}),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(return_value={"error": "Route provider down"}),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (503, 500)
 
@@ -838,17 +773,13 @@ async def test_analyze_error_result(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_analyze_value_error(async_client, admin_auth_headers):
     """POST /{id}/analyze when service raises ValueError → 400."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-
-    with _override_uow_for_create(mock_uow):
-        with patch(
-            "app.core.services.lokasyon_service.LokasyonService.analyze_route",
-            new=AsyncMock(side_effect=ValueError("bad coordinates")),
-        ):
-            resp = await async_client.post(
-                "/api/v1/locations/1/analyze",
-                headers=admin_auth_headers,
-            )
+    with patch(
+        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        new=AsyncMock(side_effect=ValueError("bad coordinates")),
+    ):
+        resp = await async_client.post(
+            "/api/v1/locations/1/analyze", headers=admin_auth_headers
+        )
 
     assert resp.status_code in (400, 500)
 

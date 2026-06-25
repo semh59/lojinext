@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { Bell, AlertTriangle, Brain, Trash2 } from "lucide-react";
+import { Bell, Brain, Trash2 } from "lucide-react";
 import { useMonitoringSocket } from "@/components/monitoring/useMonitoringSocket";
 import { NotificationsTab } from "@/components/monitoring/NotificationsTab";
-import { ErrorEventsTab } from "@/components/monitoring/ErrorEventsTab";
 import { TrainingTab } from "@/components/monitoring/TrainingTab";
 import { Button } from "@/components/ui/Button";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/AuthContext";
 import { useTranslation } from "react-i18next";
 
-type Tab = "notifications" | "errors" | "training";
+type Tab = "notifications" | "training";
 
 interface TabConfig {
   id: Tab;
@@ -35,13 +34,11 @@ export default function MonitoringPage() {
       icon: Bell,
       badge: notifications.length > 0 ? notifications.length : undefined,
     },
+    // Error Events moved to the admin "Sistem Sağlık → Hata Analizi" page
+    // (richer: severity filters, stats, resolve, live SSE) — single canonical
+    // error view, no duplicate here.
     ...(isAdmin
       ? ([
-          {
-            id: "errors",
-            label: t("monitoring.tab_error_events", "Error Events"),
-            icon: AlertTriangle,
-          },
           {
             id: "training",
             label: t("monitoring.tab_ml_training", "ML Training"),
@@ -110,7 +107,6 @@ export default function MonitoringPage() {
           onReconnect={reconnect}
         />
       )}
-      {activeTab === "errors" && isAdmin && <ErrorEventsTab />}
       {activeTab === "training" && isAdmin && <TrainingTab />}
     </div>
   );

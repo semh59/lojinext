@@ -73,26 +73,13 @@ test.describe('Canlı Takip sayfası', () => {
         await expect(page.getByRole('button', { name: 'Bildirimler' }).first()).toBeVisible({ timeout: 8_000 })
     })
 
-    test('"Hata Olayları" tab butonu görünür', async ({ authedPage: page }) => {
-        await page.goto('/monitoring')
-        await page.waitForLoadState('networkidle')
-        await expect(page.getByRole('button', { name: 'Hata Olayları' })).toBeVisible({ timeout: 8_000 })
-    })
+    // "Hata Olayları" (Error Events) tab removed from /monitoring — the richer
+    // error analysis lives in the admin "Sistem Sağlık → Hata Analizi" page.
 
     test('"ML Eğitim" tab butonu görünür', async ({ authedPage: page }) => {
         await page.goto('/monitoring')
         await page.waitForLoadState('networkidle')
         await expect(page.getByRole('button', { name: 'ML Eğitim' })).toBeVisible({ timeout: 8_000 })
-    })
-
-    test('"Hata Olayları" sekmesine tıklanınca içerik değişir', async ({ authedPage: page }) => {
-        await page.route('**/api/v1/admin/errors**', r => r.fulfill(json({ items: [], total: 0 })))
-        await page.route('**/api/v1/sentry/**', r => r.fulfill(json({ issues: [] })))
-        await page.goto('/monitoring')
-        await page.waitForLoadState('networkidle')
-        await page.getByRole('button', { name: 'Hata Olayları' }).click()
-        // Hata olayları tab içeriği yüklendi — hata listesi ya da boş durum
-        await expect(page.getByText(/hata|olay|event|sentry/i).first()).toBeVisible({ timeout: 8_000 })
     })
 
     test('"ML Eğitim" sekmesine tıklanınca içerik değişir', async ({ authedPage: page }) => {

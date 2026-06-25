@@ -362,6 +362,7 @@
     "time_days_ago": "{{n}} g önce"
   },
   "admin": {
+    "bakim_report_btn": "Arıza Bildir",
     "bakim_add_btn": "Yeni Bakım / Arıza",
     "bakim_select_vehicle": "Araç seçin…",
     "bakim_form_title": "Yeni Bakım / Arıza Girişi",

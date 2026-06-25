@@ -3,7 +3,7 @@ import { AlertTriangle, CalendarClock, ShieldCheck, Truck } from "lucide-react";
 
 import { Card } from "@/components/ui/Card";
 import axiosInstance from "@/services/api/axios-instance";
-import { maintenancePredictionsText as txt } from "@/resources/tr/maintenancePredictions";
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
 
 interface InspectionItem {
   id: number;
@@ -29,6 +29,8 @@ async function fetchAlerts(url: string): Promise<InspectionResp> {
 }
 
 function Row({ item, overdue }: { item: InspectionItem; overdue: boolean }) {
+  const { maintenancePredictionsText: txt } =
+    useMaintenancePredictionsResources();
   const days = item.days_remaining ?? 0;
   return (
     <div className="flex items-center justify-between rounded-card border border-border bg-base px-4 py-2.5">
@@ -66,6 +68,8 @@ function FleetSection({
   isLoading: boolean;
   isError: boolean;
 }) {
+  const { maintenancePredictionsText: txt } =
+    useMaintenancePredictionsResources();
   const overdue = data?.overdue ?? [];
   const expiring = data?.expiring ?? [];
   const empty =
@@ -122,6 +126,8 @@ function FleetSection({
 }
 
 export function InspectionTab() {
+  const { maintenancePredictionsText: txt } =
+    useMaintenancePredictionsResources();
   const vehicles = useQuery({
     queryKey: ["inspectionAlerts", "vehicles"],
     queryFn: () => fetchAlerts("/vehicles/inspection-alerts"),

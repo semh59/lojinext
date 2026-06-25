@@ -82,6 +82,7 @@ export const vehicleTableText = {
     "Filo yönetimine başlamak için sağ üstteki butondan yeni bir araç ekleyerek operasyonlarınızı başlatın.",
   title: "Filo Araçları",
   totalCount: (count: number) => `Toplam: ${count} Araç`,
+  openBreakdown: (count: number) => `${count} açık arıza`,
   status: {
     active: "AKTİF",
     inactive: "PASİF",

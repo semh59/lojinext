@@ -362,6 +362,7 @@
     "time_days_ago": "{{n}} day ago"
   },
   "admin": {
+    "bakim_report_btn": "Report Breakdown",
     "bakim_add_btn": "New Maintenance / Breakdown",
     "bakim_select_vehicle": "Select vehicle…",
     "bakim_form_title": "New Maintenance / Breakdown Entry",

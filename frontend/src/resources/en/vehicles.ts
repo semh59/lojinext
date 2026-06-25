@@ -83,6 +83,8 @@ export const vehicleTableText = {
   title: "Fleet Vehicles",
   totalCount: (count: number) =>
     `Total: ${count} Vehicle${count === 1 ? "" : "s"}`,
+  openBreakdown: (count: number) =>
+    `${count} open breakdown${count === 1 ? "" : "s"}`,
   status: {
     active: "ACTIVE",
     inactive: "INACTIVE",

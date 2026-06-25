@@ -8,6 +8,7 @@ import { vehicleService } from "@/api/vehicles";
 import { dorseService } from "@/services/dorseService";
 import axiosInstance from "@/services/api/axios-instance";
 import { useNotify } from "@/context/NotificationContext";
+import { useMaintenancePredictionsResources } from "@/resources/useResources";
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,8 @@ interface Props {
  */
 export function BreakdownReportModal({ isOpen, onClose }: Props) {
   const { notify } = useNotify();
+  const { maintenancePredictionsText } = useMaintenancePredictionsResources();
+  const txt = maintenancePredictionsText.breakdown;
   const qc = useQueryClient();
   const [target, setTarget] = useState<"arac" | "dorse">("arac");
   const [aracId, setAracId] = useState("");
@@ -67,26 +70,26 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["adminMaintenanceAlerts"] });
-      notify("success", "Arıza bildirildi", "Açık arıza kaydı oluşturuldu.");
+      notify("success", txt.successTitle, txt.successBody);
       reset();
       onClose();
     },
     onError: (err: unknown) => {
       const detail =
         (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? "Arıza bildirilemedi.";
-      setError(typeof detail === "string" ? detail : "Arıza bildirilemedi.");
+          ?.detail ?? txt.errGeneric;
+      setError(typeof detail === "string" ? detail : txt.errGeneric);
     },
   });
 
   const submit = () => {
     setError(null);
     if (target === "arac" && !aracId) {
-      setError("Araç seçiniz.");
+      setError(txt.errVehicleRequired);
       return;
     }
     if (target === "dorse" && !dorseId) {
-      setError("Dorse seçiniz.");
+      setError(txt.errTrailerRequired);
       return;
     }
     mutation.mutate();
@@ -108,14 +111,14 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
       title={
         <span className="flex items-center gap-2 text-danger">
           <AlertTriangle className="h-5 w-5" />
-          Arıza Bildir
+          {txt.title}
         </span>
       }
     >
       <div className="space-y-4">
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-            Tür
+            {txt.targetLabel}
           </label>
           <div className="flex gap-2">
             <button
@@ -123,14 +126,14 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
               onClick={() => setTarget("arac")}
               className={toggleCls(target === "arac")}
             >
-              Araç
+              {txt.vehicle}
             </button>
             <button
               type="button"
               onClick={() => setTarget("dorse")}
               className={toggleCls(target === "dorse")}
             >
-              Dorse
+              {txt.trailer}
             </button>
           </div>
         </div>
@@ -138,14 +141,14 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
         {target === "arac" ? (
           <div className="space-y-1.5">
             <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-              Araç
+              {txt.vehicle}
             </label>
             <select
               value={aracId}
               onChange={(e) => setAracId(e.target.value)}
               className={inputCls}
             >
-              <option value="">Araç seçiniz…</option>
+              <option value="">{txt.selectVehicle}</option>
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.plaka} {v.marka ? `— ${v.marka}` : ""}
@@ -156,14 +159,14 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
         ) : (
           <div className="space-y-1.5">
             <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-              Dorse
+              {txt.trailer}
             </label>
             <select
               value={dorseId}
               onChange={(e) => setDorseId(e.target.value)}
               className={inputCls}
             >
-              <option value="">Dorse seçiniz…</option>
+              <option value="">{txt.selectTrailer}</option>
               {dorses.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.plaka} {d.tipi ? `— ${d.tipi}` : ""}
@@ -175,7 +178,7 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-            Aciliyet
+            {txt.urgencyLabel}
           </label>
           <div className="flex gap-2">
             {(["ARIZA", "ACIL"] as const).map((t) => (
@@ -191,7 +194,7 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
                     : "border-border text-secondary hover:bg-elevated"
                 }`}
               >
-                {t === "ACIL" ? "Acil" : "Arıza"}
+                {t === "ACIL" ? txt.urgent : txt.fault}
               </button>
             ))}
           </div>
@@ -199,7 +202,7 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-            KM (opsiyonel)
+            {txt.kmLabel}
           </label>
           <input
             type="number"
@@ -212,13 +215,13 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
         <div className="space-y-1.5">
           <label className="ml-1 text-xs font-bold uppercase tracking-wider text-secondary">
-            Açıklama
+            {txt.descriptionLabel}
           </label>
           <textarea
             value={detaylar}
             onChange={(e) => setDetaylar(e.target.value)}
             rows={3}
-            placeholder="Arıza nedir?"
+            placeholder={txt.descriptionPlaceholder}
             className={inputCls}
           />
         </div>
@@ -227,10 +230,10 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>
-            İptal
+            {txt.cancel}
           </Button>
           <Button onClick={submit} disabled={mutation.isPending}>
-            {mutation.isPending ? "Gönderiliyor…" : "Bildir"}
+            {mutation.isPending ? txt.submitting : txt.submit}
           </Button>
         </div>
       </div>

@@ -332,7 +332,7 @@ class TestRouteValidatorValidateAndCorrect:
 
 
 # ---------------------------------------------------------------------------
-# UserService — lightweight mock-based tests
+# UserService — real DB tests (db_session monkeypatches UnitOfWork)
 # ---------------------------------------------------------------------------
 
 
@@ -344,177 +344,128 @@ class TestUserService:
         return UserService()
 
     @pytest.mark.asyncio
-    async def test_list_users_returns_list(self, svc, mocker):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_all = AsyncMock(return_value=[{"id": 1}])
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.list_users()
-        assert result == [{"id": 1}]
+    async def test_list_users_returns_list(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        await seed_kullanici(db_session)
+        await db_session.commit()
+        result = await svc.list_users()
+        assert isinstance(result, list)
+        assert len(result) >= 1
 
     @pytest.mark.asyncio
-    async def test_get_user_raises_404_when_missing(self, svc):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            from fastapi import HTTPException
+    async def test_get_user_raises_404_when_missing(self, svc, db_session):
+        from fastapi import HTTPException
 
-            with pytest.raises(HTTPException) as exc_info:
-                await svc.get_user(999)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_user(999999)
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_user_returns_user(self, svc):
-        user = {"id": 1, "email": "a@b.com"}
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=user)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.get_user(1)
-        assert result == user
+    async def test_get_user_returns_user(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        user = await seed_kullanici(db_session, email="getuser@test.local")
+        await db_session.commit()
+        result = await svc.get_user(user.id)
+        assert result["id"] == user.id
+        assert result["email"] == "getuser@test.local"
 
     @pytest.mark.asyncio
-    async def test_create_user_raises_400_on_existing_email(self, svc):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_email = AsyncMock(return_value={"id": 2})
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            from fastapi import HTTPException
+    async def test_create_user_raises_400_on_existing_email(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
 
-            with pytest.raises(HTTPException) as exc_info:
-                await svc.create_user(
-                    {
-                        "email": "exists@b.com",
-                        "ad_soyad": "X",
-                        "rol_id": 1,
-                        "sifre": "pw",
-                    },
-                    created_by_id=1,
-                )
+        await seed_kullanici(db_session, email="exists@test.local")
+        await db_session.commit()
+        from fastapi import HTTPException
+
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.create_user(
+                {
+                    "email": "exists@test.local",
+                    "ad_soyad": "Duplicate",
+                    "rol_id": 1,
+                    "sifre": "pw",
+                },
+                created_by_id=0,
+            )
         assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_delete_user_returns_true(self, svc):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.delete = AsyncMock(return_value=True)
-        mock_uow.commit = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.delete_user(1)
+    async def test_delete_user_returns_true(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        user = await seed_kullanici(db_session)
+        await db_session.commit()
+        result = await svc.delete_user(user.id)
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_update_user_raises_404_when_missing(self, svc):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            from fastapi import HTTPException
+    async def test_update_user_raises_404_when_missing(self, svc, db_session):
+        from fastapi import HTTPException
 
-            with pytest.raises(HTTPException) as exc_info:
-                await svc.update_user(999, {"ad_soyad": "New"})
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.update_user(999999, {"ad_soyad": "New"})
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_update_user_success(self, svc):
-        existing = {"id": 1, "email": "a@b.com", "ad_soyad": "Old"}
-        updated = {"id": 1, "email": "a@b.com", "ad_soyad": "New"}
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(side_effect=[existing, updated])
-        mock_uow.kullanici_repo.update = AsyncMock(return_value=True)
-        mock_uow.commit = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.update_user(1, {"ad_soyad": "New"})
-        assert result["ad_soyad"] == "New"
+    async def test_update_user_success(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        user = await seed_kullanici(db_session, ad_soyad="Original Name")
+        await db_session.commit()
+        result = await svc.update_user(user.id, {"ad_soyad": "Updated Name"})
+        assert result["ad_soyad"] == "Updated Name"
 
     @pytest.mark.asyncio
-    async def test_update_user_with_password(self, svc):
-        existing = {"id": 1, "email": "a@b.com"}
-        updated = {"id": 1, "email": "a@b.com"}
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(side_effect=[existing, updated])
-        mock_uow.kullanici_repo.update = AsyncMock(return_value=True)
-        mock_uow.commit = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            with patch(
-                "app.core.services.user_service.get_password_hash",
-                return_value="hashed",
-            ):
-                result = await svc.update_user(1, {"sifre": "newsecret"})
+    async def test_update_user_with_password(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        user = await seed_kullanici(db_session)
+        await db_session.commit()
+        result = await svc.update_user(user.id, {"sifre": "newsecret123"})
         assert result is not None
 
     @pytest.mark.asyncio
-    async def test_update_user_no_data_returns_existing(self, svc):
-        existing = {"id": 1, "email": "a@b.com"}
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=existing)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            # AUDIT-025: None'lu alan artık filtrelenMEZ (nullable temizleme meşru);
-            # gerçek "veri yok" senaryosu boş dict ile erken-dönüşü test eder.
-            result = await svc.update_user(1, {})
-        assert result == existing
+    async def test_update_user_no_data_returns_existing(self, svc, db_session):
+        from app.tests._helpers.seed import seed_kullanici
+
+        # AUDIT-025: empty dict → no fields to update → early return of existing row.
+        user = await seed_kullanici(db_session, ad_soyad="OriginalName")
+        await db_session.commit()
+        result = await svc.update_user(user.id, {})
+        assert result["id"] == user.id
 
     @pytest.mark.asyncio
-    async def test_create_user_success(self, svc):
-        created_user = {"id": 5, "email": "new@test.com"}
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.get_by_email = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo.create = AsyncMock(return_value=5)
-        mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=created_user)
-        mock_uow.commit = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            with patch(
-                "app.core.services.user_service.get_password_hash", return_value="h"
-            ):
-                result = await svc.create_user(
-                    {
-                        "email": "new@test.com",
-                        "ad_soyad": "Test",
-                        "rol_id": 1,
-                        "sifre": "pw",
-                    },
-                    created_by_id=1,
-                )
-        assert result["id"] == 5
+    async def test_create_user_success(self, svc, db_session):
+        from app.database.models import Rol
+
+        rol = Rol(ad="create-user-test-rol", yetkiler={})
+        db_session.add(rol)
+        await db_session.flush()
+        await db_session.commit()
+        result = await svc.create_user(
+            {
+                "email": "newuser@test.local",
+                "ad_soyad": "New User",
+                "rol_id": rol.id,
+                "sifre": "testpw123",
+            },
+            created_by_id=0,
+        )
+        assert result is not None
+        assert result["email"] == "newuser@test.local"
 
     @pytest.mark.asyncio
-    async def test_delete_user_returns_false_when_not_found(self, svc):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.kullanici_repo = MagicMock()
-        mock_uow.kullanici_repo.delete = AsyncMock(return_value=False)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            result = await svc.delete_user(999)
+    async def test_delete_user_returns_false_when_not_found(self, svc, db_session):
+        result = await svc.delete_user(999999)
         assert result is False
 
     @pytest.mark.asyncio
     async def test_update_user_raises_500_when_update_fails(self, svc):
+        # Documented boundary: `kullanici_repo.update` returning False while the
+        # row exists is a TOCTOU race condition guard — unreachable in a
+        # single-tenant real DB. Kept mocked to preserve the dead-code branch.
         existing = {"id": 1, "email": "a@b.com"}
         mock_uow = MagicMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
@@ -531,6 +482,9 @@ class TestUserService:
 
     @pytest.mark.asyncio
     async def test_create_user_raises_500_when_read_back_fails(self, svc):
+        # Documented boundary: create succeeds but immediate get_by_id returns
+        # None is physically impossible in a non-distributed DB — tested via
+        # injection to cover the defensive guard branch.
         mock_uow = MagicMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
@@ -559,7 +513,7 @@ class TestUserService:
 
 
 # ---------------------------------------------------------------------------
-# MaintenanceService
+# MaintenanceService — real DB tests (db_session monkeypatches UnitOfWork)
 # ---------------------------------------------------------------------------
 
 
@@ -570,109 +524,103 @@ class TestMaintenanceService:
 
         return MaintenanceService()
 
-    def _make_uow_mock(self):
-        mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.arac_repo = MagicMock()
-        mock_uow.arac_repo.get_by_ids = AsyncMock(return_value={})
-        mock_uow.maintenance_repo = MagicMock()
-        mock_uow.commit = AsyncMock(return_value=None)
-        return mock_uow
-
     @pytest.mark.asyncio
-    async def test_create_record_raises_404_when_vehicle_missing(self, svc):
+    async def test_create_record_raises_404_when_vehicle_missing(self, svc, db_session):
         from datetime import datetime
+
+        from fastapi import HTTPException
 
         from app.database.models import BakimTipi
 
-        mock_uow = self._make_uow_mock()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            from fastapi import HTTPException
-
-            with pytest.raises(HTTPException) as exc_info:
-                await svc.create_maintenance_record(
-                    arac_id=999,
-                    bakim_tipi=BakimTipi.PERIYODIK,
-                    km_bilgisi=100000,
-                    bakim_tarihi=datetime.now(),
-                )
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.create_maintenance_record(
+                arac_id=999999,
+                bakim_tipi=BakimTipi.PERIYODIK,
+                km_bilgisi=100000,
+                bakim_tarihi=datetime.now(),
+            )
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_maintenance_history(self, svc):
-        mock_uow = self._make_uow_mock()
-        mock_uow.maintenance_repo.get_by_arac_id = AsyncMock(return_value=[])
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            result = await svc.get_vehicle_maintenance_history(1)
+    async def test_get_maintenance_history(self, svc, db_session):
+        from app.tests._helpers.seed import seed_arac
+
+        arac = await seed_arac(db_session, plaka="34MAINT01")
+        await db_session.commit()
+        result = await svc.get_vehicle_maintenance_history(arac.id)
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_mark_as_completed_true(self, svc):
-        mock_uow = self._make_uow_mock()
-        mock_uow.maintenance_repo.update = AsyncMock(return_value=True)
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            result = await svc.mark_as_completed(1)
+    async def test_mark_as_completed_true(self, svc, db_session):
+        from datetime import datetime, timezone
+
+        from app.database.models import AracBakim, BakimTipi
+        from app.tests._helpers.seed import seed_arac
+
+        arac = await seed_arac(db_session, plaka="34COMP01")
+        await db_session.flush()
+        bakim = AracBakim(
+            arac_id=arac.id,
+            bakim_tipi=BakimTipi.PERIYODIK,
+            km_bilgisi=100000,
+            bakim_tarihi=datetime.now(timezone.utc),
+            maliyet=0,
+            detaylar="",
+            tamamlandi=False,
+        )
+        db_session.add(bakim)
+        await db_session.flush()
+        await db_session.commit()
+        result = await svc.mark_as_completed(bakim.id)
         assert result is True
 
     @pytest.mark.asyncio
-    async def test_mark_as_completed_false(self, svc):
-        mock_uow = self._make_uow_mock()
-        mock_uow.maintenance_repo.update = AsyncMock(return_value=False)
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            result = await svc.mark_as_completed(999)
+    async def test_mark_as_completed_false(self, svc, db_session):
+        result = await svc.mark_as_completed(999999)
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_get_upcoming_alerts_empty(self, svc):
-        mock_uow = self._make_uow_mock()
-        mock_uow.maintenance_repo.get_upcoming_maintenance = AsyncMock(return_value=[])
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            result = await svc.get_upcoming_alerts()
+    async def test_get_upcoming_alerts_empty(self, svc, db_session):
+        result = await svc.get_upcoming_alerts()
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_get_upcoming_alerts_with_items(self, svc):
-        from datetime import datetime, timedelta
+    async def test_get_upcoming_alerts_with_items(self, svc, db_session):
+        from datetime import datetime, timedelta, timezone
 
-        mock_uow = self._make_uow_mock()
-        past_bakim = MagicMock()
-        past_bakim.id = 1
-        past_bakim.arac_id = 1
-        past_bakim.bakim_tipi = "YAG_DEGISIMI"
-        past_bakim.bakim_tarihi = datetime.now() - timedelta(days=1)
-        future_bakim = MagicMock()
-        future_bakim.id = 2
-        future_bakim.arac_id = 2
-        future_bakim.bakim_tipi = "LASTIK"
-        future_bakim.bakim_tarihi = datetime.now() + timedelta(days=7)
-        mock_uow.maintenance_repo.get_upcoming_maintenance = AsyncMock(
-            return_value=[past_bakim, future_bakim]
+        from app.database.models import AracBakim, BakimTipi
+        from app.tests._helpers.seed import seed_arac
+
+        arac = await seed_arac(db_session, plaka="34ALT001")
+        await db_session.flush()
+        now = datetime.now(timezone.utc)
+        # get_upcoming_maintenance filters bakim_tarihi >= now, so all returned
+        # records are in the future → vade_durumu is always "UPCOMING".
+        near = AracBakim(
+            arac_id=arac.id,
+            bakim_tipi=BakimTipi.PERIYODIK,
+            km_bilgisi=80000,
+            bakim_tarihi=now + timedelta(days=3),
+            maliyet=0,
+            detaylar="",
+            tamamlandi=False,
         )
-        mock_arac = MagicMock()
-        mock_arac.plaka = "34 AA 001"
-        # Service batch-fetches vehicles via get_by_ids -> {arac_id: Arac}
-        # (arac_id 2 intentionally absent -> plaka "N/A").
-        mock_uow.arac_repo.get_by_ids = AsyncMock(return_value={1: mock_arac})
-        with patch(
-            "app.core.services.maintenance_service.UnitOfWork", return_value=mock_uow
-        ):
-            result = await svc.get_upcoming_alerts()
+        far = AracBakim(
+            arac_id=arac.id,
+            bakim_tipi=BakimTipi.ARIZA,
+            km_bilgisi=90000,
+            bakim_tarihi=now + timedelta(days=14),
+            maliyet=0,
+            detaylar="",
+            tamamlandi=False,
+        )
+        db_session.add_all([near, far])
+        await db_session.flush()
+        await db_session.commit()
+        result = await svc.get_upcoming_alerts()
         assert len(result) == 2
-        assert result[0]["vade_durumu"] == "OVERDUE"
-        assert result[1]["vade_durumu"] == "UPCOMING"
-        assert result[1]["plaka"] == "N/A"
+        assert all(r["vade_durumu"] == "UPCOMING" for r in result)
+        assert result[0]["plaka"] == "34ALT001"
 
 
 # ---------------------------------------------------------------------------

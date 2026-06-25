@@ -1,7 +1,5 @@
 """Users endpoint tests."""
 
-from unittest.mock import AsyncMock
-
 import pytest
 
 
@@ -30,20 +28,8 @@ async def test_get_current_user_no_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_list_users_success(async_client, admin_auth_headers, monkeypatch):
-    """Test list users → 200.
-
-    UserService is instantiated inline in the endpoint; patch it on the module.
-    """
-    from app.core.services import user_service as user_svc_mod
-
-    mock_instance = AsyncMock()
-    mock_instance.list_users = AsyncMock(return_value=[])
-
-    monkeypatch.setattr(
-        user_svc_mod.UserService, "list_users", mock_instance.list_users
-    )
-
+async def test_list_users_success(async_client, admin_auth_headers):
+    """Test list users → 200 (real UserService against test DB — empty list OK)."""
     response = await async_client.get("/api/v1/users/", headers=admin_auth_headers)
 
     assert response.status_code == 200

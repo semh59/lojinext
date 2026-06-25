@@ -1,7 +1,5 @@
 """Authentication endpoint tests."""
 
-from unittest.mock import MagicMock
-
 import pytest
 
 
@@ -44,12 +42,8 @@ async def test_login_invalid_credentials(async_client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_logout_success(async_client, admin_auth_headers, monkeypatch):
-    """Test logout clears session → 200."""
-    monkeypatch.setattr(
-        "app.infrastructure.security.token_blacklist.blacklist.add", MagicMock()
-    )
-
+async def test_logout_success(async_client, admin_auth_headers):
+    """Test logout clears session → 200 (real Redis blacklist.add)."""
     response = await async_client.post(
         "/api/v1/auth/logout", headers=admin_auth_headers
     )
@@ -89,19 +83,8 @@ async def test_refresh_token_success(async_client, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_refresh_token_invalid(async_client, monkeypatch):
-    """Test token refresh with invalid token → 401."""
-    from fastapi import HTTPException
-
-    from app.core.services import auth_service as auth_svc_mod
-
-    async def _fake_refresh_raise(self, token):
-        raise HTTPException(status_code=401, detail="Invalid refresh token")
-
-    monkeypatch.setattr(
-        auth_svc_mod.AuthService, "refresh_session", _fake_refresh_raise
-    )
-
+async def test_refresh_token_invalid(async_client):
+    """Test token refresh with invalid token → 401 (real AuthService validates JWT)."""
     response = await async_client.post(
         "/api/v1/auth/refresh", json={"refresh_token": "invalid_token"}
     )

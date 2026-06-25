@@ -16,7 +16,7 @@ Targets missed lines:
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -159,33 +159,16 @@ async def test_export_vehicles_http_exception_propagates(
 async def test_create_vehicle_created_is_none_returns_500(
     async_client, admin_auth_headers
 ):
-    """Service.create_arac returns ID but uow.arac_repo.get_by_id returns None → 500."""
-    from app.api.deps import get_arac_service
-    from app.main import app
-
+    """Service.create_arac returns non-existent ID → uow.arac_repo.get_by_id None → 500."""
     mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(return_value=1)
+    mock_svc.create_arac = AsyncMock(return_value=999999)  # no row in test DB
 
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_arac_service] = _fake
-    try:
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUoW:
-            mock_uow = AsyncMock()
-            mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-            mock_uow.__aexit__ = AsyncMock(return_value=False)
-            mock_uow.arac_repo = MagicMock()
-            mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-            MockUoW.return_value = mock_uow
-
-            resp = await async_client.post(
-                f"{BASE}/",
-                json=VALID_VEHICLE_PAYLOAD,
-                headers=admin_auth_headers,
-            )
-    finally:
-        app.dependency_overrides.pop(get_arac_service, None)
+    with _override_arac_service(mock_svc):
+        resp = await async_client.post(
+            f"{BASE}/",
+            json=VALID_VEHICLE_PAYLOAD,
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code == 500
 

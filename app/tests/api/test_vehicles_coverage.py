@@ -176,43 +176,39 @@ async def test_create_vehicle_no_auth(async_client):
     assert resp.status_code == 401
 
 
-async def test_create_vehicle_happy_path(async_client, admin_auth_headers):
-    """Returns 201 and vehicle on success."""
-    created_vehicle = _make_arac_response(id=42)
+async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_session):
+    """Returns 201 and vehicle on success (seeds real Arac; service mock returns its id)."""
+    from app.database.models import Arac
+
+    arac = Arac(plaka="34VHC001", marka="Mercedes")
+    db_session.add(arac)
+    await db_session.flush()
+
     mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(return_value=42)
+    mock_svc.create_arac = AsyncMock(return_value=arac.id)
 
+    payload = {
+        "plaka": "34 ABC 123",
+        "marka": "Mercedes",
+        "model": "Actros",
+        "yil": 2022,
+        "tank_kapasitesi": 600,
+        "hedef_tuketim": 32.0,
+        "bos_agirlik_kg": 8000.0,
+        "hava_direnc_katsayisi": 0.7,
+        "on_kesit_alani_m2": 8.5,
+        "motor_verimliligi": 0.38,
+        "lastik_direnc_katsayisi": 0.007,
+        "maks_yuk_kapasitesi_kg": 26000,
+        "dingil_sayisi": 2,
+        "yakit_tipi": "DIZEL",
+        "aktif": True,
+    }
     with _override_arac_service(mock_svc):
-        with patch("app.database.unit_of_work.UnitOfWork") as mock_uow_cls:
-            mock_uow = AsyncMock()
-            mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-            mock_uow.__aexit__ = AsyncMock(return_value=False)
-            mock_uow.arac_repo = AsyncMock()
-            mock_uow.arac_repo.get_by_id = AsyncMock(return_value=created_vehicle)
-            mock_uow_cls.return_value = mock_uow
+        resp = await async_client.post(
+            f"{BASE}/", json=payload, headers=admin_auth_headers
+        )
 
-            payload = {
-                "plaka": "34 ABC 123",
-                "marka": "Mercedes",
-                "model": "Actros",
-                "yil": 2022,
-                "tank_kapasitesi": 600,
-                "hedef_tuketim": 32.0,
-                "bos_agirlik_kg": 8000.0,
-                "hava_direnc_katsayisi": 0.7,
-                "on_kesit_alani_m2": 8.5,
-                "motor_verimliligi": 0.38,
-                "lastik_direnc_katsayisi": 0.007,
-                "maks_yuk_kapasitesi_kg": 26000,
-                "dingil_sayisi": 2,
-                "yakit_tipi": "DIZEL",
-                "aktif": True,
-            }
-            resp = await async_client.post(
-                f"{BASE}/", json=payload, headers=admin_auth_headers
-            )
-
-    # Service is mocked — check it was invoked or got a meaningful response
     assert resp.status_code in (201, 422, 500)
 
 

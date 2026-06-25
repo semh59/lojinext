@@ -196,25 +196,18 @@ async def test_create_trailer_no_auth(async_client):
     assert resp.status_code == 401
 
 
-async def test_create_trailer_happy_path(async_client, admin_auth_headers):
-    """Successful create → 201."""
+async def test_create_trailer_happy_path(async_client, admin_auth_headers, db_session):
+    """Successful create → 201 (seeds a real Dorse; service mock returns its id)."""
+    from app.database.models import Dorse
+
+    dorse = Dorse(plaka="34TRL001")
+    db_session.add(dorse)
+    await db_session.flush()
+
     mock_svc = AsyncMock()
-    mock_svc.create = AsyncMock(return_value=1)
+    mock_svc.create = AsyncMock(return_value=dorse.id)
 
-    created_dorse = _make_dorse_response()
-
-    # UoW dorse_repo.get_by_id mock
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.dorse_repo = AsyncMock()
-    mock_uow.dorse_repo.get_by_id = AsyncMock(return_value=created_dorse)
-
-    with (
-        _override_dorse_service(mock_svc),
-        patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow),
-        patch("app.database.unit_of_work.get_uow", return_value=mock_uow),
-    ):
+    with _override_dorse_service(mock_svc):
         resp = await async_client.post(
             f"{BASE}/",
             json={"plaka": "34TRL001", "tipi": "Standart"},

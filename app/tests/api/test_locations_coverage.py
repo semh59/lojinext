@@ -312,46 +312,13 @@ async def test_stats_no_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_stats_success(async_client, admin_auth_headers):
-    """GET /stats with mocked UoW session → 200."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_row = {
-        "total": 10,
-        "analyzed": 8,
-        "stale": 2,
-        "avg_distance_km": 420.5,
-        "high_difficulty": 3,
-    }
-
-    mock_mapping = MagicMock()
-    mock_mapping.one.return_value = mock_row
-    mock_result = MagicMock()
-    mock_result.mappings.return_value = mock_mapping
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/stats", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /stats → 200 with real DB (empty DB returns 0-counts)."""
+    resp = await async_client.get("/api/v1/locations/stats", headers=admin_auth_headers)
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["data"]["total"] == 10
-    assert data["data"]["analyzed"] == 8
+    assert isinstance(data["data"]["total"], int)
+    assert isinstance(data["data"]["analyzed"], int)
 
 
 # ---------------------------------------------------------------------------
@@ -368,33 +335,8 @@ async def test_stale_no_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_stale_success(async_client, admin_auth_headers):
-    """GET /stale with mocked UoW → 200."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    mock_mapping_list = MagicMock()
-    mock_mapping_list.all.return_value = []
-    mock_result = MagicMock()
-    mock_result.mappings.return_value = mock_mapping_list
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/stale", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /stale → 200 with real DB (empty DB returns empty list, threshold_days=90)."""
+    resp = await async_client.get("/api/v1/locations/stale", headers=admin_auth_headers)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -414,31 +356,18 @@ async def test_unique_names_no_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_unique_names_success(async_client, admin_auth_headers):
-    """GET /unique-names → 200 list of strings."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
+async def test_unique_names_success(async_client, admin_auth_headers, db_session):
+    """GET /unique-names → 200 list of strings (real DB with seeded Lokasyon)."""
+    from app.database.models import Lokasyon
 
-    mock_repo = AsyncMock()
-    mock_repo.get_benzersiz_lokasyonlar = AsyncMock(
-        return_value=["Istanbul", "Ankara", "Izmir"]
+    db_session.add(
+        Lokasyon(cikis_yeri="Istanbul", varis_yeri="Ankara", mesafe_km=450.0)
     )
+    await db_session.flush()
 
-    mock_uow = MagicMock()
-    mock_uow.lokasyon_repo = mock_repo
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/unique-names", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    resp = await async_client.get(
+        "/api/v1/locations/unique-names", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -829,47 +758,21 @@ async def test_search_by_route_no_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_search_by_route_missing_params(async_client, admin_auth_headers):
-    """GET /search/by-route without required params → 422."""
-    mock_uow = _make_mock_uow_with_lokasyon()
-    with _override_uow_for_create(mock_uow):
-        resp = await async_client.get(
-            "/api/v1/locations/search/by-route?cikis=Istanbul",  # missing varis
-            headers=admin_auth_headers,
-        )
+    """GET /search/by-route without required params → 422 (Pydantic, no DB involved)."""
+    resp = await async_client.get(
+        "/api/v1/locations/search/by-route?cikis=Istanbul",  # missing varis
+        headers=admin_auth_headers,
+    )
     assert resp.status_code == 422
 
 
 @pytest.mark.asyncio
 async def test_search_by_route_found(async_client, admin_auth_headers):
-    """GET /search/by-route → 200 with matching routes."""
-    from app.database.unit_of_work import get_uow
-    from app.main import app
-
-    # Mock the session.execute to return a scalars result
-    mock_scalars = MagicMock()
-    mock_scalars.all.return_value = []
-    mock_result = MagicMock()
-    mock_result.scalars.return_value = mock_scalars
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    mock_uow = MagicMock()
-    mock_uow.session = mock_session
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=False)
-
-    async def _fake_uow():
-        return mock_uow
-
-    app.dependency_overrides[get_uow] = _fake_uow
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/search/by-route?cikis=Istanbul&varis=Ankara",
-            headers=admin_auth_headers,
-        )
-    finally:
-        app.dependency_overrides.pop(get_uow, None)
+    """GET /search/by-route → 200 with real DB (empty DB returns count=0)."""
+    resp = await async_client.get(
+        "/api/v1/locations/search/by-route?cikis=Istanbul&varis=Ankara",
+        headers=admin_auth_headers,
+    )
 
     assert resp.status_code == 200
     data = resp.json()

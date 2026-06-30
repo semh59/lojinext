@@ -460,7 +460,7 @@ class SoforService:
                     {
                         "ad_soyad": ad_soyad,
                         "telefon": d.get("telefon", ""),
-                        "ise_baslama": d.get("ise_baslama", ""),
+                        "ise_baslama": d.get("ise_baslama") or None,
                         "ehliyet_sinifi": d.get("ehliyet_sinifi", "E"),
                         "notlar": d.get("notlar", ""),
                         "aktif": True,

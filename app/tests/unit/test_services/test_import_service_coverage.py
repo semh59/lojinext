@@ -26,6 +26,7 @@ from sqlalchemy import func, select
 
 from app.core.services.import_service import ImportService
 from app.database.models import Sefer, Sofor, YakitAlimi
+from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import (
     seed_arac,
     seed_dorse,
@@ -445,8 +446,9 @@ class TestRollbackImport:
         fake_uow.import_repo = AsyncMock()
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=None)
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await svc.rollback_import(999, 1)
@@ -462,8 +464,9 @@ class TestRollbackImport:
         fake_uow.import_repo = AsyncMock()
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await svc.rollback_import(1, 1)
@@ -479,8 +482,9 @@ class TestRollbackImport:
         fake_uow.import_repo = AsyncMock()
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await svc.rollback_import(1, 1)
@@ -498,8 +502,9 @@ class TestRollbackImport:
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
         fake_uow.import_repo.update_job_status = AsyncMock()
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.rollback_import(1, 1)
 
@@ -517,8 +522,9 @@ class TestRollbackImport:
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
         fake_uow.import_repo.update_job_status = AsyncMock()
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.rollback_import(1, 1)
 
@@ -538,8 +544,9 @@ class TestRollbackImport:
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
         fake_uow.import_repo.update_job_status = AsyncMock()
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.rollback_import(2, 1)
 
@@ -559,8 +566,9 @@ class TestRollbackImport:
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
         fake_uow.import_repo.update_job_status = AsyncMock()
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.rollback_import(3, 1)
 
@@ -580,8 +588,9 @@ class TestRollbackImport:
         fake_uow.import_repo.get_by_id = AsyncMock(return_value=job)
         fake_uow.import_repo.update_job_status = AsyncMock()
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.rollback_import(4, 1)
 
@@ -856,8 +865,9 @@ class TestExecuteImportSeferPath:
 
         fake_uow.session.execute = _raise
 
-        with patch(
-            "app.core.services.import_service.UnitOfWork", return_value=fake_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await svc.rollback_import(1, 1)

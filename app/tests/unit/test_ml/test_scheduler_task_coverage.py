@@ -31,34 +31,27 @@ def _make_session(rows=None):
 @contextlib.contextmanager
 def _patch_uow_and_trainer(rows=None, trainer=None):
     """
-    Patch app.database.unit_of_work.UnitOfWork (used via local import in _run_async)
-    and app.core.ml.training.trainer.Trainer (also local import).
+    Patch UnitOfWork dunders and app.core.ml.training.trainer.Trainer.
     """
     import app.core.ml.training.trainer as trainer_mod
-    import app.database.unit_of_work as uow_mod
+    from app.database.unit_of_work import UnitOfWork
 
     mock_session = _make_session(rows)
+    fake_uow = MagicMock()
+    fake_uow.session = mock_session
 
-    class _FakeUoW:
-        async def __aenter__(self):
-            self.session = mock_session
-            return self
-
-        async def __aexit__(self, *a):
-            pass
-
-    original_uow = uow_mod.UnitOfWork
     original_trainer = trainer_mod.Trainer
-
-    uow_mod.UnitOfWork = _FakeUoW
     if trainer is not None:
         trainer_mod.Trainer = lambda: trainer
 
-    try:
-        yield
-    finally:
-        uow_mod.UnitOfWork = original_uow
-        trainer_mod.Trainer = original_trainer
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
+        try:
+            yield
+        finally:
+            trainer_mod.Trainer = original_trainer
 
 
 # ---------------------------------------------------------------------------

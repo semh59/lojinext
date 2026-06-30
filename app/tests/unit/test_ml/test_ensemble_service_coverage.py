@@ -9,6 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
 
 
@@ -717,10 +719,8 @@ class TestPredictBatch:
                 "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
                 return_value=mock_sofor,
             ),
-            patch(
-                "app.database.unit_of_work.UnitOfWork",
-                return_value=mock_uow,
-            ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             results = await svc.predict_batch(requests)
 

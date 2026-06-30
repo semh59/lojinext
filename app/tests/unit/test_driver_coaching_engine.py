@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.ai.driver_coaching_engine import DriverCoachingEngine
+from app.database.unit_of_work import UnitOfWork
 from app.schemas.coaching import CoachingInsightsResponse
 
 # ── Test fixtures ─────────────────────────────────────────────────────────
@@ -115,18 +116,8 @@ def _make_engine(
     fake_uow.sofor_repo = MagicMock()
     fake_uow.sofor_repo.get_by_id = AsyncMock(return_value=sofor or SOFOR_RECORD)
 
-    class _CM:
-        async def __aenter__(self):
-            return fake_uow
-
-        async def __aexit__(self, exc_type, exc, tb):
-            return False
-
-    patcher_uow = patch(
-        "app.core.ai.driver_coaching_engine.UnitOfWork",
-        return_value=_CM(),
-    )
-    patcher_uow.start()
+    patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)).start()
+    patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)).start()
 
     return engine
 

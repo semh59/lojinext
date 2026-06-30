@@ -162,7 +162,7 @@ test.describe('RouteLabPage — Güzergah Laboratuvarı', () => {
             arac_yasi: 4
         })
 
-        // 5. Sonuçların göründüğünü doğrula
-        await expect(page.getByText(/451\.2|135\.3|30\.0/)).toBeVisible({ timeout: 10_000 })
+        // 5. Sonuçların göründüğünü doğrula (summary birden fazla stat card'da eşleşebilir)
+        await expect(page.getByText(/451\.2|135\.3|30\.0/).first()).toBeVisible({ timeout: 10_000 })
     })
 })

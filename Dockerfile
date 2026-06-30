@@ -19,11 +19,10 @@ RUN apt-get update && apt-get install -y \
 # Copy and install dependencies
 COPY requirements.txt ./
 COPY app/requirements.txt ./app/requirements.txt
-# Fixed B-04: Ensure requirements-dev exists or handle gracefully
-COPY requirements-dev.txt* ./
+COPY app/requirements-dev.txt ./app/requirements-dev.txt
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt && \
-    if [ "$INSTALL_DEV" = "true" ] && [ -f requirements-dev.txt ]; then \
-    pip install --no-cache-dir --prefix=/install -r requirements-dev.txt; \
+    if [ "$INSTALL_DEV" = "true" ]; then \
+    pip install --no-cache-dir --prefix=/install -r app/requirements-dev.txt; \
     fi
 
 # ============================================================

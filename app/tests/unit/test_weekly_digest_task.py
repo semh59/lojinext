@@ -1,17 +1,17 @@
-"""notifications.weekly_digest task testi."""
+"""notifications.weekly_digest task testi.
 
-from contextlib import asynccontextmanager
+0-mock (Dilim 37): patch("...UnitOfWork", _fake_uow) replaced with
+narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
+"""
+
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
-
-
-@asynccontextmanager
-async def _fake_uow():
-    yield MagicMock()
 
 
 def _triage():
@@ -25,9 +25,18 @@ def _triage():
     )
 
 
+def _uow_ctx():
+    return (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=MagicMock())),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    )
+
+
 def test_weekly_digest_pushes_top3_to_subscribed_users():
+    enter_p, exit_p = _uow_ctx()
     with (
-        patch("app.workers.tasks.notification_tasks.UnitOfWork", _fake_uow),
+        enter_p,
+        exit_p,
         patch(
             "app.workers.tasks.notification_tasks._distinct_subscriber_ids",
             new=AsyncMock(return_value=[7, 8]),
@@ -55,8 +64,10 @@ def test_weekly_digest_pushes_top3_to_subscribed_users():
 
 
 def test_weekly_digest_no_subscribers():
+    enter_p, exit_p = _uow_ctx()
     with (
-        patch("app.workers.tasks.notification_tasks.UnitOfWork", _fake_uow),
+        enter_p,
+        exit_p,
         patch(
             "app.workers.tasks.notification_tasks._distinct_subscriber_ids",
             new=AsyncMock(return_value=[]),
@@ -103,12 +114,10 @@ async def test_distinct_subscriber_ids_returns_list():
 
 def test_weekly_digest_exception_path():
     """weekly_digest catches exceptions and returns error dict."""
-
-    async def _raise(*_a, **_kw):
-        raise RuntimeError("DB down")
-
+    enter_p, exit_p = _uow_ctx()
     with (
-        patch("app.workers.tasks.notification_tasks.UnitOfWork", _fake_uow),
+        enter_p,
+        exit_p,
         patch(
             "app.workers.tasks.notification_tasks._distinct_subscriber_ids",
             new=AsyncMock(side_effect=RuntimeError("DB down")),

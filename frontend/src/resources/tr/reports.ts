@@ -1,4 +1,10 @@
-export type ReportTabId = "pdf" | "cost" | "roi" | "vehicle";
+export type ReportTabId =
+  | "pdf"
+  | "cost"
+  | "roi"
+  | "vehicle"
+  | "overview"
+  | "comparison";
 export type ReportDownloadOptionId =
   | "fleet_summary"
   | "vehicle_detail"
@@ -9,16 +15,47 @@ export const reportPageText = {
   description:
     "Filo performans raporlarını, maliyet analizlerini ve yatırım etkisini buradan yönetin.",
   tabs: {
+    overview: "Genel Bakış",
     pdf: "PDF Raporlar",
     cost: "Maliyet Analizi",
     roi: "Tasarruf ve ROI",
     vehicle: "Araç Karşılaştırma",
+    comparison: "Dönem Karşılaştırma",
   } satisfies Record<ReportTabId, string>,
   exportSuccessTitle: "Hazır",
   exportSuccessMessage: "Rapor başarıyla indirildi.",
   exportErrorTitle: "Hata",
   exportErrorMessage: "Rapor oluşturulamadı.",
   costLoading: "Veriler hazırlanıyor...",
+  overviewKpi: {
+    totalTrips: "Toplam Sefer",
+    totalKm: "Toplam KM",
+    fleetAvg: "Filo Ortalaması",
+    todayTrips: "Bugün Sefer",
+    trend: (pct: number) =>
+      pct > 0
+        ? `+${pct.toFixed(1)}% geçen aya göre`
+        : `${pct.toFixed(1)}% geçen aya göre`,
+    trendNeutral: "Geçen ayla karşılaştırma yok",
+    consumptionTitle: "6 Aylık Tüketim Trendi",
+    consumptionUnit: "Litre",
+    consumptionEmpty: "Tüketim verisi bulunamadı.",
+    loading: "Yükleniyor...",
+  },
+  comparison: {
+    title: "Dönem Karşılaştırma",
+    subtitle: "Bu periyot vs geçen periyot",
+    week: "Bu Hafta",
+    month: "Bu Ay",
+    current: "Bu Dönem",
+    previous: "Önceki Dönem",
+    fuelL: "Yakıt (L)",
+    fuelCost: "Maliyet (TL)",
+    anomalies: "Anomali",
+    trips: "Sefer",
+    noData: "Karşılaştırma verisi alınamadı.",
+    loading: "Yükleniyor...",
+  },
 };
 
 export const reportDownloadOptions = {

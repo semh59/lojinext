@@ -1,4 +1,10 @@
-export type ReportTabId = "pdf" | "cost" | "roi" | "vehicle";
+export type ReportTabId =
+  | "pdf"
+  | "cost"
+  | "roi"
+  | "vehicle"
+  | "overview"
+  | "comparison";
 export type ReportDownloadOptionId =
   | "fleet_summary"
   | "vehicle_detail"
@@ -9,16 +15,47 @@ export const reportPageText = {
   description:
     "Manage fleet performance reports, cost analyses, and investment impact from here.",
   tabs: {
+    overview: "Overview",
     pdf: "PDF Reports",
     cost: "Cost Analysis",
     roi: "Savings & ROI",
     vehicle: "Vehicle Comparison",
+    comparison: "Period Comparison",
   } satisfies Record<ReportTabId, string>,
   exportSuccessTitle: "Ready",
   exportSuccessMessage: "Report downloaded successfully.",
   exportErrorTitle: "Error",
   exportErrorMessage: "Report could not be generated.",
   costLoading: "Preparing data...",
+  overviewKpi: {
+    totalTrips: "Total Trips",
+    totalKm: "Total KM",
+    fleetAvg: "Fleet Average",
+    todayTrips: "Today's Trips",
+    trend: (pct: number) =>
+      pct > 0
+        ? `+${pct.toFixed(1)}% vs last month`
+        : `${pct.toFixed(1)}% vs last month`,
+    trendNeutral: "No month-over-month comparison",
+    consumptionTitle: "6-Month Consumption Trend",
+    consumptionUnit: "Litres",
+    consumptionEmpty: "No consumption data found.",
+    loading: "Loading...",
+  },
+  comparison: {
+    title: "Period Comparison",
+    subtitle: "This period vs previous period",
+    week: "This Week",
+    month: "This Month",
+    current: "Current Period",
+    previous: "Previous Period",
+    fuelL: "Fuel (L)",
+    fuelCost: "Cost (TL)",
+    anomalies: "Anomalies",
+    trips: "Trips",
+    noData: "Could not load comparison data.",
+    loading: "Loading...",
+  },
 };
 
 export const reportDownloadOptions = {

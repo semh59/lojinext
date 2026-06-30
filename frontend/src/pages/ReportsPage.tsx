@@ -15,6 +15,8 @@ import {
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import { CostAnalysisChart } from "../components/reports/CostAnalysisChart";
 import { ReportCards } from "../components/reports/ReportCards";
+import { ReportsComparisonTab } from "../components/reports/ReportsComparisonTab";
+import { ReportsOverviewTab } from "../components/reports/ReportsOverviewTab";
 import { ROICalculator } from "../components/reports/ROICalculator";
 import { SavingsPotentialCard } from "../components/reports/SavingsPotentialCard";
 import { PeriodCostBreakdown } from "../components/reports/PeriodCostBreakdown";
@@ -39,7 +41,7 @@ export default function ReportsPage() {
   const { t } = useTranslation();
   usePageTitle(t("reports.title", "Reports"));
   const { notify } = useNotify();
-  const [activeTab, setActiveTab] = useState<ReportTabId>("pdf");
+  const [activeTab, setActiveTab] = useState<ReportTabId>("overview");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportType, setExportType] = useState<ExportType>("fleet_summary");
   const [exportTitle, setExportTitle] = useState("");
@@ -128,10 +130,16 @@ export default function ReportsPage() {
 
   const tabs: Array<{ id: ReportTabId; label: string; icon: typeof FileText }> =
     [
+      { id: "overview", label: reportPageText.tabs.overview, icon: TrendingUp },
       { id: "pdf", label: reportPageText.tabs.pdf, icon: FileText },
       { id: "cost", label: reportPageText.tabs.cost, icon: PieChart },
       { id: "roi", label: reportPageText.tabs.roi, icon: TrendingUp },
       { id: "vehicle", label: reportPageText.tabs.vehicle, icon: BarChart2 },
+      {
+        id: "comparison",
+        label: reportPageText.tabs.comparison,
+        icon: BarChart2,
+      },
     ];
 
   return (
@@ -179,6 +187,7 @@ export default function ReportsPage() {
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="glass rounded-2xl border border-border p-6 shadow-sm"
             >
+              {activeTab === "overview" && <ReportsOverviewTab />}
               {activeTab === "pdf" && (
                 <ReportCards onDownload={handleDownloadClick} />
               )}
@@ -196,6 +205,7 @@ export default function ReportsPage() {
                 </div>
               )}
               {activeTab === "roi" && <ROICalculator />}
+              {activeTab === "comparison" && <ReportsComparisonTab />}
               {activeTab === "vehicle" && (
                 <div className="space-y-4">
                   <div>

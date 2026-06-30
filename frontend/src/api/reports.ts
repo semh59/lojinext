@@ -54,6 +54,29 @@ export interface VehicleCostComparison {
   error_code?: string;
 }
 
+export type FleetComparisonPeriod = "week" | "month";
+
+export interface PeriodMetrics {
+  fuel_l: number;
+  fuel_cost_tl: number;
+  anomaly_count: number;
+  trip_count: number;
+}
+
+export interface FleetComparison {
+  period: FleetComparisonPeriod;
+  current: PeriodMetrics;
+  previous: PeriodMetrics;
+  fuel_l_delta_pct: number | null;
+  fuel_cost_delta_pct: number | null;
+  anomaly_delta_pct: number | null;
+  trip_delta_pct: number | null;
+  current_start: string;
+  current_end: string;
+  previous_start: string;
+  previous_end: string;
+}
+
 export const reportService = {
   getDashboardStats: async (): Promise<DashboardStats> => {
     const data = await getDashboardStatsApiV1ReportsDashboardGet();
@@ -131,6 +154,16 @@ export const reportService = {
       >[0],
     );
     return data as unknown as PeriodCostBreakdown;
+  },
+
+  getFleetComparison: async (
+    period: FleetComparisonPeriod = "month",
+  ): Promise<FleetComparison> => {
+    const response = await axiosInstance.get(
+      "/reports/insights/fleet/comparison",
+      { params: { period } },
+    );
+    return response.data as FleetComparison;
   },
 
   downloadPdf: async (

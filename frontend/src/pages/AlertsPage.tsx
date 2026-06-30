@@ -578,14 +578,14 @@ export default function AlertsPage() {
                 </span>
               </div>
 
-              {recentData.anomalies.length === 0 && (
+              {(recentData.anomalies?.length ?? 0) === 0 && (
                 <div className="rounded-card border border-success/20 bg-success/5 px-4 py-3 text-sm text-secondary">
                   {t("alerts.no_match")}
                 </div>
               )}
 
               <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
-                {recentData.anomalies.map((anomaly) => (
+                {recentData.anomalies?.map((anomaly) => (
                   <div
                     key={anomaly.id}
                     className="rounded-card border border-border/50 bg-elevated p-4 transition-colors hover:border-border"

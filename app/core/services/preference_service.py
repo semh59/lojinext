@@ -27,6 +27,8 @@ class PreferenceService:
         is_default: bool = False,
     ) -> KullaniciAyari:
         """Save or update a user preference."""
+        if not user_id or user_id <= 0:
+            raise ValueError("Geçersiz kullanıcı için tercih kaydedilemez")
         async with UnitOfWork() as uow:
             if is_default:
                 # Clear existing default for this module/type

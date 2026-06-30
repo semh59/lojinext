@@ -326,7 +326,9 @@ async def resolve_error_event(
             """),
             {
                 "now": datetime.now(timezone.utc),
-                "user_id": current_user.id,
+                "user_id": current_user.id
+                if current_user.id and current_user.id > 0
+                else None,
                 "event_id": event_id,
             },
         )

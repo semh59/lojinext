@@ -33,6 +33,10 @@ async def save_preference(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Save or update a user preference."""
+    if not current_user.id or current_user.id <= 0:
+        raise HTTPException(
+            status_code=403, detail="Sistem kullanıcısı tercih kaydedemez"
+        )
     try:
         return await preference_service.save_preference(
             user_id=current_user.id,

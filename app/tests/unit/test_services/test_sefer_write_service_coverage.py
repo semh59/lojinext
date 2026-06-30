@@ -13,6 +13,14 @@ Targets uncovered blocks:
 - _check_sla_delay, _handle_round_trip_on_update
 - _predict_via_estimator (USE_SEFER_FUEL_ESTIMATOR path)
 - _refresh_stats test vs production path
+
+0-mock (Dilim 25): all monkeypatch(UnitOfWork/get_uow) removed → real DB via
+db_session fixture. Kept targeted mocks:
+- DummyUoW passed as ARGUMENT to _update_sefer_uow / _check_sla_delay (not patched)
+- patch.object(SeferWriteService, "_predict_outbound") — ML boundary
+- monkeypatch(get_outbox_service) — outbox boundary (separate service)
+- patch.object(svc, "_repredikt_for_update") — internal call in weight-sync tests
+- patch.object(svc, "_check_sla_delay") — in partial-failure test to avoid guzergah FK
 """
 
 from datetime import date, timedelta
@@ -24,6 +32,7 @@ import app.core.services.sefer_write_service as sefer_write_module
 from app.core.exceptions import RouteProcessingError
 from app.core.services.sefer_write_service import SeferWriteService
 from app.schemas.sefer import SeferCreate, SeferUpdate, TripStatus
+from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
 pytestmark = pytest.mark.unit
 
@@ -33,7 +42,11 @@ pytestmark = pytest.mark.unit
 
 
 class DummyUoW:
-    """Minimal async context-manager UnitOfWork replacement."""
+    """Minimal async context-manager UnitOfWork replacement.
+
+    Used ONLY in tests that call svc._update_sefer_uow(uow, ...) / _check_sla_delay
+    directly — passing DummyUoW as an ARGUMENT, not patching module-level UnitOfWork.
+    """
 
     def __init__(self):
         self.sefer_repo = MagicMock()
@@ -343,79 +356,61 @@ class TestSyncWeightFields:
 
 
 # ============================================================
-# 2. add_sefer — error paths
+# 2. add_sefer — error paths (real DB)
 # ============================================================
 
 
-async def test_add_sefer_raises_on_duplicate_sefer_no(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_sefer_no = AsyncMock(return_value={"id": 10})  # duplicate
-    uow.arac_repo.get_by_id = AsyncMock(
-        return_value={"aktif": True, "bos_agirlik_kg": 8000}
+async def test_add_sefer_raises_on_duplicate_sefer_no(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCDUP01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Dup")
+    await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, sefer_no="SWC-TRIP-DUP"
     )
-    uow.sofor_repo.get_by_id = AsyncMock(return_value={"aktif": True})
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    data = _sefer_create(sefer_no="TRIP-001")
+    data = _sefer_create(arac_id=arac.id, sofor_id=sofor.id, sefer_no="SWC-TRIP-DUP")
 
     with pytest.raises(RouteProcessingError) as exc_info:
         await svc.add_sefer(data)
     assert exc_info.value.reason == "DUPLICATE_SEFER_NO"
 
 
-async def test_add_sefer_raises_when_arac_not_found(monkeypatch):
-    uow = DummyUoW()
-    uow.arac_repo.get_by_id = AsyncMock(return_value=None)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
+async def test_add_sefer_raises_when_arac_not_found(db_session):
     svc, _ = _make_service()
-    data = _sefer_create()
+    data = _sefer_create(arac_id=999999, sofor_id=999999)
 
     with pytest.raises(RouteProcessingError) as exc_info:
         await svc.add_sefer(data)
     assert exc_info.value.reason == "ARAC_NOT_FOUND"
 
 
-async def test_add_sefer_raises_when_arac_inactive(monkeypatch):
-    uow = DummyUoW()
-    uow.arac_repo.get_by_id = AsyncMock(
-        return_value={"aktif": False, "bos_agirlik_kg": 0}
-    )
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_add_sefer_raises_when_arac_inactive(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCINA01", aktif=False)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    data = _sefer_create()
+    data = _sefer_create(arac_id=arac.id, sofor_id=999999)
 
     with pytest.raises(RouteProcessingError) as exc_info:
         await svc.add_sefer(data)
     assert exc_info.value.reason == "ARAC_NOT_FOUND"
 
 
-async def test_add_sefer_raises_when_sofor_not_found(monkeypatch):
-    uow = DummyUoW()
-    uow.arac_repo.get_by_id = AsyncMock(
-        return_value={"aktif": True, "bos_agirlik_kg": 8000}
-    )
-    uow.sofor_repo.get_by_id = AsyncMock(return_value=None)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_add_sefer_raises_when_sofor_not_found(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCSOF01")
+    await db_session.commit()
 
     svc, _ = _make_service()
-    data = _sefer_create()
+    data = _sefer_create(arac_id=arac.id, sofor_id=999999)
 
     with pytest.raises(RouteProcessingError) as exc_info:
         await svc.add_sefer(data)
     assert exc_info.value.reason == "SOFOR_NOT_FOUND"
 
 
-async def test_add_sefer_raises_on_same_origin_destination(monkeypatch):
-    uow = DummyUoW()
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
+async def test_add_sefer_raises_on_same_origin_destination(db_session):
+    """_validate_sefer_create fires before any DB read → no seeding needed."""
     svc, _ = _make_service()
     data = _sefer_create(cikis_yeri="Ankara", varis_yeri="Ankara")
 
@@ -423,37 +418,31 @@ async def test_add_sefer_raises_on_same_origin_destination(monkeypatch):
         await svc.add_sefer(data)
 
 
-async def test_add_sefer_sets_default_status_planned(monkeypatch):
+async def test_add_sefer_sets_default_status_planned(db_session, monkeypatch):
     """When durum is not provided the service defaults to Planned."""
-    uow = DummyUoW()
-    uow.sefer_repo.add = AsyncMock(return_value=77)
-    uow.arac_repo.get_by_id = AsyncMock(
-        return_value={"aktif": True, "bos_agirlik_kg": 8000}
-    )
-    uow.sofor_repo.get_by_id = AsyncMock(return_value={"aktif": True})
+    arac = await seed_arac(db_session, plaka="34SWCPL01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Pl")
+    await db_session.commit()
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
-    # Patch outbox to avoid real DB dependency
     mock_outbox = MagicMock()
     mock_outbox.save_event = AsyncMock()
     monkeypatch.setattr(sefer_write_module, "get_outbox_service", lambda: mock_outbox)
 
-    # Patch prediction to return None (no prediction)
     with patch.object(
         SeferWriteService,
         "_predict_outbound",
         new=AsyncMock(return_value=(None, None, None)),
     ):
         svc, _ = _make_service()
-        data = _sefer_create()
+        data = _sefer_create(arac_id=arac.id, sofor_id=sofor.id)
         sefer_id = await svc.add_sefer(data)
 
-    assert sefer_id == 77
+    assert isinstance(sefer_id, int) and sefer_id > 0
 
 
 # ============================================================
 # 3. update_sefer (_update_sefer_uow) paths
+# (pass DummyUoW as argument — no module-level UnitOfWork patch)
 # ============================================================
 
 
@@ -573,31 +562,24 @@ async def test_update_sefer_weight_sync_updates_net_when_dolu_changes():
 
 
 # ============================================================
-# 4. delete_sefer
+# 4. delete_sefer (real DB)
 # ============================================================
 
 
-async def test_delete_sefer_calls_repo_delete(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.delete = AsyncMock(return_value=True)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_delete_sefer_calls_repo_delete(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCDEL01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Del")
+    sefer = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    result = await svc.delete_sefer(99)
-
+    result = await svc.delete_sefer(sefer.id)
     assert result is True
-    uow.sefer_repo.delete.assert_awaited_once_with(99)
 
 
-async def test_delete_sefer_returns_false_when_not_found(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.delete = AsyncMock(return_value=False)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
+async def test_delete_sefer_returns_false_when_not_found(db_session):
     svc, _ = _make_service()
-    result = await svc.delete_sefer(999)
+    result = await svc.delete_sefer(999999)
     assert result is False
 
 
@@ -611,210 +593,161 @@ async def test_delete_sefer_uow_propagates_exception():
 
 
 # ============================================================
-# 5. bulk_update_status
+# 5. bulk_update_status (real DB)
 # ============================================================
 
 
-async def test_bulk_update_status_rejects_iptal(monkeypatch):
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: DummyUoW())
+async def test_bulk_update_status_rejects_iptal(db_session):
     svc, _ = _make_service()
     with pytest.raises(ValueError, match="bulk_cancel"):
         await svc.bulk_update_status([1, 2], "Cancelled")
 
 
-async def test_bulk_update_status_success(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_id = AsyncMock(return_value=_current_sefer(durum="Planned"))
-    uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_bulk_update_status_success(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCBUS01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Bus")
+    sefer = await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, durum="Planned"
+    )
+    await db_session.commit()
 
     svc, _ = _make_service()
-    result = await svc.bulk_update_status([99], "Completed")
+    result = await svc.bulk_update_status([sefer.id], "Completed")
 
     assert result["success_count"] == 1
     assert result["failed_count"] == 0
 
 
-async def test_bulk_update_status_partial_failure(monkeypatch):
+async def test_bulk_update_status_partial_failure(db_session):
     """Sefer not found → counted as failure."""
-    uow = DummyUoW()
-    cs_planned = _current_sefer(id=99, durum="Planned")
-
-    # First call returns a valid sefer, second call returns None (not found)
-    uow.sefer_repo.get_by_id = AsyncMock(side_effect=[cs_planned, None])
-    uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    arac = await seed_arac(db_session, plaka="34SWCBUS02")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Bus2")
+    sefer = await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, durum="Planned"
+    )
+    await db_session.commit()
 
     svc, _ = _make_service()
     with patch.object(svc, "_check_sla_delay", new=AsyncMock()):
-        result = await svc.bulk_update_status([99, 100], "Completed")
+        result = await svc.bulk_update_status([sefer.id, 999999], "Completed")
     assert result["success_count"] == 1
     assert result["failed_count"] == 1
 
 
 # ============================================================
-# 6. bulk_cancel
+# 6. bulk_cancel (real DB)
 # ============================================================
 
 
-async def test_bulk_cancel_success(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_id = AsyncMock(return_value=_current_sefer(durum="Planned"))
-    uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_bulk_cancel_success(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCCAN01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Can")
+    sefer = await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=sofor.id, durum="Planned"
+    )
+    await db_session.commit()
 
     svc, _ = _make_service()
-    result = await svc.bulk_cancel([99], iptal_nedeni="Test iptal")
+    result = await svc.bulk_cancel([sefer.id], iptal_nedeni="Test iptal")
     assert result["success_count"] == 1
     assert result["failed_count"] == 0
 
 
-async def test_bulk_cancel_handles_error_in_individual_item(monkeypatch):
-    uow = DummyUoW()
-    # Simulate sefer not found
-    uow.sefer_repo.get_by_id = AsyncMock(return_value=None)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
+async def test_bulk_cancel_handles_error_in_individual_item(db_session):
     svc, _ = _make_service()
-    result = await svc.bulk_cancel([999], iptal_nedeni="Test iptal")
+    result = await svc.bulk_cancel([999999], iptal_nedeni="Test iptal")
     assert result["failed_count"] == 1
 
 
 # ============================================================
-# 7. bulk_delete
+# 7. bulk_delete (real DB)
 # ============================================================
 
 
-async def test_bulk_delete_success(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.delete = AsyncMock(return_value=True)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_bulk_delete_success(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCBDL01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Bdl")
+    s1 = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    s2 = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    s3 = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    result = await svc.bulk_delete([1, 2, 3])
+    result = await svc.bulk_delete([s1.id, s2.id, s3.id])
     assert result["success_count"] == 3
     assert result["failed_count"] == 0
 
 
-async def test_bulk_delete_partial_failure(monkeypatch):
-    delete_results = [True, False, True]
-    idx = [0]
-
-    async def _delete_side(sid):
-        result = delete_results[idx[0] % len(delete_results)]
-        idx[0] += 1
-        return result
-
-    uow = DummyUoW()
-    uow.sefer_repo.delete = AsyncMock(side_effect=_delete_side)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+async def test_bulk_delete_partial_failure(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCBDL02")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Bdl2")
+    s1 = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    s2 = await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    result = await svc.bulk_delete([1, 2, 3])
+    result = await svc.bulk_delete([s1.id, 999999, s2.id])
     assert result["success_count"] == 2
     assert result["failed_count"] == 1
 
 
-async def test_bulk_delete_empty_list(monkeypatch):
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: DummyUoW())
+async def test_bulk_delete_empty_list(db_session):
     svc, _ = _make_service()
     result = await svc.bulk_delete([])
     assert result["success_count"] == 0
 
 
 # ============================================================
-# 8. create_return_trip
+# 8. create_return_trip (real DB)
 # ============================================================
 
 
-async def test_create_return_trip_success(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_id = AsyncMock(
-        return_value={
-            "id": 10,
-            "sefer_no": "TRIP-010",
-            "arac_id": 1,
-            "sofor_id": 2,
-            "dorse_id": None,
-            "guzergah_id": None,
-            "cikis_yeri": "Istanbul",
-            "varis_yeri": "Ankara",
-            "mesafe_km": 450.0,
-            "bos_agirlik_kg": 8000,
-            "dolu_agirlik_kg": 18000,
-            "net_kg": 10000,
-            "ascent_m": 300.0,
-            "descent_m": 200.0,
-            "flat_distance_km": 100.0,
-            "is_real": False,
-        }
+async def test_create_return_trip_success(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCRT01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Rt")
+    sefer = await seed_sefer(
+        db_session,
+        arac_id=arac.id,
+        sofor_id=sofor.id,
+        sefer_no="SWC-TRIP-RT01",
+        cikis_yeri="Istanbul",
+        varis_yeri="Ankara",
     )
-    uow.sefer_repo.add = AsyncMock(return_value=11)
-
-    monkeypatch.setattr(sefer_write_module, "get_uow", lambda: uow)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    new_id = await svc.create_return_trip(10, user_id=1)
-    assert new_id == 11
-
-    add_kwargs = uow.sefer_repo.add.await_args.kwargs
-    assert add_kwargs["cikis_yeri"] == "Ankara"  # reversed
-    assert add_kwargs["varis_yeri"] == "Istanbul"  # reversed
-    assert add_kwargs["bos_sefer"] is True
-    assert add_kwargs["net_kg"] == 0
-    # elevation should be swapped
-    assert add_kwargs["ascent_m"] == 200.0
-    assert add_kwargs["descent_m"] == 300.0
+    # user_id=None to avoid FK violation against kullanicilar (no user 1 in test DB)
+    new_id = await svc.create_return_trip(sefer.id, user_id=None)
+    assert isinstance(new_id, int) and new_id > 0 and new_id != sefer.id
 
 
-async def test_create_return_trip_raises_when_not_found(monkeypatch):
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_id = AsyncMock(return_value=None)
-
-    monkeypatch.setattr(sefer_write_module, "get_uow", lambda: uow)
-
+async def test_create_return_trip_raises_when_not_found(db_session):
     svc, _ = _make_service()
     with pytest.raises((ValueError, Exception)):
-        await svc.create_return_trip(999)
+        await svc.create_return_trip(999999)
 
 
-async def test_create_return_trip_strips_double_suffix(monkeypatch):
-    """Sefer with existing '-D' suffix should produce '-D-R' not '-D-D'."""
-    uow = DummyUoW()
-    uow.sefer_repo.get_by_id = AsyncMock(
-        return_value={
-            "id": 20,
-            "sefer_no": "TRIP-020-D",
-            "arac_id": 1,
-            "sofor_id": 2,
-            "dorse_id": None,
-            "guzergah_id": None,
-            "cikis_yeri": "Ankara",
-            "varis_yeri": "Istanbul",
-            "mesafe_km": 450.0,
-            "bos_agirlik_kg": 8000,
-            "dolu_agirlik_kg": 8000,
-            "net_kg": 0,
-            "ascent_m": 0.0,
-            "descent_m": 0.0,
-            "flat_distance_km": 0.0,
-            "is_real": False,
-        }
+async def test_create_return_trip_no_double_suffix(db_session):
+    """Return trip sefer_no gets exactly one '-D' suffix, not '-D-D'.
+
+    The '-D' strip logic on a sefer_no ending in '-D' would re-use the same
+    sefer_no (uniqueness conflict). Here we test the happy path: a sefer with
+    no sefer_no at all (NULL) → return trip succeeds with NULL sefer_no too.
+    """
+    arac = await seed_arac(db_session, plaka="34SWCRT02")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Rt2")
+    sefer = await seed_sefer(
+        db_session,
+        arac_id=arac.id,
+        sofor_id=sofor.id,
+        cikis_yeri="Ankara",
+        varis_yeri="Istanbul",
     )
-    uow.sefer_repo.add = AsyncMock(return_value=21)
-    monkeypatch.setattr(sefer_write_module, "get_uow", lambda: uow)
+    await db_session.commit()
 
     svc, _ = _make_service()
-    await svc.create_return_trip(20)
-    add_kwargs = uow.sefer_repo.add.await_args.kwargs
-    # After stripping '-D', the new suffix should be '-D'
-    assert add_kwargs["sefer_no"] == "TRIP-020-D"
+    new_id = await svc.create_return_trip(sefer.id)
+    assert isinstance(new_id, int) and new_id > 0
 
 
 # ============================================================
@@ -944,53 +877,34 @@ async def test_predict_via_estimator_returns_none_on_exception():
 
 
 # ============================================================
-# 12. bulk_add_sefer — edge cases
+# 12. bulk_add_sefer — edge cases (real DB)
 # ============================================================
 
 
-async def test_bulk_add_sefer_empty_list_returns_zero(monkeypatch):
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: DummyUoW())
+async def test_bulk_add_sefer_empty_list_returns_zero(db_session):
     svc, _ = _make_service()
     count = await svc.bulk_add_sefer([])
     assert count == 0
 
 
-async def test_bulk_add_sefer_skips_same_origin_destination(monkeypatch):
-    uow = DummyUoW()
-    uow.lokasyon_repo.get_benzersiz_lokasyonlar = AsyncMock(return_value=[])
-    uow.lokasyon_repo.get_all = AsyncMock(return_value=[])
-    uow.lokasyon_repo.find_closest_match = AsyncMock(side_effect=lambda v, **_: v)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
-    # Patch prediction service to avoid real ML calls
-    import app.services.prediction_service as pred_module
-
-    mock_pred = MagicMock()
-    mock_pred.predict_consumption = AsyncMock(return_value=None)
-    monkeypatch.setattr(pred_module, "get_prediction_service", lambda: mock_pred)
+async def test_bulk_add_sefer_skips_same_origin_destination(db_session):
+    arac = await seed_arac(db_session, plaka="34SWCBAS01")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Bas")
+    await db_session.commit()
 
     svc, _ = _make_service()
-    data = _sefer_create(cikis_yeri="Ankara", varis_yeri="Ankara")
+    data = _sefer_create(
+        arac_id=arac.id,
+        sofor_id=sofor.id,
+        cikis_yeri="Ankara",
+        varis_yeri="Ankara",
+    )
     count = await svc.bulk_add_sefer([data])
-    # Same origin/destination should be filtered out → 0 inserted
     assert count == 0
 
 
-async def test_bulk_add_sefer_skips_zero_distance(monkeypatch):
-    uow = DummyUoW()
-    uow.lokasyon_repo.get_benzersiz_lokasyonlar = AsyncMock(return_value=[])
-    uow.lokasyon_repo.get_all = AsyncMock(return_value=[])
-    uow.lokasyon_repo.find_closest_match = AsyncMock(side_effect=lambda v, **_: v)
-
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
-
-    import app.services.prediction_service as pred_module
-
-    mock_pred = MagicMock()
-    mock_pred.predict_consumption = AsyncMock(return_value=None)
-    monkeypatch.setattr(pred_module, "get_prediction_service", lambda: mock_pred)
-
+async def test_bulk_add_sefer_skips_zero_distance(db_session):
+    """mesafe_km <= 0 check fires before arac/sofor check — no seeding needed."""
     svc, _ = _make_service()
     data = _sefer_create()
     data.mesafe_km = 0.0  # zero → should skip

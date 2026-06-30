@@ -120,6 +120,8 @@ class TestRelayOutboxEvents:
 class TestCalculatePerformanceScore:
     def test_with_qualifying_trips(self):
         """Sürücü verileri varsa hata yok."""
+        from app.database.unit_of_work import UnitOfWork
+
         mock_row = MagicMock()
         mock_row.trip_count = 10
         mock_row.avg_tuketim = 32.5
@@ -131,12 +133,13 @@ class TestCalculatePerformanceScore:
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
         mock_uow.session = mock_session
         mock_uow.commit = AsyncMock()
 
-        with patch("app.workers.tasks.driver_tasks.UnitOfWork", return_value=mock_uow):
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             from app.workers.tasks.driver_tasks import calculate_performance_score
 
             calculate_performance_score.run(driver_id=1)  # no exception
@@ -145,6 +148,8 @@ class TestCalculatePerformanceScore:
 
     def test_no_qualifying_trips(self):
         """Sürücü için trip yoksa da hata olmaz."""
+        from app.database.unit_of_work import UnitOfWork
+
         mock_result = MagicMock()
         mock_result.one_or_none.return_value = None
 
@@ -152,12 +157,13 @@ class TestCalculatePerformanceScore:
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=False)
         mock_uow.session = mock_session
         mock_uow.commit = AsyncMock()
 
-        with patch("app.workers.tasks.driver_tasks.UnitOfWork", return_value=mock_uow):
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             from app.workers.tasks.driver_tasks import calculate_performance_score
 
             calculate_performance_score.run(driver_id=99)

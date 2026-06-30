@@ -20,11 +20,10 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import app.core.services.sefer_write_service as sefer_write_module
-import app.core.services.yakit_service as yakit_module
 from app.core.entities.models import SeferCreate
 from app.core.services.sefer_write_service import SeferWriteService
 from app.core.services.yakit_service import YakitService
+from app.database.unit_of_work import UnitOfWork
 from app.schemas.yakit import YakitCreate
 
 
@@ -66,7 +65,9 @@ async def test_bulk_add_yakit_emits_fiyat_tl_and_toplam_tutar(monkeypatch):
 
             self.yakit_repo.bulk_create = _bulk_create
 
-    monkeypatch.setattr(yakit_module, "UnitOfWork", lambda: FakeUoW())
+    fake_uow = FakeUoW()
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     service = YakitService(repo=AsyncMock(), event_bus=MagicMock())
     payload = [
@@ -144,7 +145,8 @@ async def test_bulk_add_sefer_enriches_bos_and_dolu_from_arac_master(
             pass
 
     fake_uow = FakeUoW()
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: fake_uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     # ML prediction'ı atla — büyük batch davranışı (>200) gibi
     mock_pred_service = MagicMock()
@@ -224,7 +226,8 @@ async def test_bulk_add_sefer_fallback_when_arac_bos_unknown(monkeypatch):
             self.sefer_repo.bulk_create = _bulk_create
 
     fake_uow = FakeUoW()
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: fake_uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
         "app.services.prediction_service.get_prediction_service",
         lambda: AsyncMock(),

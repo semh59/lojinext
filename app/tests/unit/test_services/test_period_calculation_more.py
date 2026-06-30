@@ -15,6 +15,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
 
 
@@ -274,11 +276,10 @@ async def test_recalculate_vehicle_periods_with_periods_and_trips():
     mock_uow.sefer_repo.update_trips_fuel_data = AsyncMock()
     mock_uow.commit = AsyncMock()
 
-    mock_uow_cls = MagicMock()
-    mock_uow_cls.return_value.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("app.database.unit_of_work.UnitOfWork", mock_uow_cls):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         await svc.recalculate_vehicle_periods(arac_id=5)
 
     mock_uow.yakit_repo.save_fuel_periods.assert_called_once()
@@ -308,11 +309,10 @@ async def test_recalculate_vehicle_periods_no_updated_trips():
     mock_uow.sefer_repo.update_trips_fuel_data = AsyncMock()
     mock_uow.commit = AsyncMock()
 
-    mock_uow_cls = MagicMock()
-    mock_uow_cls.return_value.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("app.database.unit_of_work.UnitOfWork", mock_uow_cls):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         await svc.recalculate_vehicle_periods(arac_id=6)
 
     # save_fuel_periods still called but update_trips_fuel_data should NOT be called
@@ -371,11 +371,10 @@ async def test_recalculate_vehicle_periods_tarih_as_date_object():
     mock_uow.sefer_repo.update_trips_fuel_data = AsyncMock()
     mock_uow.commit = AsyncMock()
 
-    mock_uow_cls = MagicMock()
-    mock_uow_cls.return_value.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    with patch("app.database.unit_of_work.UnitOfWork", mock_uow_cls):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         await svc.recalculate_vehicle_periods(arac_id=7)
 
     mock_uow.commit.assert_called_once()

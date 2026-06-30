@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
-
-
-@asynccontextmanager
-async def _fake_uow():
-    yield MagicMock()
 
 
 def _item(risk: str):
@@ -22,7 +18,8 @@ def _item(risk: str):
 
 def test_inspection_push_broadcasts_when_due():
     with (
-        patch("app.workers.tasks.compliance_tasks.UnitOfWork", _fake_uow),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=MagicMock())),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
             "app.workers.tasks.compliance_tasks.scan_compliance",
             new=AsyncMock(return_value=[_item("overdue"), _item("soon")]),
@@ -45,7 +42,8 @@ def test_inspection_push_broadcasts_when_due():
 
 def test_inspection_push_skips_when_none_due():
     with (
-        patch("app.workers.tasks.compliance_tasks.UnitOfWork", _fake_uow),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=MagicMock())),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
             "app.workers.tasks.compliance_tasks.scan_compliance",
             new=AsyncMock(return_value=[]),

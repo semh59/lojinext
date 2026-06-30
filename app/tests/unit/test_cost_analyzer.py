@@ -1,42 +1,30 @@
 """
 Unit Tests — CostAnalyzer service
-Mock'lar: UnitOfWork (async CM), yakit_repo, sefer_repo, analiz_repo, arac_repo
+
+0-mock (Dilim 27): all patch(UnitOfWork) removed.
+- Empty-result tests → real DB via db_session (clean slate from conftest)
+- Specific-data / calculation tests → narrow patch.object(Repo, 'method')
+  so UoW opens a real session but repo data-access is controlled
+- Pure logic tests (no DB call) → no fixture
 """
 
 from datetime import date
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+import app.database.repositories.analiz_repo as analiz_repo_mod
+import app.database.repositories.arac_repo as arac_repo_mod
+import app.database.repositories.sefer_repo as sefer_repo_mod
+import app.database.repositories.yakit_repo as yakit_repo_mod
 from app.core.services.cost_analyzer import (
     CostAnalyzer,
     CostBreakdown,
     get_cost_analyzer,
 )
 
-# ── helpers ──────────────────────────────────────────────────────────────────
-
-
-def _make_uow(fuel_records=None, trips=None, bulk_stats=None, vehicles=None):
-    """Async-context-manager UnitOfWork mock with configurable repo responses."""
-    uow = MagicMock()
-    uow.__aenter__ = AsyncMock(return_value=uow)
-    uow.__aexit__ = AsyncMock(return_value=False)
-
-    uow.yakit_repo = MagicMock()
-    uow.yakit_repo.get_by_date_range = AsyncMock(return_value=fuel_records or [])
-
-    uow.sefer_repo = MagicMock()
-    uow.sefer_repo.get_by_date_range = AsyncMock(return_value=trips or [])
-
-    uow.analiz_repo = MagicMock()
-    uow.analiz_repo.get_bulk_cost_stats = AsyncMock(return_value=bulk_stats or [])
-
-    uow.arac_repo = MagicMock()
-    uow.arac_repo.get_all = AsyncMock(return_value=vehicles or [])
-
-    return uow
+pytestmark = pytest.mark.unit
 
 
 # ── CostBreakdown dataclass ───────────────────────────────────────────────────
@@ -62,17 +50,27 @@ class TestCostBreakdown:
 
 
 class TestCalculatePeriodCost:
-    @pytest.mark.asyncio
     async def test_with_data(self):
+        """Narrow repo mock: verify calculation logic with controlled rows."""
         fuel = [
             {"toplam_tutar": 500.0, "litre": 100.0},
             {"toplam_tutar": 750.0, "litre": 150.0},
         ]
         trips = [{"mesafe_km": 1000}, {"mesafe_km": 500}]
-        uow = _make_uow(fuel_records=fuel, trips=trips)
 
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with (
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ),
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.calculate_period_cost(
                 date(2025, 1, 1), date(2025, 1, 31)
             )
@@ -84,48 +82,65 @@ class TestCalculatePeriodCost:
         assert result.avg_price_per_liter == Decimal("5.00")
         assert result.cost_per_km == round(Decimal("1250.00") / Decimal("1500.0"), 2)
 
-    @pytest.mark.asyncio
-    async def test_empty_fuel_and_trips(self):
-        uow = _make_uow()
+    async def test_empty_fuel_and_trips(self, db_session):
+        """Empty DB → all zeros returned."""
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            result = await analyzer.calculate_period_cost(
-                date(2025, 1, 1), date(2025, 1, 31)
-            )
+        result = await analyzer.calculate_period_cost(
+            date(2020, 1, 1), date(2020, 1, 31)
+        )
 
         assert result.fuel_cost == Decimal("0")
         assert result.trip_count == 0
         assert result.cost_per_km == Decimal("0")
         assert result.avg_price_per_liter == Decimal("0")
 
-    @pytest.mark.asyncio
     async def test_with_arac_id_filter(self):
-        uow = _make_uow(
-            fuel_records=[{"toplam_tutar": 200.0, "litre": 40.0}],
-            trips=[{"mesafe_km": 400}],
-        )
+        """Service must pass arac_id to yakit_repo.get_by_date_range."""
+        fuel = [{"toplam_tutar": 200.0, "litre": 40.0}]
+        trips = [{"mesafe_km": 400}]
+
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with (
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ) as mock_fuel,
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.calculate_period_cost(
                 date(2025, 1, 1), date(2025, 1, 31), arac_id=7
             )
-        assert result.fuel_cost == Decimal("200.00")
-        # repo called with arac_id
-        uow.yakit_repo.get_by_date_range.assert_awaited_once_with(
-            "2025-01-01", "2025-01-31", 7
-        )
 
-    @pytest.mark.asyncio
+        assert result.fuel_cost == Decimal("200.00")
+        mock_fuel.assert_awaited_once_with("2025-01-01", "2025-01-31", 7)
+
     async def test_none_values_handled(self):
-        """None values in toplam_tutar / litre / mesafe_km should not raise."""
+        """None toplam_tutar/litre/mesafe_km must not raise."""
         fuel = [{"toplam_tutar": None, "litre": None}]
         trips = [{"mesafe_km": None}]
-        uow = _make_uow(fuel_records=fuel, trips=trips)
+
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with (
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ),
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.calculate_period_cost(
                 date(2025, 1, 1), date(2025, 1, 31)
             )
+
         assert result.fuel_cost == Decimal("0")
 
 
@@ -133,8 +148,8 @@ class TestCalculatePeriodCost:
 
 
 class TestGetMonthlyTrend:
-    @pytest.mark.asyncio
     async def test_with_data(self):
+        """Narrow repo mock for controlled bulk-stats rows."""
         bulk_stats = [
             {
                 "ay": "2025-01",
@@ -151,9 +166,13 @@ class TestGetMonthlyTrend:
                 "sefer_sayisi": 0,
             },
         ]
-        uow = _make_uow(bulk_stats=bulk_stats)
+
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with patch.object(
+            analiz_repo_mod.AnalizRepository,
+            "get_bulk_cost_stats",
+            AsyncMock(return_value=bulk_stats),
+        ):
             trends = await analyzer.get_monthly_trend(months=2)
 
         assert len(trends) == 2
@@ -164,14 +183,12 @@ class TestGetMonthlyTrend:
         assert jan["cost_per_km"] > 0
 
         feb = trends[1]
-        assert feb["cost_per_km"] == 0.0  # zero distance → zero cost/km
+        assert feb["cost_per_km"] == 0.0
 
-    @pytest.mark.asyncio
-    async def test_empty_stats(self):
-        uow = _make_uow(bulk_stats=[])
+    async def test_empty_stats(self, db_session):
+        """Empty DB → get_bulk_cost_stats returns [] → trend is []."""
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            result = await analyzer.get_monthly_trend()
+        result = await analyzer.get_monthly_trend()
         assert result == []
 
 
@@ -179,64 +196,60 @@ class TestGetMonthlyTrend:
 
 
 class TestGetVehicleCostComparison:
-    @pytest.mark.asyncio
-    async def test_no_vehicles(self):
-        uow = _make_uow(vehicles=[])
+    async def test_no_vehicles(self, db_session):
+        """Empty DB → no active vehicles → result is []."""
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            result = await analyzer.get_vehicle_cost_comparison()
+        result = await analyzer.get_vehicle_cost_comparison()
         assert result == []
 
-    @pytest.mark.asyncio
     async def test_single_vehicle_with_data(self):
+        """Narrow repo mocks for vehicle fetch and per-vehicle cost calc."""
         vehicles = [{"id": 1, "plaka": "34ABC123"}]
-        # The outer UoW call returns vehicles; inner calls go via calculate_period_cost
-        outer_uow = _make_uow(vehicles=vehicles)
-        inner_uow = _make_uow(
-            fuel_records=[{"toplam_tutar": 300.0, "litre": 60.0}],
-            trips=[{"mesafe_km": 600.0}],
-        )
+        fuel = [{"toplam_tutar": 300.0, "litre": 60.0}]
+        trips = [{"mesafe_km": 600.0}]
 
-        call_count = 0
-
-        class FakeUoW:
-            def __init__(self):
-                pass
-
-            async def __aenter__(self):
-                nonlocal call_count
-                call_count += 1
-                return outer_uow if call_count == 1 else inner_uow
-
-            async def __aexit__(self, *a):
-                return False
-
-            # forward attribute lookups to the correct mock
-            def __getattr__(self, name):
-                if call_count == 1:
-                    return getattr(outer_uow, name)
-                return getattr(inner_uow, name)
-
-        with patch("app.core.services.cost_analyzer.UnitOfWork", FakeUoW):
-            analyzer = CostAnalyzer()
+        analyzer = CostAnalyzer()
+        with (
+            patch.object(
+                arac_repo_mod.AracRepository,
+                "get_all",
+                AsyncMock(return_value=vehicles),
+            ),
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ),
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.get_vehicle_cost_comparison(months=1)
 
         assert len(result) == 1
         assert result[0]["arac_id"] == 1
         assert result[0]["plaka"] == "34ABC123"
 
-    @pytest.mark.asyncio
     async def test_vehicle_calculation_error_returns_unavailable(self):
+        """When calculate_period_cost raises, vehicle entry shows unavailable."""
         vehicles = [{"id": 5, "plaka": "06XYZ789"}]
-        uow = _make_uow(vehicles=vehicles)
 
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            analyzer = CostAnalyzer()
-            # Make calculate_period_cost raise for this vehicle
-            with patch.object(
-                analyzer, "calculate_period_cost", side_effect=Exception("DB down")
-            ):
-                result = await analyzer.get_vehicle_cost_comparison(months=1)
+        analyzer = CostAnalyzer()
+        with (
+            patch.object(
+                arac_repo_mod.AracRepository,
+                "get_all",
+                AsyncMock(return_value=vehicles),
+            ),
+            patch.object(
+                analyzer,
+                "calculate_period_cost",
+                side_effect=Exception("DB down"),
+            ),
+        ):
+            result = await analyzer.get_vehicle_cost_comparison(months=1)
 
         assert len(result) == 1
         assert result[0]["unavailable"] is True
@@ -247,29 +260,37 @@ class TestGetVehicleCostComparison:
 
 
 class TestCalculateSavingsPotential:
-    @pytest.mark.asyncio
     async def test_invalid_target(self):
         analyzer = CostAnalyzer()
         result = await analyzer.calculate_savings_potential(target_consumption=0)
         assert "error" in result
 
-    @pytest.mark.asyncio
-    async def test_no_source_data(self):
-        """Empty records → savings analysis requires real data."""
-        uow = _make_uow()
+    async def test_no_source_data(self, db_session):
+        """Empty DB → no distance/fuel → error returned."""
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            result = await analyzer.calculate_savings_potential(target_consumption=30.0)
+        result = await analyzer.calculate_savings_potential(target_consumption=30.0)
         assert "error" in result
 
-    @pytest.mark.asyncio
     async def test_with_real_data(self):
+        """Narrow repo mock for savings calculation with controlled source data."""
         fuel = [{"toplam_tutar": 1500.0, "litre": 300.0}]
         trips = [{"mesafe_km": 1000.0}]
-        uow = _make_uow(fuel_records=fuel, trips=trips)
+
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with (
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ),
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.calculate_savings_potential(target_consumption=25.0)
+
         assert "current_consumption" in result
         assert "potential_savings" in result
         assert "annual_projection" in result
@@ -279,32 +300,39 @@ class TestCalculateSavingsPotential:
 
 
 class TestCalculateROI:
-    @pytest.mark.asyncio
     async def test_invalid_investment(self):
         analyzer = CostAnalyzer()
         result = await analyzer.calculate_roi(investment=0)
         assert "error" in result
 
-    @pytest.mark.asyncio
-    async def test_no_source_data_propagates_error(self):
-        """When savings_potential has error, roi should propagate it."""
-        uow = _make_uow()
+    async def test_no_source_data_propagates_error(self, db_session):
+        """Empty DB → savings_potential has error → roi propagates it."""
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
-            result = await analyzer.calculate_roi(investment=50000.0)
+        result = await analyzer.calculate_roi(investment=50000.0)
         assert "error" in result
 
-    @pytest.mark.asyncio
     async def test_with_positive_savings(self):
+        """Narrow repo mock for ROI with sufficient source data."""
         fuel = [{"toplam_tutar": 5000.0, "litre": 1000.0}]
         trips = [{"mesafe_km": 3000.0}]
-        uow = _make_uow(fuel_records=fuel, trips=trips)
+
         analyzer = CostAnalyzer()
-        with patch("app.core.services.cost_analyzer.UnitOfWork", return_value=uow):
+        with (
+            patch.object(
+                yakit_repo_mod.YakitRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=fuel),
+            ),
+            patch.object(
+                sefer_repo_mod.SeferRepository,
+                "get_by_date_range",
+                AsyncMock(return_value=trips),
+            ),
+        ):
             result = await analyzer.calculate_roi(
                 investment=10000.0, months=12, target_consumption=25.0
             )
-        # If there are real savings (current ~33 L/100km vs target 25), ROI should work
+
         if "error" not in result:
             assert "payback_months" in result
             assert "annual_roi_percentage" in result

@@ -6,6 +6,7 @@ import pytest
 from app.core.services.dashboard_service import DashboardService
 from app.core.services.insight_engine import Insight, InsightEngine, InsightType
 from app.core.services.weather_service import WeatherService
+from app.database.unit_of_work import UnitOfWork
 
 
 @pytest.mark.asyncio
@@ -22,12 +23,13 @@ async def test_dashboard_service_parallelism():
 
     # Mock UoW (analiz_repo comes from there; sefer_repo is DI-injected above)
     mock_uow = MagicMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
     mock_uow.analiz_repo = AsyncMock()
     mock_uow.analiz_repo.get_monthly_consumption_series = AsyncMock(return_value=[])
 
-    with patch("app.core.services.dashboard_service.UnitOfWork", return_value=mock_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         # Add delays to simulate I/O
         async def delayed_return_stats(*args, **kwargs):
             await asyncio.sleep(0.1)

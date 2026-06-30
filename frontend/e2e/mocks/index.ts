@@ -55,10 +55,10 @@ const FUEL_STATS = {
     avg_consumption: 31.2, total_distance: 16985.0,
 }
 
-const VEHICLE_LIST = { items: [MOCK_VEHICLE], total: 1, page: 1, pages: 1 }
+const VEHICLE_LIST = { data: [MOCK_VEHICLE], meta: { total: 1, skip: 0, limit: 20 }, errors: null }
 const VEHICLE_STATS = { total: 1, aktif: 1, pasif: 0 }
 
-const DRIVER_LIST = [MOCK_DRIVER]
+const DRIVER_LIST = { data: [MOCK_DRIVER], meta: { total: 1, skip: 0, limit: 20 }, errors: null }
 
 const LOCATION_LIST = { items: [MOCK_LOCATION], total: 1 }
 

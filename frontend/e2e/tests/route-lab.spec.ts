@@ -13,11 +13,20 @@ const MOCK_LOCATIONS = {
 }
 
 const MOCK_SIM_RESULT = {
-    total_km: 451.2,
-    total_l: 135.3,
-    total_eta_sec: 18_000,
-    avg_l_per_100km: 30.0,
+    simulation_id: 1,
+    created_at: '2026-06-30T10:00:00',
+    summary: {
+        distance_km: 451.2,
+        duration_min: 300.0,
+        total_l: 135.3,
+        avg_l_per_100km: 30.0,
+        total_ascent_m: 850,
+        total_descent_m: 720,
+    },
     elevation_coverage_pct: 85,
+    raw_segment_count: 1,
+    resampled_segment_count: 1,
+    meta: {},
     segments: [
         {
             seq: 1,
@@ -30,6 +39,10 @@ const MOCK_SIM_RESULT = {
             eta_sec: 400,
             mid_lat: 41.0,
             mid_lon: 28.9,
+            maxspeed_kmh: null,
+            traffic_speed_kmh: null,
+            congestion: 'free',
+            speed_source: 'osm',
         },
     ],
 }
@@ -92,7 +105,7 @@ test.describe('RouteLabPage — Güzergah Laboratuvarı', () => {
         ])
         expect(req.method()).toBe('POST')
         // Sonuç: mesafe veya yakıt değeri render edilmeli
-        await expect(page.getByText(/451|135|30/)).toBeVisible({ timeout: 10_000 })
+        await expect(page.getByText(/451|135|30/).first()).toBeVisible({ timeout: 10_000 })
     })
 
     test('429 rate limit hatası — hata mesajı gösterilir', async ({ authedPage: page }) => {

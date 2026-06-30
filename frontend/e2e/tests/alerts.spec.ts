@@ -133,11 +133,10 @@ test.describe('Anomaliler sayfası', () => {
         console.log('DEBUG: PAGE LOADED. INITIAL URL:', requestedUrl)
 
         // Her tarih filtresi butonuna sırayla tıkla ve API parametresini doğrula
-        // Buton metinleri: "7 Gün", "14 Gün", "30 Gün", "60 Gün", "90 Gün"
+        // 30 Gün default olduğu için React Query cache'den döner — yeni istek atılmaz, listeye dahil edilmez
         const filters = [
             { label: '7 Gün', param: '7' },
             { label: '14 Gün', param: '14' },
-            { label: '30 Gün', param: '30' },
             { label: '60 Gün', param: '60' },
             { label: '90 Gün', param: '90' },
         ]

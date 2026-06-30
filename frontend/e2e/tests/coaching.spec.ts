@@ -42,7 +42,7 @@ function json(body: unknown) {
 test.describe('Koçluk Modülü sayfası', () => {
     test.beforeEach(async ({ authedPage: page }) => {
         await page.route('**/api/v1/drivers/**', r =>
-            r.fulfill(json({ items: [MOCK_DRIVER], total: 1 }))
+            r.fulfill(json({ data: [MOCK_DRIVER], meta: { total: 1, skip: 0, limit: 20 }, errors: null }))
         )
         await page.route('**/api/v1/coaching/effectiveness**', r =>
             r.fulfill(json(MOCK_EFFECTIVENESS))

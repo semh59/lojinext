@@ -30,7 +30,7 @@ const MOCK_PREDICTION = {
 async function setupMocks(page: import('@playwright/test').Page) {
     // LIFO: catch-all ÖNCE (en düşük öncelik), spesifik SONRA (en yüksek öncelik)
     await page.route('**/api/v1/vehicles**', r =>
-        r.fulfill(json({ items: [{ id: 3, plaka: '34ABC03', marka: 'Mercedes', aktif: true }], total: 1 }))
+        r.fulfill(json({ data: [{ id: 3, plaka: '34ABC03', marka: 'Mercedes', aktif: true }], meta: { total: 1, skip: 0, limit: 20 }, errors: null }))
     )
     await page.route('**/api/v1/admin/maintenance/**', r => r.fulfill(json({})))
     // Specific routes LAST = first match in LIFO

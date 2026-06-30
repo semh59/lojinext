@@ -10,10 +10,10 @@ function json(body: unknown, status = 200) {
 test.describe('Atama Düzeltme sayfası', () => {
     test.beforeEach(async ({ authedPage: page }) => {
         await page.route('**/api/v1/vehicles/**', r =>
-            r.fulfill(json({ items: [MOCK_VEHICLE], total: 1, page: 1, pages: 1 }))
+            r.fulfill(json({ data: [MOCK_VEHICLE], meta: { total: 1, skip: 0, limit: 20 }, errors: null }))
         )
         await page.route('**/api/v1/drivers/**', r =>
-            r.fulfill(json({ items: [MOCK_DRIVER], total: 1 }))
+            r.fulfill(json({ data: [MOCK_DRIVER], meta: { total: 1, skip: 0, limit: 20 }, errors: null }))
         )
         await page.route('**/api/v1/admin/attribution/override', r =>
             r.fulfill(json({ ok: true }))

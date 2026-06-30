@@ -107,8 +107,8 @@ test.describe('Profil sayfası', () => {
         await page.goto('/profile')
         await page.waitForLoadState('networkidle')
 
-        // Sessiz saatler başlığı görünmeli
-        await expect(page.getByText(/Sessiz Saatler|Quiet Hours/i)).toBeVisible({ timeout: 10_000 })
+        // Sessiz saatler başlığı görünmeli (h3 başlığını hedefle — label ve button da eşleşir)
+        await expect(page.getByRole('heading', { name: /Sessiz Saatler|Quiet Hours/i })).toBeVisible({ timeout: 10_000 })
 
         // Checkbox'ı bulup tıkla
         const checkbox = page.locator('input[type="checkbox"]').first()

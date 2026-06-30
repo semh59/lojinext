@@ -152,8 +152,8 @@ test.describe('ML Tahminler sayfası', () => {
         await expect(explainBtn).toBeVisible()
         await explainBtn.click()
 
-        // XAI paneli görünmeli
-        await expect(page.getByText(/Katkı Oranı|Importance/i).first()).toBeVisible({ timeout: 5_000 })
+        // XAI paneli görünmeli — başlık "Tahmin Açıklaması (XAI)"
+        await expect(page.getByText(/Tahmin Açıklaması|XAI/i).first()).toBeVisible({ timeout: 5_000 })
     })
 
     test('Zaman Serisi tabı verileri doğru yükler', async ({ authedPage: page }) => {
@@ -174,8 +174,12 @@ test.describe('ML Tahminler sayfası', () => {
         await expect(tsTab).toBeVisible()
         await tsTab.click()
 
-        // Zaman serisi status card, forecast ve trend bilgisi görünmeli
-        await expect(page.getByText(/Model Eğitildi|Model Trained|ARIMA/i).first()).toBeVisible({ timeout: 5_000 })
+        // Tahmin Et butonuna tıklayarak forecast mutation'ı tetikle
+        const forecastBtn = page.getByRole('button', { name: /Tahmin Et|Forecast/i }).first()
+        await expect(forecastBtn).toBeVisible({ timeout: 5_000 })
+        await forecastBtn.click()
+
+        // Forecast sonucu: mock'tan gelen summary metni görünmeli
         await expect(page.getByText(/Stabil tüketim/i).first()).toBeVisible({ timeout: 5_000 })
     })
 })

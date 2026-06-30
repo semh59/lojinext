@@ -385,6 +385,7 @@ async def test_fetch_route_analysis_exception_silenced():
 
 async def test_fetch_route_analysis_lok_none():
     from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from app.database.unit_of_work import UnitOfWork
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -399,11 +400,12 @@ async def test_fetch_route_analysis_lok_none():
     fake_repo.get_by_id = AsyncMock(return_value=None)
 
     fake_uow = AsyncMock()
-    fake_uow.__aenter__ = AsyncMock(return_value=fake_uow)
-    fake_uow.__aexit__ = AsyncMock(return_value=None)
     fake_uow.lokasyon_repo = fake_repo
 
-    with patch("app.database.unit_of_work.UnitOfWork", return_value=fake_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         await engine._fetch_route_analysis(inp)
 
     assert inp.route_analysis is None
@@ -411,6 +413,7 @@ async def test_fetch_route_analysis_lok_none():
 
 async def test_fetch_route_analysis_sets_route_analysis():
     from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from app.database.unit_of_work import UnitOfWork
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -426,11 +429,12 @@ async def test_fetch_route_analysis_sets_route_analysis():
     fake_repo.get_by_id = AsyncMock(return_value=fake_route)
 
     fake_uow = AsyncMock()
-    fake_uow.__aenter__ = AsyncMock(return_value=fake_uow)
-    fake_uow.__aexit__ = AsyncMock(return_value=None)
     fake_uow.lokasyon_repo = fake_repo
 
-    with patch("app.database.unit_of_work.UnitOfWork", return_value=fake_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         await engine._fetch_route_analysis(inp)
 
     assert inp.route_analysis == {"motorway": {"flat": 200.0}}

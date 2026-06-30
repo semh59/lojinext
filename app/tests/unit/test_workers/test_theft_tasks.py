@@ -18,6 +18,7 @@ import pytest
 from sqlalchemy import insert
 
 from app.database.models import Anomaly, FuelInvestigation
+from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from app.workers.tasks.theft_tasks import _run_pattern_scan, daily_pattern_scan
 
@@ -125,7 +126,11 @@ async def test_run_pattern_scan_returns_meta_keys(db_session):
 
 async def test_run_pattern_scan_db_error():
     """DB error propagates (task layer catches it) — forced via a UoW double."""
-    with patch("app.database.unit_of_work.UnitOfWork", return_value=_uow_error_mock()):
+    err_uow = _uow_error_mock()
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=err_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         with pytest.raises(Exception, match="DB error"):
             await _run_pattern_scan()
 
@@ -136,7 +141,11 @@ def test_daily_pattern_scan_is_celery_task():
 
 def test_daily_pattern_scan_handles_db_error():
     """DB error → task returns an error key instead of raising (forced double)."""
-    with patch("app.database.unit_of_work.UnitOfWork", return_value=_uow_error_mock()):
+    err_uow = _uow_error_mock()
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=err_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         result = daily_pattern_scan.apply().get()
     assert "error" in result
     assert result["patterns_found"] == 0
@@ -157,8 +166,10 @@ async def test_run_pattern_scan_avg_score_null():
             "plaka": None,
         }
     ]
-    with patch(
-        "app.database.unit_of_work.UnitOfWork", return_value=_make_uow_mock(rows)
+    uow_inst = _make_uow_mock(rows)
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         result = await _run_pattern_scan()
     assert result["patterns_found"] == 1

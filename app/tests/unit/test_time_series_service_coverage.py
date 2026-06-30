@@ -5,11 +5,13 @@ train_model, predict_weekly (vehicle fallback to fleet), get_trend_analysis,
 get_model_status, and the factory function.
 """
 
+from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.core.ml.advanced_lstm import ForecastResult
+from app.database.unit_of_work import UnitOfWork
 from app.services.time_series_service import (
     TimeSeriesDataUnavailable,
     TimeSeriesService,
@@ -43,13 +45,19 @@ def _make_service():
 
 
 def _patch_uow(mock_repo):
-    """AUDIT-131: get_daily_summary artık session'lı UnitOfWork kullanır
-    (eski session'sız get_analiz_repo değil). UnitOfWork'ü mock'la."""
+    """AUDIT-131: get_daily_summary artık session'lı UnitOfWork kullanır."""
     mock_uow = MagicMock()
     mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
     mock_uow.__aexit__ = AsyncMock(return_value=None)
     mock_uow.analiz_repo = mock_repo
-    return patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow)
+    stack = ExitStack()
+    stack.enter_context(
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    )
+    stack.enter_context(
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+    )
+    return stack
 
 
 # ---------------------------------------------------------------------------

@@ -2,6 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.outbox_service import OutboxService
 
 
@@ -22,8 +23,12 @@ async def test_outbox_relay_graceful_shutdown():
     mock_result.scalars.return_value.all.return_value = mock_events
     mock_session.execute.return_value = mock_result
 
+    mock_uow = AsyncMock()
+    mock_uow.session = mock_session
+
     with (
-        patch("app.database.unit_of_work.UnitOfWork") as mock_uow_cls,
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
             "app.infrastructure.events.outbox_service.get_event_bus"
         ) as mock_bus_func,
@@ -31,11 +36,6 @@ async def test_outbox_relay_graceful_shutdown():
             "app.infrastructure.events.outbox_service.is_stopping"
         ) as mock_is_stopping,
     ):
-        # Setup UOW mock
-        mock_uow = AsyncMock()
-        mock_uow.session = mock_session
-        mock_uow_cls.return_value.__aenter__.return_value = mock_uow
-
         # Mock bus
         mock_bus = AsyncMock()
         mock_bus_func.return_value = mock_bus

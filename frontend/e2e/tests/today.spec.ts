@@ -133,4 +133,38 @@ test.describe('TodayPage — Bugün', () => {
         await page.reload({ waitUntil: 'domcontentloaded' })
         await expect(page.getByText('Liste yüklenemedi')).toBeVisible({ timeout: 10_000 })
     })
+
+    test('triage aksiyonu "İncele" butonu tıklanınca /alerts sayfasına yönlenir', async ({ authedPage: page }) => {
+        await expect(page.getByRole('button', { name: 'İncele' }).first()).toBeVisible()
+        await page.getByRole('button', { name: 'İncele' }).first().click()
+        await expect(page).toHaveURL(/\/alerts/, { timeout: 8_000 })
+    })
+
+    test('Hızlı Erişim - Sefer Planla butonu tıklanınca /trips?new=1 sayfasına yönlenir', async ({ authedPage: page }) => {
+        const btn = page.getByRole('button', { name: 'Sefer Planla' })
+        await expect(btn).toBeVisible()
+        await btn.click()
+        await expect(page).toHaveURL(/\/trips\?new=1/, { timeout: 8_000 })
+    })
+
+    test('Hızlı Erişim - Anomaliler butonu tıklanınca /alerts sayfasına yönlenir', async ({ authedPage: page }) => {
+        const btn = page.getByRole('button', { name: 'Anomaliler' })
+        await expect(btn).toBeVisible()
+        await btn.click()
+        await expect(page).toHaveURL(/\/alerts/, { timeout: 8_000 })
+    })
+
+    test('Hızlı Erişim - Şoförler butonu tıklanınca /drivers sayfasına yönlenir', async ({ authedPage: page }) => {
+        const btn = page.getByRole('button', { name: 'Şoförler' })
+        await expect(btn).toBeVisible()
+        await btn.click()
+        await expect(page).toHaveURL(/\/drivers/, { timeout: 8_000 })
+    })
+
+    test('Hızlı Erişim - Strategic Cockpit butonu tıklanınca /executive sayfasına yönlenir', async ({ authedPage: page }) => {
+        const btn = page.getByRole('button', { name: 'Strategic Cockpit' })
+        await expect(btn).toBeVisible()
+        await btn.click()
+        await expect(page).toHaveURL(/\/executive/, { timeout: 8_000 })
+    })
 })

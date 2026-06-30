@@ -20,7 +20,7 @@ test.describe('Lokasyon ve Rota akışları', () => {
     test('"Yeni Güzergah" butonu modal açar ve form alanları görünür', async ({ authedPage: page }) => {
         await page.goto('/locations')
         await expect(page.getByText('Lokasyon ve Rota Yönetimi')).toBeVisible({ timeout: 10_000 })
-        await page.getByRole('button', { name: /yeni güzergah/i }).click()
+        await page.getByRole('button', { name: 'Yeni Güzergah' }).click()
         const dialog = page.getByRole('dialog')
         await expect(dialog).toBeVisible({ timeout: 8_000 })
         await expect(dialog.locator('input, select').first()).toBeVisible()
@@ -29,7 +29,7 @@ test.describe('Lokasyon ve Rota akışları', () => {
     test('boş güzergah formu submit edilince validasyon engeller', async ({ authedPage: page }) => {
         await page.goto('/locations')
         await expect(page.getByText('Lokasyon ve Rota Yönetimi')).toBeVisible({ timeout: 10_000 })
-        await page.getByRole('button', { name: /yeni güzergah/i }).click()
+        await page.getByRole('button', { name: 'Yeni Güzergah' }).click()
         const dialog = page.getByRole('dialog')
         await expect(dialog).toBeVisible({ timeout: 8_000 })
         await dialog.getByRole('button', { name: /kaydet/i }).first().click()
@@ -51,7 +51,7 @@ test.describe('Lokasyon ve Rota akışları', () => {
 
         await page.goto('/locations')
         await expect(page.getByText('Lokasyon ve Rota Yönetimi')).toBeVisible({ timeout: 10_000 })
-        await page.getByRole('button', { name: /yeni güzergah/i }).click()
+        await page.getByRole('button', { name: 'Yeni Güzergah' }).click()
         await expect(page.getByRole('dialog')).toBeVisible({ timeout: 8_000 })
 
         // Fill origin: aria-label "Çıkış yeri arama", type → wait debounce → click suggestion
@@ -136,5 +136,20 @@ test.describe('Lokasyon ve Rota akışları', () => {
         } else {
             test.skip()
         }
+    })
+
+    test('Excel işlemleri butonu ve Zorluk seviyesi filtresi çalışır', async ({ authedPage: page }) => {
+        await page.goto('/locations')
+        await expect(page.getByText('Lokasyon ve Rota Yönetimi')).toBeVisible({ timeout: 10_000 })
+
+        // Excel İşlemleri butonu tıklanabilmeli
+        const excelBtn = page.getByRole('button', { name: /Excel/i }).first()
+        await expect(excelBtn).toBeVisible()
+        await excelBtn.click()
+
+        // Zorluk seviyesi filtresi seçimi yapılabilmeli
+        const select = page.locator('select').first()
+        await expect(select).toBeVisible()
+        await select.selectOption({ label: 'Orta' })
     })
 })

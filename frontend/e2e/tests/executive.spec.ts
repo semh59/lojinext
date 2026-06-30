@@ -169,6 +169,50 @@ test.describe('ExecutivePage — Strategic Cockpit', () => {
         expect(body.scenario_type).toBe('training')
     })
 
+    test('Filo Yenileme ROI ne-olurdu senaryosu çalıştırılabilir', async ({ authedPage: page }) => {
+        await page.goto('/executive')
+        await expect(page.getByText('Strategic Cockpit').first()).toBeVisible({ timeout: 10_000 })
+
+        const whatIfRequestPromise = page.waitForRequest(
+            r => r.url().includes('/what-if') && r.method() === 'POST'
+        )
+
+        // "Filo Yenileme ROI" butonuna tıkla
+        const btn = page.locator('button').filter({ hasText: 'Filo Yenileme ROI' }).first()
+        await btn.waitFor({ state: 'visible', timeout: 5_000 })
+        await btn.click()
+
+        // "Senaryoyu Çalıştır" butonuna tıkla
+        const runBtn = page.locator('button').filter({ hasText: 'Senaryoyu Çalıştır' }).first()
+        await runBtn.click()
+
+        const whatIfRequest = await whatIfRequestPromise
+        const body = JSON.parse(whatIfRequest.postData() ?? '{}')
+        expect(body.scenario_type).toBe('fleet_renewal')
+    })
+
+    test('Güzergah Portföy Optimizasyonu ne-olurdu senaryosu çalıştırılabilir', async ({ authedPage: page }) => {
+        await page.goto('/executive')
+        await expect(page.getByText('Strategic Cockpit').first()).toBeVisible({ timeout: 10_000 })
+
+        const whatIfRequestPromise = page.waitForRequest(
+            r => r.url().includes('/what-if') && r.method() === 'POST'
+        )
+
+        // "Güzergah Portföy Optimizasyonu" butonuna tıkla
+        const btn = page.locator('button').filter({ hasText: 'Güzergah Portföy Optimizasyonu' }).first()
+        await btn.waitFor({ state: 'visible', timeout: 5_000 })
+        await btn.click()
+
+        // "Senaryoyu Çalıştır" butonuna tıkla
+        const runBtn = page.locator('button').filter({ hasText: 'Senaryoyu Çalıştır' }).first()
+        await runBtn.click()
+
+        const whatIfRequest = await whatIfRequestPromise
+        const body = JSON.parse(whatIfRequest.postData() ?? '{}')
+        expect(body.scenario_type).toBe('route_portfolio')
+    })
+
     test('Carbon kartı görünür', async ({ authedPage: page }) => {
         await page.goto('/executive')
         await expect(page.getByText('Strategic Cockpit').first()).toBeVisible({ timeout: 10_000 })

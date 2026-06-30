@@ -1,5 +1,9 @@
 import { test, expect } from '../fixtures/auth'
 
+function json(body: unknown) {
+    return { status: 200, contentType: 'application/json', body: JSON.stringify(body) }
+}
+
 test.describe('Profil sayfası', () => {
     test('profil sayfası yüklenir ve alanlar görünür', async ({ authedPage: page }) => {
         await page.goto('/profile')
@@ -84,5 +88,46 @@ test.describe('Profil sayfası', () => {
         const body = JSON.parse(req.postData() || '{}')
         expect(body.current_password).toBe('EskiSifre123!')
         expect(body.new_password).toBe('YeniSifre123!')
+    })
+
+    test('sessiz saat ayarlarını güncelleyip kaydeder', async ({ authedPage: page }) => {
+        let postData: any = null
+        await page.route('**/api/v1/preferences**', r => {
+            const method = r.request().method()
+            if (method === 'GET') {
+                return r.fulfill(json({ items: [{ deger: { enabled: false, start: '22:00', end: '07:00' } }] }))
+            }
+            if (method === 'POST' || method === 'PUT') {
+                postData = r.request().postDataJSON()
+                return r.fulfill(json({ ok: true }))
+            }
+            return r.fulfill(json({}))
+        })
+
+        await page.goto('/profile')
+        await page.waitForLoadState('networkidle')
+
+        // Sessiz saatler başlığı görünmeli
+        await expect(page.getByText(/Sessiz Saatler|Quiet Hours/i)).toBeVisible({ timeout: 10_000 })
+
+        // Checkbox'ı bulup tıkla
+        const checkbox = page.locator('input[type="checkbox"]').first()
+        await expect(checkbox).toBeVisible()
+        await checkbox.click()
+
+        // Kaydet butonunu bulup tıkla
+        const saveBtn = page.getByRole('button', { name: /Sessiz saatleri kaydet|Save quiet hours/i })
+        await expect(saveBtn).toBeVisible()
+        await saveBtn.click()
+
+        // API'ye doğru payload gittiğini doğrula
+        await expect.poll(() => postData).toBeTruthy()
+        expect(postData).toMatchObject({
+            modul: 'bildirim',
+            ayar_tipi: 'quiet_hours',
+            deger: {
+                enabled: true
+            }
+        })
     })
 })

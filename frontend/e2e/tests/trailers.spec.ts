@@ -104,4 +104,16 @@ test.describe('FleetPage — Dorseler sekmesi', () => {
         // Hata boundary veya boş durum — kritik çöküş olmamalı; .first() strict mode ihlalini önler
         await expect(page.getByText('Dorse Yönetimi').or(page.getByText(/hata|yüklenemedi/i)).first()).toBeVisible({ timeout: 10_000 })
     })
+
+    test('Excel işlemleri ve Detaylı filtre butonları tıklanabilir', async ({ authedPage: page }) => {
+        // Excel İşlemleri butonu
+        const excelBtn = page.getByRole('button', { name: 'Excel İşlemleri' }).first()
+        await expect(excelBtn).toBeVisible()
+        await excelBtn.click()
+
+        // Detaylı Filtre butonu
+        const filterBtn = page.getByRole('button', { name: 'Detaylı Filtre' }).first()
+        await expect(filterBtn).toBeVisible()
+        await filterBtn.click()
+    })
 })

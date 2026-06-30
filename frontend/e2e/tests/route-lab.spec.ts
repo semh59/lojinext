@@ -114,4 +114,42 @@ test.describe('RouteLabPage — Güzergah Laboratuvarı', () => {
         await page.getByRole('button', { name: 'Simüle Et' }).click()
         await expect(page.getByText(/Mapbox|sağlayıcı/i)).toBeVisible({ timeout: 10_000 })
     })
+
+    test('Koordinat gir modu ile başarılı simülasyon yapılır', async ({ authedPage: page }) => {
+        let simPayload: any = null
+        await page.route('**/api/v1/routes/simulate**', r => {
+            simPayload = r.request().postDataJSON()
+            return r.fulfill(json(MOCK_SIM_RESULT))
+        })
+
+        // 1. Koordinat moduna geç
+        await page.getByRole('button', { name: 'Koordinat gir' }).click()
+
+        // 2. Alanları doldur
+        const cikisLat = page.locator('input').filter({ hasText: '' }).nth(0)
+        await page.getByLabel('Çıkış enlem').fill('41.0082')
+        await page.getByLabel('Çıkış boylam').fill('28.9784')
+        await page.getByLabel('Varış enlem').fill('39.9208')
+        await page.getByLabel('Varış boylam').fill('32.8541')
+
+        await page.getByLabel('Yük (ton)').fill('22')
+        await page.getByLabel('Araç yaşı').fill('4')
+
+        // 3. Simüle et tıklanmalı
+        await page.getByRole('button', { name: 'Simüle Et' }).click()
+
+        // 4. API payload doğrulaması
+        await expect.poll(() => simPayload).toBeTruthy()
+        expect(simPayload).toMatchObject({
+            cikis_lat: 41.0082,
+            cikis_lon: 28.9784,
+            varis_lat: 39.9208,
+            varis_lon: 32.8541,
+            ton: 22,
+            arac_yasi: 4
+        })
+
+        // 5. Sonuçların göründüğünü doğrula
+        await expect(page.getByText(/451\.2|135\.3|30\.0/)).toBeVisible({ timeout: 10_000 })
+    })
 })

@@ -144,9 +144,16 @@ async function extractElements(page: Page): Promise<UIElement[]> {
         )
 
         for (const el of nodes) {
-            const text  = el.textContent?.trim().replace(/\s+/g, ' ').slice(0, 100) ?? ''
-            const aria  = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? ''
             const tag   = el.tagName.toLowerCase()
+            let text    = ''
+            if (tag === 'select') {
+                const selectEl = el as HTMLSelectElement
+                const selectedOpt = selectEl.options[selectEl.selectedIndex]
+                text = selectedOpt?.textContent?.trim().replace(/\s+/g, ' ').slice(0, 100) ?? ''
+            } else {
+                text = el.textContent?.trim().replace(/\s+/g, ' ').slice(0, 100) ?? ''
+            }
+            const aria  = el.getAttribute('aria-label') ?? el.getAttribute('title') ?? ''
             const iType = (el as HTMLInputElement).type ?? ''
             const role  = el.getAttribute('role') ?? ''
 
@@ -212,7 +219,13 @@ test('UI element inventory @inventory', async ({ authedPage: page }) => {
             await page.waitForTimeout(400)
 
             const currentUrl = page.url()
-            const elements   = await extractElements(page)
+            const expectedPath = route.path.split('?')[0]
+            const actualPath = new URL(currentUrl).pathname
+            const normExpected = expectedPath.replace(/\/$/, '')
+            const normActual = actualPath.replace(/\/$/, '')
+            const isRedirect = normExpected !== normActual
+
+            const elements   = isRedirect ? [] : await extractElements(page)
 
             inventory.push({
                 route: route.path,

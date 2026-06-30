@@ -28,7 +28,7 @@ const FLEET_INSIGHTS = {
 
 test.describe('Anomaliler sayfası', () => {
     test.beforeEach(async ({ authedPage: page }) => {
-        await page.route('**/api/v1/anomalies/fleet/insights**', r => r.fulfill(json(FLEET_INSIGHTS)))
+        await page.route(/anomalies\/fleet\/insights/, r => r.fulfill(json(FLEET_INSIGHTS)))
     })
 
     test('sayfa yüklenir ve başlık görünür', async ({ authedPage: page }) => {
@@ -117,5 +117,69 @@ test.describe('Anomaliler sayfası', () => {
             // gösteriyor (MaintenanceTable çağrılmıyor — short-circuit).
             await expect(page.getByText(/bakım gerektiren araç bulunmuyor/i)).toBeVisible({ timeout: 5_000 })
         }
+    })
+
+    test('tarih filtre butonları tıklandığında API doğru gün parametresiyle tetiklenir', async ({ authedPage: page }) => {
+        let requestedUrl: string | null = null
+        await page.unroute(/anomalies\/fleet\/insights/)
+        await page.route(/anomalies\/fleet\/insights/, r => {
+            requestedUrl = r.request().url()
+            console.log('DEBUG: INTERCEPTED URL:', requestedUrl)
+            return r.fulfill(json(FLEET_INSIGHTS))
+        })
+
+        await page.goto('/alerts')
+        await page.waitForLoadState('networkidle')
+        console.log('DEBUG: PAGE LOADED. INITIAL URL:', requestedUrl)
+
+        // Her tarih filtresi butonuna sırayla tıkla ve API parametresini doğrula
+        // Buton metinleri: "7 Gün", "14 Gün", "30 Gün", "60 Gün", "90 Gün"
+        const filters = [
+            { label: '7 Gün', param: '7' },
+            { label: '14 Gün', param: '14' },
+            { label: '30 Gün', param: '30' },
+            { label: '60 Gün', param: '60' },
+            { label: '90 Gün', param: '90' },
+        ]
+        for (const { label, param } of filters) {
+            requestedUrl = null
+            const btn = page.getByRole('button', { name: label }).first()
+            await expect(btn).toBeVisible()
+            await btn.click()
+            console.log('DEBUG: CLICKED', label)
+            await expect.poll(() => {
+                console.log('DEBUG: POLLING requestedUrl:', requestedUrl)
+                return requestedUrl
+            }).toContain(`days=${param}`)
+        }
+    })
+
+    test('kategori sekme butonları (Tümü, Yakıt Kaçağı, Bakım Adayı, Soruşturmalar) tıklanabilir', async ({ authedPage: page }) => {
+        await page.route('**/api/v1/investigations**', r =>
+            r.fulfill(json([]))
+        )
+
+        await page.goto('/alerts')
+        await page.waitForLoadState('networkidle')
+
+        // "Tümü" tab varsayılan olarak aktif olmalı
+        const tumuBtn = page.getByRole('button', { name: /Tümü/i }).first()
+        await expect(tumuBtn).toBeVisible()
+
+        // "Yakıt Kaçağı" tab'a tıkla
+        const leakageBtn = page.getByRole('button', { name: /Yakıt Kaçağı/i }).first()
+        await expect(leakageBtn).toBeVisible()
+        await leakageBtn.click()
+        await expect(page.getByText(/Yakıt Kaçağı Özeti/i).first()).toBeVisible({ timeout: 5_000 })
+
+        // "Bakım Adayı" tab'a tıkla
+        const maintenanceBtn = page.getByRole('button', { name: /Bakım Adayı/i }).first()
+        await expect(maintenanceBtn).toBeVisible()
+        await maintenanceBtn.click()
+
+        // "Soruşturmalar" tab'a tıkla
+        const investigationsBtn = page.getByRole('button', { name: /Soruşturmalar/i }).first()
+        await expect(investigationsBtn).toBeVisible()
+        await investigationsBtn.click()
     })
 })

@@ -167,4 +167,41 @@ test.describe('Admin panel', () => {
         await expect(page.getByText('Henüz rol yok')).toHaveCount(0, { timeout: 8_000 })
         await expect(page.getByText('super_admin').first()).toBeVisible()
     })
+
+    test('sistem sağlığı sayfası — etkileşimler çalışır', async ({ authedPage: page }) => {
+        let backupCalled = false
+        await page.route('**/api/v1/admin/health/backup**', r => {
+            backupCalled = true
+            return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true }) })
+        })
+
+        await page.goto('/admin/saglik')
+        await page.waitForLoadState('networkidle')
+
+        // 1. Yenile butonu görünmeli ve tıklanmalı
+        const refreshBtn = page.getByRole('button', { name: /yenile|refresh/i }).first()
+        await expect(refreshBtn).toBeVisible()
+        await refreshBtn.click()
+
+        // 2. Manuel Yedek Al butonu görünmeli ve tıklanmalı
+        const backupBtn = page.getByRole('button', { name: /yedek|backup/i }).first()
+        await expect(backupBtn).toBeVisible()
+        await backupBtn.click()
+        await expect.poll(() => backupCalled).toBe(true)
+
+        // 3. Tab butonlarını bulup geçiş yap
+        const healthTab = page.getByRole('button', { name: /sistem durumu|status/i }).first()
+        const errorTab = page.getByRole('button', { name: /hata analizi|analysis/i }).first()
+
+        await expect(healthTab).toBeVisible()
+        await expect(errorTab).toBeVisible()
+
+        // Hata Analizi tabına geç
+        await errorTab.click()
+        // Hata Analizi başlığı gelmeli
+        await expect(page.getByText(/hata olayları|error events/i).first()).toBeVisible({ timeout: 5_000 })
+
+        // Geri Sistem Durumu tabına geç
+        await healthTab.click()
+    })
 })

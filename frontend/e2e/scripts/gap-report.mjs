@@ -67,7 +67,7 @@ function specTestsRoute(specContent, routePath) {
 function elementIsTested(text, ariaLabel, route) {
     if (!text && !ariaLabel) return false
 
-    const labels = [text, ariaLabel].filter(Boolean)
+    const labels = [text, ariaLabel].filter(Boolean).map(l => l.replace(/i̇/g, 'i'))
 
     // Önce bu route'u test eden spec'lerde ara
     const relevantSpecs = Object.entries(specContents)
@@ -98,11 +98,17 @@ const LAYOUT_NAV_TEXTS = new Set([
     'araçlar & dorseler', 'şoförler', 'locations', 'filo içgörü',
     'anomaliler', 'ml tahminler', 'koçluk', 'strategic cockpit',
     'rapor stüdyosu', 'güzergah lab', 'administration',
+    'genel bakış', 'kullanıcılar', 'roller', 'ml & modeller',
+    'konfigürasyon', 'sefer atama', 'tahmin doğruluğu', 'veri yönetimi',
+    'sistem sağlığı', 'bildirimler', 'kullanım analitiği', 'platforma dön',
+    'lojinext', 'super administratorsuper_admin', 'yönetim',
+    'lokasyonlar', 'filo içgörü', 'ml tahminleri',
+    'seferler', 'yakıt', 'tümü',
 ])
 
 /** Bir element'in muhtemelen önemsiz olup olmadığı (nav, logo, error boundary vs.) */
 function isNoise(el) {
-    const text = el.text.toLowerCase().trim()
+    const text = el.text.toLowerCase().trim().replace(/i̇/g, 'i')
 
     // Sidebar nav linkleri
     if (el.tag === 'a' && LAYOUT_NAV_TEXTS.has(text)) return true

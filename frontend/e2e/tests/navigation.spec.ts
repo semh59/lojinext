@@ -80,4 +80,14 @@ test.describe('Sayfa navigasyonu', () => {
         await page.waitForLoadState('networkidle')
         await expect(page.locator('h1').first()).toBeVisible({ timeout: 10_000 })
     })
+
+    test('legacy reports url redirects to reports studio', async ({ authedPage: page }) => {
+        await page.goto('/reports/legacy')
+        await expect(page).toHaveURL(/\/reports/, { timeout: 8_000 })
+    })
+
+    test('legacy dashboard url redirects to home', async ({ authedPage: page }) => {
+        await page.goto('/legacy-dashboard')
+        await expect(page).toHaveURL(/\/$/, { timeout: 8_000 })
+    })
 })

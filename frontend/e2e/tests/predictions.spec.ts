@@ -102,4 +102,80 @@ test.describe('ML Tahminler sayfası', () => {
         const hasEmpty = await page.getByText(/veri yok|hesaplanacak|tahmin yok/i).count() > 0
         expect(hasChart || hasEmpty).toBeTruthy()
     })
+
+    test('Sefer Simülasyonu tabı çalışır ve tahmin üretip açıklar', async ({ authedPage: page }) => {
+        let predictPayload: any = null
+        await page.route('**/api/v1/drivers**', r => r.fulfill(json({ items: [{ id: 1, ad_soyad: 'Ahmet Yılmaz' }] })))
+        await page.route('**/api/v1/predictions/predict**', r => {
+            predictPayload = r.request().postDataJSON()
+            return r.fulfill(json({ tahmini_tuketim: 32.5, prediction_liters: 146.2, model_used: 'ensemble' }))
+        })
+        await page.route('**/api/v1/predictions/explain**', r => {
+            return r.fulfill(json({ feature_importance: { mesafe_km: 0.45, ton: 0.35, ascent_m: 0.1, descent_m: 0.05, vehicle_age: 0.05 } }))
+        })
+
+        await page.goto('/predictions')
+        await page.waitForLoadState('networkidle')
+
+        // 1. Sekme geçişi
+        const simTab = page.getByRole('button', { name: /Simülasyon|Simulation/i }).first()
+        await expect(simTab).toBeVisible()
+        await simTab.click()
+
+        // 2. Select araç doldur
+        const vehicleSelect = page.locator('select').first()
+        await expect(vehicleSelect).toBeVisible()
+        await vehicleSelect.selectOption({ label: '34ABC01' })
+
+        // 3. Mesafe ve Yük doldur
+        const mesafeInput = page.locator('input[type="number"]').first() // Mesafe
+        await mesafeInput.fill('150')
+        const tonInput = page.locator('input[type="number"]').nth(1) // Yük
+        await tonInput.fill('24')
+
+        // 4. Hesapla butonuna tıkla
+        const calcBtn = page.getByRole('button', { name: /Hesapla|Calculate/i }).first()
+        await expect(calcBtn).toBeEnabled()
+        await calcBtn.click()
+
+        // 5. API doğrula
+        await expect.poll(() => predictPayload).toBeTruthy()
+        expect(predictPayload).toMatchObject({
+            arac_id: 1,
+            mesafe_km: 150,
+            ton: 24
+        })
+
+        // 6. Tahmin sonucu ve Explain buton kontrolü
+        await expect(page.getByText(/32\.5|146\.2/)).toBeVisible({ timeout: 5_000 })
+        const explainBtn = page.getByRole('button', { name: /Açıkla|Explain/i }).first()
+        await expect(explainBtn).toBeVisible()
+        await explainBtn.click()
+
+        // XAI paneli görünmeli
+        await expect(page.getByText(/Katkı Oranı|Importance/i).first()).toBeVisible({ timeout: 5_000 })
+    })
+
+    test('Zaman Serisi tabı verileri doğru yükler', async ({ authedPage: page }) => {
+        await page.route('**/api/v1/predictions/time-series/status**', r =>
+            r.fulfill(json({ success: true, model_trained: true, available: true, method: 'ARIMA', history_days: 60 }))
+        )
+        await page.route('**/api/v1/predictions/time-series/forecast**', r =>
+            r.fulfill(json({ series: [{ date: '2026-06-30', value: 31.5 }], trend: 'stable', summary: 'Stabil tüketim' }))
+        )
+        await page.route('**/api/v1/predictions/time-series/trend**', r =>
+            r.fulfill(json({ success: true, trend: 'stable', direction: 'horizontal', avg: 31.8, series: [{ date: '2026-06-25', value: 31.7 }] }))
+        )
+
+        await page.goto('/predictions')
+        await page.waitForLoadState('networkidle')
+
+        const tsTab = page.getByRole('button', { name: /Zaman Serisi|Time Series/i }).first()
+        await expect(tsTab).toBeVisible()
+        await tsTab.click()
+
+        // Zaman serisi status card, forecast ve trend bilgisi görünmeli
+        await expect(page.getByText(/Model Eğitildi|Model Trained|ARIMA/i).first()).toBeVisible({ timeout: 5_000 })
+        await expect(page.getByText(/Stabil tüketim/i).first()).toBeVisible({ timeout: 5_000 })
+    })
 })

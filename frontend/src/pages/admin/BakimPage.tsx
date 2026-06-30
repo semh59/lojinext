@@ -67,11 +67,12 @@ export default function AdminMaintenancePage() {
   const qc = useQueryClient();
   const { notify } = useNotify();
 
-  const { data: alerts = [], isLoading } = useQuery({
+  const { data: alertsRaw = [], isLoading } = useQuery({
     queryKey: ["adminMaintenanceAlerts"],
     queryFn: () => adminMaintenanceApi.getAlerts(),
     staleTime: 2 * 60 * 1000,
   });
+  const alerts = Array.isArray(alertsRaw) ? alertsRaw : [];
 
   const completeMutation = useMutation({
     mutationFn: adminMaintenanceApi.markComplete,

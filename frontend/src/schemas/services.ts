@@ -57,7 +57,7 @@ export const LoginResponseSchema = z.object({
 export const MeResponseSchema = z
   .object({
     id: z.number(),
-    email: z.string(),
+    email: z.string().optional().nullable().default(""),
     ad_soyad: z.string(),
     aktif: z.boolean(),
     rol_id: z.number().optional().nullable(),

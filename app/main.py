@@ -85,6 +85,12 @@ def _sentry_before_send(event, hint):
     if msg.startswith("CancelledError") or "CancelledError:" in msg[:60]:
         return None
 
+    # Drop JWT anomaly messages from alarm_router.capture_message — these are
+    # authentication probe/scanner events or expired tokens, not backend bugs.
+    # alarm_router calls capture_message directly so exc_info check never fires.
+    if msg.startswith("JWT ") and " from " in msg and " at /api/" in msg:
+        return None
+
     if "exc_info" in hint:
         exc_type, exc_value, _ = hint["exc_info"]
         # Drop 4xx HTTP errors — these are client mistakes, not bugs

@@ -64,7 +64,15 @@ export const locationService = {
       status: string;
       data: LocationStats;
     };
-    return wrapped.data;
+    return (
+      wrapped.data ?? {
+        total: 0,
+        analyzed: 0,
+        stale: 0,
+        avg_distance_km: 0,
+        high_difficulty: 0,
+      }
+    );
   },
 
   getStale: async (days = 90): Promise<StaleLocation[]> => {
@@ -73,7 +81,7 @@ export const locationService = {
       status: string;
       data: StaleLocation[];
     };
-    return wrapped.data;
+    return Array.isArray(wrapped.data) ? wrapped.data : [];
   },
 
   /**

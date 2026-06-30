@@ -97,7 +97,8 @@ export default function AdminConfigurationPage() {
     );
   }
 
-  const groupedConfigs = configs.reduce(
+  const configList = Array.isArray(configs) ? configs : [];
+  const groupedConfigs = configList.reduce(
     (groups, config) => {
       if (!groups[config.grup]) groups[config.grup] = [];
       groups[config.grup].push(config);

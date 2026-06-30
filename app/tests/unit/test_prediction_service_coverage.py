@@ -11,6 +11,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
 
 # ---------------------------------------------------------------------------
@@ -605,7 +607,8 @@ async def test_predict_consumption_physics_only():
             svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
-        patch("app.services.prediction_service.UnitOfWork"),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=AsyncMock())),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
             "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,

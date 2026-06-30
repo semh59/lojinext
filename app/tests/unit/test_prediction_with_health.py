@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional
+from unittest.mock import AsyncMock
 
 import pytest
+
+from app.database.unit_of_work import UnitOfWork
 
 
 # ── Fakes ────────────────────────────────────────────────────────────────
@@ -105,18 +108,12 @@ def _patch_dependencies(
     weather_factor: float = 1.0,
     flag_enabled: bool = True,
 ):
-    """PredictionService'in indirect bağımlılıklarını mocka tabi tutar.
-
-    NOT: UnitOfWork hem prediction_service hem vehicle_health_factor'a
-    import edildiği için iki modülde de yerel referansı patch etmek gerekir
-    (basit `app.database.unit_of_work.UnitOfWork` patch'i import cache'i
-    bypass edemez).
-    """
-    import app.database.unit_of_work as uow_mod
+    """PredictionService'in indirect bağımlılıklarını mocka tabi tutar."""
     import app.services.prediction_service as ps_mod
 
-    monkeypatch.setattr(uow_mod, "UnitOfWork", uow_factory)
-    monkeypatch.setattr(ps_mod, "UnitOfWork", uow_factory)
+    uow_inst = uow_factory()
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr("app.config.settings.MAINTENANCE_FACTOR_ENABLED", flag_enabled)
 
     class _FakeWeatherService:

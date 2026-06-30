@@ -70,9 +70,10 @@ def mock_uow(monkeypatch):
 @pytest.fixture
 def mock_arac_service_uow(monkeypatch, mock_uow):
     """Patch UnitOfWork in arac_service module and reset container afterward."""
-    import app.core.services.arac_service as arac_service_mod
+    from app.database.unit_of_work import UnitOfWork
 
-    monkeypatch.setattr(arac_service_mod, "UnitOfWork", lambda: mock_uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     # Reset container so it uses the mocked UnitOfWork
     import app.core.container as container_mod
@@ -96,9 +97,10 @@ def arac_service(mock_arac_service_uow):
 @pytest.fixture
 def mock_sofor_service_uow(monkeypatch, mock_uow):
     """Patch UnitOfWork in sofor_service module and reset container afterward."""
-    import app.core.services.sofor_service as sofor_service_mod
+    from app.database.unit_of_work import UnitOfWork
 
-    monkeypatch.setattr(sofor_service_mod, "UnitOfWork", lambda: mock_uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     # Reset container so it uses the mocked UnitOfWork
     import app.core.container as container_mod
@@ -130,9 +132,10 @@ def sofor_service_with_mock_event_bus(mock_sofor_service_uow, mock_event_bus):
 @pytest.fixture
 def mock_yakit_service_uow(monkeypatch, mock_uow):
     """Patch UnitOfWork in yakit_service module and reset container afterward."""
-    import app.core.services.yakit_service as yakit_service_mod
+    from app.database.unit_of_work import UnitOfWork
 
-    monkeypatch.setattr(yakit_service_mod, "UnitOfWork", lambda: mock_uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     # Reset container so it uses the mocked UnitOfWork
     import app.core.container as container_mod

@@ -466,14 +466,17 @@ class TestUserService:
         # Documented boundary: `kullanici_repo.update` returning False while the
         # row exists is a TOCTOU race condition guard — unreachable in a
         # single-tenant real DB. Kept mocked to preserve the dead-code branch.
+        from app.database.unit_of_work import UnitOfWork
+
         existing = {"id": 1, "email": "a@b.com"}
         mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
         mock_uow.kullanici_repo = MagicMock()
         mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=existing)
         mock_uow.kullanici_repo.update = AsyncMock(return_value=False)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             from fastapi import HTTPException
 
             with pytest.raises(HTTPException) as exc_info:
@@ -485,30 +488,31 @@ class TestUserService:
         # Documented boundary: create succeeds but immediate get_by_id returns
         # None is physically impossible in a non-distributed DB — tested via
         # injection to cover the defensive guard branch.
+        from app.database.unit_of_work import UnitOfWork
+
         mock_uow = MagicMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
         mock_uow.kullanici_repo = MagicMock()
         mock_uow.kullanici_repo.get_by_email = AsyncMock(return_value=None)
         mock_uow.kullanici_repo.create = AsyncMock(return_value=5)
         mock_uow.kullanici_repo.get_by_id = AsyncMock(return_value=None)
         mock_uow.commit = AsyncMock(return_value=None)
-        with patch("app.core.services.user_service.UnitOfWork", return_value=mock_uow):
-            with patch(
-                "app.core.services.user_service.get_password_hash", return_value="h"
-            ):
-                from fastapi import HTTPException
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+            patch("app.core.services.user_service.get_password_hash", return_value="h"),
+        ):
+            from fastapi import HTTPException
 
-                with pytest.raises(HTTPException) as exc_info:
-                    await svc.create_user(
-                        {
-                            "email": "x@x.com",
-                            "ad_soyad": "X",
-                            "rol_id": 1,
-                            "sifre": "pw",
-                        },
-                        created_by_id=1,
-                    )
+            with pytest.raises(HTTPException) as exc_info:
+                await svc.create_user(
+                    {
+                        "email": "x@x.com",
+                        "ad_soyad": "X",
+                        "rol_id": 1,
+                        "sifre": "pw",
+                    },
+                    created_by_id=1,
+                )
         assert exc_info.value.status_code == 500
 
 

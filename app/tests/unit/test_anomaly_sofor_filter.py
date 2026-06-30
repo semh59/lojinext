@@ -19,6 +19,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 
 class _FakeResult:
     def __init__(self, rows: List[Dict[str, Any]]):
@@ -70,7 +72,10 @@ async def test_get_recent_anomalies_applies_sofor_filter():
     from app.core.services import anomaly_detector as mod
 
     fake_uow = _FakeUoW(rows=[])
-    with patch.object(mod, "UnitOfWork", lambda *a, **kw: fake_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         detector = mod.AnomalyDetector()
         await detector.get_recent_anomalies(days=30, status="open", sofor_id=42)
 
@@ -86,7 +91,10 @@ async def test_get_recent_anomalies_no_filter_when_sofor_id_none():
     from app.core.services import anomaly_detector as mod
 
     fake_uow = _FakeUoW(rows=[])
-    with patch.object(mod, "UnitOfWork", lambda *a, **kw: fake_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         detector = mod.AnomalyDetector()
         await detector.get_recent_anomalies(days=30, status="open")
 
@@ -121,8 +129,10 @@ async def test_coaching_engine_passes_sofor_id_to_detector():
         async def __aexit__(self, *_a):
             return False
 
+    fake_uow_local = _FakeUoWLocal()
     with (
-        patch.object(mod, "UnitOfWork", lambda *a, **kw: _FakeUoWLocal()),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow_local)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch("app.core.services.sofor_service.SoforService") as svc_cls,
     ):
         svc_inst = svc_cls.return_value

@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import app.services.prediction_service as prediction_service_module
+from app.database.unit_of_work import UnitOfWork
 from app.services.prediction_service import PredictionService
 
 
@@ -66,7 +67,8 @@ async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch)
         )
     )
 
-    monkeypatch.setattr(prediction_service_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
         prediction_service_module,
         "PhysicsBasedFuelPredictor",
@@ -121,7 +123,8 @@ async def test_predict_consumption_missing_confidence_fails_closed(monkeypatch):
         )
     )
 
-    monkeypatch.setattr(prediction_service_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
         prediction_service_module,
         "PhysicsBasedFuelPredictor",

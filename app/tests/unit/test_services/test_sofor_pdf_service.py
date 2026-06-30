@@ -3,6 +3,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
 
 
@@ -45,14 +47,13 @@ def _make_uow(sofor=None, seferler=None):
 
 
 def _make_service():
-    with patch("app.core.services.sofor_pdf_service.UnitOfWork"):
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+    from app.core.services.sofor_pdf_service import SoforSeferPDFService
 
-        svc = SoforSeferPDFService.__new__(SoforSeferPDFService)
-        # Minimal base-class init — just set font names to safe defaults
-        svc.font_name = "Helvetica"
-        svc.font_bold = "Helvetica-Bold"
-        svc._styles = None
+    svc = SoforSeferPDFService.__new__(SoforSeferPDFService)
+    # Minimal base-class init — just set font names to safe defaults
+    svc.font_name = "Helvetica"
+    svc.font_bold = "Helvetica-Bold"
+    svc._styles = None
     return svc
 
 
@@ -79,8 +80,9 @@ class TestSoforPdfService:
         svc = _make_service()
         mock_uow = _make_uow(sofor=None, seferler=[])
 
-        with patch(
-            "app.core.services.sofor_pdf_service.UnitOfWork", return_value=mock_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.olustur(
                 sofor_id=999,
@@ -95,8 +97,9 @@ class TestSoforPdfService:
         mock_uow = _make_uow(sofor=sofor, seferler=[])
         svc = _make_service()
 
-        with patch(
-            "app.core.services.sofor_pdf_service.UnitOfWork", return_value=mock_uow
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.olustur(
                 sofor_id=1,
@@ -114,9 +117,8 @@ class TestSoforPdfService:
 
         fake_pdf = b"%PDF-fake"
         with (
-            patch(
-                "app.core.services.sofor_pdf_service.UnitOfWork", return_value=mock_uow
-            ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
             patch("asyncio.to_thread", new=AsyncMock(return_value=fake_pdf)),
         ):
             result = await svc.olustur(
@@ -186,9 +188,8 @@ class TestSoforPdfService:
 
         fake_pdf = b"%PDF-1.4 fake content"
         with (
-            patch(
-                "app.core.services.sofor_pdf_service.UnitOfWork", return_value=mock_uow
-            ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
             patch("asyncio.to_thread", new=AsyncMock(return_value=fake_pdf)),
         ):
             result = await svc.olustur(
@@ -207,9 +208,8 @@ class TestSoforPdfService:
         svc = _make_service()
 
         with (
-            patch(
-                "app.core.services.sofor_pdf_service.UnitOfWork", return_value=mock_uow
-            ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
             patch("asyncio.to_thread", new=AsyncMock(return_value=b"fake")),
         ):
             result = await svc.olustur(1, date(2024, 1, 1), date(2024, 1, 31))

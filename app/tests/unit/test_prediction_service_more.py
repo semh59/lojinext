@@ -19,6 +19,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
 
 
@@ -74,7 +76,10 @@ async def test_run_ensemble_prediction_exception_returns_none():
         "route_analysis": None,
     }
 
-    with patch("app.services.prediction_service.UnitOfWork", return_value=mock_uow):
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
         result = await svc._run_ensemble_prediction(
             arac_id=1,
             sefer_dict=sefer_dict,
@@ -171,7 +176,8 @@ async def test_predict_consumption_fetches_arac_from_db_when_not_provided():
     physics_result = _make_physics_result(32.0)
 
     with (
-        patch("app.services.prediction_service.UnitOfWork", return_value=mock_uow),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch.object(
             svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
         ),
@@ -235,7 +241,8 @@ async def test_predict_consumption_fetches_sofor_from_db():
     physics_result = _make_physics_result(31.0)
 
     with (
-        patch("app.services.prediction_service.UnitOfWork", return_value=mock_uow),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch.object(
             svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
         ),
@@ -349,7 +356,8 @@ async def test_predict_consumption_maintenance_factor_fetch_health_input_excepti
     physics_result = _make_physics_result(32.0)
 
     with (
-        patch("app.services.prediction_service.UnitOfWork", return_value=mock_uow),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch.object(
             svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
         ),

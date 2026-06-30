@@ -47,10 +47,18 @@ export interface InspectionAlertsResponse {
 }
 
 export const vehicleService = {
-  getAll: (params: VehicleFilters = {}): Promise<PaginatedResponse<Vehicle>> =>
-    readAraclarApiV1VehiclesGet(params) as unknown as Promise<
-      PaginatedResponse<Vehicle>
-    >,
+  getAll: async (
+    params: VehicleFilters = {},
+  ): Promise<PaginatedResponse<Vehicle>> => {
+    const resp = (await readAraclarApiV1VehiclesGet(params)) as unknown as {
+      data?: Vehicle[] | null;
+      meta?: { total?: number | null } | null;
+    };
+    return {
+      items: resp.data ?? [],
+      total: resp.meta?.total ?? resp.data?.length ?? 0,
+    };
+  },
 
   getById: (id: number): Promise<Vehicle> =>
     readAracApiV1VehiclesAracIdGet(id) as unknown as Promise<Vehicle>,

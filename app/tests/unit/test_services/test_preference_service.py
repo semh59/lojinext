@@ -144,6 +144,18 @@ class TestPreferenceService:
         row = await _get_setting(db_session, sid)
         assert row.is_default is True
 
+    async def test_save_preference_rejects_zero_user_id(self):
+        with pytest.raises(ValueError, match="Geçersiz kullanıcı"):
+            await PreferenceService().save_preference(
+                user_id=0, modul="dashboard", ayar_tipi="filter", deger={}
+            )
+
+    async def test_save_preference_rejects_negative_user_id(self):
+        with pytest.raises(ValueError, match="Geçersiz kullanıcı"):
+            await PreferenceService().save_preference(
+                user_id=-1, modul="dashboard", ayar_tipi="filter", deger={}
+            )
+
     def test_service_instantiation(self):
         service = PreferenceService()
         assert service is not None

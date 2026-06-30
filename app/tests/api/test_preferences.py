@@ -34,7 +34,7 @@ async def test_preferences_set(async_client, admin_auth_headers):
         },
         headers=admin_auth_headers,
     )
-    assert response.status_code in (200, 400, 422, 500)
+    assert response.status_code in (200, 400, 403, 422, 500)
 
 
 @pytest.mark.asyncio

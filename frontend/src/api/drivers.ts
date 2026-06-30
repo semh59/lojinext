@@ -79,13 +79,18 @@ export const driverService = {
   getFleetStats: (): Promise<DriverFleetStats> =>
     getDriverFleetStatsApiV1DriversFleetStatsGet() as unknown as Promise<DriverFleetStats>,
 
-  getAll: (
+  getAll: async (
     params: DriverFilters = {},
-  ): Promise<{ items: Driver[]; total: number }> =>
-    readSoforlerApiV1DriversGet(params) as unknown as Promise<{
-      items: Driver[];
-      total: number;
-    }>,
+  ): Promise<{ items: Driver[]; total: number }> => {
+    const resp = (await readSoforlerApiV1DriversGet(params)) as unknown as {
+      data?: Driver[] | null;
+      meta?: { total?: number | null } | null;
+    };
+    return {
+      items: resp.data ?? [],
+      total: resp.meta?.total ?? resp.data?.length ?? 0,
+    };
+  },
 
   getById: (id: number): Promise<Driver> =>
     readSoforApiV1DriversSoforIdGet(id) as unknown as Promise<Driver>,

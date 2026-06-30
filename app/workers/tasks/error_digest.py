@@ -240,18 +240,32 @@ async def _create_partition() -> None:
 )
 def db_health_check(self):
     """Detect long-running transactions, lock waits, and table bloat."""
+    from app.database.connection import engine
+
     try:
         asyncio.run(_db_health_check())
     except RuntimeError as e:
-        if "greenlet" in str(e) or "different loop" in str(e):
+        if (
+            "greenlet" in str(e)
+            or "different loop" in str(e)
+            or "Event loop is closed" in str(e)
+        ):
             import logging
 
             logger = logging.getLogger(__name__)
             logger.warning(
-                f"AsyncIO event loop conflict in Celery worker: {e}. Skipping DB health check."
+                "AsyncIO event loop conflict in Celery worker: %s. Skipping DB health check.",
+                e,
             )
         else:
             raise
+    finally:
+        # Dispose pool connections bound to the now-closed event loop so the
+        # next asyncio.run() call starts with a clean pool on its own loop.
+        try:
+            engine.sync_engine.pool.dispose(close=False)
+        except Exception:
+            pass
 
 
 async def _db_health_check() -> None:

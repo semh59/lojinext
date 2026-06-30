@@ -19,6 +19,7 @@ export function RouteSimSummary({ result }: Props) {
   const { routeLabText } = useRouteLabResources();
   const t = routeLabText.summary;
   const s = result.summary;
+  if (!s) return null;
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       <Stat label={t.distance} value={`${s.distance_km.toFixed(1)} ${t.km}`} />

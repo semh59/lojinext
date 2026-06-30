@@ -32,6 +32,7 @@ import pytest
 
 import app.core.services.sefer_write_service as sefer_write_module
 from app.core.services.sefer_write_service import SeferWriteService
+from app.database.unit_of_work import UnitOfWork
 from app.schemas.sefer import SeferCreate, SeferUpdate
 
 pytestmark = pytest.mark.unit
@@ -619,7 +620,8 @@ async def test_bulk_update_status_all_fail_no_commit(monkeypatch):
     uow = DummyUoW()
     uow.sefer_repo.get_by_id = AsyncMock(return_value=None)  # all not found
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     svc, _ = _make_service()
     result = await svc.bulk_update_status([1, 2], "Completed")
@@ -639,7 +641,8 @@ async def test_bulk_cancel_all_fail_no_commit(monkeypatch):
     uow = DummyUoW()
     uow.sefer_repo.get_by_id = AsyncMock(return_value=None)  # all not found
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     svc, _ = _make_service()
     result = await svc.bulk_cancel([1, 2], iptal_nedeni="Test")
@@ -665,7 +668,8 @@ async def test_bulk_add_sefer_skips_prediction_for_large_batches(monkeypatch):
     )
     uow.sofor_repo.get_all = AsyncMock(return_value=[{"id": 2, "aktif": True}])
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     import app.services.prediction_service as pred_module
 
@@ -829,7 +833,8 @@ async def test_add_sefer_round_trip_invokes_create_return(monkeypatch):
     )
     uow.sofor_repo.get_by_id = AsyncMock(return_value={"aktif": True})
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     mock_outbox = MagicMock()
     mock_outbox.save_event = AsyncMock()

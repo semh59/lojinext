@@ -26,8 +26,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import app.core.services.sefer_write_service as sefer_write_module
 from app.core.services.sefer_write_service import SeferWriteService
+from app.database.unit_of_work import UnitOfWork
 from app.schemas.sefer import SeferCreate, SeferUpdate
 
 pytestmark = pytest.mark.unit
@@ -480,7 +480,8 @@ async def test_bulk_add_sefer_exception_rollbacks(monkeypatch):
     uow.lokasyon_repo.get_all = AsyncMock(return_value=[])
     uow.lokasyon_repo.find_closest_match = AsyncMock(side_effect=lambda v, **_: v)
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     mock_pred = MagicMock()
     mock_pred.predict_consumption = AsyncMock(
@@ -528,7 +529,8 @@ async def test_update_sefer_user_id_applied(monkeypatch):
     uow.sefer_repo.get_by_id = AsyncMock(return_value=current)
     uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     result = await svc.update_sefer(
         sefer_id=99,

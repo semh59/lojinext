@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import app.core.services.sefer_write_service as sefer_write_module
 import app.core.services.weather_service as weather_module
 import app.services.prediction_service as prediction_module
 from app.core.entities.models import SeferCreate, SeferUpdate
 from app.core.services.sefer_write_service import SeferWriteService
+from app.database.unit_of_work import UnitOfWork
 
 
 class DummyUnitOfWork:
@@ -122,7 +122,8 @@ async def test_add_sefer_persists_canonical_prediction_contract(monkeypatch):
         )
     )
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
         weather_module,
         "get_weather_service",
@@ -260,7 +261,8 @@ async def test_bulk_add_sefer_persists_canonical_prediction_contract(monkeypatch
         ),
     )
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     service = SeferWriteService(event_bus=MagicMock())
     payload = [
@@ -390,7 +392,8 @@ async def test_add_sefer_does_not_mark_weather_factor_when_weather_is_unavailabl
         )
     )
 
-    monkeypatch.setattr(sefer_write_module, "UnitOfWork", lambda: uow)
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
         weather_module,
         "get_weather_service",

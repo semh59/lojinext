@@ -2,11 +2,19 @@
 Coverage tests for app/core/services/ai_service.py
 Targets uncovered branches: _get_predictor_for_vehicle, predict_trip_fuel,
 detect_anomalies, get_progress error path.
+
+0-mock (Dilim 28): all patch(UnitOfWork) removed.
+- TestBuildContext → patch.object(AnalizRepository/AracRepository, method)
+- TestDetectAnomalies → patch.object(YakitRepository, 'get_all')
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+import app.database.repositories.analiz_repo as analiz_repo_mod
+import app.database.repositories.arac_repo as arac_repo_mod
+import app.database.repositories.yakit_repo as yakit_repo_mod
 
 pytestmark = pytest.mark.unit
 
@@ -78,59 +86,84 @@ class TestSanitizePrompt:
 
 # ---------------------------------------------------------------------------
 # _build_context
+# Narrow targeted mocks: patch.object(Repo, method) — not UoW
+# These tests verify context-formatting logic with controlled repo data.
 # ---------------------------------------------------------------------------
-
-
-def _patch_uow_ctx(uow):
-    """Return a mock UnitOfWork class whose async context manager yields `uow`."""
-    uow_cls = MagicMock()
-    uow_cls.return_value.__aenter__ = AsyncMock(return_value=uow)
-    uow_cls.return_value.__aexit__ = AsyncMock(return_value=False)
-    return uow_cls
 
 
 class TestBuildContext:
     async def test_empty_lists_return_no_data_message(self):
         svc = _make_service()
-        uow = _make_mock_uow()
-        uow.analiz_repo.get_dashboard_stats = AsyncMock(return_value=None)
-        uow.analiz_repo.get_recent_unread_alerts = AsyncMock(return_value=None)
-        uow.arac_repo.get_all = AsyncMock(return_value=None)
-
-        # _build_context does a local `from app.database.unit_of_work import UnitOfWork`
-        # so we must patch at the source module.
-        with patch("app.database.unit_of_work.UnitOfWork", _patch_uow_ctx(uow)):
+        with (
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_dashboard_stats",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_recent_unread_alerts",
+                AsyncMock(return_value=None),
+            ),
+            patch.object(
+                arac_repo_mod.AracRepository,
+                "get_all",
+                AsyncMock(return_value=None),
+            ),
+        ):
             ctx = await svc._build_context()
         assert "mevcut degil" in ctx
 
     async def test_vehicles_with_stats(self):
         """Vehicle dict has motor_verimliligi — context should include fleet summary."""
         svc = _make_service()
-        uow = _make_mock_uow()
-        uow.analiz_repo.get_dashboard_stats = AsyncMock(
-            return_value={"toplam_arac": 2, "toplam_sofor": 1, "filo_ortalama": 30.0}
-        )
-        uow.analiz_repo.get_recent_unread_alerts = AsyncMock(return_value=[])
-        uow.arac_repo.get_all = AsyncMock(
-            return_value=[{"plaka": "06AB1", "motor_verimliligi": 0.35}]
-        )
-
-        with patch("app.database.unit_of_work.UnitOfWork", _patch_uow_ctx(uow)):
+        with (
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_dashboard_stats",
+                AsyncMock(
+                    return_value={
+                        "toplam_arac": 2,
+                        "toplam_sofor": 1,
+                        "filo_ortalama": 30.0,
+                    }
+                ),
+            ),
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_recent_unread_alerts",
+                AsyncMock(return_value=[]),
+            ),
+            patch.object(
+                arac_repo_mod.AracRepository,
+                "get_all",
+                AsyncMock(return_value=[{"plaka": "06AB1", "motor_verimliligi": 0.35}]),
+            ),
+        ):
             ctx = await svc._build_context()
         assert "Filo Ozeti" in ctx
 
     async def test_alerts_truncated_to_3(self):
         svc = _make_service()
-        uow = _make_mock_uow()
-        uow.analiz_repo.get_dashboard_stats = AsyncMock(return_value={})
-        uow.analiz_repo.get_recent_unread_alerts = AsyncMock(
-            return_value=[{"title": f"T{i}", "message": f"M{i}"} for i in range(10)]
-        )
-        uow.arac_repo.get_all = AsyncMock(return_value=[])
-
-        with patch("app.database.unit_of_work.UnitOfWork", _patch_uow_ctx(uow)):
+        alerts = [{"title": f"T{i}", "message": f"M{i}"} for i in range(10)]
+        with (
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_dashboard_stats",
+                AsyncMock(return_value={}),
+            ),
+            patch.object(
+                analiz_repo_mod.AnalizRepository,
+                "get_recent_unread_alerts",
+                AsyncMock(return_value=alerts),
+            ),
+            patch.object(
+                arac_repo_mod.AracRepository,
+                "get_all",
+                AsyncMock(return_value=[]),
+            ),
+        ):
             ctx = await svc._build_context()
-        # Only first 3 alerts should appear
         assert "T0" in ctx
         assert "T3" not in ctx
 
@@ -224,6 +257,7 @@ class TestGetProgress:
 
 # ---------------------------------------------------------------------------
 # _get_predictor_for_vehicle
+# (uow passed as argument — no UoW patch)
 # ---------------------------------------------------------------------------
 
 
@@ -233,7 +267,6 @@ class TestGetPredictorForVehicle:
 
         svc = _make_service()
         fake_pred = MagicMock()
-        # AUDIT-063: cache artık (predictor, monotonic_ts) tuple + TTL kontrolü.
         svc._predictor_cache[7] = (fake_pred, time.monotonic())
         uow = _make_mock_uow()
         result = await svc._get_predictor_for_vehicle(7, uow)
@@ -306,25 +339,26 @@ class TestGetPredictorForVehicle:
         with patch.object(
             EnsembleFuelPredictor, "fit", side_effect=ValueError("bad data")
         ):
-            # Should not raise
             pred = await svc._get_predictor_for_vehicle(77, uow)
         assert pred is not None
 
 
 # ---------------------------------------------------------------------------
 # detect_anomalies
+# Narrow targeted mock: patch.object(YakitRepository, 'get_all')
+# Tests verify statistical anomaly logic with controlled record lists.
 # ---------------------------------------------------------------------------
 
 
 class TestDetectAnomalies:
     async def test_too_few_records_returns_empty(self):
         svc = _make_service()
-        uow = _make_mock_uow()
-        uow.yakit_repo.get_all = AsyncMock(
-            return_value={"items": [{"litre": 100, "km_sayac": 1000}] * 3, "total": 3}
-        )
-
-        with patch("app.core.services.ai_service.UnitOfWork", return_value=uow):
+        records = [{"litre": 100, "km_sayac": 1000}] * 3
+        with patch.object(
+            yakit_repo_mod.YakitRepository,
+            "get_all",
+            AsyncMock(return_value={"items": records, "total": 3}),
+        ):
             result = await svc.detect_anomalies(1)
         assert result == []
 
@@ -334,58 +368,48 @@ class TestDetectAnomalies:
         records = [
             {"litre": 100.0, "km_sayac": 0, "tarih": "2024-01-01"} for _ in range(10)
         ]
-        uow = _make_mock_uow()
-        uow.yakit_repo.get_all = AsyncMock(
-            return_value={"items": records, "total": len(records)}
-        )
-
-        with patch("app.core.services.ai_service.UnitOfWork", return_value=uow):
+        with patch.object(
+            yakit_repo_mod.YakitRepository,
+            "get_all",
+            AsyncMock(return_value={"items": records, "total": len(records)}),
+        ):
             result = await svc.detect_anomalies(5)
         assert result == []
 
     async def test_uniform_consumption_no_anomalies(self):
         """Identical consumption → std == 0 → no anomaly flagged."""
         svc = _make_service()
-        # Create records where km increases by 100 each time with 30L usage
-        records = []
         base_km = 100000
-        for i in range(10):
-            records.append(
-                {"litre": 30.0, "km_sayac": base_km + (i * 100), "tarih": "2024-01-01"}
-            )
-        uow = _make_mock_uow()
-        uow.yakit_repo.get_all = AsyncMock(
-            return_value={"items": records, "total": len(records)}
-        )
-
-        with patch("app.core.services.ai_service.UnitOfWork", return_value=uow):
+        records = [
+            {"litre": 30.0, "km_sayac": base_km + (i * 100), "tarih": "2024-01-01"}
+            for i in range(10)
+        ]
+        with patch.object(
+            yakit_repo_mod.YakitRepository,
+            "get_all",
+            AsyncMock(return_value={"items": records, "total": len(records)}),
+        ):
             result = await svc.detect_anomalies(5)
         assert result == []
 
     async def test_spike_detected_as_anomaly(self):
         """Insert a clear spike in consumption to trigger anomaly detection."""
         svc = _make_service()
-        # 9 normal records + 1 huge outlier
-        records = []
         base_km = 100000
-        for i in range(9):
-            records.append(
-                {"litre": 30.0, "km_sayac": base_km + (i * 100), "tarih": "2024-01-01"}
-            )
-        # spike: enormous litre with small distance
+        records = [
+            {"litre": 30.0, "km_sayac": base_km + (i * 100), "tarih": "2024-01-01"}
+            for i in range(9)
+        ]
         records.append(
             {"litre": 500.0, "km_sayac": base_km + 850, "tarih": "2024-01-10"}
         )
-        uow = _make_mock_uow()
-        uow.yakit_repo.get_all = AsyncMock(
-            return_value={"items": records, "total": len(records)}
-        )
-
-        with patch("app.core.services.ai_service.UnitOfWork", return_value=uow):
+        with patch.object(
+            yakit_repo_mod.YakitRepository,
+            "get_all",
+            AsyncMock(return_value={"items": records, "total": len(records)}),
+        ):
             result = await svc.detect_anomalies(5)
-        # We expect at least one anomaly
         assert isinstance(result, list)
-        # Each anomaly must have expected fields
         for a in result:
             assert "z_score" in a
             assert a["type"] == "CONSUMPTION_SPIKE"

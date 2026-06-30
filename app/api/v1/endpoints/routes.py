@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import SessionDep, get_current_active_user
+from app.core.ml.physics_fuel_predictor import VehicleSpecs
 from app.core.services.route_simulator import (
     RouteSimulator,
     get_route_simulator,
 )
-from app.database.models import Kullanici, Lokasyon, RouteSegment, RouteSimulation
+from app.database.models import Arac, Kullanici, Lokasyon, RouteSegment, RouteSimulation
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import RouteAnalysisResponse
 from app.services.route_service import RouteService
@@ -72,6 +73,13 @@ class RouteSimulateRequest(BaseModel):
         None,
         description="Kayıtlı güzergah ID. Verilirse cikis/varis koord opsiyonel.",
     )
+    arac_id: Optional[int] = Field(
+        None,
+        description=(
+            "Araç ID. Verilirse VehicleSpecs araç teknik değerlerinden türetilir;"
+            " arac_yasi arac.yil'dan hesaplanır."
+        ),
+    )
     cikis_lat: Optional[float] = Field(
         None, ge=-90, le=90, description="Çıkış enlemi (lokasyon_id yoksa zorunlu)"
     )
@@ -79,7 +87,12 @@ class RouteSimulateRequest(BaseModel):
     varis_lat: Optional[float] = Field(None, ge=-90, le=90)
     varis_lon: Optional[float] = Field(None, ge=-180, le=180)
     ton: float = Field(15.0, ge=0, le=60, description="Yük (ton); 0 boş sefer")
-    arac_yasi: int = Field(5, ge=0, le=40, description="Araç yaşı (gravity recovery)")
+    arac_yasi: int = Field(
+        5,
+        ge=0,
+        le=40,
+        description="Araç yaşı (gravity recovery); arac_id verilirse araç.yil'dan hesaplanır",
+    )
     segment_length_m: int = Field(500, ge=100, le=5000, description="Bucket boyutu (m)")
 
 
@@ -241,6 +254,23 @@ async def simulate_route(
         used_varis_lon = request.varis_lon
         used_varis_lat = request.varis_lat
 
+    # Araç seçildiyse VehicleSpecs + arac_yasi araçtan türet
+    vehicle: Optional[VehicleSpecs] = None
+    used_arac_yasi = request.arac_yasi
+    if request.arac_id is not None:
+        arac = await db.get(Arac, request.arac_id)
+        if arac is None:
+            raise HTTPException(status_code=404, detail="Araç bulunamadı")
+        vehicle = VehicleSpecs(
+            empty_weight_kg=arac.bos_agirlik_kg,
+            drag_coefficient=arac.hava_direnc_katsayisi,
+            frontal_area_m2=arac.on_kesit_alani_m2,
+            rolling_resistance=arac.lastik_direnc_katsayisi,
+            engine_efficiency=arac.motor_verimliligi,
+        )
+        if arac.yil is not None:
+            used_arac_yasi = date.today().year - arac.yil
+
     used_target_km = request.segment_length_m / 1000.0
     result = await simulator.simulate(
         cikis_lon=used_cikis_lon,
@@ -248,8 +278,9 @@ async def simulate_route(
         varis_lon=used_varis_lon,
         varis_lat=used_varis_lat,
         ton=request.ton,
-        arac_yasi=request.arac_yasi,
+        arac_yasi=used_arac_yasi,
         target_length_km=used_target_km,
+        vehicle=vehicle,
     )
 
     if result is None:
@@ -263,12 +294,13 @@ async def simulate_route(
     sim = RouteSimulation(
         kullanici_id=getattr(current_user, "id", None) or None,
         lokasyon_id=request.lokasyon_id,
+        arac_id=request.arac_id,
         cikis_lon=used_cikis_lon,
         cikis_lat=used_cikis_lat,
         varis_lon=used_varis_lon,
         varis_lat=used_varis_lat,
         ton=request.ton,
-        arac_yasi=request.arac_yasi,
+        arac_yasi=used_arac_yasi,
         target_length_km=used_target_km,
         raw_segment_count=result.raw_segment_count,
         resampled_segment_count=result.resampled_segment_count,

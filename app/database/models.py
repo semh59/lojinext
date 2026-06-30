@@ -1689,6 +1689,13 @@ class RouteSimulation(Base):
         nullable=True,
         index=True,
     )
+    # 0034: hangi araç seçildi (varsa). VehicleSpecs araç teknik değerlerinden
+    # türetildi; araç silinince simülasyon kaydı korunur bağ düşer (SET NULL).
+    arac_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("araclar.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Input snapshot
     cikis_lon: Mapped[float] = mapped_column(Float, nullable=False)

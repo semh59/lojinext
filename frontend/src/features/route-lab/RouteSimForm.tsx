@@ -1,9 +1,11 @@
-﻿import { useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useLocations } from "@/hooks/use-locations";
+import { vehicleService } from "@/api/vehicles";
 import type { RouteSimRequest } from "@/api/route-sim";
 import { useRouteLabResources } from "@/resources/useResources";
 
@@ -19,6 +21,7 @@ export function RouteSimForm({ onSubmit, submitting }: Props) {
   const t = routeLabText.form;
   const [mode, setMode] = useState<Mode>("location");
   const [lokasyonId, setLokasyonId] = useState<string>("");
+  const [aracId, setAracId] = useState<string>("");
   const [cikisLat, setCikisLat] = useState("");
   const [cikisLon, setCikisLon] = useState("");
   const [varisLat, setVarisLat] = useState("");
@@ -34,13 +37,34 @@ export function RouteSimForm({ onSubmit, submitting }: Props) {
     ? locationsData
     : locationsData?.items ?? [];
 
+  const { data: vehiclesData } = useQuery({
+    queryKey: ["vehicles", { aktif_only: true, limit: 200 }],
+    queryFn: () => vehicleService.getAll({ limit: 200, aktif_only: true }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const vehicles = Array.isArray(vehiclesData)
+    ? vehiclesData
+    : vehiclesData?.items ?? [];
+
+  const currentYear = new Date().getFullYear();
+
+  const handleVehicleChange = (vehicleIdStr: string) => {
+    setAracId(vehicleIdStr);
+    if (!vehicleIdStr) return;
+    const v = vehicles.find((v) => String(v.id) === vehicleIdStr);
+    if (v?.yil) {
+      setAracYasi(String(currentYear - v.yil));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    const base = {
+    const base: RouteSimRequest = {
       ton: Number(ton),
       arac_yasi: Number(aracYasi),
       segment_length_m: Number(segLen),
+      arac_id: aracId ? Number(aracId) : null,
     };
     if (mode === "location") {
       if (!lokasyonId) {
@@ -137,6 +161,29 @@ export function RouteSimForm({ onSubmit, submitting }: Props) {
             />
           </div>
         )}
+
+        <div className="flex flex-col gap-1">
+          <label
+            htmlFor="route-lab-arac"
+            className="text-sm font-medium text-secondary"
+          >
+            {t.vehicle}
+          </label>
+          <select
+            id="route-lab-arac"
+            value={aracId}
+            onChange={(e) => handleVehicleChange(e.target.value)}
+            className="rounded-card border border-border bg-elevated px-3 py-2 text-sm text-primary"
+          >
+            <option value="">{t.vehiclePlaceholder}</option>
+            {vehicles.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.plaka} — {v.marka} {v.model ?? ""}{" "}
+                {v.yil ? `(${v.yil})` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="grid grid-cols-3 gap-3">
           <Input

@@ -11,6 +11,7 @@ import {
 
 export interface RouteSimRequest {
   lokasyon_id?: number | null;
+  arac_id?: number | null;
   cikis_lat?: number | null;
   cikis_lon?: number | null;
   varis_lat?: number | null;

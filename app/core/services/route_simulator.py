@@ -30,6 +30,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from app.core.ml.physics_fuel_predictor import VehicleSpecs
 from app.core.ml.segment_simulator import (
     SegmentInput,
     SegmentSummary,
@@ -80,6 +81,7 @@ class RouteSimulator:
         ton: float = 15.0,
         arac_yasi: int = 5,
         target_length_km: float = 0.5,
+        vehicle: Optional[VehicleSpecs] = None,
     ) -> Optional[SimulationResult]:
         """End-to-end simülasyon. Mapbox veya Open-Meteo hatasında None.
 
@@ -88,6 +90,7 @@ class RouteSimulator:
             ton: Yük (0 = boş sefer).
             arac_yasi: Gravity recovery hesabı için araç yaşı.
             target_length_km: Bucket boyutu (default 500m).
+            vehicle: Araç teknik özellikleri. None → default TIR specs.
 
         Returns:
             SimulationResult (None → Mapbox routing başarısız).
@@ -153,7 +156,9 @@ class RouteSimulator:
             )
 
         # 5. Simulate
-        summary = simulate_route(enriched, ton=ton, arac_yasi=arac_yasi)
+        summary = simulate_route(
+            enriched, vehicle=vehicle, ton=ton, arac_yasi=arac_yasi
+        )
 
         return SimulationResult(
             summary=summary,

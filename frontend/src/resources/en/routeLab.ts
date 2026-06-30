@@ -7,6 +7,8 @@ export const routeLabText = {
     modeCoords: "Enter coordinates",
     location: "Route",
     locationPlaceholder: "Select route",
+    vehicle: "Vehicle (optional — uses real technical specs)",
+    vehiclePlaceholder: "Use default TIR specs",
     cikisLat: "Origin latitude",
     cikisLon: "Origin longitude",
     varisLat: "Destination latitude",

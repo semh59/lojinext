@@ -7,6 +7,8 @@ export const routeLabText = {
     modeCoords: "Koordinat gir",
     location: "Güzergah",
     locationPlaceholder: "Güzergah seçin",
+    vehicle: "Araç (opsiyonel — gerçek teknik specs kullanılır)",
+    vehiclePlaceholder: "Varsayılan TIR specs kullan",
     cikisLat: "Çıkış enlem",
     cikisLon: "Çıkış boylam",
     varisLat: "Varış enlem",

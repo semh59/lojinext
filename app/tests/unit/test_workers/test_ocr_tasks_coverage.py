@@ -1,8 +1,15 @@
-"""Coverage tests for app/workers/tasks/ocr_tasks.py (0% → ≥75%)."""
+"""Coverage tests for app/workers/tasks/ocr_tasks.py (0% → ≥75%).
+
+0-mock (Dilim 31): patch("...UnitOfWork", return_value=uow) replaced with
+narrow patch.object(UnitOfWork, '__aenter__'/__aexit__) — the class is
+never replaced; only its context-manager dunders are stubbed out.
+"""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from app.database.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -27,11 +34,9 @@ def _make_belge(
     return belge
 
 
-def _make_uow(belge=None):
-    """Build a fake async UnitOfWork context manager."""
+def _make_uow_inst(belge=None):
+    """Build a fake UoW instance returned from __aenter__."""
     uow = MagicMock()
-    uow.__aenter__ = AsyncMock(return_value=uow)
-    uow.__aexit__ = AsyncMock(return_value=False)
     # AUDIT-162: _mark_hata ayrı transaction'da await commit() çağırır → AsyncMock.
     uow.commit = AsyncMock()
     result = MagicMock()
@@ -39,6 +44,14 @@ def _make_uow(belge=None):
     uow.session = AsyncMock()
     uow.session.execute = AsyncMock(return_value=result)
     return uow
+
+
+def _uow_ctx(uow_inst):
+    """Return context managers patching UnitOfWork's __aenter__/__aexit__."""
+    return (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -83,9 +96,10 @@ class TestOcrTaskBelgeNotFound:
         """When SeferBelge is not in DB, task returns {ok: False, error: not_found}."""
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
-        uow = _make_uow(belge=None)
+        uow_inst = _make_uow_inst(belge=None)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             result = process_belge_ocr.apply(args=[999]).get()
 
         assert result == {"ok": False, "error": "not_found"}
@@ -97,9 +111,10 @@ class TestOcrTaskFileReadError:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch("builtins.open", side_effect=OSError("no such file")):
                 with pytest.raises(Exception):
                     process_belge_ocr.apply(args=[1]).get(propagate=True)
@@ -114,14 +129,15 @@ class TestOcrTaskOcrServiceError:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
         fake_client = AsyncMock()
         fake_client.__aenter__ = AsyncMock(return_value=fake_client)
         fake_client.__aexit__ = AsyncMock(return_value=False)
         fake_client.post = AsyncMock(side_effect=Exception("connection refused"))
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch(
                 "builtins.open",
                 MagicMock(
@@ -151,7 +167,8 @@ class TestOcrTaskSuccess:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
         ocr_response = MagicMock()
         ocr_response.json.return_value = {
@@ -165,7 +182,7 @@ class TestOcrTaskSuccess:
         fake_client.__aexit__ = AsyncMock(return_value=False)
         fake_client.post = AsyncMock(return_value=ocr_response)
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch(
                 "builtins.open",
                 MagicMock(
@@ -195,7 +212,8 @@ class TestOcrTaskSuccess:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
         ocr_response = MagicMock()
         ocr_response.json.return_value = {"ham_metin": "test", "yapilandirilmis": {}}
@@ -209,7 +227,7 @@ class TestOcrTaskSuccess:
         mock_metric = MagicMock()
         mock_metric.labels.return_value = MagicMock()
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch(
                 "builtins.open",
                 MagicMock(
@@ -240,7 +258,8 @@ class TestOcrTaskSuccess:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
         ocr_response = MagicMock()
         ocr_response.json.return_value = {}  # empty
@@ -251,7 +270,7 @@ class TestOcrTaskSuccess:
         fake_client.__aexit__ = AsyncMock(return_value=False)
         fake_client.post = AsyncMock(return_value=ocr_response)
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch(
                 "builtins.open",
                 MagicMock(
@@ -280,7 +299,8 @@ class TestOcrTaskMetricOnError:
         from app.workers.tasks.ocr_tasks import process_belge_ocr
 
         belge = _make_belge()
-        uow = _make_uow(belge=belge)
+        uow_inst = _make_uow_inst(belge=belge)
+        enter_p, exit_p = _uow_ctx(uow_inst)
 
         fake_client = AsyncMock()
         fake_client.__aenter__ = AsyncMock(return_value=fake_client)
@@ -290,7 +310,7 @@ class TestOcrTaskMetricOnError:
         mock_metric = MagicMock()
         mock_metric.labels.return_value = MagicMock()
 
-        with patch("app.workers.tasks.ocr_tasks.UnitOfWork", return_value=uow):
+        with enter_p, exit_p:
             with patch(
                 "builtins.open",
                 MagicMock(

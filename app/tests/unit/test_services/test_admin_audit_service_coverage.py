@@ -3,11 +3,18 @@
 Targets ~41% → ≥75%
 Covers: log_action (basic, with request, user=None, basarili=False,
         DB exception swallowed), log_login, log_config_change.
+
+0-mock (Dilim 30): patch("app.database.unit_of_work.UnitOfWork") replaced with
+narrow patch.object(UnitOfWork, '__aenter__'/__aexit__) so the class itself
+is never replaced — only its context-manager dunders are stubbed out.
+All assertions are on the returned AdminAuditLog object (built before any DB call).
 """
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
+
+from app.database.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -38,6 +45,15 @@ def _make_request(
     return req
 
 
+def _stub_uow():
+    """Return (mock_inst, enter_patch_kwargs, exit_patch_kwargs) for patch.object."""
+    inst = AsyncMock()
+    inst.session = MagicMock()
+    inst.session.add = MagicMock()
+    inst.commit = AsyncMock()
+    return inst
+
+
 # ---------------------------------------------------------------------------
 # log_action
 # ---------------------------------------------------------------------------
@@ -51,15 +67,12 @@ class TestLogAction:
 
         service = AdminAuditService()
         user = _make_user(uid=1)
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=user,
                 aksiyon_tipi="DELETE",
@@ -81,15 +94,12 @@ class TestLogAction:
         service = AdminAuditService()
         user = _make_user()
         request = _make_request(ip="10.0.0.1", ua="Mozilla/5.0", request_id="rid-999")
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=user,
                 aksiyon_tipi="READ",
@@ -105,15 +115,12 @@ class TestLogAction:
         from app.core.services.admin_audit_service import AdminAuditService
 
         service = AdminAuditService()
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=None,
                 aksiyon_tipi="SYSTEM_TASK",
@@ -128,15 +135,12 @@ class TestLogAction:
 
         service = AdminAuditService()
         user = _make_user()
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=user,
                 aksiyon_tipi="LOGIN",
@@ -154,12 +158,11 @@ class TestLogAction:
         service = AdminAuditService()
         user = _make_user()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            MockUow.return_value.__aenter__ = AsyncMock(
-                side_effect=Exception("DB connection lost")
-            )
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with patch.object(
+            UnitOfWork,
+            "__aenter__",
+            AsyncMock(side_effect=Exception("DB connection lost")),
+        ):
             # Should NOT raise
             result = await service.log_action(
                 user=user,
@@ -176,15 +179,12 @@ class TestLogAction:
 
         service = AdminAuditService()
         user = _make_user()
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=user,
                 aksiyon_tipi="CONFIG_UPDATE",
@@ -206,15 +206,12 @@ class TestLogAction:
         request.client = None
         request.headers = {}
         request.state = MagicMock(spec=[])  # no request_id attribute
+        uow_inst = _stub_uow()
 
-        with patch("app.database.unit_of_work.UnitOfWork") as MockUow:
-            uow_inst = AsyncMock()
-            uow_inst.session = MagicMock()
-            uow_inst.session.add = MagicMock()
-            uow_inst.commit = AsyncMock()
-            MockUow.return_value.__aenter__ = AsyncMock(return_value=uow_inst)
-            MockUow.return_value.__aexit__ = AsyncMock(return_value=False)
-
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
             result = await service.log_action(
                 user=user,
                 aksiyon_tipi="LOGIN",

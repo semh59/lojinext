@@ -1,9 +1,14 @@
-"""coaching_tasks.py birim testleri — gerçek kaynak yapısına göre."""
+"""coaching_tasks.py birim testleri — gerçek kaynak yapısına göre.
+
+0-mock (Dilim 32): patch("app.database.unit_of_work.UnitOfWork") replaced with
+narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
+"""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
 from app.workers.tasks.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
@@ -14,6 +19,14 @@ from app.workers.tasks.coaching_tasks import (
 pytestmark = pytest.mark.unit
 
 
+def _uow_ctx(mock_uow):
+    """Return context managers patching UnitOfWork's __aenter__/__aexit__."""
+    return (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    )
+
+
 # ── _run_digest ───────────────────────────────────────────────────────────────
 
 
@@ -21,18 +34,20 @@ pytestmark = pytest.mark.unit
 async def test_run_digest_no_drivers():
     """Aktif şoför yoksa processed=0 döner."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(return_value=[])
 
     mock_engine = MagicMock()
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=mock_engine,
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=mock_engine,
+        ),
+        enter_p,
+        exit_p,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            result = await _run_digest()
+        result = await _run_digest()
 
     assert result["processed"] == 0
     assert result["total"] == 0
@@ -43,8 +58,6 @@ async def test_run_digest_no_drivers():
 async def test_run_digest_processes_driver():
     """Bir şoför için engine.generate_coaching çağrılır, sonuç sayılır."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(
         return_value=[{"id": 1, "telegram_id": None}]
     )
@@ -56,12 +69,16 @@ async def test_run_digest_processes_driver():
     mock_engine = AsyncMock()
     mock_engine.generate_coaching = AsyncMock(return_value=mock_insights)
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=mock_engine,
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=mock_engine,
+        ),
+        enter_p,
+        exit_p,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            result = await _run_digest()
+        result = await _run_digest()
 
     assert result["processed"] == 1
     assert result["errors"] == 0
@@ -71,8 +88,6 @@ async def test_run_digest_processes_driver():
 async def test_run_digest_engine_error_counted():
     """engine.generate_coaching exception → errors sayacı artar, devam eder."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(
         return_value=[{"id": 1, "telegram_id": None}]
     )
@@ -80,12 +95,16 @@ async def test_run_digest_engine_error_counted():
     mock_engine = AsyncMock()
     mock_engine.generate_coaching = AsyncMock(side_effect=Exception("LLM error"))
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=mock_engine,
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=mock_engine,
+        ),
+        enter_p,
+        exit_p,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            result = await _run_digest()
+        result = await _run_digest()
 
     assert result["errors"] == 1
     assert result["processed"] == 0
@@ -97,8 +116,6 @@ async def test_run_digest_soft_time_limit_sets_partial():
     from celery.exceptions import SoftTimeLimitExceeded
 
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(
         return_value=[{"id": 1, "telegram_id": None}]
     )
@@ -106,12 +123,16 @@ async def test_run_digest_soft_time_limit_sets_partial():
     mock_engine = AsyncMock()
     mock_engine.generate_coaching = AsyncMock(side_effect=SoftTimeLimitExceeded())
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=mock_engine,
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=mock_engine,
+        ),
+        enter_p,
+        exit_p,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            result = await _run_digest()
+        result = await _run_digest()
 
     assert result["timeout_partial"] is True
 
@@ -120,8 +141,6 @@ async def test_run_digest_soft_time_limit_sets_partial():
 async def test_run_digest_high_priority_no_telegram():
     """high_priority insight ama telegram_id=None → sent=0."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(
         return_value=[{"id": 2, "telegram_id": None}]
     )
@@ -134,14 +153,18 @@ async def test_run_digest_high_priority_no_telegram():
     mock_engine = AsyncMock()
     mock_engine.generate_coaching = AsyncMock(return_value=mock_insights)
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=mock_engine,
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=mock_engine,
+        ),
+        enter_p,
+        exit_p,
+        patch("app.config.settings") as mock_settings,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            with patch("app.config.settings") as mock_settings:
-                mock_settings.COACHING_ENABLED = False
-                result = await _run_digest()
+        mock_settings.COACHING_ENABLED = False
+        result = await _run_digest()
 
     assert result["high_priority"] == 1
     assert result["sent"] == 0
@@ -154,14 +177,13 @@ async def test_run_digest_high_priority_no_telegram():
 async def test_run_evaluate_pending_no_rows():
     """14 gün + evaluated_at NULL satır yoksa evaluated=0 döner."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_result = MagicMock()
     mock_result.scalars.return_value.all.return_value = []
     mock_uow.session.execute = AsyncMock(return_value=mock_result)
     mock_uow.commit = AsyncMock()
 
-    with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with enter_p, exit_p:
         result = await _run_evaluate_pending()
 
     assert result["evaluated"] == 0
@@ -184,16 +206,18 @@ def test_evaluate_pending_deliveries_is_celery_task():
 async def test_run_digest_result_keys():
     """Dönüş dict'i beklenen tüm anahtarları içerir."""
     mock_uow = AsyncMock()
-    mock_uow.__aenter__.return_value = mock_uow
-    mock_uow.__aexit__.return_value = None
     mock_uow.sofor_repo.get_all = AsyncMock(return_value=[])
 
-    with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
-        return_value=MagicMock(),
+    enter_p, exit_p = _uow_ctx(mock_uow)
+    with (
+        patch(
+            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            return_value=MagicMock(),
+        ),
+        enter_p,
+        exit_p,
     ):
-        with patch("app.database.unit_of_work.UnitOfWork", return_value=mock_uow):
-            result = await _run_digest()
+        result = await _run_digest()
 
     expected_keys = {
         "processed",

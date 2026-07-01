@@ -233,7 +233,10 @@ class LokasyonService:
     async def delete_lokasyon(self, lokasyon_id: int) -> bool:
         """Güzergah sil (Smart Delete: Aktif->Pasif, Pasif->Hard)"""
         try:
-            current = await self.repo.get_by_id(lokasyon_id)
+            # include_inactive=True: smart-delete state machine, ikinci
+            # çağrıda (aktif=False → hard-delete) zaten pasif kaydı görmesi
+            # gerekiyor.
+            current = await self.repo.get_by_id(lokasyon_id, include_inactive=True)
             if not current:
                 return False
 

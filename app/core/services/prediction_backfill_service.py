@@ -78,6 +78,16 @@ class PredictionBackfillService:
                     skipped += 1
                     continue
 
+                if sefer.get("tahmini_tuketim") is not None:
+                    # İkincil savunma (2026-07-01 P0 #4): visibility_timeout
+                    # yanlış-hizalanması nedeniyle bu sefer'in ID listesi
+                    # başka bir worker'a da redelivered olmuş ve o worker
+                    # bu satırı bizden önce doldurmuş olabilir — dış IO
+                    # (Mapbox/Open-Meteo) çağrısı israfını atlamak için
+                    # burada erken çık.
+                    skipped += 1
+                    continue
+
                 ton = float(sefer.get("ton") or (sefer.get("net_kg") or 0) / 1000.0)
                 inp = SeferFuelInput(
                     arac_id=sefer["arac_id"],

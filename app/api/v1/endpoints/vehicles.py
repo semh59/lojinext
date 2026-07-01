@@ -141,8 +141,12 @@ async def create_arac(
         # Service handles Duplicate Check + Reactivation within the same UOW transaction
         arac_id = await service.create_arac(arac, uow=uow)
 
-        # Fetch created (Use UOW for consistency)
-        created = await uow.arac_repo.get_by_id(arac_id)
+        # Fetch created (Use UOW for consistency). include_inactive=True: the
+        # duplicate-plate path in AracService.create_arac can *reactivate* an
+        # existing passive vehicle and return its id — by the time we read it
+        # back here it has already been flipped to aktif=True in the same
+        # transaction, but we read defensively regardless of that ordering.
+        created = await uow.arac_repo.get_by_id(arac_id, include_inactive=True)
         if not created:
             raise HTTPException(
                 status_code=500, detail="Araç oluşturuldu ancak okunamadı."

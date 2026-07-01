@@ -125,14 +125,25 @@ class Arac(Base):
     )
 
     # Relationships
+    # 2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 13): `yakit_alimlari`
+    # finansal kayıtlardır ve DB'de `ondelete="RESTRICT"` ile korunur
+    # (bkz. YakitAlimi.arac_id). Eskiden burada `cascade="all, delete-orphan"`
+    # vardı — ORM-seviyeli bir `session.delete(arac)` çağrısı bu DB koruması
+    # hiç devreye girmeden çocuk kayıtları Python tarafında önce silip
+    # ardından parent'ı silerdi (sessiz veri kaybı). `passive_deletes=True`
+    # ile ORM artık çocukları kendi yönetmiyor, silme tamamen DB'nin RESTRICT
+    # kısıtına bırakılıyor.
     yakit_alimlari: Mapped[List["YakitAlimi"]] = relationship(
-        back_populates="arac", cascade="all, delete-orphan"
+        back_populates="arac", passive_deletes=True
     )
+    # `yakit_periyotlari`/`formul` de aynı sınıftan RESTRICT/cascade
+    # çelişkisi taşıyordu (`YakitPeriyot.arac_id`, `YakitFormul.arac_id` ikisi
+    # de DB'de ondelete="RESTRICT") — aynı gerekçeyle passive_deletes=True.
     yakit_periyotlari: Mapped[List["YakitPeriyot"]] = relationship(
-        back_populates="arac", cascade="all, delete-orphan"
+        back_populates="arac", passive_deletes=True
     )
     formul: Mapped[Optional["YakitFormul"]] = relationship(
-        back_populates="arac", uselist=False, cascade="all, delete-orphan"
+        back_populates="arac", uselist=False, passive_deletes=True
     )
     spec_timeline: Mapped[List["VehicleSpecTimeline"]] = relationship(
         back_populates="arac",
@@ -485,6 +496,14 @@ class Sefer(Base):
             "durum IN ('Planned', 'Completed', 'Cancelled')",
             name="check_sefer_durum_enum",
         ),
+        # 2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 15): DB-seviye
+        # kısıt yoktu. NULL="web-girildi" hâlâ serbest (CHECK NULL'da
+        # otomatik geçer — IN (...) NULL karşısında UNKNOWN döner).
+        CheckConstraint(
+            "onay_durumu IS NULL OR onay_durumu IN "
+            "('beklemede', 'onaylandi', 'reddedildi')",
+            name="check_sefer_onay_durumu_enum",
+        ),
         Index("idx_seferler_rota_detay_gin", "rota_detay", postgresql_using="gin"),
         Index("idx_seferler_tahmin_meta_gin", "tahmin_meta", postgresql_using="gin"),
         # Partial index for approval-queue queries (0009_onay_durumu_index migration)
@@ -527,8 +546,8 @@ class Sefer(Base):
         ForeignKey("soforler.id", ondelete="RESTRICT"), index=True
     )
     periyot_id: Mapped[Optional[int]] = mapped_column(
-        Integer, index=True
-    )  # Soft link to periyot
+        ForeignKey("yakit_periyotlari.id", ondelete="SET NULL"), index=True
+    )  # 2026-07-01 P1 madde 14: gerçek FK (bkz. migration 0035)
 
     # Weight Info
     bos_agirlik_kg: Mapped[int] = mapped_column(
@@ -898,6 +917,12 @@ class Anomaly(Base):
     __table_args__ = (
         Index("idx_anomaly_kaynak", "kaynak_tip", "kaynak_id"),
         Index("idx_anomaly_status_combo", "resolved_at", "acknowledged_at"),
+        # 2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 15): DB-seviye
+        # kısıt yoktu, typo'lu bir severity hiç engellenmiyordu.
+        CheckConstraint(
+            "severity IN ('low', 'medium', 'high', 'critical')",
+            name="check_anomaly_severity_enum",
+        ),
     )
 
 

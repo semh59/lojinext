@@ -112,8 +112,11 @@ async def test_distinct_subscriber_ids_returns_list():
     assert result == [1, 2, 3]
 
 
-def test_weekly_digest_exception_path():
-    """weekly_digest catches exceptions and returns error dict."""
+def test_weekly_digest_generic_error_reraises():
+    """2026-07-01 derin kontrol: eskiden generic bir hata yutulup normal bir
+    sonuç dict'i dönüyordu (Celery bunu SUCCESS sayardı, retry hiç
+    tetiklenmezdi). Artık log'lanıp yeniden fırlatılıyor — task gerçekten
+    FAILED olarak işaretlenir."""
     enter_p, exit_p = _uow_ctx()
     with (
         enter_p,
@@ -125,8 +128,22 @@ def test_weekly_digest_exception_path():
     ):
         from app.workers.tasks.notification_tasks import weekly_digest
 
-        result = weekly_digest.run()
+        with pytest.raises(Exception):
+            weekly_digest.apply(args=[]).get(propagate=True)
 
-    assert result["users"] == 0
-    assert result["pushed"] == 0
-    assert "DB down" in result["error"]
+
+def test_weekly_digest_connection_error_retries():
+    """Geçici bir bağlantı hatası (ConnectionError) retry path'ini tetikler."""
+    enter_p, exit_p = _uow_ctx()
+    with (
+        enter_p,
+        exit_p,
+        patch(
+            "app.workers.tasks.notification_tasks._distinct_subscriber_ids",
+            new=AsyncMock(side_effect=ConnectionError("Redis unreachable")),
+        ),
+    ):
+        from app.workers.tasks.notification_tasks import weekly_digest
+
+        with pytest.raises(Exception):
+            weekly_digest.apply(args=[]).get(propagate=True)

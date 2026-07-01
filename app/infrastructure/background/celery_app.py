@@ -31,7 +31,17 @@ def get_celery_app() -> Celery:
         worker_prefetch_multiplier=1,
         task_acks_late=True,
         result_expires=3600,
-        broker_transport_options={"visibility_timeout": 120},
+        # 2026-07-01 prod-grade denetimi P0 #4: Redis broker'da visibility_timeout,
+        # ACK gelmeden redelivery tetikleyen mekanizmadır ve TÜM task'lar için
+        # TEK bir global değerdir (per-task override edilemez). Önceki değer
+        # (120s) app'teki en uzun task'ların soft/hard time_limit'lerinin
+        # (prediction.backfill_missing: 600/660s, coaching_tasks weekly digest:
+        # 3600/3900s) çok altındaydı — bu task'lar kendi süreleri içinde normal
+        # şekilde bitmeden broker onları "kayıp" sayıp BAŞKA bir worker'a tekrar
+        # dağıtıyordu (duplike Mapbox/Open-Meteo çağrısı + duplike push
+        # bildirimi + duplike route_simulations satırı). 4200s (70dk), en uzun
+        # task'ın (3900s) üzerinde güvenli bir marj bırakır.
+        broker_transport_options={"visibility_timeout": 4200},
         beat_schedule={
             "drain-prediction-dlq-every-60s": {
                 "task": "prediction.drain_dlq",

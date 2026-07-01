@@ -23,6 +23,14 @@ receivers:
     webhook_configs:
       - url: "http://telegram-ops-bot:8080/webhook/alertmanager"
         send_resolved: true
+        http_config:
+          # 2026-07-01 prod-grade denetimi P1: ops_bot artık bu secret
+          # olmadan TÜM webhook isteklerini reddediyor (fail-closed).
+          # Değer container başlarken OPS_WEBHOOK_SECRET env var'ından
+          # /tmp/ops_webhook_secret'a yazılır (bkz. docker-compose.yml
+          # alertmanager entrypoint) — repo'da hiçbir çıplak secret yok.
+          authorization:
+            credentials_file: /tmp/ops_webhook_secret
 
 inhibit_rules:
   - source_matchers:

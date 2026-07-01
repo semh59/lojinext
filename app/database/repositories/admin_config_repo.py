@@ -39,8 +39,18 @@ class AdminConfigRepository(BaseRepository[SistemKonfig]):
     ) -> Dict[str, Any]:
         """
         Updates configuration value and logs to history.
+
+        2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 12): satır
+        `SELECT ... FOR UPDATE` ile kilitlenir. Eskiden düz `session.get`
+        kullanılıyordu — eşzamanlı iki `update_value` çağrısında, geç kalan
+        çağrı ilkinin flush/commit'inden ÖNCE stale bir `deger` okuyup bunu
+        `eski_deger` olarak audit history'ye yanlış yazıyordu. `FOR UPDATE`
+        select anında kilitlediği için geç kalan çağrı ilkinin commit'ini
+        bekler ve GÜNCEL değeri görür.
         """
-        config = await self.session.get(self.model, key)
+        stmt = select(self.model).where(self.model.anahtar == key).with_for_update()
+        result = await self.session.execute(stmt)
+        config = result.scalar_one_or_none()
         if not config:
             raise ValueError(f"Configuration key not found: {key}")
 

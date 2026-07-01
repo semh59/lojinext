@@ -193,6 +193,17 @@ class AracService:
             return False
 
         arac = await uow.arac_repo.get_by_id(arac_id)
+        if arac is None:
+            # Vehicle doesn't exist, or exists but is currently passive
+            # (soft-deleted). A generic update must not silently mutate a
+            # retired vehicle's data by bypassing the reactivation flow —
+            # only an explicit reactivation (aktif=True in the payload) is
+            # allowed to touch a passive vehicle's row.
+            if update_data.get("aktif") is True:
+                arac = await uow.arac_repo.get_by_id(arac_id, include_inactive=True)
+            if arac is None:
+                return False
+
         old_status = None
         if "aktif" in update_data and arac:
             old_status = "ACTIVE" if arac.get("aktif") else "PASSIVE"
@@ -248,7 +259,10 @@ class AracService:
     async def delete_arac(self, arac_id: int) -> bool:
         """Deletes a vehicle (Smart Delete: Active->Passive, Passive->Hard Delete)."""
         async with UnitOfWork() as uow:
-            current = await uow.arac_repo.get_by_id(arac_id)
+            # include_inactive=True: bu smart-delete state machine, ikinci
+            # çağrıda (aktif=False → hard-delete) zaten pasif kaydı görmesi
+            # gerekiyor — kök soft-delete filtresi burada kasıtlı bypass edilir.
+            current = await uow.arac_repo.get_by_id(arac_id, include_inactive=True)
             if not current:
                 return False
 

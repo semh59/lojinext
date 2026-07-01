@@ -21,6 +21,18 @@ _TIMEOUT = 10.0
 _MAX_RETRIES = 3
 _RETRY_DELAYS = (1.0, 3.0)  # saniye cinsinden, 3. deneme sonrası fallback
 
+# 2026-07-01 prod-grade denetimi P1: ops_bot artık OPS_WEBHOOK_SECRET
+# yapılandırılmamışsa TÜM webhook isteklerini reddediyor (fail-closed) — bu
+# istemci de aynı secret'ı Authorization: Bearer header'ı olarak göndermeli,
+# aksi halde kendi hata/feedback bildirimleri 503 ile reddedilir.
+_OPS_WEBHOOK_SECRET = os.environ.get("OPS_WEBHOOK_SECRET", "")
+
+
+def _auth_headers() -> dict[str, str]:
+    if not _OPS_WEBHOOK_SECRET:
+        return {}
+    return {"Authorization": f"Bearer {_OPS_WEBHOOK_SECRET}"}
+
 
 async def notify_error(
     *,
@@ -40,7 +52,9 @@ async def notify_error(
     for attempt in range(_MAX_RETRIES):
         try:
             async with get_monitored_client(timeout=_TIMEOUT) as client:
-                resp = await client.post(_WEBHOOK_URL, json=payload)
+                resp = await client.post(
+                    _WEBHOOK_URL, json=payload, headers=_auth_headers()
+                )
                 resp.raise_for_status()
                 return
         except Exception as exc:
@@ -72,7 +86,9 @@ async def notify_feedback(
     for attempt in range(2):
         try:
             async with get_monitored_client(timeout=_TIMEOUT) as client:
-                resp = await client.post(_FEEDBACK_WEBHOOK_URL, json=payload)
+                resp = await client.post(
+                    _FEEDBACK_WEBHOOK_URL, json=payload, headers=_auth_headers()
+                )
                 resp.raise_for_status()
                 return True
         except Exception as exc:

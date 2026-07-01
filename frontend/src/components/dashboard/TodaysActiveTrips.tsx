@@ -5,33 +5,40 @@ import { useTranslation } from "react-i18next";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { tripService } from "@/api/trips";
-import type { StatusMeta } from "@/lib/status-labels";
+import { getTripStatusMeta, type StatusMeta } from "@/lib/status-labels";
+import { normalizeTripStatus } from "@/lib/trip-status";
+
+// 2026-07-01 prod-grade denetimi P0 #8 fix: bu widget önceden Türkçe
+// anahtarlı (Planlandı/Yolda/Tamamlandı/İptal) bir sözlükle çeviri yapıyordu,
+// ama backend kanonik olarak yalnız İngilizce string döner (Planned/
+// Completed/Cancelled — DB CHECK constraint ile birebir, "Yolda" durumu DB'de
+// hiç yok) — sözlük her satırda daima miss ediyor, renksiz/gri rozet
+// gösteriyordu. `TripTable.tsx`'in zaten kullandığı doğru desen (normalize →
+// getTripStatusMeta) burada da uygulanıyor.
+function tripStatusMetaFor(
+  durum: string | undefined,
+  lang: string,
+): StatusMeta {
+  switch (normalizeTripStatus(durum)) {
+    case "Tamamlandı":
+      return getTripStatusMeta("Completed", lang);
+    case "İptal":
+      return getTripStatusMeta("Cancelled", lang);
+    case "Planlandı":
+      return getTripStatusMeta("Planned", lang);
+    default:
+      return { label: durum ?? "-", variant: "neutral" };
+  }
+}
 
 export function TodaysActiveTrips() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["trips", "today"],
     queryFn: () => tripService.getTodayTrips(),
     staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
   });
-
-  // Keys are Turkish DB enum values — labels are translated.
-  const TURKISH_STATUS_META: Record<string, StatusMeta> = {
-    Planlandı: { label: t("trips.status_planned", "Planned"), variant: "info" },
-    Yolda: {
-      label: t("trips.status_in_progress", "En Route"),
-      variant: "warning",
-    },
-    Tamamlandı: {
-      label: t("trips.status_completed", "Completed"),
-      variant: "success",
-    },
-    İptal: {
-      label: t("trips.status_cancelled", "Cancelled"),
-      variant: "danger",
-    },
-  };
 
   // ISO YYYY-MM-DD; TripsPage useUrlState'in `start`/`end` paramlarına filter olarak gider.
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -86,11 +93,8 @@ export function TodaysActiveTrips() {
       ) : (
         <ul className="space-y-2">
           {visible.map((trip) => {
-            const durum = trip.durum ?? "Planlandı";
-            const meta = TURKISH_STATUS_META[durum] ?? {
-              label: durum,
-              variant: "neutral" as const,
-            };
+            const durum = trip.durum ?? "Planned";
+            const meta = tripStatusMetaFor(durum, i18n.language);
             return (
               <li
                 key={trip.id}

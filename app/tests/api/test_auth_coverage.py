@@ -107,6 +107,153 @@ async def test_login_wrong_super_admin_password_falls_through(async_client):
     assert resp.status_code in (400, 401, 422, 500)
 
 
+async def test_super_admin_login_rate_limited_after_repeated_attempts(async_client):
+    """2026-07-01 prod-grade denetimi P1: break-glass süper-admin girişi
+    önceden genel `auth_token` bucket'ını (5 req/s) paylaşıyordu — bu,
+    şifrenin saniyede birkaç deneme hızıyla brute-force edilebileceği
+    anlamına geliyordu. Artık ayrı, çok sıkı bir bucket (5 dakikada 3
+    deneme) var; bu bucket hem başarılı hem başarısız denemeleri sayar.
+    """
+    from app.config import settings
+    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+
+    username = settings.SUPER_ADMIN_USERNAME
+    try:
+        settings.SUPER_ADMIN_PASSWORD.get_secret_value()  # type: ignore[union-attr]
+    except Exception:
+        pytest.skip("SUPER_ADMIN_PASSWORD not configured")
+
+    # Clean slate: testler arası state sızmasını önle (bucket key artık
+    # "super_admin_login:{ip}" formatında — prefix ile temizle).
+    def _clear_super_admin_buckets():
+        for k in [
+            k
+            for k in RateLimiterRegistry._limiters
+            if k.startswith("super_admin_login")
+        ]:
+            RateLimiterRegistry._limiters.pop(k, None)
+
+    _clear_super_admin_buckets()
+    try:
+        for _ in range(3):
+            resp = await async_client.post(
+                "/api/v1/auth/token",
+                data={
+                    "username": username,
+                    "password": "wrong_password_xyz",  # pragma: allowlist secret
+                },
+            )
+            assert resp.status_code != 429
+
+        resp = await async_client.post(
+            "/api/v1/auth/token",
+            data={
+                "username": username,
+                "password": "wrong_password_xyz",  # pragma: allowlist secret
+            },
+        )
+        assert resp.status_code == 429
+    finally:
+        _clear_super_admin_buckets()
+
+
+async def test_super_admin_rate_limit_is_scoped_per_ip(db_session):
+    """2026-07-01 derin kontrol bulgusu: bucket global (tüm IP'ler ortak)
+    olduğunda, kimliği doğrulanmamış bir saldırgan HERHANGİ bir IP'den 3
+    yanlış şifre denemesiyle bucket'ı tüketip meşru süper-admin'in
+    başka bir IP'den giriş yapmasını 5 dakika boyunca engelleyebilirdi
+    (break-glass hesabına karşı DoS). Artık bucket key'e client IP dahil —
+    bir IP'nin denemeleri başka bir IP'yi etkilememeli.
+
+    `db_session` fixture'ı doğrudan istenir: bu test kendi `AsyncClient`
+    örneklerini kurduğu için `async_client` fixture'ının sağladığı
+    DB-izolasyon monkeypatch'lerinden (gerçek DATABASE_URL yerine test DB'si)
+    otomatik yararlanamaz.
+    """
+    from httpx import ASGITransport, AsyncClient
+
+    from app.config import settings
+    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from app.main import app
+
+    username = settings.SUPER_ADMIN_USERNAME
+    try:
+        settings.SUPER_ADMIN_PASSWORD.get_secret_value()  # type: ignore[union-attr]
+    except Exception:
+        pytest.skip("SUPER_ADMIN_PASSWORD not configured")
+
+    attacker_keys = [
+        k for k in RateLimiterRegistry._limiters if k.startswith("super_admin_login")
+    ]
+    for k in attacker_keys:
+        RateLimiterRegistry._limiters.pop(k, None)
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app, client=("203.0.113.9", 1234)),
+            base_url="http://test",
+        ) as attacker_client:
+            for _ in range(3):
+                resp = await attacker_client.post(
+                    "/api/v1/auth/token",
+                    data={
+                        "username": username,
+                        "password": "wrong_password_xyz",  # pragma: allowlist secret
+                    },
+                )
+                assert resp.status_code != 429
+            # Attacker's 4th attempt from the SAME ip should now be limited.
+            resp = await attacker_client.post(
+                "/api/v1/auth/token",
+                data={
+                    "username": username,
+                    "password": "wrong_password_xyz",  # pragma: allowlist secret
+                },
+            )
+            assert resp.status_code == 429
+
+        # A DIFFERENT ip (the real super-admin, elsewhere) must be unaffected.
+        async with AsyncClient(
+            transport=ASGITransport(app=app, client=("198.51.100.7", 1234)),
+            base_url="http://test",
+        ) as victim_client:
+            resp = await victim_client.post(
+                "/api/v1/auth/token",
+                data={
+                    "username": username,
+                    "password": "wrong_password_xyz",  # pragma: allowlist secret
+                },
+            )
+            assert resp.status_code != 429
+    finally:
+        attacker_keys = [
+            k
+            for k in RateLimiterRegistry._limiters
+            if k.startswith("super_admin_login")
+        ]
+        for k in attacker_keys:
+            RateLimiterRegistry._limiters.pop(k, None)
+
+
+async def test_regular_user_login_unaffected_by_super_admin_rate_limit(async_client):
+    """Süper-admin'e özel sıkı rate-limit, normal kullanıcı girişini etkilememeli."""
+    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+
+    RateLimiterRegistry._limiters.pop("super_admin_login", None)
+    fake_svc = _make_fake_auth_service()
+
+    with _override_auth_service(fake_svc):
+        for _ in range(3):
+            resp = await async_client.post(
+                "/api/v1/auth/token",
+                data={
+                    "username": "someuser@test.com",
+                    "password": "SomePass1",  # pragma: allowlist secret
+                },
+            )
+            assert resp.status_code == 200
+
+
 # ─── POST /auth/token — regular auth ─────────────────────────────────────────
 
 

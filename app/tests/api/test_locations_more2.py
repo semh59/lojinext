@@ -565,6 +565,40 @@ async def test_update_generic_exception(async_client, admin_auth_headers):
 
 
 # ---------------------------------------------------------------------------
+# PUT /{id} — updating an INACTIVE location must not 500
+# ---------------------------------------------------------------------------
+
+
+async def test_update_inactive_location_does_not_crash(
+    async_client, admin_auth_headers, db_session
+):
+    """2026-07-01 derin kontrol bulgusu: `update_lokasyon` endpoint'i
+    pre/post audit-snapshot fetch'lerinde `include_inactive=True` kullanmıyordu
+    — pasif (soft-deleted) bir lokasyonu güncellemek (reaktive etmeden,
+    örn. sadece notlar) `get_by_id` None döndürdüğü için `dict(None)` ile
+    500'e düşüyordu."""
+    from app.database.models import Lokasyon
+
+    lok = Lokasyon(
+        cikis_yeri="InactiveUpdateC",
+        varis_yeri="InactiveUpdateV",
+        mesafe_km=100.0,
+        aktif=False,
+    )
+    db_session.add(lok)
+    await db_session.flush()
+
+    resp = await async_client.put(
+        f"/api/v1/locations/{lok.id}",
+        json={"notlar": "updated while inactive"},
+        headers=admin_auth_headers,
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["notlar"] == "updated while inactive"
+
+
+# ---------------------------------------------------------------------------
 # DELETE /{id} — inactive (was_active=False) path → hard delete header
 # ---------------------------------------------------------------------------
 

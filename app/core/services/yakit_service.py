@@ -218,7 +218,12 @@ class YakitService:
 
         try:
             async with UnitOfWork() as uow:
-                current = await uow.yakit_repo.get_by_id(yakit_id)
+                # include_inactive=True: hard-delete zaten pasif (aktif=False)
+                # kaydı da kalıcı olarak silebilmeli — aksi halde soft-delete
+                # edilmiş bir kayıt bu API üzerinden hiç hard-delete edilemez.
+                current = await uow.yakit_repo.get_by_id(
+                    yakit_id, include_inactive=True
+                )
                 if not current:
                     return False
 

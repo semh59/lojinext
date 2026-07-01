@@ -389,6 +389,62 @@ async def test_metrics_endpoint_blocked_for_unknown_ip(async_client):
 # ---------------------------------------------------------------------------
 
 
+async def test_http_exception_403_writes_admin_audit_log(async_client):
+    """2026-07-01 prod-grade denetimi P1: 403 izin reddi denemeleri önceden
+    hiçbir yerde admin_audit_log'a düşmüyordu. Merkezi http_exception_handler
+    artık her 403'ü (kaynağı ne olursa olsun) best-effort olarak audit'e
+    yazıyor."""
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    @app.get("/test-403-audit")
+    async def _raise_403():
+        raise StarletteHTTPException(
+            status_code=403, detail="Erişim Reddedildi: test yetkisi gerekli."
+        )
+
+    try:
+        with patch(
+            "app.infrastructure.audit.audit_logger.log_audit_event",
+            new_callable=AsyncMock,
+        ) as mock_audit:
+            resp = await async_client.get(
+                "/test-403-audit", headers={"Authorization": "Bearer not-a-real-jwt"}
+            )
+        assert resp.status_code == 403
+        mock_audit.assert_awaited_once()
+        _, kwargs = mock_audit.await_args
+        assert kwargs["action"] == "authz.forbidden"
+        assert kwargs["entity_id"] == "/test-403-audit"
+        assert kwargs["basarili"] is False
+        assert "test yetkisi gerekli" in kwargs["new_value"]["detail"]
+    finally:
+        app.routes[:] = [
+            r for r in app.routes if getattr(r, "path", "") != "/test-403-audit"
+        ]
+
+
+async def test_http_exception_403_audit_failure_does_not_break_response(async_client):
+    """Audit DB yazımı patlarsa bile asıl 403 yanıtı bozulmamalı (best-effort)."""
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    @app.get("/test-403-audit-fail")
+    async def _raise_403_2():
+        raise StarletteHTTPException(status_code=403, detail="denied")
+
+    try:
+        with patch(
+            "app.infrastructure.audit.audit_logger.log_audit_event",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db down"),
+        ):
+            resp = await async_client.get("/test-403-audit-fail")
+        assert resp.status_code == 403
+    finally:
+        app.routes[:] = [
+            r for r in app.routes if getattr(r, "path", "") != "/test-403-audit-fail"
+        ]
+
+
 async def test_http_exception_handler_with_dict_detail(async_client):
     """http_exception_handler handles dict exc.detail correctly."""
     from starlette.exceptions import HTTPException as StarletteHTTPException

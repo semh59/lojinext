@@ -727,6 +727,43 @@ async def test_create_return_trip_raises_when_not_found(db_session):
         await svc.create_return_trip(999999)
 
 
+async def test_update_sefer_round_trip_failure_is_not_silently_swallowed(db_session):
+    """2026-07-01 prod-grade denetimi P0 bug: `_handle_round_trip_on_update`
+    dönüş seferi oluşturma hatasını `except Exception: logger.error(...)` ile
+    yutuyordu; `update_sefer` yine de True dönüyor, kullanıcı dönüş seferinin
+    oluştuğunu sanıyordu. Fix sonrası hata artık yutulmuyor — update_sefer'ın
+    kendi dış except/raise zincirine yükselip caller'a görünür oluyor.
+    """
+    arac = await seed_arac(db_session, plaka="34SWCRT03")
+    sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Rt3")
+    sefer = await seed_sefer(
+        db_session,
+        arac_id=arac.id,
+        sofor_id=sofor.id,
+        sefer_no="SWC-TRIP-RT03",
+        cikis_yeri="Istanbul",
+        varis_yeri="Ankara",
+    )
+    await db_session.commit()
+
+    svc, _ = _make_service()
+    with patch.object(
+        svc, "_create_return_trip", new=AsyncMock(side_effect=RuntimeError("boom"))
+    ):
+        with pytest.raises(RuntimeError, match="boom"):
+            # is_round_trip is a signal-only field (not a physical Sefer
+            # column) — pair it with a real column change so
+            # `uow.sefer_repo.update_sefer` actually returns True and the
+            # ROUND-TRIP CHECK branch executes.
+            await svc.update_sefer(
+                sefer.id,
+                SeferUpdate(is_round_trip=True, notlar="round-trip test"),
+            )
+    # RuntimeError("boom") propagated instead of being swallowed by
+    # `_handle_round_trip_on_update`'s old bare `except Exception` — the
+    # caller now sees the failure instead of a silent `True`.
+
+
 async def test_create_return_trip_no_double_suffix(db_session):
     """Return trip sefer_no gets exactly one '-D' suffix, not '-D-D'.
 
@@ -804,6 +841,59 @@ async def test_check_sla_delay_skips_when_sefer_missing():
 
 
 # ============================================================
+# 9b. _repredikt_for_update — soft-deleted guzergah (2026-07-01 audit)
+# ============================================================
+
+
+async def test_repredikt_for_update_ignores_soft_deleted_guzergah(monkeypatch):
+    """2026-07-01 prod-grade denetimi bug (sefer_write_service.py:281):
+    `guzergah_id` update_data'da set olsa bile, referans ettiği güzergah
+    soft-deleted/pasifse (kök-fix sonrası lokasyon_repo.get_by_id None döner),
+    eski/silinmiş rota verisi tahmine beslenmemeli — update_data'daki mesafe/
+    eğim alanları current_sefer'daki mevcut değerlerle kalmalı.
+
+    NOT: Bu test `_repredikt_for_update`'in `lokasyon_repo.get_by_id`
+    `None` DÖNDÜĞÜNDE doğru davrandığını kilitler — `DummyUoW.lokasyon_repo
+    .get_by_id` sabit `AsyncMock(return_value=None)` olduğu için kök-neden
+    fix'ini (BaseRepository.get_by_id soft-delete filtresi) DOĞRUDAN kilitlemez;
+    bu fix reverte edilse bile bu test yeşil kalır. Kök-neden guard'ı ayrı
+    ve gerçek DB'ye karşı çalışan `test_get_by_id_excludes_soft_deleted_by_default`
+    (test_base_repository.py) testidir.
+    """
+    uow = DummyUoW()
+    # DummyUoW.lokasyon_repo.get_by_id zaten None döner — soft-deleted
+    # güzergah_id'nin kök-fix sonrası gerçek davranışını modelliyor.
+
+    captured = {}
+
+    class _FakePredictionService:
+        async def predict_consumption(self, **kwargs):
+            captured.update(kwargs)
+            return {"tahmini_tuketim": 42.0, "tahmini_litre": 42.0}
+
+    monkeypatch.setattr(
+        "app.services.prediction_service.get_prediction_service",
+        lambda: _FakePredictionService(),
+    )
+
+    svc, _ = _make_service()
+    current_sefer = _current_sefer(mesafe_km=450.0, ascent_m=200.0, descent_m=150.0)
+    update_data = {"guzergah_id": 999}  # references a soft-deleted/gone location
+
+    await svc._repredikt_for_update(uow, current_sefer, update_data)
+
+    # Soft-deleted route contributed nothing — the OLD (current_sefer) route
+    # metrics were used for the prediction call, not stale/deleted data.
+    assert captured["mesafe_km"] == 450.0
+    assert captured["ascent_m"] == 200.0
+    assert captured["descent_m"] == 150.0
+    # And update_data itself was not silently filled with deleted-route data.
+    assert "mesafe_km" not in update_data
+    assert "ascent_m" not in update_data
+    assert "descent_m" not in update_data
+
+
+# ============================================================
 # 10. _resolve_route
 # ============================================================
 
@@ -827,6 +917,41 @@ async def test_resolve_route_fills_mesafe_from_route():
     data.mesafe_km = 0.0
     await svc._resolve_route(uow, data)
     assert data.mesafe_km == 550.0
+
+
+async def test_resolve_route_ignores_soft_deleted_guzergah(monkeypatch):
+    """2026-07-01 prod-grade denetimi bug: BaseRepository.get_by_id soft-delete
+    filtresizdi, bu yüzden pasif/silinmiş bir güzergahın eski mesafe/eğim verisi
+    doğrudan canlı yakıt tahminine besleniyordu (sefer_write_service.py:402).
+    Kök neden düzeltmesiyle `lokasyon_repo.get_by_id` artık soft-deleted bir
+    güzergah için None döner — bu test o davranışı `_resolve_route` seviyesinde
+    kilitler: guzergah_id set olsa bile route None dönerse hiçbir stale veri
+    `data`'ya yazılmamalı.
+
+    NOT: `DummyUoW.lokasyon_repo.get_by_id` sabit `None` döndürdüğü için bu
+    test kök-neden fix'ini (BaseRepository.get_by_id filtresi) DOĞRUDAN
+    kilitlemez — sadece `_resolve_route`'un `route_dict=None` girdisini doğru
+    işlediğini kilitler. Kök-neden guard'ı `test_base_repository.py`'deki
+    gerçek-DB testleridir.
+    """
+    uow = DummyUoW()
+    # DummyUoW.lokasyon_repo.get_by_id zaten None döner (bkz. sınıf tanımı) —
+    # bu, kök-fix sonrası soft-deleted bir güzergah_id'nin gerçek davranışını
+    # birebir modelliyor.
+    svc, _ = _make_service()
+    # mesafe_km SeferCreate şemasında >0 zorunlu — burada kasıtlı olarak
+    # route enrichment'tan BAĞIMSIZ, çağıranın zaten sağladığı geçerli bir
+    # değer kullanılıyor; asıl iddia route_dict None dönünce fonksiyonun
+    # hiçbir alanı (ascent_m/descent_m dahil) silinmiş rota verisiyle
+    # doldurmadan erkenden None dönmesi.
+    data = _sefer_create(guzergah_id=999, mesafe_km=450.0)
+
+    result = await svc._resolve_route(uow, data)
+
+    assert result is None
+    assert data.mesafe_km == 450.0  # değişmedi — stale rota verisiyle ezilmedi
+    assert data.ascent_m is None  # route None döndüğü için hiç dokunulmadı
+    assert data.descent_m is None
 
 
 # ============================================================

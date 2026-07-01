@@ -264,8 +264,22 @@ class SeferRepository(BaseRepository[Sefer]):
             ),
         }
 
-    async def get_by_id(self, sefer_id: int, for_update: bool = False) -> dict | None:
-        """ID ile sefer getir (dict olarak)"""
+    async def get_by_id(
+        self,
+        sefer_id: int,
+        for_update: bool = False,
+        include_inactive: bool = False,
+    ) -> dict | None:
+        """ID ile sefer getir (dict olarak).
+
+        ``include_inactive=True``: soft-deleted (``is_deleted=True``) bir
+        seferi de görmek gereken kasıtlı akışlar için (ör. çift-silme
+        guard'ı) filtreyi bypass eder — bkz. BaseRepository.get_by_id ile
+        aynı sözleşme.
+        """
+        conditions = [Sefer.id == sefer_id]
+        if not include_inactive:
+            conditions.append(Sefer.is_deleted == False)  # noqa: E712
         stmt = (
             select(Sefer)
             .options(
@@ -274,7 +288,7 @@ class SeferRepository(BaseRepository[Sefer]):
                 joinedload(Sefer.dorse),
                 joinedload(Sefer.guzergah),
             )
-            .where(Sefer.id == sefer_id, Sefer.is_deleted == False)  # noqa: E712
+            .where(*conditions)
         )
         result = await self.session.execute(stmt)
         s = result.scalars().first()

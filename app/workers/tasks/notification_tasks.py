@@ -56,14 +56,25 @@ async def _run_weekly_digest() -> dict[str, Any]:
 @celery_app.task(
     bind=True, name="notifications.weekly_digest", max_retries=1, acks_late=True
 )
-def weekly_digest(self) -> dict[str, Any]:  # noqa: ARG001
-    """Pazartesi — abone kullanıcılara haftalık top-3 dikkat digest'i."""
+def weekly_digest(self) -> dict[str, Any]:
+    """Pazartesi — abone kullanıcılara haftalık top-3 dikkat digest'i.
+
+    2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 16): eskiden TÜM
+    hatalar yutulup normal bir sonuç dict'i dönüyordu — Celery bunu SUCCESS
+    sayıyor, `max_retries` fiilen devre dışı kalıyordu (geçici bir DB/Redis
+    hatası bile hiç retry edilmeden sessizce kayboluyordu). Artık geçici
+    hatalar (`ConnectionError`/`TimeoutError`/`OSError`) retry ediliyor,
+    diğerleri log'lanıp yeniden fırlatılıyor (task gerçekten FAILED olarak
+    işaretlenir, izlenebilir).
+    """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(_run_weekly_digest())
-    except Exception as exc:  # noqa: BLE001
-        logger.error("weekly digest failed: %s", exc, exc_info=True)
-        return {"users": 0, "pushed": 0, "error": str(exc)}
+    except (ConnectionError, TimeoutError, OSError) as exc:
+        raise self.retry(exc=exc, countdown=2**self.request.retries * 30)
+    except Exception:
+        logger.exception("weekly digest failed permanently")
+        raise
     finally:
         loop.close()

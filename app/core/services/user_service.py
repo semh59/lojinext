@@ -59,7 +59,11 @@ class UserService:
                     detail="Kullanıcı oluşturulamadı: veri bütünlüğü hatası",
                 )
 
-            created = await uow.kullanici_repo.get_by_id(new_id)
+            # include_inactive=True: az önce oluşturulan kaydı aynı
+            # transaction içinde geri okuyoruz — caller `aktif=False` ile
+            # oluşturmuş olabilir (data.get("aktif", True)), bu durumda da
+            # okunabilmeli.
+            created = await uow.kullanici_repo.get_by_id(new_id, include_inactive=True)
             if created is None:
                 raise HTTPException(
                     status_code=500, detail="Oluşturulan kullanıcı tekrar okunamadı"

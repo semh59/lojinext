@@ -141,6 +141,19 @@ class SoforService:
     async def update_sofor(self, sofor_id: int, **kwargs: Any) -> bool:
         """Updates driver details (UoW & Safe Name Change)."""
         async with UnitOfWork() as uow:
+            current = await uow.sofor_repo.get_by_id(sofor_id)
+            if current is None:
+                # Driver doesn't exist, or exists but is currently passive/
+                # soft-deleted. A generic update must not silently mutate a
+                # deactivated driver's data (e.g. manual_score) — only an
+                # explicit reactivation (aktif=True in kwargs) may proceed.
+                if kwargs.get("aktif") is True:
+                    current = await uow.sofor_repo.get_by_id(
+                        sofor_id, include_inactive=True
+                    )
+                if current is None:
+                    return False
+
             # Title Case if ad_soyad is provided
             if kwargs.get("ad_soyad"):
                 ad_soyad = " ".join(
@@ -155,12 +168,10 @@ class SoforService:
 
             # Recalculate hybrid score if manual_score is updated
             if "manual_score" in kwargs:
-                current = await uow.sofor_repo.get_by_id(sofor_id)
-                if current:
-                    new_score = await self.calculate_hybrid_score(
-                        sofor_id, kwargs["manual_score"], uow=uow
-                    )
-                    kwargs["score"] = new_score
+                new_score = await self.calculate_hybrid_score(
+                    sofor_id, kwargs["manual_score"], uow=uow
+                )
+                kwargs["score"] = new_score
 
             success = await uow.sofor_repo.update(sofor_id, **kwargs)
             if success:
@@ -179,7 +190,11 @@ class SoforService:
 
     async def _delete_sofor_uow(self, uow: UnitOfWork, sofor_id: int) -> bool:
         """Transactional soft delete logic (Shared UoW)."""
-        current = await uow.sofor_repo.get_by_id(sofor_id, for_update=True)
+        # include_inactive=True: bu idempotent silme guard'ı, zaten
+        # pasif/silinmiş bir kaydı görüp çift-silmeyi engellemesi gerekiyor.
+        current = await uow.sofor_repo.get_by_id(
+            sofor_id, for_update=True, include_inactive=True
+        )
         if not current or current.get("is_deleted"):
             return False
 

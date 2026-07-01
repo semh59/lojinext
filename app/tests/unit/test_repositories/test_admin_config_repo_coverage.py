@@ -37,6 +37,15 @@ def _fake_konfig(key="fuel_price", value="50", group="prices"):
     return obj
 
 
+def _execute_result_for(config_obj):
+    """update_value now does SELECT ... FOR UPDATE via session.execute();
+    build a mock `Result`-like object whose scalar_one_or_none() returns
+    the given config (or None)."""
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = config_obj
+    return mock_result
+
+
 # ---------------------------------------------------------------------------
 # get_config
 # ---------------------------------------------------------------------------
@@ -104,7 +113,7 @@ async def test_update_value_success():
     """Happy path: config found, value updated, history entry added."""
     session = AsyncMock()
     konfig = _fake_konfig("fuel_price", "50")
-    session.get = AsyncMock(return_value=konfig)
+    session.execute = AsyncMock(return_value=_execute_result_for(konfig))
     session.add = MagicMock()
     session.refresh = AsyncMock()
 
@@ -124,7 +133,7 @@ async def test_update_value_success():
 
 async def test_update_value_key_not_found_raises():
     session = AsyncMock()
-    session.get = AsyncMock(return_value=None)
+    session.execute = AsyncMock(return_value=_execute_result_for(None))
 
     repo = _make_repo(session)
 
@@ -136,7 +145,7 @@ async def test_update_value_zero_updated_by_sets_none():
     """updated_by_id <= 0 → guncelleyen_id set to None (FK guard)."""
     session = AsyncMock()
     konfig = _fake_konfig("key", "old")
-    session.get = AsyncMock(return_value=konfig)
+    session.execute = AsyncMock(return_value=_execute_result_for(konfig))
     session.add = MagicMock()
     session.refresh = AsyncMock()
 
@@ -154,7 +163,7 @@ async def test_update_value_no_reason():
     """reason=None is passed through."""
     session = AsyncMock()
     konfig = _fake_konfig("k", "v1")
-    session.get = AsyncMock(return_value=konfig)
+    session.execute = AsyncMock(return_value=_execute_result_for(konfig))
     session.add = MagicMock()
     session.refresh = AsyncMock()
 

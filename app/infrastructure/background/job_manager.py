@@ -8,17 +8,24 @@ awaiting task completion in tests/callers that need it.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import threading
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
 _JOB_KEY_PREFIX = "bg_job:"
 _JOB_TTL_SECONDS = 86400  # 24 h
+_HEARTBEAT_INTERVAL_SECONDS = 30
+# 2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 17): job durumu sadece
+# in-process asyncio task'a bağlıydı — worker restart olduğunda Redis'teki
+# kayıt sonsuza dek "running" kalıyor, frontend useTaskStatus sonsuz poll
+# ediyordu. Heartbeat bu eşikten daha eskiyse worker'ın öldüğü varsayılır.
+_STALE_RUNNING_SECONDS = 300
 
 
 class BackgroundJobManager:
@@ -93,11 +100,26 @@ class BackgroundJobManager:
                 "error": None,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "finished_at": None,
+                "heartbeat_at": None,
             },
         )
 
+        async def _heartbeat_loop() -> None:
+            while True:
+                await asyncio.sleep(_HEARTBEAT_INTERVAL_SECONDS)
+                self._update_job(
+                    job_id, {"heartbeat_at": datetime.now(timezone.utc).isoformat()}
+                )
+
         async def _wrapper() -> None:
-            self._update_job(job_id, {"status": "running"})
+            self._update_job(
+                job_id,
+                {
+                    "status": "running",
+                    "heartbeat_at": datetime.now(timezone.utc).isoformat(),
+                },
+            )
+            heartbeat_task = asyncio.create_task(_heartbeat_loop())
             try:
                 if asyncio.iscoroutinefunction(func):
                     result = await func(*args, **kwargs)
@@ -128,6 +150,10 @@ class BackgroundJobManager:
                         "finished_at": datetime.now(timezone.utc).isoformat(),
                     },
                 )
+            finally:
+                heartbeat_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await heartbeat_task
 
         task = asyncio.create_task(_wrapper())
         self._tasks[job_id] = task
@@ -135,7 +161,14 @@ class BackgroundJobManager:
         return job_id
 
     def get_status(self, job_id: str) -> Dict[str, Any]:
-        """Return the current job status snapshot."""
+        """Return the current job status snapshot.
+
+        Bir job "running" durumundayken heartbeat'i `_STALE_RUNNING_SECONDS`
+        eşiğinden daha eskiyse, worker'ın (crash/redeploy ile) job'ı
+        bitirmeden öldüğü varsayılır — kayıt kendiliğinden "failed"e
+        çevrilir, aksi halde frontend sonsuza dek "running" görüp poll
+        etmeye devam ederdi.
+        """
         data = self._read_job(job_id)
         if data is None:
             return {
@@ -147,6 +180,29 @@ class BackgroundJobManager:
                 "finished_at": None,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
+
+        if data.get("status") == "running":
+            heartbeat_raw = data.get("heartbeat_at") or data.get("created_at")
+            is_stale = True
+            if heartbeat_raw:
+                try:
+                    heartbeat_at = datetime.fromisoformat(heartbeat_raw)
+                    age = datetime.now(timezone.utc) - heartbeat_at
+                    is_stale = age > timedelta(seconds=_STALE_RUNNING_SECONDS)
+                except ValueError:
+                    is_stale = True
+            if is_stale:
+                data = {
+                    **data,
+                    "status": "failed",
+                    "error": (
+                        "Worker restarted mid-job (stale heartbeat) — "
+                        "job'ın gerçek sonucu bilinmiyor, yeniden tetikleyin."
+                    ),
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                }
+                self._write_job(job_id, data)
+
         return {
             "id": job_id,
             "status": data.get("status", "unknown"),

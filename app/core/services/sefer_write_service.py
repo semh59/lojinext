@@ -6,6 +6,8 @@ Command-Query Separation (CQS) prensibi gereği yazma (Create/Update/Delete) iş
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, cast
 
+from pydantic import ValidationError
+
 from app.core.exceptions import RouteProcessingError
 from app.core.utils.type_helpers import safe_float
 from app.database.unit_of_work import UnitOfWork
@@ -661,12 +663,30 @@ class SeferWriteService:
         sefer_id: int,
         update_data: Dict[str, Any],
     ) -> None:
-        """Update sırasında is_round_trip=True ise dönüş seferini oluşturur."""
-        try:
-            current_full = await uow.sefer_repo.get_by_id(sefer_id)
-            if not current_full:
-                return
+        """Update sırasında is_round_trip=True ise dönüş seferini oluşturur.
 
+        Dönüş seferi oluşturma başarısız olursa exception'ı YUTMAZ — çağıranın
+        kendi except/raise zincirine (bkz. _update_sefer_uow) yeniden fırlatılır,
+        böylece ana update işlemiyle atomik kalır. Önceki davranış (bare
+        `except Exception: logger.error(...)`) hatayı sessizce yutuyordu; sonuç
+        olarak `update_sefer` True dönüyor ve kullanıcı dönüş seferinin
+        oluştuğunu sanıyordu, oysa hiç oluşmamış olabiliyordu (2026-07-01
+        prod-grade denetimi P0 bulgusu).
+
+        İstisna: mevcut sefer kaydının (current_full) kendisi yapısal olarak
+        round-trip mirror'ı için geçersizse (ör. mesafe_km=0, tek karakterlik
+        cikis_yeri — SeferCreate validasyonunu geçemeyen ESKİ/edge-case veri),
+        bu durum "_create_return_trip başarısız oldu" ile aynı kategori
+        değildir — kaynak verinin kalitesi, kullanıcının şu anki işlemiyle
+        ilgisizdir. Bu durumda dönüş seferi sessizce atlanır (ana update
+        etkilenmez); yalnızca gerçek oluşturma hataları (_create_return_trip
+        içindeki) propagate edilir.
+        """
+        current_full = await uow.sefer_repo.get_by_id(sefer_id)
+        if not current_full:
+            return
+
+        try:
             full_sefer_obj = SeferCreate(  # type: ignore[call-arg]
                 **{
                     "sefer_no": current_full.get("sefer_no"),
@@ -691,14 +711,21 @@ class SeferWriteService:
                     "flat_distance_km": current_full.get("flat_distance_km"),
                 }
             )
-            potential_return_no = f"{full_sefer_obj.sefer_no}-D"
-            existing_return = await uow.sefer_repo.get_by_sefer_no(potential_return_no)
-            if not existing_return:
-                await self._create_return_trip(
-                    uow, full_sefer_obj, full_sefer_obj.tarih, sefer_id
-                )
-        except Exception as re:
-            logger.error(f"Failed to create return trip: {re}")
+        except ValidationError as ve:
+            logger.warning(
+                "Round-trip mirror verisi geçersiz (sefer %s), dönüş seferi "
+                "atlanıyor: %s",
+                sefer_id,
+                ve,
+            )
+            return
+
+        potential_return_no = f"{full_sefer_obj.sefer_no}-D"
+        existing_return = await uow.sefer_repo.get_by_sefer_no(potential_return_no)
+        if not existing_return:
+            await self._create_return_trip(
+                uow, full_sefer_obj, full_sefer_obj.tarih, sefer_id
+            )
 
     async def _create_return_trip(
         self,

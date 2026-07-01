@@ -54,6 +54,23 @@ class AuthService:
                     if user.basarisiz_giris_sayisi >= 5:
                         user.kilitli_kadar = now + timedelta(minutes=30)
                     await self.uow.commit()
+                # 2026-07-01 prod-grade denetimi P1: başarısız giriş denemeleri
+                # önceden yalnız dosya loguna düşüyordu, admin_audit_log'a hiç
+                # yazılmıyordu — saldırı tespiti/trace UI'da görünmüyordu.
+                try:
+                    from app.infrastructure.audit.audit_logger import (
+                        log_audit_event,
+                    )
+
+                    await log_audit_event(
+                        action="auth.failed_login",
+                        module="auth",
+                        entity_id=email,
+                        user_id=user.id if user else None,
+                        basarili=False,
+                    )
+                except Exception as audit_exc:  # pragma: no cover
+                    logger.warning("Failed-login audit log failed: %s", audit_exc)
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Hatali e-posta veya sifre",

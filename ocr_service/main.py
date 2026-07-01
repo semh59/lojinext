@@ -40,7 +40,10 @@ async def process_image(
     if len(image_bytes) > _MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Upload exceeds 20 MB limit")
     assert _processor is not None
-    return await _processor.process(image_bytes, belge_tipi)
+    try:
+        return await _processor.process(image_bytes, belge_tipi)
+    except TimeoutError as exc:
+        raise HTTPException(status_code=504, detail=str(exc)) from exc
 
 
 @app.get("/health")

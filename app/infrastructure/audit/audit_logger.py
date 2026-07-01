@@ -288,9 +288,17 @@ async def log_audit_event(
     old_value: Any = None,
     new_value: Any = None,
     user_id: Any = None,
+    basarili: bool = True,
     **extra: Any,
 ) -> None:
-    """Imperative audit logging helper for use inside endpoint handlers."""
+    """Imperative audit logging helper for use inside endpoint handlers.
+
+    ``basarili`` (2026-07-01 prod-grade denetimi P1 eki): önceden bu parametre
+    yoktu — ``_persist_audit_to_db`` her zaman ``basarili=True`` ile
+    çağrılıyordu, yani bu helper üzerinden bir başarısız-giriş/403 denemesi
+    kaydedilse bile DB'de "başarılı" görünürdü. Artık çağıran taraf açıkça
+    ``basarili=False`` geçebilir (ör. `auth.failed_login`, `authz.forbidden`).
+    """
     correlation_id = get_correlation_id()
     masked_old = _mask_sensitive_data(old_value) if old_value else None
     masked_new = _mask_sensitive_data(new_value) if new_value else None
@@ -304,6 +312,7 @@ async def log_audit_event(
         "correlation_id": correlation_id,
         "old_value": masked_old,
         "new_value": masked_new,
+        "basarili": basarili,
     }
     entry.update(extra)
     audit_logger.info(json.dumps(entry, default=str))
@@ -317,7 +326,7 @@ async def log_audit_event(
         user_id=user_id,
         old_value=masked_old,
         new_value=masked_new,
-        basarili=True,
+        basarili=basarili,
         correlation_id=correlation_id,
         aciklama=extra.get("aciklama") or extra.get("description"),
     )

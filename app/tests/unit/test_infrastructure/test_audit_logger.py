@@ -283,3 +283,38 @@ class TestLogAuditEvent:
                 )
 
         mock_persist.assert_awaited_once()
+
+    async def test_log_audit_event_defaults_basarili_true(self):
+        """Backward-compat: basarili not passed → True (unchanged default)."""
+        with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:
+            with patch("app.infrastructure.audit.audit_logger.audit_logger"):
+                await log_audit_event(action="UPDATE_USER", module="kullanicilar")
+
+        _, kwargs = mock_persist.await_args
+        assert kwargs["basarili"] is True
+
+    async def test_log_audit_event_propagates_basarili_false(self):
+        """2026-07-01 prod-grade denetimi P1: `basarili=False` artık DB
+        persist'e ve dosya logune doğru şekilde geçiyor — önceden
+        `_persist_audit_to_db` her zaman sabit `basarili=True` ile
+        çağrılıyordu, başarısız-giriş/403 kayıtları yanlışlıkla "başarılı"
+        görünürdü."""
+        log_entries = []
+
+        with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:
+            with patch(
+                "app.infrastructure.audit.audit_logger.audit_logger"
+            ) as mock_logger:
+                mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
+
+                await log_audit_event(
+                    action="auth.failed_login",
+                    module="auth",
+                    entity_id="attacker@evil.example",
+                    basarili=False,
+                )
+
+        _, kwargs = mock_persist.await_args
+        assert kwargs["basarili"] is False
+        entry = json.loads(log_entries[0])
+        assert entry["basarili"] is False

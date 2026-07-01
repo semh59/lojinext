@@ -15,6 +15,27 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
+_FORMULA_PREFIX_CHARS = ("=", "+", "-", "@")
+
+
+def _sanitize_formula_prefix(val: Any) -> Any:
+    """Excel/CSV formula injection koruması.
+
+    Bir hücre metni '=', '+', '-' veya '@' ile başlıyorsa, bu değer daha sonra
+    bir export'ta (ör. excel_exporter.py) veya kullanıcının kendi Excel'inde
+    çalıştırılabilir bir formüle dönüşebilir (ör. import edilen bir "notlar"
+    alanına "=HYPERLINK(...)" girilip sonra export edilip tekrar açılması).
+    Lider karaktere bir apostrof (') ekleyerek Excel'in bunu her zaman düz
+    metin olarak yorumlamasını sağlarız — apostrof Excel'de görünmez
+    (force-text işareti), görünen değer değişmez.
+    """
+    if not isinstance(val, str) or not val:
+        return val
+    if val.startswith(_FORMULA_PREFIX_CHARS):
+        return f"'{val}"
+    return val
+
+
 def _parse_float_tr(val: Any) -> float:
     """Parse numeric string, handling Turkish/German decimal comma (e.g. '43,5' → 43.5).
 
@@ -225,7 +246,7 @@ def _parse_vehicle_excel_sync(content: bytes) -> List[Dict[str, Any]]:
                     if model_field == "plaka":
                         val = str(val).upper().replace(" ", "") if val else None
                     elif model_field in ["marka", "model", "notlar"]:
-                        val = str(val) if val else None
+                        val = _sanitize_formula_prefix(str(val)) if val else None
                     elif model_field in ["yil", "tank_kapasitesi"]:
                         val = safe_int(val, None if model_field == "yil" else 600)
                     elif model_field in [
@@ -277,10 +298,22 @@ def _parse_driver_excel_sync(content: bytes) -> List[Dict[str, Any]]:
                 for excel_col, model_field in column_map.items():
                     val = row[excel_col]
                     if model_field == "ad_soyad":
-                        val = str(val).strip().title() if val else None
+                        val = (
+                            _sanitize_formula_prefix(str(val).strip().title())
+                            if val
+                            else None
+                        )
                     elif model_field == "ise_baslama":
                         val = _parse_date_flexible(val)
-                    elif model_field in ["telefon", "ehliyet_sinifi", "notlar"]:
+                    elif model_field == "notlar":
+                        val = _sanitize_formula_prefix(str(val)) if val else None
+                    elif model_field in ["telefon", "ehliyet_sinifi"]:
+                        # telefon/ehliyet_sinifi sanitize edilmez: Türk telefon
+                        # numaraları rutin olarak "+90..." ile başlar —
+                        # formula-prefix sanitizasyonu meşru veriyi
+                        # "'+90..." olarak bozardı (2026-07-01 bağımsız
+                        # review bulgusu). Bu alanlar export'ta zaten
+                        # strings_to_formulas=False ile korunuyor.
                         val = str(val) if val else None
 
                     item[model_field] = val
@@ -333,7 +366,7 @@ def _parse_dorse_excel_sync(content: bytes) -> List[Dict[str, Any]]:
                     if model_field == "plaka":
                         val = str(val).upper().replace(" ", "") if val else None
                     elif model_field in ["marka", "model", "dorse_tipi", "notlar"]:
-                        val = str(val) if val else None
+                        val = _sanitize_formula_prefix(str(val)) if val else None
                     elif model_field in ["yil", "lastik_sayisi"]:
                         val = safe_int(val, None)
                     elif model_field in [

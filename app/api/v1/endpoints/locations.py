@@ -247,8 +247,11 @@ async def update_lokasyon(
         repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
     )
     try:
+        # include_inactive=True: pasif bir lokasyon güncellenirken (reaktive
+        # etmeden, örn. sadece notlar) bu fetch'lerin None dönüp aşağıdaki
+        # `dict(updated_loc)`'u çökertmemesi gerekiyor.
         # Audit Snapshot: Pre
-        current_loc = await service.repo.get_by_id(lokasyon_id)
+        current_loc = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
         pre_snapshot = dict(current_loc) if current_loc else {}
 
         success = await service.update_lokasyon(lokasyon_id, lokasyon_in)
@@ -257,7 +260,7 @@ async def update_lokasyon(
         await uow.commit()
 
         # Audit Snapshot: Post
-        updated_loc = await service.repo.get_by_id(lokasyon_id)
+        updated_loc = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
         post_snapshot = dict(updated_loc) if updated_loc else {}
 
         await log_audit_event(
@@ -294,7 +297,9 @@ async def delete_lokasyon(
     service = LokasyonService(
         repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
     )
-    current = await service.repo.get_by_id(lokasyon_id)
+    # include_inactive=True: bu endpoint pasif (soft-deleted) kayıtları da
+    # görmesi gerekiyor — `was_active` hesabı ve hard-delete yolu buna dayanır.
+    current = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
     if not current:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 

@@ -889,6 +889,78 @@ class TestSyncFunctionsDirectly:
 
 
 # ---------------------------------------------------------------------------
+# Formula injection sanitization (2026-07-01 prod-grade audit, P1)
+# ---------------------------------------------------------------------------
+
+
+class TestExcelFormulaInjectionSanitization:
+    """A malicious 'notlar'/'marka'/'ad_soyad' cell starting with =/+/-/@
+    (e.g. "=HYPERLINK(...)") must be neutralized on import so a later export
+    of the same data cannot execute it when reopened in Excel."""
+
+    def test_sanitize_formula_prefix_neutralizes_leading_equals(self):
+        from app.core.services.excel_parser import _sanitize_formula_prefix
+
+        assert _sanitize_formula_prefix('=HYPERLINK("http://evil")') == (
+            '\'=HYPERLINK("http://evil")'
+        )
+
+    def test_sanitize_formula_prefix_neutralizes_all_dangerous_prefixes(self):
+        from app.core.services.excel_parser import _sanitize_formula_prefix
+
+        for prefix in ("=", "+", "-", "@"):
+            raw = f"{prefix}cmd|'/c calc'!A1"
+            assert _sanitize_formula_prefix(raw) == f"'{raw}"
+
+    def test_sanitize_formula_prefix_leaves_normal_text_untouched(self):
+        from app.core.services.excel_parser import _sanitize_formula_prefix
+
+        assert _sanitize_formula_prefix("Mercedes") == "Mercedes"
+        assert _sanitize_formula_prefix(None) is None
+        assert _sanitize_formula_prefix("") == ""
+
+    def test_vehicle_notlar_formula_injection_neutralized(self):
+        from app.core.services.excel_parser import _parse_vehicle_excel_sync
+
+        # Note: a raw "=..." cell would be interpreted as a LIVE formula by
+        # openpyxl itself when the test fixture is written (ws.append), which
+        # masks the scenario we want to exercise (parsing an already-stored
+        # string). "@"/"+" prefixes are the classic CSV/Excel-injection
+        # vectors that stay literal strings in the xlsx cell itself but are
+        # still dangerous when the *export* is later opened in Excel — this
+        # is exactly what _sanitize_formula_prefix must neutralize.
+        content = _make_xlsx(
+            ["plaka", "marka", "notlar"],
+            [["34INJ001", "MAN", '@SUM(1,1)+cmd|"/c calc"!A1']],
+        )
+        result = _parse_vehicle_excel_sync(content)
+        assert len(result) == 1
+        assert result[0]["notlar"].startswith("'@")
+
+    def test_driver_ad_soyad_formula_injection_neutralized(self):
+        from app.core.services.excel_parser import _parse_driver_excel_sync
+
+        content = _make_xlsx(
+            ["ad_soyad"],
+            [["+cmd|'/c calc'!A1"]],
+        )
+        result = _parse_driver_excel_sync(content)
+        assert len(result) == 1
+        assert result[0]["ad_soyad"].startswith("'+")
+
+    def test_dorse_notlar_formula_injection_neutralized(self):
+        from app.core.services.excel_parser import _parse_dorse_excel_sync
+
+        content = _make_xlsx(
+            ["plaka", "marka", "notlar"],
+            [["06INJ999", "Schwarzmueller", "+SUM(A1:A9)"]],
+        )
+        result = _parse_dorse_excel_sync(content)
+        assert len(result) == 1
+        assert result[0]["notlar"].startswith("'+")
+
+
+# ---------------------------------------------------------------------------
 # Exception-branch coverage — mock pd.read_excel to raise caught exceptions
 # ---------------------------------------------------------------------------
 

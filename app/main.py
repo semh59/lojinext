@@ -386,6 +386,41 @@ app.add_middleware(CorrelationMiddleware)
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     trace_id = get_correlation_id()
+    if exc.status_code == 403:
+        # 2026-07-01 prod-grade denetimi P1: izin reddi (403) denemeleri
+        # önceden hiçbir yerde `admin_audit_log`'a düşmüyordu — sadece
+        # dosya loguna (varsa) yazılıyordu. Merkezi handler'da tek noktadan
+        # yakalanır (security_service.py'nin senkron classmethod'larını
+        # veya require_permissions dependency'sini async'e çevirip her
+        # çağrı noktasını değiştirmek yerine — çok daha büyük bir blast
+        # radius olurdu). Best-effort: audit DB yazımı asıl 403 yanıtını
+        # asla bloklamaz/bozmaz.
+        try:
+            from app.infrastructure.audit.audit_logger import log_audit_event
+            from app.infrastructure.security import jwt_handler
+
+            sub = None
+            auth_header = request.headers.get("authorization", "")
+            if auth_header.lower().startswith("bearer "):
+                try:
+                    payload = jwt_handler.decode_token(auth_header[7:])
+                    sub = payload.get("sub")
+                except Exception:
+                    sub = None
+            message = (
+                exc.detail.get("message")
+                if isinstance(exc.detail, dict)
+                else str(exc.detail)
+            )
+            await log_audit_event(
+                action="authz.forbidden",
+                module="security",
+                entity_id=str(request.url.path),
+                new_value={"detail": message, "sub": sub, "method": request.method},
+                basarili=False,
+            )
+        except Exception as audit_exc:  # pragma: no cover
+            logger.warning("403 audit log failed: %s", audit_exc)
     if exc.status_code >= 500:
         from app.infrastructure.monitoring import aemit
         from app.infrastructure.monitoring.models import (

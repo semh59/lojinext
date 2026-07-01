@@ -54,8 +54,59 @@ async def test_soft_delete_logic(test_repo):
     success = await test_repo.delete(new_id)
     assert success is True
 
-    result = await test_repo.get_by_id(new_id)
+    # Soft-deleted kayıt artık varsayılan get_by_id'de görünmez (bkz.
+    # test_get_by_id_excludes_soft_deleted_by_default) — kaydın gerçekten
+    # aktif=False olduğunu doğrulamak için include_inactive=True kullan.
+    result = await test_repo.get_by_id(new_id, include_inactive=True)
     assert result["aktif"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_by_id_excludes_soft_deleted_by_default(test_repo):
+    """get_by_id() varsayılan olarak soft-deleted (aktif=False) kaydı döndürmez.
+
+    2026-07-01 prod-grade denetiminde bulunan kök-neden bug: BaseRepository.get_by_id
+    hiçbir soft-delete filtresi uygulamıyordu, bu yüzden silinmiş araç/şoför/dorse/
+    lokasyon kayıtları var-mı kontrollerini sessizce geçebiliyordu (ör.
+    maintenance_service.create_maintenance_record, arac_service._update_arac_impl).
+    """
+    new_id = await test_repo.create(plaka="34 UT 08", marka="Test", model="X", yil=2020)
+    await test_repo.delete(new_id)
+
+    result = await test_repo.get_by_id(new_id)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_by_id_for_update_excludes_soft_deleted_by_default(test_repo):
+    """get_by_id(..., for_update=True) da aynı soft-delete filtresini uygulamalı."""
+    new_id = await test_repo.create(plaka="34 UT 09", marka="Test", model="X", yil=2020)
+    await test_repo.delete(new_id)
+
+    result = await test_repo.get_by_id(new_id, for_update=True)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_by_id_include_inactive_bypasses_filter(test_repo):
+    """include_inactive=True kasıtlı olarak pasif/silinmiş kaydı görmeyi sağlar
+    (ör. smart-delete'in ikinci aşaması, hard-delete öncesi kontrol)."""
+    new_id = await test_repo.create(plaka="34 UT 10", marka="Test", model="X", yil=2020)
+    await test_repo.delete(new_id)
+
+    result = await test_repo.get_by_id(new_id, include_inactive=True)
+    assert result is not None
+    assert result["aktif"] is False
+
+
+@pytest.mark.asyncio
+async def test_get_by_id_active_record_unaffected(test_repo):
+    """Aktif bir kayıt için get_by_id davranışı değişmemeli."""
+    new_id = await test_repo.create(plaka="34 UT 11", marka="Test", model="X", yil=2020)
+
+    result = await test_repo.get_by_id(new_id)
+    assert result is not None
+    assert result["aktif"] is True
 
 
 @pytest.mark.asyncio

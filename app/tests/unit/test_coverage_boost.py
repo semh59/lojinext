@@ -861,6 +861,35 @@ class TestRateLimiterModule:
         wrapped = decorator(dummy)
         assert wrapped is dummy
 
+    def test_build_limiter_raises_in_prod_without_slowapi(self, monkeypatch):
+        """2026-07-01 prod-grade denetimi P1: slowapi eksikse prod'da
+        fail-closed — uygulama sessizce rate-limit'siz ayağa kalkmak yerine
+        başlamayı reddetmeli."""
+        import app.api.middleware.rate_limiter as rl_module
+
+        monkeypatch.setattr(rl_module, "Limiter", None)
+        with pytest.raises(RuntimeError, match="refusing to start in production"):
+            rl_module._build_limiter("prod")
+
+    def test_build_limiter_falls_back_in_dev_without_slowapi(self, monkeypatch):
+        """Dev/test ortamında slowapi eksikliği eski fail-open (NoopLimiter +
+        critical log) davranışını korur — yerel geliştirmeyi bloklamaz."""
+        import app.api.middleware.rate_limiter as rl_module
+
+        monkeypatch.setattr(rl_module, "Limiter", None)
+        result = rl_module._build_limiter("dev")
+        assert isinstance(result, rl_module._NoopLimiter)
+
+    def test_build_limiter_uses_real_limiter_when_slowapi_available(self):
+        """slowapi kuruluysa (bu test ortamında olduğu gibi) prod'da da
+        sorunsuz gerçek Limiter döner — fail-closed dalı hiç tetiklenmez."""
+        import app.api.middleware.rate_limiter as rl_module
+
+        if rl_module.Limiter is None:
+            pytest.skip("slowapi not installed in this environment")
+        result = rl_module._build_limiter("prod", rate_limit_enabled=True)
+        assert not isinstance(result, rl_module._NoopLimiter)
+
 
 class TestOpenRouteServiceOffline:
     """Tests for OpenRouteService offline (no-API) code paths."""

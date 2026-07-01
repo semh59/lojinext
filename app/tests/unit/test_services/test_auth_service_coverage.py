@@ -166,6 +166,39 @@ class TestAuthServiceAuthenticate:
         assert user.basarisiz_giris_sayisi == 1
         uow.commit.assert_called_once()
 
+    async def test_wrong_password_writes_admin_audit_log(self):
+        """2026-07-01 prod-grade denetimi P1: başarısız giriş denemeleri
+        önceden yalnız dosya loguna düşüyordu, admin_audit_log'a hiç
+        yazılmıyordu (saldırı tespiti/trace UI'da görünmüyordu)."""
+        from app.core.services.auth_service import AuthService
+
+        user = _make_user(email="victim@example.com", user_id=42)
+        uow = _make_uow()
+        uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
+
+        with (
+            patch(
+                "app.core.services.auth_service.jwt_handler.verify_password",
+                return_value=False,
+            ),
+            patch(
+                "app.infrastructure.audit.audit_logger.log_audit_event",
+                new_callable=AsyncMock,
+            ) as mock_audit,
+        ):
+            service = AuthService(uow=uow)
+            with pytest.raises(HTTPException):
+                await service.authenticate(
+                    "victim@example.com", "wrong_password", _make_request()
+                )
+
+        mock_audit.assert_awaited_once()
+        _, kwargs = mock_audit.await_args
+        assert kwargs["action"] == "auth.failed_login"
+        assert kwargs["entity_id"] == "victim@example.com"
+        assert kwargs["user_id"] == 42
+        assert kwargs["basarili"] is False
+
     async def test_lockout_after_five_failures(self):
         """5th failed attempt sets kilitli_kadar."""
         from app.core.services.auth_service import AuthService

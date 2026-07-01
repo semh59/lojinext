@@ -112,6 +112,42 @@ class TestExportToExcelSync:
         assert result is not None
         assert Path(result).exists()
 
+    def test_title_formula_injection_neutralized(self, tmp_path):
+        """2026-07-01 derin kontrol bulgusu: `ws["A1"] = title` doğrudan
+        openpyxl'e yazılıyordu — raw openpyxl, xlsxwriter gibi, "=" ile
+        başlayan bir string'i otomatik olarak çalıştırılabilir formüle
+        çeviriyor (data_type='f'). Bu metodun bugün hiçbir endpoint'ten
+        çağrılmadığı doğrulandı (dead code) ama aynı sınıf zafiyeti taşıyordu;
+        ileride bir çağıran dinamik/kullanıcı kaynaklı bir title geçirirse
+        aktif hale gelirdi. `_safe_cell` zaten veri hücrelerinde kullanılıyordu
+        (satır 152-153, 158-159) — title/section/header hücrelerinde eksikti.
+        """
+        from openpyxl import load_workbook
+
+        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+
+        if not OPENPYXL_AVAILABLE:
+            pytest.skip("openpyxl not installed")
+
+        svc = ExportService.__new__(ExportService)
+        svc.EXPORT_DIR = tmp_path
+
+        # Title also becomes the sheet name (ws.title = title[:31]), so avoid
+        # characters Excel forbids there (: \ / ? * [ ]) while still testing
+        # a real formula-injection payload.
+        result = svc._export_to_excel_sync({}, "inj.xlsx", "=cmd|'calc'!A1")
+        assert result is not None
+
+        wb = load_workbook(result)
+        ws = wb.active
+        formula_cells = [
+            cell for row in ws.iter_rows() for cell in row if cell.data_type == "f"
+        ]
+        assert formula_cells == [], (
+            f"Formula injection not neutralized in title cell: "
+            f"{[(c.coordinate, c.value) for c in formula_cells]}"
+        )
+
     def test_appends_xlsx_extension_if_missing(self, tmp_path):
         from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
 

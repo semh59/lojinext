@@ -205,20 +205,37 @@ class BaseRepository(ABC, Generic[T]):
         )
 
     async def get_by_id(
-        self, id: int, for_update: bool = False
+        self, id: int, for_update: bool = False, include_inactive: bool = False
     ) -> Optional[Dict[str, Any]]:
-        """ID ile kayıt getir."""
+        """ID ile kayıt getir.
+
+        Varsayılan olarak soft-delete edilmiş kayıtları (``aktif=False``
+        ve/veya ``is_deleted=True``) hariç tutar — ``get_all()``/``count()``
+        ile tutarlı davranış. Silinmiş/pasif bir kaydı kasıtlı olarak görmek
+        gereken akışlar (ör. smart-delete'in ikinci aşaması, az önce
+        oluşturulan kaydı aynı transaction içinde geri okuma) ``include_inactive=True``
+        geçmelidir.
+        """
         session = self.session
+        pk_col = inspect(self.model).primary_key[0]
+        conditions = [pk_col == id]
+        if not include_inactive:
+            if hasattr(self.model, "aktif"):
+                conditions.append(getattr(self.model, "aktif").is_(True))
+            if hasattr(self.model, "is_deleted"):
+                conditions.append(getattr(self.model, "is_deleted").is_(False))
+
         if for_update:
-            stmt = (
-                select(self.model)
-                .where(inspect(self.model).primary_key[0] == id)
-                .with_for_update()
-            )
+            stmt = select(self.model).where(*conditions).with_for_update()
             result = await session.execute(stmt)
             obj = result.scalar_one_or_none()
-        else:
+        elif len(conditions) == 1:
+            # Fast path: no soft-delete filtering applicable/requested.
             obj = await session.get(self.model, id)
+        else:
+            stmt = select(self.model).where(*conditions)
+            result = await session.execute(stmt)
+            obj = result.scalar_one_or_none()
         return self._to_dict(obj)
 
     async def bulk_create(self, data_list: List[Dict[str, Any]]) -> List[Any]:

@@ -72,6 +72,28 @@ async def test_backfill_skips_when_estimator_returns_none():
     uow.sefer_repo.update.assert_not_awaited()
 
 
+async def test_backfill_skips_sefer_already_filled_by_another_worker():
+    """2026-07-01 prod-grade denetimi P0 #4 — ikincil savunma: broker
+    visibility_timeout yanlış-hizalanması (veya worker crash/restart) yüzünden
+    aynı sefer_id listesi iki worker'a redelivered olabilir. Bu durumda ikinci
+    worker, sefer zaten doldurulmuşsa (tahmini_tuketim != None) dış IO
+    (Mapbox/Open-Meteo) çağrısı yapmadan atlamalı — hem maliyet israfını hem
+    duplike route_simulations satırını önler.
+    """
+    sefer = _sefer_dict(10)
+    sefer["tahmini_tuketim"] = 28.4  # başka bir worker zaten doldurmuş
+    uow = _make_uow([10], {10: sefer})
+    estimator = MagicMock()
+    estimator.predict = AsyncMock()
+
+    svc = PredictionBackfillService(uow=uow, estimator=estimator, throttle_s=0.0)
+    result = await svc.backfill(limit=50)
+
+    assert result == {"processed": 1, "filled": 0, "failed": 0, "skipped": 1}
+    estimator.predict.assert_not_awaited()
+    uow.sefer_repo.update.assert_not_awaited()
+
+
 async def test_backfill_counts_failure_without_aborting_batch():
     uow = _make_uow([10, 11], {10: _sefer_dict(10), 11: _sefer_dict(11)})
     estimate = SimpleNamespace(

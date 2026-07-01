@@ -178,6 +178,8 @@ class Arac(BaseEntity):
         """
 
         yas = self.yas
+        if yas is None:
+            return 1.0  # Yıl bilgisi yok — nötr (5 yıl baseline'ına eşdeğer) faktör
         if yas <= 2:
             return 0.98  # Yeni araç avantajı
         elif yas <= 5:

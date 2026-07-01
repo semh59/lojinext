@@ -179,7 +179,15 @@ def _export_data_sync(data: List[Dict[str, Any]], type: str = "generic") -> byte
         df.columns = [str(c).replace("_", " ").title() for c in df.columns]
 
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine="xlsxwriter")
+    # strings_to_formulas=False: prevents CSV/Excel formula injection — a cell
+    # value starting with =/+/-/@ (e.g. a malicious "notlar" field imported
+    # from a prior Excel upload) is written as literal text instead of being
+    # auto-converted into an executable formula when the export is reopened.
+    writer = pd.ExcelWriter(
+        output,
+        engine="xlsxwriter",
+        engine_kwargs={"options": {"strings_to_formulas": False}},
+    )
     sheet_name = "Rapor"
 
     df.to_excel(
@@ -358,7 +366,15 @@ def _generate_template_sync(type: str) -> bytes:
     Senkron şablon oluşturma işlemi. generate_template() tarafından asyncio.to_thread ile çağrılır.
     """
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine="xlsxwriter")
+    # strings_to_formulas=False: prevents CSV/Excel formula injection — a cell
+    # value starting with =/+/-/@ (e.g. a malicious "notlar" field imported
+    # from a prior Excel upload) is written as literal text instead of being
+    # auto-converted into an executable formula when the export is reopened.
+    writer = pd.ExcelWriter(
+        output,
+        engine="xlsxwriter",
+        engine_kwargs={"options": {"strings_to_formulas": False}},
+    )
 
     if type == "sefer":
         columns = [

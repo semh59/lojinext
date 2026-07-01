@@ -1,8 +1,22 @@
 import asyncio
+import os
 import re
 from typing import Optional
 
 import easyocr
+
+# 2026-07-01 prod-grade denetimi P0 #5: readtext CPU-only easyocr'da
+# yüksek-çözünürlüklü/karmaşık görüntülerde dakikalar sürebilir; hiçbir
+# üst sınır yoksa art arda birkaç ağır istek thread-pool'u tüketip servisi
+# fiilen DoS'a düşürür. `asyncio.wait_for` alttaki OS thread'ini zorla
+# öldüremez (Python thread'leri iptal edilemez) — timeout dolunca caller'a
+# hemen 504 döner ve arka plan thread'i kendi başına tamamlanana kadar
+# sessizce çalışmaya devam eder; bu, "istek sonsuza dek asılı kalır" riskini
+# "istek zamanında hata alır, thread pool eninde sonunda kendini toparlar"
+# haline getirir — CPU-bound senkron işi gerçek bir hard-kill olmadan
+# sınırlamanın kabul edilen yöntemi budur (gerçek kill için multiprocessing
+# gerekir, bu izole fix'in kapsamı dışında).
+_OCR_TIMEOUT_SECONDS = float(os.getenv("OCR_TIMEOUT_SECONDS", "30"))
 
 
 class OcrProcessor:
@@ -11,7 +25,15 @@ class OcrProcessor:
         self.reader = easyocr.Reader(["tr", "en"], gpu=False)
 
     async def process(self, image_bytes: bytes, belge_tipi: str) -> dict:
-        results = await asyncio.to_thread(self.reader.readtext, image_bytes)
+        try:
+            results = await asyncio.wait_for(
+                asyncio.to_thread(self.reader.readtext, image_bytes),
+                timeout=_OCR_TIMEOUT_SECONDS,
+            )
+        except asyncio.TimeoutError as exc:
+            raise TimeoutError(
+                f"OCR işlemi {_OCR_TIMEOUT_SECONDS}s zaman aşımını aştı"
+            ) from exc
         ham_metin = " ".join([r[1] for r in results])
 
         if belge_tipi == "yakit_fisi":

@@ -32,19 +32,59 @@ class _NoopLimiter:
         return _decorator
 
 
-limiter: Any
-if Limiter:
-    # RATE_LIMIT_ENABLED=False (kapasite yük testi) → slowapi limit'lerini de devre dışı bırak.
-    try:
-        from app.config import settings as _settings
+def _build_limiter(environment: str, *, rate_limit_enabled: bool = True) -> Any:
+    """Resolve the rate limiter instance.
 
-        _rl_enabled = getattr(_settings, "RATE_LIMIT_ENABLED", True)
-    except Exception:
-        _rl_enabled = True
-    limiter = Limiter(key_func=get_remote_address, enabled=_rl_enabled)
-else:
+    2026-07-01 prod-grade denetimi P1: slowapi eksikse önceki davranış
+    sessizce `_NoopLimiter`'a düşüp uygulamanın rate-limit'siz şekilde ayağa
+    kalkmasına izin veriyordu (fail-open) — brute-force/DoS korumasının fark
+    edilmeden kaybolması riski. Prod'da bu artık fail-closed: uygulama
+    başlamayı reddeder. Dev/test'te (slowapi'nin kurulu olmayabileceği hafif
+    ortamlar) eski fail-open davranışı, yüksek görünürlüklü critical log ile
+    korunur. Ayrı bir fonksiyon olarak çıkarıldı ki bu dallanma modülü
+    reload etmeden unit test edilebilsin.
+    """
+    if Limiter:
+        return Limiter(key_func=get_remote_address, enabled=rate_limit_enabled)
+
+    if environment == "prod":
+        raise RuntimeError(
+            "slowapi is not installed — refusing to start in production "
+            "without rate limiting. Install slowapi or explicitly set "
+            "RATE_LIMIT_ENABLED=False if this is intentional."
+        )
+
     _log.critical(
         "slowapi is not installed — ALL RATE LIMITS ARE DISABLED. "
         "Install slowapi to enable rate limiting."
     )
-    limiter = _NoopLimiter()
+    return _NoopLimiter()
+
+
+def _resolve_environment() -> str:
+    # 2026-07-01 derin kontrol: genel `except Exception` burada, `app.config`
+    # gerçekten bozuksa (örn. bir ayar doğrulama hatası) prod'da bile sessizce
+    # "dev"e düşüp yukarıdaki fail-closed niyetini baltalayabilirdi. Sadece
+    # modülün hiç mevcut olmadığı (ImportError) durumunu yutuyoruz — başka
+    # her hata yükselsin (zaten uygulama geneli çökerdi, burada gizlemenin
+    # faydası yok).
+    try:
+        from app.config import settings as _settings
+
+        return getattr(_settings, "ENVIRONMENT", "dev")
+    except ImportError:
+        return "dev"
+
+
+def _resolve_rate_limit_enabled() -> bool:
+    try:
+        from app.config import settings as _settings
+
+        return getattr(_settings, "RATE_LIMIT_ENABLED", True)
+    except ImportError:
+        return True
+
+
+limiter: Any = _build_limiter(
+    _resolve_environment(), rate_limit_enabled=_resolve_rate_limit_enabled()
+)

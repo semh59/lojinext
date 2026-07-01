@@ -57,6 +57,40 @@ async def test_export_data_generic_title_case():
     assert len(result) > 100
 
 
+async def test_export_data_neutralizes_formula_injection():
+    """2026-07-01 prod-grade denetimi P1 bug: xlsxwriter's default
+    strings_to_formulas=True auto-converts a cell string starting with =/+/-/@
+    into an executable formula. A "notlar" value imported from a prior
+    (possibly malicious) Excel upload must NOT become a live formula when
+    re-exported and reopened — it must round-trip as literal text.
+    """
+    import io
+
+    import openpyxl
+
+    from app.core.services.excel_exporter import export_data
+
+    data = [
+        {
+            "notlar": '=HYPERLINK("http://evil.example","click me")',
+            "plaka": "34ABC01",
+        }
+    ]
+    result = await export_data(data, type="generic")
+
+    wb = openpyxl.load_workbook(io.BytesIO(result))
+    ws = wb.active
+    # header row is row 1 (startrow=1 offset in the styled path, or row 1 in
+    # the generic path) — scan all cells and assert none carry formula type.
+    formula_cells = [
+        cell for row in ws.iter_rows() for cell in row if cell.data_type == "f"
+    ]
+    assert formula_cells == [], (
+        f"Formula injection not neutralized — live formula cell(s) found: "
+        f"{[(c.coordinate, c.value) for c in formula_cells]}"
+    )
+
+
 async def test_export_data_arac_listesi_renames_columns():
     from app.core.services.excel_exporter import export_data
 

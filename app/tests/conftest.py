@@ -37,8 +37,12 @@ os.environ["CORS_ORIGINS"] = "http://localhost"
 os.environ["MAPBOX_API_KEY"] = ""
 
 import app.core.container as container_mod  # noqa: E402
+import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
 import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
 import app.database.repositories.arac_repo as arac_mod  # noqa: E402
+import app.database.repositories.dorse_repo as dorse_mod  # noqa: E402
+import app.database.repositories.lokasyon_repo as lokasyon_mod  # noqa: E402
+import app.database.repositories.route_repo as route_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
 import app.database.repositories.sofor_repo as sofor_mod  # noqa: E402
 import app.database.repositories.yakit_repo as yakit_mod  # noqa: E402
@@ -97,6 +101,15 @@ def reset_all_singletons():
     sofor_mod._sofor_repo = None
     yakit_mod._yakit_repo = None
     analiz_mod._analiz_repo = None
+    # 2026-07-01 derin kontrol: bu 4 repo singleton'ı burada hiç
+    # sıfırlanmıyordu — session=None ile inşa edilen bir singleton, session
+    # gerektiren bir metoda direkt (UoW üzerinden değil) çağrılırsa test
+    # arası state/hata sızıntısına yol açabilir. Diğer 5 repoyla aynı
+    # muameleye tabi tutuldu.
+    admin_config_mod._admin_config_repo = None
+    dorse_mod._dorse_repo = None
+    lokasyon_mod._lokasyon_repo = None
+    route_mod._route_repo = None
     # Reset the container singleton.
     container_mod.reset_container()
 

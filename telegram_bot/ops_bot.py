@@ -24,7 +24,8 @@ OPS_ADMIN_IDS: frozenset[int] = frozenset(
     int(x.strip()) for x in _raw_admin_ids.split(",") if x.strip().isdigit()
 )
 
-# Shared secret expected in X-Webhook-Secret header from internal services.
+# Shared secret expected as "Authorization: Bearer <secret>" from internal
+# services (Alertmanager, backend telegram_notifier.py).
 WEBHOOK_SECRET = os.environ.get("OPS_WEBHOOK_SECRET", "")
 
 # Ops bot'un başlatılmasında Application oluşturulur; webhook'tan da mesaj göndermek
@@ -58,7 +59,24 @@ def _is_rate_limited(key: str, level: str = "error") -> bool:
 # ── Komutlar ────────────────────────────────────────────────────────────────
 
 
+def _is_from_ops_chat(update: Update) -> bool:
+    """2026-07-01 prod-grade denetimi P1: `/durum` ve `/uyarilar` önceden
+    hiçbir kimlik kontrolü yapmıyordu — bot username'ini bulan HERHANGİ bir
+    Telegram kullanıcısı backend sağlık durumunu ve tüm aktif Prometheus
+    alarmlarını görebiliyordu (bilgi sızıntısı/recon). Artık yalnız
+    yapılandırılmış OPS_CHAT_ID'den (ops ekibinin bulunduğu grup) gelen
+    mesajlara yanıt verilir."""
+    chat = update.effective_chat
+    return chat is not None and str(chat.id) == OPS_CHAT_ID
+
+
 async def cmd_durum(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _is_from_ops_chat(update):
+        logger.warning(
+            "Yetkisiz /durum girişimi: chat_id=%s",
+            update.effective_chat.id if update.effective_chat else None,
+        )
+        return
     try:
         r = httpx.get(f"{BACKEND_URL}/api/v1/health/", timeout=5)
         durum = "✅ Çevrimiçi" if r.status_code == 200 else f"❌ HTTP {r.status_code}"
@@ -69,6 +87,12 @@ async def cmd_durum(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_uyarilar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not _is_from_ops_chat(update):
+        logger.warning(
+            "Yetkisiz /uyarilar girişimi: chat_id=%s",
+            update.effective_chat.id if update.effective_chat else None,
+        )
+        return
     try:
         r = httpx.get(f"{PROMETHEUS_URL}/api/v1/alerts", timeout=5)
         alerts = r.json().get("data", {}).get("alerts", [])
@@ -132,17 +156,33 @@ async def cmd_yeniden_baslat(
 webhook_app = FastAPI()
 
 
-def _check_webhook_secret(x_webhook_secret: str | None) -> None:
-    """Raise 403 if the shared secret header doesn't match (when configured)."""
-    if WEBHOOK_SECRET and x_webhook_secret != WEBHOOK_SECRET:
+def _check_webhook_secret(authorization: str | None) -> None:
+    """Validate the shared secret sent as `Authorization: Bearer <secret>`.
+
+    2026-07-01 prod-grade denetimi P1: önceki davranış `WEBHOOK_SECRET` boşsa
+    (yapılandırılmamışsa) kontrolü tamamen atlıyordu (fail-open) — bu servisin
+    portu (8080) host'a expose edildiği için harici biri secret olmadan
+    doğrudan sahte alarm/hata/feedback POST'layabiliyordu. Artık
+    `WEBHOOK_SECRET` yapılandırılmamışsa TÜM istekler reddedilir (fail-closed).
+    Bearer şeması Alertmanager'ın `http_config.authorization` mekanizmasıyla
+    ve backend'in `telegram_notifier.py`'siyle uyumlu — eski özel
+    `X-Webhook-Secret` header'ı yerine standart `Authorization` kullanılıyor.
+    """
+    if not WEBHOOK_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="OPS_WEBHOOK_SECRET not configured — webhook disabled",
+        )
+    expected = f"Bearer {WEBHOOK_SECRET}"
+    if authorization != expected:
         raise HTTPException(status_code=403, detail="Invalid webhook secret")
 
 
 @webhook_app.post("/webhook/alertmanager")
 async def alertmanager_webhook(
-    payload: dict, x_webhook_secret: str | None = Header(None)
+    payload: dict, authorization: str | None = Header(None)
 ) -> dict:
-    _check_webhook_secret(x_webhook_secret)
+    _check_webhook_secret(authorization)
     if _app is None:
         return {"ok": False, "error": "bot not ready"}
     for alert in payload.get("alerts", []):
@@ -160,14 +200,14 @@ async def alertmanager_webhook(
 
 @webhook_app.post("/webhook/error")
 async def error_webhook(
-    payload: dict, x_webhook_secret: str | None = Header(None)
+    payload: dict, authorization: str | None = Header(None)
 ) -> dict:
     """Backend ve servislerden gelen hata bildirimlerini Telegram'a iletir.
 
     Payload: {"level": "error|critical", "message": str, "path": str, "trace_id": str}
     Rate limit: aynı (level+path) kombinasyonu 60 saniyede bir.
     """
-    _check_webhook_secret(x_webhook_secret)
+    _check_webhook_secret(authorization)
     if _app is None:
         return {"ok": False, "error": "bot not ready"}
 
@@ -199,13 +239,13 @@ async def error_webhook(
 
 @webhook_app.post("/webhook/feedback")
 async def feedback_webhook(
-    payload: dict, x_webhook_secret: str | None = Header(None)
+    payload: dict, authorization: str | None = Header(None)
 ) -> dict:
     """Pilot kullanıcı geri bildirimlerini Telegram OPS kanalına iletir.
 
     Payload: {"message": str, "username": str, "page": str}
     """
-    _check_webhook_secret(x_webhook_secret)
+    _check_webhook_secret(authorization)
     if _app is None:
         return {"ok": False, "error": "bot not ready"}
 

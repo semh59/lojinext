@@ -21,8 +21,16 @@ logger = logging.getLogger(__name__)
     soft_time_limit=600,
     time_limit=660,
 )
-def backfill_missing(self, limit: int = 50) -> dict[str, Any]:  # noqa: ARG001
-    """tahmini_tuketim=NULL seferleri estimator ile doldur."""
+def backfill_missing(self, limit: int = 50) -> dict[str, Any]:
+    """tahmini_tuketim=NULL seferleri estimator ile doldur.
+
+    2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 16): eskiden TÜM
+    hatalar yutulup normal bir sonuç dict'i dönüyordu — Celery bunu SUCCESS
+    sayıyor, `max_retries` fiilen devre dışı kalıyordu. Artık geçici hatalar
+    (`ConnectionError`/`TimeoutError`/`OSError` — Mapbox/Open-Meteo/DB
+    bağlantı sorunları) retry ediliyor, diğerleri log'lanıp yeniden
+    fırlatılıyor (task gerçekten FAILED olarak işaretlenir, izlenebilir).
+    """
     from app.core.services.prediction_backfill_service import (
         PredictionBackfillService,
     )
@@ -34,14 +42,10 @@ def backfill_missing(self, limit: int = 50) -> dict[str, Any]:  # noqa: ARG001
     asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(_run())
-    except Exception as exc:  # noqa: BLE001
-        logger.error("prediction backfill task failed: %s", exc, exc_info=True)
-        return {
-            "processed": 0,
-            "filled": 0,
-            "failed": 0,
-            "skipped": 0,
-            "error": str(exc),
-        }
+    except (ConnectionError, TimeoutError, OSError) as exc:
+        raise self.retry(exc=exc, countdown=2**self.request.retries * 30)
+    except Exception:
+        logger.exception("prediction backfill task failed permanently")
+        raise
     finally:
         loop.close()

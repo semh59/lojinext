@@ -121,3 +121,54 @@ class TestAracServiceReactivate:
         """get_by_id returns None for a non-existent arac_id."""
         result = await _service().get_by_id(999999)
         assert result is None
+
+    async def test_update_arac_rejects_generic_patch_on_passive_vehicle(
+        self, db_session
+    ):
+        """update_arac must NOT silently mutate a passive (soft-deleted) vehicle.
+
+        2026-07-01 prod-grade denetimi bug: `_update_arac_impl` sadece `get_by_id`
+        ile veriyi çekip `update()` çağırıyordu; get_by_id soft-delete filtresiz
+        olduğu için pasif bir araç, create_arac'ın reaktivasyon akışını bypass
+        ederek doğrudan PATCH ile sessizce güncellenebiliyordu.
+        """
+        from app.core.entities.models import AracUpdate
+
+        arac_id = await _seed_arac(db_session, "34 GHI 300", aktif=False)
+
+        update = AracUpdate(marka="ChangedBrand")
+        success = await _service().update_arac(arac_id, update)
+
+        assert success is False
+        row = await _get_arac(db_session, arac_id)
+        assert row.marka != "ChangedBrand"  # untouched — still the seeded value
+
+    async def test_update_arac_allows_explicit_reactivation_of_passive_vehicle(
+        self, db_session
+    ):
+        """An explicit `aktif=True` PATCH on a passive vehicle IS a legitimate
+        reactivation and must still succeed."""
+        from app.core.entities.models import AracUpdate
+
+        arac_id = await _seed_arac(db_session, "34 GHI 301", aktif=False)
+
+        update = AracUpdate(aktif=True, marka="ReactivatedBrand")
+        success = await _service().update_arac(arac_id, update)
+
+        assert success is True
+        row = await _get_arac(db_session, arac_id)
+        assert row.aktif is True
+        assert row.marka == "ReactivatedBrand"
+
+    async def test_update_arac_active_vehicle_unaffected(self, db_session):
+        """Updating an active vehicle behaves exactly as before."""
+        from app.core.entities.models import AracUpdate
+
+        arac_id = await _seed_arac(db_session, "34 GHI 302", aktif=True)
+
+        update = AracUpdate(marka="StillActiveBrand")
+        success = await _service().update_arac(arac_id, update)
+
+        assert success is True
+        row = await _get_arac(db_session, arac_id)
+        assert row.marka == "StillActiveBrand"

@@ -153,7 +153,9 @@ async def create_dorse(
     """Yeni dorse oluştur."""
     try:
         dorse_id = await service.create(**dorse.model_dump())
-        created = await uow.dorse_repo.get_by_id(dorse_id)
+        # include_inactive=True: az önce oluşturulan kaydı aynı transaction
+        # içinde geri okuyoruz (bkz. vehicles.py:145 için aynı desen).
+        created = await uow.dorse_repo.get_by_id(dorse_id, include_inactive=True)
         if not created:
             raise HTTPException(
                 status_code=500, detail="Dorse oluşturuldu ancak okunamadı."

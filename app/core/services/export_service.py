@@ -121,7 +121,7 @@ class ExportService:
 
             # Başlık ve Tarih
             ws.merge_cells("A1:F1")
-            ws["A1"] = title
+            ws["A1"] = _safe_cell(title)
             ws["A1"].font = Font(bold=True, size=16)
             ws["A1"].alignment = Alignment(horizontal="center")
             ws["A2"] = (
@@ -133,7 +133,9 @@ class ExportService:
                 if not content:
                     continue
 
-                ws.cell(row=row, column=1, value=section.upper()).font = Font(bold=True)
+                ws.cell(
+                    row=row, column=1, value=_safe_cell(section.upper())
+                ).font = Font(bold=True)
                 row += 1
 
                 if (
@@ -143,7 +145,7 @@ class ExportService:
                 ):
                     headers = list(content[0].keys())
                     for col, h in enumerate(headers, 1):
-                        cell = ws.cell(row=row, column=col, value=h)
+                        cell = ws.cell(row=row, column=col, value=_safe_cell(h))
                         cell.font = Font(bold=True, color="FFFFFF")
                         cell.fill = PatternFill("solid", fgColor="1E40AF")
                     row += 1

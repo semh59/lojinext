@@ -9,7 +9,7 @@ so tests run without a live Redis instance.
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -229,6 +229,57 @@ class TestJobManager:
 
         status = mgr.get_status(job_id)
         assert status["result"] == 15
+
+    async def test_get_status_detects_stale_running_job_after_worker_restart(self):
+        """2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 17): job durumu
+        sadece in-process asyncio task'a bağlıydı — worker restart olduğunda
+        Redis'teki kayıt sonsuza dek 'running' kalıyordu, frontend
+        `useTaskStatus` sonsuz poll ediyordu. Artık her job bir `heartbeat_at`
+        taşıyor; `get_status()` 'running' bir job'ın heartbeat'i çok eskiyse
+        (worker restart varsayımı) kaydı kendiliğinden 'failed'e çeviriyor.
+        """
+        mgr = BackgroundJobManager()
+        job_id = "stale-job-1"
+        stale_ts = (datetime.now(timezone.utc) - timedelta(seconds=600)).isoformat()
+        mgr._write_job(
+            job_id,
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "created_at": stale_ts,
+                "finished_at": None,
+                "heartbeat_at": stale_ts,
+            },
+        )
+
+        status = mgr.get_status(job_id)
+
+        assert status["status"] == "failed"
+        assert status["error"]
+        assert "restart" in status["error"].lower()
+
+    async def test_get_status_does_not_flag_fresh_running_job_as_stale(self):
+        """Regresyon guard'ı: gerçekten hâlâ çalışan (yakın zamanlı heartbeat)
+        bir job yanlışlıkla 'failed'e çevrilmemeli."""
+        mgr = BackgroundJobManager()
+        job_id = "fresh-running-job"
+        fresh_ts = datetime.now(timezone.utc).isoformat()
+        mgr._write_job(
+            job_id,
+            {
+                "status": "running",
+                "result": None,
+                "error": None,
+                "created_at": fresh_ts,
+                "finished_at": None,
+                "heartbeat_at": fresh_ts,
+            },
+        )
+
+        status = mgr.get_status(job_id)
+
+        assert status["status"] == "running"
 
     async def test_non_json_result_is_stringified(self):
         """Results that are not JSON-serializable are stored as strings."""

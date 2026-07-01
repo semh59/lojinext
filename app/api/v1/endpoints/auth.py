@@ -13,7 +13,10 @@ from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import audit_logger
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.rate_limiter import rate_limited
+from app.infrastructure.resilience.rate_limiter import (
+    RateLimiterRegistry,
+    rate_limited,
+)
 from app.infrastructure.security import jwt_handler
 from app.infrastructure.security.token_blacklist import blacklist
 from app.schemas.user import KullaniciRead
@@ -69,6 +72,29 @@ async def login(
         if settings.SUPER_ADMIN_PASSWORD
         else None
     )
+
+    if super_admin_pass and form_data.username == super_admin_user:
+        # 2026-07-01 prod-grade denetimi P1: break-glass, genel `auth_token`
+        # bucket'ını (5 req/s — normal kullanıcı trafiği için tasarlanmış)
+        # paylaşıyordu; bu, süper-admin şifresinin saniyede birkaç deneme
+        # hızıyla brute-force edilebileceği anlamına geliyordu (compare_digest
+        # zamanlama saldırısına karşı korur ama deneme SAYISINI sınırlamaz).
+        # Ayrı, çok daha sıkı bir bucket (5 dakikada 3 deneme) — hem
+        # başarılı hem başarısız denemeleri sayar, doğru şifre bulunana kadar
+        # tekrar denemeyi pratik olarak imkansızlaştırır.
+        #
+        # 2026-07-01 derin kontrol: bucket key'e client IP dahil edilmezse
+        # tek bir global bucket olur — kimliği doğrulanmamış bir saldırgan
+        # HERHANGİ bir IP'den 3 yanlış deneme göndererek bucket'ı tüketip
+        # meşru süper-admin'in BAŞKA bir IP'den giriş yapmasını 5 dakika
+        # boyunca engelleyebilir (break-glass hesabına karşı DoS). IP-scoped
+        # bucket bu riski ortadan kaldırır — bir IP'nin denemeleri başka bir
+        # IP'yi etkilemez.
+        _login_ip = request.client.host if request.client else "unknown"
+        super_admin_limiter = await RateLimiterRegistry.get(
+            f"super_admin_login:{_login_ip}", rate=3, period=300.0
+        )
+        await super_admin_limiter.acquire()
 
     if (
         super_admin_pass

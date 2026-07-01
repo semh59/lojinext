@@ -67,29 +67,36 @@ class TestAracServiceValidation:
             except Exception as e:
                 raise ValueError(f"Plaka required: {e}")
 
-    def test_add_vehicle_plaka_format(self, arac_service):
-        """Plaka should be validated for format."""
-        # This test assumes plaka validation exists
-        # Adjust based on actual implementation
-        pass
-
     @pytest.mark.parametrize(
-        "plaka",
+        "plaka,expected_normalized",
         [
-            "34 ABC 123",
-            "06 XYZ 789",
-            "35 AAA 001",
+            ("34 ABC 123", "34 ABC 123"),
+            ("06 XYZ 789", "06 XYZ 789"),
+            ("35 AAA 001", "35 AAA 001"),
         ],
     )
-    def test_valid_plaka_formats(self, plaka):
-        """Various valid plaka formats should be accepted."""
+    def test_valid_plaka_formats(self, plaka, expected_normalized):
+        """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 23): eskiden
+        `validate_plaka_str` gerçekten hata fırlatırsa test `pytest.skip`
+        ile geçiyordu — gevşek/bozuk bir validasyon kalıcı olarak fark
+        edilmeden kalırdı. `validate_plaka_str` (app/core/entities/models.py)
+        gerçek regex-tabanlı bir validasyon uyguluyor; bu 3 format zaten
+        geçerli — artık gerçek bir assertion, skip yok."""
         from app.core.entities.models import AracCreate
 
-        try:
-            model = AracCreate(plaka=plaka, marka="Test", model="Test", yil=2020)
-            assert model.plaka is not None
-        except Exception:
-            pytest.skip("Plaka validation not strict")
+        model = AracCreate(plaka=plaka, marka="Test", model="Test", yil=2020)
+        assert model.plaka == expected_normalized
+
+    def test_invalid_plaka_format_raises(self):
+        """Regresyon guard'ı: gerçekten geçersiz bir plaka formatı
+        `ValidationError` fırlatmalı (validasyon sessizce devre dışı
+        kalmamalı)."""
+        from pydantic import ValidationError
+
+        from app.core.entities.models import AracCreate
+
+        with pytest.raises(ValidationError):
+            AracCreate(plaka="INVALID!!!", marka="Test", model="Test", yil=2020)
 
 
 class TestAracServiceStats:

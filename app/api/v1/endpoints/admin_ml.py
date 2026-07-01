@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
@@ -72,7 +72,7 @@ async def trigger_training(
     dependencies=[Depends(require_yetki("model_goruntule"))],
 )
 async def get_training_queue(
-    limit: int = 50,
+    limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(deps.get_db),
 ):
     """Get recent and pending training tasks."""

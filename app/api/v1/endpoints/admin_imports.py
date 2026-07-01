@@ -1,7 +1,16 @@
 import json
 from typing import Dict, List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
@@ -123,7 +132,8 @@ async def rollback_import(
     dependencies=[Depends(require_yetki("import_goruntule"))],
 )
 async def import_history(
-    limit: int = 50, current_user: Kullanici = Depends(get_current_active_user)
+    limit: int = Query(50, ge=1, le=200),
+    current_user: Kullanici = Depends(get_current_active_user),
 ) -> List[ImportHistoryItem]:
     """
     Geçmişe dönük yükleme loglarını getirir.

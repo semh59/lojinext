@@ -57,6 +57,53 @@ class TestConnectionManager:
 
         assert len(mgr.user_connections["user@test.com"]) == 2
 
+    async def test_connect_returns_true_on_success(self):
+        mgr = self._make_manager()
+        ws = self._make_ws()
+
+        result = await mgr.connect(ws, "user@test.com")
+
+        assert result is True
+
+    async def test_connect_rejects_beyond_max_connections_per_user(self):
+        """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 21): eskiden
+        bağlantı sayısı hiç sınırlanmıyordu — aynı kullanıcı sınırsız WS
+        bağlantısı açabiliyordu (reconnect storm/DoS). Artık bir eşik
+        (`_MAX_CONNECTIONS_PER_USER`) aşılınca yeni bağlantı 1008 ile
+        reddediliyor, kabul edilmiyor."""
+        from app.api.v1.endpoints.admin_ws import _MAX_CONNECTIONS_PER_USER
+
+        mgr = self._make_manager()
+        sockets = [self._make_ws() for _ in range(_MAX_CONNECTIONS_PER_USER + 1)]
+
+        results = []
+        for ws in sockets:
+            results.append(await mgr.connect(ws, "user@test.com"))
+
+        assert results == [True] * _MAX_CONNECTIONS_PER_USER + [False]
+        assert len(mgr.user_connections["user@test.com"]) == _MAX_CONNECTIONS_PER_USER
+        # The rejected socket must never be accepted, only closed.
+        sockets[-1].accept.assert_not_called()
+        sockets[-1].close.assert_awaited_once()
+
+    async def test_connect_allows_new_connection_after_disconnect_frees_a_slot(self):
+        """Regresyon guard'ı: limit'e ulaşıldıktan sonra biri disconnect
+        olursa, sıradaki bağlantı meşru şekilde kabul edilmeli."""
+        from app.api.v1.endpoints.admin_ws import _MAX_CONNECTIONS_PER_USER
+
+        mgr = self._make_manager()
+        sockets = [self._make_ws() for _ in range(_MAX_CONNECTIONS_PER_USER)]
+        for ws in sockets:
+            await mgr.connect(ws, "user@test.com")
+
+        mgr.disconnect(sockets[0], "user@test.com")
+
+        new_ws = self._make_ws()
+        result = await mgr.connect(new_ws, "user@test.com")
+
+        assert result is True
+        new_ws.accept.assert_called_once()
+
     async def test_disconnect_removes_websocket(self):
         mgr = self._make_manager()
         ws = self._make_ws()

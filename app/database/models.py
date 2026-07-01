@@ -1653,6 +1653,40 @@ class FuelInvestigation(Base):
     )
 
 
+class IdempotencyKey(Base):
+    """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 19): client-timeout+
+    retry senaryosunda çift kayıt (yakıt/sefer) oluşmasını engeller.
+
+    Client `Idempotency-Key` header'ı gönderirse: aynı (key, endpoint) için
+    aynı istek gövdesiyle tekrar POST edilirse önbelleklenen yanıt aynen
+    dönülür (yeni kayıt oluşturulmaz); farklı bir gövdeyle tekrar edilirse
+    409 (anahtar zaten farklı bir istekle kullanılmış).
+
+    Migration: alembic/versions/0037_idempotency_keys.py
+
+    NOT: kayıtlar süresiz saklanır — büyüme kaygısı olursa ayrı bir retention
+    task'ı eklenebilir (bu madde kapsamında değil).
+    """
+
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        UniqueConstraint("key", "endpoint", name="uq_idempotency_key_endpoint"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    endpoint: Mapped[str] = mapped_column(String(100), nullable=False)
+    request_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    response_status_code: Mapped[int] = mapped_column(Integer, nullable=False)
+    response_body: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=get_utc_now,
+        nullable=False,
+    )
+
+
 class PushSubscription(Base):
     """Reports v2 RV2.PWA — Web Push (VAPID) abonelik kaydı.
 

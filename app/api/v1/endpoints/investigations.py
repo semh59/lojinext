@@ -413,6 +413,26 @@ async def create_investigation(
 _TERMINAL_STATUSES = {"closed"}
 
 
+async def _read_investigation_for_update(
+    db: Any, inv_id: int
+) -> Optional[FuelInvestigation]:
+    """Fetch a FuelInvestigation for a read-modify-write PATCH.
+
+    2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 18): eskiden `db.get()`
+    ile kilitsiz okunuyordu (TOCTOU) — eşzamanlı iki PATCH'te, geç kalan
+    istek ilkinin commit'inden ÖNCE okunan stale bir status'a göre karar
+    verip (örn. otomatik 'assigned' geçişi) diğerinin sonucunu (örn.
+    'resolved') sessizce eziyordu. `SELECT ... FOR UPDATE` satırı kilitler;
+    geç kalan istek ilkinin commit'ini bekler ve GÜNCEL durumu görür.
+    """
+    result = await db.execute(
+        select(FuelInvestigation)
+        .where(FuelInvestigation.id == inv_id)
+        .with_for_update()
+    )
+    return result.scalar_one_or_none()
+
+
 @router.patch("/{inv_id}", response_model=InvestigationResponse)
 async def update_investigation(
     inv_id: int,
@@ -421,7 +441,7 @@ async def update_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv = await db.get(FuelInvestigation, inv_id)
+    inv = await _read_investigation_for_update(db, inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     if inv.status in _TERMINAL_STATUSES:

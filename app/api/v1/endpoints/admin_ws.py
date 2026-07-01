@@ -19,16 +19,35 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
+_MAX_CONNECTIONS_PER_USER = 5
+
+
 class ConnectionManager:
     def __init__(self):
         # user_email -> list of websockets
         self.user_connections: dict[str, list[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket, user_id: str):
+    async def connect(self, websocket: WebSocket, user_id: str) -> bool:
+        """Accept the connection unless the user already has
+        ``_MAX_CONNECTIONS_PER_USER`` open sockets on this manager.
+
+        2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 21): eskiden
+        bağlantı sayısı hiç sınırlanmıyordu — aynı kullanıcı sınırsız WS
+        bağlantısı açabiliyordu (reconnect storm/DoS). Limit aşılırsa
+        bağlantı kabul edilmeden 1008 (Policy Violation) ile kapatılır.
+
+        Returns:
+            True — bağlantı kabul edildi. False — limit aşıldığı için
+            reddedildi (çağıran receive döngüsüne girmemeli).
+        """
+        if len(self.user_connections.get(user_id, [])) >= _MAX_CONNECTIONS_PER_USER:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return False
         await websocket.accept()
         if user_id not in self.user_connections:
             self.user_connections[user_id] = []
         self.user_connections[user_id].append(websocket)
+        return True
 
     def disconnect(self, websocket: WebSocket, user_id: str):
         if user_id in self.user_connections:
@@ -150,7 +169,9 @@ async def training_status_ws(websocket: WebSocket):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    await training_ws_manager.connect(websocket, email)
+    if not await training_ws_manager.connect(websocket, email):
+        logger.warning(f"WebSocket connection limit reached for user {email}.")
+        return
     logger.info(f"WebSocket User {email} connected to training monitor.")
 
     try:
@@ -180,7 +201,9 @@ async def notifications_ws(websocket: WebSocket):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    await notification_ws_manager.connect(websocket, email)
+    if not await notification_ws_manager.connect(websocket, email):
+        logger.warning(f"WebSocket connection limit reached for user {email}.")
+        return
     logger.info(f"User {email} connected to live notifications.")
 
     try:

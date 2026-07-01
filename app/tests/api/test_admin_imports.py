@@ -43,6 +43,18 @@ async def test_import_history_with_limit(async_client, admin_auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_import_history_rejects_huge_limit(async_client, admin_auth_headers):
+    """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 20): `limit` üst
+    sınırı yoktu — `?limit=999999999` tüm tabloyu OOM riskiyle çekebilirdi.
+    Artık server-side bir üst sınır var, aşan değer 422 ile reddedilir."""
+    response = await async_client.get(
+        "/api/v1/admin/imports/history?limit=999999999",
+        headers=admin_auth_headers,
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_import_history_default_limit(async_client, admin_auth_headers):
     """Test import history uses default limit → 200 (real UnitOfWork)."""
     response = await async_client.get(

@@ -117,8 +117,11 @@ def _make_db_mock(
     exec_result_mock = MagicMock()
     exec_result_mock.mappings.return_value = mapping_mock
 
-    # scalar_one_or_none used in create check
-    exec_result_mock.scalar_one_or_none.return_value = None
+    # scalar_one_or_none used in create's duplicate-anomaly check AND
+    # (2026-07-01 Dalga 4 madde 18) in PATCH's `SELECT ... FOR UPDATE`
+    # existence read — for PATCH/DELETE tests `get_investigation` is passed,
+    # for CREATE tests it stays None (no accidental duplicate match).
+    exec_result_mock.scalar_one_or_none.return_value = get_investigation
 
     db.execute = AsyncMock(return_value=exec_result_mock)
     db.add = MagicMock()
@@ -696,7 +699,9 @@ def _make_update_db(fake_inv, inv_row):
 
     exec_result = MagicMock()
     exec_result.mappings.return_value = mapping_mock
-    exec_result.scalar_one_or_none.return_value = None
+    # 2026-07-01 Dalga 4 madde 18: PATCH artık ilk okumayı `db.get()` değil
+    # `SELECT ... FOR UPDATE` (→ `result.scalar_one_or_none()`) ile yapıyor.
+    exec_result.scalar_one_or_none.return_value = fake_inv
 
     db.execute = AsyncMock(return_value=exec_result)
     return db

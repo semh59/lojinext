@@ -5,6 +5,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Header,
     HTTPException,
     Query,
     Response,
@@ -14,6 +15,7 @@ from sqlalchemy import text
 
 from app.api.deps import (
     SessionDep,
+    UOWDep,
     get_current_active_admin,
     get_current_active_user,
     get_yakit_service,
@@ -26,6 +28,13 @@ from app.api.v1.endpoints.internal import (
 from app.api.v1.utils import parse_date_param
 from app.config import settings
 from app.core.exceptions import DomainError
+from app.core.services.idempotency_service import (
+    IdempotencyKeyConflictError,
+    IdempotencyKeyInProgressError,
+    finalize_response,
+    release_reservation,
+    reserve_or_get_cached,
+)
 from app.core.services.yakit_service import YakitService
 from app.database.models import Kullanici, YakitAlimi
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -88,7 +97,7 @@ async def read_yakit_alimlari(
     bitis_tarih: Optional[str] = Query(None),
     arac_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = 20,
+    limit: int = Query(20, ge=1, le=200),
 ) -> Any:
     """Yakıt alımlarını listele (Service Layer)."""
     try:
@@ -118,9 +127,34 @@ async def read_yakit_alimlari(
 async def create_yakit(
     yakit: YakitCreate,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
+    uow: UOWDep,
     service: YakitService = Depends(get_yakit_service),
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
-    """Yeni yakıt alımı ekle (Service Layer)."""
+    """Yeni yakıt alımı ekle (Service Layer).
+
+    2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 19): client timeout+retry
+    ile çift kayıt oluşmasını önlemek için opsiyonel `Idempotency-Key` header'ı
+    desteklenir — aynı key + aynı gövde tekrar POST edilirse önbelleklenen
+    yanıt aynen dönülür, gerçek bir ikinci kayıt oluşturulmaz.
+    """
+    _ENDPOINT = "POST /fuel"
+    request_body = yakit.model_dump(mode="json")
+    if idempotency_key:
+        try:
+            reservation = await reserve_or_get_cached(
+                key=idempotency_key,
+                endpoint=_ENDPOINT,
+                request_body=request_body,
+            )
+        except IdempotencyKeyConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except IdempotencyKeyInProgressError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if not reservation.reserved:
+            _status_code, cached_body = reservation.cached
+            return cached_body
+
     try:
         yakit_id = await service.add_yakit(yakit)
         created = await service.get_yakit_by_id(yakit_id)
@@ -131,15 +165,33 @@ async def create_yakit(
             new_value={"arac_id": yakit.arac_id, "litre": str(yakit.litre)},
             user_id=current_admin.id,
         )
+        if idempotency_key:
+            response_body = YakitResponse.model_validate(
+                created, from_attributes=True
+            ).model_dump(mode="json")
+            await finalize_response(
+                key=idempotency_key,
+                endpoint=_ENDPOINT,
+                status_code=201,
+                response_body=response_body,
+            )
         return created
 
     except ValueError as e:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise HTTPException(status_code=400, detail=str(e))
     except DomainError:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
     except HTTPException:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
     except Exception as e:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         logger.error(f"Error creating fuel: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 

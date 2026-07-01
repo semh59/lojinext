@@ -33,6 +33,15 @@ async def test_ml_queue_no_auth_gets_401(async_client):
     assert response.status_code == 401, response.text
 
 
+async def test_ml_queue_rejects_huge_limit(async_client, admin_auth_headers):
+    """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 20): `limit` üst
+    sınırı yoktu — `?limit=999999999` tüm tabloyu OOM riskiyle çekebilirdi."""
+    response = await async_client.get(
+        f"{BASE}/queue?limit=999999999", headers=admin_auth_headers
+    )
+    assert response.status_code == 422
+
+
 # ---------------------------------------------------------------------------
 # POST /api/v1/admin/ml/train/{arac_id} — trigger training
 # ---------------------------------------------------------------------------

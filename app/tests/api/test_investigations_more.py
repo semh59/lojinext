@@ -472,7 +472,9 @@ async def test_update_investigation_status_closed(async_client, admin_auth_heade
     mapping_mock.one_or_none.return_value = MagicMock(**inv_row)
     exec_result = MagicMock()
     exec_result.mappings.return_value = mapping_mock
-    exec_result.scalar_one_or_none.return_value = None
+    # 2026-07-01 Dalga 4 madde 18: PATCH'in ilk varlık kontrolü artık
+    # `SELECT ... FOR UPDATE` (→ scalar_one_or_none()) kullanıyor.
+    exec_result.scalar_one_or_none.return_value = fake_inv
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
@@ -521,7 +523,9 @@ async def test_update_investigation_assign_non_open(async_client, admin_auth_hea
     mapping_mock.one_or_none.return_value = MagicMock(**inv_row)
     exec_result = MagicMock()
     exec_result.mappings.return_value = mapping_mock
-    exec_result.scalar_one_or_none.return_value = None
+    # 2026-07-01 Dalga 4 madde 18: PATCH'in ilk varlık kontrolü artık
+    # `SELECT ... FOR UPDATE` (→ scalar_one_or_none()) kullanıyor.
+    exec_result.scalar_one_or_none.return_value = fake_inv
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
@@ -572,7 +576,10 @@ async def test_update_investigation_noop_fetch_returns_none(
     db.commit = AsyncMock()
 
     exec_result = MagicMock()
-    exec_result.scalar_one_or_none.return_value = None
+    # 2026-07-01 Dalga 4 madde 18: PATCH'in ilk varlık kontrolü artık
+    # `SELECT ... FOR UPDATE` (→ scalar_one_or_none()) kullanıyor — no-op
+    # dalına ulaşmadan önce bu kontrolden geçmesi gerekiyor.
+    exec_result.scalar_one_or_none.return_value = fake_inv
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
@@ -617,7 +624,9 @@ async def test_update_investigation_post_fetch_none(async_client, admin_auth_hea
     db.commit = AsyncMock()
 
     exec_result = MagicMock()
-    exec_result.scalar_one_or_none.return_value = None
+    # 2026-07-01 Dalga 4 madde 18: PATCH'in ilk varlık kontrolü artık
+    # `SELECT ... FOR UPDATE` (→ scalar_one_or_none()) kullanıyor.
+    exec_result.scalar_one_or_none.return_value = fake_inv
     db.execute = AsyncMock(return_value=exec_result)
 
     # First call (no-op check) returns the row, second call (post-update) returns None

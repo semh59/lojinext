@@ -7,6 +7,7 @@ from fastapi import (
     Body,
     Depends,
     File,
+    Header,
     HTTPException,
     Query,
     Response,
@@ -16,6 +17,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import (
+    UOWDep,
     get_background_job_manager,
     get_current_active_user,
     get_sefer_service,
@@ -23,6 +25,13 @@ from app.api.deps import (
 )
 from app.core.exceptions import DomainError
 from app.core.services.excel_service import ExcelService
+from app.core.services.idempotency_service import (
+    IdempotencyKeyConflictError,
+    IdempotencyKeyInProgressError,
+    finalize_response,
+    release_reservation,
+    reserve_or_get_cached,
+)
 from app.core.services.sefer_service import SeferService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -292,9 +301,34 @@ async def create_sefer(
     ],
     sefer: SeferCreate,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
+    uow: UOWDep,
     service: SeferService = Depends(get_sefer_service),
+    idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
-    """Yeni sefer oluştur (Service Layer)."""
+    """Yeni sefer oluştur (Service Layer).
+
+    2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 19): client timeout+retry
+    ile çift kayıt oluşmasını önlemek için opsiyonel `Idempotency-Key` header'ı
+    desteklenir — aynı key + aynı gövde tekrar POST edilirse önbelleklenen
+    yanıt aynen dönülür, gerçek bir ikinci kayıt oluşturulmaz.
+    """
+    _ENDPOINT = "POST /trips"
+    request_body = sefer.model_dump(mode="json")
+    if idempotency_key:
+        try:
+            reservation = await reserve_or_get_cached(
+                key=idempotency_key,
+                endpoint=_ENDPOINT,
+                request_body=request_body,
+            )
+        except IdempotencyKeyConflictError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except IdempotencyKeyInProgressError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        if not reservation.reserved:
+            _status_code, cached_body = reservation.cached
+            return cached_body
+
     try:
         # Capture the actor id BEFORE the service commits — after commit the
         # ORM attribute is expired and re-reading it would trigger a sync lazy
@@ -330,7 +364,15 @@ async def create_sefer(
         from pydantic import ValidationError
 
         try:
-            return SeferResponse.model_validate(created_dict)
+            validated = SeferResponse.model_validate(created_dict)
+            if idempotency_key:
+                await finalize_response(
+                    key=idempotency_key,
+                    endpoint=_ENDPOINT,
+                    status_code=201,
+                    response_body=validated.model_dump(mode="json"),
+                )
+            return validated
         except ValidationError as ve:
             logger.error(
                 f"API: Serialization error to SeferResponse for ID {sefer_id}: {ve}"
@@ -341,13 +383,21 @@ async def create_sefer(
             )
 
     except HTTPException:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
     except ValueError as e:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         logger.warning(f"API: Validation error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except DomainError:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
     except HTTPException:
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
     except Exception as e:
         import traceback
@@ -361,12 +411,16 @@ async def create_sefer(
             or "not-null constraint" in str(e).lower()
             or "foreign key" in str(e).lower()
         ):
+            if idempotency_key:
+                await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
             logger.warning("API: DB constraint violation (422): %s", e)
             raise HTTPException(
                 status_code=422,
                 detail="Eksik veya geçersiz alan: " + str(e).split("DETAIL")[0][:200],
             )
 
+        if idempotency_key:
+            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         logger.error(
             f"API: Unexpected error creating trip: {str(e)}\n{traceback.format_exc()}"
         )

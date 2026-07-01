@@ -171,6 +171,16 @@ async def test_read_yakit_alimlari_with_filters(async_client, admin_auth_headers
 
 
 @pytest.mark.asyncio
+async def test_read_yakit_alimlari_rejects_huge_limit(async_client, admin_auth_headers):
+    """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 20): `limit` üst
+    sınırı yoktu — `?limit=999999999` tüm tabloyu OOM riskiyle çekebilirdi."""
+    resp = await async_client.get(
+        f"{BASE_URL}/?limit=999999999", headers=admin_auth_headers
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_read_yakit_alimlari_unexpected_error(async_client, admin_auth_headers):
     """GET /fuel/ service raises RuntimeError → 500."""
     mock_svc = AsyncMock()

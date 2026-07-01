@@ -262,6 +262,26 @@ describe("ChatAssistant", () => {
     });
   });
 
+  it("2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 25): isOpen persist edilip true olarak geri geldiğinde (panel zaten açık mount oluyor) checkStatus hemen çağrılır — 5sn polling interval'ını beklemez", async () => {
+    vi.useFakeTimers();
+    try {
+      const { useAiStore } = await import("../../../stores/use-ai-store");
+      // Persisted state senaryosu: mount anında isOpen=true, status henüz
+      // 'ready' değil (offline/loading) — tıpkı sayfa reload sonrası
+      // zustand persist'in isOpen'ı geri yüklediği ama status'un
+      // persist edilmediği (her zaman 'offline'dan başladığı) durum gibi.
+      vi.mocked(useAiStore).mockReturnValue(
+        createStoreMock({ isOpen: true, status: "offline" }) as any,
+      );
+      render(<ChatAssistant />);
+      // Sahte zamanlayıcıları ilerletmeden (interval henüz tetiklenmeden)
+      // checkStatus zaten en az bir kez çağrılmış olmalı.
+      expect(mockCheckStatus).toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("shows Düşünüyor... while AI is responding", async () => {
     const { useAiStore } = await import("../../../stores/use-ai-store");
     const { aiApi } = await import("../../../api/ai");

@@ -112,9 +112,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         if count > limit:
             logger.warning("Rate limit exceeded bucket=%s count=%d", bucket, count)
+            # 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 25): eskiden
+            # {"detail": "..."} dönüyordu — projenin standart hata zarfını
+            # ({"error": {"code","message","trace_id"}}, bkz. main.py
+            # http_exception_handler) bypass ediyordu, frontend'in genel
+            # hata-zarfı ayrıştırıcısı bunu tanımıyordu.
+            from app.infrastructure.context.request_context import (
+                get_correlation_id,
+            )
+
             return JSONResponse(
                 status_code=429,
-                content={"detail": "Too many requests. Please try again later."},
+                content={
+                    "error": {
+                        "code": "RATE_LIMITED",
+                        "message": "Too many requests. Please try again later.",
+                        "trace_id": get_correlation_id() or "",
+                    }
+                },
                 headers={"Retry-After": str(self.window_size)},
             )
 

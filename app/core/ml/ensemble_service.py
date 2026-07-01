@@ -167,11 +167,32 @@ class EnsemblePredictorService:
                     # exception zinciri tetikler (production blocker).
                     expected = predictor._resolve_expected_feature_count()
                     runtime = len(predictor.FEATURE_NAMES)
-                    if expected and expected != runtime:
+                    count_mismatch = bool(expected and expected != runtime)
+
+                    # 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 26): SAYI
+                    # aynı kalsa bile isim/sıra değişmişse (feature drift) yukarıdaki
+                    # kontrol bunu kaçırıyordu. Persisted hash None ise (eski, bu
+                    # alan eklenmeden önce kaydedilmiş model dosyası) karşılaştırma
+                    # atlanır — false positive üretmemek için.
+                    loaded_hash = predictor._loaded_feature_schema_hash
+                    hash_mismatch = bool(
+                        loaded_hash and loaded_hash != predictor._feature_hash
+                    )
+
+                    if count_mismatch:
                         logger.warning(
                             f"Model schema mismatch for vehicle {arac_id}: "
                             f"trained={expected} vs runtime={runtime}. "
                             "Marking as untrained, physics fallback aktif."
+                        )
+                        predictor.is_trained = False
+                    elif hash_mismatch:
+                        logger.warning(
+                            f"Model feature schema hash mismatch for vehicle "
+                            f"{arac_id}: persisted={loaded_hash} vs "
+                            f"runtime={predictor._feature_hash} (feature count "
+                            "unchanged but name/order drifted). Marking as "
+                            "untrained, physics fallback aktif."
                         )
                         predictor.is_trained = False
                     else:

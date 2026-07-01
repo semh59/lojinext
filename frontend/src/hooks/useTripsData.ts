@@ -103,7 +103,11 @@ export function useTripsData() {
     return status === 403
       ? tripModuleText.loadErrorForbidden
       : tripModuleText.loadErrorGeneric;
-  }, [error]);
+  }, [
+    error,
+    tripModuleText.loadErrorForbidden,
+    tripModuleText.loadErrorGeneric,
+  ]);
 
   const { data: statsResponse } = useQuery({
     queryKey: [
@@ -191,7 +195,7 @@ export function useTripsData() {
         bg: "bg-secondary/10",
       },
     ];
-  }, [filters.durum, statsResponse, fleetStatsResponse]);
+  }, [filters.durum, statsResponse, fleetStatsResponse, locale, tripStatsText]);
 
   // Pagination derived values
   const pageSize =

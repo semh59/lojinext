@@ -84,6 +84,10 @@ export const TripsModule = () => {
       // Param'ları temizle ki yenileme/back gezintisinde tekrar uygulanmasın.
       setSearchParams({}, { replace: true });
     }
+    // Mount-only: consumes a one-time deep-link (e.g. dashboard "Bugünkü
+    // Seferler" link) and clears the params so back/refresh doesn't re-apply
+    // them. Re-running on every searchParams change would defeat that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [isBulkApproving, setIsBulkApproving] = useState(false);

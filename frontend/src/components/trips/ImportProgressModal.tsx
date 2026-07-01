@@ -61,13 +61,13 @@ export function ImportProgressModal({
     return () => {
       cancelled = true;
     };
-  }, [file]);
+  }, [file, t]);
 
   useEffect(() => {
     if (task.status === "SUCCESS" && task.result && onComplete) {
       onComplete(task.result as ImportSummary);
     }
-  }, [task.status]);
+  }, [task.status, task.result, onComplete]);
 
   if (!file) return null;
 

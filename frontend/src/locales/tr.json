@@ -932,6 +932,7 @@
     "validation_error": "Doğrulama hatası",
     "server_error": "Sunucu tarafında bir hata oluştu. Lütfen daha sonra tekrar deneyin.",
     "network_error": "Sunucuya ulaşılamıyor. İnternet bağlantınızı kontrol edin.",
+    "rate_limited": "Çok fazla istek gönderildi. Lütfen biraz yavaşlayıp tekrar deneyin.",
     "login_failed": "Kullanıcı adı veya şifre hatalı",
     "login_error": "Giriş yapılamadı",
     "system_outage": "Sistem Kesintisi",

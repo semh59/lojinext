@@ -97,6 +97,11 @@ export default function AlertsPage() {
     if (dirty) {
       setSearchParams({}, { replace: true });
     }
+    // Mount-only: consumes a one-time deep-link (?days=/tip=/status= from
+    // dashboard widgets) and clears the params so back/refresh doesn't
+    // re-apply them. Re-running on every searchParams/days change would
+    // defeat that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { data: insights, isLoading } = useQuery({

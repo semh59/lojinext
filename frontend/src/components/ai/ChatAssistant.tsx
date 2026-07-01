@@ -35,9 +35,13 @@ export const ChatAssistant: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Poll for status while open and not yet ready (store handles the initial check on open)
+  // Poll for status while open and not yet ready. Also fires immediately on
+  // mount/open — persisted `isOpen: true` (zustand persist restores it, but
+  // `status` is never persisted and always starts at "offline") otherwise
+  // left the panel showing a stale status for a full 5s before the first check.
   useEffect(() => {
     if (!isOpen || status === "ready") return;
+    checkStatus();
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
   }, [isOpen, status, checkStatus]);

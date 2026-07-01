@@ -12,6 +12,9 @@ interface ModalProps {
   className?: string;
 }
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function Modal({
   isOpen,
   onClose,
@@ -22,24 +25,55 @@ export function Modal({
 }: ModalProps) {
   const [isMounted, setIsMounted] = React.useState(false);
   const titleId = React.useId();
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  // Focus trap (WCAG 2.1 AA): move focus into the dialog on open, cycle
+  // Tab/Shift+Tab within it, and restore focus to the trigger on close.
   React.useEffect(() => {
     if (!isOpen) return;
 
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    const firstFocusable =
+      dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ?? dialog;
+    firstFocusable?.focus();
+
     document.body.style.overflow = "hidden";
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const handleKeydown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleKeydown);
 
     return () => {
-      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleKeydown);
       document.body.style.overflow = "unset";
+      previouslyFocusedRef.current?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -59,6 +93,7 @@ export function Modal({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div
+        ref={dialogRef}
         // LojiNext v2.0 Modal Rules: 14px radius, scale(0.96) -> scale(1) + fade 200ms entrance
         className={cn(
           "relative w-full rounded-[14px] bg-surface p-[32px] border border-border",
@@ -72,6 +107,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        tabIndex={-1}
       >
         <button
           onClick={onClose}

@@ -932,6 +932,7 @@
     "validation_error": "Validation error",
     "server_error": "A server error occurred. Please try again later.",
     "network_error": "Cannot reach server. Please check your internet connection.",
+    "rate_limited": "Too many requests. Please slow down and try again shortly.",
     "login_failed": "Username or password is incorrect.",
     "login_error": "Login failed",
     "system_outage": "System Outage",

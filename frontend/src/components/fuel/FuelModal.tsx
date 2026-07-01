@@ -113,7 +113,14 @@ export function FuelModal({
       // Faz 6 — OCR önizlemesinden gelen değerler defaults üzerine yazılır.
       ...(ocrPrefill ?? {}),
     } as any);
-  }, [isOpen, record, ocrPrefill, reset]);
+  }, [
+    isOpen,
+    record,
+    ocrPrefill,
+    reset,
+    fuelModalText.enums.partial,
+    fuelModalText.enums.pending,
+  ]);
 
   const onSubmit: SubmitHandler<FuelFormData> = async (data) => {
     try {

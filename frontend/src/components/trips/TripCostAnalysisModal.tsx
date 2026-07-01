@@ -61,7 +61,7 @@ export function TripCostAnalysisModal({
     return () => {
       cancelled = true;
     };
-  }, [seferId]);
+  }, [seferId, t]);
 
   if (!seferId) return null;
 

@@ -155,6 +155,9 @@ class EnsembleFuelPredictor:
         self._feature_hash = hashlib.sha256(
             "".join(self.FEATURE_NAMES).encode()
         ).hexdigest()[:16]
+        # Set by load_model() from persisted metadata; None until a model is
+        # actually loaded from disk (fresh/never-loaded predictor).
+        self._loaded_feature_schema_hash: Optional[str] = None
         self._physics_version = "v5.2-hybrid"
         self.physics_model = PhysicsBasedFuelPredictor(vehicle_specs)
         self.weights = self.DEFAULT_WEIGHTS.copy()  # Instance-specific weights
@@ -1220,6 +1223,12 @@ class EnsembleFuelPredictor:
             "last_updated": date.today().isoformat(),
             "sklearn_checksum": sklearn_checksum,
             "model_weights": self.weights,  # Persist dynamic weights
+            # 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 26): FEATURE_NAMES'in
+            # SIRALI hash'i (bkz. __init__) — load_model bunu okuyup çalışma-zamanı
+            # _feature_hash ile karşılaştırır. Eskiden sadece feature SAYISI
+            # kontrol ediliyordu (_resolve_expected_feature_count); isim/sıra
+            # değişip sayı aynı kalırsa sessiz feature-drift mümkündü.
+            "feature_schema_hash": self._feature_hash,
         }
         with open(f"{base_path}_meta.json", "w", encoding="utf-8") as f:
             json.dump(metadata, f, ensure_ascii=False, indent=2)
@@ -1250,6 +1259,13 @@ class EnsembleFuelPredictor:
         self.weights = metadata.get(
             "model_weights", self.DEFAULT_WEIGHTS.copy()
         )  # Load weights
+        # 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 26): persisted
+        # feature-isim/sıra hash'i — çağıran (ensemble_service.get_predictor)
+        # bunu güncel `self._feature_hash` ile karşılaştırıp sessiz feature
+        # drift'i yakalar. None olması eski (bu alan eklenmeden önce
+        # kaydedilmiş) bir model dosyası anlamına gelir — çağıran bunu
+        # "karşılaştırılamaz" olarak ele almalı, yanlışlıkla mismatch değil.
+        self._loaded_feature_schema_hash = metadata.get("feature_schema_hash")
         expected_checksum = metadata.get("sklearn_checksum")
 
         # 2. Sklearn modelleri yükle (GÜVENLİK KRİTİK: Checksum doğrulaması)

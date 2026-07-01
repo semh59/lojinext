@@ -61,7 +61,11 @@ export function ROICalculator() {
 
     const timer = setTimeout(fetchReportData, 400);
     return () => clearTimeout(timer);
-  }, [investment]);
+  }, [
+    investment,
+    reportRoiText.roiUnavailable,
+    reportRoiText.savingsUnavailable,
+  ]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat(locale, {

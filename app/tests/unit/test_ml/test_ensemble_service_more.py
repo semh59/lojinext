@@ -174,6 +174,8 @@ class TestGetPredictorDiskLoad:
         mock_predictor = MagicMock()
         mock_predictor._resolve_expected_feature_count.return_value = 10
         mock_predictor.FEATURE_NAMES = list(range(10))  # same count
+        mock_predictor._feature_hash = "same-hash"
+        mock_predictor._loaded_feature_schema_hash = "same-hash"
         mock_predictor.is_trained = True
 
         with (
@@ -211,6 +213,62 @@ class TestGetPredictorDiskLoad:
 
         # The code should set is_trained = False on schema mismatch
         assert mock_predictor.is_trained is False
+
+    def test_hash_mismatch_marks_predictor_untrained_even_when_count_matches(self):
+        """2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 26): feature
+        SAYISI aynı kalsa bile isim/sıra değişmişse (feature drift) eski
+        kod bunu YAKALAMIYORDU — sadece n_features_in_ karşılaştırılıyordu.
+        Artık persisted feature_schema_hash (isim+sıra) de karşılaştırılıyor."""
+        from app.core.ml.ensemble_service import EnsemblePredictorService
+
+        svc = EnsemblePredictorService()
+
+        mock_predictor = MagicMock()
+        mock_predictor._resolve_expected_feature_count.return_value = 10
+        mock_predictor.FEATURE_NAMES = list(range(10))  # count matches (10==10)
+        mock_predictor._feature_hash = "current-code-hash"
+        mock_predictor._loaded_feature_schema_hash = "stale-persisted-hash"
+        mock_predictor.is_trained = True
+
+        with (
+            patch(
+                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                return_value=mock_predictor,
+            ),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            svc.get_predictor(77)
+
+        assert mock_predictor.is_trained is False, (
+            "Feature isim/sıra hash'i uyuşmuyorsa (count aynı olsa bile) "
+            "predictor untrained işaretlenmeliydi — sessiz feature drift "
+            "önlenmedi."
+        )
+
+    def test_hash_match_keeps_predictor_trained(self):
+        """Hash'ler eşleşiyorsa (gerçek sürüm) is_trained korunur — false
+        positive yok."""
+        from app.core.ml.ensemble_service import EnsemblePredictorService
+
+        svc = EnsemblePredictorService()
+
+        mock_predictor = MagicMock()
+        mock_predictor._resolve_expected_feature_count.return_value = 10
+        mock_predictor.FEATURE_NAMES = list(range(10))
+        mock_predictor._feature_hash = "same-hash"
+        mock_predictor._loaded_feature_schema_hash = "same-hash"
+        mock_predictor.is_trained = True
+
+        with (
+            patch(
+                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                return_value=mock_predictor,
+            ),
+            patch("pathlib.Path.exists", return_value=True),
+        ):
+            svc.get_predictor(78)
+
+        assert mock_predictor.is_trained is True
 
     def test_load_model_exception_records_failure_via_ml_probe(self):
         """load_model raises → ml_probe records failure (inner except block)."""

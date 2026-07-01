@@ -66,7 +66,7 @@ export function DriverPerformanceModal({
     }
     // Modal her yeni sürücü için performans sekmesinden başlasın.
     setActiveTab("performance");
-  }, [driver, isOpen]);
+  }, [driver, isOpen, driverPerformanceText.errorFallback]);
 
   if (!isOpen) {
     return null;

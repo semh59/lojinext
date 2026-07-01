@@ -173,6 +173,18 @@ axiosInstance.interceptors.response.use(
         }
       }
 
+      if (status === 429) {
+        const errData = data as ApiErrorResponse;
+        const message =
+          errData?.error?.message ??
+          (typeof errData?.detail === "string" ? errData.detail : undefined) ??
+          i18n.t(
+            "errors.rate_limited",
+            "Too many requests. Please slow down and try again shortly.",
+          );
+        toast.error(message);
+      }
+
       if (status >= 500) {
         toast.error(
           i18n.t(

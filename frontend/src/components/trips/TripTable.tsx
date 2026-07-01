@@ -170,6 +170,7 @@ export function TripTable({
     getScrollElement: () => parentRef.current,
     estimateSize: () => 140,
     overscan: 5,
+    getItemKey: (index) => trips[index]?.id ?? index,
   });
 
   if (isLoading) {

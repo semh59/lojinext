@@ -632,6 +632,56 @@ class TestSaveLoadGuards:
         assert p.physics_weight == 0.5
         assert p.is_trained is True
 
+    def test_load_reads_feature_schema_hash_from_metadata(self, tmp_path):
+        """2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 26): eskiden
+        feature_schema_hash DB'ye (ModelVersion) yazılıyordu ama model
+        dosyası (_meta.json) hiç içermiyordu, load_model da hiç okumuyordu
+        — sadece feature SAYISI kontrol ediliyordu, isim/sıra drift'i
+        sessizce geçiyordu. Artık _meta.json'da saklanıyor ve load_model
+        bunu `_loaded_feature_schema_hash` attribute'una okuyor."""
+        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+
+        p = EnsembleFuelPredictor()
+        meta = {
+            "physics_weight": 0.5,
+            "training_stats": {"sample_count": 10},
+            "is_trained": True,
+            "sklearn_checksum": None,
+            "model_weights": {"physics": 0.5, "gb": 0.25, "rf": 0.25},
+            "feature_schema_hash": "deadbeef12345678",  # pragma: allowlist secret
+        }
+        base_path = tmp_path / "model"
+        with open(f"{base_path}_meta.json", "w", encoding="utf-8") as f:
+            json.dump(meta, f)
+
+        p.load_model(str(base_path))
+        assert (
+            p._loaded_feature_schema_hash
+            == "deadbeef12345678"  # pragma: allowlist secret
+        )
+
+    def test_save_model_persists_feature_schema_hash(self, tmp_path):
+        """save_model'in yazdığı _meta.json artık feature_schema_hash içeriyor
+        (FEATURE_NAMES'in sırayla hash'i — isim/sıra drift'ini yakalar,
+        sadece sayı değil)."""
+        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+
+        p = EnsembleFuelPredictor()
+        p.is_trained = True
+        p.physics_weight = 0.5
+        p.training_stats = {"sample_count": 10}
+        p.weights = {"physics": 0.5, "gb": 0.25, "rf": 0.25}
+        # xgb/lgb fit edilmemiş (NotFittedError önler) — bu test yalnızca
+        # metadata JSON'unu doğruluyor, gerçek model eğitimini değil.
+        p.xgb_model = None
+        p.lgb_model = None
+        base_path = tmp_path / "model"
+        p.save_model(str(base_path))
+
+        with open(f"{base_path}_meta.json", encoding="utf-8") as f:
+            meta = json.load(f)
+        assert meta["feature_schema_hash"] == p._feature_hash
+
     def test_load_checksum_mismatch_raises_security_error(self, tmp_path):
         from app.core.ml.ensemble_core import EnsembleFuelPredictor, SecurityError
 

@@ -1,5 +1,11 @@
 ﻿import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState, useEffect, type ChangeEvent } from "react";
+import {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  type ChangeEvent,
+} from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
@@ -369,7 +375,7 @@ export const useLocationForm = ({
     return `${originLat}:${originLon}:${destinationLat}:${destinationLon}`;
   }, [destinationLat, destinationLon, originLat, originLon]);
 
-  const handleCalculate = async () => {
+  const handleCalculate = useCallback(async () => {
     const values = getValues();
     if (
       typeof values.cikis_lat !== "number" ||
@@ -419,7 +425,14 @@ export const useLocationForm = ({
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [
+    getValues,
+    setValue,
+    calculateRouteKey,
+    locationFormText.toasts.selectBothEndpoints,
+    locationFormText.toasts.routeCalculated,
+    locationFormText.toasts.routeCalculationFailed,
+  ]);
 
   useEffect(() => {
     if (
@@ -430,7 +443,7 @@ export const useLocationForm = ({
       return;
     }
     void handleCalculate();
-  }, [calculateRouteKey, isOpen, lastCalculatedKey]);
+  }, [calculateRouteKey, isOpen, lastCalculatedKey, handleCalculate]);
 
   const onSubmit = async (values: LocationFormValues) => {
     try {

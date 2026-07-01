@@ -31,10 +31,11 @@ export default [
         },
         rules: {
             "react-hooks/rules-of-hooks": "error",
-            // exhaustive-deps: many existing init-only effects intentionally
-            // omit deps. Enable as warn (off-by-default for max-warnings=0)
-            // and revisit per-effect in a dedicated cleanup PR.
-            "react-hooks/exhaustive-deps": "off",
+            // 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 25): eskiden
+            // "off" idi (hiçbir stale-closure bug'ı yakalanmıyordu). 13
+            // mevcut ihlal bulunup düzeltildi (kalıcı mount-only init
+            // efektleri eslint-disable ile belgelendi), artık error.
+            "react-hooks/exhaustive-deps": "error",
         },
     },
 ];

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, BrainCircuit, Play } from "lucide-react";
 
@@ -44,7 +44,7 @@ export default function AdminModelManagementPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const vehicles = vehicleData?.items || [];
+  const vehicles = useMemo(() => vehicleData?.items || [], [vehicleData]);
 
   useEffect(() => {
     if (selectedVehicleId === null && vehicles.length > 0) {

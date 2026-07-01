@@ -9,6 +9,7 @@ Tests cover:
 - RateLimitMiddleware initialisation
 """
 
+import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -257,6 +258,18 @@ async def test_dispatch_rate_limits_when_over_limit():
                 response = await mw.dispatch(req, call_next)
 
         assert response.status_code == 429
+        # 2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 25): 429 yanıtı
+        # projenin standart hata zarfını ({"error":{"code","message",
+        # "trace_id"}}) bypass ediyordu (sadece {"detail": "..."} dönüyordu)
+        # — frontend'in genel hata-zarfı ayrıştırıcısı bunu tanımıyordu,
+        # kullanıcı rate-limit'e takılınca hiçbir geri bildirim almıyordu.
+        body = json.loads(bytes(response.body).decode("utf-8"))
+        assert "error" in body, (
+            f"429 yanıtı standart hata zarfını kullanmalı ({{'error': "
+            f"{{...}}}}), ama {body!r} döndü."
+        )
+        assert body["error"]["code"] == "RATE_LIMITED"
+        assert isinstance(body["error"]["message"], str) and body["error"]["message"]
     finally:
         if original_pytest is not None:
             sys.modules["pytest"] = original_pytest

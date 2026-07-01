@@ -106,7 +106,7 @@ export function ExportDialog({
         setError(reportExportDialogText.vehicleLoadError);
       })
       .finally(() => setIsLoadingVehicles(false));
-  }, [isOpen, type]);
+  }, [isOpen, type, reportExportDialogText.vehicleLoadError]);
 
   const isPdfSupported = ![
     "location_list",

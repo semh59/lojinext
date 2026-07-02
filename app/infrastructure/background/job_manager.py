@@ -68,12 +68,13 @@ class BackgroundJobManager:
                     if cls._redis_override is not None:
                         inst._redis = cls._redis_override
                     else:
-                        import redis as redis_lib
-
                         from app.config import settings
+                        from app.infrastructure.cache.redis_client_factory import (
+                            get_sync_redis_client,
+                        )
 
-                        inst._redis = redis_lib.from_url(
-                            settings.REDIS_URL, decode_responses=True
+                        inst._redis = get_sync_redis_client(
+                            decode_responses=True, url=settings.REDIS_URL
                         )
                     cls._instance = inst
         return cls._instance

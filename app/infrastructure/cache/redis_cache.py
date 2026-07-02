@@ -14,7 +14,7 @@ import threading
 from typing import Any, Optional
 
 try:
-    import redis
+    import redis  # noqa: F401 — availability probe only; client built via factory
 
     REDIS_AVAILABLE = True
 except ImportError:
@@ -79,9 +79,6 @@ class RedisCache:
 
         from app.config import settings as _s
 
-        redis_host = _s.REDIS_HOST
-        redis_port = _s.REDIS_PORT
-        redis_db = _s.REDIS_DB
         redis_password = os.getenv("REDIS_PASSWORD", None)
         redis_ssl = os.getenv("REDIS_SSL", "false").lower() == "true"
 
@@ -92,23 +89,27 @@ class RedisCache:
         connect_timeout = 0.1 if is_testing else 2.0
 
         try:
-            self._redis_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                db=redis_db,
-                password=redis_password,
+            from app.infrastructure.cache.redis_client_factory import (
+                get_sync_redis_client,
+            )
+
+            self._redis_client = get_sync_redis_client(
                 decode_responses=True,
                 socket_connect_timeout=connect_timeout,
                 socket_timeout=connect_timeout,
                 ssl=redis_ssl,  # SSL/TLS desteği
                 ssl_cert_reqs="required" if redis_ssl else None,
+                **({"password": redis_password} if redis_password else {}),
             )
             # Bağlantı testi
             self._redis_client.ping()
             ssl_status = " (SSL)" if redis_ssl else ""
-            logger.info(
-                f"Redis bağlantısı kuruldu: {redis_host}:{redis_port}{ssl_status}"
+            mode = (
+                "sentinel"
+                if _s.REDIS_USE_SENTINEL
+                else f"{_s.REDIS_HOST}:{_s.REDIS_PORT}"
             )
+            logger.info(f"Redis bağlantısı kuruldu: {mode}{ssl_status}")
         except Exception as e:
             logger.warning(
                 f"Redis bağlantısı kurulamadı: {e}. In-memory cache kullanılacak."

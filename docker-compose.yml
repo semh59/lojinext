@@ -24,6 +24,13 @@ services:
       - REDIS_PASSWORD=
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      # Tier E madde 31: Redis SPOF fix — discover the master via Sentinel
+      # instead of the static `redis` hostname, so a `redis` container failure
+      # fails over to `redis-replica` (promoted by quorum) without any app
+      # restart. See app/infrastructure/cache/redis_client_factory.py.
+      - REDIS_USE_SENTINEL=true
+      - REDIS_SENTINEL_HOSTS=redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+      - REDIS_SENTINEL_MASTER_NAME=mymaster
       - DB_HOST=db
       - DB_PORT=${DB_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
@@ -62,6 +69,12 @@ services:
       pgbouncer:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
         condition: service_healthy
     networks:
       - lojinext_network
@@ -102,6 +115,9 @@ services:
       - REDIS_PASSWORD=
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - REDIS_USE_SENTINEL=true
+      - REDIS_SENTINEL_HOSTS=redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+      - REDIS_SENTINEL_MASTER_NAME=mymaster
       - DB_HOST=db
       - DB_PORT=${DB_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
@@ -127,6 +143,12 @@ services:
       pgbouncer:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
         condition: service_healthy
     healthcheck:
       # `celery inspect ping` ağır app modülünü (ML/AI) cold-import ediyor →
@@ -211,23 +233,139 @@ services:
 
   redis:
     # Digest-pinned redis:7-alpine (7.4.9; dev was 7.0.11) — resolved 2026-06-17.
+    # Tier E madde 31: this is the Sentinel-monitored primary ("mymaster").
+    #
+    # Uses redis_ha_entrypoint.sh instead of a static `--replicaof` (or none):
+    # live-tested a bare `redis-server` restarting after a Sentinel failover
+    # and it does NOT auto-rejoin as a replica — it just boots as an
+    # unreplicated master again (split-brain risk), and Sentinel keeps
+    # tracking the old, now-dead IP for the demoted node forever since Docker
+    # can hand a restarted container a different bridge IP. The entrypoint
+    # asks Sentinel who the current master is on every start and slaves
+    # itself to that answer; only a true cold boot (Sentinels not up yet)
+    # falls back to the static BOOTSTRAP_ROLE.
     image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
-    command: >
-      redis-server
-      --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
-      --save ""
-      --appendonly no
+    entrypoint: ["sh", "/scripts/redis_ha_entrypoint.sh"]
+    environment:
+      - BOOTSTRAP_ROLE=master
+      - SENTINEL_HOSTS=redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+      - ./scripts/redis_ha_entrypoint.sh:/scripts/redis_ha_entrypoint.sh:ro
+      - ./scripts/redis-ha.conf:/etc/redis-ha.conf:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - lojinext_network
+
+  redis-replica:
+    # Tier E madde 31: async replica of `redis`. Sentinel promotes this to
+    # master automatically if `redis` becomes unreachable. See `redis`
+    # service comment above for why redis_ha_entrypoint.sh is used instead
+    # of a static `--replicaof`.
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    entrypoint: ["sh", "/scripts/redis_ha_entrypoint.sh"]
+    environment:
+      - BOOTSTRAP_ROLE=replica
+      - BOOTSTRAP_TARGET=redis
+      - SENTINEL_HOSTS=redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+    volumes:
+      - redis_replica_data:/data
+      - ./scripts/redis_ha_entrypoint.sh:/scripts/redis_ha_entrypoint.sh:ro
+      - ./scripts/redis-ha.conf:/etc/redis-ha.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+
+  redis-sentinel-1:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    # Configless sentinel startup: directives passed as a generated conf file
+    # (sentinel rewrites this itself on failover — losing it on container
+    # restart just means re-discovering `redis` from scratch, no state is
+    # load-bearing across restarts for a 3-node quorum).
+    #
+    # Redis Sentinel's OWN hostname resolver (anetResolve, used once at
+    # config-parse time for `sentinel monitor`) fails on this Alpine/musl
+    # image with "Failed to resolve hostname 'redis'" even though the same
+    # container's `getent hosts redis` resolves it fine — a known
+    # Sentinel-on-Alpine quirk (live-reproduced: 3/3 sentinels crash-looped
+    # on the literal hostname). Workaround: resolve to an IP via `getent`
+    # ourselves and write THAT into sentinel.conf, with `resolve-hostnames
+    # yes`/`announce-hostnames yes` so Sentinel accepts hostnames again for
+    # all subsequent replica-discovery/failover bookkeeping.
+    command: >
+      sh -c "MASTER_IP=$$(getent hosts redis | awk '{print $$1}') &&
+      printf 'port 26379\nsentinel monitor mymaster %s 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' \"$$MASTER_IP\" > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+      redis-replica:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+
+  redis-sentinel-2:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    # See redis-sentinel-1's comment above for why the master is resolved to
+    # an IP via `getent` before being written into sentinel.conf.
+    command: >
+      sh -c "MASTER_IP=$$(getent hosts redis | awk '{print $$1}') &&
+      printf 'port 26379\nsentinel monitor mymaster %s 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' \"$$MASTER_IP\" > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+      redis-replica:
+        condition: service_healthy
+    networks:
+      - lojinext_network
+
+  redis-sentinel-3:
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    # See redis-sentinel-1's comment above for why the master is resolved to
+    # an IP via `getent` before being written into sentinel.conf.
+    command: >
+      sh -c "MASTER_IP=$$(getent hosts redis | awk '{print $$1}') &&
+      printf 'port 26379\nsentinel monitor mymaster %s 6379 2\nsentinel down-after-milliseconds mymaster 5000\nsentinel failover-timeout mymaster 10000\nsentinel parallel-syncs mymaster 1\nsentinel resolve-hostnames yes\nsentinel announce-hostnames yes\n' \"$$MASTER_IP\" > /tmp/sentinel.conf &&
+      redis-sentinel /tmp/sentinel.conf"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "26379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      redis:
+        condition: service_healthy
+      redis-replica:
+        condition: service_healthy
     networks:
       - lojinext_network
 
@@ -380,6 +518,9 @@ services:
       - REDIS_PASSWORD=
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - REDIS_USE_SENTINEL=true
+      - REDIS_SENTINEL_HOSTS=redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379
+      - REDIS_SENTINEL_MASTER_NAME=mymaster
       - DB_HOST=db
       - DB_PORT=${DB_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
@@ -395,6 +536,12 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      redis-sentinel-1:
+        condition: service_healthy
+      redis-sentinel-2:
+        condition: service_healthy
+      redis-sentinel-3:
         condition: service_healthy
       worker:
         condition: service_healthy
@@ -456,6 +603,7 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  redis_replica_data:
   app_data:
   model_data:
   prometheus_data:

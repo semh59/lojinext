@@ -101,6 +101,18 @@ class Settings(BaseSettings):
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/1"
     CELERY_EAGER: bool = False  # True in test env: tasks run inline, no broker needed
 
+    # Tier E madde 31 — Redis is a SPOF (cache + Celery broker/backend +
+    # rate-limit + event-dedup + idempotency + token-blacklist all share one
+    # instance). Set True to discover the master via Sentinel instead of
+    # connecting directly to REDIS_HOST/PORT — see
+    # app/infrastructure/cache/redis_client_factory.py for the single place
+    # this flag is consumed.
+    REDIS_USE_SENTINEL: bool = False
+    # Comma-separated "host:port" list, e.g.
+    # "redis-sentinel-1:26379,redis-sentinel-2:26379,redis-sentinel-3:26379".
+    REDIS_SENTINEL_HOSTS: str = ""
+    REDIS_SENTINEL_MASTER_NAME: str = "mymaster"
+
     # Resilience
     CB_FAIL_MAX: int = 5
     CB_RESET_TIMEOUT: float = 60.0

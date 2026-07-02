@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, cast
 import redis as redis_lib
 
 from app.config import settings
+from app.infrastructure.cache.redis_client_factory import get_sync_redis_client
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -85,8 +86,8 @@ class CacheManager:
             with cls._cls_lock:
                 if cls._instance is None:
                     inst = super().__new__(cls)
-                    inst._redis = redis_lib.from_url(
-                        settings.REDIS_URL, decode_responses=False
+                    inst._redis = get_sync_redis_client(
+                        decode_responses=False, url=settings.REDIS_URL
                     )
                     inst._lock = threading.Lock()
                     inst._stats = {"hits": 0, "misses": 0, "sets": 0, "evictions": 0}
@@ -98,17 +99,28 @@ class CacheManager:
     # ------------------------------------------------------------------
 
     def set(self, key: str, value: Any, ttl_seconds: float = 3600) -> None:
-        """Veriyi cache'e kaydet."""
+        """Veriyi cache'e kaydet. Redis erişilemezse sessizce no-op (Tier E
+        madde 31: bir cache write'ın çökmesi request'i 500'e düşürmemeli)."""
         self._validate_key(key)
         ttl_ms = max(1, int(ttl_seconds * 1000))
-        self._redis.psetex(f"{_KEY_PREFIX}{key}", ttl_ms, _sign(pickle.dumps(value)))
-        with self._lock:
-            self._stats["sets"] += 1
+        try:
+            self._redis.psetex(
+                f"{_KEY_PREFIX}{key}", ttl_ms, _sign(pickle.dumps(value))
+            )
+            with self._lock:
+                self._stats["sets"] += 1
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache set degraded (Redis unavailable): %s", exc)
 
     def get(self, key: str) -> Optional[Any]:
-        """Cache'den veri getir; yoksa None döndür."""
+        """Cache'den veri getir; yoksa veya Redis erişilemezse None döndür
+        (graceful degradation — çağıran taraf DB'ye düşer)."""
         self._validate_key(key)
-        raw = self._redis.get(f"{_KEY_PREFIX}{key}")
+        try:
+            raw = self._redis.get(f"{_KEY_PREFIX}{key}")
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache get degraded (Redis unavailable): %s", exc)
+            return None
         with self._lock:
             if raw is None:
                 self._stats["misses"] += 1
@@ -121,9 +133,14 @@ class CacheManager:
             return None
 
     def delete(self, key: str) -> bool:
-        """Belirli bir anahtarı sil. True → silindi, False → zaten yoktu."""
+        """Belirli bir anahtarı sil. True → silindi, False → zaten yoktu
+        veya Redis erişilemedi."""
         self._validate_key(key)
-        return bool(self._redis.delete(f"{_KEY_PREFIX}{key}"))
+        try:
+            return bool(self._redis.delete(f"{_KEY_PREFIX}{key}"))
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache delete degraded (Redis unavailable): %s", exc)
+            return False
 
     def delete_pattern(self, pattern: str) -> int:
         """
@@ -133,15 +150,19 @@ class CacheManager:
             pattern: Redis glob pattern (örn: "stats:*", "arac:*:details")
 
         Returns:
-            Silinen anahtar sayısı
+            Silinen anahtar sayısı (Redis erişilemezse 0)
         """
         if "../" in pattern:
             raise ValueError("Invalid pattern: Directory traversal attempt")
 
         count = 0
-        for k in self._redis.scan_iter(f"{_KEY_PREFIX}{pattern}"):
-            self._redis.delete(k)
-            count += 1
+        try:
+            for k in self._redis.scan_iter(f"{_KEY_PREFIX}{pattern}"):
+                self._redis.delete(k)
+                count += 1
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache delete_pattern degraded (Redis unavailable): %s", exc)
+            return count
 
         if count:
             logger.debug(f"Cache pattern delete: '{pattern}' — {count} keys removed")
@@ -150,9 +171,13 @@ class CacheManager:
     def clear(self) -> None:
         """Tüm cm: namespace anahtarlarını temizle."""
         count = 0
-        for k in self._redis.scan_iter(f"{_KEY_PREFIX}*"):
-            self._redis.delete(k)
-            count += 1
+        try:
+            for k in self._redis.scan_iter(f"{_KEY_PREFIX}*"):
+                self._redis.delete(k)
+                count += 1
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache clear degraded (Redis unavailable): %s", exc)
+            return
         logger.info(f"Cache cleared: {count} keys removed")
 
     def get_stats(self) -> Dict[str, Any]:
@@ -169,11 +194,15 @@ class CacheManager:
             }
 
     def get_keys(self, pattern: str = "*") -> List[str]:
-        """Pattern ile eşleşen anahtarları listele (prefix stripped)."""
+        """Pattern ile eşleşen anahtarları listele (prefix stripped;
+        Redis erişilemezse boş liste)."""
         result = []
-        for k in self._redis.scan_iter(f"{_KEY_PREFIX}{pattern}"):
-            key_str = k.decode() if isinstance(k, bytes) else k
-            result.append(key_str.removeprefix(_KEY_PREFIX))
+        try:
+            for k in self._redis.scan_iter(f"{_KEY_PREFIX}{pattern}"):
+                key_str = k.decode() if isinstance(k, bytes) else k
+                result.append(key_str.removeprefix(_KEY_PREFIX))
+        except redis_lib.exceptions.RedisError as exc:
+            logger.warning("Cache get_keys degraded (Redis unavailable): %s", exc)
         return result
 
     # ------------------------------------------------------------------

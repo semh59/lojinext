@@ -504,7 +504,12 @@ def test_get_redis_cache_returns_singleton():
 
 
 def test_connect_with_redis_host_env_success(monkeypatch):
-    """_connect with REDIS_HOST set attempts real connection (happy path: ping succeeds)."""
+    """_connect with REDIS_HOST set attempts real connection (happy path: ping succeeds).
+
+    Tier E madde 31: client construction moved behind
+    redis_client_factory.get_sync_redis_client (Sentinel-aware), so that's
+    the boundary to mock now instead of the module-level `redis` import.
+    """
     import app.infrastructure.cache.redis_cache as rc_mod
 
     monkeypatch.setenv("REDIS_HOST", "localhost")
@@ -512,11 +517,10 @@ def test_connect_with_redis_host_env_success(monkeypatch):
     mock_redis_instance = MagicMock()
     mock_redis_instance.ping.return_value = True
 
-    mock_redis_class = MagicMock(return_value=mock_redis_instance)
-
-    with patch.object(rc_mod, "redis") as mock_redis_mod:
-        mock_redis_mod.Redis = mock_redis_class
-
+    with patch(
+        "app.infrastructure.cache.redis_client_factory.get_sync_redis_client",
+        return_value=mock_redis_instance,
+    ):
         cache = rc_mod.RedisCache.__new__(rc_mod.RedisCache)
         cache._initialized = True
         cache._redis_client = None

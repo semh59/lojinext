@@ -101,24 +101,42 @@ class EventBus:
         except Exception:
             self._redis = None
 
+        from app.config import settings as _s
+
         if is_testing and not (
-            os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL")
+            os.getenv("CELERY_BROKER_URL")
+            or os.getenv("REDIS_URL")
+            or _s.REDIS_USE_SENTINEL
         ):
             self._redis = None
             return
 
-        redis_url = os.getenv("CELERY_BROKER_URL") or os.getenv(
-            "REDIS_URL", "redis://localhost:6379/0"
-        )
         socket_timeout = float(os.getenv("EVENT_BUS_REDIS_TIMEOUT_SECONDS", "1.0"))
         try:
-            self._redis = redis.Redis.from_url(
-                redis_url,
-                decode_responses=True,
-                socket_connect_timeout=socket_timeout,
-                socket_timeout=socket_timeout,
-                health_check_interval=0,
-            )
+            if _s.REDIS_USE_SENTINEL:
+                # Tier E madde 31 — Sentinel açıkken ham env-var URL fallback'i
+                # kullanma (yanlış/tek-instans hedefe düşer); factory'nin
+                # Sentinel-farkında yolunu izle.
+                from app.infrastructure.cache.redis_client_factory import (
+                    get_sync_redis_client,
+                )
+
+                self._redis = get_sync_redis_client(
+                    socket_connect_timeout=socket_timeout,
+                    socket_timeout=socket_timeout,
+                    health_check_interval=0,
+                )
+            else:
+                redis_url = os.getenv("CELERY_BROKER_URL") or os.getenv(
+                    "REDIS_URL", "redis://localhost:6379/0"
+                )
+                self._redis = redis.Redis.from_url(
+                    redis_url,
+                    decode_responses=True,
+                    socket_connect_timeout=socket_timeout,
+                    socket_timeout=socket_timeout,
+                    health_check_interval=0,
+                )
             self._redis.ping()
         except Exception as exc:
             logger.warning(f"Redis connection for EventBus failed, fallback: {exc}")

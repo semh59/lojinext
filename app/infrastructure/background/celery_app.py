@@ -8,6 +8,11 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.config import settings
+from app.infrastructure.cache.redis_client_factory import (
+    get_celery_broker_transport_options,
+    get_celery_broker_url,
+    get_celery_result_backend_url,
+)
 
 
 def get_celery_app() -> Celery:
@@ -21,8 +26,16 @@ def get_celery_app() -> Celery:
         broker = "memory://"
         backend = "cache+memory://"
     else:
-        broker = settings.CELERY_BROKER_URL or "redis://localhost:6379/0"
-        backend = settings.CELERY_RESULT_BACKEND or broker
+        broker = get_celery_broker_url() or "redis://localhost:6379/0"
+        backend = get_celery_result_backend_url() or broker
+
+    # Tier E madde 31 — REDIS_USE_SENTINEL yönlendirir sentinel:// broker'a;
+    # kombu'nun SentinelChannel'ı master_name'i visibility_timeout'la BİRLİKTE
+    # aynı broker_transport_options dict'inden okuyor, bu yüzden merge edilir.
+    broker_transport_options = {
+        "visibility_timeout": 4200,
+        **get_celery_broker_transport_options(),
+    }
 
     app = Celery("lojinext", broker=broker, backend=backend)
     app.conf.update(
@@ -41,7 +54,8 @@ def get_celery_app() -> Celery:
         # dağıtıyordu (duplike Mapbox/Open-Meteo çağrısı + duplike push
         # bildirimi + duplike route_simulations satırı). 4200s (70dk), en uzun
         # task'ın (3900s) üzerinde güvenli bir marj bırakır.
-        broker_transport_options={"visibility_timeout": 4200},
+        broker_transport_options=broker_transport_options,
+        result_backend_transport_options=get_celery_broker_transport_options(),
         beat_schedule={
             "drain-prediction-dlq-every-60s": {
                 "task": "prediction.drain_dlq",

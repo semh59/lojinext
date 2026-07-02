@@ -8,7 +8,6 @@ import json
 import os
 import time
 from typing import Any, AsyncGenerator, Dict, List
-from urllib.parse import quote as _urlquote
 
 from app.infrastructure.logging.logger import get_logger
 
@@ -49,15 +48,18 @@ class RedisPubSubManager:
 
         from app.config import settings as _s
 
-        redis_host = _s.REDIS_HOST
-        redis_port = _s.REDIS_PORT
-        redis_db = _s.REDIS_DB
-        redis_password = _s.REDIS_PASSWORD
         redis_ssl = _s.REDIS_SSL
 
-        scheme = "rediss" if redis_ssl else "redis"
-        auth = f":{_urlquote(redis_password, safe='')}@" if redis_password else ""
-        url = f"{scheme}://{auth}{redis_host}:{redis_port}/{redis_db}"
+        from app.infrastructure.cache.redis_client_factory import (
+            get_async_redis_client,
+        )
+
+        def _build_async_client(**extra):
+            return get_async_redis_client(
+                socket_timeout=2.0,
+                socket_connect_timeout=2.0,  # Fast fail
+                **extra,
+            )
 
         try:
             if redis_ssl:
@@ -68,21 +70,15 @@ class RedisPubSubManager:
                     ssl_ctx.check_hostname = False
                     ssl_ctx.verify_mode = ssl.CERT_NONE
                 # default: full verification (check_hostname=True, verify_mode=CERT_REQUIRED)
-                self._redis = aioredis.from_url(
-                    url,
-                    decode_responses=True,
-                    ssl=ssl_ctx,
-                    socket_timeout=2.0,
-                    socket_connect_timeout=2.0,  # Fast fail
-                )
+                self._redis = _build_async_client(ssl=ssl_ctx)
             else:
-                self._redis = aioredis.from_url(
-                    url,
-                    decode_responses=True,
-                    socket_timeout=2.0,
-                    socket_connect_timeout=2.0,  # Fast fail
-                )
-            logger.info(f"Async Redis PubSub connected to {redis_host}:{redis_port}")
+                self._redis = _build_async_client()
+            mode = (
+                "sentinel"
+                if _s.REDIS_USE_SENTINEL
+                else f"{_s.REDIS_HOST}:{_s.REDIS_PORT}"
+            )
+            logger.info(f"Async Redis PubSub connected to {mode}")
         except Exception as e:
             logger.warning(
                 f"Async Redis connection failed, switching to In-Memory: {e}"

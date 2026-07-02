@@ -225,7 +225,17 @@ class TestConnectSslInsecure:
 
 class TestConnectWithPassword:
     def test_connect_non_ssl_with_password(self):
-        """Non-SSL with password builds auth@ URL correctly."""
+        """Non-SSL with password builds auth@ URL correctly.
+
+        Tier E madde 31: URL construction moved into
+        redis_client_factory._redis_url(), which binds its own `settings`
+        reference at import time — patching `app.config.settings` no longer
+        reaches it, so the factory module's `settings` must be patched
+        directly too. Likewise `aioredis.from_url` is now called via a local
+        `import redis.asyncio as aioredis` inside the factory function, so
+        the real `redis.asyncio.from_url` global must be patched (aliasing
+        still resolves to the same function object at call time).
+        """
         import app.infrastructure.cache.redis_pubsub as mod
 
         mock_settings = MagicMock()
@@ -234,6 +244,7 @@ class TestConnectWithPassword:
         mock_settings.REDIS_DB = 0
         mock_settings.REDIS_PASSWORD = "mypass"  # pragma: allowlist secret
         mock_settings.REDIS_SSL = False
+        mock_settings.REDIS_USE_SENTINEL = False
 
         captured_urls = []
 
@@ -243,11 +254,12 @@ class TestConnectWithPassword:
 
         with (
             patch("app.infrastructure.cache.redis_pubsub.REDIS_AVAILABLE", True),
-            patch(
-                "app.infrastructure.cache.redis_pubsub.aioredis.from_url",
-                side_effect=_fake_from_url,
-            ),
+            patch("redis.asyncio.from_url", side_effect=_fake_from_url),
             patch("app.config.settings", mock_settings),
+            patch(
+                "app.infrastructure.cache.redis_client_factory.settings",
+                mock_settings,
+            ),
         ):
             mod.RedisPubSubManager._instance = None
             mgr = MagicMock()

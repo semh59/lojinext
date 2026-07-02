@@ -1,10 +1,90 @@
 services:
+  # Tier E madde 32: reverse proxy / LB. Replaces nginx's proxy_pass to a
+  # single `backend:8000` — that upstream was resolved once at nginx startup
+  # and never discovered new replicas, so `docker compose up --scale
+  # backend=N` gave zero real load balancing (and no fail-over: a dead
+  # replica just 502'd every request routed to its stale IP). Traefik's
+  # Docker provider re-discovers `backend`'s containers live and health-checks
+  # them, so both scaling and replica failure are handled without any config
+  # change or nginx reload. Frontend's nginx keeps ONLY static-file-serving +
+  # SPA fallback (see frontend/nginx.conf) — that's not something a reverse
+  # proxy does for you, Traefik included.
+  traefik:
+    # v3.1 was live-tested first and failed with a persistent, empty
+    # "Error response from daemon: " on this host's Docker Engine 29.5.3
+    # (API 1.54) — root cause (confirmed via traefik/traefik#12253/#12294):
+    # Docker 29+ dropped the ancient v1.24 API that Traefik's docker
+    # provider negotiated down to on some 3.x builds; the daemon rejects it
+    # with an empty body instead of a real error. v3.6 fixes the
+    # negotiation — verified live here too ("Provider connection
+    # established with docker 29.5.3 (API 1.54)").
+    image: traefik:v3.6@sha256:d85749d4d10d970ed2b3a7cb2406d9b9da1cdd6ea975a39c727aab809d73136a
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+      - "--ping=true"
+      - "--ping.entrypoint=traefik"
+      - "--api.dashboard=false"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+    ports:
+      - "80:80"
+      # 8080 (traefik's own /ping + would-be dashboard) intentionally NOT
+      # published to the host — internal-only, no public admin surface.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    networks:
+      - lojinext_network
+
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
+      - "traefik.http.services.backend.loadbalancer.healthcheck.path=/api/v1/health/"
+      - "traefik.http.services.backend.loadbalancer.healthcheck.interval=10s"
+      # Security headers — native fields where Traefik has one, raw
+      # customResponseHeaders for CSP/Permissions-Policy (no native field).
+      # Same policy as the old nginx.conf (Mapbox tiles, Open-Meteo, JWT in
+      # localStorage, injectManifest SW).
+      - "traefik.http.middlewares.security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.security-headers.headers.browserXssFilter=true"
+      - "traefik.http.middlewares.security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.Permissions-Policy=interest-cohort=()"
+      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.Content-Security-Policy=default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.mapbox.com; connect-src 'self' wss: https://api.mapbox.com https://events.mapbox.com https://api.open-meteo.com; font-src 'self' data:; worker-src 'self' blob:; frame-ancestors 'none';"
+      - "traefik.http.middlewares.gzip-compress.compress=true"
+      # Auth brute-force rate limit — 10 req/min average, burst 20 (same
+      # budget as the old `limit_req_zone ... rate=10r/m; burst=20 nodelay`).
+      - "traefik.http.middlewares.auth-ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.auth-ratelimit.ratelimit.period=1m"
+      - "traefik.http.middlewares.auth-ratelimit.ratelimit.burst=20"
+      # Auth router — more specific PathPrefix, higher priority, rate-limited.
+      - "traefik.http.routers.backend-auth.rule=PathPrefix(`/api/v1/auth`)"
+      - "traefik.http.routers.backend-auth.priority=10"
+      - "traefik.http.routers.backend-auth.middlewares=auth-ratelimit,security-headers,gzip-compress"
+      - "traefik.http.routers.backend-auth.service=backend"
+      # General API + WebSocket router (Traefik handles the Upgrade
+      # handshake automatically — no special config needed, unlike nginx).
+      - "traefik.http.routers.backend-api.rule=PathPrefix(`/api`) || PathPrefix(`/ws`)"
+      - "traefik.http.routers.backend-api.priority=5"
+      - "traefik.http.routers.backend-api.middlewares=security-headers,gzip-compress"
+      - "traefik.http.routers.backend-api.service=backend"
     env_file:
       - .env
     environment:
@@ -85,8 +165,17 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=/api/v1
-    ports:
-      - "80:80"
+    # Tier E madde 32: no host port — Traefik is the sole public entrypoint
+    # now (see `traefik` service comment above).
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      # Catch-all, lowest priority — /api and /ws win via backend's explicit
+      # higher-priority routers even though this rule would also match them.
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.routers.frontend.middlewares=security-headers,gzip-compress"
+      - "traefik.http.routers.frontend.service=frontend"
     depends_on:
       - backend
     restart: unless-stopped

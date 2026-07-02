@@ -54,6 +54,15 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str
+    # Tier E madde 30 — when set, the ASYNC application engine (request/task
+    # handling) connects through this URL (pgbouncer) instead of DATABASE_URL.
+    # DATABASE_URL itself keeps pointing directly at Postgres and stays the
+    # one Alembic/scripts use — DDL (e.g. CREATE INDEX CONCURRENTLY, used
+    # elsewhere in alembic/versions/) and other session-level migration
+    # behavior don't mix well with PgBouncer transaction pooling, so
+    # migrations deliberately bypass it. None (default) = no pgbouncer, the
+    # async engine also uses DATABASE_URL directly (dev/test default).
+    DATABASE_URL_POOLED: Optional[str] = None
     # Connection pool sizing (ARCH-005). Tune relative to PostgreSQL
     # max_connections AND the number of app/worker replicas:
     #   total_conns ≈ replicas * (DB_POOL_SIZE + DB_MAX_OVERFLOW)
@@ -67,6 +76,18 @@ class Settings(BaseSettings):
     # multi-query operations are unaffected; the ~10 s MV refresh sits well
     # under the default and already degrades gracefully if cancelled. 0 = off.
     DB_COMMAND_TIMEOUT_S: float = 60.0
+    # Tier E madde 30 — set True when DATABASE_URL points at the pgbouncer
+    # service (transaction pooling) instead of Postgres directly. asyncpg
+    # caches prepared statements per physical connection; under pgbouncer
+    # transaction mode a given client "connection" can be routed to a
+    # different backend server connection between statements, so a cached
+    # prepared statement can silently reference the wrong backend and fail
+    # with "prepared statement ... does not exist". Disabling asyncpg's
+    # statement cache (statement_cache_size=0) is the documented fix — real
+    # cost is losing prepared-statement reuse, not correctness risk. Direct
+    # (non-pgbouncer) connections — e.g. TEST_DATABASE_URL in CI/tests —
+    # leave this False and keep normal caching.
+    DB_THROUGH_PGBOUNCER: bool = False
 
     # Cache / Queue
     REDIS_URL: str = "redis://localhost:6379/0"

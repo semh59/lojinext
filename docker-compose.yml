@@ -9,7 +9,13 @@ services:
       - .env
     environment:
       # DATABASE_URL override (use docker DNS 'db' instead of .env's 127.0.0.1)
+      # — kept pointing directly at Postgres; Alembic/scripts use this one.
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@db:5432/${POSTGRES_DB:-lojinext_db}
+      # Tier E madde 30: the running app's async engine connects through
+      # pgbouncer instead (see app/database/connection.py + pgbouncer service
+      # comment for why DATABASE_URL itself stays direct).
+      - DATABASE_URL_POOLED=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@pgbouncer:6432/${POSTGRES_DB:-lojinext_db}
+      - DB_THROUGH_PGBOUNCER=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
@@ -53,6 +59,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
       redis:
         condition: service_healthy
     networks:
@@ -82,7 +90,11 @@ services:
     environment:
       - SERVICE_ROLE=worker
       # DATABASE_URL override (use docker DNS 'db' instead of .env's 127.0.0.1)
+      # — kept pointing directly at Postgres; scripts/migrations use this one.
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@db:5432/${POSTGRES_DB:-lojinext_db}
+      # Tier E madde 30: worker's async engine connects through pgbouncer.
+      - DATABASE_URL_POOLED=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@pgbouncer:6432/${POSTGRES_DB:-lojinext_db}
+      - DB_THROUGH_PGBOUNCER=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
@@ -111,6 +123,8 @@ services:
       - belgeler_data:/belgeler
     depends_on:
       db:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -155,6 +169,43 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - lojinext_network
+
+  pgbouncer:
+    # Tier E madde 30 — DB_POOL_SIZE(15)+DB_MAX_OVERFLOW(5)=20 real Postgres
+    # connections per backend/worker replica against max_connections=200
+    # meant the stack ran out of headroom after roughly 4-5 replicas.
+    # PgBouncer (transaction pooling) sits between the app and Postgres:
+    # backend/worker keep the same client-side pool size (now connections to
+    # pgbouncer, cheap), but pgbouncer multiplexes them onto a small, fixed
+    # DEFAULT_POOL_SIZE of REAL Postgres connections regardless of how many
+    # app replicas exist upstream — the actual fix for the replica ceiling.
+    # Pinned by digest (upstream publishes no semver tag) — resolved 2026-07-02.
+    image: edoburu/pgbouncer:latest@sha256:4c1ca296ef525f108f5d3552cc337c0c09587cf8dae7f0067fd93349e47dc1cd
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@db:5432/${POSTGRES_DB:-lojinext_db}
+      - LISTEN_PORT=6432
+      - POOL_MODE=transaction
+      - AUTH_TYPE=scram-sha-256
+      - MAX_CLIENT_CONN=1000
+      - DEFAULT_POOL_SIZE=20
+      - MIN_POOL_SIZE=5
+      - RESERVE_POOL_SIZE=5
+      - MAX_PREPARED_STATEMENTS=0
+      - IGNORE_STARTUP_PARAMETERS=extra_float_digits
+    ports:
+      - "6432:6432"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U ${POSTGRES_USER:-lojinext_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - lojinext_network
 

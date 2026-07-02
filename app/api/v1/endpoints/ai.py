@@ -49,6 +49,8 @@ async def _fuel_trend_chart(db) -> Optional[dict]:
 class ChatRequest(BaseModel):
     message: str = Field(
         ...,
+        min_length=1,
+        max_length=2000,
         json_schema_extra={"example": "Filo durumu nedir?"},
     )
     history: Optional[List[dict]] = Field(

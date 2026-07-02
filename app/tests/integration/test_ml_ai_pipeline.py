@@ -158,6 +158,23 @@ async def test_ai_chat_with_invalid_groq_key_does_not_500(
     )
 
 
+@pytest.mark.asyncio
+async def test_ai_chat_rejects_oversized_message(async_client, admin_auth_headers):
+    """2026-07-02 prod-grade denetimi P1 (Tier A madde 1): `ChatRequest.message`
+    hiçbir uzunluk sınırına sahip değildi — MB boyutunda bir mesaj doğrudan
+    LLM context'ine gidebiliyordu (maliyet/DoS). Artık 422 ile reddedilmeli."""
+    oversized_message = "a" * 100_000
+    r = await async_client.post(
+        "/api/v1/ai/chat",
+        json={"message": oversized_message, "history": []},
+        headers=admin_auth_headers,
+    )
+    assert r.status_code == 422, (
+        f"Aşırı büyük mesaj (100000 karakter) 422 ile reddedilmeliydi, "
+        f"{r.status_code} döndü: {r.text[:300]}"
+    )
+
+
 # ── Anomaly fleet insights ────────────────────────────────────────────────────
 
 

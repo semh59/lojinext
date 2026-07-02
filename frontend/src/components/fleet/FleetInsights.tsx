@@ -78,8 +78,8 @@ async function getNonVehicleSummary(
       label: t.labels.trailers,
       total: stats.total,
       active: stats.active,
-      inspection_expiring: 0,
-      inspection_overdue: 0,
+      inspection_expiring: stats.inspection_expiring,
+      inspection_overdue: stats.inspection_overdue,
     };
   }
 

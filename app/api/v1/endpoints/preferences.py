@@ -6,6 +6,7 @@ from app.api.deps import get_current_active_user
 from app.core.exceptions import DomainError
 from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici
+from app.infrastructure.logging.logger import get_logger
 from app.schemas.preference import (
     PreferenceCreate,
     PreferenceItem,
@@ -14,6 +15,7 @@ from app.schemas.preference import (
 
 router = APIRouter()
 preference_service = PreferenceService()
+logger = get_logger(__name__)
 
 
 @router.get("/{modul}", response_model=PreferenceListResponse)
@@ -51,7 +53,10 @@ async def save_preference(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Save preference error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Tercih kaydedilirken bir hata oluştu"
+        )
 
 
 @router.delete("/{pref_id}")

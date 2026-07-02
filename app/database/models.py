@@ -1853,7 +1853,9 @@ class PageView(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     route: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    user_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),

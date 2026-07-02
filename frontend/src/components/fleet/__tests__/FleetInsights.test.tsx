@@ -33,7 +33,12 @@ vi.mock("../../../api/reports", () => ({
 // dorseService mock (dorseler sekmesi için)
 vi.mock("../../../services/dorseService", () => ({
   dorseService: {
-    getFleetStats: vi.fn().mockResolvedValue({ total: 3, active: 2 }),
+    getFleetStats: vi.fn().mockResolvedValue({
+      total: 3,
+      active: 2,
+      inspection_expiring: 1,
+      inspection_overdue: 0,
+    }),
   },
 }));
 

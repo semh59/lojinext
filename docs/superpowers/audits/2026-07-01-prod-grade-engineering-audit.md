@@ -394,6 +394,28 @@ Bu, iki koşu arasında ortak kalan 2 test dışındaki TÜM dağınık başarı
 
 ---
 
+### 27. Tier A — konsolide plan sonrası tek-sıra kalan-iş kapatma turu (6 madde), 2026-07-02
+
+Önceki plan dosyası (v1) dalga-üstüne-dalga eklenerek dağınıklaşmıştı; kullanıcı talimatıyla tek, düz, TEK sıra bir plana (v2) konsolide edildi (bkz. `peppy-pondering-papert.md`). "Tier A" bu konsolide planın ilk, en ucuz/izole 6 maddesi.
+
+**27a — `ai.py` `ChatRequest.message` `max_length` yok.** **KAPANDI** — `app/api/v1/endpoints/ai.py:50-53`'e `min_length=1, max_length=2000` eklendi (mevcut `AiQueryRequest`'in `max_length=1000` deseniyle tutarlı, chat için biraz daha cömert). Yeni test kırmızı-yeşil doğrulandı — fix öncesi 100.000 karakterlik mesaj gerçekten Groq API'ye gidiyordu (log'da doğrulandı, tam MB-boyutunda maliyet/DoS riski canlı gösterildi).
+
+**27b — `UnitOfWork.rollback()` `_owns` kontrolü yapmıyor.** **DENENDİ, GÜVENSİZ ÇIKTI, GERİ ALINDI (açık kaldı).** Kullanıcı talimatıyla önce derin fork-agent araştırması yapıldı (130 nested UoW kullanım noktası tarandı, ek bir `asyncio.wait_for`+nested-UoW kombinasyonu bulundu: `sefer_write_service.py:1442`, bulk Excel import yolu). Statik analiz "CancelledError'ı auto-rollback tetikleyicisinden hariç tut" fix'ini güvenli gösterdi. **Fix uygulanıp gerçek entegrasyon testleriyle doğrulanınca YANLIŞ çıktı**: `test_idempotency_key.py` fix'siz 6/6 PASS, fix'li 2/6 FAIL (`PendingRollbackError`) — kanıt: `CancelledError` bazen GERÇEKTEN bir DB flush'ının ortasında düşüyor, orijinal koşulsuz rollback bu durumda GEREKLİ. Fix tamamen geri alındı, doğrulandı. **Metodolojik ders: statik/grep-tabanlı fork araştırması gerçek entegrasyon testinin yerini tutmaz** — "güvenli görünüyor" ancak çalıştırarak kanıtlanabilir. Madde açık kaldı, doğru fix (cancellation'ın DB-flush-esnasında mı network-bekleme-esnasında mı olduğunu ayırt etmek) ayrı bir derin tasarım oturumu gerektiriyor.
+
+**27c — `str(e)` ham hata mesajı client'a sızıyor.** **KAPANDI** — audit'in işaret ettiğinden fazla nokta bulundu: `advanced_reports.py` 3 yer (fleet-summary PDF, vehicle PDF, excel export) + `preferences.py` 1 yer. Hepsi `logger.error(exc_info=True)` + genel Türkçe mesaja çevrildi. 4 yeni test (mock ile sensitive-detail enjekte edip response'ta görünmediğini doğruluyor) kırmızı-yeşil doğrulandı. 68/68 + 7/7 regresyon PASS.
+
+**27d — `PageView.user_id` FK eksik.** **KAPANDI** — `ForeignKey("kullanicilar.id", ondelete="SET NULL")` + migration `0038_page_views_user_id_fk.py` (NOT VALID + orphan-cleanup deseni). Throwaway scratch DB'de upgrade/downgrade/re-upgrade/`alembic check` doğrulandı. Yazma yolu zaten süper-admin synthetic id'lerini None'a çeviriyordu — FK eklemek güvenliydi. 3 pre-existing test gerçek `seed_kullanici` seed'i kullanacak şekilde güncellendi + 1 yeni red-test. 4/4 + 6/6 regresyon PASS.
+
+**27e — `audit_logger.log_audit_event` Python truthiness bug'ı.** **KAPANDI** — `if old_value else None` → `if old_value is not None else None` (aynı dosyadaki doğru `_persist_audit_to_db` deseniyle tutarlı hale getirildi). Parametrize 5-case test (`0`/`False`/`""`/`{}`/`[]`) kırmızı-yeşil doğrulandı. 28/28 + 399/399 geniş regresyon PASS.
+
+**27f — `trailers.py` `fleet-stats` muayene sayacı eksik.** **KAPANDI** — `vehicles.py` ile birebir aynı sorgu desenine çevrildi (`inspection_expiring`/`inspection_overdue`, 30 günlük pencere). Frontend zincirleme bulgusu: `dorseService.ts` + `FleetInsights.tsx::getNonVehicleSummary` bu alanları backend'den hiç gelmediği için hardcoded `0` kullanıyordu — ikisi de gerçek değerleri akıtacak şekilde düzeltildi (yeni görsel kart eklenmedi — ayrı ürün kararı, kapsam dışı bırakıldı). Yeni entegrasyon testi kırmızı-yeşil doğrulandı. Backend 37/37 + frontend 6/6 PASS, `tsc`+`eslint` temiz.
+
+**Tier A sonucu: 5/6 kapandı, 1 (27b) araştırılıp güvensiz bulunup bilinçli açık bırakıldı.**
+
+**Mega-run doğrulama notu:** Tam paket regresyonda (backend 6209/6219 unit+api, integration 242/265, frontend 1188/1191) Tier A dışı dosyalarda dağınık hatalar çıktı. Örnek doğrulama: `test_idempotency_key.py`'nin 6 hatası TÜM Tier A değişiklikleri stash'lenip AYNI şekilde reprodüklendi → pre-existing, Tier A ile ilgisiz (olası kök neden: Redis cache test-başına temizlenmiyor, dosya-içi ardışık testler yeniden-kullanılan `arac_id`'yi Redis'te çakıştırıyor — ayrı bir denetim maddesi önerilir, bu turda araştırılmadı). 3 örnek backend hata izole çalıştırılıp 3/3 PASS bulundu (bilinen mega-run flakiness deseni). Her Tier A maddesi kendi izole+bitişik-regresyon turunda ayrı ayrı 100% doğrulandı.
+
+---
+
 ## Ek: `get_by_id` Soft-Delete Filtresizliği — 62 Çağrı Noktasının Tam Sınıflandırması
 
 `BaseRepository.get_by_id` (`app/database/base_repository.py:207-222`) `session.get(self.model, id)` çalıştırır, `aktif`/`is_deleted` filtresi yoktur. Sadece `SeferRepository.get_by_id` (`sefer_repo.py:267-292`) bunu doğru şekilde override eder. Aşağıdaki 6 model/repository kümesindeki **62 gerçek çağrı noktasının her biri tek tek okunup** (~20-30 satır çevresel bağlamla) üç kategoriye ayrıldı:

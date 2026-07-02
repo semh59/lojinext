@@ -300,8 +300,12 @@ async def log_audit_event(
     ``basarili=False`` geçebilir (ör. `auth.failed_login`, `authz.forbidden`).
     """
     correlation_id = get_correlation_id()
-    masked_old = _mask_sensitive_data(old_value) if old_value else None
-    masked_new = _mask_sensitive_data(new_value) if new_value else None
+    # 2026-07-02 prod-grade denetimi P2 (Tier A madde 5): `if old_value else None`
+    # Python truthiness kullanıyordu — 0/False/""/{}/[] gibi geçerli-falsy
+    # değerler sessizce audit trail'den düşüyordu (audit "değer yok" sanıyordu,
+    # oysa GERÇEK bir 0/False/boş değere set edildiğini kaydetmesi gerekiyordu).
+    masked_old = _mask_sensitive_data(old_value) if old_value is not None else None
+    masked_new = _mask_sensitive_data(new_value) if new_value is not None else None
 
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

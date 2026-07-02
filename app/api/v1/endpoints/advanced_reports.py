@@ -102,7 +102,10 @@ async def get_fleet_summary_pdf(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Fleet summary PDF export error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Rapor oluşturulurken bir hata oluştu"
+        )
 
 
 @router.get("/pdf/vehicle/{arac_id}")
@@ -149,10 +152,11 @@ async def get_vehicle_report_pdf(
         raise
     except DomainError:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Vehicle report PDF export error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail="Rapor oluşturulurken bir hata oluştu"
+        )
 
 
 @router.get("/pdf/driver-comparison")
@@ -405,4 +409,6 @@ async def export_analytical_report_excel(
         import traceback
 
         logger.error(f"Analytical Excel export error: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Rapor dışa aktarılırken bir hata oluştu"
+        )

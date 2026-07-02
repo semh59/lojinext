@@ -15,11 +15,13 @@ export interface StandardResponse<T> {
 export interface DorseFleetStats {
   total: number;
   active: number;
+  inspection_expiring: number;
+  inspection_overdue: number;
 }
 
 export const dorseService = {
   /**
-   * Dorse filosu özeti — tek sorgu, total + active.
+   * Dorse filosu özeti — total + active + muayene uyarı sayıları.
    */
   getFleetStats: async (): Promise<DorseFleetStats> => {
     const { data } = await axiosInstance.get<DorseFleetStats>(

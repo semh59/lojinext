@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 # Preferences router routes:
@@ -62,3 +64,35 @@ async def test_preferences_user_isolation(async_client, admin_auth_headers):
         "/api/v1/preferences/lang", headers=admin_auth_headers
     )
     assert response.status_code in (200, 404, 500)
+
+
+@pytest.mark.asyncio
+async def test_save_preference_unexpected_error_does_not_leak_internal_message(
+    async_client, normal_auth_headers
+):
+    """2026-07-02 prod-grade denetimi P2 (Tier A madde 3): POST /preferences/'de
+    beklenmeyen bir hata ham `str(e)` ile client'a sızmamalı.
+
+    `admin_auth_headers` (virtual super-admin, id<=0) kullanılamaz — endpoint
+    "Sistem kullanıcısı tercih kaydedemez" ile 403 döner; gerçek pozitif id'li
+    normal kullanıcı gerekiyor.
+    """
+    sensitive_detail = "asyncpg.exceptions.InvalidPasswordError: role lojinext_user"
+    with patch(
+        "app.core.services.preference_service.PreferenceService.save_preference",
+        new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
+    ):
+        response = await async_client.post(
+            "/api/v1/preferences/",
+            json={
+                "modul": "theme",
+                "ayar_tipi": "color",
+                "deger": {"v": "dark"},
+                "ad": "theme_dark",
+            },
+            headers=normal_auth_headers,
+        )
+    assert response.status_code == 500
+    assert sensitive_detail not in response.text, (
+        f"Ham hata mesajı client'a sızdı: {response.text[:300]}"
+    )

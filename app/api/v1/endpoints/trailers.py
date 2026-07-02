@@ -58,23 +58,27 @@ async def get_dorse_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
 ):
-    """Dorse filosu özeti — tek sorgu, total + active."""
+    """Dorse filosu genel istatistikleri (toplam, aktif, muayene uyarısı)."""
     from sqlalchemy import text
 
-    row = (
-        (
-            await db.execute(
-                text(
-                    "SELECT COUNT(*) AS total, "
-                    "COUNT(*) FILTER (WHERE aktif = true) AS active "
-                    "FROM dorseler"
-                )
-            )
-        )
-        .mappings()
-        .one()
-    )
-    return {"total": row["total"], "active": row["active"]}
+    query = text("""
+        SELECT
+            COUNT(*)                                                                              AS total,
+            COUNT(*) FILTER (WHERE aktif = true)                                                  AS active,
+            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
+                                AND muayene_tarihi >= CURRENT_DATE
+                                AND muayene_tarihi <= CURRENT_DATE + INTERVAL '30 days')          AS inspection_expiring,
+            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
+                                AND muayene_tarihi < CURRENT_DATE)                                AS inspection_overdue
+        FROM dorseler
+    """)  # noqa: E501
+    row = (await db.execute(query)).mappings().one()
+    return {
+        "total": row["total"],
+        "active": row["active"],
+        "inspection_expiring": row["inspection_expiring"],
+        "inspection_overdue": row["inspection_overdue"],
+    }
 
 
 @router.get("/inspection-alerts")

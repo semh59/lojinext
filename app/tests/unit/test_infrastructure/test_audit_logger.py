@@ -271,6 +271,61 @@ class TestLogAuditEvent:
         assert entry["new_value"]["password"] == "***MASKED***"
         assert entry["new_value"]["name"] == "Bob"
 
+    @pytest.mark.parametrize(
+        "falsy_value",
+        [0, False, "", {}, []],
+        ids=["zero", "false", "empty_str", "empty_dict", "empty_list"],
+    )
+    async def test_log_audit_event_preserves_falsy_old_and_new_values(
+        self, falsy_value
+    ):
+        """2026-07-02 prod-grade denetimi P2 (Tier A madde 5): eskiden
+        `if old_value else None` Python truthiness kullanıyordu — old_value/
+        new_value'nun KENDİSİ 0/False/""/{}/[] gibi GEÇERLİ-falsy bir değer
+        olduğunda sessizce None'a düşüyordu (audit trail bu değişikliği hiç
+        kaydetmiyordu). Artık `is not None` ile ayırt ediliyor."""
+        log_entries = []
+
+        with patch(_PERSIST_PATCH, new_callable=AsyncMock):
+            with patch(
+                "app.infrastructure.audit.audit_logger.audit_logger"
+            ) as mock_logger:
+                mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
+
+                await log_audit_event(
+                    action="UPDATE_FIELD",
+                    module="ayarlar",
+                    old_value=falsy_value,
+                    new_value=falsy_value,
+                )
+
+        entry = json.loads(log_entries[0])
+        assert entry["old_value"] == falsy_value, (
+            f"Falsy old_value ({falsy_value!r}) sessizce None'a düşürüldü: "
+            f"{entry['old_value']!r}"
+        )
+        assert entry["new_value"] == falsy_value, (
+            f"Falsy new_value ({falsy_value!r}) sessizce None'a düşürüldü: "
+            f"{entry['new_value']!r}"
+        )
+
+    async def test_log_audit_event_none_stays_none(self):
+        """`None` (gerçekten değer yok) hâlâ `None` olarak kalmalı — regresyon
+        guard'ı, `is not None` geçişinin None-handling'i bozmadığını doğrular."""
+        log_entries = []
+
+        with patch(_PERSIST_PATCH, new_callable=AsyncMock):
+            with patch(
+                "app.infrastructure.audit.audit_logger.audit_logger"
+            ) as mock_logger:
+                mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
+
+                await log_audit_event(action="CREATE_SEFER", module="seferler")
+
+        entry = json.loads(log_entries[0])
+        assert entry["old_value"] is None
+        assert entry["new_value"] is None
+
     async def test_log_audit_event_calls_persist_db(self):
         """log_audit_event calls _persist_audit_to_db."""
         with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:

@@ -61,6 +61,60 @@ async def test_driver_comparison_pdf_no_auth_gets_401(async_client):
 
 
 # ---------------------------------------------------------------------------
+# GET /api/v1/advanced-reports/pdf/fleet-summary — unexpected error leak
+# ---------------------------------------------------------------------------
+
+
+async def test_fleet_summary_pdf_unexpected_error_does_not_leak_internal_message(
+    async_client, admin_auth_headers
+):
+    """2026-07-02 prod-grade denetimi P2 (Tier A madde 3): fleet-summary PDF
+    ucunda beklenmeyen bir hata ham `str(e)` ile client'a sızmamalı."""
+    sensitive_detail = (
+        "psycopg2.OperationalError: FATAL: password authentication failed"
+    )
+    with patch(
+        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
+    ):
+        response = await async_client.get(
+            f"{BASE}/pdf/fleet-summary", headers=admin_auth_headers
+        )
+    assert response.status_code == 500
+    assert sensitive_detail not in response.text, (
+        f"Ham hata mesajı client'a sızdı: {response.text[:300]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/advanced-reports/pdf/vehicle/{arac_id} — unexpected error leak
+# ---------------------------------------------------------------------------
+
+
+async def test_vehicle_pdf_unexpected_error_does_not_leak_internal_message(
+    async_client, admin_auth_headers
+):
+    """2026-07-02 prod-grade denetimi P2 (Tier A madde 3): vehicle PDF ucunda
+    beklenmeyen bir hata ham `str(e)` ile client'a sızmamalı."""
+    sensitive_detail = (
+        "internal stack trace with secret config path /etc/lojinext/secret.key"
+    )
+    with patch(
+        "app.core.services.report_service.ReportService.generate_vehicle_report",
+        new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
+    ):
+        response = await async_client.get(
+            f"{BASE}/pdf/vehicle/1",
+            params={"month": 1, "year": 2026},
+            headers=admin_auth_headers,
+        )
+    assert response.status_code == 500
+    assert sensitive_detail not in response.text, (
+        f"Ham hata mesajı client'a sızdı: {response.text[:300]}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # GET /api/v1/advanced-reports/excel/export — Excel export
 # ---------------------------------------------------------------------------
 
@@ -119,6 +173,28 @@ async def test_excel_export_invalid_report_type_returns_error(
         headers=admin_auth_headers,
     )
     assert response.status_code == 400
+
+
+async def test_excel_export_unexpected_error_does_not_leak_internal_message(
+    async_client, admin_auth_headers
+):
+    """2026-07-02 prod-grade denetimi P2 (Tier A madde 3): beklenmeyen bir hata
+    oluştuğunda ham `str(e)` client'a sızmamalı (bilgi sızıntısı) — genel bir
+    mesaj dönmeli, gerçek detay yalnızca sunucu log'una yazılmalı."""
+    sensitive_detail = "connection to postgresql://lojinext_user:s3cr3t@10.0.0.5/db failed"  # pragma: allowlist secret
+    with patch(
+        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
+    ):
+        response = await async_client.get(
+            f"{BASE}/excel/export",
+            params={"report_type": "fleet_summary"},
+            headers=admin_auth_headers,
+        )
+    assert response.status_code == 500
+    assert sensitive_detail not in response.text, (
+        f"Ham hata mesajı client'a sızdı: {response.text[:300]}"
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -176,6 +176,24 @@ class YakitRepository(BaseRepository[YakitAlimi]):
             if row.son_km is not None
         }
 
+    async def get_last_n_by_arac(
+        self, arac_id: int, n: int = 5
+    ) -> List[Dict[str, Any]]:
+        """Aracın son N (aktif) yakıt kaydını km_sayac'a göre azalan sırayla getirir.
+
+        Rolling outlier tespiti (``YakitService._check_rolling_outlier``) için.
+        """
+        query = text(
+            """
+            SELECT litre, km_sayac FROM yakit_alimlari
+            WHERE arac_id = :arac_id AND aktif = TRUE
+            ORDER BY km_sayac DESC
+            LIMIT :n
+            """
+        )
+        result = await self.session.execute(query, {"arac_id": arac_id, "n": n})
+        return [{"litre": r.litre, "km_sayac": r.km_sayac} for r in result.fetchall()]
+
     async def update_yakit(self, id: int, **kwargs: Any) -> bool:
         """Yakıt alımı güncelle"""
         allowed = [

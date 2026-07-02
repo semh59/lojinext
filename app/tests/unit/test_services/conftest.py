@@ -56,6 +56,7 @@ def mock_uow(monkeypatch):
     uow.sefer_repo.add = AsyncMock(return_value=None)
     uow.sefer_repo.update = AsyncMock(return_value=None)
     uow.sefer_repo.delete = AsyncMock(return_value=None)
+    uow.sefer_repo.get_existing_sefer_nos = AsyncMock(return_value=set())
 
     uow.analiz_repo = MagicMock()
     uow.analiz_repo.get_monthly_consumption_series = AsyncMock(return_value=[])
@@ -63,6 +64,15 @@ def mock_uow(monkeypatch):
     uow.analiz_repo.get_dashboard_stats = AsyncMock(
         return_value={"toplam_yakit": 0, "filo_ortalama": 0}
     )
+    uow.analiz_repo.get_anomalies_filtered = AsyncMock(return_value=[])
+    uow.analiz_repo.bulk_create_anomalies = AsyncMock(return_value=0)
+    uow.analiz_repo.get_anomaly_by_id = AsyncMock(return_value=None)
+    uow.analiz_repo.update_anomaly = AsyncMock(return_value=None)
+
+    uow.dorse_repo = MagicMock()
+    uow.dorse_repo.get_by_id = AsyncMock(return_value=None)
+
+    uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=[])
 
     return uow
 

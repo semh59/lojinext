@@ -1326,20 +1326,9 @@ class SeferWriteService:
 
                 # sefer_no uniqueness: within-batch dedup + existing DB check
                 batch_sefer_nos = {s.sefer_no for s in sorted_list if s.sefer_no}
-                existing_sefer_nos: set[str] = set()
-                if batch_sefer_nos:
-                    from sqlalchemy import text as _stext
-
-                    rows = (
-                        await uow.session.execute(
-                            _stext(
-                                "SELECT sefer_no FROM seferler"
-                                " WHERE sefer_no = ANY(:nos) AND is_deleted = FALSE"
-                            ),
-                            {"nos": list(batch_sefer_nos)},
-                        )
-                    ).fetchall()
-                    existing_sefer_nos = {r[0] for r in rows}
+                existing_sefer_nos: set[
+                    str
+                ] = await uow.sefer_repo.get_existing_sefer_nos(list(batch_sefer_nos))
                 seen_sefer_nos: set[str] = set()  # within-batch dedup
 
                 all_routes = await uow.lokasyon_repo.get_all(limit=1000)

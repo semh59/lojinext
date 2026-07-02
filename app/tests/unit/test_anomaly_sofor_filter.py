@@ -44,7 +44,10 @@ class _FakeSession:
 
 class _FakeUoW:
     def __init__(self, rows: List[Dict[str, Any]]):
+        from app.database.repositories.analiz_repo import AnalizRepository
+
         self.session = _FakeSession(rows)
+        self.analiz_repo = AnalizRepository(self.session)
 
     async def __aenter__(self):
         return self

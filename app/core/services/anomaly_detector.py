@@ -251,12 +251,6 @@ class AnomalyDetector:
             return 0
 
         async with UnitOfWork() as uow:
-            query = """
-                INSERT INTO anomalies
-                (tarih, tip, kaynak_tip, kaynak_id, deger, beklenen_deger, sapma_yuzde, severity, aciklama, rca_summary, suggested_action)
-                VALUES (:tarih, :tip, :kaynak_tip, :kaynak_id, :deger, :beklenen_deger, :sapma_yuzde, :severity, :aciklama, :rca, :action)
-            """  # noqa: E501
-
             # RCA'ları önceden hesapla (Pre-calculated)
             for a in anomalies:
                 rca, action = self._generate_heuristic_rca(a)
@@ -275,15 +269,13 @@ class AnomalyDetector:
                     "sapma_yuzde": a.sapma_yuzde,
                     "severity": a.severity.value,
                     "aciklama": a.aciklama,
-                    "rca": a.rca_summary,
-                    "action": a.suggested_action,
+                    "rca_summary": a.rca_summary,
+                    "suggested_action": a.suggested_action,
                 }
                 for a in anomalies
             ]
 
-            from sqlalchemy import text
-
-            await uow.session.execute(text(query), params_list)
+            await uow.analiz_repo.bulk_create_anomalies(params_list)
             await uow.commit()
 
         logger.info(f"Saved {len(anomalies)} anomalies to PostgreSQL (bulk)")
@@ -311,41 +303,12 @@ class AnomalyDetector:
         days_val = max(1, min(int(days), 365))
 
         async with UnitOfWork() as uow:
-            from sqlalchemy import text
-
-            sql = """
-                SELECT
-                    a.*,
-                    sf.sofor_id as sofor_id,
-                    COALESCE(s.ad_soyad, 'Bilinmiyor') as sofor_adi,
-                    COALESCE(v.plaka, 'Bilinmiyor') as plaka
-                FROM anomalies a
-                LEFT JOIN seferler sf ON a.kaynak_tip = 'sefer' AND a.kaynak_id = sf.id
-                LEFT JOIN soforler s ON sf.sofor_id = s.id
-                LEFT JOIN araclar v ON (a.kaynak_tip = 'arac' AND a.kaynak_id = v.id) OR (a.kaynak_tip = 'sefer' AND sf.arac_id = v.id)
-                WHERE a.tarih >= CURRENT_DATE - (:days || ' days')::interval
-            """  # noqa: E501
-            params: Dict[str, Any] = {"days": str(days_val)}
-
-            if severity:
-                sql += " AND a.severity = :sev"
-                params["sev"] = severity.value
-
-            if status == "open":
-                sql += " AND a.acknowledged_at IS NULL AND a.resolved_at IS NULL"
-            elif status == "acknowledged":
-                sql += " AND a.acknowledged_at IS NOT NULL AND a.resolved_at IS NULL"
-            elif status == "resolved":
-                sql += " AND a.resolved_at IS NOT NULL"
-
-            if sofor_id is not None:
-                sql += " AND sf.sofor_id = :sofor_id"
-                params["sofor_id"] = sofor_id
-
-            sql += " ORDER BY a.tarih DESC"
-
-            result = await uow.session.execute(text(sql), params)
-            return [dict(row._mapping) for row in result.fetchall()]
+            return await uow.analiz_repo.get_anomalies_filtered(
+                days=days_val,
+                severity=severity.value if severity else None,
+                status=status,
+                sofor_id=sofor_id,
+            )
 
     # ============== LightGBM Persistence (Güvenli Format) ==============
 
@@ -582,23 +545,17 @@ class AnomalyDetector:
 
     async def acknowledge(self, anomaly_id: int, user_id: int) -> Dict:
         """Anomaliyi onaylanmış olarak işaretle."""
-        from sqlalchemy import update
-
-        from app.database.models import Anomaly
-
         now = datetime.now(timezone.utc)
         async with UnitOfWork() as uow:
-            row = await uow.session.get(Anomaly, anomaly_id)
+            row = await uow.analiz_repo.get_anomaly_by_id(anomaly_id)
             if not row:
                 raise ValueError("Anomali bulunamadı")
             if row.resolved_at is not None:
                 raise ValueError("Çözülmüş anomali tekrar onaylanamaz")
             # Virtual superadmin (id=0) has no kullanicilar row — use NULL to avoid FK violation
             safe_user_id = user_id if user_id and user_id > 0 else None
-            await uow.session.execute(
-                update(Anomaly)
-                .where(Anomaly.id == anomaly_id)
-                .values(acknowledged_at=now, acknowledged_by=safe_user_id)
+            await uow.analiz_repo.update_anomaly(
+                anomaly_id, acknowledged_at=now, acknowledged_by=safe_user_id
             )
             await uow.commit()
         return {
@@ -612,13 +569,9 @@ class AnomalyDetector:
         self, anomaly_id: int, user_id: int, notes: Optional[str] = None
     ) -> Dict:
         """Anomaliyi çözülmüş olarak işaretle. Notlar opsiyonel ama önerilir."""
-        from sqlalchemy import update
-
-        from app.database.models import Anomaly
-
         now = datetime.now(timezone.utc)
         async with UnitOfWork() as uow:
-            row = await uow.session.get(Anomaly, anomaly_id)
+            row = await uow.analiz_repo.get_anomaly_by_id(anomaly_id)
             if not row:
                 raise ValueError("Anomali bulunamadı")
             # Henüz onaylanmamışsa, resolve aynı zamanda acknowledge anlamına gelir.
@@ -632,9 +585,7 @@ class AnomalyDetector:
             if row.acknowledged_at is None:
                 values["acknowledged_at"] = now
                 values["acknowledged_by"] = safe_user_id
-            await uow.session.execute(
-                update(Anomaly).where(Anomaly.id == anomaly_id).values(**values)
-            )
+            await uow.analiz_repo.update_anomaly(anomaly_id, **values)
             await uow.commit()
         return {
             "id": anomaly_id,

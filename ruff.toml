@@ -20,7 +20,5 @@ max-line-length = 120
 "alembic/legacy_versions_archive/*.py" = ["E501"]
 # Long f-string template inside list comprehension cannot be split without breaking logic
 "telegram_bot/driver_bot.py" = ["E501"]
-# SQL DDL string literal exceeds 120 chars; splitting would harm readability
-"tests/security/apply_model_changes.py" = ["E501"]
 # f-string in print() for test diagnostics; splitting adds no value
 "tests/unit/test_deep_validation.py" = ["E501"]

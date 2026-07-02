@@ -14,7 +14,6 @@ import time
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-from sqlalchemy import text
 
 from app.core.entities.models import PredictionResult as PredictionResultModel
 from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
@@ -203,19 +202,15 @@ class AIService:
 
             # Propagate trailer (dorse) specs to ML model if dorse_id is provided
             if dorse_id:
-                dorse = await uow.session.execute(
-                    text(
-                        "SELECT bos_agirlik_kg, dingil_sayisi FROM dorseler WHERE id = :did"
-                    ),
-                    {"did": dorse_id},
+                dorse_row = await uow.dorse_repo.get_by_id(
+                    dorse_id, include_inactive=True
                 )
-                dorse_row = dorse.first()
                 if dorse_row:
                     sefer_context["dorse_bos_agirlik"] = float(
-                        dorse_row.bos_agirlik_kg or 6500
+                        dorse_row.get("bos_agirlik_kg") or 6500
                     )
-                    sefer_context["dorse_lastik_sayisi"] = (
-                        int(dorse_row.dingil_sayisi or 3) * 2
+                    sefer_context["dorse_lastik_sayisi"] = int(
+                        dorse_row.get("lastik_sayisi") or 6
                     )
                     logger.debug(
                         f"Trailer features synced: {sefer_context['dorse_bos_agirlik']}kg, {sefer_context['dorse_lastik_sayisi']} tires."  # noqa: E501

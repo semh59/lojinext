@@ -464,6 +464,21 @@ class SeferRepository(BaseRepository[Sefer]):
         d.pop("_sa_instance_state", None)
         return d
 
+    async def get_existing_sefer_nos(self, nos: List[str]) -> set[str]:
+        """Verilen sefer_no listesinden DB'de zaten var olanları döner (soft-delete hariç).
+
+        ``bulk_add_sefer``'in toplu-import benzersizlik kontrolü için — N ayrı
+        ``get_by_sefer_no`` yerine tek sorgu.
+        """
+        if not nos:
+            return set()
+        stmt = select(Sefer.sefer_no).where(
+            Sefer.sefer_no.in_(nos),
+            Sefer.is_deleted == False,  # noqa: E712
+        )
+        result = await self.session.execute(stmt)
+        return {row[0] for row in result.fetchall()}
+
     async def get_bugunun_seferleri(self) -> List[Dict[str, Any]]:
         """Bugünün seferlerini döner (iptal hariç, soft-delete hariç).
 

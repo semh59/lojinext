@@ -73,6 +73,7 @@ class DummyUoW:
         self.sefer_repo.delete = AsyncMock(return_value=True)
         self.sefer_repo.bulk_create = AsyncMock(return_value=[])
         self.sefer_repo.refresh_stats_mv = AsyncMock()
+        self.sefer_repo.get_existing_sefer_nos = AsyncMock(return_value=set())
         self.arac_repo.get_by_id = AsyncMock(return_value=None)
         self.arac_repo.get_all = AsyncMock(return_value=[])
         self.arac_repo.get_by_ids = AsyncMock(return_value={})

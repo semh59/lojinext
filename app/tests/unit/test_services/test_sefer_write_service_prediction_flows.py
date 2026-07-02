@@ -34,6 +34,7 @@ class DummyUnitOfWork:
         self.session.execute = AsyncMock(
             return_value=MagicMock(fetchall=MagicMock(return_value=[]))
         )
+        self.sefer_repo.get_existing_sefer_nos = AsyncMock(return_value=set())
 
     async def __aenter__(self):
         return self

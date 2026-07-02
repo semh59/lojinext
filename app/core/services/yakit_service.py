@@ -60,22 +60,13 @@ class YakitService:
         """
         try:
             async with get_uow() as uow:
-                query = """
-                    SELECT litre, km_sayac FROM yakit_alimlari
-                    WHERE arac_id = :arac_id AND aktif = TRUE
-                    ORDER BY km_sayac DESC
-                    LIMIT 5
-                """
-                from sqlalchemy import text
-
-                result = await uow.session.execute(text(query), {"arac_id": arac_id})
-                last_5 = result.fetchall()
+                last_5 = await uow.yakit_repo.get_last_n_by_arac(arac_id, n=5)
 
             if not last_5:
                 return False
 
-            litres = [current_litre] + [float(r.litre) for r in last_5]
-            kms = [current_km] + [int(r.km_sayac) for r in last_5]
+            litres = [current_litre] + [float(r["litre"]) for r in last_5]
+            kms = [current_km] + [int(r["km_sayac"]) for r in last_5]
 
             total_dist = max(kms) - min(kms)
             if len(kms) < 2 or total_dist <= 0:
@@ -83,7 +74,7 @@ class YakitService:
 
             # Rolling Window Logic: the fuel of the earliest record is excluded
             # as it belongs to the period before that odometer reading.
-            valid_fuel = sum(litres) - float(last_5[-1].litre)
+            valid_fuel = sum(litres) - float(last_5[-1]["litre"])
 
             if valid_fuel <= 0:
                 return False

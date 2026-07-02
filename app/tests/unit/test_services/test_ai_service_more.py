@@ -3,9 +3,10 @@ Additional coverage for app/core/services/ai_service.py.
 
 0-mock (Dilim 29): all patch(UnitOfWork) removed.
 - Non-dorse tests: db_session + patch.object(svc, '_get_predictor_for_vehicle')
-- Dorse tests: db_session + patch _get_predictor_for_vehicle + AsyncSession.execute
-  (dorseler.dingil_sayisi doesn't exist in the schema — raw SQL would fail on real DB,
-  so AsyncSession.execute is narrowly patched to avoid the broken column error)
+- Dorse tests: db_session + patch _get_predictor_for_vehicle + DorseRepository.get_by_id
+  (Tier D madde 23: predict_trip_fuel used to run raw SQL selecting a
+  non-existent `dorseler.dingil_sayisi` column — fixed to go through
+  uow.dorse_repo.get_by_id() and the real `lastik_sayisi` column)
 - TestDetectAnomaliesMore: patch.object(YakitRepository, 'get_all')
 
 Note: asyncio.to_thread(predictor.predict, ctx) calls the INSTANCE method, not the
@@ -99,26 +100,28 @@ class TestPredictTripFuel:
     async def test_prediction_with_dorse_row_found(self, db_session):
         """dorse_id provided and dorse row found — updates sefer_context.
 
-        Narrow AsyncSession.execute patch: dorseler.dingil_sayisi doesn't exist in
-        the schema, so the raw SQL in predict_trip_fuel would fail on a real DB.
+        Regression guard (Tier D madde 23): predict_trip_fuel used to run raw SQL
+        `SELECT bos_agirlik_kg, dingil_sayisi FROM dorseler` — `dingil_sayisi` does
+        not exist on the `dorseler` table (it's an `araclar` column), so this
+        crashed with UndefinedColumnError on any real DB whenever dorse_id was
+        passed. Fixed to go through `uow.dorse_repo.get_by_id()` and read the real
+        `lastik_sayisi` column.
         """
-        from sqlalchemy.ext.asyncio import AsyncSession
+        from app.database.repositories.dorse_repo import DorseRepository
 
         svc = _make_service()
         captured = []
         pred = _make_pred(captured=captured, tahmin=35.0)
 
-        dorse_row = MagicMock()
-        dorse_row.bos_agirlik_kg = 6500
-        dorse_row.dingil_sayisi = 3
-        dorse_result = MagicMock()
-        dorse_result.first.return_value = dorse_row
-
         with (
             patch.object(
                 svc, "_get_predictor_for_vehicle", AsyncMock(return_value=pred)
             ),
-            patch.object(AsyncSession, "execute", AsyncMock(return_value=dorse_result)),
+            patch.object(
+                DorseRepository,
+                "get_by_id",
+                AsyncMock(return_value={"bos_agirlik_kg": 6500, "lastik_sayisi": 8}),
+            ),
         ):
             await svc.predict_trip_fuel(
                 arac_id=3, ton=18.0, mesafe_km=400.0, dorse_id=10
@@ -126,24 +129,21 @@ class TestPredictTripFuel:
 
         assert "dorse_bos_agirlik" in captured[0]
         assert captured[0]["dorse_bos_agirlik"] == pytest.approx(6500.0)
-        assert captured[0]["dorse_lastik_sayisi"] == 6  # 3 axles * 2
+        assert captured[0]["dorse_lastik_sayisi"] == 8
 
     async def test_prediction_with_dorse_row_none(self, db_session):
         """dorse_id provided but no row found — proceeds without dorse context."""
-        from sqlalchemy.ext.asyncio import AsyncSession
+        from app.database.repositories.dorse_repo import DorseRepository
 
         svc = _make_service()
         captured = []
         pred = _make_pred(captured=captured, tahmin=32.0)
 
-        dorse_result = MagicMock()
-        dorse_result.first.return_value = None
-
         with (
             patch.object(
                 svc, "_get_predictor_for_vehicle", AsyncMock(return_value=pred)
             ),
-            patch.object(AsyncSession, "execute", AsyncMock(return_value=dorse_result)),
+            patch.object(DorseRepository, "get_by_id", AsyncMock(return_value=None)),
         ):
             await svc.predict_trip_fuel(
                 arac_id=4, ton=15.0, mesafe_km=350.0, dorse_id=99

@@ -231,28 +231,18 @@ class TestCheckRollingOutlier:
         mock_event_bus = MagicMock()
         svc = YakitService(repo=MagicMock(), event_bus=mock_event_bus)
 
-        class FakeRow:
-            def __init__(self, litre, km_sayac):
-                self.litre = litre
-                self.km_sayac = km_sayac
-
         fake_rows = [
-            FakeRow(1.0, 199900),
-            FakeRow(1.0, 199800),
-            FakeRow(1.0, 199700),
-            FakeRow(1.0, 199600),
-            FakeRow(1.0, 199500),
+            {"litre": 1.0, "km_sayac": 199900},
+            {"litre": 1.0, "km_sayac": 199800},
+            {"litre": 1.0, "km_sayac": 199700},
+            {"litre": 1.0, "km_sayac": 199600},
+            {"litre": 1.0, "km_sayac": 199500},
         ]
-
-        mock_result = MagicMock()
-        mock_result.fetchall = MagicMock(return_value=fake_rows)
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
 
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
+        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
 
         with patch("app.core.services.yakit_service.get_uow", return_value=mock_uow):
             result = await svc._check_rolling_outlier(1, 1.0, 200000)
@@ -267,28 +257,18 @@ class TestCheckRollingOutlier:
         mock_event_bus = MagicMock()
         svc = YakitService(repo=MagicMock(), event_bus=mock_event_bus)
 
-        class FakeRow:
-            def __init__(self, litre, km_sayac):
-                self.litre = litre
-                self.km_sayac = km_sayac
-
         fake_rows = [
-            FakeRow(100.0, 199900),
-            FakeRow(100.0, 199800),
-            FakeRow(100.0, 199700),
-            FakeRow(100.0, 199600),
-            FakeRow(100.0, 199500),
+            {"litre": 100.0, "km_sayac": 199900},
+            {"litre": 100.0, "km_sayac": 199800},
+            {"litre": 100.0, "km_sayac": 199700},
+            {"litre": 100.0, "km_sayac": 199600},
+            {"litre": 100.0, "km_sayac": 199500},
         ]
-
-        mock_result = MagicMock()
-        mock_result.fetchall = MagicMock(return_value=fake_rows)
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
 
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
+        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
 
         with patch("app.core.services.yakit_service.get_uow", return_value=mock_uow):
             result = await svc._check_rolling_outlier(1, 100.0, 200000)
@@ -301,15 +281,10 @@ class TestCheckRollingOutlier:
 
         svc = YakitService(repo=MagicMock(), event_bus=MagicMock())
 
-        mock_result = MagicMock()
-        mock_result.fetchall = MagicMock(return_value=[])
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
+        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=[])
 
         with patch("app.core.services.yakit_service.get_uow", return_value=mock_uow):
             result = await svc._check_rolling_outlier(1, 300.0, 125000)
@@ -322,22 +297,12 @@ class TestCheckRollingOutlier:
 
         svc = YakitService(repo=MagicMock(), event_bus=MagicMock())
 
-        class FakeRow:
-            def __init__(self, litre, km_sayac):
-                self.litre = litre
-                self.km_sayac = km_sayac
-
-        fake_rows = [FakeRow(100.0, 125000)] * 5
-
-        mock_result = MagicMock()
-        mock_result.fetchall = MagicMock(return_value=fake_rows)
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
+        fake_rows = [{"litre": 100.0, "km_sayac": 125000}] * 5
 
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
+        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
 
         with patch("app.core.services.yakit_service.get_uow", return_value=mock_uow):
             result = await svc._check_rolling_outlier(1, 100.0, 125000)
@@ -350,13 +315,12 @@ class TestCheckRollingOutlier:
 
         svc = YakitService(repo=MagicMock(), event_bus=MagicMock())
 
-        mock_session = AsyncMock()
-        mock_session.execute = AsyncMock(side_effect=Exception("DB error"))
-
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
         mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.session = mock_session
+        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(
+            side_effect=Exception("DB error")
+        )
 
         with patch("app.core.services.yakit_service.get_uow", return_value=mock_uow):
             result = await svc._check_rolling_outlier(1, 300.0, 125000)

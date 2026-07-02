@@ -11,6 +11,13 @@ from sqlalchemy import and_, select
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
 from app.database.models import Kullanici, Sefer, Sofor
 from app.infrastructure.background.celery_app import celery_app
+from app.schemas.api_responses import (
+    SSE_RESPONSES,
+    EnsembleStatusResponse,
+    ExplainPredictionResponse,
+    TimeSeriesStatusResponse,
+    TrendAnalysisResponse,
+)
 from app.schemas.prediction import (
     AccuracyDistribution,
     ForecastResponseModel,
@@ -286,7 +293,7 @@ async def forecast_consumption(
     }
 
 
-@router.get("/time-series/trend")
+@router.get("/time-series/trend", response_model=TrendAnalysisResponse)
 async def get_trend_analysis(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     arac_id: Optional[int] = Query(None),
@@ -304,7 +311,7 @@ async def get_trend_analysis(
     return result
 
 
-@router.get("/time-series/status")
+@router.get("/time-series/status", response_model=TimeSeriesStatusResponse)
 async def get_time_series_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -315,7 +322,7 @@ async def get_time_series_status(
     return service.get_model_status()
 
 
-@router.get("/ensemble/status")
+@router.get("/ensemble/status", response_model=EnsembleStatusResponse)
 async def get_ensemble_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -353,7 +360,7 @@ async def get_ensemble_status(
     }
 
 
-@router.post("/explain")
+@router.post("/explain", response_model=ExplainPredictionResponse)
 async def explain_fuel_prediction(
     request: PredictionRequest,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
@@ -395,7 +402,12 @@ async def prediction_status(
     )
 
 
-@router.get("/{task_id}/stream")
+@router.get(
+    "/{task_id}/stream",
+    responses=SSE_RESPONSES,
+    response_model=None,
+    response_class=StreamingResponse,
+)
 async def prediction_stream(
     task_id: str, current_user: Annotated[Kullanici, Depends(get_current_active_user)]
 ):

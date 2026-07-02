@@ -165,12 +165,22 @@ class TestTripImpactEndpoint:
         """POST /weather/trip-impact returns 200 on success."""
         from app.main import app
 
+        # Tier E madde 33: shape matches
+        # WeatherService.get_trip_impact_analysis's real success return dict
+        # — endpoint now has response_model=TripWeatherImpactResponse.
         fake_user = MagicMock()
         weather_svc = MagicMock()
         weather_svc.get_trip_impact_analysis = AsyncMock(
             return_value={
                 "success": True,
+                "weather_summary": {
+                    "avg_temperature": 22.0,
+                    "avg_precipitation": 0.0,
+                    "avg_wind_speed": 20.0,
+                },
                 "fuel_impact_factor": 1.05,
+                "fuel_impact_percent": 5.0,
+                "conditions": ["Moderate wind impact"],
                 "recommendation": "Moderate wind impact",
             }
         )
@@ -225,12 +235,22 @@ class TestTripImpactEndpoint:
         """POST /weather/trip-impact accepts optional trip_date."""
         from app.main import app
 
+        # Tier E madde 33: shape matches
+        # WeatherService.get_trip_impact_analysis's real success return dict
+        # — endpoint now has response_model=TripWeatherImpactResponse.
         fake_user = MagicMock()
         weather_svc = MagicMock()
         weather_svc.get_trip_impact_analysis = AsyncMock(
             return_value={
                 "success": True,
+                "weather_summary": {
+                    "avg_temperature": 20.0,
+                    "avg_precipitation": 0.0,
+                    "avg_wind_speed": 10.0,
+                },
                 "fuel_impact_factor": 1.0,
+                "fuel_impact_percent": 0.0,
+                "conditions": [],
                 "recommendation": "OK",
             }
         )

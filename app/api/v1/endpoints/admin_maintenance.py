@@ -20,6 +20,7 @@ from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.api_responses import (
+    ICS_RESPONSES,
     MaintenanceAlertItem,
     MaintenanceCompleteResponse,
     MaintenanceRecordResponse,
@@ -193,6 +194,9 @@ async def get_prediction_for_arac(
         Depends(RateLimiterDependency("ics_download", rate=10.0, period=60.0)),
         Depends(require_yetki(["bakim_oku", "admin", "super_admin", "fleet_manager"])),
     ],
+    responses=ICS_RESPONSES,
+    response_model=None,
+    response_class=Response,
 )
 async def download_ics(
     bakim_id: int,

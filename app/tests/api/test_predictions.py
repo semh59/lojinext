@@ -61,12 +61,18 @@ async def test_explain_prediction_success(
     from app.services import prediction_service as pred_svc_mod
 
     async def _fake_explain(self, **kwargs):
+        # Tier E madde 33: shape matches ensemble_core.explain_prediction's
+        # real return dict — endpoint now has
+        # response_model=ExplainPredictionResponse.
         return {
-            "features": [
-                {"name": "distance_km", "importance": 0.35},
-                {"name": "vehicle_age", "importance": 0.25},
-                {"name": "weather", "importance": 0.20},
-            ]
+            "prediction": 32.5,
+            "unit": "L/100km",
+            "contributions": {
+                "Yük": 0.35,
+                "Araç Yaşı": 0.25,
+                "Mevsim Koşulları": 0.20,
+            },
+            "confidence": 0.85,
         }
 
     monkeypatch.setattr(
@@ -81,7 +87,10 @@ async def test_explain_prediction_success(
 
     assert response.status_code == 200
     data = response.json()
-    assert "features" in data
+    # Tier E madde 33: real ExplainPredictionResponse shape — endpoint
+    # returns prediction/unit/contributions/confidence, not "features".
+    assert "contributions" in data
+    assert "prediction" in data
 
 
 @pytest.mark.asyncio

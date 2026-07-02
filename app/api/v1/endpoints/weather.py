@@ -13,7 +13,10 @@ from app.api.deps import (
 from app.core.services.sefer_service import SeferService
 from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
 from app.database.models import Kullanici
-from app.schemas.api_responses import WeatherDashboardResponse
+from app.schemas.api_responses import (
+    TripWeatherImpactResponse,
+    WeatherDashboardResponse,
+)
 
 router = APIRouter()
 
@@ -74,7 +77,7 @@ async def get_weather_forecast(
     )
 
 
-@router.post("/trip-impact")
+@router.post("/trip-impact", response_model=TripWeatherImpactResponse)
 async def get_trip_weather_impact(
     request: TripWeatherRequest,
     service: WeatherServiceDep,

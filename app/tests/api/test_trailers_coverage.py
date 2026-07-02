@@ -417,10 +417,11 @@ async def test_import_trailers_no_auth(async_client):
 
 async def test_import_trailers_happy_path(async_client, admin_auth_headers):
     """Successful import returns result."""
+    # Tier E madde 33: shape matches DorseService.import_trailers's real
+    # return dict (app/core/services/dorse_service.py) — the endpoint now
+    # has response_model=StandardResponse[DorseImportResult].
     mock_svc = AsyncMock()
-    mock_svc.import_trailers = AsyncMock(
-        return_value={"saved": 3, "errors": [], "skipped": 0}
-    )
+    mock_svc.import_trailers = AsyncMock(return_value={"imported": 3, "errors": []})
 
     with _override_dorse_service(mock_svc):
         resp = await async_client.post(

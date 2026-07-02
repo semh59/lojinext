@@ -26,7 +26,13 @@ class FeedbackRequest(BaseModel):
     page: Optional[str] = Field(None, max_length=200)
 
 
-@router.post("/", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={202: {"description": "Kabul edildi — gövde yok (best-effort teslim)."}},
+    response_model=None,
+    response_class=Response,
+)
 async def submit_feedback(
     payload: FeedbackRequest,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],

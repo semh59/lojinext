@@ -33,12 +33,25 @@ def _mock_import_service(
     execute_return=None,
     rollback_return=True,
 ):
+    # Tier E madde 33: shapes match ImportService.parse_and_preview /
+    # execute_import's real return dicts (app/core/services/import_service.py)
+    # — the endpoints now have response_model=ImportPreviewResponse /
+    # ImportCommitResponse, so a mismatched mock 422s instead of silently
+    # passing through untyped.
     svc = AsyncMock()
     svc.parse_and_preview = AsyncMock(
-        return_value=preview_return or {"columns": ["Plaka", "Mesafe"], "preview": []}
+        return_value=preview_return
+        or {
+            "filename": "test.xlsx",
+            "aktarim_tipi": "arac",
+            "headers": ["Plaka", "Mesafe"],
+            "total_rows": 0,
+            "preview": [],
+        }
     )
     svc.execute_import = AsyncMock(
-        return_value=execute_return or {"saved": 5, "errors": []}
+        return_value=execute_return
+        or {"job_id": 1, "basarili": 5, "hatali": 0, "errors": {}}
     )
     svc.rollback_import = AsyncMock(return_value=rollback_return)
     return svc

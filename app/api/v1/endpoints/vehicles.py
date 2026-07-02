@@ -19,6 +19,14 @@ from app.core.services.excel_service import ExcelService
 from app.database.models import Arac, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    FleetEventItem,
+    FleetStatsResponse,
+    InspectionAlertsResponse,
+    SuccessCountResponse,
+    UploadResultResponse,
+)
 from app.schemas.arac import AracCreate, AracResponse, AracUpdate
 from app.schemas.base import ResponseMeta, StandardResponse
 
@@ -79,7 +87,12 @@ async def read_araclar(
         raise HTTPException(status_code=500, detail="Liste alınırken hata oluştu")
 
 
-@router.get("/export")
+@router.get(
+    "/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_araclar(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     service: AracService = Depends(get_arac_service),
@@ -186,7 +199,12 @@ async def create_arac(
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 
 
-@router.get("/template")
+@router.get(
+    "/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_vehicle_template(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -205,7 +223,7 @@ async def get_vehicle_template(
     )
 
 
-@router.get("/fleet-stats")
+@router.get("/fleet-stats", response_model=FleetStatsResponse)
 async def get_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
@@ -234,7 +252,7 @@ async def get_fleet_stats(
     }
 
 
-@router.get("/inspection-alerts")
+@router.get("/inspection-alerts", response_model=InspectionAlertsResponse)
 async def get_inspection_alerts(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
@@ -304,7 +322,7 @@ async def get_inspection_alerts(
     }
 
 
-@router.delete("/clear-all")
+@router.delete("/clear-all", response_model=SuccessCountResponse)
 async def clear_all_vehicles(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     service: AracService = Depends(get_arac_service),
@@ -332,7 +350,7 @@ async def clear_all_vehicles(
         )
 
 
-@router.delete("/{arac_id}")
+@router.delete("/{arac_id}", response_model=SuccessCountResponse)
 async def delete_arac(
     arac_id: int,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
@@ -421,7 +439,7 @@ async def get_vehicle_stats(
     return stats
 
 
-@router.get("/{arac_id}/events")
+@router.get("/{arac_id}/events", response_model=List[FleetEventItem])
 async def get_vehicle_events(
     arac_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
@@ -453,7 +471,7 @@ async def get_vehicle_events(
     ]
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=UploadResultResponse)
 async def upload_vehicles(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     file: UploadFile = File(...),

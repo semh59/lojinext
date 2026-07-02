@@ -160,7 +160,22 @@ async def test_cost_period_with_arac_id(async_client, admin_auth_headers):
 
 async def test_cost_trend_happy_path(async_client, admin_auth_headers):
     """Returns trend data from analyzer."""
-    fake_trend = [{"month": "2026-01", "cost": 15000}]
+    # Tier E madde 33: shape matches CostAnalyzer.get_monthly_trend's real
+    # return dict (app/core/services/cost_analyzer.py) — the endpoint now has
+    # response_model=List[CostTrendPoint], so a mismatched mock 422s instead
+    # of silently passing through untyped.
+    fake_trend = [
+        {
+            "month": 1,
+            "year": 2026,
+            "label": "01/2026",
+            "fuel_cost": 15000.0,
+            "fuel_liters": 4200.0,
+            "trip_count": 12,
+            "total_distance": 8000.0,
+            "cost_per_km": 1.88,
+        }
+    ]
     mock_analyzer = MagicMock()
     mock_analyzer.get_monthly_trend = AsyncMock(return_value=fake_trend)
 
@@ -198,7 +213,20 @@ async def test_cost_trend_months_default(async_client, admin_auth_headers):
 
 async def test_vehicle_cost_comparison_happy_path(async_client, admin_auth_headers):
     """Returns vehicle comparison data."""
-    fake_data = [{"vehicle": "34ABC123", "cost": 5000}]
+    # Tier E madde 33: real shape from
+    # CostAnalyzer.get_vehicle_cost_comparison's calculate_for_vehicle()
+    # success branch — endpoint now has
+    # response_model=List[VehicleCostComparisonItem].
+    fake_data = [
+        {
+            "arac_id": 1,
+            "plaka": "34ABC123",
+            "fuel_cost": 5000.0,
+            "total_distance": 2500.0,
+            "cost_per_km": 2.0,
+            "avg_consumption": 32.5,
+        }
+    ]
     mock_analyzer = MagicMock()
     mock_analyzer.get_vehicle_cost_comparison = AsyncMock(return_value=fake_data)
 

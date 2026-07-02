@@ -18,6 +18,7 @@ from app.api.deps import get_current_active_admin
 from app.config import settings
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import SSE_RESPONSES, SseTokenResponse
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -98,7 +99,7 @@ async def _sse_generator(user_id: int, request: Request) -> AsyncGenerator[str, 
 # ── POST /error-stream-token ──────────────────────────────────────────────────
 
 
-@router.post("/error-stream-token")
+@router.post("/error-stream-token", response_model=SseTokenResponse)
 async def create_sse_token(
     current_user: Kullanici = Depends(get_current_active_admin),
 ):
@@ -127,7 +128,12 @@ async def create_sse_token(
 # ── GET /error-stream ─────────────────────────────────────────────────────────
 
 
-@router.get("/error-stream")
+@router.get(
+    "/error-stream",
+    responses=SSE_RESPONSES,
+    response_model=None,
+    response_class=StreamingResponse,
+)
 async def error_stream(request: Request):
     """
     SSE stream of live error_events. Admin only.

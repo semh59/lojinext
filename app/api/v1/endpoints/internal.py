@@ -16,6 +16,7 @@ from fastapi import (
     Header,
     HTTPException,
     Query,
+    Response,
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
@@ -23,6 +24,7 @@ from fastapi.responses import StreamingResponse
 from app.config import settings
 from app.core.services.internal_service import InternalService, get_internal_service
 from app.infrastructure.metrics import telegram_belge_upload_total
+from app.schemas.api_responses import PDF_RESPONSES, CoachingSnapshotResponse
 from app.schemas.telegram import (
     DriverBreakdownRequest,
     SeferBelgeResponse,
@@ -93,7 +95,7 @@ async def sofor_by_telegram(
 # ── Feature A.4 — koçluk snapshot (bot /score komutu için) ───────────────
 
 
-@router.get("/sofor-coaching/{telegram_id}")
+@router.get("/sofor-coaching/{telegram_id}", response_model=CoachingSnapshotResponse)
 async def sofor_coaching_snapshot(
     telegram_id: str,
     svc: InternalService = Depends(get_internal_service),
@@ -222,7 +224,12 @@ async def driver_breakdown(
 # ── PDF indirme ──────────────────────────────────────────────────────────────
 
 
-@router.get("/sofor-pdf/{telegram_id}")
+@router.get(
+    "/sofor-pdf/{telegram_id}",
+    responses=PDF_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def sofor_pdf(
     telegram_id: str,
     baslangic_tarihi: date = Query(...),

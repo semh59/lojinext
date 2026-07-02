@@ -42,6 +42,12 @@ from app.infrastructure.background.job_manager import (
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.metrics import trip_approval_total
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    FuelPerformanceAnalyticsResponse,
+    TaskStatusResponse,
+    TripTimelineResponse,
+)
 from app.schemas.sefer import (
     SeferBulkCancel,
     SeferBulkDelete,
@@ -132,7 +138,12 @@ async def read_bugunun_seferleri(
         raise HTTPException(status_code=500, detail="Bugünkü seferler alınamadı")
 
 
-@router.get("/export", response_class=StreamingResponse)
+@router.get(
+    "/export",
+    response_class=StreamingResponse,
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+)
 async def export_seferler(
     background_tasks: BackgroundTasks,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
@@ -253,7 +264,9 @@ async def get_trip_stats(
         )
 
 
-@router.get("/analytics/fuel-performance")
+@router.get(
+    "/analytics/fuel-performance", response_model=FuelPerformanceAnalyticsResponse
+)
 async def get_fuel_performance_analytics(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
     service: SeferService = Depends(get_sefer_service),
@@ -498,7 +511,12 @@ async def beklemede_seferler(
         raise HTTPException(status_code=500, detail="Seferler alınamadı")
 
 
-@router.get("/excel/template")
+@router.get(
+    "/excel/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_excel_template(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
 ):
@@ -794,7 +812,7 @@ async def bulk_delete_trips(
     return result
 
 
-@router.get("/tasks/{task_id}/status")
+@router.get("/tasks/{task_id}/status", response_model=TaskStatusResponse)
 async def get_task_status(
     task_id: str,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
@@ -826,7 +844,7 @@ async def get_task_status(
     }
 
 
-@router.get("/{sefer_id}/timeline")
+@router.get("/{sefer_id}/timeline", response_model=TripTimelineResponse)
 async def get_sefer_timeline(
     sefer_id: int,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],

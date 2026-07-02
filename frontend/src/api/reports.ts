@@ -9,6 +9,10 @@ import {
   getSavingsPotentialApiV1AdvancedReportsCostSavingsPotentialGet,
   getPeriodCostApiV1AdvancedReportsCostPeriodGet,
 } from "../generated/api/advanced-reports/advanced-reports";
+import type {
+  CostTrendPoint,
+  VehicleCostComparisonItem,
+} from "../generated/types";
 import axiosInstance from "../services/api/axios-instance";
 import { DashboardStats, RoiStats } from "../types";
 
@@ -91,9 +95,9 @@ export const reportService = {
   getCostAnalysis: async (months: number = 12): Promise<MonthlyCostTrend[]> => {
     const data = await getCostTrendApiV1AdvancedReportsCostTrendGet({ months });
     const raw = Array.isArray(data) ? data : [];
-    return raw.map((item: Record<string, unknown>) => ({
-      ...(item as object),
-      fuel: (item.fuel_cost as number) ?? 0,
+    return raw.map((item: CostTrendPoint) => ({
+      ...item,
+      fuel: item.fuel_cost ?? 0,
       maintenance: 0,
     })) as MonthlyCostTrend[];
   },
@@ -106,11 +110,11 @@ export const reportService = {
         { months },
       );
     const raw = Array.isArray(data) ? data : [];
-    return (raw as Array<Record<string, unknown>>)
+    return (raw as VehicleCostComparisonItem[])
       .filter((v) => !v.unavailable)
       .map((v) => ({
-        ...(v as object),
-        average_consumption: (v.avg_consumption as number) ?? 0,
+        ...v,
+        average_consumption: v.avg_consumption ?? 0,
       })) as VehicleCostComparison[];
   },
 

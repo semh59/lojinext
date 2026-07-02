@@ -7,6 +7,7 @@ from app.core.exceptions import DomainError
 from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import SuccessOnlyResponse
 from app.schemas.preference import (
     PreferenceCreate,
     PreferenceItem,
@@ -59,7 +60,7 @@ async def save_preference(
         )
 
 
-@router.delete("/{pref_id}")
+@router.delete("/{pref_id}", response_model=SuccessOnlyResponse)
 async def delete_preference(
     pref_id: int, current_user: Annotated[Kullanici, Depends(get_current_active_user)]
 ):
@@ -70,7 +71,7 @@ async def delete_preference(
     return {"success": True}
 
 
-@router.post("/{pref_id}/default")
+@router.post("/{pref_id}/default", response_model=SuccessOnlyResponse)
 async def set_default_preference(
     pref_id: int, current_user: Annotated[Kullanici, Depends(get_current_active_user)]
 ):

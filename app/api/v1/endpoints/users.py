@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.api.deps import get_current_active_admin, get_current_active_user
 from app.core.services.user_service import UserService
 from app.database.models import Kullanici
+from app.schemas.api_responses import MessageResponse
 from app.schemas.user import KullaniciRead
 
 router = APIRouter()
@@ -57,7 +58,7 @@ async def update_me(
     return await service.update_user(current_user.id, update_data)
 
 
-@router.post("/me/change-password", status_code=200)
+@router.post("/me/change-password", status_code=200, response_model=MessageResponse)
 async def change_my_password(
     data: ChangePasswordRequest,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],

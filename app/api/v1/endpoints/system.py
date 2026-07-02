@@ -9,6 +9,7 @@ from app.api.deps import get_current_active_admin, get_current_active_user
 from app.api.middleware.rate_limiter import limiter
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import TraceChainResponse
 
 logger = get_logger(__name__)
 
@@ -346,7 +347,7 @@ async def resolve_error_event(
 # "API çağrısına" indirir.
 
 
-@router.get("/debug/trace/{trace_id}")
+@router.get("/debug/trace/{trace_id}", response_model=TraceChainResponse)
 async def get_trace_chain(
     trace_id: str,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],

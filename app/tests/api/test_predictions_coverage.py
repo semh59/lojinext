@@ -50,8 +50,15 @@ def _mock_prediction_service(**overrides):
     """Patch the PredictionService class so endpoints get a mock instance."""
     svc = MagicMock()
     svc.predict_consumption = AsyncMock(return_value={**PRED_SUCCESS, **overrides})
+    # Tier E madde 33: shape matches ensemble_core.explain_prediction's real
+    # return dict — endpoint now has response_model=ExplainPredictionResponse.
     svc.explain_consumption = AsyncMock(
-        return_value={"features": [], "top_factor": "mesafe_km"}
+        return_value={
+            "prediction": 32.5,
+            "unit": "L/100km",
+            "contributions": {"mesafe_km": 0.4, "ML Düzeltmesi": 0.1},
+            "confidence": 0.85,
+        }
     )
     svc.train_xgboost_model = AsyncMock(
         return_value={
@@ -184,7 +191,10 @@ class TestExplainPrediction:
             )
         assert resp.status_code == 200
         data = resp.json()
-        assert "features" in data
+        # Tier E madde 33: real ExplainPredictionResponse shape — endpoint
+        # returns prediction/unit/contributions/confidence, not "features".
+        assert "contributions" in data
+        assert "prediction" in data
 
     async def test_explain_requires_auth(self, async_client):
         resp = await async_client.post("/api/v1/predictions/explain", json=PRED_PAYLOAD)
@@ -387,8 +397,21 @@ class TestTimeSeriesStatus:
     async def test_time_series_status_returns_200(
         self, async_client, admin_auth_headers
     ):
+        # Tier E madde 33: shape matches AdvancedLSTM.status()'s real return
+        # dict — endpoint now has response_model=TimeSeriesStatusResponse.
         fake_ts_service = MagicMock()
-        fake_ts_service.get_model_status.return_value = {"ready": False, "samples": 0}
+        fake_ts_service.get_model_status.return_value = {
+            "is_trained": False,
+            "training_epochs": 0,
+            "last_loss": None,
+            "n_training_samples": 0,
+            "train_time_s": 0.0,
+            "bilstm_mae": None,
+            "tcn_mae": None,
+            "torch_available": False,
+            "deep_learning_active": False,
+            "min_days_for_deep": 30,
+        }
 
         # get_time_series_service is imported inside the endpoint function body,
         # so patch at the source module level.
@@ -480,12 +503,23 @@ class TestTimeSeriesForecast:
 
 class TestTimeSeriesTrend:
     async def test_trend_success_returns_200(self, async_client, admin_auth_headers):
+        # Tier E madde 33: shape matches TimeSeriesService.get_trend_analysis's
+        # real success return dict — endpoint now has
+        # response_model=TrendAnalysisResponse.
         fake_ts_service = MagicMock()
         fake_ts_service.get_trend_analysis = AsyncMock(
             return_value={
                 "success": True,
-                "trend": "improving",
-                "data": [],
+                "trend": "increasing",
+                "trend_tr": "Artıyor",
+                "slope": 0.15,
+                "current_avg": 32.0,
+                "previous_avg": 31.0,
+                "moving_average_7": [31.5, 31.8, 32.0],
+                "daily_values": [31.0, 32.0, 33.0],
+                "daily_total_values": [100.0, 105.0, 110.0],
+                "dates": ["2026-06-01", "2026-06-02", "2026-06-03"],
+                "days_analyzed": 3,
             }
         )
 

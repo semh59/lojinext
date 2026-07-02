@@ -6,7 +6,7 @@ PDF raporlar ve maliyet analizi
 import asyncio
 import io
 from datetime import date, datetime, timedelta
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -22,6 +22,12 @@ from app.core.services.report_generator import get_report_generator
 from app.core.services.report_service import ReportService
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    PDF_RESPONSES,
+    CostTrendPoint,
+    VehicleCostComparisonItem,
+)
 
 logger = get_logger(__name__)
 
@@ -59,7 +65,12 @@ class ROIResponse(BaseModel):
     cost_improvement_pct: float
 
 
-@router.get("/pdf/fleet-summary")
+@router.get(
+    "/pdf/fleet-summary",
+    responses=PDF_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_fleet_summary_pdf(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
@@ -108,7 +119,12 @@ async def get_fleet_summary_pdf(
         )
 
 
-@router.get("/pdf/vehicle/{arac_id}")
+@router.get(
+    "/pdf/vehicle/{arac_id}",
+    responses=PDF_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_vehicle_report_pdf(
     arac_id: int,
     db: SessionDep,
@@ -159,7 +175,12 @@ async def get_vehicle_report_pdf(
         )
 
 
-@router.get("/pdf/driver-comparison")
+@router.get(
+    "/pdf/driver-comparison",
+    responses=PDF_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_driver_comparison_pdf(
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
@@ -239,7 +260,7 @@ async def get_period_cost(
     )
 
 
-@router.get("/cost/trend")
+@router.get("/cost/trend", response_model=List[CostTrendPoint])
 async def get_cost_trend(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
@@ -252,7 +273,7 @@ async def get_cost_trend(
     return await analyzer.get_monthly_trend(months)
 
 
-@router.get("/cost/vehicle-comparison")
+@router.get("/cost/vehicle-comparison", response_model=List[VehicleCostComparisonItem])
 async def get_vehicle_cost_comparison(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
@@ -302,7 +323,12 @@ async def get_roi_analysis(
     return ROIResponse(**result)
 
 
-@router.get("/excel/template/{entity_type}")
+@router.get(
+    "/excel/template/{entity_type}",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_excel_template(
     entity_type: str,
     db: SessionDep,
@@ -331,7 +357,12 @@ async def get_excel_template(
     )
 
 
-@router.get("/excel/export")
+@router.get(
+    "/excel/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_analytical_report_excel(
     report_type: str = Query(
         ..., description="fleet_summary, driver_comparison, cost_trend"

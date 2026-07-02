@@ -2,7 +2,16 @@ import io
 from datetime import datetime, timezone
 from typing import Annotated, Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
@@ -18,6 +27,11 @@ from app.core.services.sofor_service import SoforService
 from app.database.models import Kullanici, Sofor
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    DriverFleetStatsResponse,
+    UploadResultResponse,
+)
 from app.schemas.base import ResponseMeta, StandardResponse
 from app.schemas.sofor import (
     DriverPerformanceSchema,
@@ -77,7 +91,7 @@ async def read_soforler(
         raise HTTPException(status_code=500, detail="Liste alınırken hata oluştu")
 
 
-@router.get("/fleet-stats")
+@router.get("/fleet-stats", response_model=DriverFleetStatsResponse)
 async def get_driver_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
@@ -171,7 +185,12 @@ async def create_sofor(
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 
 
-@router.get("/excel/template")
+@router.get(
+    "/excel/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def download_template(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -186,7 +205,12 @@ async def download_template(
     )
 
 
-@router.get("/excel/export")
+@router.get(
+    "/excel/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_drivers(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     service: SoforService = Depends(get_sofor_service),
@@ -248,7 +272,7 @@ async def export_drivers(
         raise HTTPException(status_code=500, detail="Excel oluşturulurken hata oluştu")
 
 
-@router.post("/excel/upload")
+@router.post("/excel/upload", response_model=UploadResultResponse)
 async def upload_drivers(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     file: UploadFile = File(...),

@@ -41,7 +41,7 @@ from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import FuelStatsResponse
+from app.schemas.api_responses import EXCEL_XLSX_RESPONSES, FuelStatsResponse
 from app.schemas.yakit import (
     FuelDocumentItem,
     FuelDocumentList,
@@ -362,7 +362,12 @@ async def delete_yakit(
         raise HTTPException(status_code=500, detail="Silme hatası")
 
 
-@router.get("/excel/export")
+@router.get(
+    "/excel/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_yakit_alimlari(
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
@@ -408,7 +413,12 @@ async def export_yakit_alimlari(
         raise HTTPException(status_code=500, detail="Excel oluşturulurken hata oluştu")
 
 
-@router.get("/excel/template")
+@router.get(
+    "/excel/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_fuel_excel_template(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):

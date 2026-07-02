@@ -1,6 +1,6 @@
 from typing import Annotated, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
 
 from app.api.deps import (
@@ -15,6 +15,12 @@ from app.core.services.dorse_service import DorseService
 from app.database.models import Dorse, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    DorseImportResult,
+    DorseInspectionAlertsResponse,
+    FleetStatsResponse,
+)
 from app.schemas.base import ResponseMeta, StandardResponse
 from app.schemas.dorse import DorseCreate, DorseResponse, DorseUpdate
 
@@ -53,7 +59,7 @@ async def read_dorseler(
         raise HTTPException(status_code=500, detail="Liste alınırken hata oluştu")
 
 
-@router.get("/fleet-stats")
+@router.get("/fleet-stats", response_model=FleetStatsResponse)
 async def get_dorse_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
@@ -81,7 +87,7 @@ async def get_dorse_fleet_stats(
     }
 
 
-@router.get("/inspection-alerts")
+@router.get("/inspection-alerts", response_model=DorseInspectionAlertsResponse)
 async def get_dorse_inspection_alerts(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     db: SessionDep,
@@ -183,7 +189,12 @@ async def create_dorse(
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 
 
-@router.get("/export")
+@router.get(
+    "/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_trailers(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     service: DorseService = Depends(get_dorse_service),
@@ -199,7 +210,12 @@ async def export_trailers(
     )
 
 
-@router.get("/template")
+@router.get(
+    "/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_trailer_template(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     service: DorseService = Depends(get_dorse_service),
@@ -237,7 +253,7 @@ def _validate_excel_upload(file: UploadFile) -> None:
         )
 
 
-@router.post("/import")
+@router.post("/import", response_model=StandardResponse[DorseImportResult])
 async def import_trailers(
     file: UploadFile,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],

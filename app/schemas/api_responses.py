@@ -421,3 +421,426 @@ class RouteAnalysisResponse(RouteInfoResponse):
         if v is None or (isinstance(v, str) and not v.strip()):
             return None
         return str(v).strip()
+
+
+# ─── Generic message responses ──────────────────────────────────────────────
+# Tier E madde 33: shared shapes for the many endpoints that just return
+# {"detail": "..."} — reused instead of a bespoke schema per endpoint.
+
+
+class MessageResponse(BaseModel):
+    """Plain `{"detail": "..."}` acknowledgement."""
+
+    detail: str
+
+
+class MessageWithWarningResponse(MessageResponse):
+    """Same as `MessageResponse`, plus an optional non-fatal warning
+    (e.g. auth logout when token-blacklisting failed but logout still
+    succeeded)."""
+
+    warning: Optional[str] = None
+
+
+class SuccessCountResponse(BaseModel):
+    """`{"success": bool, "message": str}` acknowledgement, optionally with
+    a count of affected rows."""
+
+    success: bool
+    message: str
+    count: Optional[int] = None
+
+
+class ImportResultResponse(BaseModel):
+    """Shared shape for Excel/bulk-import endpoints:
+    `{"count": int, "errors": [str, ...]}`."""
+
+    count: int
+    errors: List[str] = Field(default_factory=list)
+
+
+class DeleteResultResponse(BaseModel):
+    """Shared shape for single-row delete endpoints that report whether the
+    row was hard- or soft-deleted."""
+
+    success: bool
+    deleted_id: int
+    mode: str = Field(..., description="Hard | Soft")
+
+
+# ─── Locations ───────────────────────────────────────────────────────────────
+
+
+class LocationStatsData(BaseModel):
+    total: int
+    analyzed: int
+    stale: int
+    avg_distance_km: float
+    high_difficulty: int
+
+
+class LocationStatsResponse(BaseModel):
+    status: str
+    data: LocationStatsData
+
+
+class StaleLocationItem(BaseModel):
+    id: int
+    cikis_yeri: str
+    varis_yeri: str
+    mesafe_km: Optional[float] = None
+    zorluk: Optional[str] = None
+    last_api_call: Optional[datetime] = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+class StaleLocationsResponse(BaseModel):
+    status: str
+    data: List[StaleLocationItem]
+    threshold_days: int
+
+
+class RouteAnalyzeResponse(BaseModel):
+    success: bool
+    api_mesafe_km: Optional[float] = None
+    api_sure_saat: Optional[float] = None
+    ascent_m: Optional[float] = None
+    descent_m: Optional[float] = None
+    otoban_mesafe_km: Optional[float] = None
+    sehir_ici_mesafe_km: Optional[float] = None
+    source: Optional[str] = None
+    is_corrected: bool = False
+    correction_reason: Optional[str] = None
+    route_analysis: Optional[Any] = None
+    elevation_profile: List[Any] = Field(default_factory=list)
+
+
+# ─── Weather ─────────────────────────────────────────────────────────────────
+
+
+class WeatherSummary(BaseModel):
+    avg_temperature: float
+    avg_precipitation: float
+    avg_wind_speed: float
+
+
+class TripWeatherImpactResponse(BaseModel):
+    success: bool
+    weather_summary: WeatherSummary
+    fuel_impact_factor: float
+    fuel_impact_percent: float
+    conditions: List[str]
+    recommendation: str
+
+
+class UploadResultResponse(BaseModel):
+    """Shared shape for Excel-upload endpoints:
+    `{"success": bool, "message": str, "errors": [str, ...]}`."""
+
+    success: bool
+    message: str
+    errors: List[str] = Field(default_factory=list)
+
+
+# ─── Fleet (vehicles / trailers) ────────────────────────────────────────────
+# Identical shapes reused by vehicles.py and trailers.py — CLAUDE.md already
+# documents these two files as near-duplicates of each other.
+
+
+class FleetStatsResponse(BaseModel):
+    total: int
+    active: int
+    inspection_expiring: int
+    inspection_overdue: int
+
+
+class InspectionAlertItem(BaseModel):
+    id: int
+    plaka: str
+    marka: Optional[str] = None
+    model: Optional[str] = None
+    yil: Optional[int] = None
+    muayene_tarihi: Optional[str] = None
+    days_remaining: Optional[int] = None
+
+
+class InspectionAlertsResponse(BaseModel):
+    expiring: List[InspectionAlertItem]
+    overdue: List[InspectionAlertItem]
+    within_days: int
+
+
+class FleetEventItem(BaseModel):
+    id: int
+    event_type: str
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    triggered_by: Optional[str] = None
+    details: Optional[Any] = None
+    created_at: Optional[str] = None
+
+
+class DriverFleetStatsResponse(BaseModel):
+    total: int
+    active: int
+
+
+class DorseInspectionAlertItem(BaseModel):
+    id: int
+    plaka: str
+    marka: Optional[str] = None
+    tipi: Optional[str] = None
+    yil: Optional[int] = None
+    muayene_tarihi: Optional[str] = None
+    days_remaining: Optional[int] = None
+
+
+class DorseInspectionAlertsResponse(BaseModel):
+    expiring: List[DorseInspectionAlertItem]
+    overdue: List[DorseInspectionAlertItem]
+    within_days: int
+
+
+class DorseImportResult(BaseModel):
+    imported: int
+    errors: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# ─── Async background job polling ───────────────────────────────────────────
+# See CLAUDE.md "Async job pattern" — shared by any endpoint polling
+# BackgroundJobManager (e.g. trips.get_task_status).
+
+
+class TaskStatusResponse(BaseModel):
+    task_id: str
+    status: str = Field(..., description="PROCESSING | SUCCESS | FAILED")
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    timestamp: Optional[str] = None
+
+
+class TripTimelineResponse(BaseModel):
+    items: List[Dict[str, Any]]
+
+
+class FuelPerformanceKpis(BaseModel):
+    mae: float
+    rmse: float
+    total_compared: int
+    high_deviation_ratio: float
+
+
+class FuelPerformanceTrendPoint(BaseModel):
+    week: str
+    avg_consumption: float
+    count: int
+
+
+class FuelPerformanceDistributionBucket(BaseModel):
+    range: str
+    count: int
+
+
+class FuelPerformanceOutlier(BaseModel):
+    sefer_id: int
+    tarih: Optional[str] = None
+    actual: float
+    predicted: float
+    deviation_pct: float
+
+
+class FuelPerformanceAnalyticsResponse(BaseModel):
+    kpis: FuelPerformanceKpis
+    trend: List[FuelPerformanceTrendPoint]
+    distribution: List[FuelPerformanceDistributionBucket]
+    outliers: List[FuelPerformanceOutlier]
+    low_data: bool
+
+
+# ─── Predictions (time-series / ensemble / XAI) ────────────────────────────
+
+
+class TrendAnalysisResponse(BaseModel):
+    success: bool
+    trend: str = Field(..., description="decreasing | increasing | stable")
+    trend_tr: str
+    slope: float
+    current_avg: float
+    previous_avg: Optional[float] = None
+    moving_average_7: List[float]
+    daily_values: List[float]
+    daily_total_values: List[float]
+    dates: List[Optional[str]]
+    days_analyzed: int
+
+
+class TimeSeriesStatusResponse(BaseModel):
+    is_trained: bool
+    training_epochs: Optional[int] = None
+    last_loss: Optional[float] = None
+    n_training_samples: Optional[int] = None
+    train_time_s: Optional[float] = None
+    bilstm_mae: Optional[float] = None
+    tcn_mae: Optional[float] = None
+    torch_available: bool
+    deep_learning_active: bool
+    min_days_for_deep: Optional[int] = None
+
+
+class EnsembleModelFlags(BaseModel):
+    physics: bool
+    lightgbm: bool
+    xgboost: bool
+    gradient_boosting: bool
+    random_forest: bool
+
+
+class EnsembleStatusResponse(BaseModel):
+    models: EnsembleModelFlags
+    weights: Dict[str, float]
+    sklearn_available: bool
+    lightgbm_available: bool
+    xgboost_available: bool
+    total_models: int
+
+
+class ExplainPredictionResponse(BaseModel):
+    prediction: float
+    unit: str
+    contributions: Dict[str, float]
+    confidence: float
+
+
+# ─── Cost analyzer ───────────────────────────────────────────────────────────
+
+
+class CostTrendPoint(BaseModel):
+    month: int
+    year: int
+    label: str
+    fuel_cost: float
+    fuel_liters: float
+    trip_count: int
+    total_distance: float
+    cost_per_km: float
+
+
+class VehicleCostComparisonItem(BaseModel):
+    arac_id: int
+    plaka: Optional[str] = None
+    fuel_cost: Optional[float] = None
+    total_distance: Optional[float] = None
+    cost_per_km: Optional[float] = None
+    avg_consumption: Optional[float] = None
+    unavailable: Optional[bool] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None
+
+
+# ─── AI chat/status ──────────────────────────────────────────────────────────
+
+
+class AiProgressResponse(BaseModel):
+    status: str = Field(..., description="ready | loading | error | offline")
+    pending_jobs: int
+
+
+class AiStatusResponse(BaseModel):
+    is_ready: bool
+    progress: AiProgressResponse
+
+
+class AiChatResponse(BaseModel):
+    response: str
+    timestamp: str
+
+
+# ─── Admin imports ───────────────────────────────────────────────────────────
+
+
+class ImportPreviewResponse(BaseModel):
+    filename: Optional[str] = None
+    aktarim_tipi: str
+    headers: List[str]
+    total_rows: int
+    preview: List[Dict[str, Any]]
+
+
+class ImportCommitResponse(BaseModel):
+    job_id: int
+    basarili: int
+    hatali: int
+    errors: Dict[str, str] = Field(default_factory=dict)
+
+
+class BackfillTriggerResponse(BaseModel):
+    status: str = Field(..., description="PROCESSING | SUCCESS | FAILED")
+    task_id: str
+
+
+class SuccessOnlyResponse(BaseModel):
+    """Bare `{"success": bool}` acknowledgement."""
+
+    success: bool
+
+
+class TraceChainResponse(BaseModel):
+    """Combined error_events + audit_log rows for one trace_id (debugging)."""
+
+    errors: List[Dict[str, Any]]
+    audit: List[Dict[str, Any]]
+    trace_id: str
+    counts: Dict[str, int]
+    hint: Optional[str] = None
+
+
+class SseTokenResponse(BaseModel):
+    token: str
+    expires_in: int
+
+
+class CoachingSnapshotResponse(BaseModel):
+    ad_soyad: str
+    skor: float
+    headline: str
+    top_suggestion: Optional[str] = None
+    priority: str
+    insights_count: int
+    source: str
+
+
+# ─── Binary/stream media-type documentation ────────────────────────────────
+# Tier E madde 33: these endpoints genuinely return non-JSON bodies (Excel/
+# PDF/ICS files, SSE streams) — a Pydantic response_model would be wrong for
+# them. FastAPI's `responses={...}` param still lets the OpenAPI schema
+# declare the real content-type instead of defaulting to nothing, so
+# generated SDKs know to treat these as binary/blob/stream rather than
+# `unknown`.
+
+EXCEL_XLSX_RESPONSES: Dict[Union[int, str], Dict[str, Any]] = {
+    200: {
+        "content": {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {}
+        },
+        "description": "Excel (.xlsx) dosyası",
+    }
+}
+
+PDF_RESPONSES: Dict[Union[int, str], Dict[str, Any]] = {
+    200: {"content": {"application/pdf": {}}, "description": "PDF dosyası"}
+}
+
+ICS_RESPONSES: Dict[Union[int, str], Dict[str, Any]] = {
+    200: {
+        "content": {"text/calendar; charset=utf-8": {}},
+        "description": "iCalendar (.ics) dosyası",
+    }
+}
+
+SSE_RESPONSES: Dict[Union[int, str], Dict[str, Any]] = {
+    200: {
+        "content": {"text/event-stream": {}},
+        "description": "Server-Sent Events akışı",
+    }
+}

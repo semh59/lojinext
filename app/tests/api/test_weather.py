@@ -63,11 +63,21 @@ async def test_get_weather_current_conditions(
     from app.core.services.weather_service import WeatherService, get_weather_service
     from app.main import app
 
+    # Tier E madde 33: shape matches WeatherService.get_trip_impact_analysis's
+    # real success return dict — endpoint now has
+    # response_model=TripWeatherImpactResponse.
     mock_svc = AsyncMock(spec=WeatherService)
     mock_svc.get_trip_impact_analysis = AsyncMock(
         return_value={
             "success": True,
+            "weather_summary": {
+                "avg_temperature": 22.0,
+                "avg_precipitation": 0.0,
+                "avg_wind_speed": 15.0,
+            },
             "fuel_impact_factor": 1.05,
+            "fuel_impact_percent": 5.0,
+            "conditions": ["Mild headwind"],
             "recommendation": "Mild headwind.",
         }
     )

@@ -14,12 +14,17 @@ from app.infrastructure.background.job_manager import (
     BackgroundJobManager,
 )
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.api_responses import BackfillTriggerResponse
 
 logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.post("/predictions/backfill", status_code=202)
+@router.post(
+    "/predictions/backfill",
+    status_code=202,
+    response_model=BackfillTriggerResponse,
+)
 async def trigger_prediction_backfill(
     limit: int = Query(50, ge=1, le=500),
     admin: Kullanici = Depends(get_current_active_admin),

@@ -332,9 +332,23 @@ async def test_get_trip_stats_unexpected_error(async_client, admin_auth_headers)
 @pytest.mark.asyncio
 async def test_fuel_performance_success(async_client, admin_auth_headers):
     """GET /analytics/fuel-performance → 200 (lines 263-271)."""
+    # Tier E madde 33: shape matches
+    # SeferRepository.get_fuel_performance_analytics's real return dict — the
+    # endpoint now has response_model=FuelPerformanceAnalyticsResponse.
     mock_svc = AsyncMock()
     mock_svc.get_fuel_performance_analytics = AsyncMock(
-        return_value={"trips": [], "summary": {}}
+        return_value={
+            "kpis": {
+                "mae": 1.2,
+                "rmse": 1.5,
+                "total_compared": 10,
+                "high_deviation_ratio": 0.1,
+            },
+            "trend": [],
+            "distribution": [],
+            "outliers": [],
+            "low_data": False,
+        }
     )
     with _override_sefer_service(mock_svc):
         resp = await async_client.get(

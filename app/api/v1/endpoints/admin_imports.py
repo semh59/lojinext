@@ -21,7 +21,12 @@ from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.security.permission_checker import require_yetki
-from app.schemas.api_responses import ImportHistoryItem
+from app.schemas.api_responses import (
+    ImportCommitResponse,
+    ImportHistoryItem,
+    ImportPreviewResponse,
+    SuccessCountResponse,
+)
 
 router = APIRouter()
 # Removed global instantiation to support proper DI
@@ -35,6 +40,7 @@ class MappingData(BaseModel):
     "/preview",
     summary="İçeri Aktarım Önizleme",
     dependencies=[Depends(require_yetki("import_goruntule"))],
+    response_model=ImportPreviewResponse,
 )
 async def preview_import(
     file: UploadFile = File(...),
@@ -57,6 +63,7 @@ async def preview_import(
     "/commit",
     summary="İçeri Aktarım İşlemini Başlat",
     dependencies=[Depends(require_yetki(["import_rollback", "all", "*"]))],
+    response_model=ImportCommitResponse,
 )
 async def commit_import(
     file: UploadFile = File(...),
@@ -96,6 +103,7 @@ async def commit_import(
     "/{job_id}/rollback",
     summary="Aktarım İşlemini Geri Al",
     dependencies=[Depends(require_yetki(["import_rollback", "all", "*"]))],
+    response_model=SuccessCountResponse,
 )
 @limiter.limit("10/day")
 async def rollback_import(

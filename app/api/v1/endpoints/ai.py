@@ -8,6 +8,11 @@ from sqlalchemy import text
 from app.api.deps import SessionDep, get_current_active_user
 from app.core.services.ai_service import get_ai_service
 from app.database.models import Kullanici
+from app.schemas.api_responses import (
+    AiChatResponse,
+    AiProgressResponse,
+    AiStatusResponse,
+)
 
 router = APIRouter()
 
@@ -59,7 +64,7 @@ class ChatRequest(BaseModel):
     )
 
 
-@router.get("/progress")
+@router.get("/progress", response_model=AiProgressResponse)
 async def get_ai_model_progress(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -67,7 +72,7 @@ async def get_ai_model_progress(
     return get_ai_service().get_progress()
 
 
-@router.get("/status")
+@router.get("/status", response_model=AiStatusResponse)
 async def get_ai_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -76,7 +81,7 @@ async def get_ai_status(
     return {"is_ready": progress["status"] == "ready", "progress": progress}
 
 
-@router.post("/chat")
+@router.post("/chat", response_model=AiChatResponse)
 async def chat_with_ai(
     request: ChatRequest,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],

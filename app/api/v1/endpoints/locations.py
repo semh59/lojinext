@@ -5,7 +5,7 @@ Location and route management endpoints.
 from typing import Annotated, Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -25,7 +25,15 @@ from app.database.models import Kullanici, Lokasyon
 from app.infrastructure.audit import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import RouteInfoResponse
+from app.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    DeleteResultResponse,
+    ImportResultResponse,
+    LocationStatsResponse,
+    RouteAnalyzeResponse,
+    RouteInfoResponse,
+    StaleLocationsResponse,
+)
 from app.schemas.lokasyon import (
     GeocodeSuggestion,
     LokasyonCreate,
@@ -40,7 +48,14 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-@router.get("/stats")
+class RouteSearchResponse(BaseModel):
+    found: bool
+    count: int
+    location: Optional[LokasyonResponse] = None
+    routes: List[LokasyonResponse] = Field(default_factory=list)
+
+
+@router.get("/stats", response_model=LocationStatsResponse)
 async def get_location_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     uow: UOWDep,
@@ -76,7 +91,7 @@ async def get_location_stats(
     }
 
 
-@router.get("/stale")
+@router.get("/stale", response_model=StaleLocationsResponse)
 async def get_stale_locations(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     uow: UOWDep,
@@ -283,7 +298,7 @@ async def update_lokasyon(
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 
 
-@router.delete("/{lokasyon_id:int}")
+@router.delete("/{lokasyon_id:int}", response_model=DeleteResultResponse)
 async def delete_lokasyon(
     lokasyon_id: int,
     uow: UOWDep,
@@ -332,7 +347,7 @@ async def delete_lokasyon(
         raise HTTPException(status_code=500, detail="Sunucu hatası")
 
 
-@router.get("/search/by-route")
+@router.get("/search/by-route", response_model=RouteSearchResponse)
 async def search_by_route(
     uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
@@ -369,7 +384,7 @@ async def get_unique_names(
     return await uow.lokasyon_repo.get_benzersiz_lokasyonlar()
 
 
-@router.post("/{lokasyon_id:int}/analyze")
+@router.post("/{lokasyon_id:int}/analyze", response_model=RouteAnalyzeResponse)
 async def analyze_with_openroute(
     lokasyon_id: int,
     uow: UOWDep,
@@ -421,7 +436,12 @@ async def analyze_with_openroute(
         raise HTTPException(status_code=500, detail="Analiz başarısız")
 
 
-@router.get("/excel/template")
+@router.get(
+    "/excel/template",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def get_excel_template(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
@@ -438,7 +458,12 @@ async def get_excel_template(
     )
 
 
-@router.get("/excel/export")
+@router.get(
+    "/excel/export",
+    responses=EXCEL_XLSX_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
 async def export_locations(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     service: Annotated[Any, Depends(get_lokasyon_service)] = None,
@@ -481,7 +506,7 @@ def _validate_excel_upload(file: UploadFile) -> None:
         )
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=ImportResultResponse)
 async def upload_guzergahlar(
     file: UploadFile = File(...),
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)] = None,

@@ -19,6 +19,7 @@ from app.infrastructure.resilience.rate_limiter import (
 )
 from app.infrastructure.security import jwt_handler
 from app.infrastructure.security.token_blacklist import blacklist
+from app.schemas.api_responses import MessageResponse, MessageWithWarningResponse
 from app.schemas.user import KullaniciRead
 
 router = APIRouter()
@@ -140,7 +141,7 @@ async def login(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/logout")
+@router.post("/logout", response_model=MessageWithWarningResponse)
 async def logout(
     response: Response,
     current_user: Annotated[Kullanici, Depends(get_current_user)],
@@ -217,7 +218,7 @@ async def read_users_me(
     return current_user
 
 
-@router.post("/password-reset-request")
+@router.post("/password-reset-request", response_model=MessageResponse)
 @rate_limited("pw_reset_req", rate=2.0, period=60.0)
 async def request_password_reset(
     data: PasswordResetRequest, auth_service: AuthServiceDep
@@ -244,7 +245,7 @@ async def request_password_reset(
     }
 
 
-@router.post("/password-reset-confirm")
+@router.post("/password-reset-confirm", response_model=MessageResponse)
 @rate_limited("pw_reset_confirm", rate=5.0, period=60.0)
 async def confirm_password_reset(
     data: PasswordResetConfirm, auth_service: AuthServiceDep

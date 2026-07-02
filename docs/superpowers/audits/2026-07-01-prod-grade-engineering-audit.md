@@ -426,7 +426,9 @@ Bu, iki koşu arasında ortak kalan 2 test dışındaki TÜM dağınık başarı
 
 **28c (madde 9) — `PROCESSING/SUCCESS/FAILED` job durumu string'leri merkezi enum olmadan 6 yerde hardcoded.** **KAPANDI** — `import_service.py:304`'teki `"durum": "PROCESSING"` KASITLI dokunulmadı (import job'ının KENDİ farklı state machine'i: `PROCESSING`→`COMPLETED`/`COMPLETED_WITH_ERRORS`/`ROLLED_BACK`, BackgroundJobManager'ın public sözleşmesiyle karıştırılmamalı). `job_manager.py`'nin kendi iç vokabüleri (pending/running/completed/failed) de kasıtlı ayrı bırakıldı. Fix: `job_manager.py`'a `AsyncJobStatus(str, Enum)` eklendi, `admin_predictions.py`/`fuel.py`/`trips.py`'deki 6 kullanım noktası buna yönlendirildi. Yeni test (literal değerlerin sabit kaldığını kilitliyor) kırmızı-yeşil doğrulandı. 156 test regresyon PASS.
 
-**Regresyon (28a-c):** `ruff`+`mypy` temiz (baseline 7, aynı, değişen dosyalarda yok).
+**28d (madde 10) — Frontend silme-onay modalları kopya-yapıştır.** **KAPANDI** — `VehicleDeleteModal`/`TrailerDeleteModal` neredeyse birebir aynı overlay/ikon/başlık/buton markup'ını tutuyordu, `ui/Modal.tsx`'i (Tier A madde 25e'de focus-trap eklenen primitive) kullanmıyorlardı. Yeni paylaşılan `ui/DeleteConfirmModal.tsx` bileşeni (`ui/Modal.tsx`'i sarmalıyor) oluşturuldu, her iki domain modal buna delege eden ince sarmalayıcılara indirgendi — dış prop sözleşmeleri korundu, çağıran taraflar (`VehiclesModule.tsx`/`TrailersModule.tsx`) değişmedi. Her iki modal için önceden HİÇ test yoktu; 12 yeni test önce ESKİ implementasyona karşı çalıştırılıp baseline'landı, sonra refactor sonrası tekrar çalıştırıldı — 11/12 hemen yeşil, 1'i kasıtlı davranış iyileştirmesini (paylaşılan `Button`'ın `isLoading` konvansiyonu, etiketi silmek yerine yanında spinner göstermesi) yansıtacak şekilde güncellendi. 16/16 modal + 13/13 modül-tüketici + 1200/1203 tam frontend regresyonu (3 bilinen pre-existing hariç) PASS, `tsc`+`eslint` temiz.
+
+**Regresyon (28a-d):** `ruff`+`mypy` temiz (baseline 7, aynı, değişen dosyalarda yok).
 
 ---
 

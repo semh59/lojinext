@@ -11,6 +11,7 @@ import pytest
 from sqlalchemy import insert
 
 from app.database.models import Arac, Sefer, Sofor, YakitAlimi
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 
@@ -92,6 +93,7 @@ async def test_get_stats_excludes_deleted_seferler(db_session, yakit_repo):
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Test Şoför D",
+            ad_soyad_bidx=blind_index("Test Şoför D"),
             telefon="0532 000 00 04",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",

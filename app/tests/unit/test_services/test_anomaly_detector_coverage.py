@@ -24,6 +24,7 @@ from app.core.services.anomaly_detector import (
     SeverityEnum,
 )
 from app.database.models import Anomaly, Kullanici, Rol
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.unit
 
@@ -76,6 +77,7 @@ async def _seed_user(db_session, email: str = "anom-op@lojinext.test") -> int:
         await db_session.execute(
             insert(Kullanici).values(
                 email=email,
+                email_bidx=blind_index(email),
                 sifre_hash="x",
                 ad_soyad="Anom Op",
                 rol_id=rid,

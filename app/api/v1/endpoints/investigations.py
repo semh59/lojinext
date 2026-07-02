@@ -80,11 +80,15 @@ _LIST_SQL_BASE = """
 
 
 async def _fetch_investigation_dict(db, inv_id: int) -> Optional[Dict[str, Any]]:
+    from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
     sql = _LIST_SQL_BASE + " AND fi.id = :id LIMIT 1"
     row = (await db.execute(text(sql), {"id": inv_id})).mappings().one_or_none()
     if row is None:
         return None
-    return dict(row)
+    result = dict(row)
+    result["sofor_adi"] = decrypt_pii_or(result.get("sofor_adi"))
+    return result
 
 
 # ── Pattern detection (B.3 ile birleşik — route {id}'den önce) ───────────
@@ -133,6 +137,8 @@ async def get_patterns(
     """Aynı (sofor, arac) için son N gün ≥min_count soruşturma → pattern."""
     _ensure_enabled()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
     rows = (
         (
             await db.execute(
@@ -143,7 +149,12 @@ async def get_patterns(
         .mappings()
         .all()
     )
-    return [PatternMatch(**dict(r)) for r in rows]
+    result_rows = []
+    for r in rows:
+        d = dict(r)
+        d["sofor_adi"] = decrypt_pii_or(d.get("sofor_adi"))
+        result_rows.append(d)
+    return [PatternMatch(**d) for d in result_rows]
 
 
 # ── Liste ───────────────────────────────────────────────────────────────
@@ -178,8 +189,15 @@ async def list_investigations(
         params["assigned"] = assigned_to_user_id
     sql += " ORDER BY fi.created_at DESC LIMIT :limit"
 
+    from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
     rows = (await db.execute(text(sql), params)).mappings().all()
-    return [InvestigationResponse(**dict(r)) for r in rows]
+    result_rows = []
+    for r in rows:
+        d = dict(r)
+        d["sofor_adi"] = decrypt_pii_or(d.get("sofor_adi"))
+        result_rows.append(d)
+    return [InvestigationResponse(**d) for d in result_rows]
 
 
 # ── Tek kayıt ───────────────────────────────────────────────────────────
@@ -245,12 +263,14 @@ async def _resolve_alarm_context(
         WHERE a.id = :aid
         LIMIT 1
     """
+    from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
     row = (
         (await db.execute(text(sql), {"aid": int(anomaly.id)})).mappings().one_or_none()
     )
     if row is None:
         return None, None
-    return row.get("plaka"), row.get("sofor_adi")
+    return row.get("plaka"), decrypt_pii_or(row.get("sofor_adi"))
 
 
 async def _maybe_broadcast_alarm(

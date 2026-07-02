@@ -650,6 +650,7 @@ async def normal_auth_headers(db_session):
 
     from app.core.security import create_access_token, get_password_hash
     from app.database.models import Kullanici, Rol
+    from app.infrastructure.security.pii_encryption import blind_index
 
     # Ensure role exists
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -661,7 +662,9 @@ async def normal_auth_headers(db_session):
 
     # Ensure test user exists
     result = await db_session.execute(
-        select(Kullanici).where(Kullanici.email == "testuser@lojinext.test")
+        select(Kullanici).where(
+            Kullanici.email_bidx == blind_index("testuser@lojinext.test")
+        )
     )
     user = result.scalar_one_or_none()
 
@@ -692,6 +695,7 @@ async def no_trip_read_auth_headers(db_session):
 
     from app.core.security import create_access_token, get_password_hash
     from app.database.models import Kullanici, Rol
+    from app.infrastructure.security.pii_encryption import blind_index
 
     role_name = "kisitli"
     role_result = await db_session.execute(select(Rol).where(Rol.ad == role_name))
@@ -703,7 +707,7 @@ async def no_trip_read_auth_headers(db_session):
 
     user_email = "noread@lojinext.test"
     result = await db_session.execute(
-        select(Kullanici).where(Kullanici.email == user_email)
+        select(Kullanici).where(Kullanici.email_bidx == blind_index(user_email))
     )
     user = result.scalar_one_or_none()
     if not user:

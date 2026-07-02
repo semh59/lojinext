@@ -391,24 +391,53 @@ class ImportService:
                         # agresif_surus_faktoru NOT NULL + server_default YOK
                         # (yalnız Python default=1.0). Raw INSERT atlarsa NOT
                         # NULL ihlali → tüm surucu import 500. Teknik default 1.0.
+                        #
+                        # Tier E madde 26: ad_soyad/telefon şifreli-at-rest;
+                        # bu raw INSERT ORM TypeDecorator'ı atladığı için
+                        # şifreleme + blind-index + trigram burada elle
+                        # uygulanır (aksi halde ad_soyad_bidx UNIQUE NOT NULL
+                        # ihlali ile import çöker).
+                        from app.infrastructure.security.pii_encryption import (
+                            blind_index,
+                            encrypt_pii,
+                            trigram_blind_indexes,
+                        )
+
+                        raw_ad_soyad = vrow["ad_soyad"]
+                        raw_tel = vrow["tel"]
                         stmt = text(
                             "INSERT INTO soforler"
-                            " (ad_soyad, ehliyet_sinifi, telefon, aktif,"
-                            "  score, manual_score, hiz_disiplin_skoru,"
+                            " (ad_soyad, ad_soyad_bidx, ehliyet_sinifi, telefon,"
+                            "  aktif, score, manual_score, hiz_disiplin_skoru,"
                             "  agresif_surus_faktoru)"
-                            " VALUES (:ad_soyad, :ehliyet, :tel, TRUE,"
-                            "  1.0, 1.0, 1.0, 1.0)"
+                            " VALUES (:ad_soyad, :ad_soyad_bidx, :ehliyet, :tel,"
+                            "  TRUE, 1.0, 1.0, 1.0, 1.0)"
                             " RETURNING id"
                         )
                         result = await uow.session.execute(
                             stmt,
                             {
-                                "ad_soyad": vrow["ad_soyad"],
+                                "ad_soyad": encrypt_pii(raw_ad_soyad),
+                                "ad_soyad_bidx": blind_index(raw_ad_soyad),
                                 "ehliyet": vrow["ehliyet"],
-                                "tel": vrow["tel"],
+                                "tel": encrypt_pii(raw_tel) if raw_tel else None,
                             },
                         )
-                        inserted_ids.append(result.scalar())
+                        new_sofor_id = result.scalar()
+                        trigram_hashes = set(trigram_blind_indexes(raw_ad_soyad))
+                        if trigram_hashes:
+                            await uow.session.execute(
+                                text(
+                                    "INSERT INTO sofor_ad_soyad_trigram"
+                                    " (sofor_id, trigram_hash)"
+                                    " VALUES (:sofor_id, :trigram_hash)"
+                                ),
+                                [
+                                    {"sofor_id": new_sofor_id, "trigram_hash": h}
+                                    for h in trigram_hashes
+                                ],
+                            )
+                        inserted_ids.append(new_sofor_id)
                         basarili += 1
 
                     elif aktarim_tipi == "sefer":

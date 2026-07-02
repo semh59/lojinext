@@ -29,9 +29,12 @@ async def _seed_arac(db_session, plaka: str) -> int:
 
 
 async def _seed_sofor(db_session, ad: str) -> int:
-    return (
-        await db_session.execute(insert(Sofor).values(ad_soyad=ad))
-    ).inserted_primary_key[0]
+    # ORM constructor (not Core insert()) — Sofor.ad_soyad_bidx is derived via
+    # @validates on attribute assignment, which a Core insert() bypasses.
+    sofor = Sofor(ad_soyad=ad)
+    db_session.add(sofor)
+    await db_session.flush()
+    return sofor.id
 
 
 async def _seed_sefer(db_session, arac_id: int, sofor_id: int) -> int:

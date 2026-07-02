@@ -332,6 +332,7 @@ async def test_resolve_event_end_to_end(async_client, db_session):
     from app.core.security import create_access_token, get_password_hash
     from app.database.models import ErrorEvent as ErrorEventModel
     from app.database.models import Kullanici, Rol
+    from app.infrastructure.security.pii_encryption import blind_index
 
     # Create a real admin role + user so resolved_by FK is satisfied
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "admin"))
@@ -342,7 +343,9 @@ async def test_resolve_event_end_to_end(async_client, db_session):
         await db_session.flush()
 
     user_result = await db_session.execute(
-        select(Kullanici).where(Kullanici.email == "resolve_test_admin@lojinext.test")
+        select(Kullanici).where(
+            Kullanici.email_bidx == blind_index("resolve_test_admin@lojinext.test")
+        )
     )
     admin_user = user_result.scalar_one_or_none()
     if not admin_user:

@@ -16,6 +16,7 @@ import pytest
 from sqlalchemy import insert
 
 from app.database.models import Arac, Sefer, Sofor
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 
@@ -43,6 +44,7 @@ async def _create_sofor(db_session) -> int:
     result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Contract Driver",
+            ad_soyad_bidx=blind_index("Contract Driver"),
             telefon="0532 888 88 88",
             ise_baslama=date(2019, 1, 1),
             ehliyet_sinifi="E",

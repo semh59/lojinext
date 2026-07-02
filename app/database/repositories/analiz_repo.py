@@ -155,11 +155,16 @@ class AnalizRepository(BaseRepository[Sefer]):
             GROUP BY s.sofor_id, sf.ad_soyad
         """)  # noqa: E501
 
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
         session = self.session
         result = await session.execute(
             query, {"son_15_gun": son_15_gun, "son_30_gun": son_30_gun}
         )
-        return [dict(row._mapping) for row in result.fetchall()]
+        rows = [dict(row._mapping) for row in result.fetchall()]
+        for row in rows:
+            row["ad_soyad"] = decrypt_pii_or(row.get("ad_soyad"))
+        return rows
 
     async def get_filo_ortalama_tuketim(
         self,
@@ -504,8 +509,13 @@ class AnalizRepository(BaseRepository[Sefer]):
 
         sql += " ORDER BY a.tarih DESC"
 
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
         result = await self.session.execute(text(sql), params)
-        return [dict(row._mapping) for row in result.fetchall()]
+        rows = [dict(row._mapping) for row in result.fetchall()]
+        for row in rows:
+            row["sofor_adi"] = decrypt_pii_or(row.get("sofor_adi"))
+        return rows
 
     async def get_anomaly_by_id(self, anomaly_id: int) -> Optional[Anomaly]:
         """Tek anomali kaydını ORM nesnesi olarak getirir (acknowledge/resolve için)."""
@@ -701,12 +711,14 @@ class AnalizRepository(BaseRepository[Sefer]):
             LIMIT :limit
         """)
 
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
         session = self.session
         result = await session.execute(query, {"limit": limit})
         rows = result.fetchall()
 
         return {
-            "categories": [r.ad_soyad for r in rows],
+            "categories": [decrypt_pii_or(r.ad_soyad) for r in rows],
             "values": [round(r.avg_consumption, 2) for r in rows],
         }
 

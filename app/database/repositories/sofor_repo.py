@@ -21,7 +21,39 @@ class SoforRepository(BaseRepository[Sofor]):
     """Şoför veritabanı operasyonları (Async)"""
 
     model = Sofor
-    search_columns = ["ad_soyad", "telefon"]
+    # NOT search_columns — ad_soyad/telefon are encrypted at rest (Tier E
+    # madde 26), so a DB-level ILIKE/ORDER BY on them is meaningless
+    # (ciphertext has no relationship to plaintext content/order). Instead,
+    # _search_and_sort_soforler below fetches the (small — driver-roster
+    # sized, not sefer/yakit volume) filtered set and does search/sort in
+    # Python against the ORM-decrypted plaintext.
+
+    async def _search_and_sort_soforler(
+        self,
+        sadece_aktif: bool,
+        search: Optional[str],
+        filters: Optional[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        _filters = filters.copy() if filters else {}
+        if "is_deleted" not in _filters:
+            _filters["is_deleted"] = False
+
+        rows = await super().get_all(
+            filters=_filters,
+            limit=self.MAX_LIMIT,
+            offset=0,
+            include_inactive=not sadece_aktif,
+        )
+        if search:
+            needle = search.strip().upper()
+            rows = [
+                r
+                for r in rows
+                if needle in (r.get("ad_soyad") or "").upper()
+                or needle in (r.get("telefon") or "").upper()
+            ]
+        rows.sort(key=lambda r: (r.get("ad_soyad") or "").upper())
+        return rows
 
     async def get_all(  # type: ignore[override]
         self,
@@ -34,21 +66,8 @@ class SoforRepository(BaseRepository[Sofor]):
         """
         Tüm şoförleri getir (Arama ve Sayfalama destekli).
         """
-        _filters = filters.copy() if filters else {}
-        if search:
-            _filters["search"] = search
-
-        # Soft delete filtresi (varsayılan: silinmemişler)
-        if "is_deleted" not in _filters:
-            _filters["is_deleted"] = False
-
-        return await super().get_all(
-            filters=_filters,
-            order_by="ad_soyad",
-            limit=limit,
-            offset=offset,
-            include_inactive=not sadece_aktif,
-        )
+        rows = await self._search_and_sort_soforler(sadece_aktif, search, filters)
+        return rows[offset : offset + limit]
 
     async def count_all(
         self,
@@ -57,16 +76,8 @@ class SoforRepository(BaseRepository[Sofor]):
         filters: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Filtrelere uyan toplam şoför sayısını getir"""
-        _filters = filters.copy() if filters else {}
-        if search:
-            _filters["search"] = search
-        if "is_deleted" not in _filters:
-            _filters["is_deleted"] = False
-
-        return await super().count(
-            filters=_filters,
-            include_inactive=not sadece_aktif,
-        )
+        rows = await self._search_and_sort_soforler(sadece_aktif, search, filters)
+        return len(rows)
 
     async def count_active(self) -> int:
         """Aktif (soft-delete edilmemiş) şoför sayısı."""
@@ -99,11 +110,15 @@ class SoforRepository(BaseRepository[Sofor]):
         kilitleyecek bir şey olmadığından phantom-insert race'ini TEK BAŞINA
         önlemez.
         """
+        from app.infrastructure.security.pii_encryption import blind_index
+
         session = self.session
         # Fast-path: kayıt zaten varsa dostça hata. Mevcut satırı kilitler;
-        # yoksa no-op (asıl koruma UNIQUE constraint'te).
+        # yoksa no-op (asıl koruma UNIQUE(ad_soyad_bidx) constraint'te).
         stmt = (
-            select(self.model).where(self.model.ad_soyad == ad_soyad).with_for_update()
+            select(self.model)
+            .where(self.model.ad_soyad_bidx == blind_index(ad_soyad))
+            .with_for_update()
         )
         result = await session.execute(stmt)
         if result.scalar_one_or_none():
@@ -127,7 +142,42 @@ class SoforRepository(BaseRepository[Sofor]):
         )
         session.add(new_sofor)
         await session.flush()
+        await self._sync_trigrams(int(new_sofor.id), ad_soyad)
         return int(new_sofor.id)
+
+    async def _sync_trigrams(self, sofor_id: int, ad_soyad: str) -> None:
+        """Replace this driver's substring-search trigram rows (Tier E madde 26).
+
+        Called whenever ad_soyad is set/changed — the bidx column stays in
+        sync automatically via Sofor._sync_ad_soyad_bidx (@validates), but the
+        trigram child table is a genuine one-to-many write only this
+        repository knows to make.
+        """
+        from sqlalchemy import delete as sa_delete
+        from sqlalchemy import insert as sa_insert
+
+        from app.database.models import SoforAdSoyadTrigram
+        from app.infrastructure.security.pii_encryption import trigram_blind_indexes
+
+        session = self.session
+        await session.execute(
+            sa_delete(SoforAdSoyadTrigram).where(
+                SoforAdSoyadTrigram.sofor_id == sofor_id
+            )
+        )
+        hashes = set(trigram_blind_indexes(ad_soyad))
+        if hashes:
+            await session.execute(
+                sa_insert(SoforAdSoyadTrigram),
+                [{"sofor_id": sofor_id, "trigram_hash": h} for h in hashes],
+            )
+
+    async def update(self, id: int, **data: Any) -> bool:  # type: ignore[override]
+        """Şoför güncelle — ad_soyad değişirse trigram indeksini de yeniler."""
+        success = await super().update(id, **data)
+        if success and data.get("ad_soyad"):
+            await self._sync_trigrams(id, data["ad_soyad"])
+        return success
 
     async def get_sefer_stats(
         self,
@@ -178,7 +228,12 @@ class SoforRepository(BaseRepository[Sofor]):
             "LIMIT :limit OFFSET :offset"
         )
 
-        return await self.execute_query(query, params)
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
+        rows = await self.execute_query(query, params)
+        for row in rows:
+            row["ad_soyad"] = decrypt_pii_or(row.get("ad_soyad"))
+        return rows
 
     async def get_yakit_tuketimi(
         self, sofor_id: Optional[int] = None, limit: Optional[int] = None
@@ -211,7 +266,12 @@ class SoforRepository(BaseRepository[Sofor]):
             query += " LIMIT :limit"
             params["limit"] = limit
 
-        return await self.execute_query(query, params)
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
+        rows = await self.execute_query(query, params)
+        for row in rows:
+            row["ad_soyad"] = decrypt_pii_or(row.get("ad_soyad"))
+        return rows
 
     async def get_guzergah_performansi(self, sofor_id: int) -> List[Dict[str, Any]]:
         """
@@ -252,10 +312,13 @@ class SoforRepository(BaseRepository[Sofor]):
     async def get_by_name(
         self, ad_soyad: str, for_update: bool = False
     ) -> Optional[Dict[str, Any]]:
-        """İsim ile şoför getir (Performans için)"""
+        """İsim ile şoför getir (blind-index eşleşmesi, performans için)"""
+        from app.infrastructure.security.pii_encryption import blind_index
+
         session = self.session
         stmt = select(self.model).where(
-            self.model.ad_soyad == ad_soyad, self.model.is_deleted.is_(False)
+            self.model.ad_soyad_bidx == blind_index(ad_soyad),
+            self.model.is_deleted.is_(False),
         )
         if for_update:
             stmt = stmt.with_for_update()
@@ -269,9 +332,12 @@ class SoforRepository(BaseRepository[Sofor]):
 
     async def get_aktif_isimler(self) -> List[str]:
         """Aktif şoför isimlerini getir"""
-        query = "SELECT ad_soyad FROM soforler WHERE aktif = true AND is_deleted = false ORDER BY ad_soyad"
-        rows = await self.execute_query(query)
-        return [str(row["ad_soyad"]) for row in rows]
+        stmt = select(self.model.ad_soyad).where(
+            self.model.aktif.is_(True), self.model.is_deleted.is_(False)
+        )
+        result = await self.session.execute(stmt)
+        # scalars() applies EncryptedPII.process_result_value -> plaintext.
+        return sorted(result.scalars().all(), key=str.upper)
 
     async def get_driver_anomalies_count(
         self, sofor_id: int, days: int = 30
@@ -384,9 +450,14 @@ class SoforRepository(BaseRepository[Sofor]):
             ORDER BY recent_trip_count ASC, s.id DESC
             LIMIT :limit
         """
-        return await self.execute_query(
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
+        rows = await self.execute_query(
             query, {"trip_date": trip_date, "limit": int(limit)}
         )
+        for row in rows:
+            row["ad_soyad"] = decrypt_pii_or(row.get("ad_soyad"))
+        return rows
 
     async def get_by_ids(self, ids: List[int]) -> Dict[int, Sofor]:
         """Fetch multiple drivers by IDs in a single query (N+1 optimization)."""

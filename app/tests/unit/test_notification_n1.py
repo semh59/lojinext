@@ -14,6 +14,7 @@ import pytest
 from sqlalchemy import insert, select
 
 from app.database.models import BildirimGecmisi, BildirimKurali, Kullanici, Rol
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.asyncio
 
@@ -38,6 +39,7 @@ async def _seed_user(db_session, email: str, rol_id: int) -> int:
         await db_session.execute(
             insert(Kullanici).values(
                 email=email,
+                email_bidx=blind_index(email),
                 ad_soyad="N1 User",
                 sifre_hash="x",
                 rol_id=rol_id,

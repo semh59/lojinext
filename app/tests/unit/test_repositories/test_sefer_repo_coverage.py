@@ -215,12 +215,14 @@ class TestGetAll:
         repo._session.execute.assert_called_once()
 
     async def test_search_filter(self):
+        """search executes the driver-name trigram lookup (Tier E madde 26,
+        Sofor.ad_soyad is encrypted at rest) plus the main filtered SELECT."""
         repo = _make_repo()
         mock_result = _scalars_result([])
         repo._session.execute = AsyncMock(return_value=mock_result)
 
         await repo.get_all(search="Ankara")
-        repo._session.execute.assert_called_once()
+        assert repo._session.execute.call_count == 2
 
     async def test_durum_filter(self):
         repo = _make_repo()

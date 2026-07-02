@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: Optional[SecretStr] = None
     DEFAULT_ADMIN_PASSWORD: Optional[SecretStr] = None
 
+    # PII encryption-at-rest (Tier E madde 26) — Fernet key, also used as the
+    # HMAC key for blind-index/trigram-index lookups. Generate with
+    # `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`.
+    PII_ENCRYPTION_KEY: SecretStr
+
     # Database
     DATABASE_URL: str
     # Connection pool sizing (ARCH-005). Tune relative to PostgreSQL

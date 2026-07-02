@@ -137,20 +137,29 @@ async def test_get_all_existing_is_deleted_not_overridden():
 
 
 async def test_count_all_defaults():
-    """count_all with defaults calls execute and returns count."""
+    """count_all with defaults calls execute and returns len(rows).
+
+    Tier E madde 26: ad_soyad/telefon are encrypted at rest, so search/sort
+    can't happen in SQL anymore — count_all now fetches the (decrypted)
+    candidate rows via the same path as get_all and returns len().
+    """
     repo = _make_repo()
-    repo._session.execute = AsyncMock(return_value=_scalar_result(0))
+    repo._session.execute = AsyncMock(return_value=_scalars_all_result([]))
     result = await repo.count_all()
     assert result == 0
     repo._session.execute.assert_called_once()
 
 
 async def test_count_all_with_search():
-    """count_all with search executes filtered count."""
+    """count_all with search filters the fetched rows in Python and counts matches."""
     repo = _make_repo()
-    repo._session.execute = AsyncMock(return_value=_scalar_result(5))
+    rows = [
+        _make_sofor_obj(id=1, ad_soyad="Mehmet Kaya"),
+        _make_sofor_obj(id=2, ad_soyad="Ali Veli"),
+    ]
+    repo._session.execute = AsyncMock(return_value=_scalars_all_result(rows))
     result = await repo.count_all(search="Mehmet")
-    assert result == 5
+    assert result == 1
 
 
 # ---------------------------------------------------------------------------
@@ -399,12 +408,11 @@ async def test_get_by_name_for_update():
 
 
 async def test_get_aktif_isimler():
-    """get_aktif_isimler returns list of name strings."""
+    """get_aktif_isimler returns list of name strings, sorted (Python-side —
+    ad_soyad is encrypted at rest, DB-level ORDER BY is meaningless)."""
     session = AsyncMock()
     session.execute = AsyncMock(
-        return_value=_mappings_result(
-            [{"ad_soyad": "Ali Veli"}, {"ad_soyad": "Mehmet Kaya"}]
-        )
+        return_value=_scalars_all_result(["Mehmet Kaya", "Ali Veli"])
     )
     repo = _make_repo(session=session)
     result = await repo.get_aktif_isimler()

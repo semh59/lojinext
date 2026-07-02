@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.infrastructure.security.pii_encryption import blind_index
+
 pytestmark = pytest.mark.integration
 
 
@@ -34,6 +36,7 @@ async def test_predict_fuel_consumption_full_flow(
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Test Driver",
+            ad_soyad_bidx=blind_index("Test Driver"),
             telefon="0532 000 00 01",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -100,6 +103,7 @@ async def test_coaching_insights_real_flow(
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Coaching Test Driver",
+            ad_soyad_bidx=blind_index("Coaching Test Driver"),
             telefon="0532 111 11 11",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -169,6 +173,7 @@ async def test_coaching_recommendations(async_client, admin_auth_headers, db_ses
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Poor Driver",
+            ad_soyad_bidx=blind_index("Poor Driver"),
             telefon="0532 222 22 22",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",

@@ -20,6 +20,7 @@ from sqlalchemy import insert
 
 from app.core.security import create_access_token
 from app.database.models import Kullanici, Rol
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.unit
 
@@ -48,6 +49,7 @@ async def _seed_user(db_session, *, email, aktif=True, is_admin=False):
         await db_session.execute(
             insert(Kullanici).values(
                 email=email,
+                email_bidx=blind_index(email),
                 sifre_hash="x",
                 ad_soyad="Test User",
                 rol_id=rid,

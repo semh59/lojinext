@@ -13,6 +13,7 @@ from sqlalchemy import insert, select
 
 from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici, KullaniciAyari, Rol
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.unit
 
@@ -25,6 +26,7 @@ async def _seed_user(db_session) -> int:
         await db_session.execute(
             insert(Kullanici).values(
                 email="pref@lojinext.test",
+                email_bidx=blind_index("pref@lojinext.test"),
                 ad_soyad="Pref User",
                 sifre_hash="x",
                 rol_id=rid,

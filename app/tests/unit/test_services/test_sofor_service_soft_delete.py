@@ -14,6 +14,7 @@ from sqlalchemy import insert, select
 
 from app.core.services.sofor_service import SoforService
 from app.database.models import Sofor
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.unit
 
@@ -21,7 +22,11 @@ pytestmark = pytest.mark.unit
 async def _seed_sofor(db_session, ad_soyad: str, *, aktif: bool = True) -> int:
     res = await db_session.execute(
         insert(Sofor).values(
-            ad_soyad=ad_soyad, aktif=aktif, manual_score=1.0, score=1.0
+            ad_soyad=ad_soyad,
+            ad_soyad_bidx=blind_index(ad_soyad),
+            aktif=aktif,
+            manual_score=1.0,
+            score=1.0,
         )
     )
     await db_session.commit()

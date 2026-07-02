@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database.models import Arac, Sofor
 from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.security.pii_encryption import blind_index
 
 
 @pytest.mark.integration
@@ -40,6 +41,7 @@ async def test_uow_usable_after_integrity_error(db_session, sefer_repo):
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Test Şoför UoW",
+            ad_soyad_bidx=blind_index("Test Şoför UoW"),
             telefon="0532 000 00 05",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",

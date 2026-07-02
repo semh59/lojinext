@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import insert, text
 
 from app.database.models import BildirimGecmisi, Kullanici
+from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 
@@ -31,6 +32,7 @@ async def _create_user(db_session, email: str, rol_id: int) -> int:
     result = await db_session.execute(
         insert(Kullanici).values(
             email=email,
+            email_bidx=blind_index(email),
             ad_soyad="Test Kullanici",
             sifre_hash="$2b$12$fakehashfakehashfakeh.",
             rol_id=rol_id,

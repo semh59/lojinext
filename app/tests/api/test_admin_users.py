@@ -57,6 +57,7 @@ async def test_create_user_sets_olusturan_id(
     from sqlalchemy import select
 
     from app.database.models import Kullanici, Rol
+    from app.infrastructure.security.pii_encryption import blind_index
 
     result = await db_session.execute(select(Rol).limit(1))
     role = result.scalar_one_or_none()
@@ -79,7 +80,7 @@ async def test_create_user_sets_olusturan_id(
 
     # Verify row is in DB
     row = await db_session.execute(
-        select(Kullanici).where(Kullanici.email == payload["email"])
+        select(Kullanici).where(Kullanici.email_bidx == blind_index(payload["email"]))
     )
     user = row.scalar_one_or_none()
     assert user is not None

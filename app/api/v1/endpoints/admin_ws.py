@@ -143,10 +143,14 @@ async def _is_admin_email(email: str) -> bool:
         # which is what the WS ticket stores — match both forms.
         return True
     async with AsyncSessionLocal() as session:
+        from app.infrastructure.security.pii_encryption import blind_index
+
         result = await session.execute(
             select(Kullanici)
             .options(selectinload(Kullanici.rol))
-            .where(Kullanici.email == email, Kullanici.aktif.is_(True))
+            .where(
+                Kullanici.email_bidx == blind_index(email), Kullanici.aktif.is_(True)
+            )
         )
         user = result.scalar_one_or_none()
         if not user:

@@ -171,10 +171,15 @@ async def get_current_user(
             #   ROW MISSING (None)   → seed issue; fail in prod, warn in dev/test
             _db_down = False
             try:
+                from app.infrastructure.security.pii_encryption import blind_index
+
                 _res = await db.execute(
                     select(Kullanici)
                     .options(selectinload(Kullanici.rol))
-                    .where(Kullanici.email == settings.SUPER_ADMIN_USERNAME)
+                    .where(
+                        Kullanici.email_bidx
+                        == blind_index(settings.SUPER_ADMIN_USERNAME)
+                    )
                 )
                 real_admin = _res.scalar_one_or_none()
             except Exception as _e:
@@ -261,10 +266,12 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    from app.infrastructure.security.pii_encryption import blind_index
+
     result = await db.execute(
         select(Kullanici)
         .options(selectinload(Kullanici.rol))
-        .where(Kullanici.email == username)
+        .where(Kullanici.email_bidx == blind_index(username))
     )
     user = result.scalar_one_or_none()
 

@@ -14,6 +14,7 @@ from app.core.entities.models import SeferCreate, YakitAlimiCreate
 from app.core.services.sefer_service import get_sefer_service
 from app.core.services.yakit_service import get_yakit_service
 from app.database.repositories.sefer_repo import SeferRepository
+from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
 
 
 @pytest.mark.asyncio
@@ -47,13 +48,14 @@ async def test_create_and_retrieve_sefer(db_session):
     # Insert Driver
     sofor_res = await db_session.execute(
         text("""
-        INSERT INTO soforler (ad_soyad, telefon, ise_baslama, aktif, ehliyet_sinifi, score, manual_score, hiz_disiplin_skoru, agresif_surus_faktoru, notlar)
-        VALUES (:ad, :tel, :tarih, :aktif, :ehliyet, :score, :mscore, :hiz, :agresif, :notlar)
+        INSERT INTO soforler (ad_soyad, ad_soyad_bidx, telefon, ise_baslama, aktif, ehliyet_sinifi, score, manual_score, hiz_disiplin_skoru, agresif_surus_faktoru, notlar)
+        VALUES (:ad, :ad_bidx, :tel, :tarih, :aktif, :ehliyet, :score, :mscore, :hiz, :agresif, :notlar)
         RETURNING id
     """),  # noqa: E501
         {
-            "ad": sofor_ad,
-            "tel": "5551234567",
+            "ad": encrypt_pii(sofor_ad),
+            "ad_bidx": blind_index(sofor_ad),
+            "tel": encrypt_pii("5551234567"),
             "tarih": date(2024, 1, 1),
             "aktif": True,
             "ehliyet": "E",

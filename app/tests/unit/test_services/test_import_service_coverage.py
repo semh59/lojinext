@@ -407,11 +407,13 @@ class TestExecuteImport:
         assert result["basarili"] == 1
         db = real_master.db
         db.expire_all()
+        from app.infrastructure.security.pii_encryption import blind_index
+
         count = (
             await db.execute(
                 select(func.count())
                 .select_from(Sofor)
-                .where(Sofor.ad_soyad == "Yeni Surucu")
+                .where(Sofor.ad_soyad_bidx == blind_index("Yeni Surucu"))
             )
         ).scalar_one()
         assert count == 1

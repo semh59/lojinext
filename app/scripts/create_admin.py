@@ -10,6 +10,7 @@ from app.config import settings
 from app.core.security import get_password_hash
 from app.database.connection import AsyncSessionLocal
 from app.database.models import Kullanici, Rol
+from app.infrastructure.security.pii_encryption import blind_index
 
 
 async def create_user():
@@ -25,7 +26,7 @@ async def create_user():
             await db.flush()
 
         result = await db.execute(
-            select(Kullanici).where(Kullanici.email == admin_email)
+            select(Kullanici).where(Kullanici.email_bidx == blind_index(admin_email))
         )
         user = result.scalars().first()
 

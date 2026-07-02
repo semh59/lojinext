@@ -19,6 +19,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    TypeDecorator,
     UniqueConstraint,
     func,
     text,
@@ -42,6 +43,35 @@ from sqlalchemy.orm import (
 # LargeBinary so writes store the WKB bytes directly; no PostGIS required and
 # no DDL change (the column was already BYTEA).
 _LINESTRING_TYPE = LargeBinary()
+
+
+class EncryptedPII(TypeDecorator):
+    """Transparent Fernet encryption for PII columns (Tier E madde 26).
+
+    ORM reads/writes see plaintext (`.email`, `.ad_soyad` etc. behave as
+    normal Python str); the DB stores ciphertext only. Because Fernet is
+    randomized, this column can NEVER be used in an equality/ILIKE WHERE
+    clause or a UNIQUE constraint directly — pair it with a `_bidx` (blind
+    index) column (and a trigram-index table for substring search) for that.
+    Raw text() SQL bypasses this decorator entirely and sees ciphertext.
+    """
+
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        from app.infrastructure.security.pii_encryption import encrypt_pii
+
+        return encrypt_pii(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        from app.infrastructure.security.pii_encryption import decrypt_pii
+
+        return decrypt_pii(value)
 
 
 def get_utc_now(ctx=None, *args, **kwargs):
@@ -225,8 +255,17 @@ class Sofor(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    ad_soyad: Mapped[str] = mapped_column(String(100), unique=True, index=True)
-    telefon: Mapped[Optional[str]] = mapped_column(String(20))
+    # PII encryption-at-rest (Tier E madde 26): ad_soyad is encrypted at rest
+    # (EncryptedPII TypeDecorator — transparent Python-side plaintext).
+    # ad_soyad_bidx is the deterministic HMAC used for exact-match lookup /
+    # the UNIQUE constraint (plaintext UNIQUE is meaningless once encrypted —
+    # Fernet ciphertext is randomized). Substring search uses
+    # SoforAdSoyadTrigram instead of Postgres ILIKE.
+    ad_soyad: Mapped[str] = mapped_column(EncryptedPII)
+    ad_soyad_bidx: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True, server_default=""
+    )
+    telefon: Mapped[Optional[str]] = mapped_column(EncryptedPII)
     ise_baslama: Mapped[Optional[date]] = mapped_column(Date)
     ehliyet_sinifi: Mapped[str] = mapped_column(String(10), default="E")
 
@@ -266,6 +305,37 @@ class Sofor(Base):
     # Relationships
     seferler: Mapped[List["Sefer"]] = relationship(back_populates="sofor")
     belgeler: Mapped[List["SeferBelge"]] = relationship(back_populates="sofor")
+
+    @validates("ad_soyad")
+    def _sync_ad_soyad_bidx(self, key, value):
+        from app.infrastructure.security.pii_encryption import blind_index
+
+        self.ad_soyad_bidx = blind_index(value) if value else ""
+        return value
+
+
+class SoforAdSoyadTrigram(Base):
+    """Substring-search index for the encrypted Sofor.ad_soyad (Tier E madde 26).
+
+    One row per (sofor_id, 3-char HMAC trigram) pair — a name has several
+    trigrams, so this is a genuine one-to-many child table, not a scalar bidx
+    column. Populated/replaced by SoforRepository on create/update; queried
+    by trigram_hash to build a candidate set for a driver-name search term,
+    which the caller must then decrypt and re-verify (trigram hits are a
+    superset — collisions across different names are possible and expected).
+    """
+
+    __tablename__ = "sofor_ad_soyad_trigram"
+    __table_args__ = (
+        UniqueConstraint("sofor_id", "trigram_hash", name="uq_sofor_trigram"),
+        Index("ix_sofor_trigram_hash", "trigram_hash"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sofor_id: Mapped[int] = mapped_column(
+        ForeignKey("soforler.id", ondelete="CASCADE"), nullable=False
+    )
+    trigram_hash: Mapped[str] = mapped_column(CHAR(64), nullable=False)
 
 
 class SoforAdaptasyon(Base):
@@ -758,8 +828,15 @@ class Kullanici(Base):
     __tablename__ = "kullanicilar"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    ad_soyad: Mapped[str] = mapped_column(String(100), nullable=False)
+    # PII encryption-at-rest (Tier E madde 26): email is encrypted at rest;
+    # email_bidx is the deterministic HMAC used for login lookup and the
+    # UNIQUE constraint (see EncryptedPII docstring for why plaintext UNIQUE
+    # doesn't work once the column is randomized-encrypted).
+    email: Mapped[str] = mapped_column(EncryptedPII, nullable=False)
+    email_bidx: Mapped[str] = mapped_column(
+        String(64), unique=True, index=True, server_default=""
+    )
+    ad_soyad: Mapped[str] = mapped_column(EncryptedPII, nullable=False)
     sifre_hash: Mapped[str] = mapped_column(Text, nullable=False)
     rol_id: Mapped[int] = mapped_column(ForeignKey("roller.id"), nullable=False)
     aktif: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -809,6 +886,13 @@ class Kullanici(Base):
     ayarlar: Mapped[List["KullaniciAyari"]] = relationship(
         back_populates="kullanici", cascade="all, delete-orphan"
     )
+
+    @validates("email")
+    def _sync_email_bidx(self, key, value):
+        from app.infrastructure.security.pii_encryption import blind_index
+
+        self.email_bidx = blind_index(value) if value else ""
+        return value
 
 
 class KullaniciOturumu(Base):

@@ -11,6 +11,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+
 pytestmark = pytest.mark.integration
 
 
@@ -79,15 +81,16 @@ async def test_check_sefer_mesafe_positive(db_session):
     await db_session.execute(
         text(
             "INSERT INTO soforler "
-            "(ad_soyad, ehliyet_sinifi, score, manual_score, "
+            "(ad_soyad, ad_soyad_bidx, ehliyet_sinifi, score, manual_score, "
             " hiz_disiplin_skoru, agresif_surus_faktoru, aktif) "
-            "VALUES (:name, 'E', 1.0, 1.0, 1.0, 1.0, TRUE)"
+            "VALUES (:name, :name_bidx, 'E', 1.0, 1.0, 1.0, 1.0, TRUE)"
         ),
-        {"name": name},
+        {"name": encrypt_pii(name), "name_bidx": blind_index(name)},
     )
     await db_session.flush()
     result = await db_session.execute(
-        text("SELECT id FROM soforler WHERE ad_soyad = :n"), {"n": name}
+        text("SELECT id FROM soforler WHERE ad_soyad_bidx = :n"),
+        {"n": blind_index(name)},
     )
     sofor_id = result.scalar_one()
 

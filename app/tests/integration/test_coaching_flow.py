@@ -5,6 +5,8 @@ from datetime import date
 import pytest
 from sqlalchemy import insert
 
+from app.infrastructure.security.pii_encryption import blind_index
+
 pytestmark = pytest.mark.integration
 
 
@@ -19,6 +21,7 @@ async def test_get_driver_coaching_insights(
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Test Driver Coaching",
+            ad_soyad_bidx=blind_index("Test Driver Coaching"),
             telefon="0532 333 33 33",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -48,6 +51,7 @@ async def test_coaching_weekly_digest(async_client, admin_auth_headers, db_sessi
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Weekly Digest Driver",
+            ad_soyad_bidx=blind_index("Weekly Digest Driver"),
             telefon="0532 444 44 44",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -79,6 +83,7 @@ async def test_coaching_performance_trends(
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Trend Analysis Driver",
+            ad_soyad_bidx=blind_index("Trend Analysis Driver"),
             telefon="0532 555 55 55",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -108,6 +113,7 @@ async def test_coaching_goals_setting(async_client, admin_auth_headers, db_sessi
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Goals Driver",
+            ad_soyad_bidx=blind_index("Goals Driver"),
             telefon="0532 666 66 66",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",
@@ -142,6 +148,7 @@ async def test_coaching_requires_auth(async_client, db_session):
     sofor_result = await db_session.execute(
         insert(Sofor).values(
             ad_soyad="Auth Test",
+            ad_soyad_bidx=blind_index("Auth Test"),
             telefon="0532 777 77 77",
             ise_baslama=date(2020, 1, 1),
             ehliyet_sinifi="E",

@@ -10,6 +10,8 @@ get_trip_stats() legacy Türkçe girişi normalize_sefer_status ile canonical'a
 import pytest
 from sqlalchemy import text
 
+from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+
 
 @pytest.mark.integration
 async def test_get_trip_stats_respects_durum_filter(db_session, sefer_repo):
@@ -33,10 +35,15 @@ async def test_get_trip_stats_respects_durum_filter(db_session, sefer_repo):
     # Driver oluştur
     driver = await db_session.execute(
         text(
-            "INSERT INTO soforler (ad_soyad, telefon, ise_baslama, ehliyet_sinifi, aktif, score, manual_score, hiz_disiplin_skoru, agresif_surus_faktoru) "  # noqa: E501
-            "VALUES ('Test', '5551234567', '2020-01-01', 'E', true, 1.0, 1.0, 1.0, 1.0) "
+            "INSERT INTO soforler (ad_soyad, ad_soyad_bidx, telefon, ise_baslama, ehliyet_sinifi, aktif, score, manual_score, hiz_disiplin_skoru, agresif_surus_faktoru) "  # noqa: E501
+            "VALUES (:ad, :ad_bidx, :tel, '2020-01-01', 'E', true, 1.0, 1.0, 1.0, 1.0) "
             "RETURNING id"
-        )
+        ),
+        {
+            "ad": encrypt_pii("Test"),
+            "ad_bidx": blind_index("Test"),
+            "tel": encrypt_pii("5551234567"),
+        },
     )
     driver_id = driver.scalar()
 

@@ -14,11 +14,13 @@ class KullaniciRepository(BaseRepository[Kullanici]):
     model = Kullanici
 
     async def get_by_email(self, email: str) -> Optional[Kullanici]:
-        """Email ile kullanıcı bul. Rol ilişkisi eager yüklenir."""
+        """Email ile kullanıcı bul (blind-index eşleşmesi). Rol ilişkisi eager yüklenir."""
+        from app.infrastructure.security.pii_encryption import blind_index
+
         stmt = (
             select(self.model)
             .options(selectinload(self.model.rol))
-            .where(self.model.email == email)
+            .where(self.model.email_bidx == blind_index(email))
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()

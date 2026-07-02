@@ -14,7 +14,7 @@ from app.core.utils.sefer_status import (
     normalize_sefer_status,
 )
 from app.database.base_repository import BaseRepository
-from app.database.models import Arac, Sefer, Sofor
+from app.database.models import Arac, Sefer, Sofor, SoforAdSoyadTrigram
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -110,10 +110,11 @@ class SeferRepository(BaseRepository[Sefer]):
 
         if search:
             search_like = f"%{search}%"
+            driver_ids = await self._search_driver_ids_by_name(search)
             stmt = stmt.where(
                 or_(
                     Sefer.arac.has(Arac.plaka.ilike(search_like)),
-                    Sefer.sofor.has(Sofor.ad_soyad.ilike(search_like)),
+                    Sefer.sofor_id.in_(driver_ids),
                     Sefer.cikis_yeri.ilike(search_like),
                     Sefer.varis_yeri.ilike(search_like),
                     Sefer.sefer_no.ilike(search_like),
@@ -767,7 +768,12 @@ class SeferRepository(BaseRepository[Sefer]):
             WHERE {where}
             ORDER BY s.tarih DESC
         """
-        return await self.execute_query(sql, params)
+        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+
+        rows = await self.execute_query(sql, params)
+        for row in rows:
+            row["sofor_adi"] = decrypt_pii_or(row.get("sofor_adi"))
+        return rows
 
     async def set_onay_durumu(
         self,
@@ -1004,6 +1010,41 @@ class SeferRepository(BaseRepository[Sefer]):
             sid = int(r["sofor_id"])
             result.setdefault(sid, []).append(dict(r))
         return result
+
+    async def _search_driver_ids_by_name(self, search: str) -> List[int]:
+        """Substring-search candidate driver IDs (Tier E madde 26).
+
+        Sofor.ad_soyad is encrypted at rest, so the general trip search box
+        can't ILIKE it directly. Trigram-hash membership gives a candidate
+        superset (collisions possible); each candidate's real name is then
+        decrypted and re-checked for the actual substring before it's used
+        to filter Sefer.sofor_id.
+        """
+        from app.infrastructure.security.pii_encryption import trigram_blind_indexes
+
+        hashes = trigram_blind_indexes(search)
+        if not hashes:
+            return []
+        candidate_ids = (
+            (
+                await self.session.execute(
+                    select(SoforAdSoyadTrigram.sofor_id)
+                    .where(SoforAdSoyadTrigram.trigram_hash.in_(hashes))
+                    .distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not candidate_ids:
+            return []
+        needle = search.strip().upper()
+        drivers = (
+            await self.session.execute(
+                select(Sofor.id, Sofor.ad_soyad).where(Sofor.id.in_(candidate_ids))
+            )
+        ).all()
+        return [d.id for d in drivers if needle in (d.ad_soyad or "").upper()]
 
 
 def get_sefer_repo(session=None) -> "SeferRepository":

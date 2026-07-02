@@ -61,6 +61,7 @@ jobs:
     env:
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key
+      PII_ENCRYPTION_KEY: GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=  # pragma: allowlist secret
       ADMIN_PASSWORD: test-admin-password
       # E2E login: super-admin bypass uses SUPER_ADMIN_PASSWORD; ADMIN_PASSWORD
       # alone is not enough since the bypass only reads SUPER_ADMIN_PASSWORD.
@@ -759,6 +760,7 @@ jobs:
     env:
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key
+      PII_ENCRYPTION_KEY: GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=  # pragma: allowlist secret
       ADMIN_PASSWORD: test-admin-password
       POSTGRES_USER: postgres
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test

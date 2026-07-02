@@ -722,6 +722,51 @@ jobs:
           done
           curl -f "https://${{ secrets.PROD_HOST }}/api/v1/health/" --max-time 10
 
+      # Tier E madde 28 — a failed smoke test used to just fail the job while
+      # the broken image_tag stayed live, serving traffic, until a human
+      # noticed and manually redeployed the old tag. This step runs only when
+      # a prior step in this job failed and puts the last known-good image
+      # back automatically. It deliberately does NOT run `alembic downgrade`
+      # — migrations here follow the project's backward-compatible/NOT VALID
+      # convention specifically so the app can roll back without a schema
+      # rollback; auto-downgrading is a real data-loss risk this workflow
+      # will not take on unattended.
+      - name: Rollback to last known-good image on failure
+        if: failure() && env.PROD_HOST
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd "${{ secrets.PROD_DEPLOY_PATH }}"
+            if [ ! -f .last_good_image_tag ]; then
+              echo "[rollback-prod] No .last_good_image_tag on disk (first-ever deploy?) — nothing safe to roll back to. Manual intervention required."
+              exit 1
+            fi
+            PREV_TAG=$(cat .last_good_image_tag)
+            echo "[rollback-prod] Rolling back to last known-good IMAGE_TAG=$PREV_TAG"
+            export IMAGE_TAG="$PREV_TAG"
+            export GHCR_OWNER="${{ github.repository_owner }}"
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull backend frontend
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build \
+              backend frontend worker celery-beat
+            echo "[rollback-prod] done — job still reports failure so this incident is not silently swallowed"
+
+      # Only reached if every prior step succeeded — records this deploy as
+      # the new rollback target for the *next* deploy's failure path above.
+      - name: Record this deploy as the new rollback target
+        if: success() && env.PROD_HOST
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd "${{ secrets.PROD_DEPLOY_PATH }}"
+            echo "${{ needs.publish.outputs.image_tag }}" > .last_good_image_tag
+            echo "[deploy-prod] Recorded new rollback target: $(cat .last_good_image_tag)"
+
   # ──────────────────────────────────────────────────────────────────────────
   # GO gate #4 — Locust yük testi (manuel: workflow_dispatch + run_load_test=true)
   # Temiz Linux + postgres:16 + redis:7 (şifresiz) → lokal Windows'un veremediği

@@ -2,8 +2,10 @@ import logging
 import os
 import shutil
 import subprocess
+import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 from sqlalchemy.engine import make_url
 
@@ -111,6 +113,109 @@ class DatabaseBackupManager:
                     logger.info(f"Deleted old backup: {filename}")
                 except Exception as e:
                     logger.error(f"Failed to delete {filename}: {e}")
+
+    def get_latest_backup(self) -> Optional[str]:
+        """Returns the path of the most recently created backup file, or None."""
+        _BACKUP_EXTENSIONS = (".sql.gz", ".sqlite3")
+        candidates = [
+            f for f in os.listdir(self.backup_dir) if f.endswith(_BACKUP_EXTENSIONS)
+        ]
+        if not candidates:
+            return None
+        candidates.sort(
+            key=lambda f: os.path.getmtime(os.path.join(self.backup_dir, f)),
+            reverse=True,
+        )
+        return os.path.join(self.backup_dir, candidates[0])
+
+    def verify_backup_restorable(
+        self, filepath: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Restores a backup into a disposable database and sanity-checks it.
+
+        This is the actual proof a backup is usable (Tier E madde 27) — a
+        pg_dump that never gets restore-tested can silently rot (corrupt
+        dump, missing extension, wrong pg_dump version) for months without
+        anyone noticing until the day it's actually needed. Only supports
+        the PostgreSQL custom-format (-F c) dumps create_backup() produces.
+
+        Steps: CREATE DATABASE <throwaway> -> pg_restore into it -> count
+        public tables (>0 proves the schema actually landed, not just an
+        empty shell) -> DROP DATABASE <throwaway> (always, even on failure).
+        """
+        if not self.drivername.startswith("postgresql"):
+            return {"ok": False, "error": "Only PostgreSQL dumps are restore-tested."}
+
+        filepath = filepath or self.get_latest_backup()
+        if not filepath or not filepath.endswith(".sql.gz"):
+            return {"ok": False, "error": "No PostgreSQL backup file found to verify."}
+
+        verify_db = f"{self.db_name}_restore_check_{uuid.uuid4().hex[:8]}"
+        env = os.environ.copy()
+        if self.db_password:
+            env["PGPASSWORD"] = self.db_password
+        conn_args = ["-h", self.db_host, "-p", str(self.db_port), "-U", self.db_user]
+
+        try:
+            subprocess.run(
+                ["createdb", *conn_args, verify_db],
+                check=True,
+                capture_output=True,
+                env=env,
+            )
+            # No check=True here: pg_restore exits 1 even for warnings it has
+            # already logged as "errors ignored on restore" (e.g. a pg_dump
+            # client newer than the target server emitting a session-level
+            # SET the server's GUC list doesn't recognize yet — cosmetic, the
+            # schema/data still land). The table count below is the real
+            # signal of whether the restore actually worked, not this exit code.
+            restore_proc = subprocess.run(
+                ["pg_restore", *conn_args, "-d", verify_db, "--no-owner", filepath],
+                capture_output=True,
+                env=env,
+            )
+            if restore_proc.returncode != 0:
+                logger.warning(
+                    "pg_restore exited %d for %s (may be non-fatal — verifying via "
+                    "table count next): %s",
+                    restore_proc.returncode,
+                    filepath,
+                    restore_proc.stderr.decode(errors="replace"),
+                )
+            result = subprocess.run(
+                [
+                    "psql",
+                    *conn_args,
+                    "-d",
+                    verify_db,
+                    "-tAc",
+                    "SELECT count(*) FROM information_schema.tables "
+                    "WHERE table_schema = 'public'",
+                ],
+                check=True,
+                capture_output=True,
+                env=env,
+                text=True,
+            )
+            table_count = int(result.stdout.strip())
+            ok = table_count > 0
+            logger.info(
+                "Backup restore-test %s: %s (table_count=%d)",
+                "PASSED" if ok else "FAILED",
+                filepath,
+                table_count,
+            )
+            return {"ok": ok, "table_count": table_count, "filepath": filepath}
+        except subprocess.CalledProcessError as e:
+            stderr = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
+            logger.error("Backup restore-test FAILED for %s: %s", filepath, stderr)
+            return {"ok": False, "error": stderr, "filepath": filepath}
+        finally:
+            subprocess.run(
+                ["dropdb", *conn_args, "--if-exists", verify_db],
+                capture_output=True,
+                env=env,
+            )
 
 
 if __name__ == "__main__":

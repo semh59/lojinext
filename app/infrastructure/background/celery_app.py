@@ -113,6 +113,13 @@ def get_celery_app() -> Celery:
                 "task": "infrastructure.db_backup",
                 "schedule": crontab(hour=0, minute=30),
             },
+            # Tier E madde 27 — 01:00 UTC (backup'tan 30dk sonra), en son yedeğin
+            # gerçekten restore edilebildiğini doğrular (throwaway DB'ye pg_restore
+            # + sanity query). Başarısızlık ErrorEvent alarmı tetikler.
+            "db-backup-restore-verify-nightly": {
+                "task": "infrastructure.db_backup_verify",
+                "schedule": crontab(hour=1, minute=0),
+            },
         },
         worker_hostname="lojinext-worker@%h",
         task_always_eager=settings.CELERY_EAGER,

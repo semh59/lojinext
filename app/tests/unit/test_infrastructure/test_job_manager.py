@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.infrastructure.background.job_manager import (
+    AsyncJobStatus,
     BackgroundJobManager,
     get_job_manager,
 )
@@ -42,6 +43,22 @@ def reset_job_manager():
     yield
     BackgroundJobManager._instance = None
     BackgroundJobManager._redis_override = None
+
+
+class TestAsyncJobStatusEnum:
+    def test_values_match_public_contract(self):
+        """2026-07-01 prod-grade denetimi P2 (Tier B madde 9): PROCESSING/
+        SUCCESS/FAILED eskiden admin_predictions.py/fuel.py/trips.py'de 6
+        yerde ayrı string literal olarak tekrarlanıyordu. Artık merkezi bir
+        enum var — bu test sözleşmenin (literal değerlerin) değişmediğini
+        kilitliyor (frontend bu tam string'leri bekliyor)."""
+        assert AsyncJobStatus.PROCESSING.value == "PROCESSING"
+        assert AsyncJobStatus.SUCCESS.value == "SUCCESS"
+        assert AsyncJobStatus.FAILED.value == "FAILED"
+        # str, Enum karışımı — JSON serileştirmede/response'ta doğrudan
+        # düz string gibi davranmalı (FastAPI JSONResponse content= içinde
+        # kullanılabilir olması için).
+        assert AsyncJobStatus.PROCESSING == "PROCESSING"
 
 
 class TestJobManager:

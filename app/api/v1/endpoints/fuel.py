@@ -507,13 +507,14 @@ async def upload_yakit_excel(
 
     if async_mode:
         from app.infrastructure.background.job_manager import (
+            AsyncJobStatus,
             get_job_manager,
         )
 
         job_manager = get_job_manager()
         job_id = await job_manager.submit(_do_import)
         return {
-            "status": "PROCESSING",
+            "status": AsyncJobStatus.PROCESSING.value,
             "task_id": job_id,
             "message": (
                 "Yakıt içe aktarma arka plana alındı. "

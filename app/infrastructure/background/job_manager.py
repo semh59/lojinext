@@ -14,9 +14,31 @@ import logging
 import threading
 import uuid
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
+
+
+class AsyncJobStatus(str, Enum):
+    """Public-facing async-job status contract returned to clients.
+
+    2026-07-01 prod-grade denetimi P2 (Tier B madde 9): bu 3 değer eskiden
+    `admin_predictions.py`/`fuel.py`/`trips.py`'de (6 yerde) ayrı ayrı
+    string literal olarak tekrarlanıyordu, merkezi bir tanım yoktu.
+
+    NOT: bu, `BackgroundJobManager`'ın kendi İÇ durum vokabüleriyle
+    (pending/running/completed/failed, Redis'te saklanan) KASITLI olarak
+    farklı — bu enum sadece 202-submission ve polling yanıtlarındaki
+    PUBLIC sözleşmeyi temsil ediyor. `get_status()`'un iç `data["status"]`
+    değerini bu enum'a çeviren normalizasyon (`trips.py::get_task_status`)
+    kasıtlı bırakıldı, DEĞİŞTİRİLMEDİ.
+    """
+
+    PROCESSING = "PROCESSING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
 
 _JOB_KEY_PREFIX = "bg_job:"
 _JOB_TTL_SECONDS = 86400  # 24 h

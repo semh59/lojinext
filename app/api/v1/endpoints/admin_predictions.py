@@ -9,7 +9,10 @@ from app.api.deps import get_background_job_manager, get_current_active_admin
 from app.core.services.prediction_backfill_service import PredictionBackfillService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.background.job_manager import BackgroundJobManager
+from app.infrastructure.background.job_manager import (
+    AsyncJobStatus,
+    BackgroundJobManager,
+)
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -44,5 +47,5 @@ async def trigger_prediction_backfill(
         logger.warning("Audit log failed: %s", exc)
     return JSONResponse(
         status_code=202,
-        content={"status": "PROCESSING", "task_id": job_id},
+        content={"status": AsyncJobStatus.PROCESSING.value, "task_id": job_id},
     )

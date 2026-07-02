@@ -35,7 +35,10 @@ from app.core.services.idempotency_service import (
 from app.core.services.sefer_service import SeferService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.background.job_manager import BackgroundJobManager
+from app.infrastructure.background.job_manager import (
+    AsyncJobStatus,
+    BackgroundJobManager,
+)
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.metrics import trip_approval_total
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
@@ -553,7 +556,7 @@ async def analyze_trip_costs(
         job_id = await job_manager.submit(service.reconcile_costs, sefer_id)
 
         return {
-            "status": "PROCESSING",
+            "status": AsyncJobStatus.PROCESSING.value,
             "task_id": job_id,
             "message": "Maliyet analizi arka plana alındı. Lütfen durum sorgulama endpoint'ini kullanın.",
         }
@@ -716,7 +719,7 @@ async def upload_sefer_excel(
     if async_mode:
         job_id = await job_manager.submit(_do_import)
         return {
-            "status": "PROCESSING",
+            "status": AsyncJobStatus.PROCESSING.value,
             "task_id": job_id,
             "message": "İçe aktarma arka plana alındı. /trips/tasks/{task_id}/status ile takip edin.",
         }
@@ -808,11 +811,11 @@ async def get_task_status(
         )
 
     # Normalize status for frontend (PROCESSING, SUCCESS, FAILED)
-    norm_status = "PROCESSING"
+    norm_status = AsyncJobStatus.PROCESSING.value
     if status_info["status"] == "completed":
-        norm_status = "SUCCESS"
+        norm_status = AsyncJobStatus.SUCCESS.value
     elif status_info["status"] == "failed":
-        norm_status = "FAILED"
+        norm_status = AsyncJobStatus.FAILED.value
 
     return {
         "task_id": task_id,

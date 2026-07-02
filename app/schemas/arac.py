@@ -13,7 +13,11 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-from app.schemas.validators import sanitize_string, validate_safe_string
+from app.schemas.validators import (
+    PLAKA_PATTERN_STR,
+    sanitize_string,
+    validate_safe_string,
+)
 
 
 class AracBase(BaseModel):
@@ -23,7 +27,7 @@ class AracBase(BaseModel):
         ...,
         min_length=3,
         max_length=20,
-        pattern=r"^[0-9]{2}[\s-]?[A-ZÇĞİÖŞÜ]{1,5}[\s-]?[0-9]{2,4}$",
+        pattern=PLAKA_PATTERN_STR,
         description="Plaka formatı (Permissive)",
     )
     marka: str = Field(..., min_length=2, max_length=50)
@@ -107,7 +111,7 @@ class AracUpdate(BaseModel):
         None,
         min_length=3,
         max_length=20,
-        pattern=r"^[0-9]{2}[\s-]?[A-ZÇĞİÖŞÜ]{1,5}[\s-]?[0-9]{2,4}$",
+        pattern=PLAKA_PATTERN_STR,
     )
     marka: Optional[str] = Field(None, min_length=2, max_length=50)
     model: Optional[str] = Field(None, max_length=50)

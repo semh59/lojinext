@@ -1,5 +1,4 @@
 import io
-import re
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -12,6 +11,7 @@ from app.core.services.excel_service import ExcelService
 from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from app.schemas.validators import PLAKA_PATTERN
 
 logger = get_logger(__name__)
 
@@ -920,7 +920,7 @@ class ImportService:
             raise ImportValidationError(
                 ["Plaka uzunluğu geçersiz"], reason="INVALID_PLAKA"
             )
-        if not re.match(r"^[0-9]{2}[A-Z]{1,3}[0-9]{2,4}$", p):
+        if not PLAKA_PATTERN.match(p):
             raise ImportValidationError(
                 ["Plaka formatı geçersiz"], reason="INVALID_PLAKA"
             )

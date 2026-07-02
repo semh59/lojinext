@@ -56,6 +56,15 @@ ALPHANUMERIC_PATTERN = re.compile(r"^[a-zA-Z0-9_]+$")
 # Türkçe karakterlerle birlikte alfanumerik (isim için)
 TURKISH_NAME_PATTERN = re.compile(r"^[a-zA-ZğüşöçıİĞÜŞÖÇ\s\-\.]+$")
 
+# Plaka formatı (Permissive) — tek kaynak. 2026-07-02 prod-grade denetimi P2
+# (Tier B madde 7): eskiden `schemas/arac.py` (bu pattern, 2 kopya) ve
+# `core/services/import_service.py` (daha dar, Türkçe karakter yok, azami
+# 3 harf) AYRI regex'ler kullanıyordu — aynı plaka doğrudan API POST'ta kabul
+# edilirken Excel import'ta reddedilebiliyordu. Artık her ikisi de bu tek
+# pattern'i kullanıyor.
+PLAKA_PATTERN_STR = r"^[0-9]{2}[\s-]?[A-ZÇĞİÖŞÜ]{1,5}[\s-]?[0-9]{2,4}$"
+PLAKA_PATTERN = re.compile(PLAKA_PATTERN_STR)
+
 
 def sanitize_string(value: str) -> str:
     """

@@ -44,6 +44,13 @@ from app.infrastructure.monitoring.service_probe import monitor_errors  # noqa: 
 
 logger = get_logger(__name__)
 
+# 2026-07-02 prod-grade denetimi P2 (Tier B madde 8): aynı literal 3 yerde
+# tekrarlanmıştı (_predict_via_estimator, _predict_outbound legacy yolu,
+# bulk_add_sefer) — biri güncellenip diğerleri unutulursa coverage_pct
+# sessizce sapabilirdi. Mapbox+Open-Meteo zincirinde cache hit sub-saniye,
+# miss ~2sn sürüyor; 2.5s emniyetli tampon.
+_PREDICTION_TIMEOUT_SECONDS = 2.5
+
 
 def _safe_durum(value: object) -> str:
     """Coerce a sefer durum to a canonical value (Planned/Completed/Cancelled).
@@ -461,17 +468,16 @@ class SeferWriteService:
 
             import asyncio as _asyncio
 
-            # Aynı 2.5s timeout pattern — Mapbox + Open-Meteo zincirinde
-            # cache hit varsa sub-sn, miss varsa ~2sn. 2.5s emniyetli.
             try:
                 estimate = await _asyncio.wait_for(
                     estimator.predict(inp, persist=True, session=uow.session),
-                    timeout=2.5,
+                    timeout=_PREDICTION_TIMEOUT_SECONDS,
                 )
             except _asyncio.TimeoutError:
                 logger.warning(
-                    "SeferFuelEstimator timeout (>2.5s) for arac=%s — "
+                    "SeferFuelEstimator timeout (>%ss) for arac=%s — "
                     "sefer kaydı tahmin olmadan kaydedilecek.",
+                    _PREDICTION_TIMEOUT_SECONDS,
                     data.arac_id,
                 )
                 from app.infrastructure.monitoring.silent_fallback_probe import (
@@ -551,9 +557,8 @@ class SeferWriteService:
                 route_details=route_dict,
                 weather_factor=weather_factor,
             )
-            # Prediction'a 2.5sn timeout — ML cold-start veya schema mismatch
-            # senaryolarında sefer kaydı response'u 10sn beklemesin.
-            # Timeout durumunda physics fallback active.
+            # ML cold-start veya schema mismatch senaryolarında sefer kaydı
+            # response'u 10sn beklemesin — timeout durumunda physics fallback.
             import asyncio as _asyncio
 
             try:
@@ -574,12 +579,13 @@ class SeferWriteService:
                             weather_factor=weather_factor,
                         ),
                     ),
-                    timeout=2.5,
+                    timeout=_PREDICTION_TIMEOUT_SECONDS,
                 )
             except _asyncio.TimeoutError:
                 logger.warning(
-                    "Prediction timeout (>2.5s) for arac=%s — sefer kaydı "
+                    "Prediction timeout (>%ss) for arac=%s — sefer kaydı "
                     "tahmin olmadan kaydedilecek.",
+                    _PREDICTION_TIMEOUT_SECONDS,
                     data.arac_id,
                 )
                 from app.infrastructure.monitoring.silent_fallback_probe import (
@@ -1460,7 +1466,7 @@ class SeferWriteService:
                                     if data.sofor_id
                                     else None,
                                 ),
-                                timeout=2.5,
+                                timeout=_PREDICTION_TIMEOUT_SECONDS,
                             )
                             tahmini_tuk, tahmin_meta = self._extract_prediction_values(
                                 prediction,

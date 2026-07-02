@@ -358,6 +358,36 @@ async def test_predict_outbound_timeout_returns_none_triple():
     assert sim_id is None
 
 
+def test_prediction_timeout_is_a_single_shared_constant():
+    """2026-07-02 prod-grade denetimi P2 (Tier B madde 8): aynı 2.5s timeout
+    literal 3 yerde (_predict_via_estimator, _predict_outbound legacy yolu,
+    bulk_add_sefer) tekrarlanmıştı — biri güncellenip diğerleri unutulursa
+    coverage_pct sessizce sapabilirdi. Artık tek bir modül-seviyesi sabite
+    (`_PREDICTION_TIMEOUT_SECONDS`) indirgendi; bu test hem sabitin var
+    olduğunu hem de dosyada başka bir `timeout=<literal>` kalmadığını
+    doğrular (regresyon guard'ı — gelecekte tekrar 3 ayrı literale
+    bölünürse bu test kırmızı olur)."""
+    import inspect
+    import re
+
+    from app.core.services import sefer_write_service as mod
+
+    assert mod._PREDICTION_TIMEOUT_SECONDS == 2.5
+
+    source = inspect.getsource(mod)
+    # Her "timeout=" ataması modül sabitini referans almalı, ham bir sayı
+    # literali değil (örn. "timeout=2.5" yasak, "timeout=_PREDICTION_TIMEOUT_SECONDS" serbest).
+    timeout_assignments = re.findall(r"timeout=([^\s,)]+)", source)
+    assert len(timeout_assignments) >= 3, (
+        f"Beklenen en az 3 'timeout=' kullanımı bulundu: {len(timeout_assignments)}"
+    )
+    for value in timeout_assignments:
+        assert value == "_PREDICTION_TIMEOUT_SECONDS", (
+            f"'timeout={value}' ham literal kullanıyor, paylaşılan sabiti değil "
+            "— madde 8'in önlemeye çalıştığı tam drift senaryosu."
+        )
+
+
 async def test_predict_outbound_general_exception_returns_none_triple():
     """General exception in prediction → returns (None, None, None)."""
     svc, _ = _make_service()

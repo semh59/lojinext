@@ -381,6 +381,26 @@ class TestImportValidation:
         with pytest.raises(ImportValidationError, match="formatı"):
             service._validate_plaka("ABCDEFG")
 
+    def test_validate_plaka_matches_live_api_permissive_pattern(self, service):
+        """2026-07-02 prod-grade denetimi P2 (Tier B madde 7): eskiden
+        `import_service.py::_validate_plaka` (azami 3 harf, Türkçe karakter
+        yok) `schemas/arac.py`'nin (azami 5 harf, Türkçe karakter var) canlı
+        API'de zaten kabul ettiği plakaları reddediyordu — aynı plaka doğrudan
+        POST /vehicles/ ile eklenebilirken Excel import'ta reddediliyordu.
+        Artık ikisi de aynı paylaşılan pattern'i (`schemas.validators.PLAKA_PATTERN`)
+        kullanıyor."""
+        from app.core.exceptions import ImportValidationError
+
+        # 4-5 harfli plaka — schemas/arac.py hep kabul ediyordu, import
+        # eskiden reddediyordu (azami 3 harf sınırı).
+        result = service._validate_plaka("34 ABCDE 12")  # pragma: allowlist secret
+        assert result == "34ABCDE12"  # pragma: allowlist secret
+        # Türkçe karakter içeren plaka — schemas/arac.py hep kabul ediyordu.
+        assert service._validate_plaka("34 ÇAA 123") == "34ÇAA123"
+        # Genuinely invalid (0 harf) hâlâ reddedilmeli.
+        with pytest.raises(ImportValidationError, match="formatı"):
+            service._validate_plaka("3400123")
+
     def test_validate_name(self, service):
         from app.core.exceptions import ImportValidationError
 

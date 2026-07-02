@@ -102,6 +102,10 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 
 `app/core/container.py` is the singleton DI container. All major services (SeferService, AracService, AIService, RAGEngine, etc.) are lazy-loaded, thread-safe properties. Endpoints receive services via FastAPI `Depends()` wired through `app/api/deps.py`. In tests, patch `container_mod.*` or pass explicit instances.
 
+### Route grade/segment analysis
+
+`app/domain/services/route_analyzer.py` — module-level `RouteAnalyzer` singleton, `analyze_segments()` classifies elevation-derived grade % into `GradeClass` buckets (downhill_steep/moderate, flat, uphill_moderate/steep) and groups consecutive same-class points into segments. Used by `openroute_client.py` and `route_service.py`'s route-simulation path — not dead code, just previously undocumented here.
+
 ### Unit of Work
 
 `app/database/unit_of_work.py` — async context manager that groups all repository operations into one transaction. All repositories are properties on the `UnitOfWork` object (`uow.sefer_repo`, `uow.arac_repo`, etc.). Services should accept an optional `uow: UnitOfWork` so callers can share transactions.
@@ -159,9 +163,11 @@ Global React context (non-persisted) lives in `frontend/src/context/`: `AuthCont
 
 `frontend/src/services/api/` contains one file per domain (`trip-service.ts`, `fuel-service.ts`, `vehicle-service.ts`, etc.) plus the two shared HTTP utilities documented below. All domain service files import from `axiosInstance` — never call `fetchWithAuth` from them.
 
-### Frontend strings (Turkish resource files)
+### Frontend strings (i18next is the dominant pattern; typed resource objects are legacy)
 
-User-visible strings are **not** managed via i18next `t()` hooks in component code. Instead, each domain has a typed resource object in `frontend/src/resources/tr/<domain>.ts` (e.g. `vehicleTableText`, `tripModuleText`, `fleetInsightsText`). Components import directly from these files. The `frontend/src/locales/` JSON files and `i18n.ts` exist but are only used for pages that explicitly call `useTranslation()`.
+Most components manage user-visible strings via i18next: `useTranslation()` + `t()` against `frontend/src/locales/tr.json` / `en.json` (wired in `i18n.ts`). This is now the primary pattern — used in ~90 component/page files, not an exception.
+
+The older typed-resource-object pattern (`frontend/src/resources/tr/<domain>.ts`, e.g. `vehicleTableText`, `tripModuleText`) still exists and is still imported directly (no `t()`) by the **reports / reports-studio** domain (`ReportsPage.tsx`, `ReportsStudioPage.tsx`, `TemplateConfigPanel.tsx`, `ReportCards.tsx`) and their tests. Do not add new domains to this pattern — extend `locales/*.json` + `useTranslation()` instead. `frontend/src/resources/en/<domain>.ts` (English counterpart, same 18 files) exists but is **dead code** — imported nowhere; do not add new keys there.
 
 ### Frontend design tokens
 

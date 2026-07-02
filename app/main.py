@@ -242,10 +242,33 @@ def _wire_observability(app: FastAPI) -> None:
 
     if settings.OTEL_ENABLED and settings.OTEL_EXPORTER_OTLP_ENDPOINT:
         try:
+            from opentelemetry import trace
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter,
+            )
             from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+            from opentelemetry.instrumentation.sqlalchemy import (
+                SQLAlchemyInstrumentor,
+            )
+            from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+            from opentelemetry.sdk.trace import TracerProvider
+            from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+            # Prior to this, FastAPIInstrumentor.instrument_app() ran against the
+            # global no-op TracerProvider — spans were created and immediately
+            # discarded, never exported anywhere (Tier E madde 25).
+            resource = Resource.create({SERVICE_NAME: "lojinext-backend"})
+            provider = TracerProvider(resource=resource)
+            exporter = OTLPSpanExporter(endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT)
+            provider.add_span_processor(BatchSpanProcessor(exporter))
+            trace.set_tracer_provider(provider)
 
             FastAPIInstrumentor.instrument_app(app)
-            logger.info("OpenTelemetry instrumentation enabled")
+            SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)
+            logger.info(
+                "OpenTelemetry tracing enabled (endpoint=%s)",
+                settings.OTEL_EXPORTER_OTLP_ENDPOINT,
+            )
         except ImportError:
             logger.warning("OTEL_ENABLED but opentelemetry not installed")
 

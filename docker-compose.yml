@@ -22,8 +22,13 @@ services:
       - DB_PORT=${DB_PORT:-5432}
       - POSTGRES_USER=${POSTGRES_USER:-lojinext_user}
       - ENVIRONMENT=${ENVIRONMENT:-dev}
-      - OTEL_ENABLED=false
-      - OTEL_EXPORTER_OTLP_ENDPOINT=
+      # Tier E madde 25: TracerProvider artık gerçekten kuruluyor (app/main.py
+      # ::_wire_observability) — spans lokal Tempo'ya (docker-compose 'tempo'
+      # servisi) OTLP/gRPC ile export edilir, Grafana'da Explore > Tempo'dan
+      # görülebilir. Worker/celery-beat şu an kapsam dışı (Celery instrumentation
+      # paketi kurulu değil, ayrı bir efor).
+      - OTEL_ENABLED=true
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
       # Phase 5.0 — SeferFuelEstimator aktif (Mapbox + Open-Meteo + physics
       # + adjustment factors). Sefer kaydında yeni pipeline çalışır,
       # tahmin sefer satırında gözükür + route_simulation_id set edilir.
@@ -205,6 +210,22 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?GF_SECURITY_ADMIN_PASSWORD must be set (see .env.example)}
     depends_on:
       - prometheus
+      - tempo
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
+  tempo:
+    # Tier E madde 25: distributed tracing backend for OTel spans emitted by
+    # backend's OTLP exporter (see app/main.py::_wire_observability).
+    image: grafana/tempo:2.4.1@sha256:5b9c08f6d8fb43b3b72dfd1252ba4f198b11a245257bf76ee2ca13e243bac565
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo/tempo.yaml:/etc/tempo.yaml
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200" # Tempo query API
+      - "4317:4317" # OTLP gRPC receiver
     networks:
       - lojinext_network
     restart: unless-stopped
@@ -391,3 +412,4 @@ volumes:
   hf_cache:
   easyocr_models:
   belgeler_data:
+  tempo_data:

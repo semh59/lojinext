@@ -961,6 +961,80 @@ class TestExcelFormulaInjectionSanitization:
 
 
 # ---------------------------------------------------------------------------
+# Row-count limit (2026-07-02 prod-grade denetimi Tier B madde 15)
+# ---------------------------------------------------------------------------
+
+
+class TestRowLimitGuard:
+    """Excel import satır sayısı üst sınırı — zip-bomb benzeri şişme koruması.
+
+    Gerçek bir 20.001 satırlık xlsx üretmek yerine `MAX_EXCEL_ROWS`
+    monkeypatch'lenerek testler hızlı/deterministik tutuluyor; üretim
+    değeri (20_000) ayrı bir sabitlik testiyle kilitleniyor.
+    """
+
+    def test_max_excel_rows_constant_is_reasonable(self):
+        from app.core.services.excel_parser import MAX_EXCEL_ROWS
+
+        assert MAX_EXCEL_ROWS == 20_000
+
+    def test_sefer_parser_rejects_over_limit(self, monkeypatch):
+        from app.core.exceptions import ExcelExportError
+        from app.core.services import excel_parser
+
+        monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 2)
+        content = _make_xlsx(
+            ["tarih", "plaka", "mesafe_km", "net_kg"],
+            [
+                [date(2024, 1, 15), "34ABC123", 500, 20000],
+                [date(2024, 1, 16), "34ABC124", 400, 18000],
+                [date(2024, 1, 17), "34ABC125", 300, 16000],
+            ],
+        )
+        with pytest.raises(ExcelExportError, match="satır sayısı"):
+            excel_parser._parse_sefer_excel_sync(content)
+
+    def test_yakit_parser_rejects_over_limit(self, monkeypatch):
+        from app.core.exceptions import ExcelExportError
+        from app.core.services import excel_parser
+
+        monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
+        content = _make_xlsx(
+            ["tarih", "plaka", "litre"],
+            [
+                [date(2024, 1, 15), "34ABC123", 100],
+                [date(2024, 1, 16), "34ABC124", 90],
+            ],
+        )
+        with pytest.raises(ExcelExportError, match="satır sayısı"):
+            excel_parser._parse_yakit_excel_sync(content)
+
+    def test_vehicle_parser_rejects_over_limit(self, monkeypatch):
+        from app.core.exceptions import ExcelExportError
+        from app.core.services import excel_parser
+
+        monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
+        content = _make_xlsx(
+            ["plaka", "marka"],
+            [["34ABC123", "Mercedes"], ["34ABC124", "Volvo"]],
+        )
+        with pytest.raises(ExcelExportError, match="satır sayısı"):
+            excel_parser._parse_vehicle_excel_sync(content)
+
+    def test_within_limit_still_succeeds(self, monkeypatch):
+        """Limit sınırın içindeyken parser normal davranmaya devam eder."""
+        from app.core.services import excel_parser
+
+        monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 5)
+        content = _make_xlsx(
+            ["tarih", "plaka", "mesafe_km", "net_kg"],
+            [[date(2024, 1, 15), "34ABC123", 500, 20000]],
+        )
+        result = excel_parser._parse_sefer_excel_sync(content)
+        assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
 # Exception-branch coverage — mock pd.read_excel to raise caught exceptions
 # ---------------------------------------------------------------------------
 

@@ -937,10 +937,17 @@ class RoutePath(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    origin_lat: Mapped[float] = mapped_column(Float, index=True)
-    origin_lon: Mapped[float] = mapped_column(Float, index=True)
-    dest_lat: Mapped[float] = mapped_column(Float, index=True)
-    dest_lon: Mapped[float] = mapped_column(Float, index=True)
+    # 4 ayrı tekil index (index=True) kasıtlı olarak KALDIRILDI (Tier B madde
+    # 14): `uq_route_coords` UniqueConstraint zaten bu 4 kolonu kapsayan
+    # composite bir btree index oluşturuyor ve tek gerçek sorgu deseni olan
+    # `RouteRepository.get_by_coords`'un 4-kolonlu AND-range filtresi bunu
+    # kullanıyor (EXPLAIN ANALYZE ile doğrulandı — Index Scan, tek kolon
+    # index'leri olmadan da aynı plan/hız). Tek kolon üzerinden sorgu yapan
+    # başka bir kod yolu yok — 4 index sadece INSERT/UPDATE maliyetiydi.
+    origin_lat: Mapped[float] = mapped_column(Float)
+    origin_lon: Mapped[float] = mapped_column(Float)
+    dest_lat: Mapped[float] = mapped_column(Float)
+    dest_lon: Mapped[float] = mapped_column(Float)
 
     distance_km: Mapped[float] = mapped_column(Float)
     duration_min: Mapped[float] = mapped_column(Float)

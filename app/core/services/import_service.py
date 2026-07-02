@@ -6,7 +6,8 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import text
 
-from app.core.exceptions import ImportValidationError
+from app.core.exceptions import ExcelExportError, ImportValidationError
+from app.core.services.excel_parser import MAX_EXCEL_ROWS
 from app.core.services.excel_service import ExcelService
 from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
 from app.database.unit_of_work import UnitOfWork
@@ -71,6 +72,35 @@ class ImportService:
         self._guzergah_service = None
         self._route_service_lazy = None
 
+    async def _report_infra_failure(self, source: str, exc: Exception) -> None:
+        """Üst-seviye (parse/altyapı) hatalarını gerçek bir monitoring alarmına
+        bağlar. Satır-bazlı hatalar zaten kendi iç `try/except`'lerinde
+        `errors` listesine toplanıyor ve buraya hiç gelmiyor — bu handler'a
+        düşen istisnalar (DB-down, beklenmedik bug vb.) önceden sessizce
+        "Sistem hatası" string'ine çevrilip hiçbir alarm tetiklemiyordu
+        (Tier B madde 13). Import'un `(count, errors)` dönüş sözleşmesini
+        korumak için exception yutulmaya devam ediyor — sadece görünürlük
+        ekleniyor."""
+        logger.error("%s: beklenmeyen hata: %s", source, exc, exc_info=True)
+        try:
+            from app.infrastructure.monitoring import aemit
+            from app.infrastructure.monitoring.models import (
+                ErrorEvent,
+                ErrorLayer,
+                ErrorSeverity,
+            )
+
+            await aemit(
+                ErrorEvent(
+                    layer=ErrorLayer.SERVICE,
+                    category="import_unexpected_error",
+                    severity=ErrorSeverity.CRITICAL,
+                    message=f"{source}: {type(exc).__name__}: {str(exc)[:300]}",
+                )
+            )
+        except Exception:
+            pass
+
     async def parse_and_preview(
         self, file: UploadFile, aktarim_tipi: str
     ) -> Dict[str, Any]:
@@ -89,6 +119,15 @@ class ImportService:
         except Exception as e:
             logger.error(f"Dosya okuma hatası: {e}")
             raise HTTPException(status_code=400, detail="Dosya formatı geçersiz.")
+
+        if len(df) > MAX_EXCEL_ROWS:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Dosya satır sayısı ({len(df)}) izin verilen üst sınırı "
+                    f"({MAX_EXCEL_ROWS}) aşıyor. Dosyayı bölüp tekrar deneyin."
+                ),
+            )
 
         df = df.fillna("")
         headers = df.columns.tolist()
@@ -111,6 +150,11 @@ class ImportService:
             df = pd.read_csv(io.BytesIO(content))
         else:
             df = pd.read_excel(io.BytesIO(content))
+        if len(df) > MAX_EXCEL_ROWS:
+            raise ExcelExportError(
+                f"Dosya satır sayısı ({len(df)}) izin verilen üst sınırı "
+                f"({MAX_EXCEL_ROWS}) aşıyor. Dosyayı bölüp tekrar deneyin."
+            )
         df = df.fillna("")
         return df.to_dict(orient="records")
 
@@ -639,7 +683,7 @@ class ImportService:
             return count, errors
 
         except Exception as e:
-            logger.error(f"Sefer import error: {e}")
+            await self._report_infra_failure("process_sefer_import", e)
             return 0, [f"Sistem hatası: {str(e)}"]
 
     async def process_yakit_import(self, content: bytes) -> Tuple[int, list]:
@@ -747,6 +791,7 @@ class ImportService:
 
             return count, errors
         except Exception as e:
+            await self._report_infra_failure("process_yakit_import", e)
             return 0, [f"Sistem hatası: {str(e)}"]
 
     async def process_vehicle_import(self, content: bytes) -> Tuple[int, list]:
@@ -802,6 +847,7 @@ class ImportService:
 
             return count, errors
         except Exception as e:
+            await self._report_infra_failure("process_vehicle_import", e)
             return 0, [f"Sistem hatası: {str(e)}"]
 
     async def process_driver_import(self, content: bytes) -> Tuple[int, list]:
@@ -815,6 +861,7 @@ class ImportService:
             count = await self.sofor_service.bulk_add_sofor(items)
             return count, errors
         except Exception as e:
+            await self._report_infra_failure("process_driver_import", e)
             return 0, [f"Sistem hatası: {str(e)}"]
 
     async def import_routes(self, content: bytes) -> Tuple[int, list]:
@@ -851,6 +898,7 @@ class ImportService:
                     errors.append(f"Satır {idx}: {str(e)}")
             return count, errors
         except Exception as e:
+            await self._report_infra_failure("import_routes", e)
             return 0, [f"Sistem hatası: {str(e)}"]
 
     def _resolve_arac_id(

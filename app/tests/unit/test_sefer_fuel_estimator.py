@@ -153,9 +153,9 @@ def _make_sim_result(
 class _MockArac:
     """Arac ORM model'inin minimum sahnesi."""
 
-    def __init__(self, uretim_tarihi=None):
+    def __init__(self, yil=None):
         self.id = 1
-        self.uretim_tarihi = uretim_tarihi
+        self.yil = yil
 
 
 class _MockSofor:

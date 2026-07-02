@@ -75,7 +75,7 @@ class _MockArac:
 
     def __init__(self):
         self.id = 1
-        self.uretim_tarihi = date(2020, 1, 1)  # 5-6 yaş
+        self.yil = 2020  # ~5-6 yaş
 
 
 class _MockSofor:

@@ -356,16 +356,19 @@ class SeferFuelEstimator:
             return []
 
     def _derive_arac_yasi(self, arac: Optional[Arac]) -> int:
-        """Arac modelinden yas çıkar — DB yoksa fallback 5."""
+        """Arac modelinden yas çıkar — DB yoksa fallback 5.
+
+        `araclar` tablosunda `uretim_tarihi` kolonu hiç yok (sadece `yil`) —
+        önceki implementasyon var-olmayan bir kolonu okuyordu ve bu yüzden
+        canlıda HER araç için sessizce 5'e düşüyordu (Tier B madde 12).
+        `entities/models.py::Arac.yas` ile aynı tek kaynağa (`yil`) hizalandı.
+        """
         if arac is None:
             return 5
-        # SQLAlchemy ORM modeli; Pydantic Arac entity'sinden farklı
-        # (yas_faktoru property orada). Direkt uretim_tarihi'nden hesapla.
-        ut = getattr(arac, "uretim_tarihi", None)
-        if ut is None:
+        yil = getattr(arac, "yil", None)
+        if yil is None:
             return 5
-        today = dt_date.today()
-        years = today.year - ut.year - ((today.month, today.day) < (ut.month, ut.day))
+        years = dt_date.today().year - yil
         return max(0, years)
 
     async def _fetch_maintenance_factor(self, db: Any, arac_id: int) -> float:

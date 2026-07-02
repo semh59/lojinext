@@ -58,6 +58,17 @@ class TestARIMATimeSeries:
         assert len(result["forecast"]) == 7
         assert result["trend"] == "stable"
 
+    def test_moving_average_result_is_flagged_degraded(self):
+        """2026-07-02 prod-grade denetimi P2 (Tier B madde 11): `success: True`
+        tek başına gerçek bir ARIMA fit ile hareketli-ortalama fallback'i ayırt
+        etmiyordu — sadece `method` alanına bakmayan bir çağıran "sahte başarı"
+        görebilirdi. Artık `degraded: bool` alanı bunu açıkça işaretliyor."""
+        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+
+        predictor = ARIMATimeSeriesPredictor()
+        result = predictor.predict([32.0, 33.0, 31.0])
+        assert result["degraded"] is True
+
     def test_moving_average_fallback_value(self):
         """Moving average should equal mean of last 5 values."""
         from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor

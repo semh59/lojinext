@@ -278,6 +278,52 @@ class TestProcessImports:
         assert "Sistem hatası" in errors[0]
 
     @patch("app.core.services.import_service.ExcelService")
+    async def test_process_sefer_import_infra_error_emits_monitoring_alarm(
+        self, MockExcelService, service
+    ):
+        """2026-07-02 prod-grade denetimi Tier B madde 13: dış (üst-seviye)
+        catch, satır hatalarından farklı olarak DB-down gibi altyapı
+        arızalarını sessizce "Sistem hatası" string'ine çeviriyordu ve hiçbir
+        monitoring alarmı tetiklemiyordu (`aemit` hiç çağrılmıyordu). Artık
+        `ErrorLayer.SERVICE` + `ErrorSeverity.CRITICAL` ile alarm emit
+        ediliyor — dönüş sözleşmesi (count, errors) değişmedi."""
+        MockExcelService.parse_sefer_excel.side_effect = RuntimeError("DB down")
+
+        with patch(
+            "app.infrastructure.monitoring.aemit", new=AsyncMock()
+        ) as mock_aemit:
+            count, errors = await service.process_sefer_import(b"fake")
+
+        assert count == 0
+        assert "Sistem hatası" in errors[0]
+        mock_aemit.assert_awaited_once()
+        emitted_event = mock_aemit.await_args.args[0]
+        assert emitted_event.layer.value == "service"
+        assert emitted_event.severity.value == "critical"
+        assert emitted_event.category == "import_unexpected_error"
+        assert "process_sefer_import" in emitted_event.message
+
+    @patch("app.core.services.import_service.ExcelService")
+    async def test_process_yakit_import_infra_error_emits_monitoring_alarm(
+        self, MockExcelService, service
+    ):
+        """Aynı alarm kablolaması `process_yakit_import` için de geçerli
+        olmalı — canlıda gerçekten çağrılan yol (fuel.py import endpoint)."""
+        MockExcelService.parse_yakit_excel.side_effect = RuntimeError("DB down")
+
+        with patch(
+            "app.infrastructure.monitoring.aemit", new=AsyncMock()
+        ) as mock_aemit:
+            count, errors = await service.process_yakit_import(b"fake")
+
+        assert count == 0
+        assert "Sistem hatası" in errors[0]
+        mock_aemit.assert_awaited_once()
+        emitted_event = mock_aemit.await_args.args[0]
+        assert emitted_event.category == "import_unexpected_error"
+        assert "process_yakit_import" in emitted_event.message
+
+    @patch("app.core.services.import_service.ExcelService")
     async def test_process_sefer_import_requires_driver_resolution(
         self, MockExcelService, service
     ):

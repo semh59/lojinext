@@ -76,7 +76,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=mock_sim, weather=mock_weather)
 
         fake_arac = MagicMock()
-        fake_arac.uretim_tarihi = date(2019, 1, 1)
+        fake_arac.yil = 2019
 
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(
@@ -157,7 +157,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=mock_sim, weather=mock_weather)
 
         fake_arac = MagicMock()
-        fake_arac.uretim_tarihi = date(2019, 1, 1)
+        fake_arac.yil = 2019
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=fake_arac)
 
@@ -192,7 +192,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=mock_sim, weather=mock_weather)
 
         fake_arac = MagicMock()
-        fake_arac.uretim_tarihi = date(2019, 1, 1)
+        fake_arac.yil = 2019
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=fake_arac)
 
@@ -238,7 +238,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=mock_sim, weather=mock_weather)
 
         fake_arac = MagicMock()
-        fake_arac.uretim_tarihi = date(2020, 1, 1)
+        fake_arac.yil = 2020
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=fake_arac)
 
@@ -267,12 +267,12 @@ class TestSeferFuelEstimator:
         assert captured_ton.get("ton") == 0.0
 
     async def test_edge_case_none_arac_yasi_defaults_to_5(self):
-        """_derive_arac_yasi returns 5 when uretim_tarihi is None."""
+        """_derive_arac_yasi returns 5 when yil is None."""
         from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
 
         estimator = SeferFuelEstimator.__new__(SeferFuelEstimator)
         arac = MagicMock()
-        arac.uretim_tarihi = None
+        arac.yil = None
         assert estimator._derive_arac_yasi(arac) == 5
 
     async def test_derive_arac_yasi_none_arac_defaults_to_5(self):
@@ -282,41 +282,52 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator.__new__(SeferFuelEstimator)
         assert estimator._derive_arac_yasi(None) == 5
 
-    async def test_derive_arac_yasi_real_age_birthday_passed(self):
-        """uretim_tarihi geçmiş gün → tam yıl farkı."""
+    async def test_derive_arac_yasi_uses_yil_not_nonexistent_uretim_tarihi(self):
+        """2026-07-02 prod-grade denetimi Tier B madde 12: `araclar` tablosunda
+        `uretim_tarihi` kolonu hiç yok — eski implementasyon bu yüzden HER
+        gerçek araç için sessizce 5'e düşüyordu (age_factor hiç değişmiyordu).
+        Gerçek DB satırı gibi sadece `yil` taşıyan bir nesneyle artık doğru
+        (yıl bazlı) yaş hesaplanmalı."""
         from datetime import date
 
         from app.core.services import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
-        arac = MagicMock()
-        arac.uretim_tarihi = date(2014, 3, 10)
+        arac = MagicMock(spec=["yil"])
+        arac.yil = 2014
         with patch.object(mod, "dt_date") as mock_date:
-            mock_date.today.return_value = date(2026, 6, 10)  # 10 Mart geçti
+            mock_date.today.return_value = date(2026, 6, 10)
             assert estimator._derive_arac_yasi(arac) == 12
 
-    async def test_derive_arac_yasi_birthday_not_passed_subtracts_year(self):
-        """Bu yılki üretim-günü henüz gelmediyse yaş 1 eksik."""
+    async def test_derive_arac_yasi_matches_entity_yas_formula(self):
+        """Aynı yil değeri, entities/models.py::Arac.yas ile birebir aynı
+        sonucu üretmeli — tek kaynak, iki farklı hesaplama yok (drift riski
+        kapatıldı)."""
         from datetime import date
 
+        from app.core.entities.models import Arac as EntityArac
         from app.core.services import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
-        arac = MagicMock()
-        arac.uretim_tarihi = date(2014, 11, 20)
+        arac = MagicMock(spec=["yil"])
+        arac.yil = 2018
+
         with patch.object(mod, "dt_date") as mock_date:
-            mock_date.today.return_value = date(2026, 6, 10)  # 20 Kasım gelmedi
-            assert estimator._derive_arac_yasi(arac) == 11
+            mock_date.today.return_value = date(2026, 6, 10)
+            estimator_yas = estimator._derive_arac_yasi(arac)
 
-    async def test_derive_arac_yasi_future_date_clamped_to_zero(self):
-        """Gelecek üretim tarihi negatif yaş üretmez (max 0)."""
+        entity = EntityArac(plaka="34 ABC 123", marka="Mercedes", yil=2018)
+        assert estimator_yas == entity.yas
+
+    async def test_derive_arac_yasi_future_year_clamped_to_zero(self):
+        """Gelecek üretim yılı negatif yaş üretmez (max 0)."""
         from datetime import date
 
         from app.core.services import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
-        arac = MagicMock()
-        arac.uretim_tarihi = date(2030, 1, 1)
+        arac = MagicMock(spec=["yil"])
+        arac.yil = 2030
         with patch.object(mod, "dt_date") as mock_date:
             mock_date.today.return_value = date(2026, 6, 10)
             assert estimator._derive_arac_yasi(arac) == 0
@@ -373,7 +384,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=mock_sim, weather=mock_weather)
 
         fake_arac = MagicMock()
-        fake_arac.uretim_tarihi = date(2019, 1, 1)
+        fake_arac.yil = 2019
         mock_db = AsyncMock()
         mock_db.get = AsyncMock(return_value=fake_arac)
 

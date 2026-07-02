@@ -821,7 +821,12 @@ class ARIMATimeSeriesPredictor:
             daily_consumptions: Günlük L/100km listesi (kronolojik sıra, en yeni sonda)
             forecast_days: Kaç gün ilerisi tahmin edilecek
         Returns:
-            {"success": True, "forecast": [...], "trend": "...", "method": "arima"|"moving_average"}
+            {"success": True, "degraded": bool, "forecast": [...], "trend": "...",
+             "method": "arima"|"moving_average"}
+            `degraded=True` moving_average fallback'i işaretler (ARIMA fit
+            başarısız oldu veya yetersiz veri var) — `success=True` tek başına
+            gerçek bir ARIMA fit'i garanti etmez, çağıran taraf sahte-başarıyı
+            `degraded` ile ayırt etmeli.
         """
         if not daily_consumptions:
             return {"success": False, "error": "Veri yok"}
@@ -838,6 +843,7 @@ class ARIMATimeSeriesPredictor:
             trend = self._detect_trend(daily_consumptions, forecast)
             return {
                 "success": True,
+                "degraded": False,
                 "forecast": [round(v, 2) for v in forecast],
                 "trend": trend,
                 "method": "arima",
@@ -853,6 +859,7 @@ class ARIMATimeSeriesPredictor:
         avg = round(sum(window) / len(window), 2)
         return {
             "success": True,
+            "degraded": True,
             "forecast": [avg] * n,
             "trend": "stable",
             "method": "moving_average",

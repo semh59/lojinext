@@ -15,6 +15,24 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
+# 2026-07-02 prod-grade denetimi Tier B madde 15: Excel import'ta satır
+# sayısı üst sınırı yoktu — `.xlsx` sıkıştırılmış bir zip arşivi olduğu
+# için 10MB'lık HTTP boyut sınırını (endpoint'lerdeki `_MAX_UPLOAD_BYTES`)
+# geçen küçük bir dosya, açıldığında yüz binlerce/milyonlarca tekrarlı
+# satıra "şişebilir" (zip-bomb benzeri amplifikasyon) — pandas TÜMÜNÜ
+# belleğe okur, sonra her satır Python dict'ine çevrilir. Bu, HTTP boyut
+# sınırından TAMAMEN bağımsız bir DoS riski.
+MAX_EXCEL_ROWS = 20_000
+
+
+def _enforce_row_limit(df: pd.DataFrame, source: str) -> None:
+    if len(df) > MAX_EXCEL_ROWS:
+        raise ExcelExportError(
+            f"{source}: satır sayısı ({len(df)}) izin verilen üst sınırı "
+            f"({MAX_EXCEL_ROWS}) aşıyor. Dosyayı bölüp tekrar deneyin."
+        )
+
+
 _FORMULA_PREFIX_CHARS = ("=", "+", "-", "@")
 
 
@@ -62,6 +80,7 @@ async def parse_sefer_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_sefer_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Sefer Excel")
 
         # Dynamic Column Mapping
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
@@ -118,6 +137,7 @@ async def parse_yakit_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_yakit_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Yakıt Excel")
 
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
         logger.info(f"Yakit Excel Map: {column_map}")
@@ -175,6 +195,7 @@ async def parse_route_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_route_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Güzergah Excel")
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
         logger.info(f"Route Excel Map: {column_map}")
 
@@ -221,6 +242,7 @@ async def parse_vehicle_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_vehicle_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Vehicle Excel")
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
         logger.info(f"Vehicle Excel Map: {column_map}")
 
@@ -288,6 +310,7 @@ async def parse_driver_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_driver_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Driver Excel")
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
         logger.info(f"Driver Excel Map: {column_map}")
 
@@ -341,6 +364,7 @@ async def parse_dorse_excel(content: bytes) -> List[Dict[str, Any]]:
 def _parse_dorse_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
+        _enforce_row_limit(df, "Dorse Excel")
         column_map = SafeColumnMapper.map_columns(df.columns.tolist())
         logger.info(f"Dorse Excel Map: {column_map}")
 

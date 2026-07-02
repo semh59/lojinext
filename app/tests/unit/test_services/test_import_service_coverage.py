@@ -140,6 +140,28 @@ class TestParseAndPreview:
             await svc.parse_and_preview(upload, "arac")
         assert exc_info.value.status_code == 400
 
+    async def test_over_limit_raises_http_413(self, svc, monkeypatch):
+        """2026-07-02 prod-grade denetimi Tier B madde 15: preview endpoint'i
+        de kendi doğrudan `pd.read_excel` çağrısına sahip — excel_parser.py
+        guard'ının kapsamı dışında. Ayrı guard eklendi."""
+        from fastapi import HTTPException
+
+        import app.core.services.import_service as mod
+
+        monkeypatch.setattr(mod, "MAX_EXCEL_ROWS", 2)
+        df = pd.DataFrame([{"plaka": "34ABC123", "marka": "Mercedes"}] * 5)
+        buf = io.BytesIO()
+        df.to_excel(buf, index=False)
+        buf.seek(0)
+
+        upload = SimpleNamespace(
+            filename="data.xlsx",
+            read=AsyncMock(return_value=buf.read()),
+        )
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.parse_and_preview(upload, "arac")
+        assert exc_info.value.status_code == 413
+
 
 # ---------------------------------------------------------------------------
 # _parse_import_file
@@ -163,6 +185,24 @@ class TestParseImportFile:
 
         rows = await svc._parse_import_file("data.xlsx", buf.read())
         assert rows[0]["plaka"] == "06TIR001"
+
+    async def test_over_limit_raises_excel_export_error(self, svc, monkeypatch):
+        """2026-07-02 prod-grade denetimi Tier B madde 15: `_parse_import_file`
+        (execute_import'un gerçek raw-INSERT yolu) `ExcelService`'i hiç
+        kullanmıyor — kendi doğrudan `pd.read_excel` çağrısı var, bu yüzden
+        excel_parser.py'daki satır sınırı bu yolu KAPSAMAZ. Ayrı bir guard
+        gerekiyordu."""
+        import app.core.services.import_service as mod
+        from app.core.exceptions import ExcelExportError
+
+        monkeypatch.setattr(mod, "MAX_EXCEL_ROWS", 2)
+        df = pd.DataFrame([{"plaka": "06TIR001"}] * 3)
+        buf = io.BytesIO()
+        df.to_excel(buf, index=False)
+        buf.seek(0)
+
+        with pytest.raises(ExcelExportError, match="satır sayısı"):
+            await svc._parse_import_file("data.xlsx", buf.read())
 
 
 # ---------------------------------------------------------------------------

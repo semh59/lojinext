@@ -440,10 +440,32 @@ jobs:
         # backend'ini öldürüyor → ConnectionDoesNotExistError. Geri
         # alındı. Speedup için per-worker DB veya per-worker schema
         # gerek (follow-up).
-        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=92 --cov-config=pytest.ini
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=92 --cov-config=pytest.ini
+
+      # Tier E madde 29 — htmlcov/ used to only ever exist as a stale local
+      # artifact from one-off manual coverage sprints (last touched over a
+      # month before this fix), never regenerated or published by CI. Every
+      # run now uploads the current report so "what's actually covered" is
+      # always one click away instead of "run pytest locally and hope your
+      # checkout is current."
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-html
+          path: htmlcov/
+          retention-days: 14
 
       - name: Frontend — Unit tests with coverage
         run: cd frontend && npm run test:cov
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-html
+          path: frontend/coverage/
+          retention-days: 14
 
       - name: Integration — DB schema integrity
         run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60

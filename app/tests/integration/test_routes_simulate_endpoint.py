@@ -1,8 +1,13 @@
 """POST/GET /api/v1/routes/simulate — Phase 1.5 + 2.2 endpoint testleri.
 
-RouteSimulator'ı FastAPI dependency override ile mock'luyoruz; endpoint
-serialization + status code + validation + 502 fallback path'ini ve
-persist + GET /simulate/{id} flow'unu doğrular.
+RouteSimulator'ı FastAPI dependency override ile mock'luyoruz — bu
+DOKÜMANTE bir istisna (0-mock epiği Faz1 dilim4/5): RouteSimulator'ın
+kendisi (fizik+ML pipeline: Mapbox/Open-Meteo/segment simülasyonu) ayrı
+bir domain, Faz1 dilim4'te route_service/route_api/route_service_hybrid
+için de aynı gerekçeyle mock'lu bırakıldı. Bu dosyada gerçek olan:
+DB persist/reload (`get_db` hiç mock'lanmıyor — gerçek db_session'a
+karşı `async_client` çalışıyor), auth, validation, serialization ve
+502 fallback path'i.
 """
 
 from __future__ import annotations
@@ -17,6 +22,8 @@ from app.core.services.route_simulator import (
     SimulationResult,
     get_route_simulator,
 )
+
+pytestmark = pytest.mark.integration
 
 
 def _build_result() -> SimulationResult:

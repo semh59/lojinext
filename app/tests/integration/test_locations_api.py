@@ -1,5 +1,35 @@
+from contextlib import contextmanager
+
 import pytest
 from httpx import AsyncClient
+
+pytestmark = pytest.mark.integration
+
+
+@contextmanager
+def _override_real_lokasyon_service(db_session):
+    """0-mock epiği: get_lokasyon_service'i tam hand-rolled bir fake yerine
+    gerçek LokasyonService (gerçek LokasyonRepository + test session) ile
+    değiştirir — endpoint gerçek servis/repo/DB zincirini çalıştırır."""
+    from unittest.mock import MagicMock
+
+    from app.api.deps import get_lokasyon_service
+    from app.core.services.lokasyon_service import LokasyonService
+    from app.database.repositories.lokasyon_repo import LokasyonRepository
+    from app.main import app
+
+    real_svc = LokasyonService(
+        repo=LokasyonRepository(session=db_session), event_bus=MagicMock()
+    )
+
+    async def _fake():
+        return real_svc
+
+    app.dependency_overrides[get_lokasyon_service] = _fake
+    try:
+        yield real_svc
+    finally:
+        app.dependency_overrides.pop(get_lokasyon_service, None)
 
 
 @pytest.mark.asyncio
@@ -55,32 +85,28 @@ async def test_api_unauthorized_access(async_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_api_geocode_location(async_client: AsyncClient, admin_auth_headers):
-    from app.api.deps import get_lokasyon_service
-    from app.main import app
+async def test_api_geocode_location(
+    async_client: AsyncClient, admin_auth_headers, db_session, monkeypatch
+):
+    """GET /geocode?q=... → gerçek LokasyonService + gerçek ORS api_stub
+    round-trip (stub sorgu metnini label olarak yansıtır)."""
+    import app.core.services.openroute_service as ors_mod
 
-    class MockLokasyonService:
-        async def geocode_query(self, q: str, limit: int = 5):
-            assert q == "Hadimkoy Lojistik"
-            assert limit == 5
-            return [
-                {
-                    "lat": 41.07,
-                    "lon": 28.54,
-                    "label": "Hadimkoy Lojistik",
-                    "source": "ors",
-                }
-            ]
+    ors_mod._openroute_service = None  # reset singleton
+    monkeypatch.setattr(ors_mod.settings, "OPENROUTESERVICE_API_KEY", "test-key")
+    monkeypatch.setattr(
+        ors_mod.settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2"
+    )
 
-    app.dependency_overrides[get_lokasyon_service] = lambda: MockLokasyonService()
-    try:
+    with _override_real_lokasyon_service(db_session):
         response = await async_client.get(
             "/api/v1/locations/geocode",
             params={"q": "Hadimkoy Lojistik"},
             headers=admin_auth_headers,
         )
-    finally:
-        app.dependency_overrides.pop(get_lokasyon_service, None)
+
+    ors_mod._openroute_service = None  # cleanup for other tests
 
     assert response.status_code == 200
     assert response.json()[0]["label"] == "Hadimkoy Lojistik"
+    assert response.json()[0]["source"] == "ors"

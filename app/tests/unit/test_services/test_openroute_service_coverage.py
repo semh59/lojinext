@@ -1,6 +1,18 @@
 """
 Coverage tests for app/core/services/openroute_service.py
 Targets: haversine, offline fallback, geocode paths, circuit breaker / timeout handling.
+
+0-mock epiği (Faz1 dilim5) notu: `get_route_profile()`'ın gerçek HTTP çağrısı
+(RateLimiter/CircuitBreaker + `_get_client` mock'ları) ve `geocode()`'un ağ
+yolu, DAHA ÖNCE bilerek mock'lu bırakılmadı — grep ile doğrulandı ki bu iki
+metod, `openroute_service.py`'nin dışında HİÇBİR gerçek prod kod yolundan
+çağrılmıyor (sadece bu test dosyası ve `get_openroute_service()` singleton'ı
+kullanıyor; `lokasyon_service.py` kendi `_geocode_with_openroute`'unu yazıp
+`openroute_service._get_client()`/`base_url`'i ödünç alıyor, `.geocode()`'u
+DEĞİL). Yani bu iki metod ölü kod — HTTP mock'larını gerçek api_stub'a
+çevirmek gerçek bir davranışı korumaz, sadece kutu işaretlemek olur. Gerçek
+prod'da kullanılan yüzey (`is_configured`, `_get_client`, `base_url`,
+`geocode_url`, `geocode_offline`) zaten mock'suz test ediliyor.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch

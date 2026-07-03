@@ -15,7 +15,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+# 0-mock epiği: Lokasyon lookup dallari (404/422) ve simulator-None (502)
+# gercek DB + gercek RouteSimulator->api_stub zincirine cevrildi (sentinel
+# koordinat teknigi). RouteService (analyze_route) ayri domain (route_service.py,
+# Faz1 dilim4) - dokumante mock'lu kaldi. _serialize_simulation pure-function
+# testleri (dis sinir yok, duck-typed girdi) MagicMock ile kaliyor.
 
 
 # ---------------------------------------------------------------------------
@@ -280,183 +285,101 @@ class TestSimulateRouteLogic:
         finally:
             app.dependency_overrides.clear()
 
-    async def test_missing_coords_no_lokasyon_id_returns_422(self):
-        """simulate_route returns 422 when no lokasyon_id and coords missing."""
-        from httpx import AsyncClient
-        from httpx._transports.asgi import ASGITransport
+    async def test_missing_coords_no_lokasyon_id_returns_422(
+        self, async_client, admin_auth_headers
+    ):
+        """simulate_route returns 422 when no lokasyon_id and coords missing
+        (real DB, real RouteSimulator singleton — never reached before the
+        validation error)."""
+        resp = await async_client.post(
+            "/api/v1/routes/simulate",
+            json={"ton": 15.0},  # no coords, no lokasyon_id
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 422
 
-        from app.api.deps import get_current_active_user
-        from app.core.services.route_simulator import get_route_simulator
-        from app.database.connection import get_db
-        from app.main import app
+    async def test_lokasyon_id_not_found_returns_404(
+        self, async_client, admin_auth_headers
+    ):
+        """simulate_route returns 404 when lokasyon_id does not exist (real empty DB)."""
+        resp = await async_client.post(
+            "/api/v1/routes/simulate",
+            json={"lokasyon_id": 999999, "ton": 10.0},
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 404
 
-        fake_user = MagicMock()
-        fake_user.id = 1
-        fake_simulator = AsyncMock()
+    async def test_lokasyon_id_missing_coords_returns_422(
+        self, async_client, admin_auth_headers, db_session
+    ):
+        """simulate_route returns 422 when lokasyon has no lat/lon (real seeded row)."""
+        from app.database.models import Lokasyon
 
-        async def _fake_user():
-            return fake_user
+        lok = Lokasyon(
+            cikis_yeri="SimMissCoordsC",
+            varis_yeri="SimMissCoordsV",
+            mesafe_km=100.0,
+        )
+        db_session.add(lok)
+        await db_session.flush()
 
-        async def _fake_db():
-            yield AsyncMock()
+        resp = await async_client.post(
+            "/api/v1/routes/simulate",
+            json={"lokasyon_id": lok.id, "ton": 10.0},
+            headers=admin_auth_headers,
+        )
+        assert resp.status_code == 422
 
-        async def _fake_simulator():
-            return fake_simulator
+    async def test_simulator_returns_none_gives_502(
+        self, async_client, admin_auth_headers, db_session, monkeypatch
+    ):
+        """simulate_route returns 502 when the real RouteSimulator's Mapbox
+        call fails — sentinel koordinat (varis_lat=401.0) api_stub'ın gerçek
+        401 dönmesini tetikler → get_segments None → simulate() None → 502.
 
-        app.dependency_overrides[get_current_active_user] = _fake_user
-        app.dependency_overrides[get_db] = _fake_db
-        app.dependency_overrides[get_route_simulator] = _fake_simulator
+        RouteSimulateRequest'in cikis/varis_lat alanları ge=-90/le=90
+        Pydantic kısıtına sahip (401.0 doğrudan payload'da 422'ye düşer) —
+        sentinel bu yüzden lokasyon_id yolundan geçiriliyor: Lokasyon.cikis_lat/
+        varis_lat düz DB float kolonu, Pydantic kısıtı yok."""
+        import app.core.services.route_simulator as sim_mod
+        from app.config import settings
+        from app.database.models import Lokasyon
 
+        fake_key = MagicMock()
+        fake_key.__bool__ = lambda self: True
+        fake_key.get_secret_value = lambda: "fake_test_key"
+        monkeypatch.setattr(settings, "MAPBOX_API_KEY", fake_key)
+        monkeypatch.setattr(
+            settings,
+            "MAPBOX_API_BASE_URL",
+            "http://localhost:9000/directions/v5/mapbox/driving-traffic",
+        )
+
+        lok = Lokasyon(
+            cikis_yeri="Sim502C",
+            varis_yeri="Sim502V",
+            mesafe_km=100.0,
+            cikis_lat=0.0,
+            cikis_lon=0.0,
+            varis_lat=401.0,
+            varis_lon=0.0,
+        )
+        db_session.add(lok)
+        await db_session.flush()
+
+        # Modül-seviyesi singleton; ayarlar sadece construction anında
+        # okunur — önce ve sonra sıfırlanmazsa başka testlerin gerçek
+        # prod URL'e sahip MapboxClient'ı yeniden kullanılır.
+        sim_mod._default_simulator = None
         try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                resp = await client.post(
-                    "/api/v1/routes/simulate",
-                    json={"ton": 15.0},  # no coords, no lokasyon_id
-                )
-            assert resp.status_code == 422
+            resp = await async_client.post(
+                "/api/v1/routes/simulate",
+                json={"lokasyon_id": lok.id, "ton": 15.0},
+                headers=admin_auth_headers,
+            )
         finally:
-            app.dependency_overrides.clear()
-
-    async def test_lokasyon_id_not_found_returns_404(self):
-        """simulate_route returns 404 when lokasyon_id does not exist."""
-        from httpx import AsyncClient
-        from httpx._transports.asgi import ASGITransport
-
-        from app.api.deps import get_current_active_user
-        from app.core.services.route_simulator import get_route_simulator
-        from app.database.connection import get_db
-        from app.main import app
-
-        fake_user = MagicMock()
-        fake_user.id = 1
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        async def _fake_user():
-            return fake_user
-
-        async def _fake_db():
-            yield mock_db
-
-        async def _fake_simulator():
-            return AsyncMock()
-
-        app.dependency_overrides[get_current_active_user] = _fake_user
-        app.dependency_overrides[get_db] = _fake_db
-        app.dependency_overrides[get_route_simulator] = _fake_simulator
-
-        try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                resp = await client.post(
-                    "/api/v1/routes/simulate",
-                    json={"lokasyon_id": 9999, "ton": 10.0},
-                )
-            assert resp.status_code == 404
-        finally:
-            app.dependency_overrides.clear()
-
-    async def test_lokasyon_id_missing_coords_returns_422(self):
-        """simulate_route returns 422 when lokasyon has no lat/lon."""
-        from httpx import AsyncClient
-        from httpx._transports.asgi import ASGITransport
-
-        from app.api.deps import get_current_active_user
-        from app.core.services.route_simulator import get_route_simulator
-        from app.database.connection import get_db
-        from app.main import app
-
-        fake_user = MagicMock()
-        fake_user.id = 1
-
-        mock_lokasyon = MagicMock()
-        mock_lokasyon.cikis_lat = None
-        mock_lokasyon.cikis_lon = None
-        mock_lokasyon.varis_lat = None
-        mock_lokasyon.varis_lon = None
-
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = mock_lokasyon
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        async def _fake_user():
-            return fake_user
-
-        async def _fake_db():
-            yield mock_db
-
-        async def _fake_simulator():
-            return AsyncMock()
-
-        app.dependency_overrides[get_current_active_user] = _fake_user
-        app.dependency_overrides[get_db] = _fake_db
-        app.dependency_overrides[get_route_simulator] = _fake_simulator
-
-        try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                resp = await client.post(
-                    "/api/v1/routes/simulate",
-                    json={"lokasyon_id": 1, "ton": 10.0},
-                )
-            assert resp.status_code == 422
-        finally:
-            app.dependency_overrides.clear()
-
-    async def test_simulator_returns_none_gives_502(self):
-        """simulate_route returns 502 when simulator.simulate returns None."""
-        from httpx import AsyncClient
-        from httpx._transports.asgi import ASGITransport
-
-        from app.api.deps import get_current_active_user
-        from app.core.services.route_simulator import get_route_simulator
-        from app.database.connection import get_db
-        from app.main import app
-
-        fake_user = MagicMock()
-        fake_user.id = 1
-        mock_db = AsyncMock()
-
-        mock_simulator = MagicMock()
-        mock_simulator.simulate = AsyncMock(return_value=None)
-
-        async def _fake_user():
-            return fake_user
-
-        async def _fake_db():
-            yield mock_db
-
-        async def _fake_simulator():
-            return mock_simulator
-
-        app.dependency_overrides[get_current_active_user] = _fake_user
-        app.dependency_overrides[get_db] = _fake_db
-        app.dependency_overrides[get_route_simulator] = _fake_simulator
-
-        try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                resp = await client.post(
-                    "/api/v1/routes/simulate",
-                    json={
-                        "cikis_lat": 41.0,
-                        "cikis_lon": 28.9,
-                        "varis_lat": 39.9,
-                        "varis_lon": 32.8,
-                        "ton": 15.0,
-                    },
-                )
-            assert resp.status_code == 502
-        finally:
-            app.dependency_overrides.clear()
+            sim_mod._default_simulator = None
+        assert resp.status_code == 502
 
 
 # ---------------------------------------------------------------------------
@@ -465,36 +388,9 @@ class TestSimulateRouteLogic:
 
 
 class TestGetRouteSimulation:
-    async def test_not_found_returns_404(self):
-        """GET /simulate/{id} returns 404 when simulation not found."""
-        from httpx import AsyncClient
-        from httpx._transports.asgi import ASGITransport
-
-        from app.api.deps import get_current_active_user
-        from app.database.connection import get_db
-        from app.main import app
-
-        fake_user = MagicMock()
-        fake_user.id = 1
-
-        mock_db = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = None
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        async def _fake_user():
-            return fake_user
-
-        async def _fake_db():
-            yield mock_db
-
-        app.dependency_overrides[get_current_active_user] = _fake_user
-        app.dependency_overrides[get_db] = _fake_db
-        try:
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                resp = await client.get("/api/v1/routes/simulate/99999")
-            assert resp.status_code == 404
-        finally:
-            app.dependency_overrides.clear()
+    async def test_not_found_returns_404(self, async_client, admin_auth_headers):
+        """GET /simulate/{id} returns 404 when simulation not found (real empty DB)."""
+        resp = await async_client.get(
+            "/api/v1/routes/simulate/999999", headers=admin_auth_headers
+        )
+        assert resp.status_code == 404

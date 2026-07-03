@@ -49,11 +49,11 @@ class OpenRouteService:
     Ücretsiz Tier: 2,000 istek/gün
     """
 
-    BASE_URL = "https://api.openrouteservice.org/v2"
     TIMEOUT = 15.0  # seconds
 
     def __init__(self, api_key: str = None):
         self.api_key = api_key or settings.OPENROUTESERVICE_API_KEY
+        self.base_url = settings.OPENROUTE_API_BASE_URL
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> "httpx.AsyncClient":
@@ -136,7 +136,7 @@ class OpenRouteService:
             )
 
             client = await self._get_client()
-            url = f"{self.BASE_URL}/directions/{vehicle_type}"
+            url = f"{self.base_url}/directions/{vehicle_type}"
             headers = {
                 "Content-Type": "application/json",
             }
@@ -200,7 +200,7 @@ class OpenRouteService:
 
         try:
             client = await self._get_client()
-            url = f"{self.BASE_URL}/geocode/search"
+            url = f"{self.base_url}/geocode/search"
             params: Dict[str, Any] = {
                 "api_key": self.api_key,
                 "text": address,

@@ -49,7 +49,7 @@ class LokasyonService:
         try:
             client = await openroute_service._get_client()
             response = await client.get(
-                f"{openroute_service.BASE_URL}/geocode/search",
+                f"{openroute_service.base_url}/geocode/search",
                 params={
                     "api_key": openroute_service.api_key,
                     "text": q,

@@ -28,6 +28,7 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 
 import httpx
 
+from app.config import settings
 from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.retry import with_async_retry
@@ -48,8 +49,6 @@ _COORD_PRECISION = 4
 class OpenMeteoElevationClient:
     """Batch elevation fetcher with Redis-backed cache."""
 
-    BASE_URL = "https://api.open-meteo.com/v1/elevation"
-
     def __init__(
         self,
         cache: Optional[CacheManager] = None,
@@ -57,6 +56,7 @@ class OpenMeteoElevationClient:
     ) -> None:
         self._cache = cache if cache is not None else get_cache_manager()
         self._timeout_s = timeout_s
+        self.base_url = settings.OPEN_METEO_API_BASE_URL
 
     @staticmethod
     def _cache_key(lon: float, lat: float) -> str:
@@ -142,7 +142,7 @@ class OpenMeteoElevationClient:
 
                 async def _request_once() -> List[Optional[float]]:
                     resp = await client.get(
-                        self.BASE_URL,
+                        self.base_url,
                         params={"latitude": lats, "longitude": lons},
                     )
                     # 429 → dakikalık limit. Retry-After (saniye) varsa onu
@@ -162,7 +162,7 @@ class OpenMeteoElevationClient:
                         )
                         await asyncio.sleep(delay)
                         resp = await client.get(
-                            self.BASE_URL,
+                            self.base_url,
                             params={"latitude": lats, "longitude": lons},
                         )
                     if resp.status_code >= 500:

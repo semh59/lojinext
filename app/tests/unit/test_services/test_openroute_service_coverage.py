@@ -12,10 +12,12 @@ pytestmark = pytest.mark.unit
 
 def _make_service(api_key="testkey123"):
     """Return an OpenRouteService instance with a controlled api_key."""
+    from app.config import settings
     from app.core.services.openroute_service import OpenRouteService
 
     svc = OpenRouteService.__new__(OpenRouteService)
     svc.api_key = api_key
+    svc.base_url = settings.OPENROUTE_API_BASE_URL
     svc._client = None
     return svc
 

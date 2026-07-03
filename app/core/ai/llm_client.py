@@ -42,7 +42,7 @@ class LLMClient:
             else None
         )
         self.model = model or getattr(settings, "GROQ_MODEL_NAME", "mixtral-8x7b-32768")
-        self.base_url = base_url or "https://api.groq.com/openai/v1"
+        self.base_url = base_url or settings.GROQ_API_BASE_URL
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
 

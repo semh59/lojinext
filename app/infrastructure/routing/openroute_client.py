@@ -2,6 +2,7 @@ import asyncio
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 from dotenv import load_dotenv
@@ -35,9 +36,7 @@ class OpenRouteClient:
         # {'distance_km': 452.3, 'duration_hours': 5.5, 'source': 'api'}
     """
 
-    BASE_URL = "https://api.openrouteservice.org/v2"
     PROFILE = "driving-hgv"  # Heavy Goods Vehicle (TIR)
-    GEOCODE_URL = "https://api.openrouteservice.org/geocode/search"
 
     # Rate limiting (class-level async lock for all instances)
     _last_request_time = 0.0
@@ -62,6 +61,14 @@ class OpenRouteClient:
                 "yok)! API çağrıları başarısız olacak."
             )
 
+        self.base_url = settings.OPENROUTE_API_BASE_URL
+        # Geocode lives at the same host's root, not under /v2 — derive from
+        # the base_url's origin so a test-stub override (Kategori B) points
+        # both endpoints at the same server.
+        _origin = urlsplit(self.base_url)
+        self.geocode_url = urlunsplit(
+            (_origin.scheme, _origin.netloc, "/geocode/search", "", "")
+        )
         self._client: Optional[httpx.AsyncClient] = None
         self._db = None  # Lazy loading
 
@@ -183,7 +190,7 @@ class OpenRouteClient:
                 self._client = httpx.AsyncClient(timeout=20.0)
 
             response = await self._client.get(
-                self.GEOCODE_URL, params=params, headers=headers
+                self.geocode_url, params=params, headers=headers
             )
             if response.status_code == 200:
                 data = response.json()
@@ -238,7 +245,7 @@ class OpenRouteClient:
             self._last_request_time = asyncio.get_event_loop().time()
 
         # JSON endpoint for better extra_info support
-        url = f"{self.BASE_URL}/directions/{self.PROFILE}/json"
+        url = f"{self.base_url}/directions/{self.PROFILE}/json"
 
         headers = {"Authorization": self.api_key, "Content-Type": "application/json"}
         # ORS [lon, lat] bekler

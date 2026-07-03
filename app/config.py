@@ -130,8 +130,19 @@ class Settings(BaseSettings):
     MAPBOX_API_KEY: Optional[SecretStr] = None
     WEATHER_API_KEY: Optional[SecretStr] = None
 
+    # External API base URLs — real production defaults; overridable so
+    # tests can point at a local deterministic stub server (0-mock epic,
+    # Kategori B) instead of in-process httpx/client mocking.
+    MAPBOX_API_BASE_URL: str = (
+        "https://api.mapbox.com/directions/v5/mapbox/driving-traffic"
+    )
+    OPENROUTE_API_BASE_URL: str = "https://api.openrouteservice.org/v2"
+    OPEN_METEO_API_BASE_URL: str = "https://api.open-meteo.com/v1/elevation"
+    TELEGRAM_API_BASE_URL: str = "https://api.telegram.org"
+
     # AI / LLM
     GROQ_API_KEY: Optional[SecretStr] = None
+    GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_MODEL_NAME: str = "llama-3.3-70b-versatile"
     COACHING_ENABLED: bool = True  # Feature A — şoför koçluk modülü feature flag
     THEFT_INVESTIGATION_ENABLED: bool = True  # Feature B — soruşturma akışı

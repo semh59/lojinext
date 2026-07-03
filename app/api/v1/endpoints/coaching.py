@@ -168,7 +168,7 @@ async def send_coaching(
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(
-                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                f"{settings.TELEGRAM_API_BASE_URL}/bot{bot_token}/sendMessage",
                 json={
                     "chat_id": sofor.telegram_id,
                     "text": text,

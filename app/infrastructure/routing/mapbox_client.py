@@ -45,7 +45,7 @@ class MapboxClient:
             self.api_key = raw_key.get_secret_value()
         else:
             self.api_key = str(raw_key)
-        self.base_url = "https://api.mapbox.com/directions/v5/mapbox/driving-traffic"
+        self.base_url = settings.MAPBOX_API_BASE_URL
         # Phase 2.3: Redis-backed cache. None geçilirse singleton CacheManager.
         # Sync API (get/set) async handler içinden de güvenli — Redis çağrıları
         # non-blocking IO açısından ms ölçeğinde.

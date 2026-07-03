@@ -43,7 +43,9 @@ class GroqService:
         self.model_name = settings.GROQ_MODEL_NAME
         self.client = None
         if self.api_key and AsyncGroq is not None:
-            self.client = AsyncGroq(api_key=self.api_key)
+            self.client = AsyncGroq(
+                api_key=self.api_key, base_url=settings.GROQ_API_BASE_URL
+            )
         elif self.api_key and AsyncGroq is None:
             logger.warning(
                 "groq package is not installed. GroqService will be inactive."

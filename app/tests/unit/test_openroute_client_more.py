@@ -77,6 +77,7 @@ def test_init_no_api_key_warns():
         patch("app.infrastructure.routing.openroute_client.settings") as mock_settings,
     ):
         mock_settings.OPENROUTESERVICE_API_KEY = None
+        mock_settings.OPENROUTE_API_BASE_URL = "https://api.openrouteservice.org/v2"
         client = OpenRouteClient(api_key=None)
     assert client.api_key is None
 

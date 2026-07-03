@@ -320,22 +320,46 @@ class SeferRepository(BaseRepository[Sefer]):
         from sqlalchemy import select as sa_select
 
         stmt = sa_select(sa_func.count()).select_from(Sefer)
-        if not include_inactive:
-            stmt = stmt.where(Sefer.is_deleted == False)  # noqa: E712
+        stmt = stmt.where(Sefer.is_deleted == False)  # noqa: E712
 
+        durum: Optional[str] = None
         if filters:
-            durum = filters.get("durum")
+            tarih = filters.get("tarih")
+            baslangic_tarih = filters.get("baslangic_tarih")
+            bitis_tarih = filters.get("bitis_tarih")
             arac_id = filters.get("arac_id")
             sofor_id = filters.get("sofor_id")
+            durum = filters.get("durum")
             onay_durumu = filters.get("onay_durumu")
-            if durum:
-                stmt = stmt.where(Sefer.durum == durum)
+            include_inactive = filters.get("include_inactive", include_inactive)
+
+            if isinstance(tarih, str):
+                tarih = date.fromisoformat(tarih)
+            if isinstance(baslangic_tarih, str):
+                baslangic_tarih = date.fromisoformat(baslangic_tarih)
+            if isinstance(bitis_tarih, str):
+                bitis_tarih = date.fromisoformat(bitis_tarih)
+
+            if tarih:
+                stmt = stmt.where(Sefer.tarih == tarih)
+            if baslangic_tarih:
+                stmt = stmt.where(Sefer.tarih >= baslangic_tarih)
+            if bitis_tarih:
+                stmt = stmt.where(Sefer.tarih <= bitis_tarih)
             if arac_id:
-                stmt = stmt.where(Sefer.arac_id == arac_id)
+                stmt = stmt.where(Sefer.arac_id == int(arac_id))
             if sofor_id:
-                stmt = stmt.where(Sefer.sofor_id == sofor_id)
+                stmt = stmt.where(Sefer.sofor_id == int(sofor_id))
+            if durum:
+                durum = ensure_canonical_sefer_status(
+                    durum, field_name="durum", allow_none=False
+                )
+                stmt = stmt.where(Sefer.durum == durum)
             if onay_durumu:
                 stmt = stmt.where(Sefer.onay_durumu == onay_durumu)
+
+        if not durum and not include_inactive:
+            stmt = stmt.where(Sefer.durum != SEFER_STATUS_IPTAL)
 
         result = await self.session.execute(stmt)
         return result.scalar() or 0

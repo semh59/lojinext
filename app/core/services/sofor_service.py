@@ -50,6 +50,7 @@ class SoforService:
         ise_baslama: Optional[date] = None,
         manual_score: float = 1.0,
         notlar: str = "",
+        telegram_id: Optional[str] = None,
     ) -> int:
         """
         Adds a new driver (UoW & Atomic Check).
@@ -91,6 +92,7 @@ class SoforService:
                     manual_score=manual_score,
                     score=manual_score,  # Initial score is manual
                     notlar=notlar,
+                    telegram_id=telegram_id,
                 )
 
                 logger.info(f"New driver added: {ad_soyad_clean} (ID: {sofor_id})")

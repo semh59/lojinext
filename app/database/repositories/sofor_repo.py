@@ -100,6 +100,7 @@ class SoforRepository(BaseRepository[Sofor]):
         hiz_disiplin_skoru: float = 1.0,
         agresif_surus_faktoru: float = 1.0,
         notlar: str = "",
+        telegram_id: Optional[str] = None,
     ) -> int:
         """Yeni şoför ekle.
 
@@ -138,6 +139,7 @@ class SoforRepository(BaseRepository[Sofor]):
             hiz_disiplin_skoru=hiz_disiplin_skoru,
             agresif_surus_faktoru=agresif_surus_faktoru,
             notlar=notlar,
+            telegram_id=telegram_id,
             aktif=True,
         )
         session.add(new_sofor)

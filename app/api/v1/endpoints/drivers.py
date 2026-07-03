@@ -131,6 +131,7 @@ async def create_sofor(
             ise_baslama=sofor.ise_baslama,
             manual_score=sofor.manual_score,
             notlar=sofor.notlar,
+            telegram_id=sofor.telegram_id,
         )
         # Fetch the created/updated object to return
         # Using DB session directly for fetch to ensure we return Pydantic-compatible DB model

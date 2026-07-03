@@ -16,11 +16,11 @@ by test_locations_coverage.py:
 from __future__ import annotations
 
 import io
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 # ---------------------------------------------------------------------------
@@ -298,60 +298,25 @@ async def test_analyze_location_unexpected_exception(async_client, admin_auth_he
 
 @pytest.mark.asyncio
 async def test_hydrate_not_found(async_client, admin_auth_headers):
-    """POST /{id}/hydrate when lokasyon doesn't exist → 404."""
-    from app.api.deps import get_db
-    from app.main import app
-
-    mock_db = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_db.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_session():
-        return mock_db
-
-    app.dependency_overrides[get_db] = _fake_session
-    try:
-        resp = await async_client.post(
-            "/api/v1/locations/9999/hydrate", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
-
+    """POST /{id}/hydrate when lokasyon doesn't exist → 404 (gerçek boş DB)."""
+    resp = await async_client.post(
+        "/api/v1/locations/999999/hydrate", headers=admin_auth_headers
+    )
     assert resp.status_code in (404, 422, 500)
 
 
 @pytest.mark.asyncio
-async def test_hydrate_missing_coords(async_client, admin_auth_headers):
-    """POST /{id}/hydrate with lokasyon missing coords → 422."""
-    from app.api.deps import get_db
+async def test_hydrate_missing_coords(async_client, admin_auth_headers, db_session):
+    """POST /{id}/hydrate with lokasyon missing coords → 422 (gerçek seed'li satır)."""
     from app.database.models import Lokasyon
-    from app.main import app
 
-    # Lokasyon with no lat/lon
-    mock_lok = MagicMock(spec=Lokasyon)
-    mock_lok.id = 5
-    mock_lok.cikis_lat = None
-    mock_lok.cikis_lon = None
-    mock_lok.varis_lat = None
-    mock_lok.varis_lon = None
-    mock_lok.segments = []
+    lok = Lokasyon(cikis_yeri="NoCoordsA", varis_yeri="NoCoordsB", mesafe_km=100.0)
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_db = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = mock_lok
-    mock_db.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_session():
-        return mock_db
-
-    app.dependency_overrides[get_db] = _fake_session
-    try:
-        resp = await async_client.post(
-            "/api/v1/locations/5/hydrate", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    resp = await async_client.post(
+        f"/api/v1/locations/{lok.id}/hydrate", headers=admin_auth_headers
+    )
 
     assert resp.status_code in (422, 500)
 
@@ -363,62 +328,30 @@ async def test_hydrate_missing_coords(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_get_segments_not_found(async_client, admin_auth_headers):
-    """GET /{id}/segments → 404 when not found."""
-    from app.api.deps import get_db
-    from app.main import app
-
-    mock_db = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-    mock_db.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_session():
-        return mock_db
-
-    app.dependency_overrides[get_db] = _fake_session
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/9999/segments", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
-
+    """GET /{id}/segments → 404 when not found (gerçek boş DB)."""
+    resp = await async_client.get(
+        "/api/v1/locations/999999/segments", headers=admin_auth_headers
+    )
     assert resp.status_code in (404, 500)
 
 
 @pytest.mark.asyncio
-async def test_get_segments_success_empty(async_client, admin_auth_headers):
-    """GET /{id}/segments → 200 with empty segments list."""
-    from app.api.deps import get_db
+async def test_get_segments_success_empty(async_client, admin_auth_headers, db_session):
+    """GET /{id}/segments → 200 with empty segments list (gerçek seed'li satır,
+    hiç hidrasyon yapılmamış)."""
     from app.database.models import Lokasyon
-    from app.main import app
 
-    mock_lok = MagicMock(spec=Lokasyon)
-    mock_lok.id = 1
-    mock_lok.ad = "IST-ANK"
-    mock_lok.hydrated_at = None
-    mock_lok.raw_segment_count = 0
-    mock_lok.resampled_segment_count = 0
-    mock_lok.elevation_coverage_pct = 0.0
-    mock_lok.segments = []
+    lok = Lokasyon(cikis_yeri="SegEmptyA", varis_yeri="SegEmptyB", mesafe_km=100.0)
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_db = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = mock_lok
-    mock_db.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_session():
-        return mock_db
-
-    app.dependency_overrides[get_db] = _fake_session
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/1/segments", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    resp = await async_client.get(
+        f"/api/v1/locations/{lok.id}/segments", headers=admin_auth_headers
+    )
 
     assert resp.status_code in (200, 500)
+    if resp.status_code == 200:
+        assert resp.json()["segments"] == []
 
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helper factories
@@ -83,18 +83,46 @@ def _override_lokasyon_service(mock_svc):
         app.dependency_overrides.pop(get_lokasyon_service, None)
 
 
+@contextmanager
+def _override_real_lokasyon_service(db_session):
+    """0-mock epiği: get_lokasyon_service'i tam AsyncMock yerine gerçek
+    LokasyonService (gerçek LokasyonRepository + test session) ile
+    değiştirir — endpoint gerçek servis/repo/DB zincirini çalıştırır."""
+    from app.api.deps import get_lokasyon_service
+    from app.core.services.lokasyon_service import LokasyonService
+    from app.database.repositories.lokasyon_repo import LokasyonRepository
+    from app.main import app
+
+    real_svc = LokasyonService(
+        repo=LokasyonRepository(session=db_session), event_bus=MagicMock()
+    )
+
+    async def _fake():
+        return real_svc
+
+    app.dependency_overrides[get_lokasyon_service] = _fake
+    try:
+        yield real_svc
+    finally:
+        app.dependency_overrides.pop(get_lokasyon_service, None)
+
+
 # ---------------------------------------------------------------------------
 # GET /locations/  — list locations
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_list_locations_success(async_client, admin_auth_headers):
-    """GET / with valid auth and mocked service → 200."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value=_make_pagination_response())
+async def test_list_locations_success(async_client, admin_auth_headers, db_session):
+    """GET / with valid auth and a real seeded location → 200."""
+    from app.database.models import Lokasyon
 
-    with _override_lokasyon_service(mock_svc):
+    db_session.add(
+        Lokasyon(cikis_yeri="ListSuccA", varis_yeri="ListSuccB", mesafe_km=450.0)
+    )
+    await db_session.flush()
+
+    with _override_real_lokasyon_service(db_session):
         resp = await async_client.get("/api/v1/locations/", headers=admin_auth_headers)
 
     assert resp.status_code == 200
@@ -111,23 +139,34 @@ async def test_list_locations_no_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_list_locations_with_filters(async_client, admin_auth_headers):
-    """GET / with zorluk and search query params → 200."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value=_make_pagination_response())
+async def test_list_locations_with_filters(
+    async_client, admin_auth_headers, db_session
+):
+    """GET / with zorluk and search query params → 200, gerçek DB filtresi."""
+    from app.database.models import Lokasyon
 
-    with _override_lokasyon_service(mock_svc):
+    db_session.add(
+        Lokasyon(
+            cikis_yeri="Istanbul",
+            varis_yeri="Ankara",
+            mesafe_km=450.0,
+            zorluk="Normal",
+        )
+    )
+    db_session.add(
+        Lokasyon(cikis_yeri="Bursa", varis_yeri="Izmir", mesafe_km=300.0, zorluk="Zor")
+    )
+    await db_session.flush()
+
+    with _override_real_lokasyon_service(db_session):
         resp = await async_client.get(
             "/api/v1/locations/?zorluk=Normal&search=istanbul",
             headers=admin_auth_headers,
         )
 
     assert resp.status_code == 200
-    # Service called with filters
-    mock_svc.get_all_paged.assert_awaited_once()
-    call_kwargs = mock_svc.get_all_paged.call_args.kwargs
-    assert call_kwargs.get("zorluk") == "Normal"
-    assert call_kwargs.get("search") == "istanbul"
+    data = resp.json()
+    assert data["total"] == 1
 
 
 @pytest.mark.asyncio
@@ -148,30 +187,29 @@ async def test_list_locations_service_error(async_client, admin_auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_get_location_success(async_client, admin_auth_headers):
-    """GET /{id} → 200 with location data."""
+async def test_get_location_success(async_client, admin_auth_headers, db_session):
+    """GET /{id} → 200 with real seeded location data."""
+    from app.database.models import Lokasyon
 
-    mock_svc = AsyncMock()
-    mock_svc.repo = MagicMock()
-    mock_svc.repo.get_by_id = AsyncMock(return_value=_make_lokasyon_dict(id=5))
+    lok = Lokasyon(cikis_yeri="GetSuccA", varis_yeri="GetSuccB", mesafe_km=450.0)
+    db_session.add(lok)
+    await db_session.flush()
 
-    with _override_lokasyon_service(mock_svc):
-        resp = await async_client.get("/api/v1/locations/5", headers=admin_auth_headers)
+    with _override_real_lokasyon_service(db_session):
+        resp = await async_client.get(
+            f"/api/v1/locations/{lok.id}", headers=admin_auth_headers
+        )
 
     assert resp.status_code == 200
-    assert resp.json()["id"] == 5
+    assert resp.json()["id"] == lok.id
 
 
 @pytest.mark.asyncio
-async def test_get_location_not_found(async_client, admin_auth_headers):
-    """GET /{id} → 404 when location doesn't exist."""
-    mock_svc = AsyncMock()
-    mock_svc.repo = MagicMock()
-    mock_svc.repo.get_by_id = AsyncMock(return_value=None)
-
-    with _override_lokasyon_service(mock_svc):
+async def test_get_location_not_found(async_client, admin_auth_headers, db_session):
+    """GET /{id} → 404 when location doesn't exist (gerçek boş DB)."""
+    with _override_real_lokasyon_service(db_session):
         resp = await async_client.get(
-            "/api/v1/locations/999", headers=admin_auth_headers
+            "/api/v1/locations/999999", headers=admin_auth_headers
         )
 
     assert resp.status_code == 404
@@ -243,25 +281,32 @@ async def test_delete_location_no_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_geocode_success(async_client, admin_auth_headers):
-    """GET /geocode?q=... → 200 list of suggestions."""
-    mock_svc = AsyncMock()
-    mock_svc.geocode_query = AsyncMock(
-        return_value=[
-            {"lat": 41.0, "lon": 29.0, "label": "Istanbul, Turkey", "source": "ors"}
-        ]
+async def test_geocode_success(
+    async_client, admin_auth_headers, db_session, monkeypatch
+):
+    """GET /geocode?q=... → 200 list of suggestions (gerçek servis, ORS
+    gerçek api_stub'a (Faz 0/1) işaret eder — deterministik, gerçek ağ değil)."""
+    import app.core.services.openroute_service as ors_mod
+
+    ors_mod._openroute_service = None  # reset singleton
+    monkeypatch.setattr(ors_mod.settings, "OPENROUTESERVICE_API_KEY", "test-key")
+    monkeypatch.setattr(
+        ors_mod.settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2"
     )
 
-    with _override_lokasyon_service(mock_svc):
+    with _override_real_lokasyon_service(db_session):
         resp = await async_client.get(
             "/api/v1/locations/geocode?q=Istanbul",
             headers=admin_auth_headers,
         )
 
+    ors_mod._openroute_service = None  # cleanup for other tests
+
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
-    assert data[0]["label"] == "Istanbul, Turkey"
+    assert len(data) == 1
+    assert data[0]["source"] == "ors"
 
 
 @pytest.mark.asyncio
@@ -273,13 +318,12 @@ async def test_geocode_no_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_geocode_too_short(async_client, admin_auth_headers):
-    """GET /geocode?q=x (single char) → 422 validation error."""
-    mock_svc = AsyncMock()
-    with _override_lokasyon_service(mock_svc):
-        resp = await async_client.get(
-            "/api/v1/locations/geocode?q=x",
-            headers=admin_auth_headers,
-        )
+    """GET /geocode?q=x (single char) → 422 (FastAPI's own min_length=2
+    Query validation — hiç servise ulaşmaz, dependency override gereksiz)."""
+    resp = await async_client.get(
+        "/api/v1/locations/geocode?q=x",
+        headers=admin_auth_headers,
+    )
     assert resp.status_code == 422
 
 
@@ -515,13 +559,10 @@ async def test_excel_export_no_auth(async_client):
 
 
 @pytest.mark.asyncio
-async def test_excel_export_success(async_client, admin_auth_headers):
-    """GET /excel/export → 200 (mocked service + ExcelService)."""
-    mock_svc = AsyncMock()
-    mock_svc.repo = MagicMock()
-    mock_svc.repo.get_all = AsyncMock(return_value=[])
-
-    with _override_lokasyon_service(mock_svc):
+async def test_excel_export_success(async_client, admin_auth_headers, db_session):
+    """GET /excel/export → 200 (gerçek servis/repo/DB, sadece ExcelService'in
+    binary export'u mock'lu — Excel domain ayrı, bu turun kapsamı dışı)."""
+    with _override_real_lokasyon_service(db_session):
         with patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=b"PK fakexlsx"),

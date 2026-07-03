@@ -23,13 +23,13 @@ from typing import Annotated, Any, Dict, List, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, text, update
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, require_permissions
 from app.config import settings
 from app.core.ai.fuel_theft_classifier import get_fuel_theft_classifier
-from app.database.models import Anomaly, FuelInvestigation, Kullanici
+from app.database.models import Anomaly, Kullanici
+from app.database.repositories.analiz_repo import get_analiz_repo
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.schemas.investigation import (
     InvestigationCreate,
@@ -52,80 +52,6 @@ def _ensure_enabled() -> None:
         )
 
 
-_LIST_SQL_BASE = """
-    SELECT
-        fi.id,
-        fi.anomaly_id,
-        fi.status,
-        fi.suspicion_score,
-        fi.suspicion_level,
-        fi.assigned_to_user_id,
-        fi.notes,
-        fi.resolution_type,
-        fi.evidence_files,
-        fi.created_at,
-        fi.updated_at,
-        fi.closed_at,
-        a.sapma_yuzde,
-        COALESCE(s.ad_soyad, NULL) AS sofor_adi,
-        COALESCE(v.plaka, NULL) AS plaka
-    FROM fuel_investigations fi
-    JOIN anomalies a ON fi.anomaly_id = a.id
-    LEFT JOIN seferler sf ON a.kaynak_tip = 'sefer' AND a.kaynak_id = sf.id
-    LEFT JOIN soforler s ON sf.sofor_id = s.id
-    LEFT JOIN araclar v ON (a.kaynak_tip = 'arac' AND a.kaynak_id = v.id)
-                        OR (a.kaynak_tip = 'sefer' AND sf.arac_id = v.id)
-    WHERE 1=1
-"""
-
-
-async def _fetch_investigation_dict(db, inv_id: int) -> Optional[Dict[str, Any]]:
-    from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-    sql = _LIST_SQL_BASE + " AND fi.id = :id LIMIT 1"
-    row = (await db.execute(text(sql), {"id": inv_id})).mappings().one_or_none()
-    if row is None:
-        return None
-    result = dict(row)
-    result["sofor_adi"] = decrypt_pii_or(result.get("sofor_adi"))
-    return result
-
-
-# ── Pattern detection (B.3 ile birleşik — route {id}'den önce) ───────────
-
-
-_PATTERN_SQL = """
-    WITH inv_data AS (
-        SELECT
-            fi.suspicion_score,
-            fi.created_at,
-            COALESCE(sf.sofor_id, NULL) AS sofor_id,
-            COALESCE(sf.arac_id, NULL) AS arac_id,
-            COALESCE(s.ad_soyad, NULL) AS sofor_adi,
-            COALESCE(v.plaka, NULL) AS plaka
-        FROM fuel_investigations fi
-        JOIN anomalies a ON fi.anomaly_id = a.id
-        LEFT JOIN seferler sf ON a.kaynak_tip = 'sefer' AND a.kaynak_id = sf.id
-        LEFT JOIN soforler s ON sf.sofor_id = s.id
-        LEFT JOIN araclar v ON (a.kaynak_tip = 'arac' AND a.kaynak_id = v.id)
-                            OR (a.kaynak_tip = 'sefer' AND sf.arac_id = v.id)
-        WHERE fi.created_at >= :cutoff
-          AND fi.suspicion_score IS NOT NULL
-    )
-    SELECT
-        sofor_id, sofor_adi, arac_id, plaka,
-        COUNT(*)::int AS occurrence_count,
-        AVG(suspicion_score)::float AS avg_suspicion_score,
-        MAX(created_at) AS last_seen
-    FROM inv_data
-    WHERE sofor_id IS NOT NULL OR arac_id IS NOT NULL
-    GROUP BY sofor_id, sofor_adi, arac_id, plaka
-    HAVING COUNT(*) >= :min_count
-    ORDER BY avg_suspicion_score DESC NULLS LAST
-    LIMIT :limit
-"""
-
-
 @router.get("/patterns", response_model=List[PatternMatch])
 async def get_patterns(
     db: SessionDep,
@@ -137,23 +63,8 @@ async def get_patterns(
     """Aynı (sofor, arac) için son N gün ≥min_count soruşturma → pattern."""
     _ensure_enabled()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-    rows = (
-        (
-            await db.execute(
-                text(_PATTERN_SQL),
-                {"cutoff": cutoff, "min_count": min_count, "limit": limit},
-            )
-        )
-        .mappings()
-        .all()
-    )
-    result_rows = []
-    for r in rows:
-        d = dict(r)
-        d["sofor_adi"] = decrypt_pii_or(d.get("sofor_adi"))
-        result_rows.append(d)
+    repo = get_analiz_repo(session=db)
+    result_rows = await repo.get_investigation_patterns(cutoff, min_count, limit)
     return [PatternMatch(**d) for d in result_rows]
 
 
@@ -174,29 +85,14 @@ async def list_investigations(
 ):
     _ensure_enabled()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-
-    sql = _LIST_SQL_BASE
-    params: Dict[str, Any] = {"cutoff": cutoff, "limit": limit}
-    sql += " AND fi.created_at >= :cutoff"
-    if status:
-        sql += " AND fi.status = :status"
-        params["status"] = status
-    if suspicion_level:
-        sql += " AND fi.suspicion_level = :sl"
-        params["sl"] = suspicion_level
-    if assigned_to_user_id:
-        sql += " AND fi.assigned_to_user_id = :assigned"
-        params["assigned"] = assigned_to_user_id
-    sql += " ORDER BY fi.created_at DESC LIMIT :limit"
-
-    from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-    rows = (await db.execute(text(sql), params)).mappings().all()
-    result_rows = []
-    for r in rows:
-        d = dict(r)
-        d["sofor_adi"] = decrypt_pii_or(d.get("sofor_adi"))
-        result_rows.append(d)
+    repo = get_analiz_repo(session=db)
+    result_rows = await repo.list_investigations(
+        cutoff,
+        limit,
+        status=status,
+        suspicion_level=suspicion_level,
+        assigned_to_user_id=assigned_to_user_id,
+    )
     return [InvestigationResponse(**d) for d in result_rows]
 
 
@@ -210,7 +106,8 @@ async def get_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
 ):
     _ensure_enabled()
-    row = await _fetch_investigation_dict(db, inv_id)
+    repo = get_analiz_repo(session=db)
+    row = await repo.get_investigation_detail(inv_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
@@ -249,28 +146,10 @@ def _build_theft_alarm_text(
 
 async def _resolve_alarm_context(
     db, anomaly: Anomaly
-) -> tuple[Optional[str], Optional[str]]:
+) -> "tuple[Optional[str], Optional[str]]":
     """Anomaly → (plaka, sofor_adi). Yoksa (None, None)."""
-    sql = """
-        SELECT
-            COALESCE(s.ad_soyad, NULL) AS sofor_adi,
-            COALESCE(v.plaka, NULL) AS plaka
-        FROM anomalies a
-        LEFT JOIN seferler sf ON a.kaynak_tip = 'sefer' AND a.kaynak_id = sf.id
-        LEFT JOIN soforler s ON sf.sofor_id = s.id
-        LEFT JOIN araclar v ON (a.kaynak_tip = 'arac' AND a.kaynak_id = v.id)
-                            OR (a.kaynak_tip = 'sefer' AND sf.arac_id = v.id)
-        WHERE a.id = :aid
-        LIMIT 1
-    """
-    from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-    row = (
-        (await db.execute(text(sql), {"aid": int(anomaly.id)})).mappings().one_or_none()
-    )
-    if row is None:
-        return None, None
-    return row.get("plaka"), decrypt_pii_or(row.get("sofor_adi"))
+    repo = get_analiz_repo(session=db)
+    return await repo.get_anomaly_alarm_context(int(anomaly.id))
 
 
 async def _maybe_broadcast_alarm(
@@ -348,18 +227,13 @@ async def create_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
+    repo = get_analiz_repo(session=db)
     # 1. Anomaly var mı?
-    anomaly = await db.get(Anomaly, payload.anomaly_id)
+    anomaly = await repo.get_anomaly_by_id(payload.anomaly_id)
     if not anomaly:
         raise HTTPException(status_code=404, detail="Anomali bulunamadı")
     # 2. Mevcut investigation var mı? (unique constraint da yakalar)
-    existing = (
-        await db.execute(
-            select(FuelInvestigation).where(
-                FuelInvestigation.anomaly_id == payload.anomaly_id
-            )
-        )
-    ).scalar_one_or_none()
+    existing = await repo.get_investigation_by_anomaly_id(payload.anomaly_id)
     if existing:
         raise HTTPException(
             status_code=409,
@@ -380,19 +254,15 @@ async def create_investigation(
 
     # 4. INSERT (creator_id virtual super-admin=0 ise NULL)
     creator_id = current_admin.id if current_admin.id and current_admin.id > 0 else None
-    inv = FuelInvestigation(
-        anomaly_id=payload.anomaly_id,
-        status="open",
-        suspicion_score=classification.suspicion_score,
-        suspicion_level=classification.suspicion_level,
-        notes=payload.initial_notes,
-        created_by_user_id=creator_id,
-        evidence_files=[],
-    )
-    db.add(inv)
     try:
-        await db.flush()
-        await db.refresh(inv)
+        inv = await repo.create_investigation_row(
+            anomaly_id=payload.anomaly_id,
+            status="open",
+            suspicion_score=classification.suspicion_score,
+            suspicion_level=classification.suspicion_level,
+            notes=payload.initial_notes,
+            creator_id=creator_id,
+        )
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -418,7 +288,7 @@ async def create_investigation(
     await _maybe_broadcast_alarm(inv.id, classification, anomaly, db)
 
     # JOIN'li response
-    row = await _fetch_investigation_dict(db, int(inv.id))
+    row = await repo.get_investigation_detail(int(inv.id))
     if row is None:
         # Beklenmedik durum
         raise HTTPException(
@@ -433,26 +303,6 @@ async def create_investigation(
 _TERMINAL_STATUSES = {"closed"}
 
 
-async def _read_investigation_for_update(
-    db: Any, inv_id: int
-) -> Optional[FuelInvestigation]:
-    """Fetch a FuelInvestigation for a read-modify-write PATCH.
-
-    2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 18): eskiden `db.get()`
-    ile kilitsiz okunuyordu (TOCTOU) — eşzamanlı iki PATCH'te, geç kalan
-    istek ilkinin commit'inden ÖNCE okunan stale bir status'a göre karar
-    verip (örn. otomatik 'assigned' geçişi) diğerinin sonucunu (örn.
-    'resolved') sessizce eziyordu. `SELECT ... FOR UPDATE` satırı kilitler;
-    geç kalan istek ilkinin commit'ini bekler ve GÜNCEL durumu görür.
-    """
-    result = await db.execute(
-        select(FuelInvestigation)
-        .where(FuelInvestigation.id == inv_id)
-        .with_for_update()
-    )
-    return result.scalar_one_or_none()
-
-
 @router.patch("/{inv_id}", response_model=InvestigationResponse)
 async def update_investigation(
     inv_id: int,
@@ -461,7 +311,13 @@ async def update_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv = await _read_investigation_for_update(db, inv_id)
+    repo = get_analiz_repo(session=db)
+    # 2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 18): SELECT ... FOR
+    # UPDATE ile satır kilitlenir — eskiden kilitsiz okunuyordu (TOCTOU),
+    # eşzamanlı iki PATCH'te geç kalan istek ilkinin commit'inden ÖNCE
+    # okunan stale bir status'a göre karar verip diğerinin sonucunu sessizce
+    # eziyordu.
+    inv = await repo.lock_investigation_for_update(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     if inv.status in _TERMINAL_STATUSES:
@@ -505,14 +361,12 @@ async def update_investigation(
 
     if not values:
         # No-op update — mevcut kaydı dön
-        row = await _fetch_investigation_dict(db, inv_id)
+        row = await repo.get_investigation_detail(inv_id)
         if row is None:
             raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
         return InvestigationResponse(**row)
 
-    await db.execute(
-        update(FuelInvestigation).where(FuelInvestigation.id == inv_id).values(**values)
-    )
+    await repo.update_investigation_fields(inv_id, values)
     await db.commit()
 
     await log_audit_event(
@@ -524,7 +378,7 @@ async def update_investigation(
         user_id=current_admin.id,
     )
 
-    row = await _fetch_investigation_dict(db, inv_id)
+    row = await repo.get_investigation_detail(inv_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
@@ -540,17 +394,14 @@ async def soft_delete_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv = await db.get(FuelInvestigation, inv_id)
+    repo = get_analiz_repo(session=db)
+    inv = await repo.get_investigation_by_id(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     if inv.status == "closed":
         return  # idempotent
 
-    await db.execute(
-        update(FuelInvestigation)
-        .where(FuelInvestigation.id == inv_id)
-        .values(status="closed", closed_at=datetime.now(timezone.utc))
-    )
+    await repo.close_investigation(inv_id, datetime.now(timezone.utc))
     await db.commit()
     await log_audit_event(
         module="theft",
@@ -570,10 +421,11 @@ async def reclassify_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv = await db.get(FuelInvestigation, inv_id)
+    repo = get_analiz_repo(session=db)
+    inv = await repo.get_investigation_by_id(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-    anomaly = await db.get(Anomaly, inv.anomaly_id)
+    anomaly = await repo.get_anomaly_by_id(inv.anomaly_id)
     if not anomaly:
         raise HTTPException(status_code=404, detail="İlişkili anomali bulunamadı")
 
@@ -587,13 +439,10 @@ async def reclassify_investigation(
             "severity": anomaly.severity,
         }
     )
-    await db.execute(
-        update(FuelInvestigation)
-        .where(FuelInvestigation.id == inv_id)
-        .values(
-            suspicion_score=classification.suspicion_score,
-            suspicion_level=classification.suspicion_level,
-        )
+    await repo.update_investigation_classification(
+        inv_id,
+        classification.suspicion_score,
+        classification.suspicion_level,
     )
     await db.commit()
 

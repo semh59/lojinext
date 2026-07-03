@@ -65,10 +65,11 @@ async def test_concurrent_patch_does_not_lose_resolution_update(async_db_engine)
         UPDATE statement itself takes the row lock even without an explicit
         FOR UPDATE, so this correctly blocks B's later UPDATE until A
         commits, regardless of which branch is under test."""
-        from app.api.v1.endpoints.investigations import _read_investigation_for_update
+        from app.database.repositories.analiz_repo import get_analiz_repo
 
         async with SessionLocal() as session:
-            current = await _read_investigation_for_update(session, inv_id)
+            repo = get_analiz_repo(session=session)
+            current = await repo.lock_investigation_for_update(inv_id)
             assert current is not None
             values = {
                 "resolution_type": "real_theft",
@@ -94,11 +95,12 @@ async def test_concurrent_patch_does_not_lose_resolution_update(async_db_engine)
         (uncommitted) UPDATE'i tarafından zaten kilitlenmiş satırda bekler,
         bu yüzden B'nin write'ı gerçek zamanda her zaman A'dan SONRA olur —
         asıl TOCTOU senaryosu budur."""
-        from app.api.v1.endpoints.investigations import _read_investigation_for_update
+        from app.database.repositories.analiz_repo import get_analiz_repo
 
         await lock_acquired.wait()
         async with SessionLocal() as session:
-            current = await _read_investigation_for_update(session, inv_id)
+            repo = get_analiz_repo(session=session)
+            current = await repo.lock_investigation_for_update(inv_id)
             assert current is not None
             values = {"assigned_to_user_id": assignee_id}
             if current.status == "open" and "status" not in values:

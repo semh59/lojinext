@@ -404,7 +404,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
 
     db = AsyncMock()
 
-    # Track call count: first call = check_existing, second call = _fetch_investigation_dict
+    # Track call count: first call = check_existing, second call = AnalizRepository.get_investigation_detail
     _call_count = {"n": 0}
 
     async def _db_get(model_cls, pk):
@@ -421,7 +421,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
     def _execute_side_effect(*args, **kwargs):
         mock = MagicMock()
         mock.scalar_one_or_none.return_value = None
-        # mappings for _fetch_investigation_dict
+        # mappings for AnalizRepository.get_investigation_detail
         mapping = MagicMock()
         mapping.one_or_none.return_value = MagicMock(
             **inv_row, keys=lambda: list(inv_row.keys())
@@ -462,7 +462,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
                 new=AsyncMock(),
             ):
                 with patch(
-                    "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+                    "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
                     new=AsyncMock(return_value=inv_row),
                 ):
                     with _override_db(db):
@@ -690,7 +690,7 @@ def _make_update_db(fake_inv, inv_row):
     db.get = _db_get
     db.commit = AsyncMock()
 
-    # Execute needs to support: 1) UPDATE statement, 2) _fetch_investigation_dict SELECT
+    # Execute needs to support: 1) UPDATE statement, 2) AnalizRepository.get_investigation_detail SELECT
     mapping_mock = MagicMock()
     row_mock = MagicMock(**inv_row)
     row_mock.__iter__ = lambda self: iter(inv_row.items())
@@ -716,7 +716,7 @@ async def test_update_investigation_status_change(async_client, admin_auth_heade
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -741,7 +741,7 @@ async def test_update_investigation_notes_only(async_client, admin_auth_headers)
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -766,7 +766,7 @@ async def test_update_investigation_assign_user(async_client, admin_auth_headers
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -791,7 +791,7 @@ async def test_update_investigation_resolve_with_type(async_client, admin_auth_h
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -816,7 +816,7 @@ async def test_update_investigation_noop(async_client, admin_auth_headers):
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with _override_db(db):
@@ -837,7 +837,7 @@ async def test_update_investigation_evidence_files(async_client, admin_auth_head
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -862,7 +862,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(

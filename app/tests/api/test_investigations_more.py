@@ -478,7 +478,7 @@ async def test_update_investigation_status_closed(async_client, admin_auth_heade
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -529,7 +529,7 @@ async def test_update_investigation_assign_non_open(async_client, admin_auth_hea
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -554,7 +554,7 @@ async def test_update_investigation_assign_non_open(async_client, admin_auth_hea
 async def test_update_investigation_noop_fetch_returns_none(
     async_client, admin_auth_headers
 ):
-    """PATCH no-op path when _fetch_investigation_dict returns None → 404."""
+    """PATCH no-op path when AnalizRepository.get_investigation_detail returns None → 404."""
     from app.database.models import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
@@ -583,7 +583,7 @@ async def test_update_investigation_noop_fetch_returns_none(
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         new=AsyncMock(return_value=None),  # simulate missing record
     ):
         with _override_db(db):
@@ -632,12 +632,12 @@ async def test_update_investigation_post_fetch_none(async_client, admin_auth_hea
     # First call (no-op check) returns the row, second call (post-update) returns None
     call_counter = {"n": 0}
 
-    async def _fetch_side_effect(db, inv_id):
+    async def _fetch_side_effect(inv_id):
         call_counter["n"] += 1
         return None
 
     with patch(
-        "app.api.v1.endpoints.investigations._fetch_investigation_dict",
+        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
         side_effect=_fetch_side_effect,
     ):
         with patch(

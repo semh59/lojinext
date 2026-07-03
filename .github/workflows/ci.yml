@@ -761,6 +761,7 @@ jobs:
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
           script: |
+            set -e
             cd "${{ secrets.PROD_DEPLOY_PATH }}"
             if [ ! -f .last_good_image_tag ]; then
               echo "[rollback-prod] No .last_good_image_tag on disk (first-ever deploy?) — nothing safe to roll back to. Manual intervention required."

@@ -165,9 +165,9 @@ Global React context (non-persisted) lives in `frontend/src/context/`: `AuthCont
 
 ### Frontend strings (i18next is the dominant pattern; typed resource objects are legacy)
 
-Most components manage user-visible strings via i18next: `useTranslation()` + `t()` against `frontend/src/locales/tr.json` / `en.json` (wired in `i18n.ts`). This is now the primary pattern — used in ~90 component/page files, not an exception.
+Most components manage user-visible strings via i18next: `useTranslation()` + `t()` against `frontend/src/locales/tr.json` / `en.json` (wired in `i18n.ts`). This is now the primary pattern — used in ~95 component/page files, not an exception.
 
-The older typed-resource-object pattern (`frontend/src/resources/tr/<domain>.ts`, e.g. `vehicleTableText`, `tripModuleText`) still exists and is still imported directly (no `t()`) by the **reports / reports-studio** domain (`ReportsPage.tsx`, `ReportsStudioPage.tsx`, `TemplateConfigPanel.tsx`, `ReportCards.tsx`) and their tests. Do not add new domains to this pattern — extend `locales/*.json` + `useTranslation()` instead. `frontend/src/resources/en/<domain>.ts` (English counterpart, same 18 files) exists but is **dead code** — imported nowhere; do not add new keys there.
+The older typed-resource-object pattern (`frontend/src/resources/tr/<domain>.ts`, e.g. `vehicleTableText`, `tripModuleText`) still exists. Among **non-test** files, only the **reports / reports-studio** domain (`ReportsPage.tsx`, `ReportsStudioPage.tsx`, `TemplateConfigPanel.tsx`, `ReportCards.tsx`) still imports it directly (no `t()`). Its footprint in **tests** is wider than that: ~25 other test files across drivers/fuel/trailers/vehicles/admin/trips also import `resources/tr/*` directly for test-assertion text, unrelated to the reports domain — these are pre-existing and out of scope, not a sign of new domains adopting the pattern. Do not add new production domains to this pattern — extend `locales/*.json` + `useTranslation()` instead. `frontend/src/resources/en/<domain>.ts` (English counterpart, same 18 files) exists but is **dead code** — imported nowhere; do not add new keys there.
 
 ### Frontend design tokens
 

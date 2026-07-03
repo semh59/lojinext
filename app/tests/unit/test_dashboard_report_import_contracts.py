@@ -8,8 +8,12 @@ Slice 3a of the zero-mock epic:
 
 from datetime import date, timedelta
 
+import pytest
+
 from app.core.services.report_service import ReportService
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+
+pytestmark = pytest.mark.integration
 
 
 async def test_report_service_exposes_dashboard_compat_methods(db_session):

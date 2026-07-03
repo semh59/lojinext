@@ -24,9 +24,7 @@ from app.core.services.cost_analyzer import (
     get_cost_analyzer,
 )
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ── CostBreakdown dataclass ───────────────────────────────────────────────────
 
 

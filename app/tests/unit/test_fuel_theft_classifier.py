@@ -21,6 +21,8 @@ from app.core.ai.fuel_theft_classifier import FuelTheftClassifier
 from app.database.models import Anomaly
 from app.schemas.investigation import TheftClassification
 
+pytestmark = pytest.mark.integration
+
 
 async def _seed_anomalies(
     db_session, n: int, *, kaynak_id: int = 7, kaynak_tip: str = "sefer"

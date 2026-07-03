@@ -14,9 +14,7 @@ from sqlalchemy import select
 from app.database.models import Anomaly
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Real-DB seed helper: generate_*_insights run a real UnitOfWork (get_uow →
 # UnitOfWork → conftest-monkeypatched test session) whose analiz_repo aggregates

@@ -5,6 +5,8 @@ import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
+pytestmark = pytest.mark.integration
+
 
 def test_encode_route_returns_8d_vector():
     from app.core.ml.route_similarity import encode_route

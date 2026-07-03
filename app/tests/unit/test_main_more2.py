@@ -22,9 +22,7 @@ import pytest
 
 from app.main import _sentry_before_send, _wire_observability, app
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # _sentry_before_send: ImportError branches (simulate packages unavailable)
 # ---------------------------------------------------------------------------

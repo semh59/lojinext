@@ -26,9 +26,7 @@ from app.core.services.internal_service import InternalService
 from app.database.models import SeferBelge
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # get_sofor_by_telegram_id
 # ---------------------------------------------------------------------------

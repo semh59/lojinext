@@ -19,7 +19,7 @@ from app.core.services.attribution_service import AttributionService
 from app.database.models import Arac, Sefer, Sofor
 from app.database.unit_of_work import UnitOfWork
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_arac(db_session, plaka: str) -> int:

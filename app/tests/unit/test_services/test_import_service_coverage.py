@@ -35,9 +35,7 @@ from app.tests._helpers.seed import (
     seed_sofor,
 )
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------

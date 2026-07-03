@@ -34,8 +34,7 @@ from app.core.services.sefer_write_service import SeferWriteService
 from app.schemas.sefer import SeferCreate, SeferUpdate, TripStatus
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Helpers / DummyUoW
 # ---------------------------------------------------------------------------

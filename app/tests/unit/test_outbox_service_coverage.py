@@ -22,8 +22,7 @@ from app.database.models import OutboxEvent
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.outbox_service import OutboxService, get_outbox_service
 
-pytestmark = pytest.mark.unit
-
+pytestmark = pytest.mark.integration
 _BUS = "app.infrastructure.events.outbox_service.get_event_bus"
 _STOPPING = "app.infrastructure.events.outbox_service.is_stopping"
 

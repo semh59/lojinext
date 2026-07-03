@@ -21,9 +21,7 @@ from app.database.models import Arac
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

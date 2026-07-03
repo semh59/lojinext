@@ -23,6 +23,8 @@ from app.main import (
     validation_exception_handler,
 )
 
+pytestmark = pytest.mark.integration
+
 # ---------------------------------------------------------------------------
 # DiagnosticHelper
 # ---------------------------------------------------------------------------

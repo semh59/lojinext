@@ -34,9 +34,7 @@ import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor, seed_yakit
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Real-DB seed helpers (vehicle/fleet/cost recommendations run raw SQL over
 # real seferler / yakit_alimlari).

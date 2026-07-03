@@ -22,7 +22,7 @@ from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from app.workers.tasks.theft_tasks import _run_pattern_scan, daily_pattern_scan
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_theft_pattern(db_session, *, n=3, score=0.87):

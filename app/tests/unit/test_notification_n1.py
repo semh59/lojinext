@@ -16,7 +16,7 @@ from sqlalchemy import insert, select
 from app.database.models import BildirimGecmisi, BildirimKurali, Kullanici, Rol
 from app.infrastructure.security.pii_encryption import blind_index
 
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 async def test_kullanici_repo_has_get_by_rol_ids():

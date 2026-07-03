@@ -28,6 +28,8 @@ from app.tests._helpers.seed import (
     seed_sofor,
 )
 
+pytestmark = pytest.mark.integration
+
 
 class TestResolveIds:
     """ID resolution tests for ImportService (Plaka and Name matching)"""

@@ -22,7 +22,7 @@ import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sofor
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 def _make_engine():

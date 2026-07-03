@@ -17,7 +17,7 @@ import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_yakit
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 def _make_yakit_create(**overrides):

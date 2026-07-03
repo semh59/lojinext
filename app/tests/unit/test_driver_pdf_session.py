@@ -1,5 +1,9 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+pytestmark = pytest.mark.integration
+
 
 async def test_driver_comparison_uses_real_unit_of_work(db_session):
     """

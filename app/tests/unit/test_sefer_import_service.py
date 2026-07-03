@@ -30,7 +30,11 @@ from types import SimpleNamespace
 from typing import Any, Dict, List
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sofor
+
+pytestmark = pytest.mark.integration
 
 
 async def _make_service(db_session, *, seed_route=True):

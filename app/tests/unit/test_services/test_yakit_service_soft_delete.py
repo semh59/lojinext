@@ -23,7 +23,7 @@ from app.core.entities.models import YakitUpdate
 from app.core.services.yakit_service import YakitService
 from app.database.models import Arac, YakitAlimi
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_arac(db_session, plaka: str) -> int:

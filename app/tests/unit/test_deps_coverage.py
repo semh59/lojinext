@@ -22,9 +22,7 @@ from app.core.security import create_access_token
 from app.database.models import Kullanici, Rol
 from app.infrastructure.security.pii_encryption import blind_index
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

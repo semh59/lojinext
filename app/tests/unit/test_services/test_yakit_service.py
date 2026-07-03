@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 def _make_yakit_create(**kwargs):

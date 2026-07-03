@@ -2,6 +2,10 @@
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+pytestmark = pytest.mark.integration
+
 
 async def test_vehicle_delete_returns_success_true():
     """DELETE vehicle: {success: True, message: ...} olmalı."""

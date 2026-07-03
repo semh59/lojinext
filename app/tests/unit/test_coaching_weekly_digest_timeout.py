@@ -20,6 +20,8 @@ from celery.exceptions import SoftTimeLimitExceeded
 
 from app.database.models import Sofor
 
+pytestmark = pytest.mark.integration
+
 
 def test_weekly_digest_has_custom_time_limits():
     """Task decorator'ı soft_time_limit ve time_limit override etmeli."""

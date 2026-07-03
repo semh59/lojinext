@@ -22,7 +22,7 @@ from app.workers.tasks.driver_tasks import (
     calculate_performance_score,
 )
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_driver_with_trips(db_session, tuketim_values):

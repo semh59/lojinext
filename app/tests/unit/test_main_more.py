@@ -26,9 +26,7 @@ import pytest
 
 from app.main import _is_metrics_allowed, _sentry_before_send, app
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # _sentry_before_send — JWT exception branches
 # ---------------------------------------------------------------------------

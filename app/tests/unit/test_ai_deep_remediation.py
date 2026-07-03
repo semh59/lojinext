@@ -13,6 +13,8 @@ from app.core.services.anomaly_detector import (
 )
 from app.database.models import Anomaly
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_rag_engine_regression_fixed():

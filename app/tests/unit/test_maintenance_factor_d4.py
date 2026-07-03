@@ -17,9 +17,7 @@ from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
 from app.database.models import AracBakim, BakimTipi
 from app.tests._helpers.seed import seed_arac
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # --- pure: neutralization logic -------------------------------------------
 
 

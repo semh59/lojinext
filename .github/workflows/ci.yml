@@ -440,21 +440,18 @@ jobs:
         # backend'ini öldürüyor → ConnectionDoesNotExistError. Geri
         # alındı. Speedup için per-worker DB veya per-worker schema
         # gerek (follow-up).
-        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-fail-under=92 --cov-config=pytest.ini
-
-      # Tier E madde 29 — htmlcov/ used to only ever exist as a stale local
-      # artifact from one-off manual coverage sprints (last touched over a
-      # month before this fix), never regenerated or published by CI. Every
-      # run now uploads the current report so "what's actually covered" is
-      # always one click away instead of "run pytest locally and hope your
-      # checkout is current."
-      - name: Upload backend coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage-html
-          path: htmlcov/
-          retention-days: 14
+        #
+        # Tier F madde 37 (2026-07-03): 46 app/tests/unit dosyası gerçekten
+        # gerçek DB'ye vuruyordu ama @pytest.mark.integration TAŞIMIYORDU —
+        # bu "hızlı/mock'lu" lane'i fiilen sahteleştiriyordu. Artık doğru
+        # işaretlendiler (bkz. app/tests/unit/**, pytestmark = pytest.mark.
+        # integration) ve bu run'dan çıktılar — bu yüzden bu adımın kendi
+        # --cov-fail-under'ı 92'den 85'e düşürüldü (gerçek ölçüm: %86.92,
+        # yerel throwaway Postgres'e karşı 2026-07-03'te kanıtlandı). Asıl
+        # %92 hedefi artık AŞAĞIDAKİ "Combined coverage gate" adımında,
+        # unit+tüm integration adımlarının BİRLEŞİK verisiyle uygulanıyor —
+        # tek başına bu adım artık nihai gate DEĞİL.
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=85 --cov-config=pytest.ini
 
       - name: Frontend — Unit tests with coverage
         run: cd frontend && npm run test:cov
@@ -468,25 +465,52 @@ jobs:
           retention-days: 14
 
       - name: Integration — DB schema integrity
-        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60
+        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — API contracts
-        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60
+        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — Business lifecycle
-        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60
+        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Security — RBAC coverage
-        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30
+        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — ML/AI pipeline
-        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60
+        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
-      - name: Integration — remaining (legacy + other integration tests)
-        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
+      - name: Integration — remaining (legacy + other integration tests, includes Tier F madde 37's 46 reclassified files)
+        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
 
       - name: Deep audit tests (auth isolation + integrity, excluding stress)
-        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short
+        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+
+      # Tier F madde 37 (2026-07-03): asıl %92 coverage hedefi burada,
+      # yukarıdaki unit adımı + TÜM integration adımlarının aynı .coverage
+      # dosyasına (--cov-append, aynı job/runner/filesystem — coverage
+      # combine'a gerek yok) biriktirdiği GERÇEK birleşik veriyle
+      # uygulanıyor. Gerçek ölçüm (2026-07-03, tüm test'ler tek pytest
+      # invocation'ında, yerel throwaway Postgres'e karşı): %92.68 — 92
+      # eşiği güvenli marjla karşılanıyor.
+      - name: Combined coverage gate (unit + integration, real %92 target)
+        run: |
+          python -m coverage report --rcfile=pytest.ini --fail-under=92
+          python -m coverage html --rcfile=pytest.ini -d htmlcov
+
+      # Tier E madde 29 — htmlcov/ used to only ever exist as a stale local
+      # artifact from one-off manual coverage sprints (last touched over a
+      # month before this fix), never regenerated or published by CI. Every
+      # run now uploads the current report so "what's actually covered" is
+      # always one click away instead of "run pytest locally and hope your
+      # checkout is current." Tier F madde 37: this now reflects the
+      # combined unit+integration total, not just the unit-only lane.
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-html
+          path: htmlcov/
+          retention-days: 14
 
       - name: Frontend tests
         run: npm --prefix frontend run test -- --run

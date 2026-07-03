@@ -1,6 +1,10 @@
 """Tests for driver x route-type coefficient module."""
 
+import pytest
+
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+
+pytestmark = pytest.mark.integration
 
 
 def test_classify_route_highway_dominant():

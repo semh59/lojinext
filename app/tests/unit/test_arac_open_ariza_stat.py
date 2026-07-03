@@ -12,7 +12,7 @@ from app.database.models import AracBakim, BakimTipi
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 def _bakim(arac_id, tip, *, tamamlandi):

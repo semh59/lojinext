@@ -19,7 +19,7 @@ import pytest
 
 import app.database.repositories.yakit_repo as yakit_repo_mod
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 def _make_service():

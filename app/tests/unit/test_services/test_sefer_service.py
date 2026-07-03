@@ -21,7 +21,7 @@ from app.database.repositories.sefer_repo import SeferRepository
 from app.infrastructure.events.event_bus import get_event_bus
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture

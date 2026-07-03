@@ -20,7 +20,7 @@ from app.core.entities.models import AracCreate
 from app.core.services.arac_service import AracService
 from app.database.models import Arac
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_arac(db_session, plaka: str, *, aktif: bool = True) -> int:

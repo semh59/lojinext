@@ -22,9 +22,7 @@ from app.database.models import GuzergahKalibrasyon
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sefer, seed_sofor
 
-pytestmark = pytest.mark.unit
-
-
+pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Real-DB seed helpers
 # ---------------------------------------------------------------------------

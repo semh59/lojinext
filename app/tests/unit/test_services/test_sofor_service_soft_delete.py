@@ -16,7 +16,7 @@ from app.core.services.sofor_service import SoforService
 from app.database.models import Sofor
 from app.infrastructure.security.pii_encryption import blind_index
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_sofor(db_session, ad_soyad: str, *, aktif: bool = True) -> int:

@@ -15,7 +15,7 @@ from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici, KullaniciAyari, Rol
 from app.infrastructure.security.pii_encryption import blind_index
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 async def _seed_user(db_session) -> int:

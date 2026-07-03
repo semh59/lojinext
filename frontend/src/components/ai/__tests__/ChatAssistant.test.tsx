@@ -1,4 +1,23 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
+﻿/**
+ * 0-mock epiği (AI domain): bu dosya BİLEREK tam mock'lu kalıyor.
+ * ChatAssistant testlerinin büyük çoğunluğu backend'e hiç dokunmuyor — sadece
+ * `useAiStore`'un (zustand) döndürdüğü isOpen/status/messages'a göre UI'ın
+ * doğru render edildiğini doğruluyorlar (store tamamen mock'lu, gerçek HTTP
+ * hiç tetiklenmiyor). Bunları gerçek backend'e çevirmek gereksiz risk/yavaşlık
+ * katardı, gerçek bir dış sınır test etmiyorlar.
+ *
+ * Tek gerçek dış-sınır etkileşimi `aiApi.chat` — bunun için 2 test var:
+ *  - "submitting form calls aiApi.chat and addMessage": gerçek round-trip'e
+ *    çevrilebilir bir deterministik senaryo → GERÇEK backend'e çevrilip
+ *    kardeş dosyaya taşındı: `ChatAssistant.real-backend.test.tsx`.
+ *  - "shows Düşünüyor... while AI is responding": sonsuza kadar resolve
+ *    olmayan bir Promise'e dayanıyor — gerçek bir backend round-trip'i asla
+ *    "sonsuza kadar" beklemeyi garanti edemez (backend er ya da geç yanıt
+ *    döner), bu yüzden BİLEREK mock'lu kalıyor (epik madde 4'teki "gerçek
+ *    çakışma" durumu — aynı dosyada hem gerçek hem sonsuz-mock aynı modül
+ *    için olamaz).
+ */
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "../../../test/test-utils";
 import { ChatAssistant } from "../ChatAssistant";
 
@@ -240,26 +259,6 @@ describe("ChatAssistant", () => {
       "LojiNext Asistan'a sor...",
     ) as HTMLInputElement;
     expect(input.value).toBe("En verimli güzergah hangisi?");
-  });
-
-  it("submitting form calls aiApi.chat and addMessage", async () => {
-    const { useAiStore } = await import("../../../stores/use-ai-store");
-    const { aiApi } = await import("../../../api/ai");
-    (aiApi.chat as ReturnType<typeof vi.fn>).mockResolvedValue({
-      response: "İşte filo bilgileri...",
-    });
-    vi.mocked(useAiStore).mockReturnValue(
-      createStoreMock({ isOpen: true }) as any,
-    );
-    render(<ChatAssistant />);
-    const input = screen.getByPlaceholderText("LojiNext Asistan'a sor...");
-    fireEvent.change(input, { target: { value: "Filo durumu?" } });
-    const form = input.closest("form")!;
-    fireEvent.submit(form);
-    await waitFor(() => {
-      expect(aiApi.chat).toHaveBeenCalledTimes(1);
-      expect(mockAddMessage).toHaveBeenCalled();
-    });
   });
 
   it("2026-07-01 prod-grade denetimi P2 (Dalga 4 madde 25): isOpen persist edilip true olarak geri geldiğinde (panel zaten açık mount oluyor) checkStatus hemen çağrılır — 5sn polling interval'ını beklemez", async () => {

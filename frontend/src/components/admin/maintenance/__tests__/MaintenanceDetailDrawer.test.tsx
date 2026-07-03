@@ -1,4 +1,15 @@
-﻿import { describe, expect, it, vi } from "vitest";
+﻿/**
+ * 0-mock epiği re-triage (maintenance domain): NOT converted — purely
+ * presentational from the test's point of view. Every test drives the
+ * component via props only (`prediction`/`onClose`); none of them exercise
+ * `handleDownload` (the only path that calls
+ * `maintenancePredictionsService.downloadIcs`), so the mocked service call
+ * is inert here — there is no real HTTP boundary actually under test.
+ * Converting would add a real backend dependency with zero assertion
+ * gain. Left mocked (same category as the RouteAnalysisCard/
+ * RouteProfileChart files from Faz 2, which needed no changes).
+ */
+import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "../../../../test/test-utils";
 
 vi.mock("../../../../api/maintenance-predictions", () => ({

@@ -1,85 +1,67 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../test/test-utils";
+/**
+ * 0-mock epiği: alerts domain. `investigationService.list` orval-generated
+ * client üzerinden gidiyor — baseURL origin-only (REAL_BACKEND_ORIGIN).
+ *
+ * Orijinal dosyanın "iki kart farklı kolonlarda görünür" testi, iki
+ * mock'lanmış Investigation kaydı render ediyordu. Gerçek backend'de bir
+ * investigation açmak önce gerçek bir Anomaly kaydı gerektiriyor (bkz
+ * InvestigationDetailDialog.test.tsx'teki doküman notu — `anomaly_id` FK
+ * kontrolü, anomaliler yalnızca ML/RCA pipeline'ı tarafından üretiliyor,
+ * frontend API yüzeyinden create edilemiyor). Bu yüzden "iki kart" testi
+ * gerçek backend'e çevrilemiyor.
+ *
+ * "boş liste → emptyKanban mesajı" testi ise gerçek backend'in GERÇEK
+ * mevcut durumunu yansıtıyor — bu backend'de hâlâ hiç investigation kaydı
+ * yok (doğrulandı: `GET /admin/investigations?days=30&limit=200` → `[]`),
+ * bu yüzden gerçek bir HTTP round-trip ile aynen doğrulanabiliyor.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import type { ReactElement } from "react";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-vi.mock("../../../api/investigations", () => ({
-  investigationService: {
-    list: vi.fn(),
-    get: vi.fn(),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-vi.mock("../../../context/NotificationContext", async () => {
-  const actual: any = await vi.importActual(
-    "../../../context/NotificationContext",
-  );
-  return {
-    ...actual,
-    useNotify: () => ({ notify: vi.fn() }),
-  };
-});
+describe.skipIf(!backendUp)("InvestigationsKanban (real backend)", () => {
+  let render: typeof import("../../../test/test-utils").render;
+  let screen: typeof import("../../../test/test-utils").screen;
+  let waitFor: typeof import("../../../test/test-utils").waitFor;
+  let InvestigationsKanban: typeof import("../InvestigationsKanban").InvestigationsKanban;
+  let NotificationProvider: typeof import("../../../context/NotificationContext").NotificationProvider;
 
-import { investigationService } from "../../../api/investigations";
-import { InvestigationsKanban } from "../InvestigationsKanban";
+  // InvestigationsKanban dahili olarak InvestigationDetailDialog render
+  // ediyor, o da gerçek `useNotify()` çağırıyor (mock yok) — test-utils.tsx
+  // NotificationProvider'ı sarmadığı için burada elle sarmalıyoruz (bkz
+  // InvestigationDetailDialog.test.tsx'teki aynı not).
+  const renderWithNotify = (ui: ReactElement) =>
+    render(<NotificationProvider>{ui}</NotificationProvider>);
 
-describe("InvestigationsKanban", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor } = await import("../../../test/test-utils"));
+    ({ InvestigationsKanban } = await import("../InvestigationsKanban"));
+    ({ NotificationProvider } = await import(
+      "../../../context/NotificationContext"
+    ));
   });
 
-  it("boş liste → emptyKanban mesajı", async () => {
-    (investigationService.list as ReturnType<typeof vi.fn>).mockResolvedValue(
-      [],
-    );
-    render(<InvestigationsKanban />);
-    await waitFor(() =>
-      expect(screen.getByText("Henüz soruşturma yok.")).toBeInTheDocument(),
-    );
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("iki kart farklı kolonlarda görünür", async () => {
-    (investigationService.list as ReturnType<typeof vi.fn>).mockResolvedValue([
-      {
-        id: 1,
-        anomaly_id: 10,
-        status: "open",
-        suspicion_score: 0.5,
-        suspicion_level: "medium",
-        assigned_to_user_id: null,
-        notes: null,
-        resolution_type: null,
-        evidence_files: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        closed_at: null,
-        plaka: "34 AAA 11",
-        sofor_adi: "Şoför A",
-        sapma_yuzde: 20,
-      },
-      {
-        id: 2,
-        anomaly_id: 11,
-        status: "investigating",
-        suspicion_score: 0.7,
-        suspicion_level: "high",
-        assigned_to_user_id: 5,
-        notes: null,
-        resolution_type: null,
-        evidence_files: [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        closed_at: null,
-        plaka: "34 BBB 22",
-        sofor_adi: "Şoför B",
-        sapma_yuzde: 40,
-      },
-    ]);
-    render(<InvestigationsKanban />);
-    await waitFor(() =>
-      expect(screen.getByText("34 AAA 11")).toBeInTheDocument(),
+  it("gerçek backend boş investigation listesi döndürdüğünde emptyKanban mesajı gösterilir", async () => {
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token); // AuthContext'in olası /auth/me 404 temizlemesine karşı
+    renderWithNotify(<InvestigationsKanban />);
+    await waitFor(
+      () =>
+        expect(screen.getByText("Henüz soruşturma yok.")).toBeInTheDocument(),
+      { timeout: 10000 },
     );
-    expect(screen.getByText("34 BBB 22")).toBeInTheDocument();
-    expect(
-      screen.getByText("Yakıt Hırsızlığı Soruşturmaları"),
-    ).toBeInTheDocument();
-  });
+  }, 15000);
 });

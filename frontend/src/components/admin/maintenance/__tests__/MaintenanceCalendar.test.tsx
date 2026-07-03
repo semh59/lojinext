@@ -1,4 +1,33 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
+﻿/**
+ * 0-mock epiği re-triage (maintenance domain): NOT converted to a real
+ * backend — left mocked, unlike the sibling InspectionTab conversion.
+ *
+ * All 3 assertions here depend on `maintenancePredictionsService.getAll()`
+ * (GET /admin/maintenance/predictions), which is backed by
+ * `MaintenancePredictor` (app/core/ml/maintenance_predictor.py) — a
+ * domain/ML module that computes `predictable`, `predicted_date`,
+ * `confidence`, `risk_level` from real bakım/arıza history + km data. That
+ * seed data can only be created via direct `db_session` inserts in the
+ * backend's own integration tests (see
+ * app/tests/integration/test_maintenance_predictions.py`_seed_periyodik_bakim`)
+ * — there is no public REST path the frontend can use to reach the same
+ * state, so exact `predictable=true` vs `false` outcomes (and specific
+ * dates/confidence values) aren't reproducible from here. This mirrors the
+ * "Sefer seed infra is a separate domain, out of scope" call made for
+ * CalibrationModal's success-path test.
+ *
+ * The 503 case (`MAINTENANCE_PREDICTOR_ENABLED=False`) is also not
+ * reachable: it's a backend startup env var, and this epic's real backend
+ * is a shared, already-running process (not ours to restart with a
+ * different flag) — confirmed live via
+ * `curl .../admin/maintenance/predictions` returning 200, not 503.
+ *
+ * The one assertion that IS backend-independent (the static risk legend)
+ * doesn't gain real coverage by hitting a real backend — it renders the
+ * same 4 labels regardless of `data`. Splitting it into its own
+ * real-backend file would add no signal, so the whole file stays mocked.
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "../../../../test/test-utils";
 
 vi.mock("../../../../api/maintenance-predictions", () => ({

@@ -1,4 +1,25 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
+﻿/**
+ * 0-mock epiği (coaching domain): 3 saf-render senaryosu (null props,
+ * textarea preset, disabled buton) hiçbir zaman coachingService'e
+ * dokunmuyor — değişiklik yok. "Başarılı gönderim" + "409 kayıtlı değil"
+ * senaryoları `SendCoachingDialog.real-backend.test.tsx` dosyasında ele
+ * alındı:
+ * - 409 senaryosu tamamen gerçek: telegram_id'siz gerçek bir şoför
+ *   (seed gerektirmez, API üzerinden oluşturulur) ile gerçek 409 tetiklenir.
+ * - "Başarılı gönderim" senaryosu backend'in POST /coaching/{id}/send
+ *   endpoint'inin GERÇEK Telegram Bot API'sine (https://api.telegram.org)
+ *   canlı bir HTTP isteği attığını okuyunca (app/api/v1/endpoints/
+ *   coaching.py:send_coaching, httpx.AsyncClient ile doğrudan
+ *   sendMessage çağrısı) risk taşıdığı için DOKÜMANTE mock'lu bırakıldı
+ *   (vi.spyOn coachingService.send üzerinde, tek testte, restore
+ *   edilerek) — ayrıca sürücü oluşturma endpoint'i (POST /drivers/)
+ *   SoforCreate.telegram_id alanını service.add_sofor(...)'a hiç
+ *   iletmiyor (app/api/v1/endpoints/drivers.py:126-133), yani public
+ *   API'den telegram_id'li bir şoför oluşturmak zaten mümkün değil —
+ *   bu ayrı, kapsam dışı bir bulgu (drivers/sofor domain'i, bu dosyanın
+ *   sınırları dışında, dokunulmadı).
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "../../../test/test-utils";
 
 vi.mock("../../../api/coaching", () => ({

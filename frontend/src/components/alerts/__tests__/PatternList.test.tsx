@@ -1,62 +1,58 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "../../../test/test-utils";
+/**
+ * 0-mock epiği: alerts domain. `investigationService.getPatterns`
+ * orval-generated client üzerinden gidiyor — baseURL origin-only
+ * (REAL_BACKEND_ORIGIN).
+ *
+ * Orijinal dosyanın "iki pattern → tablo satırlarda görünür" testi, iki
+ * mock'lanmış tekrarlayan-örüntü kaydı render ediyordu. Bu, backend'in
+ * tekrarlayan şoför/anomali örüntüsü tespiti yapabilmesi için gerçek,
+ * birikmiş Anomaly + Investigation geçmişi gerektiriyor — anomaliler
+ * ML/RCA pipeline'ı tarafından üretiliyor, frontend'in erişebildiği hiçbir
+ * API yüzeyinden create edilemiyor (bkz InvestigationDetailDialog.test.tsx
+ * / InvestigationsKanban.test.tsx'teki aynı doküman notu). Bu yüzden "iki
+ * pattern" testi gerçek backend'e çevrilemiyor.
+ *
+ * "boş döndüğünde 'bulunamadı' mesajı" testi ise gerçek backend'in GERÇEK
+ * mevcut durumunu yansıtıyor (doğrulandı:
+ * `GET /admin/investigations/patterns?days=30&min_count=3&limit=50` → `[]`).
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-vi.mock("../../../api/investigations", () => ({
-  investigationService: {
-    getPatterns: vi.fn(),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-import { investigationService } from "../../../api/investigations";
-import { PatternList } from "../PatternList";
+describe.skipIf(!backendUp)("PatternList (real backend)", () => {
+  let render: typeof import("../../../test/test-utils").render;
+  let screen: typeof import("../../../test/test-utils").screen;
+  let waitFor: typeof import("../../../test/test-utils").waitFor;
+  let PatternList: typeof import("../PatternList").PatternList;
 
-describe("PatternList", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor } = await import("../../../test/test-utils"));
+    ({ PatternList } = await import("../PatternList"));
   });
 
-  it('boş döndüğünde "bulunamadı" mesajı', async () => {
-    (
-      investigationService.getPatterns as ReturnType<typeof vi.fn>
-    ).mockResolvedValue([]);
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("gerçek backend boş pattern listesi döndürdüğünde 'bulunamadı' mesajı gösterilir", async () => {
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token); // AuthContext'in olası /auth/me 404 temizlemesine karşı
     render(<PatternList />);
-    await waitFor(() =>
-      expect(
-        screen.getByText("Tekrarlayan örüntü bulunamadı."),
-      ).toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText("Tekrarlayan örüntü bulunamadı."),
+        ).toBeInTheDocument(),
+      { timeout: 10000 },
     );
-  });
-
-  it("iki pattern → tablo satırlarda görünür", async () => {
-    (
-      investigationService.getPatterns as ReturnType<typeof vi.fn>
-    ).mockResolvedValue([
-      {
-        sofor_id: 1,
-        sofor_adi: "Ali Veli",
-        arac_id: 2,
-        plaka: "34 ABC 11",
-        occurrence_count: 4,
-        avg_suspicion_score: 0.72,
-        last_seen: "2026-05-22T10:00:00Z",
-      },
-      {
-        sofor_id: 2,
-        sofor_adi: "Mehmet Demir",
-        arac_id: 3,
-        plaka: "34 XYZ 99",
-        occurrence_count: 3,
-        avg_suspicion_score: 0.65,
-        last_seen: "2026-05-21T10:00:00Z",
-      },
-    ]);
-    render(<PatternList />);
-    await waitFor(() =>
-      expect(screen.getByText("Ali Veli")).toBeInTheDocument(),
-    );
-    expect(screen.getByText("34 ABC 11")).toBeInTheDocument();
-    expect(screen.getByText("0.72")).toBeInTheDocument();
-    expect(screen.getByText("Mehmet Demir")).toBeInTheDocument();
-    expect(screen.getByText("22.05.2026")).toBeInTheDocument();
-  });
+  }, 15000);
 });

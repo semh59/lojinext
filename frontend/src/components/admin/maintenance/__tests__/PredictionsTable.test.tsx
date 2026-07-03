@@ -1,4 +1,14 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
+﻿/**
+ * 0-mock epiği re-triage (maintenance domain): NOT converted — same
+ * reasoning as MaintenanceCalendar.test.tsx (see doc-comment there in full).
+ * In short: every assertion here (sort order, exact risk badges, specific
+ * `reasons` strings like "GECİKMİŞ — derhal planlanmalı", `confidence`/
+ * `savings_pct` values) is an output of `MaintenancePredictor`, which needs
+ * real bakım/arıza + km history seeded via direct `db_session` access
+ * (backend integration-test-only helper, no public REST equivalent) — out
+ * of scope for a frontend real-HTTP conversion. Left mocked.
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   render,
   screen,

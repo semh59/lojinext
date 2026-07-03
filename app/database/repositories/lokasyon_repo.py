@@ -5,10 +5,11 @@ Lokasyon/güzergah CRUD operasyonları
 
 import difflib
 import threading
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database.base_repository import BaseRepository
 from app.database.models import Lokasyon
@@ -171,6 +172,65 @@ class LokasyonRepository(BaseRepository[Lokasyon]):
             return all_names[idx]
 
         return None
+
+    async def get_location_stats(self) -> Dict[str, Any]:
+        """Fleet-wide location statistics for KPI cards (Tier F madde 35)."""
+        query = """
+            SELECT
+                COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE)          AS total,
+                COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
+                                 AND route_analysis IS NOT NULL)                      AS analyzed,
+                COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
+                                 AND (last_api_call IS NULL
+                                      OR last_api_call < NOW() - INTERVAL '90 days')) AS stale,
+                ROUND(AVG(mesafe_km) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE)::numeric, 1)
+                                                                                      AS avg_distance_km,
+                COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
+                                 AND zorluk = 'Zor')                                  AS high_difficulty
+            FROM lokasyonlar
+        """
+        rows = await self.execute_query(query)
+        row = rows[0]
+        return {
+            "total": row["total"] or 0,
+            "analyzed": row["analyzed"] or 0,
+            "stale": row["stale"] or 0,
+            "avg_distance_km": float(row["avg_distance_km"] or 0),
+            "high_difficulty": row["high_difficulty"] or 0,
+        }
+
+    async def get_stale_locations(self, days: int) -> List[Dict[str, Any]]:
+        """Locations not analyzed in the last N days (or never analyzed)."""
+        query = """
+            SELECT id, cikis_yeri, varis_yeri, mesafe_km, zorluk, last_api_call
+            FROM lokasyonlar
+            WHERE aktif = TRUE AND is_deleted = FALSE
+              AND (last_api_call IS NULL OR last_api_call < NOW() - INTERVAL '1 day' * :days)
+            ORDER BY last_api_call ASC NULLS FIRST
+            LIMIT 20
+        """
+        return await self.execute_query(query, {"days": days})
+
+    async def search_by_route_names(self, cikis: str, varis: str) -> List[Lokasyon]:
+        """Search locations by start/destination names (ILIKE, ORM objects)."""
+        safe_cikis = cikis.replace("%", "\\%").replace("_", "\\_")
+        safe_varis = varis.replace("%", "\\%").replace("_", "\\_")
+        stmt = select(self.model).where(
+            self.model.cikis_yeri.ilike(f"%{safe_cikis}%"),
+            self.model.varis_yeri.ilike(f"%{safe_varis}%"),
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_with_segments(self, lokasyon_id: int) -> Optional[Lokasyon]:
+        """Fetch a location with its hydrated route segments eagerly loaded."""
+        stmt = (
+            select(self.model)
+            .where(self.model.id == lokasyon_id)
+            .options(selectinload(self.model.segments))
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 # Thread-safe Singleton

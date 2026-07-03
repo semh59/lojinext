@@ -6,8 +6,6 @@ from typing import Annotated, Any, List, Optional, cast
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import (
     SessionDep,
@@ -21,7 +19,8 @@ from app.core.services.lokasyon_hydrator import (
     LokasyonHydrator,
     get_lokasyon_hydrator,
 )
-from app.database.models import Kullanici, Lokasyon
+from app.database.models import Kullanici
+from app.database.repositories.lokasyon_repo import get_lokasyon_repo
 from app.infrastructure.audit import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
@@ -61,34 +60,8 @@ async def get_location_stats(
     uow: UOWDep,
 ):
     """Fleet-wide location statistics for KPI cards."""
-    from sqlalchemy import text
-
-    query = text("""
-        SELECT
-            COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE)          AS total,
-            COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
-                             AND route_analysis IS NOT NULL)                      AS analyzed,
-            COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
-                             AND (last_api_call IS NULL
-                                  OR last_api_call < NOW() - INTERVAL '90 days')) AS stale,
-            ROUND(AVG(mesafe_km) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE)::numeric, 1)
-                                                                                  AS avg_distance_km,
-            COUNT(*) FILTER (WHERE aktif = TRUE AND is_deleted = FALSE
-                             AND zorluk = 'Zor')                                  AS high_difficulty
-        FROM lokasyonlar
-    """)
-    result = await uow.session.execute(query)
-    row = result.mappings().one()
-    return {
-        "status": "success",
-        "data": {
-            "total": row["total"] or 0,
-            "analyzed": row["analyzed"] or 0,
-            "stale": row["stale"] or 0,
-            "avg_distance_km": float(row["avg_distance_km"] or 0),
-            "high_difficulty": row["high_difficulty"] or 0,
-        },
-    }
+    data = await uow.lokasyon_repo.get_location_stats()
+    return {"status": "success", "data": data}
 
 
 @router.get("/stale", response_model=StaleLocationsResponse)
@@ -98,21 +71,10 @@ async def get_stale_locations(
     days: int = Query(90, ge=1, le=365),
 ):
     """Locations not analyzed in the last N days (or never analyzed)."""
-    from sqlalchemy import text
-
-    query = text("""
-        SELECT id, cikis_yeri, varis_yeri, mesafe_km, zorluk, last_api_call
-        FROM lokasyonlar
-        WHERE aktif = TRUE AND is_deleted = FALSE
-          AND (last_api_call IS NULL OR last_api_call < NOW() - INTERVAL '1 day' * :days)
-        ORDER BY last_api_call ASC NULLS FIRST
-        LIMIT 20
-    """)
-    result = await uow.session.execute(query, {"days": days})
-    rows = result.mappings().all()
+    rows = await uow.lokasyon_repo.get_stale_locations(days)
     return {
         "status": "success",
-        "data": [dict(r) for r in rows],
+        "data": rows,
         "threshold_days": days,
     }
 
@@ -355,17 +317,7 @@ async def search_by_route(
     varis: str = Query(..., description="Varış yeri"),
 ):
     """Search locations by start and destination names."""
-    safe_cikis = cikis.replace("%", "\\%").replace("_", "\\_")
-    safe_varis = varis.replace("%", "\\%").replace("_", "\\_")
-
-    from sqlalchemy import select
-
-    stmt = select(Lokasyon).where(
-        Lokasyon.cikis_yeri.ilike(f"%{safe_cikis}%"),
-        Lokasyon.varis_yeri.ilike(f"%{safe_varis}%"),
-    )
-    result = await uow.session.execute(stmt)
-    routes = result.scalars().all()
+    routes = await uow.lokasyon_repo.search_by_route_names(cikis, varis)
 
     return {
         "found": len(routes) > 0,
@@ -569,13 +521,12 @@ async def hydrate_lokasyon(
     Idempotent: yeniden çağrılırsa eski segment'ler silinir + yeniden insert
     (cascade delete-orphan).
     """
-    sim = (
-        await db.execute(
-            select(Lokasyon)
-            .where(Lokasyon.id == lokasyon_id)
-            .options(selectinload(Lokasyon.segments))
-        )
-    ).scalar_one_or_none()
+    # get_lokasyon_repo(session=db): must share `db`'s session/transaction —
+    # `hydrator.hydrate()` mutates `sim.segments` in-memory and relies on the
+    # caller committing the SAME session afterward (see its docstring). A
+    # separate UoW session here would silently lose the hydration write.
+    repo = get_lokasyon_repo(session=db)
+    sim = await repo.get_with_segments(lokasyon_id)
     if sim is None:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 
@@ -621,13 +572,8 @@ async def get_lokasyon_segments(
     404 if lokasyon yok. Segments boş döndürebilir (henüz hidrate
     edilmemiş güzergah) — UI uyarı gösterip /hydrate butonu önerebilir.
     """
-    lok = (
-        await db.execute(
-            select(Lokasyon)
-            .where(Lokasyon.id == lokasyon_id)
-            .options(selectinload(Lokasyon.segments))
-        )
-    ).scalar_one_or_none()
+    repo = get_lokasyon_repo(session=db)
+    lok = await repo.get_with_segments(lokasyon_id)
     if lok is None:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 

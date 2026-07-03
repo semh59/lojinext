@@ -120,7 +120,8 @@ export function DriversModule() {
       notify(
         "error",
         driverModuleText.notifications.errorTitle,
-        error.response?.data?.detail ||
+        error.response?.data?.error?.message ||
+          error.response?.data?.detail ||
           driverModuleText.notifications.genericFallback,
       );
     },
@@ -141,7 +142,8 @@ export function DriversModule() {
       notify(
         "error",
         driverModuleText.notifications.errorTitle,
-        error.response?.data?.detail ||
+        error.response?.data?.error?.message ||
+          error.response?.data?.detail ||
           driverModuleText.notifications.genericFallback,
       );
     },

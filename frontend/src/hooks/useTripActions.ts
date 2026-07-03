@@ -15,6 +15,9 @@ import { Trip } from "../types";
 import { useTripsResources } from "../resources/useResources";
 
 const resolveActionErrorMessage = (error: any, fallback: string) => {
+  const envelopeMessage = error?.response?.data?.error?.message;
+  if (typeof envelopeMessage === "string" && envelopeMessage.trim())
+    return envelopeMessage;
   const detail = error?.response?.data?.detail;
   if (typeof detail === "string" && detail.trim()) return detail;
   if (typeof error?.message === "string" && error.message.trim())

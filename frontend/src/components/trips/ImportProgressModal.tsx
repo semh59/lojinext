@@ -53,6 +53,7 @@ export function ImportProgressModal({
       .catch((err) => {
         if (cancelled) return;
         const detail =
+          (err?.response?.data?.error?.message as string | undefined) ??
           (err?.response?.data?.detail as string | undefined) ??
           t("trips.import_start_failed", "Import could not be started.");
         setStartError(detail);

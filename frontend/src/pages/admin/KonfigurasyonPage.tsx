@@ -64,6 +64,7 @@ export default function AdminConfigurationPage() {
     },
     onError: (err: any) => {
       const message =
+        err.response?.data?.error?.message ||
         err.response?.data?.detail ||
         adminConfigurationText.notifications.saveFailedFallback;
       notify(

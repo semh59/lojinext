@@ -54,7 +54,8 @@ export function TripCostAnalysisModal({
       .catch((err) => {
         if (cancelled) return;
         setStartError(
-          err?.response?.data?.detail ??
+          err?.response?.data?.error?.message ??
+            err?.response?.data?.detail ??
             t("trips.cost_start_failed", "Cost analysis could not be started."),
         );
       });

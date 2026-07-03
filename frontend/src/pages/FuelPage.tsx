@@ -196,7 +196,8 @@ export default function FuelPage() {
       notify(
         "error",
         fuelPageText.notifications.actionErrorTitle,
-        error.response?.data?.detail ||
+        error.response?.data?.error?.message ||
+          error.response?.data?.detail ||
           fuelPageText.notifications.deleteErrorFallback,
       );
     }

@@ -116,7 +116,8 @@ export function ExcelUploadModal({
     } catch (error: any) {
       setStatus("error");
       setErrorMessage(
-        error?.response?.data?.detail ||
+        error?.response?.data?.error?.message ||
+          error?.response?.data?.detail ||
           error?.message ||
           dataTransferText.uploadModal.uploadErrorFallback,
       );

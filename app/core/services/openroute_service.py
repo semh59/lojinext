@@ -7,6 +7,7 @@ REFACTORED: blocking requests → httpx.AsyncClient, thread-safe singleton
 import threading
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlsplit, urlunsplit
 
 try:
     import httpx
@@ -54,6 +55,15 @@ class OpenRouteService:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or settings.OPENROUTESERVICE_API_KEY
         self.base_url = settings.OPENROUTE_API_BASE_URL
+        # Geocode lives at the same host's root, not under /v2 (same bug
+        # class already fixed in openroute_client.py and lokasyon_service.py
+        # — found here independently during a 0-mock epic audit; the
+        # previous f"{base_url}/geocode/search" always 404'd in prod since
+        # base_url already contains /v2).
+        _origin = urlsplit(self.base_url)
+        self.geocode_url = urlunsplit(
+            (_origin.scheme, _origin.netloc, "/geocode/search", "", "")
+        )
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> "httpx.AsyncClient":
@@ -200,7 +210,7 @@ class OpenRouteService:
 
         try:
             client = await self._get_client()
-            url = f"{self.base_url}/geocode/search"
+            url = self.geocode_url
             params: Dict[str, Any] = {
                 "api_key": self.api_key,
                 "text": address,

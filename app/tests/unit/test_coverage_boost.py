@@ -907,6 +907,7 @@ class TestOpenRouteServiceOffline:
 
         with patch("app.core.services.openroute_service.settings") as mock_settings:
             mock_settings.OPENROUTESERVICE_API_KEY = ""
+            mock_settings.OPENROUTE_API_BASE_URL = "https://api.openrouteservice.org/v2"
             svc = OpenRouteService(api_key="")
         svc.api_key = ""  # ensure key is cleared for the check
         assert svc.is_configured() is False

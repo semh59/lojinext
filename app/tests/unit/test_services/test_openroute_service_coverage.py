@@ -18,6 +18,10 @@ def _make_service(api_key="testkey123"):
     svc = OpenRouteService.__new__(OpenRouteService)
     svc.api_key = api_key
     svc.base_url = settings.OPENROUTE_API_BASE_URL
+    # geocode_url is normally derived from base_url's origin in __init__
+    # (see openroute_service.py) — __new__ bypasses that, so set it
+    # explicitly (same pattern as OpenRouteClient's tests).
+    svc.geocode_url = "https://api.openrouteservice.org/geocode/search"
     svc._client = None
     return svc
 
@@ -402,6 +406,20 @@ async def test_geocode_200_ok_returns_coords():
         result = await svc.geocode("Istanbul")
 
     assert result == (28.97, 41.01)
+
+
+def test_geocode_url_derived_from_base_url_origin():
+    """Regresyon kanıtı: geocode_url artık base_url'in origin'inden türetiliyor
+    (host root, /v2 altında değil) — bağımsız denetimde bulunan, daha önce
+    openroute_client.py/lokasyon_service.py'de düzeltilmiş ama bu dosyada
+    kaçırılmış aynı bug (f"{base_url}/geocode/search" hep /v2 altına
+    ekleyip prod'da her zaman 404 dönüyordu)."""
+    from app.core.services.openroute_service import OpenRouteService
+
+    svc = OpenRouteService(api_key="test-key")
+
+    assert svc.geocode_url == "https://api.openrouteservice.org/geocode/search"
+    assert "/v2/geocode" not in svc.geocode_url
 
 
 # ---------------------------------------------------------------------------

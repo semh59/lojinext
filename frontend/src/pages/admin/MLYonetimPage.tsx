@@ -58,10 +58,13 @@ export default function AdminModelManagementPage() {
       notify("success", adminMlText.notifications.trainingStarted);
       queryClient.invalidateQueries({ queryKey: ["mlQueue"] });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
       notify(
         "error",
-        error.message || adminMlText.notifications.trainingStartFailed,
+        error?.response?.data?.error?.message ||
+          error?.response?.data?.detail ||
+          error.message ||
+          adminMlText.notifications.trainingStartFailed,
       );
     },
   });

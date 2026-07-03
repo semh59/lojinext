@@ -185,4 +185,7 @@ export const driverScoreText = {
     cancel: "İptal",
     update: "Güncelle",
   },
+  notifications: {
+    saveFallback: "Puan güncellenirken bir hata oluştu.",
+  },
 } as const;

@@ -192,4 +192,7 @@ export const driverScoreText = {
     cancel: "Cancel",
     update: "Update",
   },
+  notifications: {
+    saveFallback: "An error occurred while updating the score.",
+  },
 } as const;

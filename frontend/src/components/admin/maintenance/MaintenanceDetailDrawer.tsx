@@ -49,12 +49,23 @@ export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
       // — bu test/UX için ileride POST /admin/maintenance flow eklenmeli.
       await maintenancePredictionsService.downloadIcs(prediction.arac_id);
     } catch (exc: unknown) {
-      const err = exc as { response?: { status?: number } };
+      const err = exc as {
+        response?: {
+          status?: number;
+          data?: { detail?: string; error?: { message?: string } };
+        };
+      };
       if (err?.response?.status === 404) {
         // Beklenen — kayıt yok
         return;
       }
-      notify("error", "Hata", maintenancePredictionsText.drawer.downloadError);
+      const detail =
+        err?.response?.data?.error?.message ?? err?.response?.data?.detail;
+      notify(
+        "error",
+        "Hata",
+        detail || maintenancePredictionsText.drawer.downloadError,
+      );
     } finally {
       setIsDownloading(false);
     }

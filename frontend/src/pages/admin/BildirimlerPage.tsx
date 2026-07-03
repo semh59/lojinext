@@ -69,8 +69,12 @@ export default function AdminNotificationsPage() {
       setModalOpen(false);
       setForm(EMPTY_RULE_FORM);
     },
-    onError: (err: Error) => {
-      setFormError(err.message);
+    onError: (err: any) => {
+      setFormError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message,
+      );
     },
   });
 

@@ -76,9 +76,13 @@ export const ChatAssistant: React.FC = () => {
         content: response.response,
       };
       addMessage(assistantMessage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Chat Error:", error);
-      toast.error(t("ai.error"));
+      toast.error(
+        error?.response?.data?.error?.message ||
+          error?.response?.data?.detail ||
+          t("ai.error"),
+      );
     } finally {
       setIsLoading(false);
     }

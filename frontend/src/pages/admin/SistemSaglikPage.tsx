@@ -107,8 +107,14 @@ function HataAnaliziTab() {
       void qc.invalidateQueries({ queryKey: ["errorEvents"] });
       notify("success", t("monitoring.error_resolved_notify"));
     },
-    onError: (err: Error) =>
-      notify("error", err.message || t("monitoring.op_failed")),
+    onError: (err: any) =>
+      notify(
+        "error",
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message ||
+          t("monitoring.op_failed"),
+      ),
   });
 
   const [sseUrl, setSseUrl] = useState<string>("");
@@ -550,8 +556,14 @@ export default function SystemHealthPage() {
         adminHealthText.notifications.resetSuccess(serviceName),
       );
     },
-    onError: (err: Error) => {
-      notify("error", err.message || adminHealthText.notifications.resetFailed);
+    onError: (err: any) => {
+      notify(
+        "error",
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message ||
+          adminHealthText.notifications.resetFailed,
+      );
     },
   });
 
@@ -560,10 +572,13 @@ export default function SystemHealthPage() {
     onSuccess: () => {
       notify("success", adminHealthText.notifications.backupStarted);
     },
-    onError: (err: Error) => {
+    onError: (err: any) => {
       notify(
         "error",
-        err.message || adminHealthText.notifications.backupFailed,
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message ||
+          adminHealthText.notifications.backupFailed,
       );
     },
   });

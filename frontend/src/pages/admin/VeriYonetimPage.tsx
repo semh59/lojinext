@@ -67,11 +67,13 @@ export default function AdminDataManagementPage() {
         adminDataManagementText.notifications.rollbackSuccessMessage,
       );
     },
-    onError: (err: Error) => {
+    onError: (err: any) => {
       notify(
         "error",
         adminDataManagementText.notifications.rollbackFailedTitle,
-        err.message ||
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message ||
           adminDataManagementText.notifications.rollbackFailedFallback,
       );
     },

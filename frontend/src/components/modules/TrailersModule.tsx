@@ -215,7 +215,10 @@ export function TrailersModule() {
             } catch (error: any) {
               console.error("Dorse save error:", error);
               toast.error(
-                error.message || trailerModuleText.notifications.saveFallback,
+                error.response?.data?.error?.message ||
+                  error.response?.data?.detail ||
+                  error.message ||
+                  trailerModuleText.notifications.saveFallback,
               );
               throw error; // Rethrow to keep modal loading state if handled inside
             }

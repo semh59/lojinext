@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import * as z from "zod";
 
 import { Driver } from "../../types";
@@ -172,8 +173,13 @@ export function DriverModal({
         telefon: data.telefon?.replace(/\s/g, ""),
       });
       onClose();
-    } catch (saveError) {
+    } catch (saveError: any) {
       console.error("Driver save error:", saveError);
+      toast.error(
+        saveError?.response?.data?.error?.message ||
+          saveError?.response?.data?.detail ||
+          driverModuleText.notifications.saveFallback,
+      );
     }
   };
 

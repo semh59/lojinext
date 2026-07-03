@@ -56,9 +56,13 @@ export function DriverPerformanceModal({
       driverService
         .getPerformance(driver.id)
         .then((perf) => setData(perf as PerformanceData))
-        .catch((requestError) => {
+        .catch((requestError: any) => {
           console.error("Driver performance request failed:", requestError);
-          setError(driverPerformanceText.errorFallback);
+          setError(
+            requestError?.response?.data?.error?.message ||
+              requestError?.response?.data?.detail ||
+              driverPerformanceText.errorFallback,
+          );
         })
         .finally(() => setLoading(false));
     } else {

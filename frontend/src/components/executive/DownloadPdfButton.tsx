@@ -16,11 +16,18 @@ export function DownloadPdfButton() {
     try {
       await executiveService.downloadPdf();
     } catch (err: unknown) {
-      const e = err as { response?: { status?: number } };
+      const e = err as {
+        response?: {
+          status?: number;
+          data?: { detail?: string; error?: { message?: string } };
+        };
+      };
       if (e?.response?.status === 404 || e?.response?.status === 501) {
         notify("warning", t.notReady, t.notReady);
       } else {
-        notify("error", t.error, t.error);
+        const detail =
+          e?.response?.data?.error?.message ?? e?.response?.data?.detail;
+        notify("error", t.error, detail || t.error);
       }
     } finally {
       setDownloading(false);

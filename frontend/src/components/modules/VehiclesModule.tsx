@@ -96,7 +96,10 @@ export function VehiclesModule() {
       notify(
         "error",
         vehicleModuleText.notifications.errorTitle,
-        error?.message || vehicleModuleText.notifications.saveFallback,
+        error.response?.data?.error?.message ||
+          error.response?.data?.detail ||
+          error?.message ||
+          vehicleModuleText.notifications.saveFallback,
       );
       throw error;
     }
@@ -116,7 +119,10 @@ export function VehiclesModule() {
       notify(
         "error",
         vehicleModuleText.notifications.errorTitle,
-        error.message || vehicleModuleText.notifications.deleteFallback,
+        error.response?.data?.error?.message ||
+          error.response?.data?.detail ||
+          error.message ||
+          vehicleModuleText.notifications.deleteFallback,
       );
     } finally {
       setIsDeleteModalOpen(false);

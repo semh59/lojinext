@@ -132,8 +132,11 @@ export function usePushNotifications() {
         error: null,
       }));
       return true;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Bilinmeyen hata";
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.detail ||
+        (err instanceof Error ? err.message : "Bilinmeyen hata");
       setStatus((s) => ({ ...s, enabling: false, error: message }));
       return false;
     }
@@ -154,9 +157,11 @@ export function usePushNotifications() {
       }
       setStatus((s) => ({ ...s, subscribed: false, error: null }));
       return true;
-    } catch (err) {
+    } catch (err: any) {
       const message =
-        err instanceof Error ? err.message : "Abonelik silinemedi";
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.detail ||
+        (err instanceof Error ? err.message : "Abonelik silinemedi");
       setStatus((s) => ({ ...s, error: message }));
       return false;
     }

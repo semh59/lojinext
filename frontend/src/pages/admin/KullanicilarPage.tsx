@@ -128,8 +128,12 @@ export default function AdminUsersPage() {
       toast.success(t("admin.user_created"));
       closeModal();
     },
-    onError: (err: Error) => {
-      setFormError(err.message);
+    onError: (err: any) => {
+      setFormError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message,
+      );
     },
   });
 
@@ -146,8 +150,12 @@ export default function AdminUsersPage() {
       toast.success(t("admin.user_updated"));
       closeModal();
     },
-    onError: (err: Error) => {
-      setFormError(err.message);
+    onError: (err: any) => {
+      setFormError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message,
+      );
     },
   });
 
@@ -158,8 +166,12 @@ export default function AdminUsersPage() {
       toast.success(t("admin.user_deleted"));
       setDeleteTarget(null);
     },
-    onError: (err: Error) => {
-      toast.error(err.message);
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          err.message,
+      );
     },
   });
 

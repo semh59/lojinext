@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Save, Star, TrendingUp, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { Driver } from "../../types";
 import { useDriversResources } from "../../resources/useResources";
@@ -104,8 +105,13 @@ export function DriverScoreModal({
     try {
       await onSave(score);
       onClose();
-    } catch (saveError) {
+    } catch (saveError: any) {
       console.error("Score update failed:", saveError);
+      toast.error(
+        saveError?.response?.data?.error?.message ||
+          saveError?.response?.data?.detail ||
+          driverScoreText.notifications.saveFallback,
+      );
     } finally {
       setIsLoading(false);
     }

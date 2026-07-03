@@ -82,12 +82,18 @@ async def mapbox_directions(coords: str, request: Request):
                             "steps": [
                                 {
                                     "intersections": [
-                                        {"mapbox_streets_v8": {"class": "motorway"}}
+                                        {
+                                            "geometry_index": 0,
+                                            "mapbox_streets_v8": {"class": "motorway"},
+                                        }
                                     ]
                                 },
                                 {
                                     "intersections": [
-                                        {"mapbox_streets_v8": {"class": "primary"}}
+                                        {
+                                            "geometry_index": 1,
+                                            "mapbox_streets_v8": {"class": "primary"},
+                                        }
                                     ]
                                 },
                             ],

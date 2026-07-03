@@ -21,7 +21,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+# 0-mock epiği: hydrate/segments testleri gerçek DB'ye (db_session) ve
+# gerçek MapboxClient→api_stub zincirine çevrildi (sentinel koordinat
+# tekniği: lat=401.0 → stub 401 döner → get_segments None → hydrate 502).
+# route-info testleri farklı domain (route_service, Faz1 dilim4) — dokümante
+# mock'lu kalıyor. Exception-mapping testleri (analyze/create/update/delete
+# generic exception, DomainError/HTTPException passthrough) endpoint'in
+# kendi hata-eşleme dalını test ediyor — gerçek servisten üretmek pratik
+# değil, dokümante mock'lu kalıyor.
 
 
 # ---------------------------------------------------------------------------
@@ -199,136 +207,111 @@ async def test_hydrate_requires_admin(async_client, normal_auth_headers):
     assert resp.status_code == 403
 
 
-async def test_hydrate_missing_cikis_lat(async_client, admin_auth_headers):
-    """POST /{id}/hydrate when cikis_lat is None → 422."""
-    from app.database.connection import get_db
-    from app.main import app
+async def test_hydrate_missing_cikis_lat(async_client, admin_auth_headers, db_session):
+    """POST /{id}/hydrate when cikis_lat is None → 422 (real seeded Lokasyon)."""
+    from app.database.models import Lokasyon
 
-    lok_mock = MagicMock()
-    lok_mock.id = 1
-    lok_mock.cikis_lat = None
-    lok_mock.cikis_lon = 29.0
-    lok_mock.varis_lat = 39.9
-    lok_mock.varis_lon = 32.8
-    lok_mock.segments = []
+    lok = Lokasyon(
+        cikis_yeri="HydMissLat",
+        varis_yeri="HydMissLatV",
+        mesafe_km=100.0,
+        cikis_lat=None,
+        cikis_lon=29.0,
+        varis_lat=39.9,
+        varis_lon=32.8,
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = lok_mock
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.post(
-            "/api/v1/locations/1/hydrate", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    resp = await async_client.post(
+        f"/api/v1/locations/{lok.id}/hydrate", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 422
 
 
-async def test_hydrate_missing_varis_lon(async_client, admin_auth_headers):
-    """POST /{id}/hydrate when varis_lon is None → 422."""
-    from app.database.connection import get_db
-    from app.main import app
+async def test_hydrate_missing_varis_lon(async_client, admin_auth_headers, db_session):
+    """POST /{id}/hydrate when varis_lon is None → 422 (real seeded Lokasyon)."""
+    from app.database.models import Lokasyon
 
-    lok_mock = MagicMock()
-    lok_mock.id = 1
-    lok_mock.cikis_lat = 41.0
-    lok_mock.cikis_lon = 29.0
-    lok_mock.varis_lat = 39.9
-    lok_mock.varis_lon = None
-    lok_mock.segments = []
+    lok = Lokasyon(
+        cikis_yeri="HydMissLon",
+        varis_yeri="HydMissLonV",
+        mesafe_km=100.0,
+        cikis_lat=41.0,
+        cikis_lon=29.0,
+        varis_lat=39.9,
+        varis_lon=None,
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = lok_mock
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.post(
-            "/api/v1/locations/1/hydrate", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    resp = await async_client.post(
+        f"/api/v1/locations/{lok.id}/hydrate", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 422
 
 
 async def test_hydrate_not_found(async_client, admin_auth_headers):
-    """POST /{id}/hydrate when location not in DB → 404."""
-    from app.database.connection import get_db
-    from app.main import app
-
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.post(
-            "/api/v1/locations/999/hydrate", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    """POST /{id}/hydrate when location not in DB → 404 (real empty DB)."""
+    resp = await async_client.post(
+        "/api/v1/locations/999999/hydrate", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 404
 
 
-async def test_hydrate_provider_unavailable(async_client, admin_auth_headers):
-    """POST /{id}/hydrate when hydrator returns None → 502."""
-    from app.core.services.lokasyon_hydrator import get_lokasyon_hydrator
-    from app.database.connection import get_db
+async def test_hydrate_provider_unavailable(
+    async_client, admin_auth_headers, db_session, monkeypatch
+):
+    """POST /{id}/hydrate when Mapbox is unreachable → 502.
+
+    Gerçek LokasyonHydrator + gerçek MapboxClient api_stub'a işaret eder;
+    sentinel koordinat (varis_lat=401.0) stub'ın gerçek 401 dönmesini
+    tetikler → get_segments None → hydrate() None → endpoint 502."""
+    from app.config import settings
+    from app.core.services.lokasyon_hydrator import (
+        LokasyonHydrator,
+        get_lokasyon_hydrator,
+    )
+    from app.database.models import Lokasyon
+    from app.infrastructure.routing.mapbox_client import MapboxClient
     from app.main import app
 
-    lok_mock = MagicMock()
-    lok_mock.id = 1
-    lok_mock.cikis_lat = 41.0
-    lok_mock.cikis_lon = 29.0
-    lok_mock.varis_lat = 39.9
-    lok_mock.varis_lon = 32.8
-    lok_mock.segments = []
-    lok_mock.hydrated_at = None
+    fake_key = MagicMock()
+    fake_key.__bool__ = lambda self: True
+    fake_key.get_secret_value = lambda: "fake_test_key"
+    monkeypatch.setattr(settings, "MAPBOX_API_KEY", fake_key)
+    monkeypatch.setattr(
+        settings,
+        "MAPBOX_API_BASE_URL",
+        "http://localhost:9000/directions/v5/mapbox/driving-traffic",
+    )
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = lok_mock
+    lok = Lokasyon(
+        cikis_yeri="HydUnavail",
+        varis_yeri="HydUnavailV",
+        mesafe_km=100.0,
+        cikis_lat=0.0,
+        cikis_lon=0.0,
+        varis_lat=401.0,
+        varis_lon=0.0,
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-    mock_session.commit = AsyncMock()
-
-    mock_hydrator = AsyncMock()
-    mock_hydrator.hydrate = AsyncMock(return_value=None)
-
-    async def _fake_db():
-        yield mock_session
+    real_hydrator = LokasyonHydrator(mapbox_client=MapboxClient())
 
     async def _fake_hydrator():
-        return mock_hydrator
+        return real_hydrator
 
-    app.dependency_overrides[get_db] = _fake_db
     app.dependency_overrides[get_lokasyon_hydrator] = _fake_hydrator
     try:
         resp = await async_client.post(
-            "/api/v1/locations/1/hydrate", headers=admin_auth_headers
+            f"/api/v1/locations/{lok.id}/hydrate", headers=admin_auth_headers
         )
     finally:
-        app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_lokasyon_hydrator, None)
 
     assert resp.status_code == 502
@@ -339,108 +322,72 @@ async def test_hydrate_provider_unavailable(async_client, admin_auth_headers):
 # ---------------------------------------------------------------------------
 
 
-async def test_get_segments_success(async_client, admin_auth_headers):
-    """GET /{id}/segments → 200 with segment list."""
-    from app.database.connection import get_db
-    from app.main import app
+async def test_get_segments_success(async_client, admin_auth_headers, db_session):
+    """GET /{id}/segments → 200 with segment list (real seeded Lokasyon+segment)."""
+    from app.database.models import Lokasyon, LokasyonSegment
 
-    seg_mock = MagicMock()
-    seg_mock.seq = 1
-    seg_mock.length_km = 0.5
-    seg_mock.grade_pct = 2.1
-    seg_mock.road_class = "motorway"
-    seg_mock.maxspeed_kmh = 120
-    seg_mock.mid_lon = 29.1
-    seg_mock.mid_lat = 41.1
+    lok = Lokasyon(
+        cikis_yeri="SegSuccC",
+        varis_yeri="SegSuccV",
+        mesafe_km=100.0,
+        ad="IST-ANK",
+        raw_segment_count=100,
+        resampled_segment_count=50,
+        elevation_coverage_pct=95.0,
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    lok_mock = MagicMock()
-    lok_mock.id = 1
-    lok_mock.ad = "IST-ANK"
-    lok_mock.hydrated_at = None
-    lok_mock.raw_segment_count = 100
-    lok_mock.resampled_segment_count = 50
-    lok_mock.elevation_coverage_pct = 95.0
-    lok_mock.segments = [seg_mock]
-
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = lok_mock
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/1/segments", headers=admin_auth_headers
+    db_session.add(
+        LokasyonSegment(
+            lokasyon_id=lok.id,
+            seq=1,
+            length_km=0.5,
+            grade_pct=2.1,
+            road_class="motorway",
+            maxspeed_kmh=120,
+            mid_lon=29.1,
+            mid_lat=41.1,
         )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    )
+    await db_session.flush()
+
+    resp = await async_client.get(
+        f"/api/v1/locations/{lok.id}/segments", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 200
     data = resp.json()
-    assert data["lokasyon_id"] == 1
+    assert data["lokasyon_id"] == lok.id
     assert len(data["segments"]) == 1
     assert data["segments"][0]["road_class"] == "motorway"
 
 
 async def test_get_segments_not_found(async_client, admin_auth_headers):
-    """GET /{id}/segments when lokasyon not in DB → 404."""
-    from app.database.connection import get_db
-    from app.main import app
-
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = None
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/999/segments", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    """GET /{id}/segments when lokasyon not in DB → 404 (real empty DB)."""
+    resp = await async_client.get(
+        "/api/v1/locations/999999/segments", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 404
 
 
-async def test_get_segments_empty(async_client, admin_auth_headers):
-    """GET /{id}/segments → 200 with empty segments (not yet hydrated)."""
-    from app.database.connection import get_db
-    from app.main import app
+async def test_get_segments_empty(async_client, admin_auth_headers, db_session):
+    """GET /{id}/segments → 200 with empty segments (not yet hydrated, real DB)."""
+    from app.database.models import Lokasyon
 
-    lok_mock = MagicMock()
-    lok_mock.id = 2
-    lok_mock.ad = "ANK-IZM"
-    lok_mock.hydrated_at = None
-    lok_mock.raw_segment_count = 0
-    lok_mock.resampled_segment_count = 0
-    lok_mock.elevation_coverage_pct = 0.0
-    lok_mock.segments = []
+    lok = Lokasyon(
+        cikis_yeri="SegEmptyC",
+        varis_yeri="SegEmptyV",
+        mesafe_km=100.0,
+        ad="ANK-IZM",
+    )
+    db_session.add(lok)
+    await db_session.flush()
 
-    mock_result = MagicMock()
-    mock_result.scalar_one_or_none.return_value = lok_mock
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    async def _fake_db():
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_db
-    try:
-        resp = await async_client.get(
-            "/api/v1/locations/2/segments", headers=admin_auth_headers
-        )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
+    resp = await async_client.get(
+        f"/api/v1/locations/{lok.id}/segments", headers=admin_auth_headers
+    )
 
     assert resp.status_code == 200
     data = resp.json()

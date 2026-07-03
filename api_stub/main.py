@@ -342,6 +342,32 @@ async def openroute_geocode(request: Request):
                 ]
             }
         )
+    # Faz2 frontend LocationFormModal.test.tsx: two distinct real place
+    # searches must resolve to two distinct coordinate pairs (not the
+    # shared default below) to prove getRouteInfo is really called with
+    # the two different geocoded coordinate sets, not a coincidence.
+    if "hadimkoy" in text.lower():
+        return JSONResponse(
+            {
+                "features": [
+                    {
+                        "geometry": {"coordinates": [28.54, 41.07]},
+                        "properties": {"label": "Hadimkoy Lojistik"},
+                    }
+                ]
+            }
+        )
+    if "ostim" in text.lower():
+        return JSONResponse(
+            {
+                "features": [
+                    {
+                        "geometry": {"coordinates": [32.74, 39.96]},
+                        "properties": {"label": "Ostim Fabrika"},
+                    }
+                ]
+            }
+        )
     return JSONResponse(
         {
             "features": [

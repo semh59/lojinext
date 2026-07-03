@@ -26,7 +26,13 @@ export function CalibrationModal({
   const seferId = Number(seferIdInput);
   const isValid =
     seferIdInput.length > 0 && Number.isInteger(seferId) && seferId > 0;
+  // Backend error envelope is {"error": {"code", "message", "trace_id"}}
+  // (bkz CLAUDE.md) — bir önceki `.data?.detail` okuması gerçek backend'in
+  // hiç dönmediği eski/legacy bir şekle bakıyordu, bu yüzden her gerçek
+  // 400'de sessizce jenerik fallback mesajına düşüyordu (0-mock epiği Faz2
+  // gerçek-backend testinde bulundu).
   const errorDetail =
+    (calibrate.error as any)?.response?.data?.error?.message ??
     (calibrate.error as any)?.response?.data?.detail ??
     t("locations.calibration_error");
 

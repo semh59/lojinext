@@ -1,4 +1,17 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği Faz 2: bu bileşen Driver/Sofor domain'inin bir XAI özelliği
+ * (GET /drivers/{id}/route-profile) — Route/Location domain'i değil.
+ * Buradaki 3 senaryo (best_route_type var/yok, hiç sefer yok) gerçek bir
+ * Sofor + rota-tipi sınıflandırılmış Sefer geçmişi seed'i gerektirir — bu,
+ * Driver/Sefer domain'inin kendi seed altyapısı, frontend'in kendi API
+ * yüzeyinden erişilebilir değil ve bu epiğin Route/Location kapsamı
+ * dışında. Dokümante mock'lu kalıyor. "İstek başarısız" senaryosu (var
+ * olmayan sofor_id → gerçek 404, seed gerektirmez) gerçek backend'e
+ * çevrilip ayrı bir dosyada (DriverRouteProfile.real-backend.test.tsx)
+ * ele alındı — vi.mock tüm dosyayı etkilediği için aynı dosyada hem
+ * mock'lu hem gerçek test tutmak modül-cache çakışmasına yol açıyordu.
+ */
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "../../../test/test-utils";
 
 vi.mock("../../../api/drivers", () => ({
@@ -64,11 +77,9 @@ describe("DriverRouteProfile", () => {
     await waitFor(() =>
       expect(screen.getByText("En Güçlü Güzergah Tipi")).toBeInTheDocument(),
     );
-    // Otoyol Ağırlıklı hem listede hem best banner'da görünür.
     expect(
       screen.getAllByText("Otoyol Ağırlıklı").length,
     ).toBeGreaterThanOrEqual(1);
-    // Liste satırlarında sapma yüzdesi formatı.
     expect(screen.getByText(/-8\.3%/)).toBeInTheDocument();
   });
 
@@ -107,18 +118,6 @@ describe("DriverRouteProfile", () => {
     await waitFor(() =>
       expect(
         screen.getByText("Bu şoför için henüz rota analizli sefer bulunmuyor."),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it("istek başarısız → hata mesajı", async () => {
-    (
-      driverService.getRouteProfile as ReturnType<typeof vi.fn>
-    ).mockRejectedValue(new Error("boom"));
-    render(<DriverRouteProfile driverId={7} />);
-    await waitFor(() =>
-      expect(
-        screen.getByText("Güzergah profili alınamadı"),
       ).toBeInTheDocument(),
     );
   });

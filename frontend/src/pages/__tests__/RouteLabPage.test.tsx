@@ -1,4 +1,29 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği Faz 2: `useRouteSimulation` (mutation hook) DOKÜMANTE mock'lu
+ * kalıyor — bu test sayfanın 3 ayrı render durumunu (idle/502-hata/başarı)
+ * doğrudan hook state'i enjekte ederek doğruluyor; gerçek servis
+ * davranışı zaten `services/api/__tests__/route-sim-service.test.ts`'te
+ * gerçek backend'e karşı kanıtlandı (gerçek 200 başarı + gerçek 422 hata).
+ * Burada gerçek bir 502'yi UI'dan tetiklemek E2E'nin işi (Playwright zaten
+ * kapsıyor) — aynı domain, dilim4/5'teki "endpoint'in kendi
+ * hata-eşleme/render mantığı testi" istisnasıyla aynı gerekçe.
+ * `useLocations` gerçek backend'e çevrildi (ucuz, güvenli, tutarlılık için).
+ * `recharts` mock'u UI kütüphanesi render'ı, dış sınır değil — dokümante.
+ */
+import {
+  describe,
+  expect,
+  it,
+  vi,
+  beforeAll,
+  beforeEach,
+  afterAll,
+} from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
 const simState = vi.hoisted(() => ({
   current: {
@@ -14,12 +39,6 @@ vi.mock("../../hooks/useRouteSimulation", () => ({
   useRouteSimulation: () => simState.current,
 }));
 
-vi.mock("../../hooks/use-locations", () => ({
-  useLocations: () => ({
-    useGetLocations: () => ({ data: [] }),
-  }),
-}));
-
 vi.mock("recharts", () => ({
   ComposedChart: ({ children }: any) => <div>{children}</div>,
   Line: () => null,
@@ -30,9 +49,6 @@ vi.mock("recharts", () => ({
   Tooltip: () => null,
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
 }));
-
-import { render, screen } from "../../test/test-utils";
-import RouteLabPage from "../RouteLabPage";
 
 const okData = {
   simulation_id: 1,
@@ -69,7 +85,25 @@ const okData = {
   meta: {},
 };
 
-describe("RouteLabPage", () => {
+const backendUp = await isRealBackendReachable();
+
+describe.skipIf(!backendUp)("RouteLabPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let RouteLabPage: typeof import("../RouteLabPage").default;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen } = await import("../../test/test-utils"));
+    ({ default: RouteLabPage } = await import("../RouteLabPage"));
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     simState.current = {
       mutate: vi.fn(),

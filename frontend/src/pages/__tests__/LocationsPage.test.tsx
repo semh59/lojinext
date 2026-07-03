@@ -1,39 +1,25 @@
-﻿import { describe, expect, it, vi } from "vitest";
+/**
+ * 0-mock epiği Faz 2: bu sayfa testi statik operasyonel metni doğruluyor
+ * (hiçbir assertion gerçek veri içeriğine bağlı değil) — bu yüzden
+ * `useLocations`/`locationService` mock'ları KALDIRILDI, sayfa gerçek
+ * backend'e karşı (bkz test/real-backend.ts) gerçekten monte edilip veri
+ * çekiyor; sayfanın gerçek altyapıyla çökmeden render olduğunu da kanıtlar.
+ * Kardeş bileşenler (LocationList/LocationFormModal/AnalysisModal/
+ * DataExportImport) kendi ayrı test dosyalarında kapsanıyor — burada
+ * dokümante mock'lu kalıyor (bu sayfanın kompozisyon/statik-metin testi,
+ * onların veri mantığı testi değil). `useUrlState` (iç state, dış sınır
+ * değil) ve `sonner` (UI side-effect) de dokümante mock'lu kalıyor.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import { render, screen } from "../../test/test-utils";
-
-import LocationsPage from "../LocationsPage";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
 vi.mock("../../hooks/use-url-state", () => ({
   useUrlState: () => [{ search: "", zorluk: "", page: 1 }, vi.fn()],
-}));
-
-vi.mock("../../hooks/use-locations", () => ({
-  useLocations: () => ({
-    useGetLocations: () => ({
-      data: {
-        items: [
-          {
-            id: 1,
-            cikis_yeri: "İstanbul",
-            varis_yeri: "Ankara",
-            mesafe_km: 450,
-            zorluk: "Zor",
-            route_analysis: {
-              highway: { flat: 10, up: 2, down: 1 },
-              other: { flat: 5, up: 1, down: 1 },
-            },
-          },
-        ],
-        total: 1,
-      },
-      isLoading: false,
-      isFetching: false,
-      refetch: vi.fn(),
-    }),
-    useCreateLocation: () => ({ mutateAsync: vi.fn() }),
-    useUpdateLocation: () => ({ mutateAsync: vi.fn() }),
-    useDeleteLocation: () => ({ mutateAsync: vi.fn() }),
-  }),
 }));
 
 vi.mock("../../components/locations/LocationList", () => ({
@@ -52,15 +38,6 @@ vi.mock("../../components/shared/DataExportImport", () => ({
   DataExportImport: () => <div>toolbar</div>,
 }));
 
-vi.mock("../../api/locations", () => ({
-  locationService: {
-    analyze: vi.fn(),
-    downloadTemplate: vi.fn(),
-    exportExcel: vi.fn(),
-    uploadExcel: vi.fn(),
-  },
-}));
-
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -68,11 +45,35 @@ vi.mock("sonner", () => ({
   },
 }));
 
-describe("LocationsPage", () => {
-  it("renders truthful operational copy and removes simulated map language", () => {
+const backendUp = await isRealBackendReachable();
+
+describe.skipIf(!backendUp)("LocationsPage (real backend)", () => {
+  let LocationsPage: typeof import("../LocationsPage").default;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ default: LocationsPage } = await import("../LocationsPage"));
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  // NOT: test-utils.tsx'in sardığı AuthProvider, axios-instance.ts'i STATIK
+  // import zincirinden (beforeAll'daki vi.stubEnv'DEN ÖNCE) yüklüyor, bu
+  // yüzden /auth/me çağrısı gerçek backend'e değil eski varsayılan baseURL'e
+  // gidip ağ hatası veriyor (stderr'de görülür) — zararsız, bu test auth
+  // durumuna bağlı değil (statik metin assertion'ları). LocationsPage'in
+  // kendisi DİNAMİK import edildiği için (beforeAll'da, stubEnv'den SONRA)
+  // gerçek useLocations/locationService zinciri doğru backend'e gider.
+  it("renders truthful operational copy against the real backend and removes simulated map language", async () => {
     render(<LocationsPage />);
 
-    expect(screen.getByText(/Operasyonel Görünürlük/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Operasyonel Görünürlük/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/Canlı harita veya simüle telemetri kullanılmaz/i),
     ).toBeInTheDocument();

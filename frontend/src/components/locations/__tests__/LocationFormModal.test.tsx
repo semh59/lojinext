@@ -1,22 +1,29 @@
-﻿import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+/**
+ * 0-mock epiği Faz 2: `locationService.geocode`/`getRouteInfo` mock'ları
+ * kaldırıldı — gerçek backend'e karşı gerçek UI etkileşimi (tip et →
+ * geocode öneri gör → seç → route-info otomatik dolsun). api_stub'a bu
+ * testin iki farklı arama metnini iki farklı koordinata çözecek şekilde
+ * (Hadimkoy/Ostim) sentinel-metin senaryosu eklendi (bkz api_stub/main.py)
+ * — aksi halde stub'ın varsayılan yanıtı her sorguya AYNI koordinatı
+ * dönerdi ve bu test iki farklı geocode sonucunun gerçekten route-info'ya
+ * doğru şekilde aktığını kanıtlayamazdı.
+ */
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "../../../test/test-utils";
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-import { locationService } from "../../../api/locations";
-import { LocationFormModal } from "../LocationFormModal";
-
-vi.mock("../../../api/locations", () => ({
-  locationService: {
-    geocode: vi.fn(),
-    getRouteInfo: vi.fn(),
-  },
-}));
+// NOT: test-utils.tsx (act/fireEvent/render/screen/waitFor dahil TÜMÜ) burada
+// SADECE dinamik import ile (beforeAll içinde, vi.stubEnv'DEN SONRA) alınır —
+// bir STATİK import bile axios-instance.ts'in modül-seviyesi baseURL'ini
+// stubEnv'den ÖNCE sabitler (Node modül cache'i aynı modülü ikinci kez
+// import etse de İLK evaluate edilen haliyle döner). Bu epikte gerçek bir
+// hata olarak bulundu: LocationsPage.test.tsx'te fark edilmeden (assertion'lar
+// veriye bağlı değildi) sızmıştı, bu testte (assertion'lar veriye bağlı)
+// geocode isteğinin hiç gitmediğini ortaya çıkardı.
 
 vi.mock("../../../hooks/useDebounce", () => ({
   useDebounce: (value: string) => value,
@@ -38,46 +45,45 @@ vi.mock("sonner", () => ({
   },
 }));
 
-describe("LocationFormModal", () => {
-  it("geocodes both addresses and auto-calculates route details after selection", async () => {
-    vi.clearAllMocks();
-    vi.mocked(locationService.geocode).mockImplementation(
-      async (query: string) => {
-        if (query.toLowerCase().includes("hadimkoy")) {
-          return [
-            {
-              lat: 41.07,
-              lon: 28.54,
-              label: "Hadimkoy Lojistik",
-              source: "ors",
-            },
-          ] as any;
-        }
-        if (query.toLowerCase().includes("ostim")) {
-          return [
-            { lat: 39.96, lon: 32.74, label: "Ostim Fabrika", source: "ors" },
-          ] as any;
-        }
-        return [] as any;
-      },
-    );
+const backendUp = await isRealBackendReachable();
 
-    vi.mocked(locationService.getRouteInfo).mockResolvedValue({
-      distance_km: 410,
-      duration_min: 330,
-      difficulty: "Normal",
-      ascent_m: 320,
-      descent_m: 280,
-      flat_distance_km: 360,
-      otoban_mesafe_km: 290,
-      sehir_ici_mesafe_km: 120,
-      source: "api",
-      route_analysis: {
-        highway: { flat: 290, up: 0, down: 0 },
-        other: { flat: 120, up: 0, down: 0 },
-      },
-    } as any);
+describe.skipIf(!backendUp)("LocationFormModal (real backend)", () => {
+  let render: typeof import("../../../test/test-utils").render;
+  let screen: typeof import("../../../test/test-utils").screen;
+  let fireEvent: typeof import("../../../test/test-utils").fireEvent;
+  let waitFor: typeof import("../../../test/test-utils").waitFor;
+  let LocationFormModal: typeof import("../LocationFormModal").LocationFormModal;
+  let authToken: string;
 
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    authToken = token;
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, fireEvent, waitFor } = await import(
+      "../../../test/test-utils"
+    ));
+    ({ LocationFormModal } = await import("../LocationFormModal"));
+
+    // Backend cold-start warm-up: the first real request after process
+    // startup lazily loads a RAG/FAISS embedding model (seconds of one-time
+    // cost, observed directly in the backend log during this conversion),
+    // which made the FIRST geocode round-trip in the test body flaky
+    // against a fixed timeout. Absorb that cost here, outside the timed test.
+    const axios = (await import("axios")).default;
+    await axios
+      .get(`${REAL_BACKEND_ORIGIN}/api/v1/locations/geocode`, {
+        params: { q: "warmup", limit: 1 },
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .catch(() => undefined);
+  }, 30000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("geocodes both addresses and auto-calculates real route details after selection", async () => {
     const user = userEvent.setup();
 
     render(
@@ -89,39 +95,50 @@ describe("LocationFormModal", () => {
       />,
     );
 
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText(/çıkış yeri arama/i), {
-        target: { value: "Hadimkoy Lojistik" },
-      });
-    });
-    await act(async () => {
-      await user.click(
-        await screen.findByRole("button", { name: /Hadimkoy Lojistik/i }),
-      );
-    });
+    // NOT: test-utils'in AuthProvider'ı mount'ta initAuth() ile /auth/me
+    // çağırıyor; auth-service.ts'in kendi ayrı VITE_API_URL okuması bu
+    // testin gerçek backend'iyle URL-konvansiyonu uyuşmuyor (ayrı bir ön
+    // koşul sorunu, bu testin kapsamı dışı) — başarısız olunca
+    // AuthContext.tsx bizim manuel set ettiğimiz access_token'ı sessizce
+    // sessionStorage'dan siliyor. Her gerçek istekten hemen önce token'ı
+    // yeniden set ederek bu yan etkiyi etkisiz kılıyoruz.
+    const reinjectToken = () =>
+      sessionStorage.setItem("access_token", authToken);
 
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText(/varış yeri arama/i), {
-        target: { value: "Ostim Fabrika" },
-      });
+    reinjectToken();
+    fireEvent.change(screen.getByLabelText(/çıkış yeri arama/i), {
+      target: { value: "Hadimkoy Lojistik" },
     });
-    await act(async () => {
-      await user.click(
-        await screen.findByRole("button", { name: /Ostim Fabrika/i }),
-      );
-    });
+    reinjectToken();
+    await user.click(
+      await screen.findByRole(
+        "button",
+        { name: /Hadimkoy Lojistik/i },
+        { timeout: 10000 },
+      ),
+    );
 
-    await waitFor(() => {
-      expect(locationService.getRouteInfo).toHaveBeenCalledWith({
-        cikis_lat: 41.07,
-        cikis_lon: 28.54,
-        varis_lat: 39.96,
-        varis_lon: 32.74,
-      });
+    reinjectToken();
+    fireEvent.change(screen.getByLabelText(/varış yeri arama/i), {
+      target: { value: "Ostim Fabrika" },
     });
+    reinjectToken();
+    await user.click(
+      await screen.findByRole(
+        "button",
+        { name: /Ostim Fabrika/i },
+        { timeout: 10000 },
+      ),
+    );
+    reinjectToken();
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/mesafe \(km\)/i)).toHaveValue(410);
-    });
-  });
+    // Real route-info round-trip via api_stub's default ORS geojson
+    // response (100km, real physics fuel estimate attached server-side).
+    await waitFor(
+      () => {
+        expect(screen.getByLabelText(/mesafe \(km\)/i)).toHaveValue(100);
+      },
+      { timeout: 10000 },
+    );
+  }, 30000);
 });

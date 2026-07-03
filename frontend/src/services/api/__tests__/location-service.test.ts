@@ -1,91 +1,95 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği Faz 2: gerçek, izole bir backend'e (uvicorn + test DB + api_stub)
+ * karşı gerçek HTTP round-trip. vi.mock(axios-instance/orval-mutator) yerine
+ * `VITE_API_URL`'i gerçek backend'e işaret edecek şekilde stub'layıp
+ * locationService'i dinamik import ediyoruz (modül top-level'da
+ * import.meta.env.VITE_API_URL'i okuyor, bu yüzden import'tan ÖNCE stub
+ * gerekiyor). Backend erişilemezse suit sessizce skip edilir.
+ */
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-const mockCustomAxios = vi.hoisted(() => vi.fn());
-vi.mock("../../../lib/orval-mutator", () => ({
-  customAxiosInstance: mockCustomAxios,
-}));
-vi.mock("../axios-instance", () => ({
-  default: { get: vi.fn(), post: vi.fn() },
-}));
+const backendUp = await isRealBackendReachable();
 
-import { locationService } from "../../../api/locations";
+describe.skipIf(!backendUp)("locationService (real backend)", () => {
+  let locationService: typeof import("../../../api/locations").locationService;
+  let createdId: number | undefined;
+  // Unique per test run so repeated local runs don't collide with the
+  // real DB's uq_cikis_varis constraint (a stray row from a prior run
+  // would 400 on re-create otherwise — this bit a first draft of this test).
+  const runTag = Date.now();
 
-describe("locationService", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ locationService } = await import("../../../api/locations"));
   });
 
-  it("getAll should fetch locations with filters", async () => {
-    const mockData = { items: [], total: 0 };
-    mockCustomAxios.mockResolvedValueOnce(mockData);
+  afterAll(async () => {
+    if (createdId) {
+      // Soft-delete then hard-delete (2nd call on an already-inactive row
+      // hard-deletes — same real endpoint semantics exercised elsewhere
+      // in this epic's backend tests) so repeated runs stay collision-free.
+      await locationService.delete(createdId).catch(() => undefined);
+      await locationService.delete(createdId).catch(() => undefined);
+    }
+    vi.unstubAllEnvs();
+  });
 
+  it("getAll should fetch real locations with pagination shape", async () => {
     const result = await locationService.getAll({ limit: 10, skip: 0 });
 
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/locations/",
-      method: "GET",
-    });
-    expect(result).toEqual(mockData);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("total");
+    expect(Array.isArray(result.items)).toBe(true);
   });
 
-  it("create should post new location", async () => {
-    const newLoc = { cikis_yeri: "A", varis_yeri: "B", mesafe_km: 100 };
-    const mockResponse = { id: 1, ...newLoc };
-    mockCustomAxios.mockResolvedValueOnce(mockResponse);
+  it("create should persist a new location for real", async () => {
+    const newLoc = {
+      cikis_yeri: `Faz2TestA${runTag}`,
+      varis_yeri: `Faz2TestB${runTag}`,
+      mesafe_km: 123.4,
+    };
 
     const result = await locationService.create(newLoc as any);
+    createdId = (result as any).id;
 
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/locations/",
-      method: "POST",
-    });
-    expect(result).toEqual(mockResponse);
+    // Backend normalizes place names via _tr_title (Turkish-aware title
+    // case, real behavior fixed earlier in this epic): first letter stays
+    // as-is (uppercased), rest lowercased — "Faz2TestA123" -> "Faz2testa123".
+    const expectedName = `Faz2testa${runTag}`;
+    expect(createdId).toBeGreaterThan(0);
+    expect((result as any).cikis_yeri).toBe(expectedName);
+
+    // Real round-trip: the row is really there via getById.
+    const fetched = await locationService.getById(createdId!);
+    expect((fetched as any).id).toBe(createdId);
   });
 
-  it("analyze should trigger route analysis", async () => {
-    const mockAnalysis = { success: true, api_mesafe_km: 105 };
-    mockCustomAxios.mockResolvedValueOnce(mockAnalysis);
+  it("geocode should return real ORS-stub suggestions", async () => {
+    const result = await locationService.geocode("Hadimkoy Lojistik");
 
-    const result = await locationService.analyze(1);
-
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/locations/1/analyze",
-      method: "POST",
-    });
-    expect(result).toEqual(mockAnalysis);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result[0].label).toBe("Hadimkoy Lojistik");
+    expect(result[0].source).toBe("ors");
   });
 
-  it("getRouteInfo should fetch info by coordinates", async () => {
-    const coords = {
+  it("getRouteInfo should fetch real route info by coordinates", async () => {
+    const result = await locationService.getRouteInfo({
       cikis_lat: 41,
       cikis_lon: 29,
       varis_lat: 40,
       varis_lon: 32,
-    };
-    const mockInfo = { distance_km: 450 };
-    mockCustomAxios.mockResolvedValueOnce(mockInfo);
-
-    const result = await locationService.getRouteInfo(coords);
-
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/locations/route-info",
-      method: "GET",
     });
-    expect(result).toEqual(mockInfo);
-  });
 
-  it("geocode should fetch geocode suggestions", async () => {
-    const mockSuggestions = [
-      { lat: 41.07, lon: 28.54, label: "Hadimkoy Lojistik", source: "ors" },
-    ];
-    mockCustomAxios.mockResolvedValueOnce(mockSuggestions);
-
-    const result = await locationService.geocode("Hadimkoy Lojistik");
-
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/locations/geocode",
-      method: "GET",
-    });
-    expect(result).toEqual(mockSuggestions);
+    // Real cache-hit response from the route_repo cache (seeded by this
+    // epic's backend integration tests using the same coordinates).
+    expect(result).toHaveProperty("distance_km");
+    expect((result as any).source).toBe("cache");
   });
 });

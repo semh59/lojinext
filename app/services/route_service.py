@@ -46,7 +46,7 @@ class RouteService:
             or settings.OPENROUTESERVICE_API_KEY
             or os.getenv("OPENROUTE_API_KEY")
         )
-        self.base_url = "https://api.openrouteservice.org/v2"
+        self.base_url = settings.OPENROUTE_API_BASE_URL
 
     async def get_route_details(
         self,

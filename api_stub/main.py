@@ -174,11 +174,131 @@ async def openroute_directions(profile: str, request: Request):
                         "descent": 580.0,
                     },
                     "geometry": "_p~iF~ps|U_ulLnnqC_mqNvxq`@",
+                    # "values" (not "summary") is the real ORS extra_info shape
+                    # RouteAnalyzer._parse_extra_segments actually reads —
+                    # [[start_idx, end_idx, code]] over the 3-point decoded
+                    # polyline above. Lets tests exercise the real segment
+                    # classification path instead of the empty-extras fallback.
                     "extras": {
-                        "steepness": {"summary": []},
-                        "waytype": {"summary": []},
-                        "waycategory": {"summary": []},
-                        "surface": {"summary": []},
+                        "steepness": {"values": [[0, 2, 0]]},
+                        "waytype": {"values": [[0, 2, 1]]},
+                        "waycategory": {"values": [[0, 2, 1]]},
+                        "surface": {"values": [[0, 2, 1]]},
+                    },
+                }
+            ]
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# OpenRoute Directions (GeoJSON) — app/services/route_service.py's own ORS
+# client (a separate class from OpenRouteClient/OpenRouteService) requests
+# "/directions/{profile}/geojson" (features/properties shape, not
+# routes/summary). Sentinel: coordinates=[[0,0],[0,999]] → anomalous
+# elevation (ascent 5000m) so RouteValidator's self-heal/hybrid path
+# engages — same sentinel-coordinate technique as the other endpoints.
+# ---------------------------------------------------------------------------
+@app.post("/v2/directions/{profile}/geojson")
+async def openroute_directions_geojson(profile: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    try:
+        body = await request.json()
+        coords = body.get("coordinates") or []
+        if len(coords) == 2 and coords[0] == [0, 0] and coords[1] == [0, 500]:
+            return JSONResponse(status_code=500, content={"error": {"code": 9999}})
+        if len(coords) == 2 and coords[0] == [0, 0] and coords[1] == [0, 401]:
+            return JSONResponse(status_code=401, content={"error": {"code": 2001}})
+        if len(coords) == 2 and coords[0] == [0, 0] and coords[1] == [0, 403]:
+            # Real client behavior: on 403 it retries once with the
+            # driving-car profile at the SAME coordinates — this sentinel
+            # returns 403 regardless of profile, reproducing the real
+            # "both profiles forbidden" scenario without a mock.
+            return JSONResponse(status_code=403, content={"error": {"code": 2010}})
+        if len(coords) == 2 and coords[0] == [0, 0] and coords[1] == [0, 999]:
+            return JSONResponse(
+                {
+                    "features": [
+                        {
+                            "properties": {
+                                "summary": {"distance": 100000, "duration": 4800},
+                                "ascent": 5000.0,
+                                "descent": 0.0,
+                                "extras": {
+                                    "waycategory": {"values": [[0, 1, 1]]},
+                                    "waytype": {"values": [[0, 1, 1]]},
+                                    "steepness": {"values": [[0, 1, 1]]},
+                                },
+                            },
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [[28.0, 41.0, 0], [32.0, 39.0, 0]],
+                            },
+                        }
+                    ]
+                }
+            )
+        # Multi-segment scenario (0,0)->(0,777): 11-point geometry split into
+        # a motorway leg (waycategory 1) and a secondary leg (waycategory 3)
+        # so RouteAnalyzer.analyze_segments has real segment-range data to
+        # classify instead of a single flat leg.
+        if len(coords) == 2 and coords[0] == [0, 0] and coords[1] == [0, 777]:
+            return JSONResponse(
+                {
+                    "features": [
+                        {
+                            "properties": {
+                                "summary": {"distance": 100000, "duration": 3600},
+                                "ascent": 500,
+                                "descent": 500,
+                                "extras": {
+                                    "waycategory": {
+                                        "values": [[0, 5, 1], [5, 10, 4]],
+                                    },
+                                    "steepness": {
+                                        "values": [
+                                            [0, 3, 0],
+                                            [3, 5, 2],
+                                            [5, 8, 0],
+                                            [8, 10, -2],
+                                        ],
+                                    },
+                                },
+                            },
+                            "geometry": {
+                                "type": "LineString",
+                                "coordinates": [
+                                    [29.0 + i * 0.01, 40.0 - i * 0.01, 0]
+                                    for i in range(11)
+                                ],
+                            },
+                        }
+                    ]
+                }
+            )
+    except Exception:
+        pass
+
+    return JSONResponse(
+        {
+            "features": [
+                {
+                    "properties": {
+                        "summary": {"distance": 100000, "duration": 4800},
+                        "ascent": 300.0,
+                        "descent": 280.0,
+                        "extras": {
+                            "waycategory": {"values": [[0, 1, 1]]},
+                            "waytype": {"values": [[0, 1, 1]]},
+                            "steepness": {"values": [[0, 1, 0]]},
+                        },
+                    },
+                    "geometry": {
+                        "type": "LineString",
+                        "coordinates": [[28.0, 41.0, 0], [32.0, 39.0, 0]],
                     },
                 }
             ]

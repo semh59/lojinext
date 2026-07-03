@@ -95,10 +95,13 @@ async def test_check_redis_healthy():
 async def test_check_redis_unhealthy(monkeypatch):
     # 0-mock: point at a real-but-dead endpoint (nothing listening on :6390) so the
     # client genuinely fails to connect within the timeout, instead of mocking redis.
+    # Tier E madde 31 fix: check_redis now goes through redis_client_factory,
+    # which builds the URL from REDIS_HOST/REDIS_PORT (not REDIS_URL).
     from app.config import settings
 
     svc = _make_service()
-    monkeypatch.setattr(settings, "REDIS_URL", "redis://127.0.0.1:6390/0")
+    monkeypatch.setattr(settings, "REDIS_HOST", "127.0.0.1")
+    monkeypatch.setattr(settings, "REDIS_PORT", 6390)
     result = await svc.check_redis()
 
     assert result["status"] == "unhealthy"

@@ -156,6 +156,8 @@ services:
         condition: service_healthy
       redis-sentinel-3:
         condition: service_healthy
+      tempo:
+        condition: service_started
     networks:
       - lojinext_network
 
@@ -299,6 +301,7 @@ services:
       - LISTEN_PORT=6432
       - POOL_MODE=transaction
       - AUTH_TYPE=scram-sha-256
+      - ADMIN_USERS=${POSTGRES_USER:-lojinext_user}
       - MAX_CLIENT_CONN=1000
       - DEFAULT_POOL_SIZE=20
       - MIN_POOL_SIZE=5

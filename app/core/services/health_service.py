@@ -55,18 +55,15 @@ class HealthService:
             return {"status": "unhealthy", "error": str(e)}
 
     async def check_redis(self) -> Dict[str, Any]:
-        """Redis bağlantı testi"""
+        """Redis bağlantı testi (Sentinel-aware — REDIS_USE_SENTINEL altında
+        her zaman güncel master'ı sorgular, dead-hostname'e sabitlenmez)."""
         start = time.time()
         try:
-            import redis.asyncio as aioredis
-
-            from app.config import settings
-
-            client = aioredis.from_url(
-                settings.REDIS_URL,
-                socket_connect_timeout=2,
-                socket_timeout=2,
+            from app.infrastructure.cache.redis_client_factory import (
+                get_async_redis_client,
             )
+
+            client = get_async_redis_client(socket_connect_timeout=2, socket_timeout=2)
             await client.ping()
             await client.aclose()
             return {

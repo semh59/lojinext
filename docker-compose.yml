@@ -594,6 +594,27 @@ services:
       - lojinext_network
     restart: unless-stopped
 
+  # 0-mock epiği Kategori B — deterministik yerel dış-API stub (Mapbox/
+  # OpenRoute/Open-Meteo/Telegram/Groq şekilleri). Sadece "test" profilinde
+  # başlar; prod/dev `docker compose up` bunu hiç görmez, davranış değişmez.
+  # Test/CI, backend'in *_API_BASE_URL env'lerini bu servise işaret eder.
+  api-stub:
+    profiles: ["test"]
+    build:
+      context: ./api_stub
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - lojinext_network
+    restart: unless-stopped
+
   celery-beat:
     build:
       context: .

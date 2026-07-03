@@ -84,6 +84,19 @@ docker compose restart backend
 # the only path when adding new modules / changing requirements.
 ```
 
+### 0-mock epiği — dış-API stub (Kategori B)
+
+`api_stub/` — küçük, gerçek bir FastAPI sunucusu; Mapbox/OpenRoute/
+Open-Meteo/Telegram/Groq'un gerçek path yapısını birebir taklit eden
+deterministik canned response'lar döner (in-process mock DEĞİL, gerçek
+HTTP). Sadece `docker compose --profile test up -d api-stub` ile başlar
+(`profiles: ["test"]`, default `up -d` bunu görmez, prod/dev davranışı
+değişmez). `app/config.py`'deki `MAPBOX_API_BASE_URL`/
+`OPENROUTE_API_BASE_URL`/`OPEN_METEO_API_BASE_URL`/
+`TELEGRAM_API_BASE_URL`/`GROQ_API_BASE_URL` test/CI'da bu servise
+işaret eder. Hata-enjeksiyonu: her endpoint `?simulate=timeout|error|
+notfound` destekler (gerçek HTTP davranışı, mock değil).
+
 Deployment is single-Docker-host `docker-compose` with replica scaling
 (`docker compose up -d --scale backend=N`, fronted by Traefik) — not a
 multi-node cluster. `app_data`/`model_data` named volumes are already shared

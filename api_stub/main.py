@@ -1,0 +1,224 @@
+"""Deterministic local stub server for external HTTP boundaries.
+
+0-mock epiği Kategori B: Mapbox/OpenRoute/Open-Meteo/Telegram/Groq'un
+gerçek API şekillerini taklit eden, GERÇEK bir HTTP sunucusu (in-process
+mock değil). Testler gerçek `httpx` ile buraya bağlanır — app'in
+`*_API_BASE_URL` settings alanları test/CI'da bu servisin adresine
+işaret eder (bkz. app/config.py), path yapısı gerçek API'lerle BİREBİR
+aynı (client kodu değişmeden çalışsın diye) — sadece host değişir.
+
+Bilinçli olarak sabit/deterministik: her istek için aynı canned
+response döner (rota/coğrafya gerçekçi ama sabit), böylece testler
+flaky olmaz. Hata-enjeksiyonu ihtiyacı olan testler (timeout/5xx) için
+`?simulate=timeout` / `?simulate=error` / `?simulate=notfound` query
+param'ı her endpoint'te desteklenir — bu da gerçek bir HTTP davranışı,
+mock değil.
+"""
+
+import asyncio
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+app = FastAPI(title="LojiNext API Stub", docs_url=None, redoc_url=None)
+
+
+async def _maybe_simulate(request: Request) -> JSONResponse | None:
+    mode = request.query_params.get("simulate")
+    if mode == "timeout":
+        await asyncio.sleep(30)
+    if mode == "error":
+        return JSONResponse(status_code=500, content={"error": "simulated_error"})
+    if mode == "notfound":
+        return JSONResponse(status_code=404, content={"error": "simulated_not_found"})
+    return None
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Mapbox Directions — MAPBOX_API_BASE_URL already includes this full prefix;
+# client appends only the trailing "/{lon1},{lat1};{lon2},{lat2}".
+# ---------------------------------------------------------------------------
+@app.get("/directions/v5/mapbox/driving-traffic/{coords}")
+async def mapbox_directions(coords: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    # Deterministic ~450km route, mixed motorway/primary road classification.
+    geometry = {
+        "type": "LineString",
+        "coordinates": [[29.0, 41.0], [30.5, 40.5], [32.85, 39.93]],
+    }
+    return JSONResponse(
+        {
+            "routes": [
+                {
+                    "geometry": geometry,
+                    "distance": 450000.0,
+                    "duration": 19800.0,
+                    "legs": [
+                        {
+                            "steps": [
+                                {
+                                    "intersections": [
+                                        {"mapbox_streets_v8": {"class": "motorway"}}
+                                    ]
+                                },
+                                {
+                                    "intersections": [
+                                        {"mapbox_streets_v8": {"class": "primary"}}
+                                    ]
+                                },
+                            ]
+                        }
+                    ],
+                    "annotation": {
+                        "distance": [225000.0, 225000.0],
+                        "duration": [9900.0, 9900.0],
+                        "maxspeed": [
+                            {"speed": 120, "unit": "km/h"},
+                            {"speed": 50, "unit": "km/h"},
+                        ],
+                    },
+                }
+            ],
+            "code": "Ok",
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# OpenRoute Directions — OPENROUTE_API_BASE_URL = "{host}/v2"; client appends
+# "/directions/{profile}/json".
+# ---------------------------------------------------------------------------
+@app.post("/v2/directions/{profile}/json")
+async def openroute_directions(profile: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    return JSONResponse(
+        {
+            "routes": [
+                {
+                    "summary": {
+                        "distance": 450000.0,
+                        "duration": 19800.0,
+                        "ascent": 620.0,
+                        "descent": 580.0,
+                    },
+                    "geometry": "_p~iF~ps|U_ulLnnqC_mqNvxq`@",
+                    "extras": {
+                        "steepness": {"summary": []},
+                        "waytype": {"summary": []},
+                        "waycategory": {"summary": []},
+                        "surface": {"summary": []},
+                    },
+                }
+            ]
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# OpenRoute Geocode — lives at the host root, not under /v2 (see
+# OpenRouteClient.geocode_url derivation).
+# ---------------------------------------------------------------------------
+@app.get("/geocode/search")
+async def openroute_geocode(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    text = request.query_params.get("text", "")
+    return JSONResponse(
+        {
+            "features": [
+                {
+                    "geometry": {"coordinates": [32.85, 39.93]},
+                    "properties": {"label": text or "Ankara, Türkiye"},
+                }
+            ]
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Open-Meteo Elevation — OPEN_METEO_API_BASE_URL = "{host}/v1/elevation";
+# client GETs the base_url directly (no suffix).
+# ---------------------------------------------------------------------------
+@app.get("/v1/elevation")
+async def open_meteo_elevation(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    lats = request.query_params.get("latitude", "")
+    count = len([p for p in lats.split(",") if p]) if lats else 0
+    # Deterministic gentle-hill profile: 300m base + 50m per point, capped.
+    elevations = [300.0 + min(i * 50.0, 400.0) for i in range(count)]
+    return JSONResponse({"elevation": elevations})
+
+
+# ---------------------------------------------------------------------------
+# Telegram Bot API — TELEGRAM_API_BASE_URL = "{host}"; client appends
+# "/bot{token}/sendMessage".
+# ---------------------------------------------------------------------------
+@app.post("/bot{token}/sendMessage")
+async def telegram_send_message(token: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    body = await request.json()
+    return JSONResponse(
+        {
+            "ok": True,
+            "result": {
+                "message_id": 1,
+                "chat": {"id": body.get("chat_id", 0)},
+                "text": body.get("text", ""),
+                "date": 0,
+            },
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Groq / OpenAI-compatible — GROQ_API_BASE_URL = "{host}/openai/v1"; SDK
+# appends "/chat/completions".
+# ---------------------------------------------------------------------------
+@app.post("/openai/v1/chat/completions")
+async def groq_chat_completions(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    return JSONResponse(
+        {
+            "id": "chatcmpl-stub",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "llama-3.3-70b-versatile",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": "Bu bir test yanıtıdır.",
+                    },
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 5,
+                "total_tokens": 15,
+            },
+        }
+    )

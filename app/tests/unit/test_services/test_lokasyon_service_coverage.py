@@ -6,7 +6,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+# 0-mock epiği CTO denetimi (bağımsız ajan) buldu: bu dosya c05e9a4'te
+# TestAddLokasyon/TestDeleteLokasyon/TestGetAllPaged/TestAnalyzeRoute (9 test)
+# gerçek db_session'a çevrildi ama modül marker'ı unit'te kalmıştı — sibling
+# dosyalar (test_lokasyon_service.py, test_lokasyon_service_more.py) doğru
+# şekilde integration işaretliydi, bu dosya atlanmıştı. `pytest -m unit`
+# TEST_DATABASE_URL olmadan koşulunca 9 test RuntimeError ile patlıyordu.
+pytestmark = pytest.mark.integration
 
 
 def _make_service(repo=None, event_bus=None):

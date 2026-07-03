@@ -67,9 +67,15 @@ export default function RollerPage() {
       setModalOpen(false);
     },
     onError: (err: unknown) => {
+      const data = (
+        err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        }
+      )?.response?.data;
       const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? t("admin.operation_failed");
+        data?.error?.message ?? data?.detail ?? t("admin.operation_failed");
       setFormError(detail);
     },
   });
@@ -82,9 +88,15 @@ export default function RollerPage() {
       setDeleteTarget(null);
     },
     onError: (err: unknown) => {
+      const data = (
+        err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        }
+      )?.response?.data;
       const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? t("admin.role_delete_failed");
+        data?.error?.message ?? data?.detail ?? t("admin.role_delete_failed");
       toast.error(detail);
       setDeleteTarget(null);
     },

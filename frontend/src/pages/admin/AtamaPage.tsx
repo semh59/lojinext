@@ -53,9 +53,15 @@ export default function AtamaPage() {
       setReason("");
     },
     onError: (err: unknown) => {
+      const data = (
+        err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        }
+      )?.response?.data;
       const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? t("admin.assignment_error");
+        data?.error?.message ?? data?.detail ?? t("admin.assignment_error");
       setError(detail);
     },
   });

@@ -75,9 +75,14 @@ export function BreakdownReportModal({ isOpen, onClose }: Props) {
       onClose();
     },
     onError: (err: unknown) => {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? txt.errGeneric;
+      const data = (
+        err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        }
+      )?.response?.data;
+      const detail = data?.error?.message ?? data?.detail ?? txt.errGeneric;
       setError(typeof detail === "string" ? detail : txt.errGeneric);
     },
   });

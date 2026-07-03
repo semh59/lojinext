@@ -138,9 +138,16 @@ export default function AdminMaintenancePage() {
       setEntryOpen(false);
     },
     onError: (err: unknown) => {
+      const data = (
+        err as {
+          response?: {
+            data?: { detail?: string; error?: { message?: string } };
+          };
+        }
+      )?.response?.data;
       const detail =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ??
+        data?.error?.message ??
+        data?.detail ??
         t("admin.bakim_create_failed", "Record could not be created.");
       setEntryError(detail);
     },

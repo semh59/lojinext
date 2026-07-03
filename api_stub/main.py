@@ -49,6 +49,22 @@ async def mapbox_directions(coords: str, request: Request):
     if sim is not None:
         return sim
 
+    # Sentinel-coordinate scenarios: when the client can't forward an extra
+    # ?simulate= query param (its own params dict is hardcoded), the
+    # coordinates themselves select the scenario — a real, deterministic
+    # HTTP behavior (same technique as e.g. Stripe's test card numbers),
+    # not an in-process mock. Format: "0,0;0,<scenario>".
+    if coords.startswith("0.0,0.0;0.0,"):
+        scenario = coords.rsplit(",", 1)[-1]
+        if scenario == "401.0":
+            return JSONResponse(status_code=401, content={"message": "Unauthorized"})
+        if scenario == "422.0":
+            return JSONResponse(status_code=422, content={"message": "Invalid Input"})
+        if scenario == "200.0":
+            return JSONResponse({"routes": []})
+        if scenario == "408.0":
+            await asyncio.sleep(30)
+
     # Deterministic ~450km route, mixed motorway/primary road classification.
     geometry = {
         "type": "LineString",
@@ -74,17 +90,17 @@ async def mapbox_directions(coords: str, request: Request):
                                         {"mapbox_streets_v8": {"class": "primary"}}
                                     ]
                                 },
-                            ]
+                            ],
+                            "annotation": {
+                                "distance": [225000.0, 225000.0],
+                                "duration": [9900.0, 9900.0],
+                                "maxspeed": [
+                                    {"speed": 120, "unit": "km/h"},
+                                    {"speed": 50, "unit": "km/h"},
+                                ],
+                            },
                         }
                     ],
-                    "annotation": {
-                        "distance": [225000.0, 225000.0],
-                        "duration": [9900.0, 9900.0],
-                        "maxspeed": [
-                            {"speed": 120, "unit": "km/h"},
-                            {"speed": 50, "unit": "km/h"},
-                        ],
-                    },
                 }
             ],
             "code": "Ok",
@@ -101,6 +117,51 @@ async def openroute_directions(profile: str, request: Request):
     sim = await _maybe_simulate(request)
     if sim is not None:
         return sim
+
+    # Sentinel-coordinate scenarios (POST body, not URL — see the Mapbox
+    # endpoint's docstring for why this technique is used instead of
+    # ?simulate=). Format: coordinates=[[0,0],[0,<scenario>]].
+    try:
+        body = await request.json()
+        coords = body.get("coordinates") or []
+        if len(coords) == 2 and coords[0] == [0, 0] and isinstance(coords[1], list):
+            scenario = coords[1][0]
+            if scenario == 403:
+                return JSONResponse(status_code=403, content={"error": {"code": 2010}})
+            if scenario == 404:
+                return JSONResponse(status_code=404, content={"error": {"code": 2004}})
+            if scenario == 429:
+                return JSONResponse(status_code=429, content={"error": {"code": 2009}})
+            if scenario == 500:
+                return JSONResponse(status_code=500, content={"error": {"code": 9999}})
+            if scenario == 200:
+                return JSONResponse({"routes": []})
+            if scenario == 408:
+                await asyncio.sleep(30)
+            if scenario == 777:
+                # Geometry already decoded as a GeoJSON coordinate list.
+                return JSONResponse(
+                    {
+                        "routes": [
+                            {
+                                "summary": {
+                                    "distance": 80000.0,
+                                    "duration": 3000.0,
+                                    "ascent": 200.0,
+                                    "descent": 180.0,
+                                },
+                                "geometry": [
+                                    [29.0, 40.0],
+                                    [30.0, 39.5],
+                                    [32.0, 39.0],
+                                ],
+                                "extras": {"steepness": {}},
+                            }
+                        ]
+                    }
+                )
+    except Exception:
+        pass
 
     return JSONResponse(
         {
@@ -136,6 +197,13 @@ async def openroute_geocode(request: Request):
         return sim
 
     text = request.query_params.get("text", "")
+    # Sentinel-text scenarios — geocode's query params are a fixed dict
+    # (text/size/boundary.country), so the search text itself carries the
+    # scenario when a test needs one (real HTTP behavior, not a mock).
+    if text == "__EMPTY__":
+        return JSONResponse({"features": []})
+    if text == "__ERROR401__":
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     return JSONResponse(
         {
             "features": [

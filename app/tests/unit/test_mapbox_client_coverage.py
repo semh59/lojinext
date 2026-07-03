@@ -7,16 +7,15 @@ Targets lines missed in: app/infrastructure/routing/mapbox_client.py
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 from app.infrastructure.routing.mapbox_client import MapboxClient
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+
+_STUB_BASE_URL = "http://localhost:9000/directions/v5/mapbox/driving-traffic"
 
 
 # ---------------------------------------------------------------------------
@@ -36,15 +35,12 @@ class FakeCache:
 
 
 def _make_client(api_key: str = "pk.test") -> MapboxClient:
-    """Return a MapboxClient with a FakeCache and injected API key."""
-    with patch("app.infrastructure.routing.mapbox_client.settings") as mock_settings:
-        secret = MagicMock()
-        secret.get_secret_value.return_value = api_key
-        mock_settings.MAPBOX_API_KEY = secret
-        client = MapboxClient.__new__(MapboxClient)
-        client.api_key = api_key
-        client.base_url = "https://api.mapbox.com/directions/v5/mapbox/driving-traffic"
-        client._cache = FakeCache()  # type: ignore[assignment]
+    """Return a MapboxClient with a FakeCache, pointed at the real api_stub
+    server (Faz 0) instead of the real Mapbox API."""
+    client = MapboxClient.__new__(MapboxClient)
+    client.api_key = api_key
+    client.base_url = _STUB_BASE_URL
+    client._cache = FakeCache()  # type: ignore[assignment]
     return client
 
 
@@ -104,14 +100,6 @@ def _minimal_route_json(
             }
         ]
     }
-
-
-@asynccontextmanager
-async def _fake_monitored_client(mock_response: httpx.Response):
-    """Yields a mock httpx client returning the given response."""
-    mock_client = AsyncMock()
-    mock_client.get = AsyncMock(return_value=mock_response)
-    yield mock_client
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +317,12 @@ class TestClassifyRoadSegments:
 
 
 class TestGetRoute:
+    """0-mock epiği: gerçek api_stub sunucusuna gider (Faz 0). Edge-case
+    senaryolar sentinel koordinatlarla seçilir (gerçek istemci params'ı
+    query'e ekstra alan eklemeye izin vermez, bu yüzden koordinatlar
+    kendisi senaryo seçici — bkz. api_stub/main.py, aynı Stripe'ın test
+    kart numaraları deseni)."""
+
     async def test_returns_none_when_no_api_key(self):
         client = _make_client_no_key()
         result = await client.get_route((28.0, 41.0), (32.0, 39.0))
@@ -336,94 +330,33 @@ class TestGetRoute:
 
     async def test_returns_dict_on_success(self):
         client = _make_client()
-        response_json = _minimal_route_json()
-        mock_resp = httpx.Response(200, json=response_json)
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.get_monitored_client",
-            return_value=_fake_ctx(),
-        ):
-            result = await client.get_route((28.0, 41.0), (32.0, 39.0))
+        result = await client.get_route((28.0, 41.0), (32.0, 39.0))
 
         assert result is not None
         assert result["source"] == "mapbox"
-        assert result["distance_km"] == pytest.approx(50.0, abs=0.1)
+        # api_stub'ın deterministik canned response'u: 450km.
+        assert result["distance_km"] == pytest.approx(450.0, abs=0.1)
 
     async def test_returns_none_on_non_200_status(self):
         client = _make_client()
-        mock_resp = httpx.Response(401, text="Unauthorized")
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.get_monitored_client",
-            return_value=_fake_ctx(),
-        ):
-            result = await client.get_route((28.0, 41.0), (32.0, 39.0))
-
+        result = await client.get_route((0.0, 0.0), (0.0, 401.0))
         assert result is None
 
     async def test_returns_none_when_no_routes_in_response(self):
         client = _make_client()
-        mock_resp = httpx.Response(200, json={"routes": []})
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.get_monitored_client",
-            return_value=_fake_ctx(),
-        ):
-            result = await client.get_route((28.0, 41.0), (32.0, 39.0))
-
+        result = await client.get_route((0.0, 0.0), (0.0, 200.0))
         assert result is None
 
     async def test_returns_none_on_exception(self):
+        # Gerçek bağlantı hatası: kapalı bir porta işaret eder (mock değil).
         client = _make_client()
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(side_effect=httpx.ConnectError("fail"))
-            yield mock_http
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.get_monitored_client",
-            return_value=_fake_ctx(),
-        ):
-            result = await client.get_route((28.0, 41.0), (32.0, 39.0))
-
+        client.base_url = "http://localhost:1/directions/v5/mapbox/driving-traffic"
+        result = await client.get_route((28.0, 41.0), (32.0, 39.0))
         assert result is None
 
     async def test_route_analysis_included_in_result(self):
         client = _make_client()
-        response_json = _minimal_route_json()
-        mock_resp = httpx.Response(200, json=response_json)
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.get_monitored_client",
-            return_value=_fake_ctx(),
-        ):
-            result = await client.get_route((28.0, 41.0), (32.0, 39.0))
+        result = await client.get_route((28.0, 41.0), (32.0, 39.0))
 
         assert result is not None
         assert "geometry" in result
@@ -437,6 +370,11 @@ class TestGetRoute:
 
 
 class TestFetchSegments:
+    """0-mock epiği: gerçek api_stub sunucusuna gider. 4xx yollarında
+    with_async_retry gerçek retry mantığını çalıştırır ama hiç retry
+    tetiklemez (kaynak kod: 4xx anında None döner, sadece 5xx/network
+    hataları retry'ı tetikler) — bypass etmeye gerek yok."""
+
     async def test_returns_none_when_no_api_key(self):
         client = _make_client_no_key()
         result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
@@ -444,96 +382,27 @@ class TestFetchSegments:
 
     async def test_returns_none_on_4xx(self):
         client = _make_client()
-        mock_resp = httpx.Response(422, text="InvalidInput")
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        async def _await_fn(fn, **kw):
-            return await fn()
-
-        with (
-            patch(
-                "app.infrastructure.routing.mapbox_client.get_monitored_client",
-                return_value=_fake_ctx(),
-            ),
-            patch(
-                "app.infrastructure.routing.mapbox_client.with_async_retry",
-                side_effect=_await_fn,
-            ),
-        ):
-            result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
-
+        result = await client._fetch_segments((0.0, 0.0), (0.0, 422.0))
         assert result is None
 
     async def test_returns_none_when_routes_empty(self):
         client = _make_client()
-        mock_resp = httpx.Response(200, json={"routes": []})
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        async def _await_fn(fn, **kw):
-            return await fn()
-
-        with (
-            patch(
-                "app.infrastructure.routing.mapbox_client.get_monitored_client",
-                return_value=_fake_ctx(),
-            ),
-            patch(
-                "app.infrastructure.routing.mapbox_client.with_async_retry",
-                side_effect=_await_fn,
-            ),
-        ):
-            result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
-
+        result = await client._fetch_segments((0.0, 0.0), (0.0, 200.0))
         assert result is None
 
     async def test_returns_segments_and_coords_on_success(self):
         client = _make_client()
-        response_json = _minimal_route_json()
-        mock_resp = httpx.Response(200, json=response_json)
-
-        @asynccontextmanager
-        async def _fake_ctx():
-            mock_http = AsyncMock()
-            mock_http.get = AsyncMock(return_value=mock_resp)
-            yield mock_http
-
-        async def _await_fn(fn, **kw):
-            return await fn()
-
-        with (
-            patch(
-                "app.infrastructure.routing.mapbox_client.get_monitored_client",
-                return_value=_fake_ctx(),
-            ),
-            patch(
-                "app.infrastructure.routing.mapbox_client.with_async_retry",
-                side_effect=_await_fn,
-            ),
-        ):
-            result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
+        result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
 
         assert result is not None
         segs, coords = result
-        assert len(segs) == 3  # 3 distance entries in _minimal_route_json
-        assert len(coords) == 2  # 2 geometry coords
+        # api_stub'ın canned response'u: annotation.distance 2 giriş, geometry 3 koordinat.
+        assert len(segs) == 2
+        assert len(coords) == 3
 
     async def test_returns_none_on_exception_from_retry(self):
+        # Gerçek bağlantı hatası — 3 deneme gerçek backoff ile (kapalı port).
         client = _make_client()
-
-        with patch(
-            "app.infrastructure.routing.mapbox_client.with_async_retry",
-            side_effect=Exception("network failure"),
-        ):
-            result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
-
+        client.base_url = "http://localhost:1/directions/v5/mapbox/driving-traffic"
+        result = await client._fetch_segments((28.0, 41.0), (32.0, 39.0))
         assert result is None

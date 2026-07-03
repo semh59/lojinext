@@ -116,6 +116,7 @@ def test_groq_service_init_with_key_and_groq():
     mock_key.get_secret_value.return_value = "sk-real-key"  # pragma: allowlist secret
     mock_settings.GROQ_API_KEY = mock_key
     mock_settings.GROQ_MODEL_NAME = "llama-70b"
+    mock_settings.GROQ_API_BASE_URL = "https://api.groq.com/openai/v1"
 
     mock_groq_cls = MagicMock()
     mock_groq_cls.return_value = MagicMock()
@@ -128,7 +129,9 @@ def test_groq_service_init_with_key_and_groq():
 
     expected_key = "sk-real-key"  # pragma: allowlist secret
     assert svc.client is not None
-    mock_groq_cls.assert_called_once_with(api_key=expected_key)
+    mock_groq_cls.assert_called_once_with(
+        api_key=expected_key, base_url="https://api.groq.com/openai/v1"
+    )
 
 
 # ---------------------------------------------------------------------------

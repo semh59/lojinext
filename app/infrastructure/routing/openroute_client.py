@@ -463,7 +463,7 @@ class OpenRouteClient:
                             "dur": result["duration_hours"],
                             "asc": result.get("ascent_m", 0),
                             "desc": result.get("descent_m", 0),
-                            "now": datetime.now(timezone.utc).isoformat(),
+                            "now": datetime.now(timezone.utc),
                             "id": existing.id,
                         },
                     )

@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 
 from app.config import settings
@@ -7,40 +9,27 @@ from app.infrastructure.routing.mapbox_client import MapboxClient
 @pytest.mark.asyncio
 class TestMapboxClientIntegration:
     async def test_mapbox_get_route_success(self, monkeypatch):
-        """Test Mapbox routing with mocked HTTP client."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "routes": [
-                {
-                    "distance": 450000.0,
-                    "duration": 18000.0,
-                    "geometry": {"type": "LineString", "coordinates": []},
-                    "legs": [],
-                }
-            ]
-        }
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=None)
-        mock_client.get = AsyncMock(return_value=mock_response)
-
+        """0-mock epiği: gerçek httpx isteği api_stub (Faz 0) sunucusuna gider —
+        in-process httpx.AsyncClient mock'u değil, gerçek HTTP round-trip."""
         fake_key = MagicMock()
         fake_key.__bool__ = lambda self: True
         fake_key.get_secret_value = lambda: "fake_test_key"
 
-        with patch("httpx.AsyncClient", return_value=mock_client):
-            monkeypatch.setattr(settings, "MAPBOX_API_KEY", fake_key)
-            client = MapboxClient()
-            result = await client.get_route((28.9784, 41.0082), (28.9850, 41.0370))
+        monkeypatch.setattr(settings, "MAPBOX_API_KEY", fake_key)
+        monkeypatch.setattr(
+            settings,
+            "MAPBOX_API_BASE_URL",
+            "http://localhost:9000/directions/v5/mapbox/driving-traffic",
+        )
+        client = MapboxClient()
+        result = await client.get_route((28.9784, 41.0082), (28.9850, 41.0370))
 
         assert result is not None
         assert "distance_km" in result
         assert "duration_min" in result
+        # api_stub'ın deterministik canned response'u: 450km, 19800s.
         assert result["distance_km"] == 450.0
+        assert result["duration_min"] == 330.0
         assert result["source"] == "mapbox"
 
     async def test_mapbox_get_route_no_key(self, monkeypatch):

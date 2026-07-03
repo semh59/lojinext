@@ -4,10 +4,7 @@ import pytest
 
 from app.infrastructure.routing.openroute_client import OpenRouteClient
 
-
-@pytest.fixture
-def mock_session():
-    return MagicMock()
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
@@ -15,11 +12,28 @@ def client():
     return OpenRouteClient(api_key="mock_key")
 
 
-async def test_update_route_distance_parses_details(client):
-    # Setup
-    lokasyon_id = 999
+async def test_update_route_distance_parses_details(db_session):
+    """0-mock epiği: gerçek DB'ye seed edilen bir Lokasyon satırı üzerinden
+    gerçek UPDATE çalıştırılır (AsyncSessionLocal conftest'te bu test
+    session'ına monkeypatch'li). get_distance (dış API çağrısı) burada
+    KASITLI mock'lu kalır — bu test HTTP davranışını değil, gerçek API
+    sonucu verildiğinde DB güncelleme/parse mantığının doğruluğunu test
+    ediyor; HTTP round-trip'in kendisi test_get_distance_requests_details_
+    by_default ve diğer client-level testlerde gerçek stub'a karşı ayrıca
+    kanıtlanıyor."""
+    from app.tests._helpers.seed import seed_lokasyon
 
-    # Mock return from get_distance (simulation of OK response from API)
+    lokasyon = await seed_lokasyon(
+        db_session,
+        cikis_lat=40.0,
+        cikis_lon=29.0,
+        varis_lat=39.0,
+        varis_lon=32.0,
+    )
+    await db_session.commit()
+
+    client = OpenRouteClient(api_key="mock_key")
+
     mock_api_result = {
         "distance_km": 100.0,
         "duration_hours": 1.5,
@@ -31,64 +45,25 @@ async def test_update_route_distance_parses_details(client):
         },
     }
 
-    # Mock fetchone to return coordinates
-    mock_row = MagicMock()
-    mock_row.cikis_lat = 40.0
-    mock_row.cikis_lon = 29.0
-    mock_row.varis_lat = 39.0
-    mock_row.varis_lon = 32.0
-
-    # Create a proper async session mock
-    mock_session = MagicMock()
-    select_result = MagicMock()  # Result object (not async)
-    select_result.fetchone.return_value = mock_row
-    mock_session.execute = AsyncMock(return_value=select_result)  # execute() is async
-    mock_session.commit = AsyncMock()  # commit() is async
-
-    # Mock AsyncSessionLocal (imported inside the method)
-    class AsyncContextManager:
-        async def __aenter__(self):
-            return mock_session
-
-        async def __aexit__(self, *args):
-            pass
-
-    def mock_async_session_factory():
-        return AsyncContextManager()
-
-    with (
-        patch(
-            "app.database.connection.AsyncSessionLocal",
-            side_effect=mock_async_session_factory,
-        ),
-        patch.object(
-            client, "get_distance", new_callable=AsyncMock, return_value=mock_api_result
-        ),
+    with patch.object(
+        client, "get_distance", new_callable=AsyncMock, return_value=mock_api_result
     ):
-        # Execute
-        result = await client.update_route_distance(lokasyon_id)
+        result = await client.update_route_distance(lokasyon.id)
 
-        # Verify result
-        assert result == mock_api_result
+    assert result == mock_api_result
 
-        # Verify SQL update params
-        # The second call to execute should be the UPDATE
-        # 1st call: SELECT coords
-        # 2nd call: UPDATE
-        assert mock_session.execute.call_count == 2
+    from sqlalchemy import text
 
-        args, kwargs = mock_session.execute.call_args_list[1]
-        sql = args[0]
-        params = args[1]
-
-        # Assertions
-        str_sql = str(sql)
-        assert "otoban_mesafe_km = :otoban" in str_sql
-        assert "sehir_ici_mesafe_km = :sehir" in str_sql
-
-        assert params["otoban"] == 60.0
-        assert params["sehir"] == 40.0
-        assert params["id"] == lokasyon_id
+    row = (
+        await db_session.execute(
+            text(
+                "SELECT otoban_mesafe_km, sehir_ici_mesafe_km FROM lokasyonlar WHERE id = :id"
+            ),
+            {"id": lokasyon.id},
+        )
+    ).fetchone()
+    assert row.otoban_mesafe_km == 60.0
+    assert row.sehir_ici_mesafe_km == 40.0
 
 
 def test_openroute_client_prefers_canonical_api_key(monkeypatch):

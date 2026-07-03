@@ -22,7 +22,7 @@ import pytest
 
 from app.infrastructure.routing.openroute_client import OpenRouteClient
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,10 @@ pytestmark = pytest.mark.unit
 
 
 def _make_client(api_key: str = "test-key") -> OpenRouteClient:
-    return OpenRouteClient(api_key=api_key)
+    client = OpenRouteClient(api_key=api_key)
+    client.base_url = "http://localhost:9000/v2"
+    client.geocode_url = "http://localhost:9000/geocode/search"
+    return client
 
 
 def _make_breaker(delegate: bool = True):
@@ -152,26 +155,17 @@ async def test_geocode_generic_exception_returns_none():
 
 
 async def test_call_geocode_api_creates_httpx_client_lazily():
-    """_call_geocode_api creates AsyncClient when _client is None."""
+    """0-mock epiği: _client None iken gerçek bir httpx.AsyncClient oluşturup
+    gerçek stub'a bağlanır (mock class değil)."""
     client = _make_client()
     assert client._client is None
 
-    geocode_body = {"features": [{"geometry": {"coordinates": [32.8597, 39.9334]}}]}
-    resp = _make_api_response(200, geocode_body)
+    result = await client._call_geocode_api("Ankara")
 
-    with patch(
-        "app.infrastructure.routing.openroute_client.httpx.AsyncClient"
-    ) as MockHttpx:
-        mock_http = AsyncMock()
-        mock_http.get = AsyncMock(return_value=resp)
-        MockHttpx.return_value = mock_http
-
-        result = await client._call_geocode_api("Ankara")
-
-    MockHttpx.assert_called_once()
+    assert isinstance(client._client, httpx.AsyncClient)
     assert result is not None
     lat, lon = result
-    assert lat == pytest.approx(39.9334, abs=0.001)
+    assert lat == pytest.approx(39.93, abs=0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -180,15 +174,9 @@ async def test_call_geocode_api_creates_httpx_client_lazily():
 
 
 async def test_call_geocode_api_non_200_returns_none():
-    """Non-200 from geocode API → returns None."""
+    """Non-200 from geocode API → returns None (gerçek stub sentinel'i)."""
     client = _make_client()
-    resp = _make_api_response(401)
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(return_value=resp)
-    client._client = mock_http
-
-    result = await client._call_geocode_api("Ankara")
+    result = await client._call_geocode_api("__ERROR401__")
     assert result is None
 
 
@@ -198,13 +186,9 @@ async def test_call_geocode_api_non_200_returns_none():
 
 
 async def test_call_geocode_api_request_exception_returns_none():
-    """httpx exception during geocode → returns None."""
+    """Gerçek bağlantı hatası: kapalı bir porta işaret eder (mock değil)."""
     client = _make_client()
-
-    mock_http = AsyncMock()
-    mock_http.get = AsyncMock(side_effect=httpx.ConnectError("refused"))
-    client._client = mock_http
-
+    client.geocode_url = "http://localhost:1/geocode/search"
     result = await client._call_geocode_api("Ankara")
     assert result is None
 
@@ -215,28 +199,13 @@ async def test_call_geocode_api_request_exception_returns_none():
 
 
 async def test_call_api_rate_limiting_sleep_when_too_fast():
-    """When elapsed < MIN_REQUEST_INTERVAL, asyncio.sleep is called."""
+    """When elapsed < MIN_REQUEST_INTERVAL, asyncio.sleep is called.
+    0-mock epiği: gerçek stub'a gider, sadece asyncio.sleep gözlemlenir
+    (gerçek rate-limit gecikmesi testi yavaşlatmasın diye patched — bu
+    zamanlama davranışı, HTTP davranışı değil)."""
     client = _make_client()
     # Force last_request_time to "now" so elapsed ≈ 0
     client._last_request_time = asyncio.get_event_loop().time()
-
-    body = {
-        "routes": [
-            {
-                "summary": {
-                    "distance": 100000,
-                    "duration": 3600,
-                    "ascent": 0,
-                    "descent": 0,
-                }
-            }
-        ]
-    }
-    resp = _make_api_response(200, body)
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=resp)
-    client._client = mock_http
 
     sleep_called = []
 
@@ -258,35 +227,16 @@ async def test_call_api_rate_limiting_sleep_when_too_fast():
 
 
 async def test_call_api_analyze_segments_exception_skips_details():
-    """analyze_segments raising → details not included but result still returned."""
+    """analyze_segments raising → details not included but result still
+    returned. 0-mock epiği: gerçek stub'ın 777 sentinel senaryosu (liste
+    geometry) kullanılır, sadece analyze_segments zorla raise ettirilir."""
     client = _make_client()
-    body = {
-        "routes": [
-            {
-                "summary": {
-                    "distance": 80000,
-                    "duration": 3000,
-                    "ascent": 200,
-                    "descent": 150,
-                },
-                "geometry": [[29.0, 40.0], [30.0, 39.5]],
-                "extras": {"steepness": {}},
-            }
-        ]
-    }
-    resp = _make_api_response(200, body)
-
-    mock_http = AsyncMock()
-    mock_http.post = AsyncMock(return_value=resp)
-    client._client = mock_http
 
     with patch(
         "app.infrastructure.routing.openroute_client.route_analyzer.analyze_segments",
         side_effect=RuntimeError("analysis fail"),
     ):
-        result = await client._call_api(
-            (40.0, 29.0), (39.9, 32.8), include_details=True
-        )
+        result = await client._call_api((0.0, 0.0), (0.0, 777.0), include_details=True)
 
     assert result is not None
     assert "details" not in result  # analysis failed so no details
@@ -297,23 +247,18 @@ async def test_call_api_analyze_segments_exception_skips_details():
 # ---------------------------------------------------------------------------
 
 
-async def test_update_route_distance_success():
-    """Full happy path: row found, get_distance returns result, DB updated."""
+async def test_update_route_distance_success(db_session):
+    """0-mock epiği: gerçek seed'li Lokasyon satırı, gerçek DB UPDATE.
+    get_distance (dış API çağrısı) kasıtlı mock'lu kalır — bkz.
+    test_openroute_client.py'deki aynı gerekçe."""
+    from app.tests._helpers.seed import seed_lokasyon
+
+    lokasyon = await seed_lokasyon(
+        db_session, cikis_lat=40.0, cikis_lon=29.0, varis_lat=39.9, varis_lon=32.8
+    )
+    await db_session.commit()
+
     client = _make_client()
-
-    # Mock DB row
-    mock_row = MagicMock()
-    mock_row.cikis_lat = 40.0
-    mock_row.cikis_lon = 29.0
-    mock_row.varis_lat = 39.9
-    mock_row.varis_lon = 32.8
-
-    mock_session = MagicMock()
-    select_result = MagicMock()
-    select_result.fetchone.return_value = mock_row
-    mock_session.execute = AsyncMock(return_value=select_result)
-    mock_session.commit = AsyncMock()
-
     api_result = {
         "distance_km": 452.3,
         "duration_hours": 5.5,
@@ -323,93 +268,59 @@ async def test_update_route_distance_success():
         "source": "api",
     }
 
-    with (
-        patch(
-            "app.database.connection.AsyncSessionLocal",
-            side_effect=lambda: _AsyncCtx(mock_session),
-        ),
-        patch.object(
-            client, "get_distance", new_callable=AsyncMock, return_value=api_result
-        ),
+    with patch.object(
+        client, "get_distance", new_callable=AsyncMock, return_value=api_result
     ):
-        result = await client.update_route_distance(lokasyon_id=1)
+        result = await client.update_route_distance(lokasyon_id=lokasyon.id)
 
     assert result is not None
     assert result["distance_km"] == 452.3
-    mock_session.commit.assert_awaited()
 
 
-async def test_update_route_distance_row_not_found_returns_none():
-    """When DB row not found → returns None."""
+async def test_update_route_distance_row_not_found_returns_none(db_session):
+    """0-mock epiği: gerçek DB'de eşleşen satır yokken None döner."""
     client = _make_client()
-
-    mock_session = MagicMock()
-    select_result = MagicMock()
-    select_result.fetchone.return_value = None
-    mock_session.execute = AsyncMock(return_value=select_result)
-
-    with patch(
-        "app.database.connection.AsyncSessionLocal",
-        side_effect=lambda: _AsyncCtx(mock_session),
-    ):
-        result = await client.update_route_distance(lokasyon_id=999)
-
+    result = await client.update_route_distance(lokasyon_id=999999)
     assert result is None
 
 
-async def test_update_route_distance_missing_coordinates_returns_none():
-    """Row found but coordinates are None → returns None."""
+async def test_update_route_distance_missing_coordinates_returns_none(db_session):
+    """0-mock epiği: koordinatları eksik gerçek bir satır → None."""
+    from app.tests._helpers.seed import seed_lokasyon
+
+    lokasyon = await seed_lokasyon(
+        db_session, cikis_lat=None, cikis_lon=29.0, varis_lat=39.9, varis_lon=32.8
+    )
+    await db_session.commit()
+
     client = _make_client()
-
-    mock_row = MagicMock()
-    mock_row.cikis_lat = None  # missing coordinate
-    mock_row.cikis_lon = 29.0
-    mock_row.varis_lat = 39.9
-    mock_row.varis_lon = 32.8
-
-    mock_session = MagicMock()
-    select_result = MagicMock()
-    select_result.fetchone.return_value = mock_row
-    mock_session.execute = AsyncMock(return_value=select_result)
-
-    with patch(
-        "app.database.connection.AsyncSessionLocal",
-        side_effect=lambda: _AsyncCtx(mock_session),
-    ):
-        result = await client.update_route_distance(lokasyon_id=2)
-
+    result = await client.update_route_distance(lokasyon_id=lokasyon.id)
     assert result is None
 
 
-async def test_update_route_distance_api_returns_none():
-    """get_distance returns None → returns None."""
+async def test_update_route_distance_api_returns_none(db_session):
+    """0-mock epiği: gerçek satır, get_distance None dönerse → None."""
+    from app.tests._helpers.seed import seed_lokasyon
+
+    lokasyon = await seed_lokasyon(
+        db_session, cikis_lat=40.0, cikis_lon=29.0, varis_lat=39.9, varis_lon=32.8
+    )
+    await db_session.commit()
+
     client = _make_client()
-
-    mock_row = MagicMock()
-    mock_row.cikis_lat = 40.0
-    mock_row.cikis_lon = 29.0
-    mock_row.varis_lat = 39.9
-    mock_row.varis_lon = 32.8
-
-    mock_session = MagicMock()
-    select_result = MagicMock()
-    select_result.fetchone.return_value = mock_row
-    mock_session.execute = AsyncMock(return_value=select_result)
-
-    with (
-        patch(
-            "app.database.connection.AsyncSessionLocal",
-            side_effect=lambda: _AsyncCtx(mock_session),
-        ),
-        patch.object(client, "get_distance", new_callable=AsyncMock, return_value=None),
+    with patch.object(
+        client, "get_distance", new_callable=AsyncMock, return_value=None
     ):
-        result = await client.update_route_distance(lokasyon_id=3)
+        result = await client.update_route_distance(lokasyon_id=lokasyon.id)
 
     assert result is None
 
 
 async def test_update_route_distance_exception_returns_none():
-    """DB exception → returns None gracefully."""
+    """DB exception → returns None gracefully.
+
+    DOKÜMANTE İSTİSNA: bkz. test_openroute_client_coverage.py'deki aynı
+    gerekçe — gerçek bir DB hatasını güvenle üretmek pratik değil."""
     client = _make_client()
 
     mock_session = MagicMock()
@@ -424,22 +335,17 @@ async def test_update_route_distance_exception_returns_none():
     assert result is None
 
 
-async def test_update_route_distance_no_details_key():
-    """get_distance result without details key → otoban/sehir_ici default to 0."""
+async def test_update_route_distance_no_details_key(db_session):
+    """0-mock epiği: get_distance sonucunda details anahtarı yokken
+    otoban/sehir_ici varsayılan 0'a düşer — gerçek DB'ye karşı."""
+    from app.tests._helpers.seed import seed_lokasyon
+
+    lokasyon = await seed_lokasyon(
+        db_session, cikis_lat=40.0, cikis_lon=29.0, varis_lat=39.9, varis_lon=32.8
+    )
+    await db_session.commit()
+
     client = _make_client()
-
-    mock_row = MagicMock()
-    mock_row.cikis_lat = 40.0
-    mock_row.cikis_lon = 29.0
-    mock_row.varis_lat = 39.9
-    mock_row.varis_lon = 32.8
-
-    mock_session = MagicMock()
-    select_result = MagicMock()
-    select_result.fetchone.return_value = mock_row
-    mock_session.execute = AsyncMock(return_value=select_result)
-    mock_session.commit = AsyncMock()
-
     api_result = {
         "distance_km": 200.0,
         "duration_hours": 3.0,
@@ -449,16 +355,10 @@ async def test_update_route_distance_no_details_key():
         "source": "api",
     }
 
-    with (
-        patch(
-            "app.database.connection.AsyncSessionLocal",
-            side_effect=lambda: _AsyncCtx(mock_session),
-        ),
-        patch.object(
-            client, "get_distance", new_callable=AsyncMock, return_value=api_result
-        ),
+    with patch.object(
+        client, "get_distance", new_callable=AsyncMock, return_value=api_result
     ):
-        result = await client.update_route_distance(lokasyon_id=5)
+        result = await client.update_route_distance(lokasyon_id=lokasyon.id)
 
     assert result is not None
     assert result["distance_km"] == 200.0

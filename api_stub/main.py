@@ -204,6 +204,18 @@ async def openroute_geocode(request: Request):
         return JSONResponse({"features": []})
     if text == "__ERROR401__":
         return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+    if text == "__MULTI_ONE_BAD__":
+        return JSONResponse(
+            {
+                "features": [
+                    {"geometry": {"coordinates": []}, "properties": {"label": "Bad"}},
+                    {
+                        "geometry": {"coordinates": [29.0, 41.0]},
+                        "properties": {"name": "Istanbul"},
+                    },
+                ]
+            }
+        )
     return JSONResponse(
         {
             "features": [

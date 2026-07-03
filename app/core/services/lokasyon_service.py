@@ -40,6 +40,8 @@ class LokasyonService:
         return self._geocode_offline(query)
 
     async def _geocode_with_openroute(self, q: str, limit: int = 5) -> list[dict]:
+        from urllib.parse import urlsplit, urlunsplit
+
         from app.core.services.openroute_service import get_openroute_service
 
         openroute_service = get_openroute_service()
@@ -48,8 +50,17 @@ class LokasyonService:
 
         try:
             client = await openroute_service._get_client()
+            # BUG (found via 0-mock epiği real-network test): geocode lives
+            # at the host root, not under /v2 — appending "/geocode/search"
+            # directly to base_url (which includes /v2) built a 404'ing URL
+            # in real production. Derive the origin instead, matching
+            # OpenRouteClient's geocode_url derivation.
+            _origin = urlsplit(openroute_service.base_url)
+            geocode_url = urlunsplit(
+                (_origin.scheme, _origin.netloc, "/geocode/search", "", "")
+            )
             response = await client.get(
-                f"{openroute_service.base_url}/geocode/search",
+                geocode_url,
                 params={
                     "api_key": openroute_service.api_key,
                     "text": q,
@@ -161,12 +172,18 @@ class LokasyonService:
         """
 
         # Normalize names to prevent duplicates (e.g., Istanbul vs İstanbul)
-        # Turkish-aware title case: 'i' → 'İ' (not 'I') at word start
+        # Turkish-aware title case: 'i' → 'İ' (not 'I') at word start.
+        # BUG (found via 0-mock epiği real-DB test): str.lower() decomposes
+        # 'İ' (U+0130) into 'i' + a combining dot above (U+0307) — that
+        # stray combining mark then leaked into w[1:], corrupting every
+        # word starting with capital İ (e.g. "İstanbul" -> "İ̇stanbul",
+        # double-dotted). Neutralize İ to plain 'i' BEFORE lower() so the
+        # decomposition never happens.
         def _tr_title(s: str) -> str:
             return " ".join(
                 ("İ" if w[0] == "i" else "I" if w[0] == "ı" else w[0].upper())
                 + w[1:].lower()
-                for w in s.strip().lower().split()
+                for w in s.strip().replace("İ", "i").lower().split()
                 if w
             )
 

@@ -12,7 +12,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-pytestmark = pytest.mark.unit
+pytestmark = pytest.mark.integration
+# 0-mock epiği: add_lokasyon/delete_lokasyon testleri gerçek
+# LokasyonRepository + gerçek DB'ye (db_session) çevrildi. analyze_route
+# testleri route_service/physics_fuel_predictor'ı (ayrı domainler — ilki
+# Faz 1'in ilerideki dilimi, ikincisi ML domain'i, bu turun kapsamı dışı)
+# mock'lu bırakıyor — DOKÜMANTE.
 
 
 def _make_service(repo=None, event_bus=None):
@@ -43,25 +48,27 @@ def _make_create_with_coords():
 # ---------------------------------------------------------------------------
 
 
-async def test_add_lokasyon_analyze_route_exception_still_returns_id():
+async def test_add_lokasyon_analyze_route_exception_still_returns_id(db_session):
     """When analyze_route raises an exception, the warning is logged
-    but add_lokasyon still returns the new lokasyon id."""
-    svc, mock_repo = _make_service()
-    mock_repo.get_by_route.return_value = None
-    mock_repo.add.return_value = 42
+    but add_lokasyon still returns the new lokasyon id (gerçek DB'ye
+    karşı — analyze_route ayrı domain, dokümante mock'lu kalıyor)."""
+    from app.database.repositories.lokasyon_repo import LokasyonRepository
+
+    repo = LokasyonRepository(session=db_session)
+    svc, _ = _make_service(repo=repo)
 
     with patch.object(svc, "analyze_route", side_effect=Exception("route api error")):
         result = await svc.add_lokasyon(_make_create_with_coords())
 
-    assert result == 42
-    mock_repo.add.assert_called_once()
+    assert result is not None
 
 
-async def test_add_lokasyon_analyze_route_called_with_returned_id():
+async def test_add_lokasyon_analyze_route_called_with_returned_id(db_session):
     """analyze_route is called with the id returned by repo.add."""
-    svc, mock_repo = _make_service()
-    mock_repo.get_by_route.return_value = None
-    mock_repo.add.return_value = 77
+    from app.database.repositories.lokasyon_repo import LokasyonRepository
+
+    repo = LokasyonRepository(session=db_session)
+    svc, _ = _make_service(repo=repo)
 
     analyze_calls = []
 
@@ -72,8 +79,7 @@ async def test_add_lokasyon_analyze_route_called_with_returned_id():
     with patch.object(svc, "analyze_route", side_effect=_fake_analyze):
         result = await svc.add_lokasyon(_make_create_with_coords())
 
-    assert result == 77
-    assert analyze_calls == [77]
+    assert analyze_calls == [result]
 
 
 # ---------------------------------------------------------------------------
@@ -81,12 +87,19 @@ async def test_add_lokasyon_analyze_route_called_with_returned_id():
 # ---------------------------------------------------------------------------
 
 
-async def test_delete_lokasyon_unexpected_exception_raises_value_error():
+async def test_delete_lokasyon_unexpected_exception_raises_value_error(db_session):
     """An unexpected exception (not ValueError) during delete_lokasyon should
-    be caught and re-raised as ValueError with a generic message."""
-    svc, mock_repo = _make_service()
-    # get_by_id raises an unexpected error (not ValueError)
-    mock_repo.get_by_id.side_effect = RuntimeError("unexpected db failure")
+    be caught and re-raised as ValueError with a generic message.
+
+    DOKÜMANTE: get_by_id'nin gerçek DB'de RuntimeError fırlatmasını güvenle
+    üretmek pratik değil (bkz. openroute_client_coverage'daki aynı gerekçe)
+    — hedefli mock ile test ediliyor, repo'nun gerçek kurulumu (db_session)
+    yine de kullanılıyor."""
+    from app.database.repositories.lokasyon_repo import LokasyonRepository
+
+    repo = LokasyonRepository(session=db_session)
+    repo.get_by_id = AsyncMock(side_effect=RuntimeError("unexpected db failure"))
+    svc, _ = _make_service(repo=repo)
 
     with pytest.raises(ValueError, match="Silme işlemi"):
         await svc.delete_lokasyon(99)

@@ -84,6 +84,15 @@ docker compose restart backend
 # the only path when adding new modules / changing requirements.
 ```
 
+Deployment is single-Docker-host `docker-compose` with replica scaling
+(`docker compose up -d --scale backend=N`, fronted by Traefik) — not a
+multi-node cluster. `app_data`/`model_data` named volumes are already shared
+across every backend/worker replica on that host, so the FAISS index
+(`app/data/ai_kb/`), ML `.pkl` models, and `storage/backups/` are already
+consistent without object storage. Migrating them to S3/MinIO was
+consciously deferred (2026-07-03) — it would only become necessary if the
+deployment moves to multiple physical hosts (Swarm/K8s).
+
 ---
 
 ## Architecture

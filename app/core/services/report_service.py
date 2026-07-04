@@ -223,7 +223,8 @@ class ReportService:
     async def generate_vehicle_report(
         self, arac_id: int, month: int = None, year: int = None, days: int = 30
     ) -> Dict:
-        arac = await self.arac_repo.get_by_id(arac_id)
+        # Raporlar tarihsel veri okur — pasifleştirilmiş araç için de üretilebilmeli
+        arac = await self.arac_repo.get_by_id(arac_id, include_inactive=True)
         if not arac:
             return {"error": "Arac bulunamadi"}
 
@@ -263,7 +264,8 @@ class ReportService:
         }
 
     async def generate_driver_report(self, sofor_id: int, days: int = 30) -> Dict:
-        sofor = await self.sofor_repo.get_by_id(sofor_id)
+        # Raporlar tarihsel veri okur — pasifleştirilmiş şoför için de üretilebilmeli
+        sofor = await self.sofor_repo.get_by_id(sofor_id, include_inactive=True)
         if not sofor:
             return {"error": "Sofor bulunamadi"}
 

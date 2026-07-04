@@ -52,9 +52,14 @@
   .dark {
     /* Dark Mode - Elite Onyx Series */
     --bg-base: hsl(240, 10%, 4%);
-    --bg-surface: hsl(240, 8%, 8%);
-    --bg-elevated: hsl(240, 8%, 12%);
-    --surface-rgb: 18, 18, 28; /* dark mode glass base — overrides light-mode 255,255,255 */
+    /* bg-surface/bg-elevated önceden bg-base'e çok yakındı (8%/12% vs 4%
+       lightness) — modal/kart panelleri (ör. VehicleModal, TrailerModal)
+       arkasındaki karartılmış (bg-black/40) sayfadan neredeyse ayırt
+       edilemiyordu, "transparan" görünüyordu (kullanıcı ekran görüntüsüyle
+       bildirdi). Lightness farkı buyutuldu: 4/8/12 -> 4/14/20. */
+    --bg-surface: hsl(240, 8%, 14%);
+    --bg-elevated: hsl(240, 8%, 20%);
+    --surface-rgb: 30, 30, 40; /* dark mode glass base — overrides light-mode 255,255,255 */
 
     --text-primary: hsl(0, 0%, 96%);
     --text-secondary: hsl(240, 5%, 75%);

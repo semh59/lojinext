@@ -80,10 +80,32 @@ class BaseRepository(ABC, Generic[T]):
             return obj.model_dump()
 
         try:
-            from sqlalchemy import inspect
-
             mapper = inspect(obj.__class__)
-            return {c.key: getattr(obj, c.key) for c in mapper.column_attrs}
+            result = {c.key: getattr(obj, c.key) for c in mapper.column_attrs}
+
+            # Include relationships the caller explicitly eager-loaded (e.g.
+            # via get_all(..., load_relations=["rol"])). Without this, every
+            # joinedload/selectinload was silently dropped here — the ORM
+            # object had the related row populated in memory, but only
+            # column_attrs made it into the returned dict, so API responses
+            # built on get_all/get_by_id always serialized eager-loaded
+            # relations as missing (e.g. KullaniciRead.rol was always None
+            # even when rol_id pointed at a real, existing role). Only
+            # attributes already loaded are read — checking `state.unloaded`
+            # avoids triggering a lazy-load query, which would raise
+            # MissingGreenlet under an async session.
+            state = inspect(obj)
+            for rel in mapper.relationships:
+                if rel.key in state.unloaded:
+                    continue
+                value = getattr(obj, rel.key)
+                if isinstance(value, list):
+                    result[rel.key] = [self._to_dict(v) for v in value]
+                else:
+                    result[rel.key] = (
+                        self._to_dict(value) if value is not None else None
+                    )
+            return result
         except Exception:
             if hasattr(obj, "__dict__"):
                 return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}

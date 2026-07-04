@@ -43,14 +43,18 @@ export default function AdminMaintenancePage() {
   const { adminMaintenanceText } = useAdminResources();
   const { t } = useTranslation();
   const locale = useLocale();
+  // Backend contract (MaintenanceAlertItem, /admin/maintenance/alerts) sends
+  // `vade_durumu: "OVERDUE" | "UPCOMING"` — NOT `durum: "gecikmis"/"yaklasiyor"`.
+  // The previous switch matched a field/value shape that never existed on
+  // the wire, so every alert silently fell through to the default badge.
   const mapMaintenanceStatus = (status?: string) => {
     switch (status) {
-      case "gecikmis":
+      case "OVERDUE":
         return {
           label: adminMaintenanceText.statusLabels.overdue,
           variant: "danger" as const,
         };
-      case "yaklasiyor":
+      case "UPCOMING":
         return {
           label: adminMaintenanceText.statusLabels.upcoming,
           variant: "warning" as const,
@@ -321,7 +325,7 @@ export default function AdminMaintenancePage() {
               </TableHeader>
               <TableBody>
                 {alerts.map((alert: any) => {
-                  const status = mapMaintenanceStatus(alert.durum);
+                  const status = mapMaintenanceStatus(alert.vade_durumu);
 
                   return (
                     <TableRow key={alert.id}>
@@ -332,10 +336,8 @@ export default function AdminMaintenancePage() {
                         {alert.bakim_tipi}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {alert.bakim_tarihi
-                          ? new Date(alert.bakim_tarihi).toLocaleDateString(
-                              locale,
-                            )
+                        {alert.tarih
+                          ? new Date(alert.tarih).toLocaleDateString(locale)
                           : "-"}
                         {alert.km_bilgisi ? ` / ${alert.km_bilgisi} KM` : ""}
                       </TableCell>

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "../../../test/test-utils";
 import AdminOverviewPage from "../OverviewPage";
-import { adminOverviewText } from "../../../resources/tr/admin";
 
 // Scenarios kept mocked because they require states not reproducible
 // against the shared real test backend (unhealthy system status, a

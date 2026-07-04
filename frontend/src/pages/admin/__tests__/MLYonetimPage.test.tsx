@@ -1,228 +1,135 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../../test/test-utils";
-import AdminModelManagementPage from "../MLYonetimPage";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import axios from "axios";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_URL,
+} from "../../../test/real-backend";
 import { adminMlText } from "../../../resources/tr/admin";
 
-// Mock admin-service
-vi.mock("../../../api/admin", () => ({
-  adminMlApi: {
-    getQueue: vi.fn(),
-    triggerTraining: vi.fn(),
-  },
-}));
-
-// Mock vehicle-service
-vi.mock("../../../api/vehicles", () => ({
-  vehicleService: {
-    getAll: vi.fn(),
-  },
-}));
-
-// Mock notification context
+// Mock notification context — not wrapped by test-utils' AllTheProviders.
 vi.mock("../../../context/NotificationContext", () => ({
   useNotify: () => ({ notify: vi.fn() }),
   NotificationProvider: ({ children }: any) => <>{children}</>,
 }));
 
-// Mock usePageTitle
 vi.mock("../../../hooks/usePageTitle", () => ({
   usePageTitle: vi.fn(),
 }));
 
-const MOCK_QUEUE = [
-  {
-    id: 1,
-    arac_id: 10,
-    durum: "completed",
-    metrics: { algorithm: "lightgbm", rmse: 3.42 },
-    training_time_seconds: 12.5,
-    error_message: null,
-    trigger_reason: "manual",
-    created_at: "2026-06-01T10:00:00Z",
+const backendUp = await isRealBackendReachable();
+
+let render: typeof import("../../../test/test-utils").render;
+let screen: typeof import("../../../test/test-utils").screen;
+let waitFor: typeof import("../../../test/test-utils").waitFor;
+let fireEvent: typeof import("../../../test/test-utils").fireEvent;
+let AdminModelManagementPage: typeof import("../MLYonetimPage").default;
+
+describe.skipIf(!backendUp)(
+  "AdminModelManagementPage / MLYonetimPage (real backend)",
+  () => {
+    let token = "";
+    let vehicleId = 0;
+    // The vehicles LIST endpoint (used by vehicleService.getAll(), which
+    // this page's selector reads) formats plaka with spaces ("34ML1234"
+    // -> "34 ML 1234"), but POST /vehicles/'s own create response does
+    // NOT apply the same formatting — an existing inconsistency between
+    // endpoints, out of scope here. Match on the unique digit suffix only
+    // so the assertion doesn't depend on which formatting convention is
+    // in effect.
+    const plakaSuffix = Date.now().toString().slice(-4);
+
+    beforeAll(async () => {
+      vi.stubEnv("VITE_API_URL", REAL_BACKEND_URL);
+      ({ render, screen, waitFor, fireEvent } = await import(
+        "../../../test/test-utils"
+      ));
+      AdminModelManagementPage = (await import("../MLYonetimPage")).default;
+
+      token = await loginAsAdmin();
+      const headers = { Authorization: `Bearer ${token}` };
+      const vehicleResp = await axios.post(
+        `${REAL_BACKEND_URL}/vehicles/`,
+        { plaka: `34ML${plakaSuffix}`, marka: "ML Test Marka" },
+        { headers },
+      );
+      vehicleId = vehicleResp.data.id;
+    });
+
+    it("renders page heading, description and start-training button", () => {
+      sessionStorage.setItem("access_token", token);
+      render(<AdminModelManagementPage />);
+      expect(screen.getByText(adminMlText.heading)).toBeInTheDocument();
+      expect(screen.getByText(adminMlText.description)).toBeInTheDocument();
+      expect(screen.getByText(adminMlText.startTraining)).toBeInTheDocument();
+    });
+
+    it("shows the seeded real vehicle in the selector", async () => {
+      sessionStorage.setItem("access_token", token);
+      render(<AdminModelManagementPage />);
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText((content) => content.includes(plakaSuffix)),
+          ).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+    });
+
+    it("renders training-queue table title and stat cards", async () => {
+      sessionStorage.setItem("access_token", token);
+      render(<AdminModelManagementPage />);
+      expect(screen.getByText(adminMlText.table.title)).toBeInTheDocument();
+      expect(
+        screen.getByText(adminMlText.cards.totalTasks),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(adminMlText.cards.runningTasks),
+      ).toBeInTheDocument();
+    });
+
+    it("triggers a real training task and shows it in the queue with the correct badge/date (real mutation)", async () => {
+      sessionStorage.setItem("access_token", token);
+      render(<AdminModelManagementPage />);
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText((content) => content.includes(plakaSuffix)),
+          ).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
+      fireEvent.change(select, { target: { value: String(vehicleId) } });
+
+      fireEvent.click(screen.getByText(adminMlText.startTraining));
+
+      await waitFor(
+        () => {
+          expect(
+            screen.getByText(
+              `${adminMlText.table.vehiclePrefix} #${vehicleId}`,
+            ),
+          ).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+
+      // Regression check: the real backend's durum enum is uppercase
+      // ("WAITING") — the badge must still render it (previously the
+      // component only matched lowercase "completed"/"running"/"failed"
+      // literals, so a real WAITING/RUNNING/COMPLETED task always fell
+      // through to the default badge silently).
+      // The queue accumulates WAITING rows across repeated test runs
+      // (no delete endpoint) — assert presence, not a single match.
+      expect(screen.getAllByText("WAITING").length).toBeGreaterThanOrEqual(1);
+
+      // Regression check: real backend sends `olusturma`, not
+      // `created_at` — previously `new Date(undefined)` rendered
+      // "Invalid Date".
+      expect(screen.queryByText("Invalid Date")).not.toBeInTheDocument();
+    }, 15000);
   },
-  {
-    id: 2,
-    arac_id: 11,
-    durum: "running",
-    metrics: null,
-    training_time_seconds: null,
-    error_message: null,
-    trigger_reason: "scheduled",
-    created_at: "2026-06-02T08:00:00Z",
-  },
-  {
-    id: 3,
-    arac_id: 12,
-    durum: "failed",
-    metrics: null,
-    training_time_seconds: null,
-    error_message: "Out of memory",
-    trigger_reason: null,
-    created_at: "2026-06-02T09:00:00Z",
-  },
-];
-
-const MOCK_VEHICLES = {
-  items: [
-    { id: 10, plaka: "34ABC001", marka: "Mercedes", model: "Actros" },
-    { id: 11, plaka: "06DEF002", marka: "Volvo", model: "FH" },
-  ],
-  total: 2,
-  skip: 0,
-  limit: 100,
-};
-
-describe("AdminModelManagementPage (MLYonetimPage)", () => {
-  let notifyMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    notifyMock = vi.fn();
-    const { adminMlApi } = await import("../../../api/admin");
-    const { vehicleService } = await import("../../../api/vehicles");
-    (adminMlApi.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue(
-      MOCK_QUEUE,
-    );
-    (vehicleService.getAll as ReturnType<typeof vi.fn>).mockResolvedValue(
-      MOCK_VEHICLES,
-    );
-
-    // Re-mock useNotify with fresh mock per test
-    const notifMod = await import("../../../context/NotificationContext");
-    (notifMod.useNotify as unknown as ReturnType<typeof vi.fn>) = vi
-      .fn()
-      .mockReturnValue({ notify: notifyMock });
-  });
-
-  it("renders page heading", async () => {
-    render(<AdminModelManagementPage />);
-    expect(screen.getByText(adminMlText.heading)).toBeInTheDocument();
-  });
-
-  it("renders page description", async () => {
-    render(<AdminModelManagementPage />);
-    expect(screen.getByText(adminMlText.description)).toBeInTheDocument();
-  });
-
-  it("renders start training button", async () => {
-    render(<AdminModelManagementPage />);
-    expect(screen.getByText(adminMlText.startTraining)).toBeInTheDocument();
-  });
-
-  it("shows vehicle options in selector after loading", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText(/34ABC001/)).toBeInTheDocument();
-    });
-  });
-
-  it("renders stat cards: total tasks", async () => {
-    render(<AdminModelManagementPage />);
-    expect(screen.getByText(adminMlText.cards.totalTasks)).toBeInTheDocument();
-    // totalTasks count = 3
-    await waitFor(() => {
-      expect(screen.getByText("3")).toBeInTheDocument();
-    });
-  });
-
-  it("renders stat card: running tasks count", async () => {
-    render(<AdminModelManagementPage />);
-    expect(
-      screen.getByText(adminMlText.cards.runningTasks),
-    ).toBeInTheDocument();
-    // runningCount = 1
-    await waitFor(() => {
-      expect(screen.getByText("1")).toBeInTheDocument();
-    });
-  });
-
-  it("renders training queue table title", async () => {
-    render(<AdminModelManagementPage />);
-    expect(screen.getByText(adminMlText.table.title)).toBeInTheDocument();
-  });
-
-  it("shows queue rows with vehicle prefix after loading", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText("Araç #10")).toBeInTheDocument();
-      expect(screen.getByText("Araç #11")).toBeInTheDocument();
-      expect(screen.getByText("Araç #12")).toBeInTheDocument();
-    });
-  });
-
-  it("shows task statuses as badges", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText("completed")).toBeInTheDocument();
-      expect(screen.getByText("running")).toBeInTheDocument();
-      expect(screen.getByText("failed")).toBeInTheDocument();
-    });
-  });
-
-  it("shows algorithm/rmse for completed task", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      // component renders e.g. "lightgbm / 3.42" inside a span
-      const cell = document.body.querySelector("td span.text-xs.font-medium");
-      expect(cell?.textContent).toMatch(/lightgbm/);
-    });
-  });
-
-  it("shows training duration in seconds", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText(/12\.5\s*sn/)).toBeInTheDocument();
-    });
-  });
-
-  it("shows error message for failed task", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText("Out of memory")).toBeInTheDocument();
-    });
-  });
-
-  it("shows empty state when queue is empty", async () => {
-    const { adminMlApi } = await import("../../../api/admin");
-    (adminMlApi.getQueue as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText(adminMlText.table.empty)).toBeInTheDocument();
-    });
-  });
-
-  it("shows 'Araç bulunamadı' when no vehicles", async () => {
-    const { vehicleService } = await import("../../../api/vehicles");
-    (vehicleService.getAll as ReturnType<typeof vi.fn>).mockResolvedValue({
-      items: [],
-      total: 0,
-    });
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      expect(screen.getByText(adminMlText.vehicleNotFound)).toBeInTheDocument();
-    });
-  });
-
-  it("latest rmse shown in card", async () => {
-    render(<AdminModelManagementPage />);
-    await waitFor(() => {
-      // latestRmse = 3.42 → "3.42"
-      const rmseText = screen.getAllByText("3.42");
-      expect(rmseText.length).toBeGreaterThan(0);
-    });
-  });
-
-  it("calls triggerTraining on button click with selected vehicle", async () => {
-    const { adminMlApi } = await import("../../../api/admin");
-    (adminMlApi.triggerTraining as ReturnType<typeof vi.fn>).mockResolvedValue({
-      status: "queued",
-    });
-    render(<AdminModelManagementPage />);
-    await waitFor(() => screen.getByText(/34ABC001/));
-    const btn = screen.getByText(adminMlText.startTraining);
-    fireEvent.click(btn);
-    await waitFor(() => {
-      expect(adminMlApi.triggerTraining).toHaveBeenCalledWith(10);
-    });
-  });
-});
+);

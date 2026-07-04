@@ -1,61 +1,20 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../../test/test-utils";
-import KullanicilarPage from "../KullanicilarPage";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import axios from "axios";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_URL,
+} from "../../../test/real-backend";
 import { adminUsersText } from "../../../resources/tr/admin";
 
-// Mock admin-service
-vi.mock("../../../api/admin", () => ({
-  adminUsersApi: {
-    getAll: vi.fn(),
-    create: vi.fn().mockResolvedValue({
-      id: 99,
-      email: "new@test.com",
-      ad_soyad: "Yeni Kullanici",
-      aktif: true,
-    }),
-    update: vi.fn().mockResolvedValue({
-      id: 1,
-      email: "test@test.com",
-      ad_soyad: "Test User",
-      aktif: true,
-    }),
-    delete: vi.fn().mockResolvedValue(undefined),
-  },
-  adminRolesApi: {
-    getAll: vi.fn().mockResolvedValue([
-      { id: 1, ad: "admin", yetkiler: {} },
-      { id: 2, ad: "user", yetkiler: {} },
-    ]),
-  },
-}));
-
-// Mock usePageTitle
-vi.mock("../../../hooks/usePageTitle", () => ({
-  usePageTitle: vi.fn(),
-}));
-
-// Mock ErrorBoundary
+// Mock ErrorBoundary — passthrough, not part of the backend contract.
 vi.mock("../../../components/common/ErrorBoundary", () => ({
   default: ({ children }: any) => <>{children}</>,
 }));
 
-// Mock UserRolePanel to simplify form testing
-vi.mock("../../../components/admin/UserRolePanel", () => ({
-  UserRolePanel: ({ onSubmit, onClose, modalMode, formError }: any) => (
-    <div data-testid="user-role-panel">
-      {formError && <p data-testid="form-error">{formError}</p>}
-      <span data-testid="modal-mode">{modalMode}</span>
-      <button onClick={onSubmit} data-testid="panel-submit">
-        Kaydet
-      </button>
-      <button onClick={onClose} data-testid="panel-close">
-        Kapat
-      </button>
-    </div>
-  ),
-}));
-
-// Mock Modal
+// Modal — passthrough stub (same convention as every other converted admin
+// page); the real UserRolePanel form underneath is NOT mocked, so create/
+// edit exercise the actual component + real HTTP calls.
 vi.mock("../../../components/ui/Modal", () => ({
   Modal: ({ isOpen, children, title }: any) =>
     isOpen ? (
@@ -66,7 +25,6 @@ vi.mock("../../../components/ui/Modal", () => ({
     ) : null,
 }));
 
-// Mock sonner
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -74,153 +32,206 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const MOCK_USERS = [
-  {
-    id: 1,
-    email: "admin@loji.com",
-    ad_soyad: "Admin Kullanici",
-    aktif: true,
-    rol_id: 1,
-    son_giris: "2026-06-01T10:00:00",
-    rol: { id: 1, ad: "admin", yetkiler: {} },
-  },
-  {
-    id: 2,
-    email: "user@loji.com",
-    ad_soyad: "Normal Kullanici",
-    aktif: false,
-    rol_id: 2,
-    son_giris: null,
-    rol: { id: 2, ad: "user", yetkiler: {} },
-  },
-];
+vi.mock("../../../hooks/usePageTitle", () => ({
+  usePageTitle: vi.fn(),
+}));
 
-describe("KullanicilarPage", () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    const { adminUsersApi } = await import("../../../api/admin");
-    (adminUsersApi.getAll as ReturnType<typeof vi.fn>).mockResolvedValue(
-      MOCK_USERS,
+const backendUp = await isRealBackendReachable();
+
+let render: typeof import("../../../test/test-utils").render;
+let screen: typeof import("../../../test/test-utils").screen;
+let waitFor: typeof import("../../../test/test-utils").waitFor;
+let fireEvent: typeof import("../../../test/test-utils").fireEvent;
+let KullanicilarPage: typeof import("../KullanicilarPage").default;
+
+describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
+  let token = "";
+  let roleId = 0;
+  const suffix = Date.now();
+  const createdUserIds: number[] = [];
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_URL);
+    ({ render, screen, waitFor, fireEvent } = await import(
+      "../../../test/test-utils"
+    ));
+    KullanicilarPage = (await import("../KullanicilarPage")).default;
+
+    token = await loginAsAdmin();
+    const headers = { Authorization: `Bearer ${token}` };
+    const role = await axios.post(
+      `${REAL_BACKEND_URL}/admin/roles/`,
+      {
+        ad: `kullanici-test-role-${suffix}`,
+        yetkiler: { sefer_goruntule: true },
+      },
+      { headers },
     );
+    roleId = role.data.id;
   });
 
-  it("renders page heading", async () => {
+  afterAll(async () => {
+    const headers = { Authorization: `Bearer ${token}` };
+    for (const id of createdUserIds) {
+      try {
+        await axios.delete(`${REAL_BACKEND_URL}/admin/users/${id}`, {
+          headers,
+        });
+      } catch {
+        // already deleted by the test itself — fine.
+      }
+    }
+  });
+
+  it("renders page heading and add-user button", () => {
+    sessionStorage.setItem("access_token", token);
     render(<KullanicilarPage />);
     expect(screen.getByText(adminUsersText.heading)).toBeInTheDocument();
-  });
-
-  it("renders add user button", async () => {
-    render(<KullanicilarPage />);
     expect(screen.getByText(adminUsersText.addUser)).toBeInTheDocument();
   });
 
-  it("shows user list after loading", async () => {
-    render(<KullanicilarPage />);
-    await waitFor(() => {
-      expect(screen.getByText("admin@loji.com")).toBeInTheDocument();
-      expect(screen.getByText("user@loji.com")).toBeInTheDocument();
-    });
-  });
-
-  it("shows user full names", async () => {
-    render(<KullanicilarPage />);
-    await waitFor(() => {
-      expect(screen.getByText("Admin Kullanici")).toBeInTheDocument();
-      expect(screen.getByText("Normal Kullanici")).toBeInTheDocument();
-    });
-  });
-
-  it("shows active/passive status badges", async () => {
-    render(<KullanicilarPage />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(adminUsersText.statuses.active),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(adminUsersText.statuses.passive),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows empty state when no users", async () => {
-    const { adminUsersApi } = await import("../../../api/admin");
-    (adminUsersApi.getAll as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-    render(<KullanicilarPage />);
-    await waitFor(() => {
-      expect(screen.getByText(adminUsersText.empty)).toBeInTheDocument();
-    });
-  });
-
-  it("opens create modal when add user button clicked", async () => {
-    render(<KullanicilarPage />);
-    const addBtn = screen.getByText(adminUsersText.addUser);
-    fireEvent.click(addBtn);
-    await waitFor(() => {
-      expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Yeni Kullanıcı Oluştur")).toBeInTheDocument();
-    });
-  });
-
-  it("modal mode is 'create' when adding new user", async () => {
+  it("opens create modal in 'create' mode when add user button clicked", async () => {
+    sessionStorage.setItem("access_token", token);
     render(<KullanicilarPage />);
     fireEvent.click(screen.getByText(adminUsersText.addUser));
     await waitFor(() => {
-      expect(screen.getByTestId("modal-mode")).toHaveTextContent("create");
-    });
-  });
-
-  it("opens edit modal when edit button clicked", async () => {
-    render(<KullanicilarPage />);
-    await waitFor(() =>
-      expect(screen.getByText("admin@loji.com")).toBeInTheDocument(),
-    );
-    const editBtns = screen.getAllByRole("button", {
-      name: adminUsersText.actions.edit,
-    });
-    fireEvent.click(editBtns[0]);
-    await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByTestId("modal-mode")).toHaveTextContent("edit");
     });
   });
 
-  it("opens delete confirmation dialog when delete button clicked", async () => {
+  it("creates a real user through the form (real mutation)", async () => {
+    sessionStorage.setItem("access_token", token);
     render(<KullanicilarPage />);
-    await waitFor(() =>
-      expect(screen.getByText("admin@loji.com")).toBeInTheDocument(),
-    );
-    const deleteBtns = screen.getAllByRole("button", { name: "Sil" });
-    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(screen.getByText(adminUsersText.addUser));
+    await waitFor(() => screen.getByRole("dialog"));
+
+    const email = `kull-test-${suffix}@example.com`;
+    fireEvent.change(screen.getByPlaceholderText("user@company.com"), {
+      target: { value: email },
+    });
+    fireEvent.change(screen.getByPlaceholderText("John Smith"), {
+      target: { value: "Test Kullanici" },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/8/), {
+      target: { value: "TestPass123!" },
+    });
+
+    // The roles query fetches on mount (no `enabled` gate) — wait for the
+    // seeded role's real <option> to actually be in the DOM before
+    // selecting it. Setting a <select>'s value to one with no matching
+    // <option> is silently ignored by the DOM, which previously produced a
+    // false negative here (rol_id stayed "", submit silently no-opped on
+    // the "role required" validation with the modal still open).
+    const roleName = `kullanici-test-role-${suffix}`;
     await waitFor(() => {
-      expect(screen.getByText("Kullanıcıyı Sil")).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: roleName }),
+      ).toBeInTheDocument();
     });
-  });
-
-  it("calls delete API when confirmed", async () => {
-    const { adminUsersApi } = await import("../../../api/admin");
-    render(<KullanicilarPage />);
-    await waitFor(() =>
-      expect(screen.getByText("admin@loji.com")).toBeInTheDocument(),
-    );
-    const deleteBtns = screen.getAllByRole("button", { name: "Sil" });
-    fireEvent.click(deleteBtns[0]);
-    await waitFor(() =>
-      expect(screen.getByText("Evet, Sil")).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByText("Evet, Sil"));
-    // The delete flow fires the mutation (mutationFn = adminUsersApi.delete).
-    // React Query forwards the variable internally; assert the call happened.
-    await waitFor(() => {
-      expect(adminUsersApi.delete).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByRole("combobox"), {
+      target: { value: String(roleId) },
     });
-  });
 
-  it("shows loading state initially", async () => {
-    const { adminUsersApi } = await import("../../../api/admin");
-    (adminUsersApi.getAll as ReturnType<typeof vi.fn>).mockReturnValue(
-      new Promise(() => {}),
+    fireEvent.click(screen.getByRole("button", { name: /Oluştur|Create/ }));
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(email)).toBeInTheDocument();
+      },
+      { timeout: 10000 },
     );
-    render(<KullanicilarPage />);
-    expect(screen.getByText(adminUsersText.loading)).toBeInTheDocument();
+
+    const resp = await axios.get(`${REAL_BACKEND_URL}/admin/users/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const created = resp.data.find((u: { email: string }) => u.email === email);
+    expect(created).toBeTruthy();
+    createdUserIds.push(created.id);
+  }, 15000);
+
+  describe("with the seeded real user", () => {
+    it("shows the user in the list with full name and active status", async () => {
+      sessionStorage.setItem("access_token", token);
+      render(<KullanicilarPage />);
+      await waitFor(
+        () => {
+          expect(screen.getByText("Test Kullanici")).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+      expect(
+        screen.getAllByText(adminUsersText.statuses.active).length,
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    it("opens edit modal in 'edit' mode when edit button clicked", async () => {
+      sessionStorage.setItem("access_token", token);
+      render(<KullanicilarPage />);
+      await waitFor(
+        () => expect(screen.getByText("Test Kullanici")).toBeInTheDocument(),
+        { timeout: 10000 },
+      );
+      const editBtns = screen.getAllByRole("button", {
+        name: adminUsersText.actions.edit,
+      });
+      fireEvent.click(editBtns[0]);
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+      });
+      // Edit form is pre-filled from the real user record.
+      const emailInput = screen.getByPlaceholderText(
+        "user@company.com",
+      ) as HTMLInputElement;
+      expect(emailInput.value).toContain(`kull-test-${suffix}`);
+    });
+
+    it("opens delete confirmation and calls the real DELETE endpoint", async () => {
+      sessionStorage.setItem("access_token", token);
+      // Create a disposable second user just for this destructive test so
+      // the "shows the user" / "opens edit modal" tests above (which run
+      // first) keep seeing the original seeded user.
+      const headers = { Authorization: `Bearer ${token}` };
+      const disposableEmail = `kull-test-disposable-${suffix}@example.com`;
+      const created = await axios.post(
+        `${REAL_BACKEND_URL}/admin/users/`,
+        {
+          email: disposableEmail,
+          ad_soyad: "Disposable User",
+          rol_id: roleId,
+          sifre: "TestPass123!",
+        },
+        { headers },
+      );
+      const disposableId = created.data.id as number;
+
+      render(<KullanicilarPage />);
+      await waitFor(
+        () => expect(screen.getByText("Disposable User")).toBeInTheDocument(),
+        { timeout: 10000 },
+      );
+      const row = screen.getByText("Disposable User").closest("tr")!;
+      const deleteBtn = row.querySelector(
+        'button[aria-label="Sil"]',
+      ) as HTMLElement;
+      fireEvent.click(deleteBtn);
+      await waitFor(() => {
+        expect(screen.getByText("Kullanıcıyı Sil")).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText("Evet, Sil"));
+
+      await waitFor(
+        () => {
+          expect(screen.queryByText("Disposable User")).not.toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+
+      const resp = await axios.get(`${REAL_BACKEND_URL}/admin/users/`, {
+        headers,
+      });
+      expect(
+        resp.data.find((u: { id: number }) => u.id === disposableId),
+      ).toBeUndefined();
+    }, 15000);
   });
 });

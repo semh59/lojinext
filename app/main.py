@@ -179,12 +179,20 @@ def _sentry_before_send(event, hint):
 
         exc_info = hint.get("exc_info")
         exc_type = type(exc_info[1]).__name__ if exc_info else "SentryEvent"
-        # WARNING (not CRITICAL) so AlarmRouter never calls capture_message again —
-        # prevents the sentry_capture → capture_message → sentry_capture loop.
+        # ERROR (not WARNING) so this actually reaches Telegram: AlarmRouter only
+        # forwards WARNING-severity events when NOTIFY_MIN_LEVEL=="warning", which
+        # is NOT the default ("error") and is never overridden in any deployment
+        # config — under WARNING, sentry_capture events silently never left the
+        # digest counter uncounted, so no Sentry-captured error ever reached
+        # Telegram despite this function's own docstring promising otherwise.
+        # The sentry_capture → capture_message → sentry_capture loop this used to
+        # guard against is prevented independently, in AlarmRouter._send_immediate's
+        # `if event.category != "sentry_capture"` check — not by severity choice —
+        # so ERROR is safe here regardless.
         ev = ErrorEvent(
             layer=ErrorLayer.SERVICE,
             category="sentry_capture",
-            severity=ErrorSeverity.WARNING,
+            severity=ErrorSeverity.ERROR,
             message=f"{exc_type}: {event.get('message', '')}",
             trace_id=event.get("event_id", ""),
         )

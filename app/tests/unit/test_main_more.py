@@ -109,6 +109,35 @@ def test_sentry_before_send_handles_event_bus_emit_failure():
     assert result == event
 
 
+def test_sentry_before_send_emits_error_severity_not_warning():
+    """Regression: sentry_capture events must be ERROR so AlarmRouter actually
+    forwards them to Telegram. AlarmRouter only routes WARNING-severity events
+    when NOTIFY_MIN_LEVEL=="warning", which is NOT the default ("error") and is
+    never overridden in any deployment config — so WARNING here meant every
+    Sentry-captured error silently never reached Telegram, contradicting this
+    function's own docstring."""
+    from app.infrastructure.monitoring.models import ErrorSeverity
+
+    exc = RuntimeError("boom")
+    event = {"message": "boom", "event_id": "sev1"}
+    hint = {"exc_info": (RuntimeError, exc, None)}
+
+    captured = {}
+
+    class FakeBus:
+        def emit_sync(self, ev):
+            captured["event"] = ev
+
+    with patch(
+        "app.infrastructure.monitoring.event_bus.get_event_bus",
+        return_value=FakeBus(),
+    ):
+        _sentry_before_send(event, hint)
+
+    assert captured["event"].severity == ErrorSeverity.ERROR
+    assert captured["event"].category == "sentry_capture"
+
+
 def test_sentry_before_send_drops_self_test_via_logger_field():
     """Event with 'self_test' in logger field should be dropped."""
     event = {"message": "startup check", "logger": "self_test.probe", "event_id": "z9"}

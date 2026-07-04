@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -257,11 +257,24 @@ export default function ProfilePage() {
   const {
     register: registerProfile,
     handleSubmit: handleSubmitProfile,
+    reset: resetProfile,
     formState: { errors: profileErrors, isSubmitting: isProfileSubmitting },
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: { ad_soyad: user?.full_name ?? "" },
   });
+
+  // AuthContext hydrates `user` asynchronously (fetches /auth/me on mount) —
+  // on a hard page reload while already on /profile, `user` is still null at
+  // this component's first render, so react-hook-form's `defaultValues` were
+  // captured empty and never resynced once the fetch resolved, leaving the
+  // "Ad Soyad" field permanently blank. Re-seed the form once real user data
+  // arrives.
+  useEffect(() => {
+    if (user?.full_name) {
+      resetProfile({ ad_soyad: user.full_name });
+    }
+  }, [user?.full_name, resetProfile]);
 
   // ── Password form ──────────────────────────────────────────────────────
   const {

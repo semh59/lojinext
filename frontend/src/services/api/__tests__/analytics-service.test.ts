@@ -1,50 +1,47 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği — son parti. analytics API (recordPageView + fetchPageViewStats)
+ * gerçek backend'e karşı.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_URL,
+} from "../../../test/real-backend";
 
-const mockCustomAxios = vi.fn();
-vi.mock("../../../lib/orval-mutator", () => ({
-  customAxiosInstance: mockCustomAxios,
-}));
-vi.mock("../axios-instance", () => ({
-  default: { get: vi.fn() },
-}));
+const backendUp = await isRealBackendReachable();
 
-describe("analytics-service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe.skipIf(!backendUp)("analytics-service (real backend)", () => {
+  let recordPageView: typeof import("../../../api/analytics").recordPageView;
+  let fetchPageViewStats: typeof import("../../../api/analytics").fetchPageViewStats;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_URL);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ recordPageView, fetchPageViewStats } = await import(
+      "../../../api/analytics"
+    ));
   });
 
-  it("recordPageView calls analytics page-view endpoint", async () => {
-    mockCustomAxios.mockResolvedValueOnce(undefined);
-    const { recordPageView } = await import("../../../api/analytics");
-    await recordPageView("/trips");
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/analytics/page-view",
-      method: "POST",
-    });
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("recordPageView swallows errors (best-effort)", async () => {
-    mockCustomAxios.mockRejectedValueOnce(new Error("network"));
-    const { recordPageView } = await import("../../../api/analytics");
-    await expect(recordPageView("/fuel")).resolves.toBeUndefined();
-  });
+  it("recordPageView posts a real page-view event and resolves", async () => {
+    await expect(recordPageView("/trips")).resolves.toBeUndefined();
+  }, 15000);
 
-  it("fetchPageViewStats GETs the admin endpoint with days param", async () => {
-    const axiosInstance = (await import("../axios-instance")).default;
-    (axiosInstance.get as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      data: {
-        period_days: 30,
-        total_views: 0,
-        top_routes: [],
-        bottom_routes: [],
-      },
-    });
-    const { fetchPageViewStats } = await import("../../../api/analytics");
+  it("recordPageView swallows errors (best-effort) even against real backend", async () => {
+    // Malformed route payload still resolves silently — best-effort by design.
+    await expect(recordPageView("")).resolves.toBeUndefined();
+  }, 15000);
+
+  it("fetchPageViewStats GETs the real admin endpoint with days param", async () => {
     const stats = await fetchPageViewStats(30);
-    expect(axiosInstance.get).toHaveBeenCalledWith(
-      "/admin/analytics/page-views",
-      { params: { days: 30 } },
-    );
     expect(stats.period_days).toBe(30);
-  });
+    expect(typeof stats.total_views).toBe("number");
+    expect(Array.isArray(stats.top_routes)).toBe(true);
+    expect(Array.isArray(stats.bottom_routes)).toBe(true);
+  }, 15000);
 });

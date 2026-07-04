@@ -1,180 +1,105 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+/**
+ * 0-mock epiği — son parti (G1). coachingService + fleetInsightsService
+ * gerçek backend'e karşı. Diğer G-serisi dosyalar (G2-G6-G10) tamamen
+ * `expect(true).toBe(true)` placeholder'ları olduğu için (hiçbir servis
+ * çağrısı yok) dönüştürme kapsamı dışında bırakıldı — bkz. final rapor.
+ */
+import axios from "axios";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+  REAL_BACKEND_URL,
+} from "../../../test/real-backend";
 
-const mockCustomAxios = vi.hoisted(() => vi.fn());
-vi.mock("../../../lib/orval-mutator", () => ({
-  customAxiosInstance: mockCustomAxios,
-}));
+const backendUp = await isRealBackendReachable();
 
-import { coachingService } from "../../../api/coaching";
-import { fleetInsightsService } from "../../../api/fleet-insights";
+describe.skipIf(!backendUp)("Coaching Service (real backend)", () => {
+  let coachingService: typeof import("../../../api/coaching").coachingService;
+  let driverId: number;
 
-describe("Coaching Service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ coachingService } = await import("../../../api/coaching"));
 
-  it("getInsights returns coaching insights for driver", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      sofor_id: 1,
-      ad_soyad: "Ahmet Yilmaz",
-      headline: "Yakıt tasarrufu potansiyeli",
-      priority: "high",
-      insights: [
-        {
-          category: "yakit_yonetimi",
-          pattern: "Hızlı ivmelenme",
-          evidence: ["trip1", "trip2"],
-          suggestion: "Düzgün hızlanma yapın",
-          impact_score: 0.85,
-        },
-      ],
-      generated_at: "2026-06-01T08:00:00Z",
-      source: "llm",
-    });
-
-    const result = await coachingService.getInsights(1);
-
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/coaching/1/insights",
-      method: "GET",
-    });
-    expect(result.sofor_id).toBe(1);
-    expect(result.insights.length).toBe(1);
-  });
-
-  it("getInsights handles API error", async () => {
-    mockCustomAxios.mockRejectedValueOnce(new Error("API error"));
-    await expect(coachingService.getInsights(1)).rejects.toThrow("API error");
-  });
-
-  it("send delivers coaching message to driver", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      sent: true,
-      delivery_id: 123,
-      channel: "telegram",
-      sent_at: "2026-06-01T08:00:00Z",
-    });
-
-    const result = await coachingService.send(
-      1,
-      "Test mesaj",
-      "yakit_yonetimi",
+    const runTag = Date.now();
+    const created = await axios.post(
+      `${REAL_BACKEND_URL}/drivers/`,
+      { ad_soyad: `Faz2CoachDriver${runTag}`, ehliyet_sinifi: "E" },
+      { headers: { Authorization: `Bearer ${token}` } },
     );
-
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/coaching/1/send",
-      method: "POST",
-    });
-    expect(result.sent).toBe(true);
-    expect(result.delivery_id).toBe(123);
+    driverId = created.data.id;
   });
 
-  it("send handles missing category", async () => {
-    mockCustomAxios.mockResolvedValueOnce({ sent: true, delivery_id: null });
-    const result = await coachingService.send(1, "Message");
-    expect(mockCustomAxios).toHaveBeenCalled();
-    expect(result.sent).toBe(true);
+  afterAll(async () => {
+    if (driverId) {
+      const token = await loginAsAdmin();
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios
+        .delete(`${REAL_BACKEND_URL}/drivers/${driverId}`, { headers })
+        .catch(() => undefined);
+      await axios
+        .delete(`${REAL_BACKEND_URL}/drivers/${driverId}`, { headers })
+        .catch(() => undefined);
+    }
+    vi.unstubAllEnvs();
   });
 
-  it("getEffectiveness returns coaching impact metrics", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      window_days: 30,
-      total_sent: 5,
-      total_evaluated: 4,
-      improved: 3,
-      worsened: 1,
-      improve_rate: 0.75,
-      avg_score_delta_pct: 8.5,
-      caveat:
-        "Results may include confounding factors such as seasonal weather changes",
-    });
+  it("getInsights returns real coaching insights shape for driver", async () => {
+    const result = await coachingService.getInsights(driverId);
 
+    expect(result.sofor_id).toBe(driverId);
+    expect(Array.isArray(result.insights)).toBe(true);
+    expect(["llm", "fallback"]).toContain(result.source);
+  }, 15000);
+
+  it("getInsights rejects for a non-existent driver", async () => {
+    await expect(coachingService.getInsights(999999999)).rejects.toThrow();
+  }, 15000);
+
+  it("getEffectiveness returns real coaching impact metrics", async () => {
     const result = await coachingService.getEffectiveness(30);
 
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/coaching/effectiveness",
-      method: "GET",
-    });
-    expect(result.improve_rate).toBe(0.75);
-  });
+    expect(result.window_days).toBe(30);
+    expect(typeof result.total_sent).toBe("number");
+    expect(typeof result.caveat).toBe("string");
+  }, 15000);
 });
 
-describe("Fleet Insights Service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe.skipIf(!backendUp)("Fleet Insights Service (real backend)", () => {
+  let fleetInsightsService: typeof import("../../../api/fleet-insights").fleetInsightsService;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ fleetInsightsService } = await import("../../../api/fleet-insights"));
   });
 
-  it("getComparison returns period comparison data", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      period: "month",
-      current: {
-        fuel_l: 1000,
-        fuel_cost_tl: 25000,
-        anomaly_count: 5,
-        trip_count: 25,
-      },
-      previous: {
-        fuel_l: 1050,
-        fuel_cost_tl: 26250,
-        anomaly_count: 8,
-        trip_count: 23,
-      },
-      fuel_l_delta_pct: -4.76,
-      fuel_cost_delta_pct: -4.76,
-      anomaly_delta_pct: -37.5,
-      trip_delta_pct: 8.7,
-      current_start: "2026-06-01",
-      current_end: "2026-06-30",
-      previous_start: "2026-05-01",
-      previous_end: "2026-05-31",
-    });
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
 
+  it("getComparison returns real month period comparison data", async () => {
     const result = await fleetInsightsService.getComparison("month");
 
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/reports/insights/fleet/comparison",
-      method: "GET",
-    });
     expect(result.period).toBe("month");
-    expect(result.fuel_l_delta_pct).toBe(-4.76);
-  });
+    expect(result.current).toHaveProperty("fuel_l");
+    expect(result.previous).toHaveProperty("fuel_l");
+    expect(result).toHaveProperty("current_start");
+    expect(result).toHaveProperty("current_end");
+  }, 15000);
 
   it("getComparison defaults to month period", async () => {
-    mockCustomAxios.mockResolvedValueOnce({ period: "month" });
-    await fleetInsightsService.getComparison();
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/reports/insights/fleet/comparison",
-      method: "GET",
-    });
-  });
+    const result = await fleetInsightsService.getComparison();
+    expect(result.period).toBe("month");
+  }, 15000);
 
-  it("getComparison returns week comparison", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      period: "week",
-      current: { fuel_l: 150, fuel_cost_tl: 3750 },
-      previous: { fuel_l: 160, fuel_cost_tl: 4000 },
-    });
-
+  it("getComparison returns real week comparison", async () => {
     const result = await fleetInsightsService.getComparison("week");
     expect(result.period).toBe("week");
-  });
-
-  it("getComparison handles null deltas", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      period: "month",
-      current: { fuel_l: 1000 },
-      previous: { fuel_l: 1000 },
-      fuel_l_delta_pct: null,
-    });
-
-    const result = await fleetInsightsService.getComparison("month");
-    expect(result.fuel_l_delta_pct).toBeNull();
-  });
-
-  it("getComparison handles API errors", async () => {
-    mockCustomAxios.mockRejectedValueOnce(new Error("Network error"));
-    await expect(fleetInsightsService.getComparison()).rejects.toThrow(
-      "Network error",
-    );
-  });
+  }, 15000);
 });

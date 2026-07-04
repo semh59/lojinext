@@ -1,41 +1,62 @@
 /**
- * T8-A: driver-service.ts updateScore response type.
+ * T8-A: driverService.updateScore response type — real backend conversion.
  *
- * Bug Açıklaması:
- *   Frontend updateScore API response tipi yanlış.
- *   Backend {success, new_score} dönüyor ama frontend Driver objesi bekliyor.
- *   Type mismatch → UI rendering hatası.
- *
- * Beklenen: Response Driver object döndürmeli (score alanı güncellenmeli).
+ * The original file (`services/api/driver-service.ts` does not exist —
+ * this suite actually documents an intent, not a real module) was 100%
+ * commented-out placeholder assertions. The real update-score API lives in
+ * `api/drivers.ts` (driverService.updateScore, backed by the orval-generated
+ * `updateDriverScoreApiV1DriversSoforIdScorePost`). Verified against the
+ * live backend (POST /api/v1/drivers/{id}/score?score=0.95) that the T8-A
+ * bug this file used to merely describe is already fixed: the endpoint
+ * returns a full SoforResponse/Driver object (id, score, ad_soyad, ...),
+ * not the legacy {success, new_score} shape.
  */
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-import { describe, it, vi, beforeEach } from "vitest";
+const backendUp = await isRealBackendReachable();
 
-describe("DriverService - T8-A updateScore response type", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe.skipIf(!backendUp)(
+  "driverService.updateScore — T8-A response type (real backend)",
+  () => {
+    let driverService: typeof import("../../../api/drivers").driverService;
+    let driverId: number;
 
-  it("updateScore returns Driver object with updated score, not {success, new_score}", async () => {
-    // T8-A: Response should be full Driver object, not success flag
-    // Mock the API response
-    // Test that the service method returns Driver type
-    // In a real test, this would mock the HTTP client:
-    // vi.mock('../axiosInstance');
-    // const mockAxios = vi.mocked(axiosInstance);
-    // mockAxios.post.mockResolvedValue({ data: mockDriver });
-    // const result = await driverService.updateScore(1, 0.95);
-    // expect(result).toHaveProperty('id');
-    // expect(result).toHaveProperty('score', 0.95);
-    // expect(result).not.toHaveProperty('new_score');
-    // expect(result).not.toHaveProperty('success');
-  });
+    beforeAll(async () => {
+      vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+      const token = await loginAsAdmin();
+      sessionStorage.setItem("access_token", token);
+      ({ driverService } = await import("../../../api/drivers"));
 
-  it("should not return {success: true, new_score: X} format", () => {
-    // Verify the API contract is NOT the old {success, new_score} format
-    // This test ensures the frontend-backend contract is correct
-    // Example of what should NOT be returned:
-    // const badResponse = { success: true, new_score: 0.95 };
-    // expect(badResponse).not.toHaveProperty('id');
-  });
-});
+      const runTag = Date.now();
+      driverId = (
+        await driverService.create({
+          ad_soyad: `Faz2ScoreDriver${runTag}`,
+          ehliyet_sinifi: "E",
+        } as any)
+      ).id as number;
+    });
+
+    afterAll(async () => {
+      if (driverId) {
+        await driverService.delete(driverId).catch(() => undefined);
+        await driverService.delete(driverId).catch(() => undefined);
+      }
+      vi.unstubAllEnvs();
+    });
+
+    it("updateScore returns a full Driver object with the updated score, not {success, new_score}", async () => {
+      const result = await driverService.updateScore(driverId, 0.95);
+
+      expect(result).toHaveProperty("id", driverId);
+      expect(result).toHaveProperty("score", 0.95);
+      expect(result).not.toHaveProperty("new_score");
+      expect(result).not.toHaveProperty("success");
+      expect(typeof (result as any).ad_soyad).toBe("string");
+    }, 15000);
+  },
+);

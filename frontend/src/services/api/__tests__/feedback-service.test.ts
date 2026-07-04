@@ -1,23 +1,32 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği — son parti. sendFeedback gerçek backend'e karşı.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-const mockCustomAxios = vi.fn();
-vi.mock("../../../lib/orval-mutator", () => ({
-  customAxiosInstance: mockCustomAxios,
-}));
+const backendUp = await isRealBackendReachable();
 
-describe("feedback-service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe.skipIf(!backendUp)("feedback-service (real backend)", () => {
+  let sendFeedback: typeof import("../../../api/feedback").sendFeedback;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ sendFeedback } = await import("../../../api/feedback"));
   });
 
-  it("POSTs feedback to /feedback/", async () => {
-    mockCustomAxios.mockResolvedValueOnce(undefined);
-    const { sendFeedback } = await import("../../../api/feedback");
-    await sendFeedback({ message: "test", page: "/fuel" });
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/feedback/",
-      method: "POST",
-      data: { message: "test", page: "/fuel" },
-    });
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
+
+  it("POSTs feedback to the real /feedback/ endpoint and resolves", async () => {
+    await expect(
+      sendFeedback({ message: "Faz2 real-backend test", page: "/fuel" }),
+    ).resolves.toBeUndefined();
+  }, 15000);
 });

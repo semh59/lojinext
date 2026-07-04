@@ -1,30 +1,41 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+/**
+ * 0-mock epiği — son parti. predictionService.getEnsembleStatus gerçek
+ * backend'e karşı.
+ */
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-const mockCustomAxios = vi.fn();
-vi.mock("../../../lib/orval-mutator", () => ({
-  customAxiosInstance: mockCustomAxios,
-}));
+const backendUp = await isRealBackendReachable();
 
-describe("predictionService.getEnsembleStatus", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+describe.skipIf(!backendUp)(
+  "predictionService.getEnsembleStatus (real backend)",
+  () => {
+    let predictionService: typeof import("../../../api/predictions").predictionService;
 
-  it("calls /predictions/ensemble/status", async () => {
-    mockCustomAxios.mockResolvedValueOnce({
-      models: { physics: true, lightgbm: false },
-      weights: { physics: 0.8, lightgbm: 0.05 },
-      total_models: 1,
-      sklearn_available: true,
-      lightgbm_available: false,
-      xgboost_available: false,
+    beforeAll(async () => {
+      vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+      const token = await loginAsAdmin();
+      sessionStorage.setItem("access_token", token);
+      ({ predictionService } = await import("../../../api/predictions"));
     });
-    const { predictionService } = await import("../../../api/predictions");
-    const result = await predictionService.getEnsembleStatus();
-    expect(mockCustomAxios.mock.lastCall?.[0]).toMatchObject({
-      url: "/api/v1/predictions/ensemble/status",
-      method: "GET",
+
+    afterAll(() => {
+      vi.unstubAllEnvs();
     });
-    expect(result.weights.physics).toBe(0.8);
-  });
-});
+
+    it("calls /predictions/ensemble/status and returns real cold-start weights", async () => {
+      const result = await predictionService.getEnsembleStatus();
+
+      expect(result).toHaveProperty("models");
+      expect(result).toHaveProperty("weights");
+      // Physics is the dominant cold-start weight per ensemble_predictor.py
+      // DEFAULT_WEIGHTS (physics=0.80) — real value, not a mock stand-in.
+      expect(result.weights.physics).toBe(0.8);
+      expect(typeof result.total_models).toBe("number");
+    }, 15000);
+  },
+);

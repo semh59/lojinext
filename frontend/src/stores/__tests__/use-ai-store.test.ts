@@ -1,20 +1,39 @@
-﻿import { describe, it, expect, beforeEach, vi } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterAll,
+  vi,
+} from "vitest";
 import { act } from "@testing-library/react";
-import { useAiStore } from "../use-ai-store";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
-vi.mock("../../api/ai", () => ({
-  aiApi: {
-    getStatus: vi.fn(() =>
-      Promise.resolve({
-        is_ready: true,
-        progress: { status: "ready" },
-      }),
-    ),
-  },
-  ChatMessage: {},
-}));
+const backendUp = await isRealBackendReachable();
 
-describe("useAiStore", () => {
+// checkStatus is the one action in this store that makes a REAL HTTP call
+// (GET /ai/status) — everything else is pure Zustand state, no mocking
+// needed either way. Per this epic's established pattern, we point the
+// whole store at the real backend rather than mocking `aiApi` module.
+describe.skipIf(!backendUp)("useAiStore (real backend)", () => {
+  let useAiStore: typeof import("../use-ai-store").useAiStore;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ useAiStore } = await import("../use-ai-store"));
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     useAiStore.setState(
       useAiStore.getInitialState?.() || {
@@ -24,7 +43,6 @@ describe("useAiStore", () => {
         status: "offline",
       },
     );
-    vi.clearAllMocks();
   });
 
   it("initializes with default state", () => {
@@ -58,17 +76,21 @@ describe("useAiStore", () => {
     expect(useAiStore.getState().isOpen).toBe(false);
   });
 
-  it("toggleOpen toggles isOpen state and calls checkStatus when opening", async () => {
+  it("toggleOpen toggles isOpen state and calls real checkStatus when opening", async () => {
     const initialState = useAiStore.getState().isOpen;
     act(() => {
       useAiStore.getState().toggleOpen();
     });
     expect(useAiStore.getState().isOpen).toBe(!initialState);
 
-    // Wait for async checkStatus
-    await new Promise((r) => setTimeout(r, 100));
-    // After toggle to open, status should be set via checkStatus
-  });
+    await vi.waitUntil(() => useAiStore.getState().status !== "offline", {
+      timeout: 10000,
+      interval: 100,
+    });
+
+    const status = useAiStore.getState().status;
+    expect(["loading", "ready", "error"]).toContain(status);
+  }, 15000);
 
   it("setIsExpanded updates isExpanded state", () => {
     act(() => {
@@ -91,14 +113,12 @@ describe("useAiStore", () => {
   });
 
   it("clearHistory resets messages to initial greeting", () => {
-    // Add multiple messages
     act(() => {
       useAiStore.getState().addMessage({ role: "user", content: "Test" });
       useAiStore.getState().addMessage({ role: "assistant", content: "Reply" });
     });
     expect(useAiStore.getState().messages.length).toBeGreaterThan(1);
 
-    // Clear history
     act(() => {
       useAiStore.getState().clearHistory();
     });
@@ -108,15 +128,17 @@ describe("useAiStore", () => {
     expect(state.messages[0].content).toContain("Merhaba");
   });
 
-  it("checkStatus updates status based on API response", async () => {
+  it("checkStatus updates status based on the real /ai/status response", async () => {
     act(() => {
       useAiStore.getState().checkStatus();
     });
 
-    // Wait for async operation
-    await new Promise((r) => setTimeout(r, 100));
+    await vi.waitUntil(() => useAiStore.getState().status !== "offline", {
+      timeout: 10000,
+      interval: 100,
+    });
 
     const state = useAiStore.getState();
     expect(["loading", "ready", "error"]).toContain(state.status);
-  });
+  }, 15000);
 });

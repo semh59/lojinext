@@ -66,6 +66,17 @@ async def subscribe(
     if not settings.PUSH_NOTIFICATION_ENABLED:
         raise HTTPException(status_code=503, detail="Push bildirimleri devre dışı")
 
+    # Sentetik (break-glass) süper admin — id<=0 — kullanicilar tablosunda
+    # gerçek bir satıra karşılık gelmiyor (bkz app/api/deps.py). user_id FK'si
+    # NOT NULL + kullanicilar(id) referanslı olduğu için bu id ile insert
+    # denemek yakalanmamış bir FK ihlaline ve opak 500'e düşüyordu (bulundu
+    # 0-mock epiği sırasında). preferences.py'deki aynı desenle erken ve
+    # açık bir 403 döndür.
+    if not current_user.id or current_user.id <= 0:
+        raise HTTPException(
+            status_code=403, detail="Sistem kullanıcısı push aboneliği oluşturamaz"
+        )
+
     async with UnitOfWork() as uow:
         existing = await uow.session.execute(
             select(PushSubscription).where(

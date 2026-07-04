@@ -116,6 +116,35 @@ async def test_subscribe_creates_new_subscription(
     assert resp.status_code != 401
 
 
+async def test_subscribe_rejects_synthetic_superadmin_with_clean_403(
+    async_client, admin_auth_headers, monkeypatch
+):
+    """Break-glass super-admin (virtual id<=0, no real kullanicilar row) must
+    get a clean 403, not an unhandled FK-violation 500.
+
+    Regression for a real bug found during frontend 0-mock conversion
+    (usePushNotifications real-backend test): POST /push/subscribe with the
+    synthetic superadmin token used to insert `user_id=0` into
+    push_subscriptions, whose FK references kullanicilar(id) — a row that
+    doesn't exist for the virtual break-glass admin — surfacing as an opaque
+    500 instead of a clear business-rule rejection (same pattern already
+    used in preferences.py's "Sistem kullanıcısı tercih kaydedemez").
+    """
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.push.settings.PUSH_NOTIFICATION_ENABLED", True
+    )
+    payload = {
+        "endpoint": "https://push.example.com/endpoint/synthetic-admin",
+        "keys": {"p256dh": "a" * 15, "auth": "b" * 8},
+        "user_agent": "Mozilla/5.0 Test",
+    }
+    resp = await async_client.post(
+        f"{_PUSH_PREFIX}/subscribe", json=payload, headers=admin_auth_headers
+    )
+    assert resp.status_code == 403
+    assert "Sistem kullanıcısı" in resp.json()["error"]["message"]
+
+
 # ---------------------------------------------------------------------------
 # DELETE /push/subscribe
 # ---------------------------------------------------------------------------

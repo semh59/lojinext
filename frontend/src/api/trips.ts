@@ -110,10 +110,17 @@ export const tripService = {
   delete: (id: number): Promise<void> =>
     deleteSeferApiV1TripsSeferIdDelete(id) as unknown as Promise<void>,
 
-  getTimeline: (id: number): Promise<SeferTimelineItem[]> =>
-    getSeferTimelineApiV1TripsSeferIdTimelineGet(id) as unknown as Promise<
-      SeferTimelineItem[]
-    >,
+  getTimeline: async (id: number): Promise<SeferTimelineItem[]> => {
+    // Backend returns TripTimelineResponse = { items: [...] }, not a bare
+    // array — casting the raw response directly to SeferTimelineItem[]
+    // (as this used to do) silently handed TripFormModal's timeline tab an
+    // object instead of an array. Unwrap .items here so callers keep the
+    // documented array contract.
+    const data = (await getSeferTimelineApiV1TripsSeferIdTimelineGet(
+      id,
+    )) as unknown as { items: SeferTimelineItem[] };
+    return data.items ?? [];
+  },
 
   getFuelPerformance: (
     params: FuelPerformanceFilters = {},

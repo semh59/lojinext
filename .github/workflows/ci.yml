@@ -451,7 +451,12 @@ jobs:
         # %92 hedefi artık AŞAĞIDAKİ "Combined coverage gate" adımında,
         # unit+tüm integration adımlarının BİRLEŞİK verisiyle uygulanıyor —
         # tek başına bu adım artık nihai gate DEĞİL.
-        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=85 --cov-config=pytest.ini
+        # 2026-07-04 kalibrasyonu: %86.92 ölçümünden SONRA da marker-fix
+        # commit'leri unit lane'den test taşıdı (örn. lokasyon_service
+        # 14:13'teki commit) → gerçek unit-lane değeri CI'da %84, lokalde
+        # %83.61 ölçüldü; 85 gate'i hiç yeşil olmadı. 83'e çekildi —
+        # nihai kalite gate'i değişmeden Combined %92'de kalıyor.
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
 
       - name: Frontend — Unit tests with coverage
         run: cd frontend && npm run test:cov

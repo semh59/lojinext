@@ -29,19 +29,34 @@ async def trigger_training(
     arac_id: int,
     request: Request,
     current_user: Kullanici = Depends(deps.get_current_active_user),
-    db: AsyncSession = Depends(deps.get_db),
 ):
     """
     Manually trigger model training for a specific vehicle.
     Calculates next version automatically.
     """
     try:
-        async with UnitOfWork(db) as uow:
-            ml_service = MLService(uow)
-            task = await ml_service.schedule_training(
-                arac_id=arac_id, user_id=current_user.id
-            )
+        # UnitOfWork(db) with an externally-injected session makes
+        # uow.commit() a deliberate no-op (nested/non-owning UoW — the
+        # OUTER caller is supposed to control the commit boundary). But
+        # `deps.get_db()` never commits on the success path either, so the
+        # previous `UnitOfWork(db)` here silently never persisted the new
+        # training task at all — the endpoint appeared to "succeed" (past
+        # the ResponseValidationError this same call also had) while the
+        # row never survived past the request. `UnitOfWork()` (no injected
+        # session) owns its session so `schedule_training`'s internal
+        # `await self.uow.commit()` actually commits. Verified via curl:
+        # POST /admin/ml/train/{id} then GET /admin/ml/queue now shows the
+        # persisted row.
+        # Synthetic super-admin has id<=0 and no row in `kullanicilar` —
+        # passing it straight through as tetikleyen_kullanici_id violates
+        # egitim_kuyrugu_tetikleyen_kullanici_id_fkey (confirmed via curl:
+        # POST as the super-admin 500'd with ForeignKeyViolationError).
+        # Same pattern already used for the audit-log call below and in
+        # the push/subscribe fix (commit b2351f9).
         user_id = current_user.id if current_user.id and current_user.id > 0 else None
+        async with UnitOfWork() as uow:
+            ml_service = MLService(uow)
+            task = await ml_service.schedule_training(arac_id=arac_id, user_id=user_id)
         try:
             await log_audit_event(
                 action="ml.train_triggered",

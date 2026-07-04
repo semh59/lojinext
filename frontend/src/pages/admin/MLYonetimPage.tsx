@@ -69,10 +69,15 @@ export default function AdminModelManagementPage() {
     },
   });
 
+  // Real backend enum (EgitimKuyrugu.durum / MLTaskRead) is uppercase
+  // (WAITING|RUNNING|COMPLETED|FAILED|CANCELED) — normalise before
+  // comparing so real data (and any legacy lowercase caller) both match.
   const completedCount = queue.filter(
-    (task) => task.durum === "completed",
+    (task) => task.durum?.toUpperCase() === "COMPLETED",
   ).length;
-  const runningCount = queue.filter((task) => task.durum === "running").length;
+  const runningCount = queue.filter(
+    (task) => task.durum?.toUpperCase() === "RUNNING",
+  ).length;
   const latestRmse = queue.find(
     (task) => typeof task.metrics?.rmse === "number",
   )?.metrics?.rmse;
@@ -209,11 +214,11 @@ export default function AdminModelManagementPage() {
                   <TableCell>
                     <Badge
                       variant={
-                        task.durum === "completed"
+                        task.durum?.toUpperCase() === "COMPLETED"
                           ? "success"
-                          : task.durum === "failed"
+                          : task.durum?.toUpperCase() === "FAILED"
                             ? "danger"
-                            : task.durum === "running"
+                            : task.durum?.toUpperCase() === "RUNNING"
                               ? "warning"
                               : "default"
                       }
@@ -247,7 +252,12 @@ export default function AdminModelManagementPage() {
                     {task.error_message || task.trigger_reason || "-"}
                   </TableCell>
                   <TableCell className="text-xs text-secondary">
-                    {new Date(task.created_at).toLocaleString(locale)}
+                    {(() => {
+                      const createdAt = task.olusturma || task.created_at;
+                      return createdAt
+                        ? new Date(createdAt).toLocaleString(locale)
+                        : "-";
+                    })()}
                   </TableCell>
                 </TableRow>
               ))}

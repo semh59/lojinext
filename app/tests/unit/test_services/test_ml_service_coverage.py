@@ -31,6 +31,7 @@ def _make_uow():
     uow.__aexit__ = AsyncMock(return_value=False)
     uow.session = MagicMock()
     uow.session.add = MagicMock()
+    uow.session.refresh = AsyncMock()
     uow.commit = AsyncMock()
     uow.ml_training_repo = MagicMock()
     uow.model_versiyon_repo = MagicMock()

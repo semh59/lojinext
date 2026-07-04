@@ -21,7 +21,12 @@ class MLTaskRead(MLTaskBase):
     baslangic_zaman: Optional[datetime] = None
     bitis_zaman: Optional[datetime] = None
     hata_detay: Optional[str] = None
-    olusturma_tarihi: datetime
+    # `EgitimKuyrugu`'nun gerçek kolon adı `olusturma` (bkz.
+    # app/database/models.py) — `olusturma_tarihi` hiç var olmayan bir alan
+    # adıydı. from_attributes=True ile model_validate(orm_obj) her satırda
+    # ResponseValidationError'a (500) düşüyordu; POST /admin/ml/train/{id}
+    # gerçek backend'e karşı curl ile doğrulanarak yakalandı.
+    olusturma: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

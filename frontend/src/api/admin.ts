@@ -99,7 +99,13 @@ export interface AdminRoleCreateData {
 export interface AdminTrainingQueueItem {
   id: number;
   arac_id?: number;
+  // Real backend enum (MLTaskRead/EgitimKuyrugu) is uppercase:
+  // WAITING|RUNNING|COMPLETED|FAILED|CANCELED.
   durum?: string;
+  // metrics/training_time_seconds/error_message/trigger_reason have no
+  // backing columns on the real EgitimKuyrugu model yet — always undefined
+  // against the real backend today; kept optional so existing UI fallbacks
+  // ("-") keep working without crashing.
   metrics?: {
     algorithm?: string;
     rmse?: number;
@@ -107,7 +113,11 @@ export interface AdminTrainingQueueItem {
   training_time_seconds?: number | null;
   error_message?: string | null;
   trigger_reason?: string | null;
-  created_at: string;
+  // Real backend column is `olusturma` (see EgitimKuyrugu/MLTaskRead), not
+  // `created_at` — kept both so the real field renders correctly while
+  // not breaking anything that might still send the legacy name.
+  created_at?: string;
+  olusturma?: string;
 }
 
 export type BakimTipi = "PERIYODIK" | "ARIZA" | "ACIL";

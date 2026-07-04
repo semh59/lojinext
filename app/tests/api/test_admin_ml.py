@@ -69,7 +69,7 @@ async def test_ml_train_admin_gets_200_or_202(
         bitis_zaman=None,
         hata_detay=None,
         tetikleyen_kullanici_id=None,
-        olusturma_tarihi=datetime.now(timezone.utc),
+        olusturma=datetime.now(timezone.utc),
     )
 
     with patch(

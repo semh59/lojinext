@@ -41,8 +41,14 @@ export function XaiExplainPanel({ request }: XaiExplainPanelProps) {
     staleTime: 60 * 1000,
   });
 
+  // Gerçek backend ExplainPredictionResponse şeması `contributions` alanı
+  // döner (`components` değil — bkz app/schemas/api_responses.py). Eski
+  // `components` adı geriye-dönük uyumluluk için hâlâ kabul ediliyor, ama
+  // gerçek yanıt hep `contributions` kullanıyor.
   const bars = toBars(
-    (data as any)?.components as Record<string, number> | undefined,
+    ((data as any)?.contributions ?? (data as any)?.components) as
+      | Record<string, number>
+      | undefined,
   );
 
   return (

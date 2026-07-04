@@ -92,6 +92,12 @@ export function XaiPanel() {
   interface ExplainResult {
     tahmini_tuketim?: number | null;
     components?: Record<string, number>;
+    // Gerçek backend ExplainPredictionResponse şeması bu adları kullanıyor
+    // (bkz app/schemas/api_responses.py) — `tahmini_tuketim`/`components`
+    // hiçbir zaman dolmuyordu, sonuç her zaman "0.0 L/100km" + boş etki
+    // faktörleri gösteriyordu. `prediction`/`contributions` gerçek alanlar.
+    prediction?: number | null;
+    contributions?: Record<string, number>;
     [key: string]: unknown;
   }
 
@@ -112,6 +118,8 @@ export function XaiPanel() {
       }),
   });
   const result = rawResult as ExplainResult | undefined;
+  const resultValue = result?.prediction ?? result?.tahmini_tuketim;
+  const resultComponents = result?.contributions ?? result?.components;
 
   const fields = [
     {
@@ -213,31 +221,27 @@ export function XaiPanel() {
           <p className="text-sm font-semibold text-primary">
             {t("predictions.xai_estimated_label", "Estimated Consumption:")}{" "}
             <span className="text-accent">
-              {Number(result.tahmini_tuketim ?? 0).toFixed(1)} L/100km
+              {Number(resultValue ?? 0).toFixed(1)} L/100km
             </span>
           </p>
-          {result.components &&
-            Object.keys(result.components as Record<string, number>).length >
-              0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-tertiary">
-                  {t("predictions.xai_impact_factors", "Impact Factors")}
-                </p>
-                {Object.entries(
-                  result.components as Record<string, number>,
-                ).map(([k, v]) => (
-                  <div
-                    key={k}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-secondary">{k}</span>
-                    <span className="font-medium text-primary">
-                      {(v * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+          {resultComponents && Object.keys(resultComponents).length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs font-bold uppercase tracking-wider text-tertiary">
+                {t("predictions.xai_impact_factors", "Impact Factors")}
+              </p>
+              {Object.entries(resultComponents).map(([k, v]) => (
+                <div
+                  key={k}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="text-secondary">{k}</span>
+                  <span className="font-medium text-primary">
+                    {(v * 100).toFixed(1)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </Card>

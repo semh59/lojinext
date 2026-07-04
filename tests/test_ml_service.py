@@ -21,6 +21,11 @@ async def test_ml_schedule_training():
 
     # Mocking session behavior
     mock_uow.session = MagicMock()
+    # schedule_training awaits self.uow.session.refresh(new_task) after
+    # commit — session itself stays a MagicMock (session.add is sync), but
+    # refresh must be an AsyncMock or `await ...refresh(...)` raises
+    # TypeError: object MagicMock can't be used in 'await' expression.
+    mock_uow.session.refresh = AsyncMock()
     mock_uow.__aenter__.return_value = mock_uow
     mock_uow.__aexit__.return_value = None
     mock_uow.commit = AsyncMock()

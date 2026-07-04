@@ -84,7 +84,7 @@ class TestDetailedScenarios:
             await uow.sofor_repo.delete(sofor_id)  # Bu soft delete yapar (aktif=0)
             await uow.commit()
 
-            sofor = await uow.sofor_repo.get_by_id(sofor_id)
+            sofor = await uow.sofor_repo.get_by_id(sofor_id, include_inactive=True)
             assert sofor["aktif"] == 0
 
         # 6. RAPOR SORGUSU (ReportService üzerinden)

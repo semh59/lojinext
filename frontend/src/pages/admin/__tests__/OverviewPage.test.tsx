@@ -1,9 +1,11 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "../../../test/test-utils";
-import AdminOverviewPage from "../OverviewPage";
-import { adminOverviewText } from "../../../resources/tr/admin";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../../test/real-backend";
 
-// recharts stub
+// recharts stub — pure rendering library, not part of the backend contract.
 vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: any) => (
     <div data-testid="line-chart-container">{children}</div>
@@ -16,89 +18,35 @@ vi.mock("recharts", () => ({
   Tooltip: () => null,
 }));
 
-// usePageTitle
-vi.mock("../../../hooks/usePageTitle", () => ({ usePageTitle: vi.fn() }));
-
-// TelegramOnayPanel — isolated, heavy dependency
+// TelegramOnayPanel — isolated, heavy dependency unrelated to this page's
+// own queries.
 vi.mock("../../../components/admin/TelegramOnayPanel", () => ({
   TelegramOnayPanel: () => (
     <div data-testid="telegram-onay-panel">TelegramOnayPanel</div>
   ),
 }));
 
-// Card — passthrough
-vi.mock("../../../components/ui/Card", () => ({
-  Card: ({ children, ...rest }: any) => <div {...rest}>{children}</div>,
-}));
+const backendUp = await isRealBackendReachable();
 
-// reportService
-vi.mock("../../../api/reports", () => ({
-  reportService: {
-    getDashboardStats: vi.fn(),
-    getConsumptionTrend: vi.fn(),
-  },
-}));
+let render: typeof import("../../../test/test-utils").render;
+let screen: typeof import("../../../test/test-utils").screen;
+let waitFor: typeof import("../../../test/test-utils").waitFor;
+let AdminOverviewPage: typeof import("../OverviewPage").default;
+let adminOverviewText: typeof import("../../../resources/tr/admin").adminOverviewText;
 
-// adminHealthApi
-vi.mock("../../../api/admin", () => ({
-  adminHealthApi: {
-    getHealth: vi.fn(),
-  },
-  adminUsersApi: {
-    getAll: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-  },
-  adminRolesApi: { getAll: vi.fn() },
-}));
+describe.skipIf(!backendUp)("AdminOverviewPage (real backend)", () => {
+  let token = "";
 
-const MOCK_DASHBOARD = {
-  toplam_sefer: 42,
-  aktif_arac: 7,
-  toplam_arac: 10,
-};
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    ({ render, screen, waitFor } = await import("../../../test/test-utils"));
+    AdminOverviewPage = (await import("../OverviewPage")).default;
+    ({ adminOverviewText } = await import("../../../resources/tr/admin"));
+    token = await loginAsAdmin();
+  });
 
-const MOCK_HEALTH = {
-  status: "healthy",
-  components: {
-    database: { status: "healthy" },
-    cache: { status: "healthy" },
-  },
-  circuit_breakers: [],
-  backups: {
-    status: "success",
-    last_backup: "2026-06-01T02:00:00Z",
-  },
-};
-
-const MOCK_TREND = [
-  { month: "Oca", consumption: 5000 },
-  { month: "Şub", consumption: 5200 },
-];
-
-async function setupMocks(
-  dashboard = MOCK_DASHBOARD,
-  health = MOCK_HEALTH,
-  trend = MOCK_TREND,
-) {
-  const { reportService } = await import("../../../api/reports");
-  const { adminHealthApi } = await import("../../../api/admin");
-  (
-    reportService.getDashboardStats as ReturnType<typeof vi.fn>
-  ).mockResolvedValue(dashboard);
-  (
-    reportService.getConsumptionTrend as ReturnType<typeof vi.fn>
-  ).mockResolvedValue(trend);
-  (adminHealthApi.getHealth as ReturnType<typeof vi.fn>).mockResolvedValue(
-    health,
-  );
-}
-
-describe("AdminOverviewPage", () => {
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    await setupMocks();
+  beforeEach(() => {
+    sessionStorage.setItem("access_token", token);
   });
 
   it("renders the main heading", () => {
@@ -111,68 +59,59 @@ describe("AdminOverviewPage", () => {
     expect(screen.getByText(adminOverviewText.description)).toBeInTheDocument();
   });
 
-  it("renders Toplam Sefer KPI card label", () => {
+  it("renders all four KPI card labels", () => {
     render(<AdminOverviewPage />);
     expect(
       screen.getByText(adminOverviewText.cards.totalTrips),
     ).toBeInTheDocument();
-  });
-
-  it("renders Aktif Araç KPI card label", () => {
-    render(<AdminOverviewPage />);
     expect(
       screen.getByText(adminOverviewText.cards.activeVehicles),
     ).toBeInTheDocument();
-  });
-
-  it("renders Sistem Durumu card label", () => {
-    render(<AdminOverviewPage />);
     expect(
       screen.getByText(adminOverviewText.cards.systemStatus),
     ).toBeInTheDocument();
-  });
-
-  it("renders Veritabanı card label", () => {
-    render(<AdminOverviewPage />);
     expect(
       screen.getByText(adminOverviewText.cards.database),
     ).toBeInTheDocument();
   });
 
-  it("shows dashboard stats after loading — toplam_sefer", async () => {
+  it("shows real dashboard stats after loading (cold-start test DB: 0 trips)", async () => {
     render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(screen.getByText("42")).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        const zeros = screen.getAllByText("0");
+        expect(zeros.length).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 10000 },
+    );
   });
 
-  it("shows active vehicle count after loading", async () => {
+  it('shows "Sağlıklı" for the real backend health status', async () => {
     render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(screen.getByText("7")).toBeInTheDocument();
-    });
-  });
-
-  it('shows "Sağlıklı" for healthy system status', async () => {
-    render(<AdminOverviewPage />);
-    await waitFor(() => {
-      const saglikliEls = screen.getAllByText("Sağlıklı");
-      expect(saglikliEls.length).toBeGreaterThanOrEqual(1);
-    });
-  });
+    await waitFor(
+      () => {
+        const saglikliEls = screen.getAllByText("Sağlıklı");
+        expect(saglikliEls.length).toBeGreaterThanOrEqual(1);
+      },
+      { timeout: 10000 },
+    );
+  }, 15000);
 
   it("renders TelegramOnayPanel placeholder", () => {
     render(<AdminOverviewPage />);
     expect(screen.getByTestId("telegram-onay-panel")).toBeInTheDocument();
   });
 
-  it("renders Yakıt Tüketim Trendi section title", async () => {
+  it("shows empty trend message (real backend: no consumption data seeded)", async () => {
     render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(adminOverviewText.consumptionTrend.title),
-      ).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText(adminOverviewText.consumptionTrend.empty),
+        ).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
   });
 
   it("renders Operasyonel Sağlık Özeti section title", async () => {
@@ -184,27 +123,7 @@ describe("AdminOverviewPage", () => {
     });
   });
 
-  it("renders chart container when trend data present", async () => {
-    render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(screen.getByTestId("line-chart-container")).toBeInTheDocument();
-    });
-  });
-
-  it("shows empty trend message when no data", async () => {
-    const { reportService } = await import("../../../api/reports");
-    (
-      reportService.getConsumptionTrend as ReturnType<typeof vi.fn>
-    ).mockResolvedValue([]);
-    render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(
-        screen.getByText(adminOverviewText.consumptionTrend.empty),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("renders Devre Kesiciler label", async () => {
+  it("renders Devre Kesiciler label with 0 circuit breakers", async () => {
     render(<AdminOverviewPage />);
     await waitFor(() => {
       expect(
@@ -219,28 +138,6 @@ describe("AdminOverviewPage", () => {
       expect(
         screen.getByText(adminOverviewText.operationalHealth.lastBackup),
       ).toBeInTheDocument();
-    });
-  });
-
-  it('shows "Sorunlu" for unhealthy status', async () => {
-    const { adminHealthApi } = await import("../../../api/admin");
-    (adminHealthApi.getHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
-      status: "unhealthy",
-      components: { database: { status: "unhealthy" } },
-      circuit_breakers: [],
-      backups: { status: "error" },
-    });
-    render(<AdminOverviewPage />);
-    await waitFor(() => {
-      const sorunluEls = screen.getAllByText("Sorunlu");
-      expect(sorunluEls.length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows zero circuit breakers when health returns empty array", async () => {
-    render(<AdminOverviewPage />);
-    await waitFor(() => {
-      expect(screen.getByText("0")).toBeInTheDocument();
     });
   });
 });

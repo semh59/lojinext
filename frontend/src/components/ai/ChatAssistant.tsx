@@ -89,7 +89,7 @@ export const ChatAssistant: React.FC = () => {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 z-[9999]">
+    <div className="fixed bottom-24 right-6 z-40">
       {/* Toggle Button */}
       {!isOpen && (
         <motion.button

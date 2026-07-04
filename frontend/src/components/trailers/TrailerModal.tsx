@@ -370,7 +370,7 @@ export function TrailerModal({
             </div>
           </form>
 
-          <div className="flex items-center justify-between border-t border-border bg-surface/80 p-8 backdrop-blur-xl">
+          <div className="flex shrink-0 items-center justify-between border-t border-border bg-surface/80 p-8 backdrop-blur-xl">
             <Button
               variant="ghost"
               onClick={onClose}

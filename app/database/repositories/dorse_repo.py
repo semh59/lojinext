@@ -13,6 +13,7 @@ class DorseRepository(BaseRepository[Dorse]):
     """
 
     model = Dorse
+    search_columns = ["plaka", "marka", "tipi"]
 
     async def get_by_plate(self, plate: str) -> Optional[Dorse]:
         """Retrieves trailer details by plate."""

@@ -181,6 +181,7 @@ class AracRepository(BaseRepository[Arac]):
         maks_yuk_kapasitesi_kg: int = 26000,
         notlar: str = "",
         muayene_tarihi: Optional[Any] = None,
+        aktif: bool = True,
     ) -> Arac:
         """Yeni araç ekle.
 
@@ -216,7 +217,7 @@ class AracRepository(BaseRepository[Arac]):
             lastik_direnc_katsayisi=lastik_direnc_katsayisi,
             maks_yuk_kapasitesi_kg=maks_yuk_kapasitesi_kg,
             notlar=notlar,
-            aktif=True,
+            aktif=aktif,
             muayene_tarihi=muayene_tarihi,
         )
         session.add(new_arac)

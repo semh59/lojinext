@@ -134,6 +134,7 @@ class AracService:
                 hedef_tuketim=data.hedef_tuketim,
                 notlar=data.notlar or "",
                 muayene_tarihi=getattr(data, "muayene_tarihi", None),
+                aktif=getattr(data, "aktif", True),
             )
             logger.info(f"New vehicle added: {data.plaka}")
 

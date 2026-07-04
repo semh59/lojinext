@@ -1,30 +1,26 @@
-﻿import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "../../test/test-utils";
-import FuelPage from "../FuelPage";
-
-// Servisleri mock'la
-vi.mock("../../api/fuel", () => ({
-  fuelService: {
-    getAll: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-    getStats: vi.fn().mockResolvedValue({ toplam_litre: 0, toplam_tutar: 0 }),
-    create: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    exportExcel: vi.fn(),
-  },
-}));
-
-vi.mock("../../api/predictions", () => ({
-  predictionService: {
-    getComparison: vi.fn().mockResolvedValue([]),
-  },
-}));
-
-vi.mock("../../api/vehicles", () => ({
-  vehicleService: {
-    getAll: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-  },
-}));
+/**
+ * 0-mock epiği: FuelPage'in kendi API çağrıları (fuel/vehicles/predictions/
+ * reports servisleri) artık gerçek backend'e karşı çalışıyor — `vi.mock`
+ * kaldırıldı. Alt bileşenler (`FuelTable`, `FuelModal`, vb.) hâlâ stub'lı
+ * kalıyor çünkü orijinal test zaten "yapı testi, davranış testi değil"
+ * niyetiyle yazılmış (bkz. yorum) — bunlar dış sınır değil, iç render
+ * detayı; gerçek network round-trip'i sayfa seviyesindeki `useQuery`
+ * çağrılarında gerçekleşiyor.
+ */
+import {
+  beforeAll,
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
 vi.mock("../../context/NotificationContext", () => ({
   useNotify: () => ({ notify: vi.fn() }),
@@ -66,28 +62,51 @@ vi.mock("../../components/common/ErrorBoundary", () => ({
   default: ({ children }: any) => <>{children}</>,
 }));
 
-describe("FuelPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+const backendUp = await isRealBackendReachable();
+
+describe.skipIf(!backendUp)("FuelPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let FuelPage: typeof import("../FuelPage").default;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor } = await import("../../test/test-utils"));
+    ({ default: FuelPage } = await import("../FuelPage"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  beforeEach(async () => {
+    sessionStorage.setItem("access_token", await loginAsAdmin());
   });
 
   it("temel bileşenler render edilir", async () => {
     render(<FuelPage />);
-    await waitFor(() => {
-      expect(screen.getByTestId("fuel-table")).toBeInTheDocument();
-      expect(screen.getByTestId("fuel-stats")).toBeInTheDocument();
-      expect(screen.getByTestId("fuel-filters")).toBeInTheDocument();
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("fuel-table")).toBeInTheDocument();
+        expect(screen.getByTestId("fuel-stats")).toBeInTheDocument();
+        expect(screen.getByTestId("fuel-filters")).toBeInTheDocument();
+      },
+      { timeout: 15000 },
+    );
+  }, 20000);
 
   it("yakıt ekle butonu modal açar", async () => {
     render(<FuelPage />);
-    await waitFor(() =>
-      expect(screen.getByTestId("add-fuel-btn")).toBeInTheDocument(),
+    await waitFor(
+      () => expect(screen.getByTestId("add-fuel-btn")).toBeInTheDocument(),
+      { timeout: 15000 },
     );
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     screen.getByTestId("add-fuel-btn").click();
     await waitFor(() => expect(screen.getByRole("dialog")).toBeInTheDocument());
-  });
+  }, 20000);
 });

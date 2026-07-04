@@ -1,68 +1,50 @@
-﻿import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import PredictionsPage from "../PredictionsPage";
+/**
+ * 0-mock epiği: PredictionsPage'in overview sekmesi predictions/ensemble-status
+ * ve predictions/comparison'ı gerçek backend'e karşı çağırır. Cold-start'ta
+ * ensemble durumu her zaman mevcut (model dosyaları yoksa bile physics
+ * fallback döner), comparison boş sefer verisiyle 0 sayımla döner —
+ * ikisi de patlamadan render olmalı.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
-vi.mock("../../api/predictions", () => ({
-  predictionService: {
-    getEnsembleStatus: vi.fn().mockResolvedValue({
-      models: {
-        physics: true,
-        lightgbm: false,
-        xgboost: false,
-        gradient_boosting: true,
-        random_forest: true,
-      },
-      weights: {
-        physics: 0.8,
-        lightgbm: 0.05,
-        xgboost: 0.05,
-        gradient_boosting: 0.05,
-        random_forest: 0.05,
-      },
-      total_models: 3,
-      sklearn_available: true,
-      lightgbm_available: false,
-      xgboost_available: false,
-    }),
-    getComparison: vi.fn().mockResolvedValue({
-      mae: 1.2,
-      rmse: 2.1,
-      total_compared: 50,
-      accuracy_distribution: {
-        good: 40,
-        warning: 7,
-        error: 3,
-        good_pct: 80,
-        warning_pct: 14,
-        error_pct: 6,
-      },
-      trend: [{ date: "2026-01-01", actual: 28, predicted: 27.5 }],
-    }),
-    explain: vi
-      .fn()
-      .mockResolvedValue({ tahmini_tuketim: 29.5, components: {} }),
-  },
-}));
-vi.mock("../../api/vehicles", () => ({
-  vehicleService: {
-    getAll: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-function wrap(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter>{ui}</MemoryRouter>
-    </QueryClientProvider>,
-  );
-}
+describe.skipIf(!backendUp)("PredictionsPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let PredictionsPage: typeof import("../PredictionsPage").default;
 
-describe("PredictionsPage", () => {
-  it("renders page container", () => {
-    wrap(<PredictionsPage />);
-    expect(screen.getByTestId("predictions-page")).toBeTruthy();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor } = await import("../../test/test-utils"));
+    ({ default: PredictionsPage } = await import("../PredictionsPage"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
+
+  it("renders page container and loads ensemble+comparison from real backend", async () => {
+    sessionStorage.setItem("access_token", await loginAsAdmin());
+    render(<PredictionsPage />);
+
+    expect(screen.getByTestId("predictions-page")).toBeTruthy();
+
+    await waitFor(
+      () => {
+        expect(
+          screen.getAllByText(/Model|Ensemble|Mean Absolute/i)[0],
+        ).toBeTruthy();
+      },
+      { timeout: 15000 },
+    );
+  }, 20000);
 });

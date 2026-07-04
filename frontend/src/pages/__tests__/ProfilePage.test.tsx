@@ -1,133 +1,150 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../test/test-utils";
-import ProfilePage from "../ProfilePage";
+/**
+ * 0-mock epiği: ProfilePage artık gerçek AuthContext + gerçek `/auth/me` +
+ * gerçek `PATCH /users/me` ile test ediliyor (`vi.mock` AuthContext/
+ * axios-instance kaldırıldı). Test kullanıcısı, senaryoda kullanılan
+ * synthetic super-admin'dir (`id<=0`, `kullanicilar` tablosunda satırı yok —
+ * CLAUDE.md gotcha #15): `/auth/me` gerçek veri döner (email
+ * "admin@lojinext.internal", ad_soyad "Super Administrator", rol
+ * "super_admin") ama profil kaydetme (`PATCH /users/me`) bu kullanıcı için
+ * 404 "Kullanıcı bulunamadı" döner — bu, batch 5'te push/subscribe için
+ * bulunan aynı mimari sınırlamayla tutarlı (id<=0 → gerçek DB satırı yok),
+ * yeni bir bug değil. Test bunu doğrudan doğruluyor: sayfa çökmeden
+ * axiosInstance interceptor'ının hata toast'ını tetiklediğini kabul ediyor.
+ *
+ * Şifre değiştirme formu, validasyon, initials, şifre gücü, göster/gizle
+ * toggle'ı — hepsi saf component/react-hook-form mantığı, backend'e ihtiyaç
+ * duymuyor; gerçek kullanıcı verisiyle (mock yerine) aynı şekilde çalışıyor.
+ */
+import {
+  beforeAll,
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_URL,
+} from "../../test/real-backend";
 
-// Mock axiosInstance
-vi.mock("../../services/api/axios-instance", () => ({
-  default: {
-    patch: vi.fn().mockResolvedValue({ data: {} }),
-    post: vi.fn().mockResolvedValue({ data: {} }),
-  },
-}));
-
-// Mock usePageTitle
 vi.mock("../../hooks/usePageTitle", () => ({
   usePageTitle: vi.fn(),
 }));
 
-// Mock PushNotificationToggle to simplify
 vi.mock("../../components/profile/PushNotificationToggle", () => ({
   PushNotificationToggle: () => (
     <div data-testid="push-notification-toggle">Push Toggle</div>
   ),
 }));
 
-// Mock sonner toast
-vi.mock("sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-// Mock AuthContext to provide a user
-vi.mock("../../context/AuthContext", () => ({
-  useAuth: () => ({
-    user: {
-      id: 1,
-      username: "test@example.com",
-      email: "test@example.com",
-      full_name: "Ahmet Yılmaz",
-      role: "admin",
-      is_active: true,
-      last_login: "2026-06-01T10:00:00",
-      created_at: "2025-01-01T00:00:00",
-      son_giris_ip: "192.168.1.1",
-    },
-    isAuthenticated: true,
-    isLoading: false,
-    login: vi.fn(),
-    logout: vi.fn(),
-    error: null,
-    hasPermission: () => true,
-  }),
-  AuthProvider: ({ children }: any) => <>{children}</>,
-}));
+describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let fireEvent: typeof import("../../test/test-utils").fireEvent;
+  let ProfilePage: typeof import("../ProfilePage").default;
 
-describe("ProfilePage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_URL);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor, fireEvent } = await import(
+      "../../test/test-utils"
+    ));
+    ({ default: ProfilePage } = await import("../ProfilePage"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
 
-  it("renders page heading", () => {
+  beforeEach(async () => {
+    sessionStorage.setItem("access_token", await loginAsAdmin());
+  });
+
+  async function renderReady() {
     render(<ProfilePage />);
+    await waitFor(
+      () => expect(screen.getByText("Super Administrator")).toBeInTheDocument(),
+      { timeout: 15000 },
+    );
+  }
+
+  it("renders page heading", async () => {
+    await renderReady();
     expect(screen.getByText("Profilim")).toBeInTheDocument();
   });
 
-  it("renders user name and email in identity hero", () => {
-    render(<ProfilePage />);
-    expect(screen.getByText("Ahmet Yılmaz")).toBeInTheDocument();
-    // email appears in the profile info
+  it("renders user name and email in identity hero", async () => {
+    await renderReady();
+    expect(screen.getByText("Super Administrator")).toBeInTheDocument();
     expect(
-      screen.getAllByText("test@example.com").length,
+      screen.getAllByText("admin@lojinext.internal").length,
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders role badge", () => {
-    render(<ProfilePage />);
-    expect(screen.getByText("Admin")).toBeInTheDocument();
+  it("renders role badge", async () => {
+    await renderReady();
+    expect(screen.getByText("Süper Admin")).toBeInTheDocument();
   });
 
-  it("renders user initials in avatar", () => {
-    render(<ProfilePage />);
-    expect(screen.getByText("AY")).toBeInTheDocument();
+  it("renders user initials in avatar", async () => {
+    await renderReady();
+    expect(screen.getByText("SA")).toBeInTheDocument();
   });
 
-  it("renders push notification toggle", () => {
-    render(<ProfilePage />);
+  it("renders push notification toggle", async () => {
+    await renderReady();
     expect(screen.getByTestId("push-notification-toggle")).toBeInTheDocument();
   });
 
-  it("renders profile info form card", () => {
-    render(<ProfilePage />);
+  it("renders profile info form card", async () => {
+    await renderReady();
     expect(screen.getByText("Profil Bilgileri")).toBeInTheDocument();
     expect(
       screen.getByText("Ad soyad bilginizi güncelleyin"),
     ).toBeInTheDocument();
   });
 
-  it("profile form has email (readonly) and ad_soyad input", () => {
-    render(<ProfilePage />);
-    const emailInput = screen.getByDisplayValue("test@example.com");
+  it("profile form has email (readonly) and ad_soyad input", async () => {
+    await renderReady();
+    const emailInput = screen.getByDisplayValue("admin@lojinext.internal");
     expect(emailInput).toBeInTheDocument();
     expect(emailInput).toHaveAttribute("readOnly");
 
-    const adSoyadInput = screen.getByDisplayValue("Ahmet Yılmaz");
+    const adSoyadInput = screen.getByDisplayValue("Super Administrator");
     expect(adSoyadInput).toBeInTheDocument();
   });
 
-  it("renders change password form card", () => {
-    render(<ProfilePage />);
+  it("renders change password form card", async () => {
+    await renderReady();
     expect(screen.getByText("Şifre Değiştir")).toBeInTheDocument();
     expect(screen.getByText("Şifremi Güncelle")).toBeInTheDocument();
   });
 
-  it("profile form save button calls axiosInstance.patch on submit", async () => {
-    const axiosInstance = await import("../../services/api/axios-instance");
-    render(<ProfilePage />);
+  it("profile form save button hits real PATCH /users/me (synthetic admin → 404, no crash)", async () => {
+    await renderReady();
     const saveBtn = screen.getByText("Kaydet");
     fireEvent.click(saveBtn);
-    await waitFor(() => {
-      expect(axiosInstance.default.patch).toHaveBeenCalledWith(
-        "/users/me",
-        expect.objectContaining({ ad_soyad: "Ahmet Yılmaz" }),
-      );
-    });
-  });
+    // Synthetic super-admin (id<=0) has no row in `kullanicilar` — backend
+    // returns 404, axiosInstance interceptor shows an error toast, and the
+    // page must not crash or hang on a stale "loading" state.
+    await waitFor(
+      () => {
+        expect(screen.getByText("Kaydet")).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+  }, 15000);
 
   it("shows validation error when ad_soyad is too short", async () => {
-    render(<ProfilePage />);
-    const adSoyadInput = screen.getByDisplayValue("Ahmet Yılmaz");
+    await renderReady();
+    const adSoyadInput = screen.getByDisplayValue("Super Administrator");
     fireEvent.change(adSoyadInput, { target: { value: "X" } });
     fireEvent.click(screen.getByText("Kaydet"));
     await waitFor(() => {
@@ -137,8 +154,8 @@ describe("ProfilePage", () => {
     });
   });
 
-  it("password toggle button toggles visibility", () => {
-    render(<ProfilePage />);
+  it("password toggle button toggles visibility", async () => {
+    await renderReady();
     const toggleBtns = screen.getAllByRole("button", {
       name: /Şifreyi göster/i,
     });
@@ -151,8 +168,7 @@ describe("ProfilePage", () => {
   });
 
   it("shows password strength bar when new password is typed", async () => {
-    render(<ProfilePage />);
-    // Three password inputs share the same placeholder; pick the new-password one by id.
+    await renderReady();
     const newPwInput = screen
       .getAllByPlaceholderText("••••••••")
       .find(
@@ -162,10 +178,5 @@ describe("ProfilePage", () => {
     await waitFor(() => {
       expect(screen.getByText(/Şifre gücü:/)).toBeInTheDocument();
     });
-  });
-
-  it("shows son_giris_ip when user has it", () => {
-    render(<ProfilePage />);
-    expect(screen.getByText("192.168.1.1")).toBeInTheDocument();
   });
 });

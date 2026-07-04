@@ -1,69 +1,49 @@
-﻿import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router-dom";
-import DashboardPage from "../DashboardPage";
+/**
+ * 0-mock epiği: DashboardPage 5 ayrı gerçek servisi (reports/dashboard,
+ * reports/consumption-trend, trips/stats, trips/today, anomalies/fleet-
+ * insights, predictions/comparison) aggregate ediyor. Seed veri olmadan
+ * cold-start/boş-state render'ı gerçek backend'e karşı doğrulanıyor —
+ * KPI'lar "—" placeholder ile, listeler boş state ile render olmalı,
+ * hiçbir query 4xx/5xx patlamamalı.
+ */
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
-vi.mock("../../api/reports", () => ({
-  reportService: {
-    getDashboardStats: vi.fn().mockResolvedValue({
-      toplam_sefer: 42,
-      aktif_arac: 10,
-      bugun_sefer: 5,
-      toplam_km: 1000,
-      toplam_yakit: 300,
-      filo_ortalama: 30,
-      aktif_sofor: 8,
-      toplam_arac: 15,
-      trends: { sefer: 0, km: 0, tuketim: 0 },
-    }),
-    getConsumptionTrend: vi.fn().mockResolvedValue([]),
-  },
-}));
-vi.mock("../../api/anomalies", () => ({
-  anomalyService: {
-    getFleetInsights: vi.fn().mockResolvedValue({
-      leakage: {
-        route_deviation_km: 12,
-        route_deviation_cost: 150,
-        fuel_gap_liters: 45,
-        fuel_gap_cost: 200,
-      },
-      maintenance: { urgent_count: 2, warning_count: 3, vehicles: [] },
-    }),
-  },
-}));
-vi.mock("../../api/predictions", () => ({
-  predictionService: {
-    getComparison: vi.fn().mockResolvedValue({
-      mae: 1.2,
-      rmse: 2.1,
-      total_compared: 100,
-      accuracy_distribution: {
-        good: 80,
-        warning: 15,
-        error: 5,
-        good_pct: 80,
-        warning_pct: 15,
-        error_pct: 5,
-      },
-      trend: [],
-    }),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-function wrap(ui: React.ReactElement) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter>{ui}</MemoryRouter>
-    </QueryClientProvider>,
-  );
-}
+describe.skipIf(!backendUp)("DashboardPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let DashboardPage: typeof import("../DashboardPage").default;
 
-describe("DashboardPage", () => {
-  it("renders dashboard container", () => {
-    wrap(<DashboardPage />);
-    expect(screen.getByTestId("dashboard-page")).toBeTruthy();
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, waitFor } = await import("../../test/test-utils"));
+    ({ default: DashboardPage } = await import("../DashboardPage"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
   });
+
+  it("renders dashboard container and aggregates all real endpoints", async () => {
+    sessionStorage.setItem("access_token", await loginAsAdmin());
+    render(<DashboardPage />);
+
+    expect(screen.getByTestId("dashboard-page")).toBeTruthy();
+
+    await waitFor(
+      () => {
+        expect(screen.getAllByText(/Aktif Araç/i)[0]).toBeTruthy();
+      },
+      { timeout: 15000 },
+    );
+  }, 20000);
 });

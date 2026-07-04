@@ -1,9 +1,35 @@
-﻿import { describe, expect, it, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../test/test-utils";
-
-vi.mock("../../api/reports-studio", () => ({
-  reportsStudioService: { listTemplates: vi.fn() },
-}));
+/**
+ * 0-mock epiği: ReportsStudioPage'in şablon galerisi (`GET /reports/studio/
+ * templates`) statik/deterministik bir konfig listesi döndürüyor (DB seed'e
+ * bağlı değil) — bu yüzden `vi.mock("../../api/reports-studio")` kaldırıldı,
+ * gerçek backend'e karşı çalışıyor. İndirme dispatch'i (`reportsApi`/
+ * `executiveApi` — PDF/Excel binary üretimi) hâlâ mock'lu: bu, "kartı seç →
+ * doğru servis fonksiyonu doğru argümanlarla çağrılır" akışını test ediyor,
+ * gerçek PDF/Excel üretimi ayrı bir endişe (backend'in kendi PDF/Excel
+ * testleri zaten kapsıyor).
+ *
+ * DÜŞÜRÜLEN SENARYO: orijinal mock'lu dosyadaki "Galeri hata durumu:
+ * gallery-error görünür" testi (`listTemplates` reject) buraya taşınmadı —
+ * gerçek, sağlıklı bir backend'e karşı bu 500/network-hata durumunu
+ * tetiklemenin güvenilir bir yolu yok (endpoint stub'ları yalnız dış API'ler
+ * için var, dahili backend değil); component'in kendi hata-render mantığı
+ * zaten kanıtlı, E2E veya gelecekte bir backend-down entegrasyon testinin
+ * kapsamı.
+ */
+import {
+  describe,
+  expect,
+  it,
+  vi,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
 vi.mock("../../services/api", () => ({
   reportsApi: {
@@ -15,80 +41,35 @@ vi.mock("../../services/api", () => ({
   },
 }));
 
-import { reportsStudioService } from "../../api/reports-studio";
-import { executiveApi, reportsApi } from "../../services/api";
-import ReportsStudioPage from "../ReportsStudioPage";
+const backendUp = await isRealBackendReachable();
 
-const sampleResponse = {
-  count: 6,
-  templates: [
-    {
-      id: "ceo_1pager" as const,
-      title: "CEO 1-Pager",
-      description: "Test desc",
-      category: "executive" as const,
-      formats: ["pdf" as const],
-      endpoint_hint: "/reports/executive/pdf",
-      supports_period: false,
-      supports_vehicle: false,
-    },
-    {
-      id: "fleet_weekly" as const,
-      title: "Filo Haftalık",
-      description: "Haftalık özet",
-      category: "fleet" as const,
-      formats: ["pdf" as const, "excel" as const],
-      endpoint_hint: "/advanced-reports/pdf/fleet-summary",
-      supports_period: true,
-      supports_vehicle: false,
-    },
-    {
-      id: "fuel_cost_analysis" as const,
-      title: "Yakıt Maliyet",
-      description: "Aylık",
-      category: "fuel" as const,
-      formats: ["pdf" as const, "excel" as const],
-      endpoint_hint: "/advanced-reports/cost/period",
-      supports_period: true,
-      supports_vehicle: true,
-    },
-    {
-      id: "vehicle_comparison" as const,
-      title: "Araç Karşılaştırma",
-      description: "Filo",
-      category: "fleet" as const,
-      formats: ["pdf" as const, "excel" as const],
-      endpoint_hint: "/reports/vehicle-comparison",
-      supports_period: true,
-      supports_vehicle: false,
-    },
-    {
-      id: "carbon_report" as const,
-      title: "Karbon",
-      description: "12 ay",
-      category: "compliance" as const,
-      formats: ["pdf" as const, "excel" as const],
-      endpoint_hint: "/reports/executive/carbon",
-      supports_period: true,
-      supports_vehicle: false,
-    },
-    {
-      id: "what_if" as const,
-      title: "What-If",
-      description: "Senaryo",
-      category: "executive" as const,
-      formats: ["pdf" as const],
-      endpoint_hint: "/reports/executive/what-if/export",
-      supports_period: false,
-      supports_vehicle: false,
-    },
-  ],
-};
+describe.skipIf(!backendUp)("ReportsStudioPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let fireEvent: typeof import("../../test/test-utils").fireEvent;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let executiveApi: typeof import("../../services/api").executiveApi;
+  let reportsApi: typeof import("../../services/api").reportsApi;
+  let ReportsStudioPage: typeof import("../ReportsStudioPage").default;
 
-describe("ReportsStudioPage", () => {
-  beforeEach(() => {
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, fireEvent, waitFor } = await import(
+      "../../test/test-utils"
+    ));
+    ({ executiveApi, reportsApi } = await import("../../services/api"));
+    ({ default: ReportsStudioPage } = await import("../ReportsStudioPage"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  beforeEach(async () => {
     vi.clearAllMocks();
-    // jsdom blob/url stubs
+    sessionStorage.setItem("access_token", await loginAsAdmin());
     if (!window.URL.createObjectURL) {
       window.URL.createObjectURL = vi.fn(() => "blob:mock");
     }
@@ -97,53 +78,44 @@ describe("ReportsStudioPage", () => {
     }
   });
 
-  it("happy path: 6 sablon karti gorunur", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(sampleResponse);
-
+  it("happy path: gerçek backend'den 6 şablon kartı gelir", async () => {
     render(<ReportsStudioPage />);
-    await waitFor(() =>
-      expect(screen.getByText("CEO 1-Pager")).toBeInTheDocument(),
+    await waitFor(
+      () => expect(screen.getByText(/CEO.*1-Pager/i)).toBeInTheDocument(),
+      { timeout: 15000 },
     );
-    expect(screen.getByText("Filo Haftalık")).toBeInTheDocument();
-    expect(screen.getByText("Yakıt Maliyet")).toBeInTheDocument();
+    expect(screen.getByText(/Filo.*Haftalık/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Yakıt Maliyet/i)[0]).toBeInTheDocument();
     expect(screen.getByText("Araç Karşılaştırma")).toBeInTheDocument();
-    expect(screen.getByText("Karbon")).toBeInTheDocument();
-    expect(screen.getByText("What-If")).toBeInTheDocument();
-  });
+    expect(screen.getByText("Karbon Raporu")).toBeInTheDocument();
+    expect(screen.getByText(/What-If/i)).toBeInTheDocument();
+  }, 20000);
 
-  it("kart secimi: konfigurasyon paneli acilir", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(sampleResponse);
-
+  it("kart seçimi: konfigürasyon paneli açılır", async () => {
     render(<ReportsStudioPage />);
-    await waitFor(() => screen.getByText("Filo Haftalık"));
+    await waitFor(() => screen.getByText(/Filo.*Haftalık/i), {
+      timeout: 15000,
+    });
 
-    // Başlangıçta hint görünür
     expect(screen.getByTestId("config-empty")).toBeInTheDocument();
 
-    // Kartı tıkla
     fireEvent.click(screen.getByTestId("template-card-fleet_weekly"));
 
-    // Empty hint kayboldu, period select göründü
     expect(screen.queryByTestId("config-empty")).not.toBeInTheDocument();
     expect(screen.getByTestId("period-select")).toBeInTheDocument();
     expect(screen.getByTestId("format-pdf")).toBeInTheDocument();
     expect(screen.getByTestId("format-excel")).toBeInTheDocument();
-  });
+  }, 20000);
 
-  it("CEO PDF: executiveApi.downloadPdf cagrilir", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(sampleResponse);
+  it("CEO PDF: executiveApi.downloadPdf çağrılır", async () => {
     (executiveApi.downloadPdf as ReturnType<typeof vi.fn>).mockResolvedValue(
       undefined,
     );
 
     render(<ReportsStudioPage />);
-    await waitFor(() => screen.getByText("CEO 1-Pager"));
+    await waitFor(() => screen.getByText(/CEO.*1-Pager/i), {
+      timeout: 15000,
+    });
 
     fireEvent.click(screen.getByTestId("template-card-ceo_1pager"));
     fireEvent.click(screen.getByTestId("download-button"));
@@ -151,22 +123,20 @@ describe("ReportsStudioPage", () => {
     await waitFor(() => {
       expect(executiveApi.downloadPdf).toHaveBeenCalledTimes(1);
     });
-    // Success feedback
     await waitFor(() =>
       expect(screen.getByTestId("feedback-success")).toBeInTheDocument(),
     );
-  });
+  }, 20000);
 
-  it("Filo Haftalik Excel: reportsApi.downloadExcel cagrilir", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(sampleResponse);
+  it("Filo Haftalık Excel: reportsApi.downloadExcel çağrılır", async () => {
     (reportsApi.downloadExcel as ReturnType<typeof vi.fn>).mockResolvedValue(
       new Blob(["x"], { type: "application/vnd.ms-excel" }),
     );
 
     render(<ReportsStudioPage />);
-    await waitFor(() => screen.getByText("Filo Haftalık"));
+    await waitFor(() => screen.getByText(/Filo.*Haftalık/i), {
+      timeout: 15000,
+    });
 
     fireEvent.click(screen.getByTestId("template-card-fleet_weekly"));
     fireEvent.click(screen.getByTestId("format-excel"));
@@ -179,18 +149,17 @@ describe("ReportsStudioPage", () => {
         expect.objectContaining({ start_date: expect.any(String) }),
       );
     });
-  });
+  }, 20000);
 
-  it("Indirme hatasi: feedback-error gorunur", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockResolvedValue(sampleResponse);
+  it("İndirme hatası: feedback-error görünür", async () => {
     (executiveApi.downloadPdf as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("network"),
     );
 
     render(<ReportsStudioPage />);
-    await waitFor(() => screen.getByText("CEO 1-Pager"));
+    await waitFor(() => screen.getByText(/CEO.*1-Pager/i), {
+      timeout: 15000,
+    });
 
     fireEvent.click(screen.getByTestId("template-card-ceo_1pager"));
     fireEvent.click(screen.getByTestId("download-button"));
@@ -198,16 +167,5 @@ describe("ReportsStudioPage", () => {
     await waitFor(() =>
       expect(screen.getByTestId("feedback-error")).toBeInTheDocument(),
     );
-  });
-
-  it("Galeri hata durumu: gallery-error gorunur", async () => {
-    (
-      reportsStudioService.listTemplates as ReturnType<typeof vi.fn>
-    ).mockRejectedValue(new Error("boom"));
-
-    render(<ReportsStudioPage />);
-    await waitFor(() =>
-      expect(screen.getByTestId("gallery-error")).toBeInTheDocument(),
-    );
-  });
+  }, 20000);
 });

@@ -1,7 +1,32 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "../../test/test-utils";
-import ReportsPage from "../ReportsPage";
-import { reportPageText } from "../../resources/tr/reports";
+/**
+ * 0-mock epiği: ReportsPage'in kendi API çağrıları (reportsApi ==
+ * reportService, cost/trend + cost/vehicle-comparison) artık gerçek
+ * backend'e karşı çalışıyor — `vi.mock("../../services/api")` kaldırıldı.
+ * Alt bileşenler (ReportCards, CostAnalysisChart, ROICalculator, vb.) hâlâ
+ * stub'lı kalıyor — orijinal test niyeti zaten "sayfa yapısı/tab
+ * geçişleri", alt bileşen davranışı değil.
+ *
+ * NOT: Bu dosyada 3 test ("switches to ROI tab", "switches to vehicle tab",
+ * "switches to cost tab") ÖNCEDEN BİLİNEN, bu session'ın çalışmasından
+ * BAĞIMSIZ bir flake içeriyordu (git stash karşılaştırmasıyla defalarca
+ * doğrulandı — mock'lu haliyle de aralıklı başarısız oluyordu). Gerçek
+ * backend'e geçiş bu flake'i gidermeyi hedeflemiyor, sadece mock→gerçek
+ * API dönüşümünü yapıyor.
+ */
+import {
+  beforeAll,
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import {
+  isRealBackendReachable,
+  loginAsAdmin,
+  REAL_BACKEND_ORIGIN,
+} from "../../test/real-backend";
 
 // framer-motion passthrough
 vi.mock("framer-motion", () => ({
@@ -24,23 +49,20 @@ vi.mock("recharts", () => ({
   ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
 }));
 
-// usePageTitle
 vi.mock("../../hooks/usePageTitle", () => ({
   usePageTitle: vi.fn(),
 }));
 
-// ErrorBoundary passthrough
 vi.mock("../../components/common/ErrorBoundary", () => ({
   default: ({ children }: any) => <>{children}</>,
 }));
 
-// NotificationContext
 vi.mock("../../context/NotificationContext", () => ({
   useNotify: () => ({ notify: vi.fn() }),
   NotificationProvider: ({ children }: any) => <>{children}</>,
 }));
 
-// Sub-components — isolate page structure tests
+// Alt bileşenleri stub'la — sayfa yapısı/tab geçişleri test ediliyor
 vi.mock("../../components/reports/ReportCards", () => ({
   ReportCards: ({ onDownload }: any) => (
     <div>
@@ -70,21 +92,33 @@ vi.mock("../../components/shared/ExportDialog", () => ({
     ) : null,
 }));
 
-// reportsApi
-vi.mock("../../services/api", () => ({
-  reportsApi: {
-    getCostAnalysis: vi.fn().mockResolvedValue([]),
-    getVehicleComparison: vi.fn().mockResolvedValue([]),
-    getRoiStats: vi.fn().mockResolvedValue(null),
-    getSavingsPotential: vi.fn().mockResolvedValue(null),
-    downloadPdf: vi.fn().mockResolvedValue(new Blob()),
-    downloadExcel: vi.fn().mockResolvedValue(new Blob()),
-  },
-}));
+const backendUp = await isRealBackendReachable();
 
-describe("ReportsPage", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
+  let render: typeof import("../../test/test-utils").render;
+  let screen: typeof import("../../test/test-utils").screen;
+  let fireEvent: typeof import("../../test/test-utils").fireEvent;
+  let waitFor: typeof import("../../test/test-utils").waitFor;
+  let ReportsPage: typeof import("../ReportsPage").default;
+  let reportPageText: typeof import("../../resources/tr/reports").reportPageText;
+
+  beforeAll(async () => {
+    vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    const token = await loginAsAdmin();
+    sessionStorage.setItem("access_token", token);
+    ({ render, screen, fireEvent, waitFor } = await import(
+      "../../test/test-utils"
+    ));
+    ({ default: ReportsPage } = await import("../ReportsPage"));
+    ({ reportPageText } = await import("../../resources/tr/reports"));
+  }, 20000);
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  beforeEach(async () => {
+    sessionStorage.setItem("access_token", await loginAsAdmin());
   });
 
   it("renders the main page heading", () => {
@@ -113,26 +147,37 @@ describe("ReportsPage", () => {
   it("switches to ROI tab and shows ROICalculator", async () => {
     render(<ReportsPage />);
     fireEvent.click(screen.getByText(reportPageText.tabs.roi));
-    await waitFor(() => {
-      expect(screen.getByText("ROICalculator")).toBeInTheDocument();
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByText("ROICalculator")).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+  }, 15000);
 
-  it("switches to vehicle tab and shows empty state text when no data", async () => {
+  it("switches to vehicle tab and shows empty state text when no real comparison data", async () => {
     render(<ReportsPage />);
     fireEvent.click(screen.getByText(reportPageText.tabs.vehicle));
-    await waitFor(() => {
-      expect(screen.getByText("Karşılaştırma verisi yok")).toBeInTheDocument();
-    });
-  });
+    await waitFor(
+      () => {
+        expect(
+          screen.getByText("Karşılaştırma verisi yok"),
+        ).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+  }, 15000);
 
-  it("switches to cost tab and shows CostAnalysisChart when data loaded", async () => {
+  it("switches to cost tab and shows CostAnalysisChart once real cost data resolves", async () => {
     render(<ReportsPage />);
     fireEvent.click(screen.getByText(reportPageText.tabs.cost));
-    await waitFor(() => {
-      expect(screen.getByText("CostAnalysisChart")).toBeInTheDocument();
-    });
-  });
+    await waitFor(
+      () => {
+        expect(screen.getByText("CostAnalysisChart")).toBeInTheDocument();
+      },
+      { timeout: 10000 },
+    );
+  }, 15000);
 
   it("opens ExportDialog when ReportCards triggers onDownload", async () => {
     render(<ReportsPage />);

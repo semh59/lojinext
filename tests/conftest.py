@@ -202,6 +202,37 @@ async def setup_test_db(db_engine, db_session_factory):
             ):
                 await conn.execute(text(stmt))
             await conn.run_sync(Base.metadata.create_all)
+            # Test parity with app/tests/conftest.py: the stats endpoint
+            # expects the PostgreSQL materialized view. Without it, any test
+            # under tests/ that creates a sefer spams the DB log with
+            # "relation sefer_istatistik_mv does not exist" noise.
+            await conn.execute(
+                text("DROP MATERIALIZED VIEW IF EXISTS sefer_istatistik_mv")
+            )
+            await conn.execute(
+                text(
+                    """
+                    CREATE MATERIALIZED VIEW sefer_istatistik_mv AS
+                    SELECT
+                        durum,
+                        COUNT(id) AS toplam_sefer,
+                        COALESCE(SUM(mesafe_km), 0) AS toplam_km,
+                        COALESCE(SUM(otoban_mesafe_km), 0) AS highway_km,
+                        COALESCE(SUM(ascent_m), 0) AS total_ascent,
+                        COALESCE(SUM(net_kg / 1000.0), 0) AS total_weight,
+                        MAX(created_at) AS last_updated
+                    FROM seferler
+                    WHERE is_deleted = FALSE
+                    GROUP BY durum
+                    """
+                )
+            )
+            await conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX idx_sefer_istatistik_mv_durum "
+                    "ON sefer_istatistik_mv (durum)"
+                )
+            )
 
         # Seed mandatory users for tests
         async with db_session_factory() as session:

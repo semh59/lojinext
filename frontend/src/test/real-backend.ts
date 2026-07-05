@@ -41,17 +41,38 @@ export const REAL_BACKEND_URL = `${REAL_BACKEND_ORIGIN}/api/v1`;
 let cachedReachable: boolean | null = null;
 let cachedToken: string | null = null;
 
+// Tek 2s'lik denemeyle karar vermek transient bir gecikmeyi (backend soğuk
+// başlangıçta health probe'a hemen cevap veremiyorsa, ya da Docker
+// host'unda anlık bir CPU/IO tepesi varsa) "erişilemez" ile karıştırıp
+// TÜM real-backend suite'lerini sessizce SKIP'letebilir — CI'da açıklaması
+// zor, flaky bir coverage düşüşü olarak görünür (diğer ajanın bulgusu).
+// 3 deneme × 2s timeout, aralarda ~500ms bekleme; ilk başarıda hemen true
+// döner. Davranış aynı kalıyor: gerçekten erişilemezse yine false + aynı
+// console.warn (suit'i FAIL değil SKIP eder).
+const REACHABILITY_ATTEMPTS = 3;
+const REACHABILITY_RETRY_DELAY_MS = 500;
+
 export async function isRealBackendReachable(): Promise<boolean> {
   if (cachedReachable !== null) return cachedReachable;
-  try {
-    await axios.get(`${REAL_BACKEND_URL}/health/`, { timeout: 2000 });
-    cachedReachable = true;
-  } catch {
-    cachedReachable = false;
-    console.warn(
-      `[real-backend] ${REAL_BACKEND_URL} erişilemez — bu suit atlanacak.`,
-    );
+
+  for (let attempt = 1; attempt <= REACHABILITY_ATTEMPTS; attempt += 1) {
+    try {
+      await axios.get(`${REAL_BACKEND_URL}/health/`, { timeout: 2000 });
+      cachedReachable = true;
+      return cachedReachable;
+    } catch {
+      if (attempt < REACHABILITY_ATTEMPTS) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, REACHABILITY_RETRY_DELAY_MS),
+        );
+      }
+    }
   }
+
+  cachedReachable = false;
+  console.warn(
+    `[real-backend] ${REAL_BACKEND_URL} erişilemez — bu suit atlanacak.`,
+  );
   return cachedReachable;
 }
 

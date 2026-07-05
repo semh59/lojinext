@@ -495,6 +495,10 @@ jobs:
           VAPID_PUBLIC_KEY: ci-test-vapid-public-key
           VAPID_PRIVATE_KEY: ci-test-vapid-private-key
           VAPID_SUBJECT: "mailto:ci@lojinext.test"
+          # Default False — VAPID tek başına yetmiyor, flag açılmazsa
+          # /push/vapid-public-key push_enabled=false döner ve
+          # usePushNotifications real-backend testleri düşer.
+          PUSH_NOTIFICATION_ENABLED: "True"
         run: |
           uvicorn app.main:app --host 127.0.0.1 --port 8000 &
           echo "UVICORN_PID=$!" >> $GITHUB_ENV

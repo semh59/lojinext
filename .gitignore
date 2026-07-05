@@ -210,3 +210,6 @@ data/ai_kb/metadata.json
 frontend/src/generated/
 .local/
 .cache/
+
+# Vitest coverage HTML output (generated)
+frontend/coverage/

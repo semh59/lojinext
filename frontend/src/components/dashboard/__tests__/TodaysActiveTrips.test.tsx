@@ -58,6 +58,7 @@ describe.skipIf(!backendUp)("TodaysActiveTrips (real backend)", () => {
   const seferNoCompleted = `E2E-TAT-COMPLETED-${tag}`;
   let vehicleId: number | undefined;
   let driverId: number | undefined;
+  let locationId: number | undefined;
   let plannedTripId: number | undefined;
   let completedTripId: number | undefined;
 
@@ -86,11 +87,20 @@ describe.skipIf(!backendUp)("TodaysActiveTrips (real backend)", () => {
     );
     driverId = driverRes.data.id;
 
-    const locationsRes = await axios.get(
-      `${REAL_BACKEND_URL}/locations/?limit=1`,
+    // Hermetiklik: boş bir CI DB'sinde hiç lokasyon yok — "listeden ilk
+    // lokasyonu al" yaklaşımı `items[0]` undefined ile patlıyordu. Test
+    // kendi güzergâhını kendisi yaratır (benzersiz ad, kirli DB'de çakışmaz).
+    const locationRes = await axios.post(
+      `${REAL_BACKEND_URL}/locations/`,
+      {
+        ad: `E2E-TAT-ROUTE-${tag}`,
+        cikis_yeri: "Istanbul",
+        varis_yeri: "Ankara",
+        mesafe_km: 450,
+      },
       { headers: authHeaders() },
     );
-    const locationId = locationsRes.data.items[0].id as number;
+    locationId = locationRes.data.id as number;
 
     const createTrip = async (seferNo: string): Promise<number> => {
       const res = await axios.post(
@@ -143,6 +153,13 @@ describe.skipIf(!backendUp)("TodaysActiveTrips (real backend)", () => {
     if (driverId) {
       await axios
         .delete(`${REAL_BACKEND_URL}/drivers/${driverId}`, {
+          headers: authHeaders(),
+        })
+        .catch(() => {});
+    }
+    if (locationId) {
+      await axios
+        .delete(`${REAL_BACKEND_URL}/locations/${locationId}`, {
           headers: authHeaders(),
         })
         .catch(() => {});

@@ -117,38 +117,57 @@ describe.skipIf(!backendUp)(
       return valueSpan?.textContent ?? "";
     }
 
+    /**
+     * Snapshot-eşitliği assertion'ları için retry-with-re-render:
+     * vitest dosyaları PARALEL koşar ve bu epikteki diğer real-backend
+     * dosyaları (VehiclesModule, MLYonetimPage, TodaysActiveTrips, ...)
+     * aynı anda araç/sefer yaratıp siliyor. Component mount anındaki
+     * fetch (T_c) ile buradaki snapshot fetch'i (T_s) arasına bir mutasyon
+     * girerse iki sayı meşru şekilde farklı olur — boş CI DB'sinde tam
+     * olarak bu yakalandı (snapshot total=0, render sırasında paralel
+     * dosya araç ekledi → kart 2 gösterdi). Mismatch'te taze snapshot +
+     * taze render ile yeniden dene; paralel yazarlar birkaç saniyede
+     * durulduğu için döngü deterministik olarak yakınsar.
+     */
+    async function expectCardsToMatchSnapshot(
+      assertFn: (snap: {
+        fleetStats: VehicleFleetStats;
+        toplamSefer: number;
+      }) => void,
+    ): Promise<void> {
+      const ATTEMPTS = 4;
+      for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+        const snap = await fetchRealFleetSnapshot();
+        const view = render(<FleetInsights activeTab="vehicles" />);
+        try {
+          await waitFor(() => assertFn(snap), { timeout: 5000 });
+          return;
+        } catch (err) {
+          view.unmount();
+          if (attempt === ATTEMPTS) throw err;
+        }
+      }
+    }
+
     it("gerçek backend'den toplam + aktif araç sayılarını gösterir", async () => {
       sessionStorage.setItem("access_token", authToken);
-      const { fleetStats } = await fetchRealFleetSnapshot();
-      render(<FleetInsights activeTab="vehicles" />);
-
-      await waitFor(
-        () => {
-          expect(getCardValue("Toplam Araç")).toBe(String(fleetStats.total));
-          expect(getCardValue("Aktif Araç")).toBe(String(fleetStats.active));
-        },
-        { timeout: 10000 },
-      );
-    }, 15000);
+      await expectCardsToMatchSnapshot(({ fleetStats }) => {
+        expect(getCardValue("Toplam Araç")).toBe(String(fleetStats.total));
+        expect(getCardValue("Aktif Araç")).toBe(String(fleetStats.active));
+      });
+    }, 30000);
 
     it("muayene uyarı kartı: overdue + expiring toplamını ve sefer sayısını gösterir", async () => {
       sessionStorage.setItem("access_token", authToken);
-      const { fleetStats, toplamSefer } = await fetchRealFleetSnapshot();
-      render(<FleetInsights activeTab="vehicles" />);
-
-      const expectedInspectionCount =
-        fleetStats.inspection_overdue + fleetStats.inspection_expiring;
-
-      await waitFor(
-        () => {
-          expect(getCardValue("Muayene Uyarısı")).toBe(
-            String(expectedInspectionCount),
-          );
-          expect(getCardValue("Toplam Sefer")).toBe(String(toplamSefer));
-        },
-        { timeout: 10000 },
-      );
-    }, 15000);
+      await expectCardsToMatchSnapshot(({ fleetStats, toplamSefer }) => {
+        expect(getCardValue("Muayene Uyarısı")).toBe(
+          String(
+            fleetStats.inspection_overdue + fleetStats.inspection_expiring,
+          ),
+        );
+        expect(getCardValue("Toplam Sefer")).toBe(String(toplamSefer));
+      });
+    }, 30000);
 
     it("muayene durumuna göre doğru renk kenarlığı gösterir (backend gerçek verisine göre)", async () => {
       sessionStorage.setItem("access_token", authToken);

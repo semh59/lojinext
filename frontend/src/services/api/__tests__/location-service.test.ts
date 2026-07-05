@@ -79,17 +79,27 @@ describe.skipIf(!backendUp)("locationService (real backend)", () => {
     expect(result[0].source).toBe("ors");
   });
 
-  it("getRouteInfo should fetch real route info by coordinates", async () => {
-    const result = await locationService.getRouteInfo({
+  it("getRouteInfo should fetch real route info and serve repeat lookups from cache", async () => {
+    const coords = {
       cikis_lat: 41,
       cikis_lon: 29,
       varis_lat: 40,
       varis_lon: 32,
-    });
+    };
 
-    // Real cache-hit response from the route_repo cache (seeded by this
-    // epic's backend integration tests using the same coordinates).
-    expect(result).toHaveProperty("distance_km");
-    expect((result as any).source).toBe("cache");
+    // Hermetiklik: eski sürüm İLK çağrıda source === "cache" bekliyordu —
+    // bu, başka bir test dosyasının/backend integration suit'inin aynı
+    // koordinatları ÖNCEDEN sorgulayıp route cache'ini doldurmuş olmasına
+    // (koşum-sırası bağımlılığı) güveniyordu; boş bir CI DB'sinde ilk çağrı
+    // "api" döner ve test kırılırdı. Testi kendi içinde bağımsızlaştır:
+    // ilk çağrı cache'i doldurur (kirli DB'de zaten "cache" dönebilir, bu
+    // yüzden source'una assert edilmez), ikinci çağrı HER durumda gerçek
+    // cache-hit olmalıdır.
+    const first = await locationService.getRouteInfo(coords);
+    expect(first).toHaveProperty("distance_km");
+
+    const second = await locationService.getRouteInfo(coords);
+    expect(second).toHaveProperty("distance_km");
+    expect((second as any).source).toBe("cache");
   });
 });

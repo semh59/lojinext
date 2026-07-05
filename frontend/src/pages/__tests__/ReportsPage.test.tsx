@@ -22,10 +22,12 @@ import {
   it,
   vi,
 } from "vitest";
+import axios from "axios";
 import {
   isRealBackendReachable,
   loginAsAdmin,
   REAL_BACKEND_ORIGIN,
+  REAL_BACKEND_URL,
 } from "../../test/real-backend";
 
 // framer-motion passthrough
@@ -38,7 +40,9 @@ vi.mock("framer-motion", () => ({
   },
 }));
 
-// recharts stub
+// recharts stub — ResponsiveContainer'a test-id veriyoruz: araç sekmesi
+// testinde "grafik dalı render edildi" kanıtı, plaka/eksen metni yerine bu
+// (recharts stub'lı olduğu için eksen/etiket metinleri DOM'a hiç basılmaz).
 vi.mock("recharts", () => ({
   BarChart: ({ children }: any) => <div>{children}</div>,
   Bar: () => null,
@@ -46,7 +50,9 @@ vi.mock("recharts", () => ({
   XAxis: () => null,
   YAxis: () => null,
   Tooltip: () => null,
-  ResponsiveContainer: ({ children }: any) => <div>{children}</div>,
+  ResponsiveContainer: ({ children }: any) => (
+    <div data-testid="vehicle-comparison-chart">{children}</div>
+  ),
 }));
 
 vi.mock("../../hooks/usePageTitle", () => ({
@@ -101,19 +107,40 @@ describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
   let waitFor: typeof import("../../test/test-utils").waitFor;
   let ReportsPage: typeof import("../ReportsPage").default;
   let reportPageText: typeof import("../../resources/tr/reports").reportPageText;
+  let token = "";
+  let vehicleId: number | undefined;
+  const tag = Date.now();
 
   beforeAll(async () => {
     vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
-    const token = await loginAsAdmin();
+    token = await loginAsAdmin();
     sessionStorage.setItem("access_token", token);
     ({ render, screen, fireEvent, waitFor } = await import(
       "../../test/test-utils"
     ));
     ({ default: ReportsPage } = await import("../ReportsPage"));
     ({ reportPageText } = await import("../../resources/tr/reports"));
+
+    // Hermetiklik: araç sekmesi testi "en az bir araç" ister —
+    // /advanced-reports/cost/vehicle-comparison sıfır-seferli araçları da
+    // listeler (canlı curl ile doğrulandı), bu yüzden tek bir araç kaydı
+    // yeterli. Boş CI DB'sinde de kirli dev DB'sinde de deterministik.
+    const vehicleRes = await axios.post(
+      `${REAL_BACKEND_URL}/vehicles/`,
+      { plaka: `34 RPT${tag % 900}`, marka: "ReportsPageTestMarka" },
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    vehicleId = vehicleRes.data.id;
   }, 20000);
 
-  afterAll(() => {
+  afterAll(async () => {
+    if (vehicleId) {
+      await axios
+        .delete(`${REAL_BACKEND_URL}/vehicles/${vehicleId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        .catch(() => {});
+    }
     vi.unstubAllEnvs();
   });
 
@@ -139,9 +166,16 @@ describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
     expect(screen.getByText(reportPageText.tabs.vehicle)).toBeInTheDocument();
   });
 
-  it("shows ReportCards by default (pdf tab active)", () => {
+  // NOT: sayfanın varsayılan sekmesi artık "overview" (bkz. ReportsPage.tsx
+  // `useState<ReportTabId>("overview")`) — eski "pdf tab varsayılan" varsayımı
+  // stale'di. PDF sekmesine tıklayınca ReportCards render edilir.
+  it("shows ReportCards after switching to the pdf tab", async () => {
     render(<ReportsPage />);
-    expect(screen.getByText("ReportCards")).toBeInTheDocument();
+    expect(screen.queryByText("ReportCards")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(reportPageText.tabs.pdf));
+    await waitFor(() => {
+      expect(screen.getByText("ReportCards")).toBeInTheDocument();
+    });
   });
 
   it("switches to ROI tab and shows ROICalculator", async () => {
@@ -155,17 +189,24 @@ describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
     );
   }, 15000);
 
-  it("switches to vehicle tab and shows empty state text when no real comparison data", async () => {
+  // beforeAll kendi aracını yarattığı için karşılaştırma listesi asla boş
+  // değildir → grafik dalı render edilir (recharts stub'ının test-id'li
+  // ResponsiveContainer'ı). "Karşılaştırma verisi yok" boş-durum metnine
+  // assert etmek boş-DB'ye bağımlıydı; kirli bir DB'de her zaman kırılırdı.
+  it("switches to vehicle tab and renders the comparison chart once real data resolves", async () => {
     render(<ReportsPage />);
     fireEvent.click(screen.getByText(reportPageText.tabs.vehicle));
     await waitFor(
       () => {
         expect(
-          screen.getByText("Karşılaştırma verisi yok"),
+          screen.getByTestId("vehicle-comparison-chart"),
         ).toBeInTheDocument();
       },
       { timeout: 10000 },
     );
+    expect(
+      screen.queryByText("Karşılaştırma verisi yok"),
+    ).not.toBeInTheDocument();
   }, 15000);
 
   it("switches to cost tab and shows CostAnalysisChart once real cost data resolves", async () => {
@@ -181,8 +222,10 @@ describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
 
   it("opens ExportDialog when ReportCards triggers onDownload", async () => {
     render(<ReportsPage />);
-    // default pdf tab shows ReportCards stub with a PDF İndir button
-    fireEvent.click(screen.getByText("PDF İndir"));
+    // pdf sekmesi varsayılan değil — önce sekmeye geç, ReportCards stub'ı
+    // PDF İndir butonunu render etsin.
+    fireEvent.click(screen.getByText(reportPageText.tabs.pdf));
+    fireEvent.click(await screen.findByText("PDF İndir"));
     await waitFor(() => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
@@ -190,7 +233,8 @@ describe.skipIf(!backendUp)("ReportsPage (real backend)", () => {
 
   it("closes ExportDialog when Vazgeç is clicked", async () => {
     render(<ReportsPage />);
-    fireEvent.click(screen.getByText("PDF İndir"));
+    fireEvent.click(screen.getByText(reportPageText.tabs.pdf));
+    fireEvent.click(await screen.findByText("PDF İndir"));
     await waitFor(() => screen.getByRole("dialog"));
     fireEvent.click(screen.getByText("Vazgeç"));
     await waitFor(() => {

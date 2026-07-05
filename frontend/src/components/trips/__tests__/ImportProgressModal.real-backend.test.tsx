@@ -79,7 +79,13 @@ describe.skipIf(!backendUp)("ImportProgressModal (real backend)", () => {
     sessionStorage.setItem("access_token", authToken);
     ({ render, screen, waitFor } = await import("../../../test/test-utils"));
     ({ ImportProgressModal } = await import("../ImportProgressModal"));
-  });
+
+    // upload_trips token-bucket'ı GLOBAL ve kapasitesi 1 (10 s'de 1 istek) —
+    // bu dosya arka arkaya iki kez koşulursa, önceki koşumun son upload'ı
+    // token'ı tüketmiş olabilir ve İLK test 429'a düşer. Suit başında bir
+    // kez tam refill bekle; böylece koşumlar birbirinden bağımsızlaşır.
+    await new Promise((resolve) => setTimeout(resolve, 11_000));
+  }, 30000);
 
   afterAll(() => {
     vi.unstubAllEnvs();
@@ -102,6 +108,17 @@ describe.skipIf(!backendUp)("ImportProgressModal (real backend)", () => {
 
   it("veri satırı olmayan gerçek Excel yüklenince job SUCCESS'e geçer ve satır-hatası özetini gösterir", async () => {
     sessionStorage.setItem("access_token", authToken);
+
+    // POST /trips/upload GERÇEK bir token-bucket rate limitine sahip:
+    // RateLimiterDependency("upload_trips", rate=1.0, period=10.0) —
+    // 10 saniyede 1 istek, kapasite 1 ve limiter GLOBAL (kullanıcı/IP başına
+    // değil; bkz app/infrastructure/resilience/rate_limiter.py). Yukarıdaki
+    // 400 testi token'ı tüketiyor; hemen ardından gelen bu upload 429
+    // "Rate limit exceeded" alıyordu (canlı koşumda DOM'da doğrulandı).
+    // Token'ın tamamen dolması için 11 s bekle — mock değil, backend'in
+    // gerçek davranışına hizalanma.
+    await new Promise((resolve) => setTimeout(resolve, 11_000));
+
     const onComplete = vi.fn();
     render(
       <ImportProgressModal
@@ -123,5 +140,5 @@ describe.skipIf(!backendUp)("ImportProgressModal (real backend)", () => {
 
     expect(screen.getByText("İlk 1 hata (1 toplam)")).toBeInTheDocument();
     expect(onComplete).toHaveBeenCalled();
-  }, 25000);
+  }, 40000);
 });

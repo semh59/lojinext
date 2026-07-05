@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import axios from "axios";
+import { execSync } from "node:child_process";
 import {
   isRealBackendReachable,
   loginAsAdmin,
@@ -39,11 +40,35 @@ function getConfigRow(anahtar: string): HTMLElement {
 // The `sistem_konfig` table has NO create endpoint (only GET /admin/config
 // and PUT /admin/config/{key} — see app/api/v1/endpoints/admin_config.py).
 // Rows must exist in the DB already; there is no HTTP way to seed them.
-// Seeded once, directly in the shared throwaway Postgres (tierf_slice3_pg),
-// via `docker exec ... psql ... INSERT ... ON CONFLICT (anahtar) DO
-// NOTHING` — idempotent across repeated test runs, matching the fixed
-// keys/values this file asserts against (ANOMALY_Z_THRESHOLD=2.5,
-// VEHICLE_AGE_DEGRADATION_RATE=0.01 restart-required, LOG_LEVEL="INFO").
+// So this file seeds its own fixture rows in beforeAll, directly over psql
+// stdin (`INSERT ... ON CONFLICT (anahtar) DO NOTHING` — idempotent, safe
+// on a dirty DB), then normalises ANOMALY_Z_THRESHOLD back to 2.5 through
+// the real PUT endpoint (which also invalidates the Redis config cache —
+// a raw-SQL UPDATE would leave `configs:all` stale for up to 1 hour).
+// Connection defaults match the CI vitest job (postgres:postgres @
+// localhost:5432/lojinext_vitest, see .github/workflows/ci.yml "Create
+// vitest DB + migrate"); override locally with REAL_BACKEND_PSQL, e.g.
+//   REAL_BACKEND_PSQL="docker exec -i lojinext-db-1 psql -U lojinext_user -d lojinext_ci_b"
+const PSQL_CMD =
+  process.env.REAL_BACKEND_PSQL ||
+  // CI'ın herkese açık dummy postgres servisi — gerçek secret değil.
+  "psql postgresql://postgres:postgres@localhost:5432/lojinext_vitest"; // pragma: allowlist secret
+
+function seedConfigRows(): void {
+  const sql = `
+    INSERT INTO sistem_konfig
+      (anahtar, deger, tip, birim, min_deger, max_deger, grup, aciklama, yeniden_baslat)
+    VALUES
+      ('ANOMALY_Z_THRESHOLD', '2.5'::jsonb, 'float', 'σ', 1, 5,
+       'anomali', 'Anomali tespiti icin Z-skoru esigi', false),
+      ('VEHICLE_AGE_DEGRADATION_RATE', '0.01'::jsonb, 'float', NULL, NULL, NULL,
+       'ml', 'Arac yasi basina yillik tuketim artis orani', true),
+      ('LOG_LEVEL', '"INFO"'::jsonb, 'string', NULL, NULL, NULL,
+       'sistem', 'Uygulama log seviyesi', false)
+    ON CONFLICT (anahtar) DO NOTHING;
+  `;
+  execSync(`${PSQL_CMD} -v ON_ERROR_STOP=1`, { input: sql });
+}
 describe.skipIf(!backendUp)(
   "AdminConfigurationPage / KonfigurasyonPage (real backend)",
   () => {
@@ -56,7 +81,17 @@ describe.skipIf(!backendUp)(
       ));
       AdminConfigurationPage = (await import("../KonfigurasyonPage")).default;
       token = await loginAsAdmin();
-    });
+      seedConfigRows();
+      // Normalise the mutated key through the REAL endpoint: guarantees
+      // deger=2.5 even if a previous crashed run left 3.0 behind, and
+      // invalidates the Redis "configs:all" cache so the page reads the
+      // seeded rows instead of a stale cached list.
+      await axios.put(
+        `${REAL_BACKEND_URL}/admin/config/ANOMALY_Z_THRESHOLD`,
+        { value: 2.5, reason: "test seed baseline" },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+    }, 30000);
 
     afterAll(async () => {
       // Restore the mutated key so re-runs of this file (and any other

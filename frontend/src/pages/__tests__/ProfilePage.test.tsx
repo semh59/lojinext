@@ -1,15 +1,13 @@
 /**
  * 0-mock epiği: ProfilePage artık gerçek AuthContext + gerçek `/auth/me` +
  * gerçek `PATCH /users/me` ile test ediliyor (`vi.mock` AuthContext/
- * axios-instance kaldırıldı). Test kullanıcısı, senaryoda kullanılan
- * synthetic super-admin'dir (`id<=0`, `kullanicilar` tablosunda satırı yok —
- * CLAUDE.md gotcha #15): `/auth/me` gerçek veri döner (email
- * "admin@lojinext.internal", ad_soyad "Super Administrator", rol
- * "super_admin") ama profil kaydetme (`PATCH /users/me`) bu kullanıcı için
- * 404 "Kullanıcı bulunamadı" döner — bu, batch 5'te push/subscribe için
- * bulunan aynı mimari sınırlamayla tutarlı (id<=0 → gerçek DB satırı yok),
- * yeni bir bug değil. Test bunu doğrudan doğruluyor: sayfa çökmeden
- * axiosInstance interceptor'ının hata toast'ını tetiklediğini kabul ediyor.
+ * axios-instance kaldırıldı). Test kullanıcısı, migration 0002'nin
+ * seed'lediği GERÇEK admin satırıdır (`kullanicilar.id=1`, gerçek DB
+ * satırı var — synthetic break-glass admin DEĞİL): `/auth/me` gerçek veri
+ * döner (email/username "admin", ad_soyad "Sistem Yonetici", rol
+ * "super_admin"). Bu kullanıcı için `PATCH /users/me` gerçek DB satırını
+ * günceller ve 200 döner (curl ile kanıtlandı) — synthetic admin'in aksine
+ * burada 404 senaryosu yok.
  *
  * Şifre değiştirme formu, validasyon, initials, şifre gücü, göster/gizle
  * toggle'ı — hepsi saf component/react-hook-form mantığı, backend'e ihtiyaç
@@ -67,10 +65,20 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
     sessionStorage.setItem("access_token", await loginAsAdmin());
   });
 
+  // NOTE on the explicit `it(..., N)` third-arg timeouts below: renderReady()
+  // internally waitFor()s up to 15s for the real `/auth/me` + `/users/me`
+  // round-trip to resolve. vitest's *test*-level default timeout (5s here —
+  // not overridden by config, which is out of scope for this slice) is
+  // independent of an inner waitFor's own timeout budget; if the real
+  // backend takes longer than 5s (observed under concurrent load when this
+  // file runs alongside the other real-backend suites in this slice,
+  // sharing one single-worker backend container), the enclosing test aborts
+  // with "Test timed out in 5000ms" before renderReady's 15s budget is up.
+  // Every test that calls renderReady() needs a matching explicit timeout.
   async function renderReady() {
     render(<ProfilePage />);
     await waitFor(
-      () => expect(screen.getByText("Super Administrator")).toBeInTheDocument(),
+      () => expect(screen.getByText("Sistem Yonetici")).toBeInTheDocument(),
       { timeout: 15000 },
     );
   }
@@ -78,30 +86,28 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
   it("renders page heading", async () => {
     await renderReady();
     expect(screen.getByText("Profilim")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("renders user name and email in identity hero", async () => {
     await renderReady();
-    expect(screen.getByText("Super Administrator")).toBeInTheDocument();
-    expect(
-      screen.getAllByText("admin@lojinext.internal").length,
-    ).toBeGreaterThanOrEqual(1);
-  });
+    expect(screen.getByText("Sistem Yonetici")).toBeInTheDocument();
+    expect(screen.getAllByText("admin").length).toBeGreaterThanOrEqual(1);
+  }, 20000);
 
   it("renders role badge", async () => {
     await renderReady();
     expect(screen.getByText("Süper Admin")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("renders user initials in avatar", async () => {
     await renderReady();
-    expect(screen.getByText("SA")).toBeInTheDocument();
-  });
+    expect(screen.getByText("SY")).toBeInTheDocument();
+  }, 20000);
 
   it("renders push notification toggle", async () => {
     await renderReady();
     expect(screen.getByTestId("push-notification-toggle")).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("renders profile info form card", async () => {
     await renderReady();
@@ -109,42 +115,42 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
     expect(
       screen.getByText("Ad soyad bilginizi güncelleyin"),
     ).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("profile form has email (readonly) and ad_soyad input", async () => {
     await renderReady();
-    const emailInput = screen.getByDisplayValue("admin@lojinext.internal");
+    const emailInput = screen.getByDisplayValue("admin");
     expect(emailInput).toBeInTheDocument();
     expect(emailInput).toHaveAttribute("readOnly");
 
-    const adSoyadInput = screen.getByDisplayValue("Super Administrator");
+    const adSoyadInput = screen.getByDisplayValue("Sistem Yonetici");
     expect(adSoyadInput).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("renders change password form card", async () => {
     await renderReady();
     expect(screen.getByText("Şifre Değiştir")).toBeInTheDocument();
     expect(screen.getByText("Şifremi Güncelle")).toBeInTheDocument();
-  });
+  }, 20000);
 
-  it("profile form save button hits real PATCH /users/me (synthetic admin → 404, no crash)", async () => {
+  it("profile form save button hits real PATCH /users/me (real admin row, 200, no crash)", async () => {
     await renderReady();
     const saveBtn = screen.getByText("Kaydet");
     fireEvent.click(saveBtn);
-    // Synthetic super-admin (id<=0) has no row in `kullanicilar` — backend
-    // returns 404, axiosInstance interceptor shows an error toast, and the
-    // page must not crash or hang on a stale "loading" state.
+    // Real admin (id=1) has a row in `kullanicilar` — backend returns 200
+    // and updates the row (idempotent: value unchanged), the page must
+    // not crash or hang on a stale "loading" state.
     await waitFor(
       () => {
         expect(screen.getByText("Kaydet")).toBeInTheDocument();
       },
       { timeout: 10000 },
     );
-  }, 15000);
+  }, 30000);
 
   it("shows validation error when ad_soyad is too short", async () => {
     await renderReady();
-    const adSoyadInput = screen.getByDisplayValue("Super Administrator");
+    const adSoyadInput = screen.getByDisplayValue("Sistem Yonetici");
     fireEvent.change(adSoyadInput, { target: { value: "X" } });
     fireEvent.click(screen.getByText("Kaydet"));
     await waitFor(() => {
@@ -152,7 +158,7 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
         screen.getByText("İsim en az 2 karakter olmalıdır."),
       ).toBeInTheDocument();
     });
-  });
+  }, 20000);
 
   it("password toggle button toggles visibility", async () => {
     await renderReady();
@@ -165,7 +171,7 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
       name: /Şifreyi gizle/i,
     });
     expect(hideBtns.length).toBeGreaterThanOrEqual(1);
-  });
+  }, 20000);
 
   it("shows password strength bar when new password is typed", async () => {
     await renderReady();
@@ -178,5 +184,5 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
     await waitFor(() => {
       expect(screen.getByText(/Şifre gücü:/)).toBeInTheDocument();
     });
-  });
+  }, 20000);
 });

@@ -48,6 +48,15 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
   let token = "";
   let roleId = 0;
   const suffix = Date.now();
+  // Hermetic-under-dirty-DB: the display name must be as unique as the
+  // email is (`kull-test-${suffix}@...`). A previous version of this file
+  // hardcoded "Test Kullanici" — fine the first time, but a leftover row
+  // from any earlier/interrupted run (e.g. a beforeAll hook timeout that
+  // skips afterAll cleanup) leaves a second real DB row with that same
+  // ad_soyad, and `getByText("Test Kullanici")` then throws "Found
+  // multiple elements" (reproduced empirically: a stale row from an
+  // earlier interrupted run collided with this run's own row).
+  const testUserName = `Test Kullanici ${suffix}`;
   const createdUserIds: number[] = [];
 
   beforeAll(async () => {
@@ -110,7 +119,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
       target: { value: email },
     });
     fireEvent.change(screen.getByPlaceholderText("John Smith"), {
-      target: { value: "Test Kullanici" },
+      target: { value: testUserName },
     });
     fireEvent.change(screen.getByPlaceholderText(/8/), {
       target: { value: "TestPass123!" },
@@ -147,28 +156,38 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
     const created = resp.data.find((u: { email: string }) => u.email === email);
     expect(created).toBeTruthy();
     createdUserIds.push(created.id);
-  }, 15000);
+  }, 20000);
 
   describe("with the seeded real user", () => {
     it("shows the user in the list with full name and active status", async () => {
       sessionStorage.setItem("access_token", token);
       render(<KullanicilarPage />);
+      // NOTE: the waitFor timeout below (10s) previously exceeded
+      // vitest's default *test* timeout (5s, not overridden here) — under
+      // normal single-file load the real GET /admin/users/ round-trip
+      // was fast enough that this never mattered, but running this file
+      // alongside the other real-backend suites in this slice
+      // concurrently (shared single-worker backend container) can push
+      // it past 5s, and the enclosing test aborted with "Test timed out
+      // in 5000ms" before the waitFor's own budget was up. Explicit test
+      // timeout (last arg) now matches the waitFor budget.
       await waitFor(
         () => {
-          expect(screen.getByText("Test Kullanici")).toBeInTheDocument();
+          expect(screen.getByText(testUserName)).toBeInTheDocument();
         },
         { timeout: 10000 },
       );
       expect(
         screen.getAllByText(adminUsersText.statuses.active).length,
       ).toBeGreaterThanOrEqual(1);
-    });
+    }, 15000);
 
     it("opens edit modal in 'edit' mode when edit button clicked", async () => {
       sessionStorage.setItem("access_token", token);
       render(<KullanicilarPage />);
+      // See the timeout-mismatch note in the previous test.
       await waitFor(
-        () => expect(screen.getByText("Test Kullanici")).toBeInTheDocument(),
+        () => expect(screen.getByText(testUserName)).toBeInTheDocument(),
         { timeout: 10000 },
       );
       const editBtns = screen.getAllByRole("button", {
@@ -183,7 +202,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
         "user@company.com",
       ) as HTMLInputElement;
       expect(emailInput.value).toContain(`kull-test-${suffix}`);
-    });
+    }, 15000);
 
     it("opens delete confirmation and calls the real DELETE endpoint", async () => {
       sessionStorage.setItem("access_token", token);
@@ -232,6 +251,9 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
       expect(
         resp.data.find((u: { id: number }) => u.id === disposableId),
       ).toBeUndefined();
-    }, 15000);
+      // 30s (up from 15s): two sequential 10s waitFor budgets plus setup
+      // calls can exceed 15s under the concurrent-file load described in
+      // the "with the seeded real user" tests above.
+    }, 30000);
   });
 });

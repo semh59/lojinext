@@ -17,11 +17,36 @@
  * backend'e karşı pratik olarak tetiklenemez/kontrol edilemez (tek bir
  * gerçek super_admin kullanıcısı var, farklı rollerle kullanıcı oluşturmak
  * bu testin kapsamını aşar).
+ *
+ * KÖK NEDEN (2026-07-05 teşhis): "admin" kullanıcı adı backend'in
+ * SUPER_ADMIN_USERNAME (default "admin") ile eşleşiyor — `POST /auth/token`
+ * bu durumda genel 5 req/s bucket'ına EK olarak çok daha sıkı, IP-scoped
+ * bir bucket'tan da geçiyor: `super_admin_login:{ip}`, 3 deneme / 300 sn
+ * (app/api/v1/endpoints/auth.py, brute-force koruması — kasıtlı güvenlik
+ * davranışı, bug değil). Bu dosyanın ESKİ hali 3 test içinde 3 AYRI gerçek
+ * `fetch(/auth/token)` çağrısı yapıyordu; aynı 5 dakikalık pencerede aynı
+ * IP'den çalışan başka bir real-backend test dosyası (ör. ProfilePage,
+ * KullanicilarPage — ikisi de `loginAsAdmin()` üzerinden aynı bucket'ı
+ * paylaşıyor) veya art arda koşumlar bucket'ı tüketiyor: token isteği
+ * sessizce 429 ile reddediliyor, `authApi.login`/raw fetch bunu generic
+ * "Login failed" Error'a çeviriyor, ve "is-authenticated" hep "no" kalıyor.
+ * Kanıt: `curl` ile aynı endpoint'e ardışık istek → dördüncüsü
+ * `{"error":{"code":"HTTP_429",...}}` döndü.
+ * Fix (test-tarafı): sadece "renders...login UI flow" senaryosu (test 1,
+ * `auth.login()` üzerinden GERÇEK login akışını test ediyor) taze bir
+ * `POST /auth/token` tüketir; session-restore ve logout senaryoları (test
+ * 2 ve 3) artık `real-backend.ts`'teki disk-cache'li `loginAsAdmin()`'i
+ * kullanıyor — bu ikisi zaten "var olan bir token ile ne olur" davranışını
+ * test ediyor, login endpoint'ini yeniden tüketmelerine gerek yok. Bu,
+ * projede zaten kurulu olan bucket-tasarrufu deseniyle (real-backend.ts
+ * TOKEN_CACHE_FILE) tutarlı. Prod kodda değişiklik YOK.
  */
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import {
   REAL_BACKEND_URL,
   isRealBackendReachable,
+  loginAsAdmin,
+  loginFreshUncached,
 } from "../../test/real-backend";
 
 const backendUp = await isRealBackendReachable();
@@ -55,7 +80,15 @@ describe.skipIf(!backendUp)("AuthContext (real backend)", () => {
           {auth.isLoading ? "loading" : "loaded"}
         </div>
         <button
-          onClick={() => auth.login(ADMIN_USER, ADMIN_PASSWORD)}
+          onClick={() => {
+            // Mirrors the real LoginPage's onSubmit (try/catch around
+            // `login()`, see src/pages/LoginPage.tsx) — without this, a
+            // rejected login (e.g. transient 429 from the strict
+            // super-admin rate limiter) surfaces as an "Unhandled
+            // Rejection" that crashes the whole vitest run instead of
+            // failing just this one test's assertions.
+            auth.login(ADMIN_USER, ADMIN_PASSWORD).catch(() => {});
+          }}
           data-testid="login-btn"
         >
           Login
@@ -106,17 +139,11 @@ describe.skipIf(!backendUp)("AuthContext (real backend)", () => {
     ({ render, screen, waitFor } = await import("../../test/test-utils"));
     ({ AuthProvider, useAuth } = await import("../AuthContext"));
 
-    // Real login round-trip via fetch to get a fresh valid token, then
-    // simulate the "already logged in on reload" scenario.
-    const params = new URLSearchParams();
-    params.set("username", ADMIN_USER);
-    params.set("password", ADMIN_PASSWORD);
-    const resp = await fetch(`${REAL_BACKEND_URL}/auth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params,
-    });
-    const { access_token: token } = await resp.json();
+    // Reuse a cached real token (see file-header root-cause note) rather
+    // than hitting the strict super-admin login bucket again — this test
+    // exercises "already logged in on reload" (/auth/me restore), not the
+    // login endpoint itself.
+    const token = await loginAsAdmin();
     sessionStorage.setItem("access_token", token);
 
     render(
@@ -138,15 +165,15 @@ describe.skipIf(!backendUp)("AuthContext (real backend)", () => {
     ({ render, screen, waitFor } = await import("../../test/test-utils"));
     ({ AuthProvider, useAuth } = await import("../AuthContext"));
 
-    const params = new URLSearchParams();
-    params.set("username", ADMIN_USER);
-    params.set("password", ADMIN_PASSWORD);
-    const resp = await fetch(`${REAL_BACKEND_URL}/auth/token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: params,
-    });
-    const { access_token: token } = await resp.json();
+    // Deliberately NOT loginAsAdmin() here: /auth/logout blacklists the
+    // token server-side (see app/api/v1/endpoints/auth.py). loginAsAdmin()
+    // returns a token from a disk cache SHARED with every other
+    // real-backend test file in this slice — blacklisting a shared token
+    // mid-run breaks whichever sibling file is concurrently relying on it
+    // (observed empirically: this test 401-ing another file's requests
+    // when all 4 files in this slice ran together). A dedicated,
+    // never-cached token avoids that entirely.
+    const token = await loginFreshUncached();
     sessionStorage.setItem("access_token", token);
 
     render(

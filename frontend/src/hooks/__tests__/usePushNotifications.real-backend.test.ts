@@ -7,15 +7,20 @@
  * GET /push/vapid-public-key ve POST /push/subscribe çağrıları yapılır.
  *
  * Bu test dosyası ayrıca 0-mock epiği sırasında bulunan gerçek bir backend
- * hatasını doğrular: sentetik (break-glass) süper admin hesabı (id<=0,
+ * hatasını doğrulamıştı: sentetik (break-glass) süper admin hesabı (id<=0,
  * kullanicilar tablosunda gerçek satırı yok) POST /push/subscribe çağırınca
  * eskiden yakalanmamış bir FK-violation 500 dönüyordu
- * (push_subscriptions.user_id_fkey). Düzeltme: app/api/v1/endpoints/push.py
- * artık preferences.py'deki aynı desenle erken bir 403 döndürüyor. Bu test
- * ortamındaki TEK gerçek hesap bu sentetik süper admin olduğu için, hook'un
- * gerçek 403'ü doğru şekilde error state'ine yansıttığını doğruluyoruz —
- * "gerçek başarılı subscribe" senaryosu için farklı-rollü gerçek bir
- * kullanıcı hesabı bu test altyapısında mevcut değil.
+ * (push_subscriptions.user_id_fkey), app/api/v1/endpoints/push.py bunun
+ * için erken bir 403 döner hale getirilmişti.
+ *
+ * 2026-07-05 GÜNCELLEME: bu ortamda artık synthetic break-glass admin
+ * DEĞİL, migration 0002'nin seed'lediği GERÇEK admin satırı (id=1,
+ * `kullanicilar` tablosunda gerçek satırı var — ProfilePage.test.tsx ile
+ * aynı karar) kullanılıyor. Bu kullanıcı için 403 senaryosu artık
+ * tetiklenmiyor — `POST /push/subscribe` gerçek 201 döner (curl ile
+ * kanıtlandı: `{"id":1,"endpoint":...}`). Bu yüzden bu test artık FK-
+ * violation regresyonunu DEĞİL, gerçek admin için başarılı subscribe
+ * akışını doğruluyor.
  *
  * Orijinal mock'lu dosya (usePushNotifications.test.ts) korunuyor: happy-path
  * subscribe başarı senaryosu, permission-denied, push_enabled=false ve
@@ -125,7 +130,7 @@ describe.skipIf(!backendUp)("usePushNotifications (real backend)", () => {
     expect(public_key.length).toBeGreaterThan(0);
   }, 15000);
 
-  it("enable() surfaces the real backend's clean 403 for the synthetic admin account (regression for the FK-violation-500 bug)", async () => {
+  it("enable() completes a real subscribe round-trip for the real admin account", async () => {
     sessionStorage.setItem("access_token", authToken);
     const browser = setupBrowserMocks({
       permission: "default",
@@ -142,19 +147,19 @@ describe.skipIf(!backendUp)("usePushNotifications (real backend)", () => {
     );
 
     const { act } = await import("@testing-library/react");
-    let ok = true;
+    let ok = false;
     await act(async () => {
       ok = await result.current.enable();
     });
 
-    expect(ok).toBe(false);
     expect(browser.requestPermission).toHaveBeenCalled();
     await waitFor(
       () => {
-        expect(result.current.error).toContain("Sistem kullanıcısı");
+        expect(result.current.subscribed).toBe(true);
       },
       { timeout: 10000 },
     );
-    expect(result.current.subscribed).toBe(false);
+    expect(ok).toBe(true);
+    expect(result.current.error).toBeNull();
   }, 15000);
 });

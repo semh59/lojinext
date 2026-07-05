@@ -76,7 +76,11 @@ jobs:
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
       OPENROUTESERVICE_API_KEY: dummy_test_key
       OPENROUTE_API_KEY: dummy_test_key
-      CORS_ORIGINS: http://localhost
+      # localhost:3000 ŞART: vitest real-backend testleri jsdom'da koşuyor ve
+      # jsdom origin'i http://localhost:3000 — CORS'ta yoksa axios "Cross
+      # origin forbidden" ile düşer, isRealBackendReachable() false döner ve
+      # 80+ real-backend suite'i SESSİZCE skip olur (2026-07-04 bulgusu).
+      CORS_ORIGINS: http://localhost,http://localhost:3000
       REDIS_URL: redis://localhost:6379/0
       CELERY_BROKER_URL: redis://localhost:6379/0
       CELERY_RESULT_BACKEND: redis://localhost:6379/1
@@ -458,7 +462,52 @@ jobs:
         # nihai kalite gate'i değişmeden Combined %92'de kalıyor.
         run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
 
+      # ---- 0-mock Faz 2: vitest real-backend testleri gerçek backend ister ----
+      # (docker-github plan Bölüm 3'ün CI ayağı.) Sıra: taze DB (alembic ile,
+      # migration 0002 gerçek admin'i seed eder — testler seed'li admin'e
+      # hizalı) → api-stub → uvicorn backend. Aynı backend aşağıda OpenAPI
+      # drift + Playwright E2E için de kullanılır (eski ayrı start adımı
+      # kaldırıldı).
+      - name: Create vitest DB + migrate (seeds real admin)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'CREATE DATABASE lojinext_vitest'
+          DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest alembic upgrade head
+
+      - name: Start api-stub (deterministic external-API canned responses)
+        run: |
+          pip install -q -r api_stub/requirements.txt
+          (cd api_stub && nohup uvicorn main:app --host 127.0.0.1 --port 9000 > /tmp/api_stub.log 2>&1 &)
+          for i in $(seq 1 15); do
+            curl -sf http://127.0.0.1:9000/health && echo "api-stub ready" && break
+            echo "Waiting for api-stub... ($i/15)" && sleep 2
+          done
+
+      - name: Start backend (vitest real-backend + OpenAPI drift + E2E)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          MAPBOX_API_BASE_URL: http://127.0.0.1:9000/directions/v5/mapbox/driving-traffic
+          OPENROUTE_API_BASE_URL: http://127.0.0.1:9000/v2
+          OPEN_METEO_API_BASE_URL: http://127.0.0.1:9000/v1/elevation
+          TELEGRAM_API_BASE_URL: http://127.0.0.1:9000
+          GROQ_API_BASE_URL: http://127.0.0.1:9000/openai/v1
+          # subscribe/vapid-public-key akışı sadece non-empty kontrol eder;
+          # gerçek imza yalnız push GÖNDERİMİNDE gerekir — dummy yeterli.
+          VAPID_PUBLIC_KEY: ci-test-vapid-public-key
+          VAPID_PRIVATE_KEY: ci-test-vapid-private-key
+          VAPID_SUBJECT: "mailto:ci@lojinext.test"
+        run: |
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          echo "UVICORN_PID=$!" >> $GITHUB_ENV
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/health/liveness && echo "Backend ready" && break
+            echo "Waiting for backend... ($i/30)" && sleep 2
+          done
+
       - name: Frontend — Unit tests with coverage
+        env:
+          REAL_BACKEND_URL: http://127.0.0.1:8000
+          REAL_BACKEND_ADMIN_USER: admin
+          REAL_BACKEND_ADMIN_PASSWORD: test-admin-password
         run: cd frontend && npm run test:cov
 
       - name: Upload frontend coverage report
@@ -531,15 +580,6 @@ jobs:
         # tsconfig (tests included) so test-file type drift is caught (was 68
         # silent errors before this gate).
         run: npm --prefix frontend run type-check
-
-      - name: Start backend for E2E tests
-        run: |
-          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
-          echo "UVICORN_PID=$!" >> $GITHUB_ENV
-          for i in $(seq 1 30); do
-            curl -sf http://127.0.0.1:8000/health/liveness && echo "Backend ready" && break
-            echo "Waiting for backend... ($i/30)" && sleep 2
-          done
 
       - name: OpenAPI schema drift check
         # Dumps openapi.json from the running backend and verifies it matches

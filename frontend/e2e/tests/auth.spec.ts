@@ -23,8 +23,13 @@ test.describe('Auth akışları', () => {
         await page.getByPlaceholder(/e-posta/i).fill('yanlis@lojinext.com')
         await page.getByPlaceholder('••••••••').fill('yanlis_sifre')
         await page.getByRole('button', { name: /sisteme giriş/i }).click()
+        // .first(): hata mesajı hem toast hem inline form hatası olarak
+        // AYNI ANDA görünebiliyor -> strict-mode "resolved to 2 elements"
+        // ihlali. (2026-07-07: eski 3/300s login bucket'ı altında yanlış
+        // şifre çoğu koşuda 429 mesajı üretiyordu ve tek elemandı; bucket
+        // CI'da yükselince gerçek 401 yolu açıldı ve çift render göründü.)
         await expect(
-            page.getByText(/hatalı|geçersiz|kullanıcı adı|giriş yapılamadı/i)
+            page.getByText(/hatalı|geçersiz|kullanıcı adı|giriş yapılamadı/i).first()
         ).toBeVisible({ timeout: 8_000 })
     })
 

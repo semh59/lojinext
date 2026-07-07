@@ -57,7 +57,12 @@ describe.skipIf(!backendUp)("Coaching Service (real backend)", () => {
   }, 15000);
 
   it("getInsights rejects for a non-existent driver", async () => {
-    await expect(coachingService.getInsights(999999999)).rejects.toThrow();
+    // setup.ts'teki global axios sanitizer rejection'ı "HTTP <status>"
+    // mesajlı, serileştirilebilir düz Error'a çevirir (ham AxiosError
+    // vitest fork-RPC'sinde clone'lanamıyor — bkz setup.ts açıklaması).
+    await expect(coachingService.getInsights(999999999)).rejects.toThrow(
+      "HTTP",
+    );
   }, 15000);
 
   it("getEffectiveness returns real coaching impact metrics", async () => {

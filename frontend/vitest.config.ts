@@ -19,6 +19,13 @@ export default defineConfig({
         setupFiles: resolve(currentDir, 'src/test/setup.ts'),
         css: true,
         pool: 'forks',
+        // Real-backend (0-mock Faz 2) suit'leri gerçek HTTP + gerçek DB'ye
+        // gider; tam-suite koşumunda backend yük altında yavaşlar ve 5s'lik
+        // vitest varsayılanı yük-bağımlı sahte timeout'lar üretir (2026-07-05
+        // ve -07 tam koşumlarında her seferinde FARKLI dosyalar düştü).
+        // Geçen testin süresi değişmez; sadece failure tespiti gecikir.
+        testTimeout: 20000,
+        hookTimeout: 30000,
         include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
         exclude: ['e2e/**', 'node_modules/**'],
         coverage: {

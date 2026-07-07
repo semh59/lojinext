@@ -85,8 +85,24 @@ describe.skipIf(!backendUp)("SistemSaglikPage (real backend)", () => {
     expect(saglikliEls.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("shows circuit breaker section with empty state (real backend: none currently open)", async () => {
+  it("shows circuit breaker section mirroring real backend state (empty or rows)", async () => {
     sessionStorage.setItem("access_token", token);
+    // Breaker durumu backend PROCESS'inin yaşam öyküsüne bağlı: daha önce
+    // koşan real-backend dosyaları bir dış-API çağrısını patlatıp breaker
+    // açtırabilir (2026-07-05 tam-koşumda canlı yakalandı — "boş durum"
+    // varsayımı kırıldı). Hermetik sürüm: backend'in o anki gerçeğini
+    // sorgula ve UI'ın AYNI gerçeği yansıttığını assert et.
+    const resp = await fetch(
+      `${REAL_BACKEND_URL.replace(/\/$/, "")}/admin/health/`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    const health = (await resp.json()) as {
+      circuit_breakers?: unknown[];
+    };
+    const breakerCount = Array.isArray(health.circuit_breakers)
+      ? health.circuit_breakers.length
+      : 0;
+
     render(<SistemSaglikPage />);
     await waitFor(
       () => {
@@ -96,9 +112,20 @@ describe.skipIf(!backendUp)("SistemSaglikPage (real backend)", () => {
       },
       { timeout: 10000 },
     );
-    expect(
-      screen.getByText(adminHealthText.circuitBreakers.empty),
-    ).toBeInTheDocument();
+    if (breakerCount === 0) {
+      expect(
+        screen.getByText(adminHealthText.circuitBreakers.empty),
+      ).toBeInTheDocument();
+    } else {
+      await waitFor(
+        () => {
+          expect(
+            screen.queryByText(adminHealthText.circuitBreakers.empty),
+          ).not.toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+    }
   });
 
   it("refresh button is present on the health tab", () => {

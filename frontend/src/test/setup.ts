@@ -1,4 +1,12 @@
 import "@testing-library/jest-dom";
+import { configure } from "@testing-library/react";
+
+// waitFor/findBy varsayılanı 1s — real-backend (0-mock Faz 2) suit'lerinde
+// tam-suite yükü altında gerçek HTTP cevapları 1s'i rahat aşıyor ve
+// yük-bağımlı sahte timeout üretiyordu (örn. KullanicilarPage rol-option
+// bekleyişi, 2026-07-05 tam koşumu). Geçen testler yavaşlamaz; yalnız
+// failure tespiti gecikir.
+configure({ asyncUtilTimeout: 5000 });
 
 // Initialise i18next once for the whole test run so components that read
 // translations via useTranslation()/t() resolve real strings (default locale

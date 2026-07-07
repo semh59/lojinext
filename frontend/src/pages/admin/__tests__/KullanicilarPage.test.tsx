@@ -132,11 +132,16 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
     // false negative here (rol_id stayed "", submit silently no-opped on
     // the "role required" validation with the modal still open).
     const roleName = `kullanici-test-role-${suffix}`;
-    await waitFor(() => {
-      expect(
-        screen.getByRole("option", { name: roleName }),
-      ).toBeInTheDocument();
-    });
+    // 15s: default 1s'lik waitFor tam-suite paralel koşumda roles
+    // fetch'ine yetmiyordu (2026-07-05 tam-koşum kanıtı).
+    await waitFor(
+      () => {
+        expect(
+          screen.getByRole("option", { name: roleName }),
+        ).toBeInTheDocument();
+      },
+      { timeout: 15000 },
+    );
     fireEvent.change(screen.getByRole("combobox"), {
       target: { value: String(roleId) },
     });
@@ -147,7 +152,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
       () => {
         expect(screen.getByText(email)).toBeInTheDocument();
       },
-      { timeout: 10000 },
+      { timeout: 20000 },
     );
 
     const resp = await axios.get(`${REAL_BACKEND_URL}/admin/users/`, {
@@ -156,7 +161,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
     const created = resp.data.find((u: { email: string }) => u.email === email);
     expect(created).toBeTruthy();
     createdUserIds.push(created.id);
-  }, 20000);
+  }, 60000);
 
   describe("with the seeded real user", () => {
     it("shows the user in the list with full name and active status", async () => {
@@ -175,12 +180,12 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
         () => {
           expect(screen.getByText(testUserName)).toBeInTheDocument();
         },
-        { timeout: 10000 },
+        { timeout: 20000 },
       );
       expect(
         screen.getAllByText(adminUsersText.statuses.active).length,
       ).toBeGreaterThanOrEqual(1);
-    }, 15000);
+    }, 45000);
 
     it("opens edit modal in 'edit' mode when edit button clicked", async () => {
       sessionStorage.setItem("access_token", token);
@@ -188,7 +193,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
       // See the timeout-mismatch note in the previous test.
       await waitFor(
         () => expect(screen.getByText(testUserName)).toBeInTheDocument(),
-        { timeout: 10000 },
+        { timeout: 20000 },
       );
       const editBtns = screen.getAllByRole("button", {
         name: adminUsersText.actions.edit,
@@ -202,7 +207,7 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
         "user@company.com",
       ) as HTMLInputElement;
       expect(emailInput.value).toContain(`kull-test-${suffix}`);
-    }, 15000);
+    }, 45000);
 
     it("opens delete confirmation and calls the real DELETE endpoint", async () => {
       sessionStorage.setItem("access_token", token);
@@ -211,11 +216,16 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
       // first) keep seeing the original seeded user.
       const headers = { Authorization: `Bearer ${token}` };
       const disposableEmail = `kull-test-disposable-${suffix}@example.com`;
+      // Benzersiz ad ŞART: sabit "Disposable User" kirli DB'de önceki
+      // (yarıda kesilmiş) koşumların artığıyla çakışıyor — silinen taze
+      // satıra rağmen eski artık DOM'da kalıp not.toBeInTheDocument()
+      // assertion'ını deterministik düşürüyordu (2026-07-07 seri koşum).
+      const disposableName = `Disposable User ${suffix}`;
       const created = await axios.post(
         `${REAL_BACKEND_URL}/admin/users/`,
         {
           email: disposableEmail,
-          ad_soyad: "Disposable User",
+          ad_soyad: disposableName,
           rol_id: roleId,
           sifre: "TestPass123!",
         },
@@ -225,10 +235,10 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
 
       render(<KullanicilarPage />);
       await waitFor(
-        () => expect(screen.getByText("Disposable User")).toBeInTheDocument(),
-        { timeout: 10000 },
+        () => expect(screen.getByText(disposableName)).toBeInTheDocument(),
+        { timeout: 20000 },
       );
-      const row = screen.getByText("Disposable User").closest("tr")!;
+      const row = screen.getByText(disposableName).closest("tr")!;
       const deleteBtn = row.querySelector(
         'button[aria-label="Sil"]',
       ) as HTMLElement;
@@ -240,9 +250,9 @@ describe.skipIf(!backendUp)("KullanicilarPage (real backend)", () => {
 
       await waitFor(
         () => {
-          expect(screen.queryByText("Disposable User")).not.toBeInTheDocument();
+          expect(screen.queryByText(disposableName)).not.toBeInTheDocument();
         },
-        { timeout: 10000 },
+        { timeout: 20000 },
       );
 
       const resp = await axios.get(`${REAL_BACKEND_URL}/admin/users/`, {

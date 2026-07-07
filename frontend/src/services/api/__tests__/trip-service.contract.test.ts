@@ -29,8 +29,13 @@ describe.skipIf(!backendUp)("tripService contract (real backend)", () => {
   let seferId: number;
 
   beforeAll(async () => {
-    token = await loginAsAdmin();
+    // Sıra ÖNEMLİ: stubEnv, loginAsAdmin'dan ÖNCE gelmeli — loginAsAdmin
+    // (lazy sanitizer kurulumu için) axios-instance'ı import eder ve
+    // axios-instance baseURL'i modül yüklenirken import.meta.env'den okur;
+    // stub'dan önce yüklenirse tüm istekler jsdom origin'ine gidip network
+    // hatasıyla düşer (2026-07-07 seri koşumda canlı yakalandı).
     vi.stubEnv("VITE_API_URL", REAL_BACKEND_ORIGIN);
+    token = await loginAsAdmin();
     sessionStorage.setItem("access_token", token);
     ({ tripService } = await import("../../../api/trips"));
 

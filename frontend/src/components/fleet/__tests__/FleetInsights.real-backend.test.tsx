@@ -140,7 +140,10 @@ describe.skipIf(!backendUp)(
         const snap = await fetchRealFleetSnapshot();
         const view = render(<FleetInsights activeTab="vehicles" />);
         try {
-          await waitFor(() => assertFn(snap), { timeout: 5000 });
+          // 10s/deneme: tam-suite paralel koşumda backend yavaşlıyor
+          // (209 dosya aynı backend'i dövüyor) — 5s'lik pencere 4 denemede
+          // de dolup taşıyordu (2026-07-05 tam-koşum kanıtı).
+          await waitFor(() => assertFn(snap), { timeout: 10000 });
           return;
         } catch (err) {
           view.unmount();
@@ -155,7 +158,7 @@ describe.skipIf(!backendUp)(
         expect(getCardValue("Toplam Araç")).toBe(String(fleetStats.total));
         expect(getCardValue("Aktif Araç")).toBe(String(fleetStats.active));
       });
-    }, 30000);
+    }, 90000);
 
     it("muayene uyarı kartı: overdue + expiring toplamını ve sefer sayısını gösterir", async () => {
       sessionStorage.setItem("access_token", authToken);
@@ -167,7 +170,7 @@ describe.skipIf(!backendUp)(
         );
         expect(getCardValue("Toplam Sefer")).toBe(String(toplamSefer));
       });
-    }, 30000);
+    }, 90000);
 
     it("muayene durumuna göre doğru renk kenarlığı gösterir (backend gerçek verisine göre)", async () => {
       sessionStorage.setItem("access_token", authToken);

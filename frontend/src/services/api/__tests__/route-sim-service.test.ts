@@ -53,8 +53,11 @@ describe.skipIf(!backendUp)("route-sim-service (real backend)", () => {
   }, 20000); // Real Mapbox+Open-Meteo+segment-simulation pipeline is slower than vitest's 5s default.
 
   it("simulateRoute surfaces a real 422 for missing coords/lokasyon_id", async () => {
+    // setup.ts'teki global axios sanitizer rejection'ı serileştirilebilir
+    // "HTTP 422 <url>" mesajlı düz Error'a çevirir (ham AxiosError vitest
+    // fork-RPC'sinde clone'lanamıyor ve coverage'ı yutuyordu — 2026-07-05/07).
     await expect(
       simulateRoute({ ton: 15, arac_yasi: 5, segment_length_m: 500 }),
-    ).rejects.toThrow();
+    ).rejects.toThrow("HTTP 422");
   });
 });

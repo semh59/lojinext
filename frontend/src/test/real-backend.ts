@@ -126,9 +126,14 @@ async function loginRaw(writeCache: boolean): Promise<string> {
       return token;
     } catch (err) {
       lastErr = err;
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
-      if (status !== 429 || attempt === MAX_ATTEMPTS) throw err;
+      // setup.ts'in sanitizer'ı aktifken hata düz Error + `.status`
+      // özelliğidir; sanitizer'sız ortamda (tek dosya koşumu vb.) ham
+      // AxiosError gelir — ikisini de destekle.
+      const status =
+        (err as { status?: number })?.status ??
+        (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 429 || attempt === MAX_ATTEMPTS)
+        throw toSerializableError(err);
 
       if (writeCache) {
         // Another worker may have just won the race and written the cache —
@@ -159,7 +164,87 @@ async function loginRaw(writeCache: boolean): Promise<string> {
       }
     }
   }
-  throw lastErr;
+  throw toSerializableError(lastErr);
+}
+
+/**
+ * Ham AxiosError'ı vitest'in taşıyabileceği düz bir Error'a çevirir.
+ *
+ * Vitest (forks pool) test/suite hatalarını worker→main RPC'sinde v8
+ * structuredClone ile taşır; AxiosError'ın config'i fonksiyon taşır
+ * (transformRequest vb.) ve clone DataCloneError ile patlar. Bu patlama
+ * worker içinde "Unhandled Rejection" olur ve TÜM koşumun coverage
+ * raporunu sessizce yutar (2026-07-07 diag'ı: login 429'unun beforeAll'dan
+ * ham AxiosError olarak fırlaması tam bu zinciri tetikledi). beforeAll'dan
+ * veya testlerden fırlayabilecek her axios hatası bu dönüştürücüden
+ * geçmeli.
+ */
+type SerializableHttpError = Error & {
+  status?: number;
+  response?: { status?: number; data?: unknown };
+};
+
+function toSerializableError(err: unknown): SerializableHttpError {
+  const e = err as {
+    message?: string;
+    status?: number;
+    response?: { status?: number; data?: unknown };
+    config?: { url?: string };
+  };
+  if (e && typeof e === "object" && ("response" in e || "config" in e)) {
+    const status = e.status ?? e.response?.status;
+    // response.data'yı JSON-güvenli düz kopya olarak KORU: komponentler
+    // hata gövdesini (error envelope / detail) okuyup UI'da gösteriyor —
+    // tamamen atmak o davranışın real-backend testlerini kırar
+    // (ImportProgressModal 400-mesajı testi, 2026-07-07). Fonksiyon taşıyan
+    // ve clone'u patlatan alanlar config/request'tir; onlar atılır.
+    let plainData: unknown;
+    let dataStr = "";
+    try {
+      dataStr = JSON.stringify(e.response?.data)?.slice(0, 300) ?? "";
+      plainData =
+        e.response?.data === undefined
+          ? undefined
+          : JSON.parse(JSON.stringify(e.response.data));
+    } catch {
+      dataStr = "<unserializable body>";
+      plainData = undefined;
+    }
+    const plain: SerializableHttpError = new Error(
+      `HTTP ${status} ${e.config?.url ?? ""}: ${dataStr}`,
+    );
+    plain.status = status;
+    plain.response = { status, data: plainData };
+    return plain;
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
+
+// Raw `axios` default instance'ının rejection'larını da serileştirilebilir
+// yap — test dosyaları (KullanicilarPage vb.) doğrudan `axios.get/post`
+// kullanıyor ve ham AxiosError'ın vitest fork-RPC clone'unu patlatması
+// dosyadan bağımsız (bkz toSerializableError docstring'i).
+axios.interceptors.response.use(undefined, (e) =>
+  Promise.reject(toSerializableError(e)),
+);
+
+// Uygulamanın axiosInstance'ı İÇİN sanitizer'ı EAGER import ile KURMA:
+// axios-instance.ts, baseURL'i modül yüklenirken import.meta.env'den okur —
+// setup.ts'te eager import edilirse vi.stubEnv("VITE_API_URL", ...) henüz
+// çalışmadan baseURL yanlış sabitlenir ve TÜM istekler jsdom origin'ine
+// gidip AggregateError ile patlar (2026-07-07'de canlı yaşandı, 14 test
+// birden düştü). Bu yüzden kurulum lazy: loginAsAdmin/loginFreshUncached
+// (her real-backend dosyasının beforeAll'unda, stubEnv SONRASI) çağırır.
+let appAxiosSanitizerInstalled = false;
+async function installAppAxiosSanitizer(): Promise<void> {
+  if (appAxiosSanitizerInstalled) return;
+  appAxiosSanitizerInstalled = true;
+  const { default: appInstance } = await import(
+    "../services/api/axios-instance"
+  );
+  appInstance.interceptors.response.use(undefined, (e) =>
+    Promise.reject(toSerializableError(e)),
+  );
 }
 
 /** Gerçek backend'e karşı superadmin login yapar, access_token döner
@@ -189,6 +274,9 @@ async function loginRaw(writeCache: boolean): Promise<string> {
  * kullan.
  */
 export async function loginAsAdmin(): Promise<string> {
+  // stubEnv sonrası ilk fırsatta app-instance sanitizer'ını kur (lazy —
+  // bkz installAppAxiosSanitizer docstring'i).
+  await installAppAxiosSanitizer();
   if (cachedToken) return cachedToken;
 
   const fromDisk = readCachedTokenFromDisk();
@@ -206,5 +294,6 @@ export async function loginAsAdmin(): Promise<string> {
  * halde gereksiz yere kıt süper-admin login bucket'ını tüketir (bkz
  * loginAsAdmin docstring'i — 3 istek / 300 sn). */
 export async function loginFreshUncached(): Promise<string> {
+  await installAppAxiosSanitizer();
   return loginRaw(false);
 }

@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy import text
 
 from app.core.services.anomaly_detection_service import AnomalyDetectionService
+from app.core.services.anomaly_detector import AnomalyDetector
 from app.core.services.runtime_config import get_runtime_float
 from app.infrastructure.cache.redis_cache import get_redis_cache
 
@@ -71,3 +72,26 @@ async def test_detect_anomalies_behavior_follows_db_threshold(db_session):
     await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", "1.0")
     sensitive = await service.detect_anomalies(consumptions, use_iqr=False)
     assert any(r.value == 45.0 for r in sensitive)
+
+
+async def test_anomaly_detector_consumption_anomalies_follows_db_threshold(
+    db_session,
+):
+    """S2 Görev 1: AnomalyDetector.detect_consumption_anomalies eşiği artık
+    Z_THRESHOLD class-attr (import-time frozen) yerine runtime_config'ten
+    async boundary'de çözülüyor. Bu, DB satırındaki değerin gerçekten
+    kullanıldığının kanıtı — detect_consumption_anomalies confirmed
+    (z_anomalies AND iqr_anomalies) gerektirdiğinden, veri seti hem
+    IQR hem Z açısından outlier üretecek şekilde seçildi (10x30.0 + 1x45.0
+    -> IQR bounds tam 30.0'da daralır, z-skoru ~3.3).
+    """
+    detector = AnomalyDetector()
+    consumptions = [30.0] * 10 + [45.0]
+
+    await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", "99")
+    tolerant = await detector.detect_consumption_anomalies(consumptions, arac_id=1)
+    assert tolerant == []
+
+    await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", "1.0")
+    sensitive = await detector.detect_consumption_anomalies(consumptions, arac_id=1)
+    assert any(r.deger == 45.0 for r in sensitive)

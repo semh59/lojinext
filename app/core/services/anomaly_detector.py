@@ -85,7 +85,10 @@ class AnomalyDetector:
     3. İstatistiksel (Z-Score + IQR)
     """
 
-    # Eşikler (Config-driven)
+    # Eşikler (Config-driven). Z_THRESHOLD burada sadece geriye-uyum
+    # fallback'i olarak tutulur — gerçek karar yolu
+    # detect_consumption_anomalies içinde runtime_config.get_runtime_float
+    # ile async boundary'de çözülür (sistem_konfig ANOMALY_Z_THRESHOLD satırı).
     Z_THRESHOLD = settings.ANOMALY_Z_THRESHOLD  # Default: 2.5
     IQR_MULTIPLIER = 1.5
     COST_DEVIATION_THRESHOLD = 0.15  # %15
@@ -132,9 +135,15 @@ class AnomalyDetector:
     async def detect_consumption_anomalies(
         self, consumptions: List[float], arac_id: int = None, use_ml: bool = True
     ) -> List[AnomalyResult]:
-        """Tüketim verilerinde anomali tespit et (İstatistiksel)"""
+        """Tüketim verilerinde anomali tespit et (İstatistiksel). Eşik: runtime config."""
         if len(consumptions) < 5:
             return []
+
+        from app.core.services.runtime_config import get_runtime_float
+
+        z_threshold = await get_runtime_float(
+            "ANOMALY_Z_THRESHOLD", settings.ANOMALY_Z_THRESHOLD
+        )
 
         anomalies = []
         arr = np.array(consumptions)
@@ -145,7 +154,7 @@ class AnomalyDetector:
         iqr = q3 - q1
 
         z_scores = (arr - mean_val) / std_val if std_val > 0 else np.zeros_like(arr)
-        z_anomalies = np.abs(z_scores) > self.Z_THRESHOLD
+        z_anomalies = np.abs(z_scores) > z_threshold
 
         lower_bound = q1 - (self.IQR_MULTIPLIER * iqr)
         upper_bound = q3 + (self.IQR_MULTIPLIER * iqr)

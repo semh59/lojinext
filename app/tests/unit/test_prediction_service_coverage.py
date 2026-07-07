@@ -300,21 +300,28 @@ def test_build_base_factors_bos_sefer():
 
 
 def test_build_vehicle_specs_no_arac():
+    from app.config import settings
     from app.services.prediction_service import PredictionService
 
-    specs, age = PredictionService._build_vehicle_specs(None, None)
+    specs, age = PredictionService._build_vehicle_specs(
+        None, None, settings.VEHICLE_AGE_DEGRADATION_RATE
+    )
     assert age == 0
 
 
 def test_build_vehicle_specs_with_arac():
+    from app.config import settings
     from app.services.prediction_service import PredictionService
 
     arac = {"bos_agirlik_kg": 9000, "yil": date.today().year - 3}
-    specs, age = PredictionService._build_vehicle_specs(arac, None)
+    specs, age = PredictionService._build_vehicle_specs(
+        arac, None, settings.VEHICLE_AGE_DEGRADATION_RATE
+    )
     assert age == 3
 
 
 def test_build_vehicle_specs_old_vehicle_degradation():
+    from app.config import settings
     from app.services.prediction_service import PredictionService
 
     arac = {
@@ -322,17 +329,49 @@ def test_build_vehicle_specs_old_vehicle_degradation():
         "motor_verimliligi": 0.40,
         "yil": date.today().year - 10,
     }
-    specs, age = PredictionService._build_vehicle_specs(arac, None)
+    specs, age = PredictionService._build_vehicle_specs(
+        arac, None, settings.VEHICLE_AGE_DEGRADATION_RATE
+    )
     # Engine efficiency should be degraded
     assert specs.engine_efficiency < 0.40
 
 
+def test_build_vehicle_specs_old_vehicle_degradation_rate_zero():
+    """Behavior proof: age_degradation_rate=0 -> no age penalty regardless of age."""
+    from app.services.prediction_service import PredictionService
+
+    arac = {
+        "bos_agirlik_kg": 8000,
+        "motor_verimliligi": 0.40,
+        "yil": date.today().year - 20,
+    }
+    specs, age = PredictionService._build_vehicle_specs(arac, None, 0.0)
+    assert specs.engine_efficiency == pytest.approx(0.40)
+
+
+def test_build_vehicle_specs_old_vehicle_degradation_rate_high():
+    """Behavior proof: a higher DB-configured rate produces a larger penalty."""
+    from app.services.prediction_service import PredictionService
+
+    arac = {
+        "bos_agirlik_kg": 8000,
+        "motor_verimliligi": 0.40,
+        "yil": date.today().year - 10,
+    }
+    _specs_low, _ = PredictionService._build_vehicle_specs(arac, None, 0.01)
+    specs_high, _ = PredictionService._build_vehicle_specs(arac, None, 0.05)
+    assert specs_high.engine_efficiency < _specs_low.engine_efficiency
+
+
 def test_build_vehicle_specs_with_dorse():
+    from app.config import settings
     from app.services.prediction_service import PredictionService
 
     arac = {"yil": 2020}
     dorse = {"bos_agirlik_kg": 7000}
-    specs, age = PredictionService._build_vehicle_specs(arac, dorse)
+    specs, age = PredictionService._build_vehicle_specs(
+        arac, dorse, settings.VEHICLE_AGE_DEGRADATION_RATE
+    )
     assert specs.trailer_empty_weight_kg == 7000
 
 

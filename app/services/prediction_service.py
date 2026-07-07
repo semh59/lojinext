@@ -341,12 +341,17 @@ class PredictionService:
     def _build_vehicle_specs(
         arac: Optional[Dict[str, Any]],
         dorse: Optional[Dict[str, Any]],
+        age_degradation_rate: float,
     ) -> tuple[VehicleSpecs, int]:
         """
         Build VehicleSpecs and compute vehicle age from arac/dorse dicts.
 
-        Returns ``(specs, age_years)``. Applies config-driven engine-efficiency
-        degradation for vehicles older than 5 years.
+        Returns ``(specs, age_years)``. Applies engine-efficiency degradation
+        for vehicles older than 5 years, using ``age_degradation_rate``
+        (resolved once per request at the async boundary by the caller —
+        runtime_config.get_runtime_float("VEHICLE_AGE_DEGRADATION_RATE", ...)
+        — never read from settings directly here, and never fetched per
+        segment/call in this sync helper).
         """
         if not arac:
             return VehicleSpecs(), 0
@@ -369,7 +374,7 @@ class PredictionService:
         if age > 5:
             age_factor = max(
                 1.0 - settings.MAX_AGE_DEGRADATION,
-                1.0 - age * settings.VEHICLE_AGE_DEGRADATION_RATE,
+                1.0 - age * age_degradation_rate,
             )
             specs.engine_efficiency *= age_factor
         return specs, age
@@ -686,7 +691,15 @@ class PredictionService:
                 logger.warning("D.4 compute_maintenance_factor failed: %s", exc)
 
         # ── 2. Vehicle specs + age degradation ───────────────────────────────
-        specs, age = self._build_vehicle_specs(arac, dorse)
+        # Runtime config resolved ONCE per request here (async boundary) —
+        # never inside the sync _build_vehicle_specs helper, and never
+        # per-segment (there is no per-segment fan-out for this factor).
+        from app.core.services.runtime_config import get_runtime_float
+
+        age_degradation_rate = await get_runtime_float(
+            "VEHICLE_AGE_DEGRADATION_RATE", settings.VEHICLE_AGE_DEGRADATION_RATE
+        )
+        specs, age = self._build_vehicle_specs(arac, dorse, age_degradation_rate)
 
         # ── 3. Route ratios & weather ─────────────────────────────────────────
         otoyol_ratio, devlet_yolu_ratio, sehir_ici_ratio = 0.6, 0.3, 0.1

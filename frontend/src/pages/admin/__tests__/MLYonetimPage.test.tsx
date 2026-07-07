@@ -66,16 +66,30 @@ describe.skipIf(!backendUp)(
 
     it("shows the seeded real vehicle in the selector", async () => {
       sessionStorage.setItem("access_token", token);
-      render(<AdminModelManagementPage />);
-      await waitFor(
-        () => {
-          expect(
-            screen.getByText((content) => content.includes(plakaSuffix)),
-          ).toBeInTheDocument();
-        },
-        { timeout: 10000 },
-      );
-    });
+      // Retry-with-re-render (FleetInsights deseniyle aynı): sayfanın tek
+      // GET /vehicles/ isteği transient bir 500 yerse (2026-07-07 CI
+      // koşumunda yaşandı; testlerin QueryClient'ı retry:false) seçici boş
+      // kalır. Taze render yeni istek atar; KALICI bir 500 iki denemede de
+      // düşer — maskelenmez.
+      const ATTEMPTS = 2;
+      for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
+        const view = render(<AdminModelManagementPage />);
+        try {
+          await waitFor(
+            () => {
+              expect(
+                screen.getByText((content) => content.includes(plakaSuffix)),
+              ).toBeInTheDocument();
+            },
+            { timeout: 10000 },
+          );
+          return;
+        } catch (err) {
+          view.unmount();
+          if (attempt === ATTEMPTS) throw err;
+        }
+      }
+    }, 30000);
 
     it("renders training-queue table title and stat cards", async () => {
       sessionStorage.setItem("access_token", token);

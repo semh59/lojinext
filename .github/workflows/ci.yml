@@ -504,7 +504,10 @@ jobs:
           # usePushNotifications real-backend testleri düşer.
           PUSH_NOTIFICATION_ENABLED: "True"
         run: |
-          uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          # Log dosyaya: arka plan sürecinin çıktısı step bitince kaybolur —
+          # vitest sırasında oluşan 500'lerin traceback'i ancak böyle görülür
+          # (2026-07-07: GET /vehicles/ 500'ü teşhis edilemedi, tek iz buydu).
+          uvicorn app.main:app --host 127.0.0.1 --port 8000 > /tmp/uvicorn-vitest.log 2>&1 &
           echo "UVICORN_PID=$!" >> $GITHUB_ENV
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:8000/health/liveness && echo "Backend ready" && break
@@ -588,6 +591,14 @@ jobs:
 
       - name: Frontend build
         run: npm --prefix frontend run build
+
+      - name: Dump vitest backend log on failure
+        if: failure()
+        run: |
+          echo "=== uvicorn (vitest backend) son 300 satır ==="
+          tail -300 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
+          echo "=== api-stub son 50 satır ==="
+          tail -50 /tmp/api_stub.log 2>/dev/null || echo "log yok"
 
       - name: Frontend lint
         run: npm --prefix frontend run lint

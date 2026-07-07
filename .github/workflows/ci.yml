@@ -606,8 +606,15 @@ jobs:
       - name: Dump vitest backend log on failure
         if: failure()
         run: |
-          echo "=== uvicorn (vitest backend) son 300 satır ==="
-          tail -300 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
+          # ERROR/traceback satırları AYRICA: 300 satırlık kuyruk istek
+          # gürültüsüyle doluyor ve asıl exception'ı kaçırıyor (run
+          # 28879415763'te POST /trips/ 500'ünün trace'i dump'a girmedi).
+          echo "=== uvicorn ERROR/exception satırları (son 200) ==="
+          grep -nE "ERROR|CRITICAL|Traceback|Exception|raise " /tmp/uvicorn-vitest.log 2>/dev/null | tail -200 || echo "ERROR satırı yok"
+          echo "=== uvicorn ERROR bağlamı (B2/A20) ==="
+          grep -B2 -A 20 -E "\| ERROR|Traceback" /tmp/uvicorn-vitest.log 2>/dev/null | tail -300 || echo "bağlam yok"
+          echo "=== uvicorn son 150 satır ==="
+          tail -150 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
           echo "=== api-stub son 50 satır ==="
           tail -50 /tmp/api_stub.log 2>/dev/null || echo "log yok"
 

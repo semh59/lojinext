@@ -485,6 +485,10 @@ jobs:
       - name: Start backend (vitest real-backend + OpenAPI drift + E2E)
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          # Dummy anahtar ŞART: MapboxClient anahtar yoksa stub'a bile
+          # gitmeden "API Key missing" ile iptal eder → /routes/simulate 502
+          # (2026-07-07 lokal CI-simülasyonunda yakalandı). Stub auth'a bakmaz.
+          MAPBOX_API_KEY: dummy_test_key
           MAPBOX_API_BASE_URL: http://127.0.0.1:9000/directions/v5/mapbox/driving-traffic
           OPENROUTE_API_BASE_URL: http://127.0.0.1:9000/v2
           OPEN_METEO_API_BASE_URL: http://127.0.0.1:9000/v1/elevation
@@ -512,7 +516,16 @@ jobs:
           REAL_BACKEND_URL: http://127.0.0.1:8000
           REAL_BACKEND_ADMIN_USER: admin
           REAL_BACKEND_ADMIN_PASSWORD: test-admin-password
-        run: cd frontend && npm run test:cov
+        # maxForks=1 ŞART: real-backend suit'leri tek backend'i paylaşıyor —
+        # paralel fork'larda (2026-07-05/07, 6 tam koşum) her koşumda FARKLI
+        # dosyalar üç sınıf flake'le düştü: (a) süper-admin login bucket'ına
+        # thundering herd (3 istek/300s), (b) yük-bağımlı timeout'lar,
+        # (c) dosyalar arası veri yarışı (ör. PlanWizard top-N sıralamasında
+        # başka dosyanın araçları). Seri koşum üç sınıfı da kökten kapatır.
+        # singleFork DEĞİL: tek process 100+ jsdom ortamının belleğini
+        # biriktirip sessizce ölüyor (2026-07-07'de canlı yakalandı) —
+        # maxForks=1 her dosyaya taze process verir, sıra korunur.
+        run: cd frontend && npm run test:cov -- --poolOptions.forks.minForks=1 --poolOptions.forks.maxForks=1
 
       - name: Upload frontend coverage report
         if: always()

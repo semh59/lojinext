@@ -126,12 +126,3 @@ class KonfigService:
     async def get_history(self, key: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get change history as dicts."""
         return await self.repo.get_history(key, limit)
-
-    @classmethod
-    async def get_physics_params(
-        cls, session: Optional[AsyncSession] = None
-    ) -> Dict[str, Any]:
-        """Utility for physics engine to get its params quickly."""
-        service = cls(session)
-        configs = await service.get_all_by_group("physics")
-        return {c["anahtar"]: c["deger"] for c in configs}

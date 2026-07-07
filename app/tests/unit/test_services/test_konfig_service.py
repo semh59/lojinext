@@ -224,34 +224,6 @@ class TestKonfigService:
         call_kwargs = svc.repo.update_value.call_args.kwargs
         assert call_kwargs["new_value"] is True
 
-    async def test_integration_with_mock(self):
-        """get_physics_params returns {anahtar: deger} dict."""
-        svc = _make_service()
-        svc._mock_cache.get.return_value = None
-        svc.repo.get_by_group = AsyncMock(
-            return_value=[
-                {"anahtar": "drag_coeff", "deger": 0.55},
-                {"anahtar": "rolling_resistance", "deger": 0.007},
-            ]
-        )
-
-        with (
-            patch(
-                "app.core.services.konfig_service.get_admin_config_repo",
-                return_value=svc.repo,
-            ),
-            patch(
-                "app.core.services.konfig_service.get_redis_cache",
-                return_value=svc._mock_cache,
-            ),
-        ):
-            from app.core.services.konfig_service import KonfigService
-
-            result = await KonfigService.get_physics_params()
-
-        assert result["drag_coeff"] == 0.55
-        assert result["rolling_resistance"] == 0.007
-
     async def test_return_type_validation(self):
         svc = _make_service()
         history = []

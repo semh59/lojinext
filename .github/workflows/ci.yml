@@ -586,8 +586,14 @@ jobs:
           path: htmlcov/
           retention-days: 14
 
-      - name: Frontend tests
-        run: npm --prefix frontend run test -- --run
+      # "Frontend tests" adımı KALDIRILDI (2026-07-07): birebir aynı suite
+      # yukarıdaki "Frontend — Unit tests with coverage" adımında zaten
+      # koşuyor (coverage + seri kararlılıkla, yani daha güçlü haliyle).
+      # Mock çağında bu kopya zararsızdı; backend artık vitest sırasında
+      # ayakta olduğundan ikinci koşum token-cache TTL'i (10 dk) dolmuş
+      # halde + paralel fork'larla süper-admin login bucket'ına (3/300s)
+      # herd yapıp 20+ real-backend suite'ini topluca 429 ile düşürdü
+      # (run 28854607316). Gate zayıflaması değil, kopyanın kaldırılması.
 
       - name: Frontend build
         run: npm --prefix frontend run build

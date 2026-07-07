@@ -446,7 +446,13 @@ async def get_fuel_excel_template(
 @router.post(
     "/excel/upload",
     response_model=dict,
-    dependencies=[Depends(RateLimiterDependency("upload_fuel", rate=1.0, period=10.0))],
+    dependencies=[
+        # per_user=True — 2026-07-05 tespiti: global bucket çok-operatörlü
+        # üretimde bir kullanıcının upload'ı diğerini 10 sn bloklar.
+        Depends(
+            RateLimiterDependency("upload_fuel", rate=1.0, period=10.0, per_user=True)
+        )
+    ],
 )
 async def upload_yakit_excel(
     current_admin: Annotated[Kullanici, Depends(require_permissions("yakit:write"))],

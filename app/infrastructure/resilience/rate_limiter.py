@@ -4,8 +4,11 @@ External API'lere yapılan istekleri sınırlar.
 """
 
 import asyncio
+import hashlib
 from functools import wraps
 from typing import Dict, Optional
+
+from fastapi import Request
 
 from app.config import settings
 from app.infrastructure.logging.logger import get_logger
@@ -126,20 +129,52 @@ class RateLimiterRegistry:
 
 
 class RateLimiterDependency:
-    """FastAPI Dependency for Rate Limiting"""
+    """FastAPI Dependency for Rate Limiting.
+
+    ``per_user=True`` (opt-in, default False) buckets by caller identity
+    instead of sharing one global bucket for the endpoint. 2026-07-05
+    tespiti: global bucket, çok-operatörlü üretimde bir kullanıcının
+    upload'unu diğerinin isteğini bloklar. Identity DB'den çözülmez (limiter
+    ucuz kalmalı) — ``Authorization`` header varsa onun sha256[:12]'si,
+    yoksa ``request.client.host``. Bucket key: ``f"{self.key}:{ident}"``.
+    """
 
     def __init__(
         self,
         key: str,
         rate: float = settings.EXTERNAL_API_RATE_LIMIT,
         period: float = 1.0,
+        per_user: bool = False,
     ):
         self.key = key
         self.rate = rate
         self.period = period
+        self.per_user = per_user
 
-    async def __call__(self):
-        limiter = await RateLimiterRegistry.get(self.key, self.rate, self.period)
+    def _bucket_key(self, request: Optional[Request]) -> str:
+        if not self.per_user:
+            return self.key
+        ident: Optional[str] = None
+        if request is not None:
+            auth = request.headers.get("Authorization")
+            if auth:
+                ident = hashlib.sha256(auth.encode("utf-8")).hexdigest()[:12]
+            elif request.client:
+                ident = request.client.host
+        return f"{self.key}:{ident or 'anon'}"
+
+    # NOTE: annotation must be exactly ``Request`` (not ``Optional[Request]``)
+    # so FastAPI's dependency analysis special-cases it (lenient_issubclass
+    # check in fastapi.dependencies.utils.analyze_param) and injects the real
+    # request instead of trying to build a Pydantic body field from it — an
+    # Optional-wrapped annotation isn't a class and raised
+    # ``FastAPIError: Invalid args for response field!`` at route
+    # registration for every RateLimiterDependency usage, not just per_user
+    # ones. The ``= None`` default only matters for direct (non-FastAPI)
+    # calls, e.g. in unit tests.
+    async def __call__(self, request: Request = None):  # type: ignore[assignment]
+        bucket_key = self._bucket_key(request)
+        limiter = await RateLimiterRegistry.get(bucket_key, self.rate, self.period)
         await limiter.acquire()
 
 

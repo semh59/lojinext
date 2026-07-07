@@ -7,6 +7,7 @@ registry before and after every test, so tests are isolated.
 
 import pytest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 from app.infrastructure.resilience.rate_limiter import (
     AsyncRateLimiter,
@@ -15,6 +16,23 @@ from app.infrastructure.resilience.rate_limiter import (
 )
 
 pytestmark = pytest.mark.unit
+
+
+def _make_request(
+    auth_header: str | None = None, client_host: str = "127.0.0.1"
+) -> Request:
+    """Minimal Starlette Request with optional Authorization header, no mocking."""
+    headers = []
+    if auth_header is not None:
+        headers.append((b"authorization", auth_header.encode("utf-8")))
+    scope = {
+        "type": "http",
+        "headers": headers,
+        "client": (client_host, 12345),
+        "method": "POST",
+        "path": "/test",
+    }
+    return Request(scope)
 
 
 class TestAsyncRateLimiter:
@@ -173,3 +191,71 @@ class TestRateLimiterDependency:
             await dep()
 
         assert exc_info.value.status_code == 429
+
+
+class TestRateLimiterDependencyPerUser:
+    """per_user=True opt-in — bucket-per-caller-identity (2026-07-05 tespiti)."""
+
+    async def test_default_per_user_false_shares_one_bucket_across_callers(self):
+        """per_user default False: davranış AYNEN — tek global bucket."""
+        dep = RateLimiterDependency(key="per_user_default_off", rate=1.0, period=10.0)
+        req_a = _make_request("Bearer tokenA")
+        req_b = _make_request("Bearer tokenB")
+
+        await dep(req_a)  # consumes the single global token
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(req_b)  # same global bucket -> exhausted regardless of caller
+        assert exc_info.value.status_code == 429
+
+    async def test_per_user_same_token_second_request_429(self):
+        """per_user=True: aynı token'ın 2. isteği aynı bucket'ı tüketir -> 429."""
+        dep = RateLimiterDependency(
+            key="per_user_same_token", rate=1.0, period=10.0, per_user=True
+        )
+        req = _make_request("Bearer token-same")
+
+        await dep(req)  # first request for this token succeeds
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(req)  # second request, same token, same bucket -> 429
+        assert exc_info.value.status_code == 429
+
+    async def test_per_user_different_tokens_get_separate_buckets(self):
+        """per_user=True: farklı token'lar ayrı bucket -> ikisi de 200 (raise etmez)."""
+        dep = RateLimiterDependency(
+            key="per_user_diff_tokens", rate=1.0, period=10.0, per_user=True
+        )
+        req_a = _make_request("Bearer token-A")
+        req_b = _make_request("Bearer token-B")
+
+        await dep(req_a)  # bucket A: ok
+        await dep(req_b)  # bucket B: separate bucket, also ok (proof of isolation)
+
+    async def test_per_user_falls_back_to_client_host_without_auth_header(self):
+        """Authorization header yoksa request.client.host bucket kimliği olur."""
+        dep = RateLimiterDependency(
+            key="per_user_no_auth", rate=1.0, period=10.0, per_user=True
+        )
+        req = _make_request(auth_header=None, client_host="10.0.0.5")
+
+        await dep(req)  # first request from this host: ok
+
+        with pytest.raises(HTTPException) as exc_info:
+            await dep(req)  # second from same host -> same bucket -> 429
+        assert exc_info.value.status_code == 429
+
+    def test_bucket_key_ignores_request_when_per_user_false(self):
+        dep = RateLimiterDependency(key="bucket_key_test", per_user=False)
+        req = _make_request("Bearer whatever")
+        assert dep._bucket_key(req) == "bucket_key_test"
+
+    def test_bucket_key_derives_from_auth_header_when_per_user_true(self):
+        dep = RateLimiterDependency(key="bucket_key_test2", per_user=True)
+        req = _make_request("Bearer some-token")
+        key1 = dep._bucket_key(req)
+        key2 = dep._bucket_key(_make_request("Bearer some-token"))
+        key3 = dep._bucket_key(_make_request("Bearer other-token"))
+        assert key1 == key2  # same token -> same derived bucket key
+        assert key1 != key3  # different token -> different bucket key
+        assert key1.startswith("bucket_key_test2:")

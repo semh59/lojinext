@@ -668,7 +668,11 @@ async def delete_sefer(
     "/upload",
     response_model=dict,
     dependencies=[
-        Depends(RateLimiterDependency("upload_trips", rate=1.0, period=10.0))
+        # per_user=True — 2026-07-05 tespiti: global bucket çok-operatörlü
+        # üretimde bir kullanıcının upload'ı diğerini 10 sn bloklar.
+        Depends(
+            RateLimiterDependency("upload_trips", rate=1.0, period=10.0, per_user=True)
+        )
     ],
 )
 async def upload_sefer_excel(

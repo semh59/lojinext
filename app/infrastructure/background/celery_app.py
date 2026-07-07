@@ -77,6 +77,12 @@ def get_celery_app() -> Celery:
                 "task": "monitoring.db_health_check",
                 "schedule": 300.0,
             },
+            # 2026-07-07 — Günlük, son 7 gün yakıt-tahmin coverage'ı runtime-config
+            # eşiğinin (FUEL_COVERAGE_ALERT_THRESHOLD_PCT) altına düşerse ops alarmı.
+            "monitoring-fuel-coverage-check-daily": {
+                "task": "monitoring.fuel_coverage_check",
+                "schedule": 86400.0,
+            },
             # Feature A.2 — Pazartesi 09:00 UTC haftalık koçluk özeti.
             "coaching-weekly-digest-mondays": {
                 "task": "coaching.weekly_digest",
@@ -158,6 +164,7 @@ import app.workers.tasks.coaching_tasks  # noqa: E402,F401
 import app.workers.tasks.compliance_tasks  # noqa: E402,F401
 import app.workers.tasks.dlq_tasks  # noqa: E402,F401
 import app.workers.tasks.error_digest  # noqa: E402,F401
+import app.workers.tasks.fuel_coverage_check  # noqa: E402,F401
 import app.workers.tasks.notification_tasks  # noqa: E402,F401
 import app.workers.tasks.outbox_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_backfill_tasks  # noqa: E402,F401

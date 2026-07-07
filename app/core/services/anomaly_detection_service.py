@@ -30,8 +30,10 @@ class AnomalyDetectionService:
     - AnomalyDetector (anomaly_detector.py): ML-augmented (LightGBM), persists
       Anomaly rows to DB, used by /anomalies endpoints and coaching engine.
 
-    Threshold: defaults to settings.ANOMALY_Z_THRESHOLD so both subsystems
-    use the same configurable value. Callers can override per-call.
+    Threshold: resolved through runtime config (sistem_konfig row
+    ANOMALY_Z_THRESHOLD, admin UI'dan ayarlanabilir; satır yoksa
+    settings.ANOMALY_Z_THRESHOLD fallback) so both subsystems use the same
+    configurable value. Callers can override per-call.
     """
 
     def __init__(self):
@@ -44,11 +46,14 @@ class AnomalyDetectionService:
         z_threshold: Optional[float] = None,
         use_iqr: bool = True,
     ) -> List[AnomalyResult]:
-        """Z-Score ve IQR ile anomali tespiti (Async). Threshold: settings.ANOMALY_Z_THRESHOLD."""
+        """Z-Score ve IQR ile anomali tespiti (Async). Threshold: runtime config."""
         if z_threshold is None:
             from app.config import settings as _s
+            from app.core.services.runtime_config import get_runtime_float
 
-            z_threshold = _s.ANOMALY_Z_THRESHOLD
+            z_threshold = await get_runtime_float(
+                "ANOMALY_Z_THRESHOLD", _s.ANOMALY_Z_THRESHOLD
+            )
         return await asyncio.to_thread(
             self._sync_detect_anomalies, consumptions, z_threshold, use_iqr
         )

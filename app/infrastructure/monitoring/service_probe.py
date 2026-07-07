@@ -28,6 +28,11 @@ def monitor_errors(
     """
     Decorator for service methods. Emits ErrorEvent on any non-DomainError exception.
     DomainError is intentionally skipped — main.py exception handlers cover it.
+    ValueError da atlanır: proje sözleşmesi (CLAUDE.md) gereği servis
+    katmanında ValueError = iş-kuralı validasyonu ve endpoint'ler onu 400'e
+    çevirir — kullanıcının meşru validasyon reddi ("araç silinemez, kayıtları
+    var" gibi) hata DEĞİLDİR. Bu atlama olmadan her red Sentry'ye fatal
+    olarak düşüyordu (LOJINEXT-1CW, 2026-07-07).
 
     capture_result: if True, emit WARNING when function returns None.
                     Only use on methods where None is never a valid return value
@@ -60,7 +65,7 @@ def monitor_errors(
 
                     from app.core.exceptions import DomainError
 
-                    if isinstance(exc, (DomainError, HTTPException)):
+                    if isinstance(exc, (DomainError, HTTPException, ValueError)):
                         raise
                     await aemit(
                         ErrorEvent(
@@ -100,7 +105,7 @@ def monitor_errors(
 
                     from app.core.exceptions import DomainError
 
-                    if isinstance(exc, (DomainError, HTTPException)):
+                    if isinstance(exc, (DomainError, HTTPException, ValueError)):
                         raise
                     emit(
                         ErrorEvent(

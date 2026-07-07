@@ -52,6 +52,35 @@ async def test_monitor_errors_skips_domain_errors():
 
 
 @pytest.mark.unit
+async def test_monitor_errors_skips_value_errors():
+    """ValueError = iş-kuralı validasyonu (endpoint 400'e çevirir) — Sentry'ye
+    hata olarak AKMAMALI ama çağırana aynen fırlatılmalı (LOJINEXT-1CW)."""
+
+    @monitor_errors(category="test_error")
+    async def validation_fn():
+        raise ValueError("araç silinemez, kayıtları var")
+
+    with patch(
+        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+    ) as mock_emit:
+        with pytest.raises(ValueError):
+            await validation_fn()
+        mock_emit.assert_not_called()
+
+
+@pytest.mark.unit
+def test_monitor_errors_skips_value_errors_sync():
+    @monitor_errors(category="test_error")
+    def validation_fn():
+        raise ValueError("gecersiz deger")
+
+    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+        with pytest.raises(ValueError):
+            validation_fn()
+        mock_emit.assert_not_called()
+
+
+@pytest.mark.unit
 async def test_intentional_fallback_returns_none_on_error():
     @intentional_fallback("test fallback reason")
     async def fallback_fn():

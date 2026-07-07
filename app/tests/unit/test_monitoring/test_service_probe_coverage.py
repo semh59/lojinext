@@ -23,9 +23,12 @@ async def test_monitor_errors_no_reraise_returns_none():
     """reraise=False: exception is swallowed, None returned."""
     from app.infrastructure.monitoring.service_probe import monitor_errors
 
+    # RuntimeError: ValueError artık iş-validasyonu olarak SKIP edilip her
+    # zaman reraise edilir (LOJINEXT-1CW fix'i) — bu test reraise=False
+    # yolunu sınıyor, tip önemli değil.
     @monitor_errors(category="test", reraise=False)
     async def fragile():
-        raise ValueError("swallowed")
+        raise RuntimeError("swallowed")
 
     with patch(
         "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
@@ -133,12 +136,14 @@ def test_monitor_errors_sync_reraises():
     """Sync function with reraise=True should re-raise non-domain errors."""
     from app.infrastructure.monitoring.service_probe import monitor_errors
 
+    # RuntimeError: bkz. yukarıdaki not (ValueError artık emit edilmeden
+    # reraise edilir).
     @monitor_errors(category="sync_test")
     def sync_fail():
-        raise ValueError("sync boom")
+        raise RuntimeError("sync boom")
 
     with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
-        with pytest.raises(ValueError):
+        with pytest.raises(RuntimeError):
             sync_fail()
         mock_emit.assert_called_once()
 

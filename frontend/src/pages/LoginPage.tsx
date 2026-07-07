@@ -241,7 +241,10 @@ export default function LoginPage() {
                           })}
                         </div>
                       ) : (
-                        <p className="flex items-center justify-center text-center">
+                        <p
+                          data-testid="login-error"
+                          className="flex items-center justify-center text-center"
+                        >
                           {error}
                         </p>
                       )}

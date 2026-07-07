@@ -23,14 +23,23 @@ test.describe('Auth akışları', () => {
         await page.getByPlaceholder(/e-posta/i).fill('yanlis@lojinext.com')
         await page.getByPlaceholder('••••••••').fill('yanlis_sifre')
         await page.getByRole('button', { name: /sisteme giriş/i }).click()
-        // .first(): hata mesajı hem toast hem inline form hatası olarak
-        // AYNI ANDA görünebiliyor -> strict-mode "resolved to 2 elements"
-        // ihlali. (2026-07-07: eski 3/300s login bucket'ı altında yanlış
-        // şifre çoğu koşuda 429 mesajı üretiyordu ve tek elemandı; bucket
-        // CI'da yükselince gerçek 401 yolu açıldı ve çift render göründü.)
+        // 2026-07-07: teşhis edildi -> gerçek bir toast+inline çift render YOKTU.
+        // `.first()` sadece regex'in aşırı geniş olmasını maskeliyordu: aynı
+        // regex hem statik "E-Posta / Kullanıcı Adı" alan etiketine hem de
+        // gerçek hata mesajına ("Kullanıcı adı veya şifre hatalı.") uyuyordu
+        // -> strict-mode "resolved to 2 elements" ihlali. LoginPage'de toast
+        // hiç tetiklenmiyor (login `authApi.login` ham `fetch` kullanıyor,
+        // axiosInstance interceptor'ı devrede değil). Kanıt: vitest ile
+        // getAllByText sayımı label+hata olmak üzere hep 2 döndü, toast
+        // container hiç render olmadı. Kalıcı çözüm: hata mesajına stabil
+        // data-testid eklendi (frontend/src/pages/LoginPage.tsx), burada da
+        // sadece o elemanı hedefliyoruz.
         await expect(
-            page.getByText(/hatalı|geçersiz|kullanıcı adı|giriş yapılamadı/i).first()
+            page.getByTestId('login-error')
         ).toBeVisible({ timeout: 8_000 })
+        await expect(page.getByTestId('login-error')).toHaveText(
+            /hatalı|geçersiz|kullanıcı adı|giriş yapılamadı/i
+        )
     })
 
     test('logout /login e yönlendirir', async ({ page }) => {

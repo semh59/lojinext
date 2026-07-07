@@ -153,6 +153,11 @@ describe("AdminModelManagementPage (mocked scenarios)", () => {
     });
     render(<AdminModelManagementPage />);
     await waitFor(() => screen.getByText(/34ABC001/));
+    // Auto-select effect'ine (sayfa ilk aracı kendisi seçiyor) GÜVENME:
+    // CI yükünde click, effect'in state commit'inden önce gelebiliyor ve
+    // handler selectedVehicleId=null görüp no-op yapıyordu (run 28873564005,
+    // spy 0 çağrı). Açık seçim testi deterministik yapar.
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "10" } });
     const btn = screen.getByText(adminMlText.startTraining);
     fireEvent.click(btn);
     await waitFor(() => {

@@ -55,6 +55,12 @@ const PSQL_CMD =
   "psql postgresql://postgres:postgres@localhost:5432/lojinext_vitest"; // pragma: allowlist secret
 
 function seedConfigRows(): void {
+  // DO UPDATE (DO NOTHING değil): migration 0041 bu anahtarlardan ikisini
+  // KENDİ açıklama/yeniden_baslat değerleriyle zaten seed'liyor; DO NOTHING
+  // ile testin assert ettiği fixture metinleri hiç yazılmıyor ve testler
+  // migration'lı her DB'de düşüyordu (CI run 28873564005'te canlı). Test,
+  // kendi fixture durumunu DAYATMALI ki migration içeriği serbestçe
+  // evrilebilsin.
   const sql = `
     INSERT INTO sistem_konfig
       (anahtar, deger, tip, birim, min_deger, max_deger, grup, aciklama, yeniden_baslat)
@@ -65,7 +71,15 @@ function seedConfigRows(): void {
        'ml', 'Arac yasi basina yillik tuketim artis orani', true),
       ('LOG_LEVEL', '"INFO"'::jsonb, 'string', NULL, NULL, NULL,
        'sistem', 'Uygulama log seviyesi', false)
-    ON CONFLICT (anahtar) DO NOTHING;
+    ON CONFLICT (anahtar) DO UPDATE SET
+      deger = EXCLUDED.deger,
+      tip = EXCLUDED.tip,
+      birim = EXCLUDED.birim,
+      min_deger = EXCLUDED.min_deger,
+      max_deger = EXCLUDED.max_deger,
+      grup = EXCLUDED.grup,
+      aciklama = EXCLUDED.aciklama,
+      yeniden_baslat = EXCLUDED.yeniden_baslat;
   `;
   execSync(`${PSQL_CMD} -v ON_ERROR_STOP=1`, { input: sql });
 }

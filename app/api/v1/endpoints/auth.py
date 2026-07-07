@@ -92,8 +92,13 @@ async def login(
         # bucket bu riski ortadan kaldırır — bir IP'nin denemeleri başka bir
         # IP'yi etkilemez.
         _login_ip = request.client.host if request.client else "unknown"
+        # rate/period settings'ten: prod default'u aynı sıkılıkta (3/300s),
+        # CI/test env'i E2E + real-backend suit'lerinin meşru login
+        # yoğunluğu için yükseltebilir (bkz config.SUPER_ADMIN_LOGIN_RATE).
         super_admin_limiter = await RateLimiterRegistry.get(
-            f"super_admin_login:{_login_ip}", rate=3, period=300.0
+            f"super_admin_login:{_login_ip}",
+            rate=settings.SUPER_ADMIN_LOGIN_RATE,
+            period=settings.SUPER_ADMIN_LOGIN_PERIOD,
         )
         await super_admin_limiter.acquire()
 

@@ -44,6 +44,13 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     SUPER_ADMIN_USERNAME: str = "admin"
     SUPER_ADMIN_PASSWORD: Optional[SecretStr] = None
+    # Break-glass login'in brute-force bucket'ı (IP başına). Default prod
+    # değeri kasıtlı olarak çok sıkı — DEĞİŞTİRME. CI/test ortamları, E2E ve
+    # real-backend suit'lerinin meşru login yoğunluğu için env ile yükseltir
+    # (2026-07-07: Playwright admin.spec test başına login yapınca 3/300s
+    # bucket 4. testte doldu, 15 E2E testi 429 ile düştü).
+    SUPER_ADMIN_LOGIN_RATE: float = 3.0
+    SUPER_ADMIN_LOGIN_PERIOD: float = 300.0
     ADMIN_PASSWORD: Optional[SecretStr] = None
     DEFAULT_ADMIN_PASSWORD: Optional[SecretStr] = None
 

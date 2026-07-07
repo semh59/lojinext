@@ -503,6 +503,11 @@ jobs:
           # /push/vapid-public-key push_enabled=false döner ve
           # usePushNotifications real-backend testleri düşer.
           PUSH_NOTIFICATION_ENABLED: "True"
+          # Break-glass bucket'ı (prod default 3/300s) CI'da yükselt: vitest
+          # real-backend suit'leri + Playwright E2E meşru olarak onlarca kez
+          # login olur; 3'lük bucket E2E'nin 4. testinden itibaren herkese
+          # 429 döndürdü (run 28859004840). Prod default'u DEĞİŞMEDİ.
+          SUPER_ADMIN_LOGIN_RATE: "1000"
         run: |
           # Log dosyaya: arka plan sürecinin çıktısı step bitince kaybolur —
           # vitest sırasında oluşan 500'lerin traceback'i ancak böyle görülür

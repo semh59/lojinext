@@ -40,11 +40,18 @@ export default defineConfig({
                 'src/vite-env.d.ts',
                 'src/**/__tests__/**',
             ],
+            // Ratchet 2026-07-07: real-backend suit'leri CI'da gerçekten
+            // koşmaya başlayınca ölçüm 53.89→58.56 (lines) yükseldi; eşikler
+            // ölçülen değerin ~1.5 puan altına sabitlendi ki kayma (testsiz
+            // yeni kod) gate'e takılsın. Ölçüm kaynağı: CI run 28881225641
+            // (lokal run 10 ile 0.05 içinde tutarlı: 58.53/75.48/40.44).
+            // Coverage yükseldikçe eşikleri de yukarı taşı — asla düşürme
+            // (düşürme = regresyonu susturma; bkz [[no-error-no-fake-code]]).
             thresholds: {
-                lines: 53,        // measured 53.89% (2026-06-22, after new admin pages added)
-                functions: 32,    // measured 32.86%
-                branches: 73,     // measured 73.72%
-                statements: 53,
+                lines: 57,        // measured 58.56 (CI, 2026-07-07)
+                functions: 39,    // measured 40.44
+                branches: 74,     // measured 75.43
+                statements: 57,   // measured 58.56
             },
         },
     },

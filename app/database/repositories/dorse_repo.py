@@ -15,9 +15,15 @@ class DorseRepository(BaseRepository[Dorse]):
     model = Dorse
     search_columns = ["plaka", "marka", "tipi"]
 
-    async def get_by_plate(self, plate: str) -> Optional[Dorse]:
-        """Retrieves trailer details by plate."""
+    async def get_by_plate(
+        self, plate: str, for_update: bool = False
+    ) -> Optional[Dorse]:
+        """Retrieves trailer details by plate (aktif olsun olmasın — sadece
+        is_deleted hariç tutulur; duplicate/reaktivasyon kontrolü bunu bekler,
+        bkz DorseService.create)."""
         stmt = select(Dorse).where(Dorse.plaka == plate, ~Dorse.is_deleted)
+        if for_update:
+            stmt = stmt.with_for_update()
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

@@ -2,6 +2,7 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import (
     SessionDep,
@@ -180,6 +181,11 @@ async def create_dorse(
         return StandardResponse(data=created)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except IntegrityError as e:
+        logger.warning(f"Trailer create integrity violation: {e.orig}", exc_info=False)
+        raise HTTPException(
+            status_code=400, detail="Veri bütünlüğü hatası: dorse zaten mevcut olabilir"
+        )
     except DomainError:
         raise
     except HTTPException:

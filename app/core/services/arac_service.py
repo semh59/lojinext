@@ -98,6 +98,14 @@ class AracService:
             if existing:
                 if existing.get("aktif") is False:
                     logger.info(f"Re-activating passive vehicle: {data.plaka}")
+                    # Teknik özellikler (ağırlık/aerodinamik/motor/lastik/yük/dingil/
+                    # yakıt tipi/muayene) de geçilmeli — bunlar PredictionService.
+                    # _build_vehicle_specs'in fizik-tabanlı yakıt tahmininde OKUDUĞU
+                    # gerçek girdiler. Eskiden sadece marka/model/yil/tank/hedef_
+                    # tuketim/notlar güncelleniyordu; operatör "araç ekle" formuna
+                    # yeni teknik değerler girse bile eski (reaktive edilen) aracın
+                    # değerleri sessizce korunuyordu — yanlış tahmin girdisi
+                    # üretiyordu (canlı-hazırlık denetimi bulgusu, 2026-07-09).
                     await uow.arac_repo.update(
                         existing["id"],
                         aktif=True,
@@ -107,6 +115,15 @@ class AracService:
                         tank_kapasitesi=data.tank_kapasitesi,
                         hedef_tuketim=data.hedef_tuketim,
                         notlar=data.notlar or "",
+                        dingil_sayisi=data.dingil_sayisi,
+                        yakit_tipi=data.yakit_tipi,
+                        bos_agirlik_kg=data.bos_agirlik_kg,
+                        hava_direnc_katsayisi=data.hava_direnc_katsayisi,
+                        on_kesit_alani_m2=data.on_kesit_alani_m2,
+                        motor_verimliligi=data.motor_verimliligi,
+                        lastik_direnc_katsayisi=data.lastik_direnc_katsayisi,
+                        maks_yuk_kapasitesi_kg=data.maks_yuk_kapasitesi_kg,
+                        muayene_tarihi=getattr(data, "muayene_tarihi", None),
                     )
                     await self._log_vehicle_event(
                         existing["id"],

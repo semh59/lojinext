@@ -8,6 +8,7 @@ DEPENDS_ON: UoW.dorse_repo
 CREATED_BY: app/api/deps.py::deps.get_dorse_service()
 """
 
+import asyncio
 from typing import Any, Dict, List, Optional
 
 from app.database.repositories.dorse_repo import DorseRepository
@@ -23,6 +24,9 @@ class DorseService:
     def __init__(self, repo: DorseRepository, event_bus: EventBus):
         self.repo = repo
         self.event_bus = event_bus
+        self._lock = (
+            asyncio.Lock()
+        )  # process-local; does not protect against multi-worker races
 
     async def get_by_id(self, dorse_id: int) -> Optional[Dict[str, Any]]:
         """Get trailer by ID."""
@@ -45,8 +49,30 @@ class DorseService:
         )
 
     async def create(self, **data) -> int:
-        """Create a new trailer record."""
-        return await self.repo.create(**data)
+        """Create a new trailer record (Duplicate Check + Reactivation).
+
+        AracService.create_arac ile aynı desen (2026-07-09 canlı-hazırlık
+        denetimi bulgusu): eskiden buradan doğrudan `repo.create()`'e
+        düşülüyordu — plaka.unique constraint aktif/pasif ayrımı yapmadığı
+        için (1) aynı plakalı aktif bir dorse eklenmeye çalışılırsa
+        IntegrityError endpoint'te özel yakalanmıyordu (genel 500), (2) pasif
+        bir dorsenin plakası asla yeniden kullanılamıyordu (varsayılan liste
+        aktif_only=True olduğu için operatör pasif kaydı görüp elle reaktive
+        de edemiyordu) — kalıcı çıkmaz sokak.
+        """
+        plaka = data.get("plaka")
+        async with self._lock:  # Race Condition Guard (TOCTOU)
+            existing = await self.repo.get_by_plate(plaka, for_update=True)
+            if existing:
+                if existing.aktif is False:
+                    logger.info(f"Re-activating passive trailer: {plaka}")
+                    update_data = {k: v for k, v in data.items() if k != "plaka"}
+                    update_data["aktif"] = True
+                    await self.repo.update(existing.id, **update_data)
+                    return existing.id
+                raise ValueError(f"A trailer with this plate already exists: {plaka}")
+
+            return await self.repo.create(**data)
 
     async def update(self, dorse_id: int, **data) -> bool:
         """Update trailer record."""

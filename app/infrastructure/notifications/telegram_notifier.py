@@ -68,7 +68,9 @@ async def notify_error(
         _WEBHOOK_URL,
         last_exc,
     )
-    _push_to_sync_fallback(level=level, message=message, path=path, trace_id=trace_id)
+    await _push_to_sync_fallback(
+        level=level, message=message, path=path, trace_id=trace_id
+    )
 
 
 async def notify_feedback(
@@ -103,20 +105,28 @@ async def notify_feedback(
     return False
 
 
-def _push_to_sync_fallback(
+async def _push_to_sync_fallback(
     *, level: str, message: str, path: str, trace_id: str
 ) -> None:
-    """Tüm denemeler başarısız olunca sync_fallback listesine yazar."""
+    """Tüm denemeler başarısız olunca sync_fallback listesine yazar.
+
+    Async Redis client kullanır (2026-07-09 event-loop-blokaj bulgusu,
+    Sentry LOJINEXT-182): önceden senkron redis-py ile ``r.lpush()``/
+    ``r.ltrim()`` doğrudan bu async fonksiyon (her zaman çalışan bir event
+    loop içinde çağrılır) içinden çalıştırılıyordu — bloklayan bir socket
+    çağrısı, o an event loop'ta zamanlanmış HER coroutine/task'ı (SQLAlchemy
+    sorgu callback'leri dahil) donduruyordu. Canlı bir "Slow query: 3528ms"
+    olayının breadcrumb'ları bunu doğruladı: bayraklanan sorgu (`SELECT
+    araclar.id ...`) önemsizdi, ölçülen süre bu blokajı da kapsıyordu.
+    """
     import json
 
     try:
-        import redis as _redis
+        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
 
-        from app.config import settings
-
-        r = _redis.from_url(
-            settings.REDIS_URL, socket_connect_timeout=1, socket_timeout=1
-        )
+        mgr = get_pubsub_manager()
+        if mgr.redis is None:
+            return
         payload = json.dumps(
             {
                 "layer": "api",
@@ -128,7 +138,11 @@ def _push_to_sync_fallback(
                 "metadata": {},
             }
         )
-        r.lpush("error:sync_fallback", payload)
-        r.ltrim("error:sync_fallback", 0, 999)
+        # redis-py's async stubs give lpush/ltrim a pipeline-compatible
+        # overload that mypy can't disambiguate from plain client usage
+        # (unlike .set/.get/.incr elsewhere in redis_pubsub.py, which don't
+        # hit this) — both calls are correctly awaited at runtime.
+        await mgr.redis.lpush("error:sync_fallback", payload)  # type: ignore[misc]
+        await mgr.redis.ltrim("error:sync_fallback", 0, 999)  # type: ignore[misc]
     except Exception as fb_exc:
         logger.debug("sync_fallback push failed: %s", fb_exc)

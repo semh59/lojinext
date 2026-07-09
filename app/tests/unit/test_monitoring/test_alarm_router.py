@@ -1,14 +1,17 @@
+import asyncio
 import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.infrastructure.monitoring import alarm_router as alarm_router_module
 from app.infrastructure.monitoring.alarm_router import (
     _DEDUP_WINDOW_SECONDS,
     _MIN_SAMPLES,
     _Z_SCORE_THRESHOLD,
     AlarmRouter,
     AnomalyDetector,
+    drain_bg_tasks,
 )
 from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
 
@@ -219,3 +222,53 @@ async def test_anomaly_escalates_warning_to_immediate():
         mock_send.assert_called_once()
         _, kwargs = mock_send.call_args
         assert kwargs.get("is_anomaly") is True
+
+
+@pytest.mark.unit
+async def test_drain_bg_tasks_cancels_pending_and_clears_set():
+    """Sentry LOJINEXT-1C5: a fire-and-forget notify task still in-flight at
+    shutdown must be cancelled and awaited, not abandoned — otherwise its
+    eventual (possibly exceptional) result has no one left to retrieve it,
+    which is exactly what surfaced as asyncio's "Future exception was never
+    retrieved" warning in production."""
+
+    async def _never_finishes():
+        await asyncio.sleep(100)
+
+    task = asyncio.create_task(_never_finishes())
+    alarm_router_module._bg_tasks.add(task)
+    task.add_done_callback(alarm_router_module._bg_tasks.discard)
+
+    await drain_bg_tasks()
+
+    assert task.cancelled()
+    assert task not in alarm_router_module._bg_tasks
+
+
+@pytest.mark.unit
+async def test_drain_bg_tasks_noop_when_empty():
+    """No pending tasks — drain_bg_tasks returns immediately without error."""
+    alarm_router_module._bg_tasks.clear()
+    await drain_bg_tasks()  # must not raise
+    assert alarm_router_module._bg_tasks == set()
+
+
+@pytest.mark.unit
+async def test_on_notify_task_done_retrieves_exception_without_raising():
+    """A completed (non-cancelled) task that raised must have its exception
+    retrieved by the done-callback — this is the exact mechanism asyncio
+    warns about when skipped."""
+
+    async def _boom():
+        raise RuntimeError("simulated notify failure")
+
+    task = asyncio.create_task(_boom())
+    alarm_router_module._bg_tasks.add(task)
+    task.add_done_callback(alarm_router_module._on_notify_task_done)
+
+    with pytest.raises(RuntimeError):
+        await task  # propagate so the test itself doesn't warn
+
+    # give the done-callback a tick to run
+    await asyncio.sleep(0)
+    assert task not in alarm_router_module._bg_tasks

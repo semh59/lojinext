@@ -23,6 +23,43 @@ _MIN_SAMPLES = 6  # Need at least 6 data points for meaningful Z-score
 _bg_tasks: set[asyncio.Task] = set()
 
 
+def _on_notify_task_done(task: asyncio.Task) -> None:
+    """Done callback for fire-and-forget notify tasks — retrieves any
+    exception so it never surfaces as an asyncio "unretrieved" warning,
+    then removes the task from the tracking set."""
+    _bg_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        logger.debug("notify_error task raised: %s", exc)
+
+
+async def drain_bg_tasks() -> None:
+    """Cancel + await any in-flight notify_error tasks (Sentry LOJINEXT-1C5).
+
+    Nothing awaited these fire-and-forget tasks before app shutdown — if
+    engine.dispose()/loop close raced a task still mid-DNS-lookup (e.g.
+    telegram-ops-bot unreachable during a container recreate), the
+    executor-thread Future backing that lookup would eventually resolve
+    with no one left to retrieve it, surfacing as asyncio's default
+    "Future exception was never retrieved" handler (reproduced: a real
+    event carried a bare gaierror for exactly this reason). Call from the
+    app lifespan's shutdown path, before engine.dispose().
+    """
+    pending = [t for t in list(_bg_tasks) if not t.done()]
+    if not pending:
+        return
+    for t in pending:
+        t.cancel()
+    results = await asyncio.gather(*pending, return_exceptions=True)
+    for t, result in zip(pending, results):
+        if isinstance(result, Exception) and not isinstance(
+            result, asyncio.CancelledError
+        ):
+            logger.debug("Dangling notify task raised on shutdown: %s", result)
+
+
 class AnomalyDetector:
     """Z-score spike detector. Reads 12h rolling window of hourly counters."""
 
@@ -168,7 +205,7 @@ class AlarmRouter:
             )
         )
         _bg_tasks.add(task)
-        task.add_done_callback(_bg_tasks.discard)
+        task.add_done_callback(_on_notify_task_done)
 
         # Skip Sentry for events that originated from Sentry to prevent a feedback loop:
         # capture_message → _sentry_before_send emits sentry_capture CRITICAL → here again.

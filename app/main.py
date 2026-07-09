@@ -341,6 +341,22 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         await bus.stop()
+
+        # Sentry LOJINEXT-1C5: cancel + await any in-flight fire-and-forget
+        # tasks (alarm_router's Telegram notify_error, this module's ML
+        # warm-up) before disposing the engine/closing the loop — otherwise
+        # a task still mid-DNS-lookup when the loop closes leaves its
+        # executor Future's eventual result with nowhere to go, surfacing
+        # as asyncio's "Future exception was never retrieved".
+        from app.infrastructure.monitoring.alarm_router import drain_bg_tasks
+
+        await drain_bg_tasks()
+        pending = [t for t in list(_bg_tasks) if not t.done()]
+        if pending:
+            for t in pending:
+                t.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+
         from app.core.container import get_container
 
         get_container().shutdown()

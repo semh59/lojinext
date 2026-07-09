@@ -149,3 +149,50 @@ async def test_notify_error_retries_then_fallback():
 
     assert call_count == 3
     mock_fb.assert_not_called()  # succeeded on 3rd attempt, no fallback needed
+
+
+@pytest.mark.unit
+async def test_push_to_sync_fallback_uses_async_redis_not_blocking_client():
+    """Sentry LOJINEXT-182: _push_to_sync_fallback must go through the async
+    Redis client (get_pubsub_manager().redis), never a synchronous redis-py
+    connection — a blocking socket call from inside this async function
+    previously froze the whole event loop (every concurrent coroutine,
+    including in-flight SQL query callbacks), which is the proven root
+    cause of a "Slow query" false alarm on an otherwise trivial query."""
+    from app.infrastructure.notifications.telegram_notifier import (
+        _push_to_sync_fallback,
+    )
+
+    mock_redis = AsyncMock()
+    mock_manager = MagicMock()
+    mock_manager.redis = mock_redis
+
+    with patch(
+        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        return_value=mock_manager,
+    ):
+        await _push_to_sync_fallback(
+            level="error", message="msg", path="/x", trace_id="t1"
+        )
+
+    mock_redis.lpush.assert_awaited_once()
+    mock_redis.ltrim.assert_awaited_once()
+
+
+@pytest.mark.unit
+async def test_push_to_sync_fallback_noop_when_redis_unavailable():
+    """No async Redis client configured — returns cleanly, no exception."""
+    from app.infrastructure.notifications.telegram_notifier import (
+        _push_to_sync_fallback,
+    )
+
+    mock_manager = MagicMock()
+    mock_manager.redis = None
+
+    with patch(
+        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        return_value=mock_manager,
+    ):
+        await _push_to_sync_fallback(
+            level="error", message="msg", path="/x", trace_id="t1"
+        )  # must not raise

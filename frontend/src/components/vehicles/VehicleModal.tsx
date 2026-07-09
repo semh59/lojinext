@@ -43,6 +43,14 @@ export function VehicleModal({
   // ancestors (.glass → backdrop-filter) and animated wrappers create
   // containing blocks that trap fixed positioning, mispositioning the modal
   // (overflowed the viewport, submit below the fold). A body portal escapes them.
+  //
+  // Overlay'de backdrop-blur-sm KULLANILMIYOR (2026-07-09 saydamlık bulgusu):
+  // Chromium, framer-motion'ın transform tabanlı animasyonuyla birlikte bu
+  // blur'u panel sibling'ine sızdırıyor — panelin kendi background'u tam
+  // opak beyaz olsa bile (getComputedStyle böyle raporluyor) gerçek
+  // render'da bulanık/saydam görünüyor (canlı Playwright testiyle
+  // doğrulandı: blur kaldırılınca panel kusursuz opak). isolation:isolate
+  // denendi, düzeltmedi — tek güvenilir çözüm blur'u tamamen kaldırmak.
   return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -51,7 +59,7 @@ export function VehicleModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60"
         />
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}

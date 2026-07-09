@@ -86,6 +86,10 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
     return null;
   }
 
+  // Overlay'de backdrop-blur-sm KULLANILMIYOR (2026-07-09 saydamlık
+  // bulgusu, bkz. VehicleModal.tsx/TrailerModal.tsx aynı yorum): Chromium
+  // bu blur'u panel sibling'ine sızdırıyor, panel tam opak olsa da
+  // bulanık/saydam render ediliyor.
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -94,7 +98,7 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 bg-black/60"
         />
 
         <motion.div

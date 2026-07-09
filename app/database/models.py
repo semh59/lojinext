@@ -110,6 +110,9 @@ class Arac(Base):
         Float, server_default=text("32.0"), default=32.0
     )
     muayene_tarihi: Mapped[Optional[date]] = mapped_column(Date)
+    sigorta_tarihi: Mapped[Optional[date]] = mapped_column(Date)
+    motor_no: Mapped[Optional[str]] = mapped_column(String(50))
+    sasi_no: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Technical Specs
     bos_agirlik_kg: Mapped[float] = mapped_column(

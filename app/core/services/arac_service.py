@@ -124,6 +124,9 @@ class AracService:
                         lastik_direnc_katsayisi=data.lastik_direnc_katsayisi,
                         maks_yuk_kapasitesi_kg=data.maks_yuk_kapasitesi_kg,
                         muayene_tarihi=getattr(data, "muayene_tarihi", None),
+                        sigorta_tarihi=getattr(data, "sigorta_tarihi", None),
+                        motor_no=getattr(data, "motor_no", None),
+                        sasi_no=getattr(data, "sasi_no", None),
                     )
                     await self._log_vehicle_event(
                         existing["id"],
@@ -151,6 +154,9 @@ class AracService:
                 hedef_tuketim=data.hedef_tuketim,
                 notlar=data.notlar or "",
                 muayene_tarihi=getattr(data, "muayene_tarihi", None),
+                sigorta_tarihi=getattr(data, "sigorta_tarihi", None),
+                motor_no=getattr(data, "motor_no", None),
+                sasi_no=getattr(data, "sasi_no", None),
                 aktif=getattr(data, "aktif", True),
             )
             logger.info(f"New vehicle added: {data.plaka}")

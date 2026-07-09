@@ -131,7 +131,16 @@ export function useVehicleData({
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     try {
-      await onSave(data);
+      // Empty date input -> omit it (backend Optional[date] rejects "").
+      // Aynı desen TrailerModal'da zaten vardı; buraya taşınmamıştı —
+      // "Muayene Geçerlilik Tarihi" boş bırakılarak gönderilen HER "Araç
+      // Ekle" denemesi 422 ile tamamen başarısız oluyordu (canlı-hazırlık
+      // denetimi bulgusu, 2026-07-09). sigorta_tarihi de aynı sınıf tarih
+      // alanı — aynı korumayı alır.
+      const payload: Partial<VehicleFormData> = { ...data };
+      if (!payload.muayene_tarihi) delete payload.muayene_tarihi;
+      if (!payload.sigorta_tarihi) delete payload.sigorta_tarihi;
+      await onSave(payload as VehicleFormData);
       onClose();
     } catch (saveError) {
       console.error("Vehicle save error:", saveError);

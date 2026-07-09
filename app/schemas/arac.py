@@ -66,6 +66,11 @@ class AracBase(BaseModel):
     muayene_tarihi: Optional[date] = Field(
         None, description="Muayene Geçerlilik Tarihi"
     )
+    sigorta_tarihi: Optional[date] = Field(
+        None, description="Sigorta Geçerlilik Tarihi"
+    )
+    motor_no: Optional[str] = Field(None, max_length=50)
+    sasi_no: Optional[str] = Field(None, max_length=50)
     notlar: Optional[str] = Field(None, max_length=500)
 
     @field_validator("yil")
@@ -89,6 +94,12 @@ class AracBase(BaseModel):
     @classmethod
     def validate_marka_model(cls, v: Optional[str]) -> Optional[str]:
         """Marka ve model XSS koruması."""
+        return validate_safe_string(v)
+
+    @field_validator("motor_no", "sasi_no", mode="before")
+    @classmethod
+    def validate_motor_sasi(cls, v: Optional[str]) -> Optional[str]:
+        """Motor/şasi no XSS koruması."""
         return validate_safe_string(v)
 
     @field_validator("notlar", mode="before")
@@ -134,6 +145,11 @@ class AracUpdate(BaseModel):
     muayene_tarihi: Optional[date] = Field(
         None, description="Muayene Geçerlilik Tarihi"
     )
+    sigorta_tarihi: Optional[date] = Field(
+        None, description="Sigorta Geçerlilik Tarihi"
+    )
+    motor_no: Optional[str] = Field(None, max_length=50)
+    sasi_no: Optional[str] = Field(None, max_length=50)
     notlar: Optional[str] = Field(None, max_length=500)
 
     @field_validator("yil")
@@ -157,6 +173,12 @@ class AracUpdate(BaseModel):
     @classmethod
     def validate_marka_model(cls, v: Optional[str]) -> Optional[str]:
         """Marka ve model XSS koruması."""
+        return validate_safe_string(v)
+
+    @field_validator("motor_no", "sasi_no", mode="before")
+    @classmethod
+    def validate_motor_sasi(cls, v: Optional[str]) -> Optional[str]:
+        """Motor/şasi no XSS koruması."""
         return validate_safe_string(v)
 
     @field_validator("notlar", mode="before")

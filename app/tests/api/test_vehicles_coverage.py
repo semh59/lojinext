@@ -638,6 +638,9 @@ async def test_update_vehicle_success(async_client, admin_auth_headers):
     mock_vehicle.yakit_tipi = "DIZEL"
     mock_vehicle.aktif = True
     mock_vehicle.muayene_tarihi = None
+    mock_vehicle.sigorta_tarihi = None
+    mock_vehicle.motor_no = None
+    mock_vehicle.sasi_no = None
     mock_vehicle.notlar = None
     mock_vehicle.toplam_km = 0.0
     mock_vehicle.toplam_sefer = 0
@@ -879,6 +882,9 @@ async def test_read_arac_found(async_client, admin_auth_headers):
     mock_vehicle.yakit_tipi = "DIZEL"
     mock_vehicle.aktif = True
     mock_vehicle.muayene_tarihi = None
+    mock_vehicle.sigorta_tarihi = None
+    mock_vehicle.motor_no = None
+    mock_vehicle.sasi_no = None
     mock_vehicle.notlar = None
     mock_vehicle.toplam_km = 0.0
     mock_vehicle.toplam_sefer = 0

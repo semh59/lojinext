@@ -7,7 +7,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_current_active_user
 from app.config import settings
 from app.core.services.fleet_comparison import (
     PeriodType,
@@ -16,6 +15,7 @@ from app.core.services.fleet_comparison import (
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
+from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.fleet_insights import (
     FleetComparisonResponse,
     PeriodMetricsResponse,
@@ -28,7 +28,10 @@ router = APIRouter()
 
 @router.get("/comparison", response_model=FleetComparisonResponse)
 async def get_fleet_comparison(
-    current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+    current_user: Annotated[
+        Kullanici,
+        Depends(require_yetki(["super_admin", "fleet_manager", "yonetim_rapor"])),
+    ],
     period: PeriodType = "month",
 ) -> FleetComparisonResponse:
     """Bu periyot vs geçen periyot karşılaştırma.

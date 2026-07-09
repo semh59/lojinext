@@ -128,16 +128,15 @@ export const trailerModalText = {
     create: "Yeni Dorse Ekle",
   },
   subtitle: {
-    edit: (id: number | undefined, plate: string | undefined) =>
-      `ID: ${id ?? "-"} | ${plate ?? "-"}`,
-    create: "Lojistik altyapı kaydı",
+    edit: (plate: string | undefined) => plate ?? "-",
+    create: "Filoya yeni dorse ekleyin",
   },
   sections: {
     basic: "Temel Bilgiler",
     technical: "Fizik & Teknik Parametreler",
   },
   fields: {
-    plate: "Plaka",
+    plate: "Plaka *",
     brand: "Marka",
     type: "Tip",
     modelYear: "Model Yılı",
@@ -145,7 +144,7 @@ export const trailerModalText = {
     emptyWeight: "Boş Ağırlık (kg)",
     payload: "Yük Kapasitesi (kg)",
     tireCount: "Lastik Sayısı",
-    advancedCoefficients: "Gelişmiş Katsayılar (Physics Engine)",
+    advancedCoefficients: "Gelişmiş Katsayılar",
     rollingResistance: "Lastik Direnci (Crr)",
     dragContribution: "Hava Direnci Katkısı",
     notes: "Notlar",
@@ -163,6 +162,17 @@ export const trailerModalText = {
     tented: "Tenteli",
     tipper: "Damperli",
     lowbed: "Lowbed",
+  },
+  validation: {
+    plateMin: "Plaka en az 3 karakter olmalı.",
+    yearMin: "Yıl 1990'dan küçük olamaz.",
+    yearMax: "Yıl gelecek yıldan büyük olamaz.",
+    positive: "0'dan büyük olmalı.",
+    emptyWeightMax: "Boş ağırlık 20.000 kg'ı aşamaz.",
+    payloadMax: "Yük kapasitesi 40.000 kg'ı aşamaz.",
+    tireCountRange: "Lastik sayısı 4 ile 16 arasında olmalı.",
+    rollingResistanceMax: "Lastik direnci 0.1'i aşamaz.",
+    dragContributionMax: "Hava direnci katkısı 1.0'ı aşamaz.",
   },
   actions: {
     cancel: "İptal",

@@ -22,6 +22,7 @@ class DorseBase(BaseModel):
     )
 
     marka: Optional[str] = Field(None, max_length=50)
+    model: Optional[str] = Field(None, max_length=50)
     tipi: str = Field("Standart", max_length=50, description="Dorse tipi")
     yil: Optional[int] = Field(None, ge=1990, description="Üretim yılı")
 
@@ -63,7 +64,7 @@ class DorseBase(BaseModel):
         """Plaka whitespace strip."""
         return sanitize_string(v) if isinstance(v, str) else v
 
-    @field_validator("marka", "tipi", mode="before")
+    @field_validator("marka", "model", "tipi", mode="before")
     @classmethod
     def validate_strings(cls, v: Optional[str]) -> Optional[str]:
         """XSS koruması."""
@@ -87,6 +88,7 @@ class DorseUpdate(BaseModel):
         description="Plaka formatı (ASCII Safe)",
     )
     marka: Optional[str] = Field(None, max_length=50)
+    model: Optional[str] = Field(None, max_length=50)
     tipi: Optional[str] = Field(None, max_length=50)
     yil: Optional[int] = Field(None, ge=1990)
     bos_agirlik_kg: Optional[float] = Field(None, gt=0)

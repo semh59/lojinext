@@ -42,10 +42,37 @@ class DorseService:
         limit: int = 100,
         search: str = None,
         aktif_only: bool = True,
+        marka: Optional[str] = None,
+        model: Optional[str] = None,
+        min_yil: Optional[int] = None,
+        max_yil: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        """Get trailers with pagination and search."""
+        """Get trailers with pagination, search and filters.
+
+        AracService.get_all_paged ile aynı desen (2026-07-09 tasarım
+        denetimi bulgusu): frontend'in "Detaylı Filtre" paneli (marka/
+        model/min_yil/max_yil) + dorseService.getAll bu parametreleri
+        zaten gönderiyordu, backend hiçbirini kabul etmiyordu — filtre
+        sessizce hiçbir şey yapmıyordu. `yil_ge`/`yil_le`, BaseRepository.
+        get_all'ın genel range-filter desteğidir (repo katmanında ek kod
+        gerektirmez).
+        """
+        filters: Dict[str, Any] = {}
+        if marka:
+            filters["marka"] = marka
+        if model:
+            filters["model"] = model
+        if min_yil is not None:
+            filters["yil_ge"] = min_yil
+        if max_yil is not None:
+            filters["yil_le"] = max_yil
+
         return await self.repo.get_paged(
-            skip=skip, limit=limit, search=search, aktif_only=aktif_only
+            skip=skip,
+            limit=limit,
+            search=search,
+            aktif_only=aktif_only,
+            filters=filters,
         )
 
     async def create(self, **data) -> int:

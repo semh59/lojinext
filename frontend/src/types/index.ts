@@ -49,15 +49,12 @@ export interface Dorse {
   marka?: string | null;
   model?: string | null;
   tipi: string;
-  dorse_tipi?: string | null;
   yil?: number | null;
   bos_agirlik_kg: number;
   maks_yuk_kapasitesi_kg: number;
   lastik_sayisi: number;
   dorse_lastik_direnc_katsayisi?: number | null;
   dorse_hava_direnci?: number | null;
-  rolling_resistance?: number | null;
-  drag_coefficient?: number | null;
   muayene_tarihi?: string | null;
   aktif: boolean;
   notlar?: string | null;

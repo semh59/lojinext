@@ -57,11 +57,11 @@ export function VehicleModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-[12px] border border-border bg-surface shadow-xl"
+          className="flex max-h-[85vh] w-full max-w-xl flex-col overflow-hidden rounded-modal border border-border bg-surface shadow-xl"
         >
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-elevated p-6">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-border bg-elevated text-accent shadow-sm">
+              <div className="flex h-10 w-10 items-center justify-center rounded-card border border-border bg-elevated text-accent shadow-sm">
                 <Truck className="h-5 w-5" />
               </div>
               <div>

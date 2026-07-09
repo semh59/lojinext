@@ -128,16 +128,15 @@ export const trailerModalText = {
     create: "Add New Trailer",
   },
   subtitle: {
-    edit: (id: number | undefined, plate: string | undefined) =>
-      `ID: ${id ?? "-"} | ${plate ?? "-"}`,
-    create: "Logistics infrastructure record",
+    edit: (plate: string | undefined) => plate ?? "-",
+    create: "Add a new trailer to your fleet",
   },
   sections: {
     basic: "Basic Information",
     technical: "Physics & Technical Parameters",
   },
   fields: {
-    plate: "Plate",
+    plate: "Plate *",
     brand: "Brand",
     type: "Type",
     modelYear: "Model Year",
@@ -145,7 +144,7 @@ export const trailerModalText = {
     emptyWeight: "Empty Weight (kg)",
     payload: "Payload Capacity (kg)",
     tireCount: "Tire Count",
-    advancedCoefficients: "Advanced Coefficients (Physics Engine)",
+    advancedCoefficients: "Advanced Coefficients",
     rollingResistance: "Rolling Resistance (Crr)",
     dragContribution: "Drag Contribution",
     notes: "Notes",
@@ -163,6 +162,17 @@ export const trailerModalText = {
     tented: "Tented",
     tipper: "Tipper",
     lowbed: "Lowbed",
+  },
+  validation: {
+    plateMin: "Plate must be at least 3 characters.",
+    yearMin: "Year cannot be earlier than 1990.",
+    yearMax: "Year cannot be later than next year.",
+    positive: "Must be greater than 0.",
+    emptyWeightMax: "Empty weight cannot exceed 20,000 kg.",
+    payloadMax: "Payload capacity cannot exceed 40,000 kg.",
+    tireCountRange: "Tire count must be between 4 and 16.",
+    rollingResistanceMax: "Rolling resistance cannot exceed 0.1.",
+    dragContributionMax: "Drag contribution cannot exceed 1.0.",
   },
   actions: {
     cancel: "Cancel",

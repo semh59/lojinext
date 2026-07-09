@@ -83,7 +83,6 @@ export const DorseSchema = z.object({
   marka: z.string().optional().nullable(),
   model: z.string().optional().nullable(),
   tipi: z.string(),
-  dorse_tipi: z.string().optional().nullable(),
   yil: z.number().optional().nullable(),
   bos_agirlik_kg: z.number(),
   maks_yuk_kapasitesi_kg: z.number(),

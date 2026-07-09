@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
@@ -39,6 +39,10 @@ async def read_dorseler(
     limit: int = Query(100, ge=1, le=1000),
     aktif_only: bool = True,
     search: str = Query(None, min_length=1),
+    marka: Optional[str] = Query(None),
+    model: Optional[str] = Query(None),
+    min_yil: Optional[int] = Query(None),
+    max_yil: Optional[int] = Query(None),
 ):
     """Dorseleri listele."""
     try:
@@ -47,6 +51,10 @@ async def read_dorseler(
             limit=limit,
             aktif_only=aktif_only,
             search=search,
+            marka=marka,
+            model=model,
+            min_yil=min_yil,
+            max_yil=max_yil,
         )
         return StandardResponse(
             data=data, meta=ResponseMeta(count=len(data), offset=skip, limit=limit)

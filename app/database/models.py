@@ -199,6 +199,7 @@ class Dorse(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     plaka: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     marka: Mapped[Optional[str]] = mapped_column(String(50))
+    model: Mapped[Optional[str]] = mapped_column(String(50))
     # Brandali, Frigorifik, Konteyner, Tanker vs.
     tipi: Mapped[str] = mapped_column(String(50), default="Standart")
     yil: Mapped[Optional[int]] = mapped_column(Integer)

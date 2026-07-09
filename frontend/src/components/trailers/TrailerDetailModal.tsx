@@ -201,7 +201,7 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       icon={CircleDot}
                       label={trailerDetailText.fields.type}
                       value={safeNullableText(
-                        trailer.dorse_tipi || trailer.tipi,
+                        trailer.tipi,
                         trailerDetailText.fields.unspecified,
                       )}
                     />
@@ -243,18 +243,14 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       icon={CircleDot}
                       label={trailerDetailText.fields.rollingResistance}
                       value={safeMetric(
-                        trailer.rolling_resistance ??
-                          trailer.dorse_lastik_direnc_katsayisi,
+                        trailer.dorse_lastik_direnc_katsayisi,
                         locale,
                       )}
                     />
                     <InfoCard
                       icon={CircleDot}
                       label={trailerDetailText.fields.dragContribution}
-                      value={safeMetric(
-                        trailer.drag_coefficient ?? trailer.dorse_hava_direnci,
-                        locale,
-                      )}
+                      value={safeMetric(trailer.dorse_hava_direnci, locale)}
                     />
                   </div>
                 </div>

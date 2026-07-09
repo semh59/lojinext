@@ -4,10 +4,15 @@ import { Languages } from "lucide-react";
 
 const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
-  const current = (i18n.language || "tr").startsWith("en") ? "EN" : "TR";
+  const isEnglishActive = (i18n.language || "tr").startsWith("en");
+  // Button shows the language you'll SWITCH TO, not the active one — press
+  // "EN" to go English (button then flips to "TR" to go back), press "TR"
+  // to go Turkish (button flips to "EN"). Previously showed the active
+  // language instead, which read backwards to users.
+  const targetLabel = isEnglishActive ? "TR" : "EN";
 
   const toggleLanguage = () => {
-    i18n.changeLanguage(current === "EN" ? "tr" : "en");
+    i18n.changeLanguage(isEnglishActive ? "tr" : "en");
   };
 
   // Icon-first button styled to match the adjacent theme toggle so the two
@@ -16,12 +21,12 @@ const LanguageSwitcher: React.FC = () => {
     <button
       onClick={toggleLanguage}
       className="flex items-center gap-1.5 rounded-xl p-2.5 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-      title={current === "EN" ? "Türkçe'ye geç" : "Switch to English"}
-      aria-label={current === "EN" ? "Türkçe'ye geç" : "Switch to English"}
+      title={isEnglishActive ? "Türkçe'ye geç" : "Switch to English"}
+      aria-label={isEnglishActive ? "Türkçe'ye geç" : "Switch to English"}
     >
       <Languages size={18} />
       <span className="text-[11px] font-bold uppercase tracking-wider">
-        {current}
+        {targetLabel}
       </span>
     </button>
   );

@@ -28,6 +28,25 @@ function Harness() {
   );
 }
 
+/** onClose'u KASITLI olarak her render'da yeni bir referans olarak geçirir
+ * (KullanicilarPage.closeModal, VehicleModal/TrailerModal'daki inline arrow
+ * fonksiyonlarla birebir aynı desen — hiçbiri useCallback ile memoize
+ * edilmiyor). Bir input'a yazmak parent'ı re-render ettirir; bug varsa
+ * odak input'tan kapat butonuna sıçrar. */
+function TypingHarness() {
+  const [isOpen, setIsOpen] = useState(true);
+  const [text, setText] = useState("");
+  return (
+    <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Typing">
+      <input
+        aria-label="isim"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+    </Modal>
+  );
+}
+
 describe("Modal — focus trap", () => {
   it("açılışta odağı diyalog içine taşır (dışarıda bir yerde kalmaz)", async () => {
     render(<Harness />);
@@ -78,5 +97,20 @@ describe("Modal — focus trap", () => {
     await waitFor(() => {
       expect(document.activeElement).toBe(openBtn);
     });
+  });
+
+  it("typing in a field does not steal focus back to the close button on every keystroke (non-memoized onClose)", async () => {
+    render(<TypingHarness />);
+    const input = await screen.findByLabelText("isim");
+    input.focus();
+
+    fireEvent.change(input, { target: { value: "a" } });
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.change(input, { target: { value: "ab" } });
+    expect(document.activeElement).toBe(input);
+
+    fireEvent.change(input, { target: { value: "abc" } });
+    expect(document.activeElement).toBe(input);
   });
 });

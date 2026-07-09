@@ -32,8 +32,24 @@ export function Modal({
     setIsMounted(true);
   }, []);
 
+  // onClose is rarely memoized by callers (KullanicilarPage.closeModal,
+  // VehicleModal/TrailerModal's inline arrows, etc.) — it gets a fresh
+  // reference on every parent re-render. Chasing it directly in the
+  // focus-trap effect's deps below re-ran the whole effect on every
+  // keystroke of ANY input inside the dialog (typing → state update →
+  // parent re-render → new onClose → effect re-fires → steals focus back
+  // to the dialog's first focusable element, which is the close button —
+  // exactly the "every keystroke jumps to the close button" bug). Keeping
+  // the latest onClose in a ref lets Escape/Tab-trap call the current
+  // callback without making it a dependency.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   // Focus trap (WCAG 2.1 AA): move focus into the dialog on open, cycle
   // Tab/Shift+Tab within it, and restore focus to the trigger on close.
+  // Deps: [isOpen] ONLY — must not re-run on every render (see above).
   React.useEffect(() => {
     if (!isOpen) return;
 
@@ -47,7 +63,7 @@ export function Modal({
 
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab" || !dialogRef.current) return;
@@ -75,7 +91,7 @@ export function Modal({
       document.body.style.overflow = "unset";
       previouslyFocusedRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isMounted || !isOpen) return null;
 

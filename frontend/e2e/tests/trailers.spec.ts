@@ -66,6 +66,42 @@ test.describe('FleetPage — Dorseler sekmesi', () => {
         await expect(page.getByText('Dorse Plakası').or(page.getByPlaceholder(/plaka/i))).toBeVisible({ timeout: 8_000 })
     })
 
+    // Regression: shared Modal's focus-trap effect used to re-fire on every
+    // keystroke (its `onClose` dep got a fresh reference each re-render),
+    // stealing focus back to the dialog's close button — every input in
+    // every modal in the app was affected. pressSequentially fires a real
+    // keydown/input/keyup cycle per character, matching an actual user
+    // (unlike .fill() elsewhere in this suite, which writes the value in
+    // one shot and never exercised the re-render-per-keystroke path).
+    test('dorse ekle — marka alanına yazarken odak kapat butonuna kaçmaz', async ({ authedPage: page }) => {
+        await page.getByRole('button', { name: 'Yeni Dorse Ekle' }).click()
+        const markaInput = page.locator('input[name="marka"]')
+        await expect(markaInput).toBeVisible({ timeout: 8_000 })
+
+        await markaInput.click()
+        await markaInput.pressSequentially('Krone', { delay: 60 })
+
+        await expect(markaInput).toBeFocused()
+        await expect(markaInput).toHaveValue('Krone')
+    })
+
+    test('dorse ekle — teknik parametreler toggle açılınca ileri seviye alanlar görünür', async ({ authedPage: page }) => {
+        await page.getByRole('button', { name: 'Yeni Dorse Ekle' }).click()
+        const markaInput = page.locator('input[name="marka"]')
+        await expect(markaInput).toBeVisible({ timeout: 8_000 })
+
+        const toggle = page.getByRole('button', { name: /teknik/i })
+        await expect(toggle).toBeVisible({ timeout: 5_000 })
+        await expect(
+            page.locator('input[name="dorse_lastik_direnc_katsayisi"]'),
+        ).not.toBeVisible()
+
+        await toggle.click()
+        await expect(
+            page.locator('input[name="dorse_lastik_direnc_katsayisi"]'),
+        ).toBeVisible({ timeout: 5_000 })
+    })
+
     test('"Aktif Dorseler" filtre butonu görünür', async ({ authedPage: page }) => {
         await expect(page.getByRole('button', { name: 'Aktif Dorseler' })).toBeVisible({ timeout: 8_000 })
     })

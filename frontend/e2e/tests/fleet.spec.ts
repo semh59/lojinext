@@ -60,6 +60,36 @@ test.describe('Filo sayfası — Araçlar', () => {
         expect(body.marka).toBe('Volvo')
     })
 
+    // Regression: shared Modal's focus-trap effect used to re-fire on every
+    // keystroke (its `onClose` dep got a fresh reference each re-render),
+    // stealing focus back to the dialog's close button. `.fill()` (used
+    // elsewhere in this file) writes the value in one shot and never
+    // exercised the per-character re-render cycle that triggered it;
+    // pressSequentially does.
+    test('araç ekle — marka alanına yazarken odak kapat butonuna kaçmaz', async ({ authedPage: page }) => {
+        await page.getByRole('button', { name: /yeni araç ekle/i }).click()
+        const markaInput = page.locator('input[name="marka"]')
+        await expect(markaInput).toBeVisible({ timeout: 8_000 })
+
+        await markaInput.click()
+        await markaInput.pressSequentially('Mercedes', { delay: 60 })
+
+        await expect(markaInput).toBeFocused()
+        await expect(markaInput).toHaveValue('Mercedes')
+    })
+
+    test('araç ekle — "Fizik Parametreleri" toggle açılınca ileri seviye alanlar görünür', async ({ authedPage: page }) => {
+        await page.getByRole('button', { name: /yeni araç ekle/i }).click()
+        await expect(page.locator('input[name="plaka"]')).toBeVisible({ timeout: 8_000 })
+
+        const toggle = page.getByRole('button', { name: /fizik parametreleri/i })
+        await expect(toggle).toBeVisible({ timeout: 5_000 })
+        await expect(page.locator('input[name="bos_agirlik_kg"]')).not.toBeVisible()
+
+        await toggle.click()
+        await expect(page.locator('input[name="bos_agirlik_kg"]')).toBeVisible({ timeout: 5_000 })
+    })
+
     test('araç düzenleme — detay/düzenle butonu modal açar', async ({ authedPage: page }) => {
         await expect(page.getByText(MOCK_VEHICLE.plaka).first()).toBeVisible({ timeout: 10_000 })
         const editBtn = page.getByRole('button', { name: /düzenle|edit/i }).first()

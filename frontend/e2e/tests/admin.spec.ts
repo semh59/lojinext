@@ -113,6 +113,29 @@ test.describe('Admin panel', () => {
         }
     })
 
+    // Regression: shared Modal's focus-trap effect used to depend on `onClose`,
+    // which is a fresh function reference on every parent re-render (this
+    // page's closeModal is not memoized). Typing a character → state update →
+    // re-render → new onClose → effect re-fired → focus stolen back to the
+    // dialog's first focusable element (the close button) — on every single
+    // keystroke. `.fill()` elsewhere in this file writes the value in one
+    // shot and would never have caught this; pressSequentially fires a real
+    // keydown/input/keyup cycle per character, matching an actual user.
+    test('şifre alanına yazarken odak kapat butonuna kaçmaz (gerçek tuş vuruşu)', async ({ authedPage: page }) => {
+        await page.goto('/admin/kullanicilar')
+        await expect(page.getByText(MOCK_USERS[0].full_name).first()).toBeVisible({ timeout: 10_000 })
+        await page.getByRole('button', { name: /kullanıcı ekle|yeni kullanıcı|ekle/i }).first().click()
+        const dialog = page.getByRole('dialog')
+        await expect(dialog).toBeVisible({ timeout: 5_000 })
+
+        const pwField = dialog.locator('input[type="password"]').first()
+        await pwField.click()
+        await pwField.pressSequentially('Test1234!Secure', { delay: 60 })
+
+        await expect(pwField).toBeFocused()
+        await expect(pwField).toHaveValue('Test1234!Secure')
+    })
+
     test('kullanıcı silme — onay dialog açılır', async ({ authedPage: page }) => {
         await page.goto('/admin/kullanicilar')
         await expect(page.getByText(MOCK_USERS[1].full_name).first()).toBeVisible({ timeout: 10_000 })

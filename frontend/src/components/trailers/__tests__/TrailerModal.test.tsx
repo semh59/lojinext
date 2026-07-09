@@ -142,7 +142,10 @@ describe("TrailerModal", () => {
     });
   });
 
-  it("renders both basic and technical section headings", () => {
+  it("renders the technical section toggle heading", () => {
+    // 2026-07-09 "Sefer Ekle" tasarım eşitleme: shared <Modal> kabuğuna
+    // geçildi, tekil "Temel Bilgiler" alt-başlığı kaldırıldı (Sefer Ekle'de
+    // de yok) — teknik katsayılar hâlâ katlanabilir bölüm olarak duruyor.
     render(
       <TrailerModal
         isOpen={true}
@@ -151,9 +154,6 @@ describe("TrailerModal", () => {
         trailer={null}
       />,
     );
-    expect(
-      screen.getByText(trailerModalText.sections.basic),
-    ).toBeInTheDocument();
     expect(
       screen.getByText(trailerModalText.sections.technical),
     ).toBeInTheDocument();

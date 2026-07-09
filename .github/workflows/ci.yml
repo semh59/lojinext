@@ -692,6 +692,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 2026-07-10: repeated "No space left on device" failures building the
+      # backend image (it bundles CUDA/torch/xgboost/lightgbm/faiss — see the
+      # Trivy step's usr/local/cuda skip-dir below) exhausted the runner's
+      # default ~14GB free space, twice in a row on unrelated commits. Free
+      # up the preinstalled toolchains ubuntu-latest ships that this job
+      # never uses (~30GB reclaimed) before the build layer cache and image
+      # start competing for the same disk.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL || true
+          docker image prune -af || true
+          df -h /
+
       - name: Compute image tag
         id: tag
         run: |

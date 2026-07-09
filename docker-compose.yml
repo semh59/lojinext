@@ -1,4 +1,29 @@
 services:
+  # Traefik'in Docker provider'ı ham /var/run/docker.sock'a değil, bu
+  # read-only proxy'ye bağlanır (2026-07-09 kalıcı-çözüm bulgusu). Kök
+  # neden: Windows Docker Desktop/WSL2'nin ham docker.sock köprüsü kronik
+  # olarak flaky ("unexpected EOF" / "502 Bad Gateway" — traefik loglarında
+  # günler boyunca 50+ kez tekrarlandı, bu host'a özgü bir platform kusuru,
+  # uygulama kodundan bağımsız). Her tekrarında Traefik container
+  # listesini/etiketlerini senkronize edemiyor ve backend-auth gibi
+  # router'lar sessizce config'ten düşüyordu (canlı belirti: login 404
+  # atıyordu, backend container'ın kendisi sağlıklıydı). docker-socket-proxy
+  # kalıcı/havuzlanmış bir bağlantı üzerinden konuşur — ham soketin
+  # flakiness'ine Traefik'in kendisinden çok daha dayanıklı. Read-only:
+  # yalnız CONTAINERS+NETWORKS+EVENTS açık, POST=0 (hiçbir yazma izni yok).
+  docker-socket-proxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    environment:
+      CONTAINERS: 1
+      NETWORKS: 1
+      EVENTS: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
   # Tier E madde 32: reverse proxy / LB. Replaces nginx's proxy_pass to a
   # single `backend:8000` — that upstream was resolved once at nginx startup
   # and never discovered new replicas, so `docker compose up --scale
@@ -21,6 +46,7 @@ services:
     image: traefik:v3.6@sha256:d85749d4d10d970ed2b3a7cb2406d9b9da1cdd6ea975a39c727aab809d73136a
     command:
       - "--providers.docker=true"
+      - "--providers.docker.endpoint=tcp://docker-socket-proxy:2375"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
       - "--entrypoints.traefik.address=:8080"
@@ -33,8 +59,6 @@ services:
       - "80:80"
       # 8080 (traefik's own /ping + would-be dashboard) intentionally NOT
       # published to the host — internal-only, no public admin surface.
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/ping"]
@@ -42,6 +66,8 @@ services:
       timeout: 5s
       retries: 3
     depends_on:
+      docker-socket-proxy:
+        condition: service_started
       backend:
         condition: service_healthy
       frontend:

@@ -102,16 +102,25 @@ def setup_db_probe(engine: AsyncEngine) -> None:
             _request_query_count.set(count)
 
             # Recent queries rolling buffer — root cause için (statement_fp
-            # + ilk 200 char SQL).
+            # + ilk 200 char SQL). Dedektör öz-kirliliği filtresi: emit()
+            # zinciri kendi ErrorEvent'lerini `error_events` tablosuna
+            # INSERT'liyor; bu INSERT'ler tampona girerse N+1 raporundaki
+            # recent_queries örnekleri dedektörün KENDİ yazımlarıyla dolup
+            # asıl suçlu SQL'leri dışarı itiyor (kanıt: LOJINEXT-17A
+            # event'lerinin recent_queries'i kendi INSERT INTO error_events
+            # satırını içeriyordu). Basit substring kontrolü yeterli;
+            # sayaç (query_count) davranışına DOKUNULMUYOR — sadece tampon
+            # örnekleri temiz tutuluyor.
             current_fp = _sql_fingerprint(statement)
-            recent = _recent_queries.get([])
-            sql_sample = (
-                statement[:200] if isinstance(statement, str) else str(statement)[:200]
-            )
-            recent = (recent + [{"fp": current_fp, "sql": sql_sample}])[
-                -_RECENT_QUERIES_KEEP:
-            ]
-            _recent_queries.set(recent)
+            stmt_str = statement if isinstance(statement, str) else str(statement)
+            if "error_events" not in stmt_str:
+                recent = _recent_queries.get([])
+                recent = (recent + [{"fp": current_fp, "sql": stmt_str[:200]}])[
+                    -_RECENT_QUERIES_KEEP:
+                ]
+                _recent_queries.set(recent)
+            else:
+                recent = _recent_queries.get([])
 
             if count == _N_PLUS_ONE_THRESHOLD:
                 from app.infrastructure.context.request_context import (

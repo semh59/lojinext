@@ -248,6 +248,54 @@ class TestProcessImports:
         fake_service.add_lokasyon.assert_called_once()
 
     @patch("app.core.services.import_service.ExcelService")
+    async def test_import_routes_avoids_n_plus_one(
+        self, MockExcelService, service, monkeypatch
+    ):
+        """Sentry LOJINEXT-17A: bulk import must not issue one get_by_route
+        SELECT per row. get_all_route_keys is called exactly once regardless
+        of row count, and the per-row get_by_route path is never hit."""
+        from app.database.repositories.lokasyon_repo import LokasyonRepository
+
+        MockExcelService.parse_route_excel = AsyncMock(
+            return_value=[
+                {"cikis_yeri": "Izmir", "varis_yeri": "Bursa", "mesafe_km": 320.0},
+                {"cikis_yeri": "Adana", "varis_yeri": "Mersin", "mesafe_km": 70.0},
+                {
+                    "cikis_yeri": "Ankara",
+                    "varis_yeri": "İstanbul",
+                    "mesafe_km": 450.0,
+                },  # duplicate of the seeded (active) route
+            ]
+        )
+
+        original_get_all = LokasyonRepository.get_all_route_keys
+        original_get_by_route = LokasyonRepository.get_by_route
+        calls = {"get_all_route_keys": 0, "get_by_route": 0}
+
+        async def counted_get_all(self):
+            calls["get_all_route_keys"] += 1
+            return await original_get_all(self)
+
+        async def counted_get_by_route(self, *args, **kwargs):
+            calls["get_by_route"] += 1
+            return await original_get_by_route(self, *args, **kwargs)
+
+        monkeypatch.setattr(LokasyonRepository, "get_all_route_keys", counted_get_all)
+        monkeypatch.setattr(LokasyonRepository, "get_by_route", counted_get_by_route)
+
+        count, errors = await service.import_routes(b"fake")
+
+        assert calls["get_all_route_keys"] == 1, (
+            "route index must be preloaded once, not skipped/repeated"
+        )
+        assert calls["get_by_route"] == 0, (
+            "bulk import must use the in-memory index, not a per-row SELECT"
+        )
+        assert count == 2, f"errors={errors}"
+        assert len(errors) == 1
+        assert "zaten" in errors[0] or "already" in errors[0].lower()
+
+    @patch("app.core.services.import_service.ExcelService")
     async def test_import_routes_empty(self, MockExcelService, service):
         """Test with empty route excel"""
         MockExcelService.parse_route_excel = AsyncMock(return_value=[])

@@ -900,7 +900,7 @@ class ImportService:
         Pydantic. Her satır kendi UoW'unda işlenir; container.lokasyon_service
         singleton repo'su session'sız raw SQL atınca crash ediyordu.
         """
-        from app.core.services.lokasyon_service import LokasyonService
+        from app.core.services.lokasyon_service import LokasyonService, route_key
         from app.infrastructure.events.event_bus import get_event_bus
         from app.schemas.lokasyon import LokasyonCreate
 
@@ -911,6 +911,24 @@ class ImportService:
             if not items:
                 return 0, ["Excel dosyası boş veya veri bulunamadı."]
 
+            # N+1 önleme (Sentry LOJINEXT-17A): satır-başına ayrı get_by_route
+            # SELECT'i atmak yerine mevcut tüm güzergahları TEK sorguyla
+            # bellek-içi index'e çek; LokasyonService.add_lokasyon bu index
+            # verildiğinde kendi SELECT'ini atlar (aynı batch içi tekrarlar
+            # dahil, index insert/reaktivasyon sonrası yerinde güncelleniyor).
+            # route_key modül-seviyesinde serbest bir fonksiyon — testlerin
+            # LokasyonService sınıfını monkeypatch'lediği senaryolarda bile
+            # (bkz. test_import_routes_valid) çağrılabilir kalması için.
+            async with UnitOfWork() as index_uow:
+                existing_rows = await index_uow.lokasyon_repo.get_all_route_keys()
+            existing_index = {
+                route_key(r["cikis_yeri"], r["varis_yeri"]): {
+                    "id": r["id"],
+                    "aktif": r["aktif"],
+                }
+                for r in existing_rows
+            }
+
             errors: List[str] = []
             count = 0
             for idx, item in enumerate(items, 1):
@@ -920,7 +938,9 @@ class ImportService:
                         service = LokasyonService(
                             repo=uow.lokasyon_repo, event_bus=event_bus
                         )
-                        await service.add_lokasyon(payload)
+                        await service.add_lokasyon(
+                            payload, existing_index=existing_index
+                        )
                         await uow.commit()
                     count += 1
                 except Exception as e:

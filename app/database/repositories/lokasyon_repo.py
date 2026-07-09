@@ -51,6 +51,30 @@ class LokasyonRepository(BaseRepository[Lokasyon]):
         obj = result.scalar_one_or_none()
         return self._to_dict(obj)
 
+    async def get_all_route_keys(self) -> List[Dict]:
+        """Tüm güzergahların id/aktif/çıkış-varış'ını TEK sorguda döner.
+
+        N+1 önleme (Sentry LOJINEXT-17A): ``import_routes`` toplu Excel
+        akışı, her satır için ayrı ``get_by_route`` SELECT'i atmak yerine
+        bunu bir kez çağırıp bellek-içi index kurar.
+        """
+        stmt = select(
+            self.model.id,
+            self.model.aktif,
+            self.model.cikis_yeri,
+            self.model.varis_yeri,
+        )
+        result = await self.session.execute(stmt)
+        return [
+            {
+                "id": row.id,
+                "aktif": row.aktif,
+                "cikis_yeri": row.cikis_yeri,
+                "varis_yeri": row.varis_yeri,
+            }
+            for row in result
+        ]
+
     async def get_mesafe(self, cikis: str, varis: str) -> Optional[int]:
         """Lokasyonlar arası mesafeyi getir"""
         loc = await self.get_by_route(cikis, varis)

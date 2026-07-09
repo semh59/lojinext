@@ -11,6 +11,25 @@ from app.schemas.lokasyon import LokasyonCreate, LokasyonResponse, LokasyonUpdat
 logger = get_logger(__name__)
 
 
+def route_key(cikis: str, varis: str) -> tuple:
+    """SQL tarafındaki ``LokasyonRepository.get_by_route`` neutralize_sql
+    mantığıyla eşdeğer Python-side normalizasyon (dict key üretimi için).
+
+    Modül seviyesinde serbest fonksiyon (sınıf metodu DEĞİL) — çünkü
+    ``ImportService`` bunu ``LokasyonService`` sınıfı test'lerde
+    monkeypatch'lendiğinde bile çağırabilmeli.
+
+    Sıra önemli: önce Türkçe İ/ı katlama, SONRA lower() — aksi halde
+    Python'un str.lower()'ı 'İ'yi (U+0130) 'i' + birleşik nokta (U+0307)
+    olarak ayrıştırır (bkz. ``_tr_title`` içindeki aynı bug notu). Bu
+    sıra ile o ayrışma hiç oluşmaz.
+    """
+    return (
+        cikis.strip().replace("İ", "i").replace("ı", "i").lower(),
+        varis.strip().replace("İ", "i").replace("ı", "i").lower(),
+    )
+
+
 class LokasyonService:
     """Lokasyon/Güzergah iş mantığı servisi
 
@@ -166,9 +185,19 @@ class LokasyonService:
         return deduped
 
     @publishes(EventType.LOKASYON_ADDED)
-    async def add_lokasyon(self, data: LokasyonCreate) -> int:
+    async def add_lokasyon(
+        self, data: LokasyonCreate, existing_index: Optional[dict] = None
+    ) -> int:
         """
         Yeni lokasyon/güzergah ekle.
+
+        ``existing_index``: toplu import (bkz. ImportService.import_routes)
+        satır-başına ayrı SELECT atmamak için önceden TEK sorguyla
+        doldurduğu ``{route_key: {"id", "aktif"}}`` haritası. Verilirse
+        ``repo.get_by_route`` çağrısı atlanır ve bu haritadan okunur; ekleme/
+        reaktivasyon sonrası harita yerinde güncellenir (aynı batch
+        içindeki tekrarlar da yakalanır). None ise (mevcut tüm diğer
+        çağıranlar, örn. tekil POST /locations) davranış aynen korunur.
         """
 
         # Normalize names to prevent duplicates (e.g., Istanbul vs İstanbul)
@@ -191,8 +220,13 @@ class LokasyonService:
         data.varis_yeri = _tr_title(data.varis_yeri)
 
         # We use consistent normalization for checking existing records
-        # in the repository (which now handles it in SQL)
-        existing = await self.repo.get_by_route(data.cikis_yeri, data.varis_yeri)
+        # in the repository (which now handles it in SQL) — or, when a
+        # preloaded index is supplied, an equivalent in-memory lookup.
+        key = route_key(data.cikis_yeri, data.varis_yeri)
+        if existing_index is not None:
+            existing = existing_index.get(key)
+        else:
+            existing = await self.repo.get_by_route(data.cikis_yeri, data.varis_yeri)
         if existing:
             if existing.get("aktif"):
                 raise ValueError(
@@ -206,12 +240,16 @@ class LokasyonService:
                 await self.repo.update(
                     existing["id"], aktif=True, **data.model_dump(exclude_unset=True)
                 )
+                if existing_index is not None:
+                    existing_index[key]["aktif"] = True
                 return existing["id"]
 
         # Exclude schema fields that are not accepted by the repo layer
         _REPO_EXCLUDE = {"route_analysis", "source"}
         lokasyon_id = await self.repo.add(**data.model_dump(exclude=_REPO_EXCLUDE))
         logger.info(f"Yeni güzergah eklendi: ID {lokasyon_id}")
+        if existing_index is not None:
+            existing_index[key] = {"id": lokasyon_id, "aktif": True}
 
         # Rota analizi yap (Opsiyonel - eğer koordinatlar varsa veya sadece isimden bulmaya çalışıyorsak)
         # Şimdilik sadece koordinat varsa veya isimlerden bulmaya çalışıyorsak tetikleyebiliriz.

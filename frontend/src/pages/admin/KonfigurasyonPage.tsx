@@ -11,6 +11,7 @@ import { adminApi } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
 import { useTranslation } from "react-i18next";
+import { getConfigGroupLabel } from "@/lib/status-labels";
 
 interface ConfigItem {
   anahtar: string;
@@ -28,7 +29,7 @@ const adminUpdateReason = "Updated from admin panel";
 
 export default function AdminConfigurationPage() {
   const { adminConfigurationText } = useAdminResources();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   usePageTitle(t("admin.configuration", "Configuration"));
   const qc = useQueryClient();
   const { notify } = useNotify();
@@ -126,7 +127,7 @@ export default function AdminConfigurationPage() {
               <Settings size={16} />
             </div>
             <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-primary">
-              {`${group.replace("_", " ")} ${
+              {`${getConfigGroupLabel(group, i18n.language)} ${
                 adminConfigurationText.groupSuffix
               }`}
             </h2>

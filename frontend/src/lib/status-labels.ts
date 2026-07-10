@@ -60,3 +60,21 @@ export function getBakimTipiMeta(tip: BakimTipi, lang = "tr"): StatusMeta {
   };
   return map[tip];
 }
+
+// sistem_konfig.grup is a free-text DB column (seed migration 0041 uses
+// lowercase Turkish values like "rota"/"ml"/"sistem"/"anomali") — this is
+// a small, known set of category tags, not something end users type, so a
+// static map (with a plain fallback for anything unrecognised) is safe.
+const CONFIG_GROUP_LABELS: Record<string, { tr: string; en: string }> = {
+  rota: { tr: "Rota", en: "Route" },
+  ml: { tr: "ML", en: "ML" },
+  anomali: { tr: "Anomali", en: "Anomaly" },
+  sistem: { tr: "Sistem", en: "System" },
+};
+
+export function getConfigGroupLabel(group: string, lang = "tr"): string {
+  const en = lang.startsWith("en");
+  const known = CONFIG_GROUP_LABELS[group.toLowerCase()];
+  if (known) return en ? known.en : known.tr;
+  return group.replace(/_/g, " ");
+}

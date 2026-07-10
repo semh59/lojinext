@@ -166,21 +166,15 @@ export default function AdminConfigurationPage() {
                   <div className="flex items-center gap-4 md:col-span-7">
                     <div className="relative flex-1">
                       <Input
-                        type={
-                          config.tip === "int" || config.tip === "float"
-                            ? "number"
-                            : "text"
-                        }
+                        type={config.tip === "number" ? "number" : "text"}
                         value={String(localValues[config.anahtar] ?? "")}
                         onChange={(event) => {
                           const rawValue = event.target.value;
                           handleChange(
                             config.anahtar,
-                            config.tip === "int"
-                              ? parseInt(rawValue, 10)
-                              : config.tip === "float"
-                                ? parseFloat(rawValue)
-                                : rawValue,
+                            config.tip === "number"
+                              ? parseFloat(rawValue)
+                              : rawValue,
                           );
                         }}
                         className="h-11 w-full rounded-xl border-border/50 bg-elevated/30 focus:border-accent/40"

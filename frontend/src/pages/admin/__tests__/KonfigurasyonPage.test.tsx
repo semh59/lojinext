@@ -61,13 +61,19 @@ function seedConfigRows(): void {
   // migration'lı her DB'de düşüyordu (CI run 28873564005'te canlı). Test,
   // kendi fixture durumunu DAYATMALI ki migration içeriği serbestçe
   // evrilebilsin.
+  //
+  // tip='number' (NOT 'float'/'int'): backend'in gerçek kontratı bu —
+  // konfig_service.py'nin update_config()'i SADECE "number"/"boolean" tip
+  // değerlerini tanıyor (bkz. KonfigurasyonPage.tsx fix'i, aynı hata
+  // sınıfı — bu fixture'ın kendisi de eskiden 'float' yazıyordu, frontend'in
+  // o zamanki yanlış varsayımıyla tesadüfen örtüşüyordu).
   const sql = `
     INSERT INTO sistem_konfig
       (anahtar, deger, tip, birim, min_deger, max_deger, grup, aciklama, yeniden_baslat)
     VALUES
-      ('ANOMALY_Z_THRESHOLD', '2.5'::jsonb, 'float', 'σ', 1, 5,
+      ('ANOMALY_Z_THRESHOLD', '2.5'::jsonb, 'number', 'σ', 1, 5,
        'anomali', 'Anomali tespiti icin Z-skoru esigi', false),
-      ('VEHICLE_AGE_DEGRADATION_RATE', '0.01'::jsonb, 'float', NULL, NULL, NULL,
+      ('VEHICLE_AGE_DEGRADATION_RATE', '0.01'::jsonb, 'number', NULL, NULL, NULL,
        'ml', 'Arac yasi basina yillik tuketim artis orani', true),
       ('LOG_LEVEL', '"INFO"'::jsonb, 'string', NULL, NULL, NULL,
        'sistem', 'Uygulama log seviyesi', false)
@@ -150,6 +156,33 @@ describe.skipIf(!backendUp)(
         screen.getByText("Anomali tespiti icin Z-skoru esigi"),
       ).toBeInTheDocument();
       expect(screen.getByText("σ")).toBeInTheDocument();
+    });
+
+    it("renders a number-typed input for tip='number' configs, not text", async () => {
+      // Regression test: the type check compared config.tip against
+      // "int"/"float" — but the real backend (konfig_service.py, seed
+      // migration 0041) only ever writes "number"/"string"/"boolean" to
+      // this column. Every numeric config's input silently fell through
+      // to type="text" (no numeric keypad/spinner) and submitted a raw
+      // string instead of a parsed number.
+      sessionStorage.setItem("access_token", token);
+      render(<AdminConfigurationPage />);
+      await waitFor(
+        () =>
+          expect(screen.getByText("ANOMALY_Z_THRESHOLD")).toBeInTheDocument(),
+        { timeout: 10000 },
+      );
+      const numberRow = within(getConfigRow("ANOMALY_Z_THRESHOLD"));
+      const numberInput = numberRow.getByPlaceholderText(
+        adminConfigurationText.valuePlaceholder,
+      );
+      expect(numberInput).toHaveAttribute("type", "number");
+
+      const stringRow = within(getConfigRow("LOG_LEVEL"));
+      const stringInput = stringRow.getByPlaceholderText(
+        adminConfigurationText.valuePlaceholder,
+      );
+      expect(stringInput).toHaveAttribute("type", "text");
     });
 
     it("shows group section headers with suffix", async () => {

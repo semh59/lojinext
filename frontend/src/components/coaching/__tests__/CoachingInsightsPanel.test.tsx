@@ -65,6 +65,13 @@ describe("CoachingInsightsPanel", () => {
     ).toBeInTheDocument();
     // Kaynak göstergesi
     expect(screen.getByText(/Kural tabanlı/)).toBeInTheDocument();
+    // Backend'in ham Türkçe headline'ı (her zaman generic bir fallback
+    // string'i, insights boşken hiçbir dinamik veri taşımıyor) artık
+    // gösterilmiyor — yukarıdaki translated "aktif öneri yok" mesajıyla
+    // aynı anda gösterilmesi anlamsız/tekrar oluyordu.
+    expect(
+      screen.queryByText("Şu an için kritik durum yok"),
+    ).not.toBeInTheDocument();
   });
 
   it("insight kartı + Telegram gönder butonu render edilir", async () => {

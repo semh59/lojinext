@@ -125,9 +125,11 @@ export function CoachingInsightsPanel({
               })}
             </span>
           </div>
-          <p className="text-sm text-secondary leading-relaxed">
-            {data.headline}
-          </p>
+          {data.insights.length > 0 && (
+            <p className="text-sm text-secondary leading-relaxed">
+              {data.headline}
+            </p>
+          )}
           <p className="mt-1 text-[10px] font-mono text-tertiary">
             {data.source === "llm"
               ? coachingPageText.sourceLlm

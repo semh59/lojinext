@@ -18,6 +18,9 @@ export const tripStatsText = {
   heading: "Trip Performance Indicators",
   totalTripsLabel: (isCompletedView: boolean) =>
     `${isCompletedView ? "Total Completed" : "Total"} Trips`,
+  completedLabel: "Completed",
+  totalDistanceLabel: "Total Distance",
+  avgConsumptionLabel: "Avg. Consumption",
   cancelledLabel: "Cancelled",
   roadCharacter: "Road Character",
   highwayShare: (value: number) => `${value}% Highway`,

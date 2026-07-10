@@ -18,6 +18,9 @@ export const tripStatsText = {
   heading: "Sefer Performans Göstergeleri",
   totalTripsLabel: (isCompletedView: boolean) =>
     `${isCompletedView ? "Toplam Tamamlanan" : "Toplam"} Sefer`,
+  completedLabel: "Tamamlanan",
+  totalDistanceLabel: "Toplam Mesafe",
+  avgConsumptionLabel: "Ort. Tüketim",
   cancelledLabel: "İptal Edilen",
   roadCharacter: "Yol Karakteri",
   highwayShare: (value: number) => `%${value} Otoyol`,

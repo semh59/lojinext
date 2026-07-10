@@ -163,14 +163,14 @@ export function useTripsData() {
         bg: "bg-info/10",
       },
       {
-        label: "Tamamlanan",
+        label: tripStatsText.completedLabel,
         value: src.completed_count || 0,
         icon: Navigation,
         color: "text-success",
         bg: "bg-success/10",
       },
       {
-        label: "Toplam Mesafe",
+        label: tripStatsText.totalDistanceLabel,
         value: (src.total_distance_km || 0).toLocaleString(locale, {
           maximumFractionDigits: 0,
         }),
@@ -180,7 +180,7 @@ export function useTripsData() {
         bg: "bg-danger/10",
       },
       {
-        label: "Ort. Tüketim",
+        label: tripStatsText.avgConsumptionLabel,
         value: (src.avg_consumption || 0).toFixed(1),
         unit: "L/100km",
         icon: Truck,

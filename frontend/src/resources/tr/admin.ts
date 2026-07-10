@@ -221,6 +221,40 @@ export const adminNotificationsText = {
   },
 } as const;
 
+export const adminIntegrationsText = {
+  heading: "Entegrasyon API Anahtarları",
+  description:
+    "Harici servis (Mapbox, OpenRoute, Groq) API anahtarlarını buradan girin. " +
+    "Girilen değer bir daha görüntülenemez — yalnızca güncellenebilir.",
+  loading: "Entegrasyon durumları yükleniyor",
+  writeOnlyNotice:
+    "Güvenlik nedeniyle kayıtlı anahtarlar hiçbir zaman görüntülenemez, yalnızca değiştirilebilir.",
+  statusLabels: {
+    configured: "Yapılandırıldı",
+    notConfigured: "Yapılandırılmadı",
+  },
+  lastUpdated: (date: string) => `Son güncelleme: ${date}`,
+  neverUpdated: "Hiç güncellenmedi",
+  inputPlaceholder: "Yeni API anahtarını girin...",
+  actions: {
+    save: "Kaydet",
+  },
+  notifications: {
+    loadFailedTitle: "Hata",
+    loadFailedMessage: "Entegrasyon durumları yüklenemedi.",
+    saveSuccessTitle: "Başarılı",
+    saveSuccessMessage: "API anahtarı güncellendi.",
+    saveFailedTitle: "Hata",
+    saveFailedFallback: "API anahtarı güncellenemedi.",
+    emptyValue: "Lütfen bir API anahtarı girin.",
+  },
+  serviceNames: {
+    mapbox: "Mapbox",
+    openroute: "OpenRoute Service",
+    groq: "Groq (LLM)",
+  },
+} as const;
+
 export const adminLayoutText = {
   nav: {
     overview: "Genel Bakış",
@@ -228,6 +262,7 @@ export const adminLayoutText = {
     roles: "Roller",
     ml: "ML & Modeller",
     configuration: "Konfigürasyon",
+    integrations: "Entegrasyonlar",
     maintenance: "Bakım & Onarım",
     assignment: "Sefer Atama",
     accuracy: "Tahmin Doğruluğu",

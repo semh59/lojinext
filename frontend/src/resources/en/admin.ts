@@ -220,6 +220,40 @@ export const adminNotificationsText = {
   },
 } as const;
 
+export const adminIntegrationsText = {
+  heading: "Integration API Keys",
+  description:
+    "Enter external service (Mapbox, OpenRoute, Groq) API keys here. " +
+    "Once entered, a value can never be viewed again — only replaced.",
+  loading: "Loading integration statuses",
+  writeOnlyNotice:
+    "For security, stored keys can never be viewed — only replaced.",
+  statusLabels: {
+    configured: "Configured",
+    notConfigured: "Not configured",
+  },
+  lastUpdated: (date: string) => `Last updated: ${date}`,
+  neverUpdated: "Never updated",
+  inputPlaceholder: "Enter new API key...",
+  actions: {
+    save: "Save",
+  },
+  notifications: {
+    loadFailedTitle: "Error",
+    loadFailedMessage: "Integration statuses could not be loaded.",
+    saveSuccessTitle: "Success",
+    saveSuccessMessage: "API key updated.",
+    saveFailedTitle: "Error",
+    saveFailedFallback: "Failed to update API key.",
+    emptyValue: "Please enter an API key.",
+  },
+  serviceNames: {
+    mapbox: "Mapbox",
+    openroute: "OpenRoute Service",
+    groq: "Groq (LLM)",
+  },
+} as const;
+
 export const adminLayoutText = {
   nav: {
     overview: "Overview",
@@ -227,6 +261,7 @@ export const adminLayoutText = {
     roles: "Roles",
     ml: "ML & Models",
     configuration: "Configuration",
+    integrations: "Integrations",
     maintenance: "Maintenance & Repair",
     assignment: "Trip Assignment",
     accuracy: "Forecast Accuracy",

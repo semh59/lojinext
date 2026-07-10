@@ -157,6 +157,13 @@ export interface AttributionOverridePayload {
   reason: string;
 }
 
+export interface AdminIntegrationStatus {
+  servis_adi: string;
+  configured: boolean;
+  guncellenme_tarihi?: string | null;
+  guncelleyen_id?: number | null;
+}
+
 // ── Known permissions ─────────────────────────────────────────────────────────
 
 export const KNOWN_PERMISSIONS: { group: string; keys: string[] }[] = [
@@ -393,6 +400,26 @@ export const adminAttributionApi = {
   },
 };
 
+// Write-only by design: the backend never returns the plaintext value —
+// GET only carries configured/metadata, PUT accepts+stores a new value.
+export const adminIntegrationsApi = {
+  getStatuses: async (): Promise<AdminIntegrationStatus[]> => {
+    const { data } = await axiosInstance.get("/admin/integrations/");
+    return data as AdminIntegrationStatus[];
+  },
+
+  updateKey: async (
+    servisAdi: string,
+    apiKey: string,
+  ): Promise<AdminIntegrationStatus> => {
+    const { data } = await axiosInstance.put(
+      `/admin/integrations/${servisAdi}`,
+      { api_key: apiKey },
+    );
+    return data as AdminIntegrationStatus;
+  },
+};
+
 // ── Unified adminService object (the shape the task requires) ─────────────────
 
 export const adminService = {
@@ -443,5 +470,10 @@ export const adminService = {
 
   fuelAccuracy: {
     get: adminFuelAccuracyApi.get,
+  },
+
+  integrations: {
+    getStatuses: adminIntegrationsApi.getStatuses,
+    updateKey: adminIntegrationsApi.updateKey,
   },
 };

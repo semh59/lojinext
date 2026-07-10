@@ -6,6 +6,7 @@ import {
   Bell,
   Brain,
   Database,
+  Key,
   LayoutDashboard,
   LogOut,
   Shield,
@@ -44,6 +45,11 @@ export default function AdminLayout() {
       path: "/admin/konfig",
       label: adminLayoutText.nav.configuration,
       icon: SlidersHorizontal,
+    },
+    {
+      path: "/admin/entegrasyonlar",
+      label: adminLayoutText.nav.integrations,
+      icon: Key,
     },
     {
       path: "/admin/atama",

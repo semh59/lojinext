@@ -431,6 +431,7 @@
     "overview": "Overview",
     "ml_models": "ML Models",
     "configuration": "Configuration",
+    "integrations": "Integrations",
     "data_management": "Data Management",
     "maintenance": "Maintenance",
     "trip_assignment": "Trip Assignment",

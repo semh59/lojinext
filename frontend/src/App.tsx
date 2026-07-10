@@ -29,6 +29,9 @@ const AdminOverviewPage = lazy(() => import("./pages/admin/OverviewPage"));
 const AdminConfigurationPage = lazy(
   () => import("./pages/admin/KonfigurasyonPage"),
 );
+const AdminIntegrationsPage = lazy(
+  () => import("./pages/admin/EntegrasyonlarPage"),
+);
 const AdminUsersPage = lazy(() => import("./pages/admin/KullanicilarPage"));
 const AdminRolesPage = lazy(() => import("./pages/admin/RollerPage"));
 const AdminAccuracyPage = lazy(() => import("./pages/admin/DogrulukPage"));
@@ -129,6 +132,10 @@ function App() {
                         <Route
                           path="konfig"
                           element={<AdminConfigurationPage />}
+                        />
+                        <Route
+                          path="entegrasyonlar"
+                          element={<AdminIntegrationsPage />}
                         />
                         <Route
                           path="kullanicilar"

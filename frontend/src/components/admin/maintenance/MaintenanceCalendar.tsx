@@ -36,7 +36,7 @@ function predictionToEvent(p: MaintenancePrediction): EventInput | null {
 }
 
 export function MaintenanceCalendar() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   const { data, isLoading, error } = useMaintenancePredictions();
   const [selected, setSelected] = useState<MaintenancePrediction | null>(null);
@@ -96,7 +96,7 @@ export function MaintenanceCalendar() {
           events={events}
           eventClick={handleEventClick}
           height="auto"
-          locale="tr"
+          locale={i18n.language.startsWith("en") ? "en" : "tr"}
           firstDay={1}
           buttonText={{ today: t("common.today", "Today") }}
         />

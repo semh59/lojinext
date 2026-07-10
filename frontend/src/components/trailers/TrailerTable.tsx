@@ -15,6 +15,7 @@ import { Dorse } from "../../types";
 import { cn } from "../../lib/utils";
 import { useTrailersResources } from "../../resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
+import { getTrailerTipiLabel } from "../../lib/status-labels";
 
 interface TrailerTableProps {
   trailers: Dorse[];
@@ -172,7 +173,7 @@ export function TrailerTable({
                         </td>
                         <td className="p-5">
                           <div className="text-sm font-bold text-primary">
-                            {trailer.tipi}
+                            {getTrailerTipiLabel(trailer.tipi, locale)}
                           </div>
                           <div className="text-xs text-secondary">
                             {trailer.yil || "-"}{" "}
@@ -317,7 +318,7 @@ export function TrailerTable({
                         {trailer.marka || trailerTableText.labels.unknownBrand}
                       </h3>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-secondary">
-                        {trailer.tipi}
+                        {getTrailerTipiLabel(trailer.tipi, locale)}
                       </p>
                     </div>
                   </div>

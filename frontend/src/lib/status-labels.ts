@@ -78,3 +78,21 @@ export function getConfigGroupLabel(group: string, lang = "tr"): string {
   if (known) return en ? known.en : known.tr;
   return group.replace(/_/g, " ");
 }
+
+// dorseler.tipi raw values (TrailerModal.tsx's own <select> already maps
+// these to translated option labels for the edit form — the table/card
+// list just never reused that mapping and rendered the raw DB string).
+const TRAILER_TIPI_LABELS: Record<string, { tr: string; en: string }> = {
+  Standart: { tr: "Standart", en: "Standard" },
+  Frigo: { tr: "Frigo", en: "Refrigerated" },
+  Tenteli: { tr: "Tenteli", en: "Tented" },
+  Damperli: { tr: "Damperli", en: "Tipper" },
+  Lowbed: { tr: "Lowbed", en: "Lowbed" },
+};
+
+export function getTrailerTipiLabel(tipi: string, lang = "tr"): string {
+  const en = lang.startsWith("en");
+  const known = TRAILER_TIPI_LABELS[tipi];
+  if (known) return en ? known.en : known.tr;
+  return tipi;
+}

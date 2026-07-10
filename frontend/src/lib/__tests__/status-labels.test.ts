@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getConfigGroupLabel } from "../status-labels";
+import { getConfigGroupLabel, getTrailerTipiLabel } from "../status-labels";
 
 describe("getConfigGroupLabel", () => {
   it("maps known sistem_konfig groups to English", () => {
@@ -20,5 +20,21 @@ describe("getConfigGroupLabel", () => {
 
   it("falls back to a plain underscore-replaced string for unknown groups", () => {
     expect(getConfigGroupLabel("yeni_grup", "en")).toBe("yeni grup");
+  });
+});
+
+describe("getTrailerTipiLabel", () => {
+  it("maps known dorseler.tipi values to English", () => {
+    expect(getTrailerTipiLabel("Tenteli", "en")).toBe("Tented");
+    expect(getTrailerTipiLabel("Damperli", "en")).toBe("Tipper");
+    expect(getTrailerTipiLabel("Frigo", "en")).toBe("Refrigerated");
+  });
+
+  it("keeps Turkish labels unchanged for the Turkish locale", () => {
+    expect(getTrailerTipiLabel("Tenteli", "tr")).toBe("Tenteli");
+  });
+
+  it("falls back to the raw value for an unrecognised type", () => {
+    expect(getTrailerTipiLabel("Ozel Tip", "en")).toBe("Ozel Tip");
   });
 });

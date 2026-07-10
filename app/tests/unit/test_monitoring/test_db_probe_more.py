@@ -496,20 +496,25 @@ async def test_auto_explain_evicts_old_fingerprints():
     # Ensure this fingerprint is fresh so we get past the rate-limit check
     dp._explain_last.pop(fp, None)
 
-    # Mock the DB session so we don't need a real DB — patch at the import site
-    mock_session = AsyncMock()
-    mock_result = MagicMock()  # sync MagicMock so fetchall() is a regular call
-    mock_result.fetchall.return_value = [("Seq Scan on t",), ("cost=0.00..5.00",)]
-    mock_session.execute = AsyncMock(return_value=mock_result)
+    # Mock the raw asyncpg driver connection so we don't need a real DB
+    mock_asyncpg_conn = AsyncMock()
+    mock_asyncpg_conn.fetch = AsyncMock(
+        return_value=[("Seq Scan on t",), ("cost=0.00..5.00",)]
+    )
+    mock_raw = MagicMock()
+    mock_raw.driver_connection = mock_asyncpg_conn
 
-    mock_session_ctx = AsyncMock()
-    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+    mock_conn = AsyncMock()
+    mock_conn.get_raw_connection = AsyncMock(return_value=mock_raw)
+    mock_conn_ctx = AsyncMock()
+    mock_conn_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_conn_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    mock_engine = MagicMock()
+    mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     with (
-        patch(
-            "app.database.connection.AsyncSessionLocal", return_value=mock_session_ctx
-        ),
+        patch("app.database.connection.engine", mock_engine),
         patch("app.infrastructure.monitoring.aemit", AsyncMock()),
     ):
         dp._explain_sem = None  # reset semaphore
@@ -534,17 +539,24 @@ async def test_auto_explain_full_path_with_seq_scan():
 
     stmt = "SELECT id FROM full_explain_table"
 
-    mock_session = AsyncMock()
-    mock_result = MagicMock()  # sync MagicMock so fetchall() is a regular call
-    mock_result.fetchall.return_value = [
-        ("Seq Scan on full_explain_table  (cost=0.00..35.50 rows=2550 width=4)",),
-        ("  Filter: (active = true)",),
-    ]
-    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_asyncpg_conn = AsyncMock()
+    mock_asyncpg_conn.fetch = AsyncMock(
+        return_value=[
+            ("Seq Scan on full_explain_table  (cost=0.00..35.50 rows=2550 width=4)",),
+            ("  Filter: (active = true)",),
+        ]
+    )
+    mock_raw = MagicMock()
+    mock_raw.driver_connection = mock_asyncpg_conn
 
-    mock_session_ctx = AsyncMock()
-    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
+    mock_conn = AsyncMock()
+    mock_conn.get_raw_connection = AsyncMock(return_value=mock_raw)
+    mock_conn_ctx = AsyncMock()
+    mock_conn_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_conn_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    mock_engine = MagicMock()
+    mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     emitted = []
 
@@ -552,9 +564,7 @@ async def test_auto_explain_full_path_with_seq_scan():
         emitted.append(event)
 
     with (
-        patch(
-            "app.database.connection.AsyncSessionLocal", return_value=mock_session_ctx
-        ),
+        patch("app.database.connection.engine", mock_engine),
         patch("app.infrastructure.monitoring.aemit", fake_aemit),
     ):
         await dp._auto_explain(stmt, None, 2500.0)

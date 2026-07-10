@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -153,17 +153,65 @@ def test_reset_recent_queries():
 
 
 # ---------------------------------------------------------------------------
-# _auto_explain — skips parameterised & non-SELECT statements
+# _auto_explain — real asyncpg paramstyle (numeric_dollar) is NOT skipped;
+# executemany and non-SELECT statements are.
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_auto_explain_skips_parameterised():
+async def test_auto_explain_runs_for_asyncpg_style_params():
+    """Regression test: the old code skipped ANY parameterized statement via
+    a regex (`:\\w+|\\$\\d+|\\?`) matching asyncpg's own `$1, $2, ...`
+    compiled placeholders — meaning it never actually explained a real
+    (parameterized) query in production. `$1` + a positional params tuple
+    is asyncpg's native calling convention and must now be used directly,
+    not skipped."""
+    from app.infrastructure.monitoring import db_probe as dp
+
+    dp._explain_last.clear()
+    dp._explain_sem = None
+
+    stmt = "SELECT * FROM t WHERE id = $1"
+
+    mock_asyncpg_conn = AsyncMock()
+    mock_asyncpg_conn.fetch = AsyncMock(return_value=[("Seq Scan on t",)])
+
+    mock_raw = MagicMock()
+    mock_raw.driver_connection = mock_asyncpg_conn
+
+    mock_conn = AsyncMock()
+    mock_conn.get_raw_connection = AsyncMock(return_value=mock_raw)
+    mock_conn_ctx = AsyncMock()
+    mock_conn_ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_conn_ctx.__aexit__ = AsyncMock(return_value=None)
+
+    mock_engine = MagicMock()
+    mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
+
+    with (
+        patch("app.database.connection.engine", mock_engine),
+        patch("app.infrastructure.monitoring.aemit", AsyncMock()),
+    ):
+        await dp._auto_explain(stmt, (1,), 3000.0)
+
+    # The params tuple was forwarded as positional args to asyncpg's fetch,
+    # exactly as asyncpg's own numeric_dollar paramstyle expects.
+    mock_asyncpg_conn.fetch.assert_awaited_once()
+    call_args = mock_asyncpg_conn.fetch.call_args
+    assert call_args.args[0].startswith("EXPLAIN")
+    assert call_args.args[1:] == (1,)
+
+
+@pytest.mark.asyncio
+async def test_auto_explain_skips_executemany():
+    """executemany params are a list-of-tuples (one per batch row), not a
+    single param set — re-EXPLAINing a batch insert isn't meaningful here."""
     from app.infrastructure.monitoring.db_probe import _auto_explain
 
-    # Statement with :param → should return early, no session
-    await _auto_explain("SELECT * FROM t WHERE id = :id", {"id": 1}, 3000.0)
-    # No error means it returned early silently
+    await _auto_explain(
+        "SELECT * FROM t WHERE id = $1", [(1,), (2,)], 3000.0, executemany=True
+    )
+    # No error means it returned early without touching the DB
 
 
 @pytest.mark.asyncio
@@ -172,6 +220,17 @@ async def test_auto_explain_skips_non_select():
 
     await _auto_explain("UPDATE t SET col=1", None, 3000.0)
     # Should return early, no crash
+
+
+@pytest.mark.asyncio
+async def test_auto_explain_skips_unexpected_params_type():
+    """Defensive guard: if params is neither None nor a list/tuple (the
+    asyncpg dialect should never actually produce this), skip rather than
+    guess how to call fetch()."""
+    from app.infrastructure.monitoring.db_probe import _auto_explain
+
+    await _auto_explain("SELECT * FROM t WHERE id = $1", {"id": 1}, 3000.0)
+    # No error means it returned early without touching the DB
 
 
 @pytest.mark.asyncio

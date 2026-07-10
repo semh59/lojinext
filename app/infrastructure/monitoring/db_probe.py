@@ -171,7 +171,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                 try:
                     loop = asyncio.get_running_loop()
                     task = loop.create_task(
-                        _auto_explain(statement, params, elapsed_ms),
+                        _auto_explain(statement, params, elapsed_ms, executemany),
                         name="auto-explain",
                     )
                     _db_bg_tasks.add(task)
@@ -244,15 +244,36 @@ def setup_db_probe(engine: AsyncEngine) -> None:
     logger.info("DB probe activated")
 
 
-async def _auto_explain(statement: str, params, elapsed_ms: float) -> None:
+async def _auto_explain(
+    statement: str, params, elapsed_ms: float, executemany: bool = False
+) -> None:
+    """Re-run the slow statement as ``EXPLAIN (ANALYZE FALSE)`` and record the plan.
+
+    Previously this bailed out on ANY parameterized statement
+    (``:\\w+|\\$\\d+|\\?``) — but the asyncpg dialect's paramstyle is
+    ``numeric_dollar`` (SQLAlchemy compiles every bound query to ``$1, $2,
+    ...`` before it reaches this hook), so that regex matched essentially
+    every real query the app runs. In practice `_auto_explain` never
+    captured a plan for anything but literal, unparameterized SQL — dead
+    code for the actual slow-query population (confirmed live: a genuine
+    8.5s query on 2026-07-10 produced a "slow_query" ErrorEvent but no
+    matching "slow_query_plan" one).
+
+    Fix: `$1, $2, ...` positional placeholders + a params sequence is
+    exactly asyncpg's own native calling convention (``Connection.fetch(sql,
+    *args)``) — no translation needed. Grab the raw asyncpg driver
+    connection off a fresh pooled connection (dedicated to this EXPLAIN,
+    never the request's own in-flight connection/cursor) and call it
+    directly, bypassing SQLAlchemy's text()/bindparam layer (which only
+    understands ``:name`` style and would require reparsing the
+    already-compiled positional SQL to translate it back).
+    """
     global _explain_sem
     try:
-        from sqlalchemy import text
-
-        from app.database.connection import AsyncSessionLocal
-
-        # Skip parameterized queries — cannot safely re-execute for EXPLAIN
-        if re.search(r":\w+|\$\d+|\?", statement):
+        # executemany params is a list-of-tuples (one per batch row) — not a
+        # single parameter set, and re-EXPLAINing an INSERT/UPDATE batch
+        # isn't the point of this diagnostic anyway (SELECT-only, see below).
+        if executemany:
             return
 
         clean = statement.strip().upper()
@@ -275,12 +296,31 @@ async def _auto_explain(statement: str, params, elapsed_ms: float) -> None:
             _explain_sem = asyncio.Semaphore(1)
         if _explain_sem.locked():  # already running one EXPLAIN — skip
             return
+
+        if params is None:
+            args: tuple = ()
+        elif isinstance(params, (list, tuple)):
+            args = tuple(params)
+        else:
+            # Unexpected paramstyle (shouldn't happen on the asyncpg
+            # dialect's numeric_dollar compiler) — don't guess, skip.
+            logger.debug(
+                "Auto EXPLAIN skipped: unexpected params type %s for fp=%s",
+                type(params).__name__,
+                fp,
+            )
+            return
+
         async with _explain_sem:
-            async with AsyncSessionLocal() as session:
-                result = await session.execute(
-                    text(f"EXPLAIN (ANALYZE FALSE, FORMAT TEXT) {statement}"),
+            from app.database.connection import engine
+
+            async with engine.connect() as conn:
+                raw = await conn.get_raw_connection()
+                asyncpg_conn = raw.driver_connection
+                rows = await asyncpg_conn.fetch(
+                    f"EXPLAIN (ANALYZE FALSE, FORMAT TEXT) {statement}", *args
                 )
-                plan_lines = [row[0] for row in result.fetchall()]
+                plan_lines = [row[0] for row in rows]
                 plan_text = "\n".join(plan_lines[:20])
 
             seq_scan = any("Seq Scan" in line for line in plan_lines)

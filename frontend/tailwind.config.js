@@ -11,25 +11,32 @@ export default {
                 sans: ['Inter', 'system-ui', 'sans-serif'],
             },
             colors: {
-                base: 'var(--bg-base)',
-                surface: 'var(--bg-surface)',
-                elevated: 'var(--bg-elevated)',
+                // hsl(var(--x-hsl) / <alpha-value>) — NOT a plain var(--x)
+                // reference. Tailwind's opacity-modifier syntax (bg-elevated/50,
+                // bg-success/10, etc.) needs <alpha-value> to resolve through;
+                // a bare var(--bg-elevated) (a full hsl(...) string) can't be
+                // decomposed, so every /NN class built on these tokens was
+                // silently emitting NO CSS rule at all (see index.css's -hsl
+                // vars for the full writeup — 2026-07-10 dark-mode input bug).
+                base: 'hsl(var(--bg-base-hsl) / <alpha-value>)',
+                surface: 'hsl(var(--bg-surface-hsl) / <alpha-value>)',
+                elevated: 'hsl(var(--bg-elevated-hsl) / <alpha-value>)',
 
-                primary: 'var(--text-primary)',
-                secondary: 'var(--text-secondary)',
-                tertiary: 'var(--text-tertiary)',
+                primary: 'hsl(var(--text-primary-hsl) / <alpha-value>)',
+                secondary: 'hsl(var(--text-secondary-hsl) / <alpha-value>)',
+                tertiary: 'hsl(var(--text-tertiary-hsl) / <alpha-value>)',
 
-                border: 'var(--border)',
+                border: 'hsl(var(--border-hsl) / <alpha-value>)',
 
                 accent: {
-                    DEFAULT: 'var(--accent)',
-                    soft: 'var(--accent-soft)',
-                    dark: 'var(--accent-dark)',
+                    DEFAULT: 'hsl(var(--accent-hsl) / <alpha-value>)',
+                    soft: 'hsl(var(--accent-soft-hsl) / <alpha-value>)',
+                    dark: 'hsl(var(--accent-dark-hsl) / <alpha-value>)',
                 },
-                success: 'var(--success)',
-                warning: 'var(--warning)',
-                danger: 'var(--danger)',
-                info: 'var(--info)',
+                success: 'hsl(var(--success-hsl) / <alpha-value>)',
+                warning: 'hsl(var(--warning-hsl) / <alpha-value>)',
+                danger: 'hsl(var(--danger-hsl) / <alpha-value>)',
+                info: 'hsl(var(--info-hsl) / <alpha-value>)',
             },
             fontSize: {
                 'xs': ['11px', '1.5'],

@@ -39,6 +39,35 @@
     --border: hsl(24, 15%, 90%);
     --border-strong: hsl(24, 15%, 82%);
 
+    /* --- Component-only (no hsl() wrapper, space-separated) mirrors of the
+       colors above, used SOLELY by tailwind.config.js's `hsl(var(--x-hsl) /
+       <alpha-value>)` color definitions.
+       Root cause of a real, wide-reaching bug (2026-07-10): Tailwind's
+       opacity-modifier syntax (`bg-elevated/50`, `bg-success/10`, etc.)
+       requires the color to resolve through `<alpha-value>` — a color
+       defined as a plain `var(--bg-elevated)` reference (a full hsl(...)
+       string Tailwind can't decompose) can't support it, so Tailwind
+       silently emits NO rule at all for any `/NN` opacity class built on
+       these tokens. On a <div> (transparent by default) that just means a
+       missing tint — easy to miss. On an <input> (opaque white by browser
+       default) it means literal white-on-white text in dark mode. Every
+       `bg-x/NN` class across the app was affected; fixed here, not by
+       touching any of the ~90 component files that use the pattern. */
+    --bg-base-hsl: 40 20% 98%;
+    --bg-surface-hsl: 0 0% 100%;
+    --bg-elevated-hsl: 40 15% 95%;
+    --text-primary-hsl: 24 15% 12%;
+    --text-secondary-hsl: 24 10% 45%;
+    --text-tertiary-hsl: 24 5% 65%;
+    --accent-hsl: var(--h-brand) var(--s-brand) var(--l-brand);
+    --accent-soft-hsl: var(--h-brand) 40% 94%;
+    --accent-dark-hsl: var(--h-brand) 75% 35%;
+    --success-hsl: 150 60% 35%;
+    --warning-hsl: 35 90% 40%;
+    --danger-hsl: 0 70% 45%;
+    --info-hsl: 210 60% 45%;
+    --border-hsl: 24 15% 90%;
+
     /* Shadows & Effects */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1),
@@ -75,6 +104,20 @@
 
     --accent-soft: hsl(var(--h-brand), 25%, 15%);
     --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+
+    /* Dark-mode mirrors of the component-only -hsl vars (see :root comment) */
+    --bg-base-hsl: 240 10% 4%;
+    --bg-surface-hsl: 240 8% 14%;
+    --bg-elevated-hsl: 240 8% 20%;
+    --text-primary-hsl: 0 0% 96%;
+    --text-secondary-hsl: 240 5% 75%;
+    --text-tertiary-hsl: 240 5% 55%;
+    --border-hsl: 240 6% 18%;
+    --success-hsl: 150 55% 42%;
+    --warning-hsl: 38 85% 50%;
+    --danger-hsl: 0 65% 55%;
+    --info-hsl: 210 60% 55%;
+    --accent-soft-hsl: var(--h-brand) 25% 15%;
   }
 
   body {

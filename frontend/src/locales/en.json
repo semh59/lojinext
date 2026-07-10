@@ -814,7 +814,7 @@
     "fleet_all": "All Fleet",
     "confidence_upper": "Upper confidence band",
     "confidence_lower": "Lower confidence band",
-    "hint_use_button": "Use the \"Predict\" button to generate the projection.",
+    "hint_use_button": "Use the \"Forecast\" button to generate the projection.",
     "estimated_consumption": "Estimated Consumption",
     "confidence_score": "Confidence Score",
     "confidence_missing": "confidence interval not returned",

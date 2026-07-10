@@ -10,11 +10,13 @@ import { cn } from "@/lib/utils";
 import { adminIntegrationsApi, type AdminIntegrationStatus } from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
+import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "react-i18next";
 
 export default function EntegrasyonlarPage() {
   const { adminIntegrationsText } = useAdminResources();
   const { t } = useTranslation();
+  const locale = useLocale();
   usePageTitle(t("admin.integrations", "Integrations"));
   const qc = useQueryClient();
   const { notify } = useNotify();
@@ -145,9 +147,9 @@ export default function EntegrasyonlarPage() {
                     <span className="text-[11px] text-tertiary">
                       {status.guncellenme_tarihi
                         ? adminIntegrationsText.lastUpdated(
-                            new Date(
-                              status.guncellenme_tarihi,
-                            ).toLocaleString(),
+                            new Date(status.guncellenme_tarihi).toLocaleString(
+                              locale,
+                            ),
                           )
                         : adminIntegrationsText.neverUpdated}
                     </span>

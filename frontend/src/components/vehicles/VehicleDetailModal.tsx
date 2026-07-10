@@ -348,7 +348,10 @@ export function VehicleDetailModal({
                       label={vehicleDetailText.fields.engineEfficiency}
                       value={
                         vehicle.motor_verimliligi
-                          ? `%${(vehicle.motor_verimliligi * 100).toFixed(0)}`
+                          ? new Intl.NumberFormat(locale, {
+                              style: "percent",
+                              maximumFractionDigits: 0,
+                            }).format(vehicle.motor_verimliligi)
                           : "-"
                       }
                     />

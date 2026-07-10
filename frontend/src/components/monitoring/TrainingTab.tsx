@@ -96,9 +96,7 @@ export function TrainingTab() {
   const { t } = useTranslation();
   const { wsStatus, progress, logs, reconnect } = useTrainingSocket();
 
-  const pct = progress
-    ? Math.round((progress.epoch / progress.total_epochs) * 100)
-    : 0;
+  const pct = progress ? Math.round(progress.ilerleme) : 0;
 
   return (
     <div className="space-y-4">
@@ -131,27 +129,32 @@ export function TrainingTab() {
                 <h3 className="text-sm font-bold text-primary">
                   {t("monitoring.model_training", "Model Training")}
                 </h3>
-                {progress.status === "running" && (
+                {progress.durum === "RUNNING" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-black">
                     <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
                     {t("monitoring.training_status_running", "IN PROGRESS")}
                   </span>
                 )}
-                {progress.status === "completed" && (
+                {progress.durum === "COMPLETED" && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-black">
                     <CheckCircle size={10} />
                     {t("monitoring.training_status_completed", "COMPLETED")}
                   </span>
                 )}
-                {progress.status === "failed" && (
+                {(progress.durum === "FAILED" ||
+                  progress.durum === "CANCELED") && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/10 text-danger text-[10px] font-black">
                     <XCircle size={10} />
-                    {t("monitoring.training_status_failed", "FAILED")}
+                    {progress.durum === "FAILED"
+                      ? t("monitoring.training_status_failed", "FAILED")
+                      : t("monitoring.training_status_canceled", "CANCELED")}
                   </span>
                 )}
               </div>
               <p className="text-xs text-tertiary mt-0.5 font-mono">
-                {progress.model_id}
+                {t("monitoring.training_vehicle", "Vehicle #{{id}}", {
+                  id: progress.arac_id,
+                })}
               </p>
             </div>
             <span className="text-2xl font-black text-primary">{pct}%</span>
@@ -162,49 +165,17 @@ export function TrainingTab() {
             <div className="h-2 rounded-full bg-elevated overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  progress.status === "failed"
+                  progress.durum === "FAILED" || progress.durum === "CANCELED"
                     ? "bg-danger"
-                    : progress.status === "completed"
+                    : progress.durum === "COMPLETED"
                       ? "bg-success"
                       : "bg-accent"
                 }`}
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="text-[11px] text-tertiary">
-              Epoch {progress.epoch} / {progress.total_epochs}
-            </p>
-          </div>
-
-          {/* Metrics */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-card bg-elevated px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-tertiary">
-                Loss
-              </p>
-              <p className="text-lg font-black text-primary">
-                {progress.loss.toFixed(4)}
-              </p>
-            </div>
-            {progress.val_loss != null && (
-              <div className="rounded-card bg-elevated px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-tertiary">
-                  Val Loss
-                </p>
-                <p className="text-lg font-black text-primary">
-                  {progress.val_loss.toFixed(4)}
-                </p>
-              </div>
-            )}
-            {progress.accuracy != null && (
-              <div className="rounded-card bg-elevated px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-tertiary">
-                  Accuracy
-                </p>
-                <p className="text-lg font-black text-primary">
-                  {(progress.accuracy * 100).toFixed(1)}%
-                </p>
-              </div>
+            {progress.error && progress.detail && (
+              <p className="text-[11px] text-danger">{progress.detail}</p>
             )}
           </div>
         </Card>

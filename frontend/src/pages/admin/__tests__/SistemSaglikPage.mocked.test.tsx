@@ -105,6 +105,35 @@ describe("SistemSaglikPage (mocked scenarios)", () => {
     });
   });
 
+  it("renders a half_open circuit breaker with the warning badge, not danger", async () => {
+    // Regression test: backend's CircuitState.HALF_OPEN serializes as
+    // "half_open" (app/infrastructure/resilience/circuit_breaker.py), but
+    // the badge variant check used to compare against "half-open" (hyphen)
+    // — a value the backend never sends — so every half_open breaker fell
+    // through to the "danger" branch, indistinguishable from a fully open
+    // one.
+    const { adminHealthApi } = await import("../../../api/admin");
+    (adminHealthApi.getHealth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...HEALTH_DATA,
+      circuit_breakers: [
+        {
+          service: "groq",
+          status: "half_open",
+          failure_count: 1,
+          last_error: "Probe in flight",
+        },
+      ],
+    });
+
+    render(<SistemSaglikPage />);
+    await waitFor(() => {
+      const badge = screen.getByText("half_open");
+      expect(badge).toBeInTheDocument();
+      expect(badge.className).toContain("text-warning");
+      expect(badge.className).not.toContain("text-danger");
+    });
+  });
+
   it("shows empty state in error events table when no errors", async () => {
     render(<SistemSaglikPage />);
     fireEvent.click(screen.getByText("Hata Analizi"));

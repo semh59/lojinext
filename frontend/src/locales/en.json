@@ -753,6 +753,8 @@
     "training_status_running": "IN PROGRESS",
     "training_status_completed": "COMPLETED",
     "training_status_failed": "FAILED",
+    "training_status_canceled": "CANCELED",
+    "training_vehicle": "Vehicle #{{id}}",
     "training_log": "Training Log",
     "log_entries_count": "{{n}} records",
     "last_seen": "Last:",

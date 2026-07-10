@@ -753,6 +753,8 @@
     "training_status_running": "DEVAM EDİYOR",
     "training_status_completed": "TAMAMLANDI",
     "training_status_failed": "BAŞARISIZ",
+    "training_status_canceled": "İPTAL EDİLDİ",
+    "training_vehicle": "Araç #{{id}}",
     "training_log": "Eğitim Günlüğü",
     "log_entries_count": "{{n}} kayıt",
     "last_seen": "Son:",

@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { tokenStorage } from "@/services/api/auth-service";
 
+// Wire shape from training_ws_manager.broadcast() (app/core/services/ml_service.py
+// update_progress) — flat, not nested under a "data" key. See EgitimKuyrugu's
+// durum check constraint (app/database/models.py) for the full state set;
+// ilerleme is a 0.0-100.0 float, not an epoch counter (no epoch/loss/accuracy
+// data exists on this feed at all).
 export interface TrainingProgress {
-  model_id: string;
-  epoch: number;
-  total_epochs: number;
-  loss: number;
-  val_loss?: number;
-  status: "running" | "completed" | "failed";
-  message?: string;
-  accuracy?: number;
+  task_id: number;
+  arac_id: number;
+  ilerleme: number;
+  durum: "WAITING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELED";
+  error: boolean;
+  detail?: string | null;
 }
 
 export type TrainingWsStatus =
@@ -56,17 +59,15 @@ export function useTrainingSocket() {
 
     ws.onmessage = (e) => {
       try {
-        const msg = JSON.parse(e.data as string) as {
-          type: string;
-          data?: TrainingProgress;
-          message?: string;
-        };
+        const msg = JSON.parse(e.data as string) as
+          | { type: "pong" }
+          | ({ type: "progress" } & TrainingProgress);
         if (msg.type === "pong") return;
-        if (msg.type === "training_progress" && msg.data) {
-          setProgress(msg.data);
-          setWsStatus(msg.data.status === "running" ? "training" : "idle");
-          if (msg.message) {
-            setLogs((prev) => [msg.message!, ...prev].slice(0, 200));
+        if (msg.type === "progress") {
+          setProgress(msg);
+          setWsStatus(msg.durum === "RUNNING" ? "training" : "idle");
+          if (msg.error && msg.detail) {
+            setLogs((prev) => [msg.detail!, ...prev].slice(0, 200));
           }
         }
       } catch {

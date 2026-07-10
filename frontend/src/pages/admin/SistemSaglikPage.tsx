@@ -740,7 +740,7 @@ export default function SystemHealthPage() {
                               variant={
                                 cb.status === "closed"
                                   ? "success"
-                                  : cb.status === "half-open"
+                                  : cb.status === "half_open"
                                     ? "warning"
                                     : "danger"
                               }

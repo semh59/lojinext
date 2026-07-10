@@ -17,6 +17,7 @@ import {
 import { Dorse } from "../../types";
 import { useTrailersResources } from "../../resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
+import { getTrailerTipiLabel } from "../../lib/status-labels";
 interface TrailerDetailModalProps {
   trailer: Dorse | null;
   onClose: () => void;
@@ -205,7 +206,9 @@ const TrailerDetailModal = ({ trailer, onClose }: TrailerDetailModalProps) => {
                       icon={CircleDot}
                       label={trailerDetailText.fields.type}
                       value={safeNullableText(
-                        trailer.tipi,
+                        trailer.tipi
+                          ? getTrailerTipiLabel(trailer.tipi, locale)
+                          : trailer.tipi,
                         trailerDetailText.fields.unspecified,
                       )}
                     />

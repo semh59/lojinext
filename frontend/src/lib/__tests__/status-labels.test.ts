@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getConfigGroupLabel, getTrailerTipiLabel } from "../status-labels";
+import {
+  getConfigGroupLabel,
+  getTrailerTipiLabel,
+  getRouteTypeLabel,
+} from "../status-labels";
 
 describe("getConfigGroupLabel", () => {
   it("maps known sistem_konfig groups to English", () => {
@@ -36,5 +40,25 @@ describe("getTrailerTipiLabel", () => {
 
   it("falls back to the raw value for an unrecognised type", () => {
     expect(getTrailerTipiLabel("Ozel Tip", "en")).toBe("Ozel Tip");
+  });
+});
+
+describe("getRouteTypeLabel", () => {
+  it("maps sofor_service.py's route_type keys to English", () => {
+    expect(getRouteTypeLabel("highway_dominant", "en")).toBe("Highway-heavy");
+    expect(getRouteTypeLabel("mountain", "en")).toBe("Mountainous");
+    expect(getRouteTypeLabel("urban", "en")).toBe("Urban");
+    expect(getRouteTypeLabel("mixed", "en")).toBe("Mixed");
+  });
+
+  it("matches the backend's own Turkish labels for the Turkish locale", () => {
+    expect(getRouteTypeLabel("highway_dominant", "tr")).toBe(
+      "Otoyol Ağırlıklı",
+    );
+    expect(getRouteTypeLabel("mountain", "tr")).toBe("Dağlık");
+  });
+
+  it("falls back to the raw key for an unrecognised route type", () => {
+    expect(getRouteTypeLabel("unknown_type", "en")).toBe("unknown_type");
   });
 });

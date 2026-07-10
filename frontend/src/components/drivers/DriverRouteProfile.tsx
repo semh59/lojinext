@@ -16,6 +16,8 @@ import {
   type DriverRouteProfile as RouteProfileData,
 } from "../../api/drivers";
 import { useTranslation } from "react-i18next";
+import { useLocale } from "../../hooks/useLocale";
+import { getRouteTypeLabel } from "../../lib/status-labels";
 
 interface DriverRouteProfileProps {
   driverId: number;
@@ -29,11 +31,30 @@ function findBestLabel(data: RouteProfileData): string | null {
 
 export function DriverRouteProfile({ driverId }: DriverRouteProfileProps) {
   const { t } = useTranslation();
-  const { data, isLoading, isError } = useQuery({
+  const locale = useLocale();
+  const {
+    data: rawData,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["driverRouteProfile", driverId],
     queryFn: () => driverService.getRouteProfile(driverId),
     staleTime: 10 * 60 * 1000,
   });
+
+  // sofor_service.py bakes a Turkish "label" into each profile — replace it
+  // with a locale-aware one (keyed off the untranslated route_type) so the
+  // chart axis, tooltip, list, and "best route" banner all pick it up from
+  // one place instead of translating at each render site.
+  const data = rawData
+    ? {
+        ...rawData,
+        profiles: rawData.profiles.map((p) => ({
+          ...p,
+          label: getRouteTypeLabel(p.route_type, locale),
+        })),
+      }
+    : rawData;
 
   if (isLoading) {
     return (

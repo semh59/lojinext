@@ -96,3 +96,22 @@ export function getTrailerTipiLabel(tipi: string, lang = "tr"): string {
   if (known) return en ? known.en : known.tr;
   return tipi;
 }
+
+// sofor_service.py's route-profile response pre-bakes a Turkish "label"
+// string server-side (highway_dominant -> "Otoyol Ağırlıklı", etc.) — but
+// it also sends the raw route_type key alongside it, so unlike the
+// anomaly-reasons/coaching-caveat findings (free text with no parallel
+// enum key), this one can be translated purely on the frontend.
+const ROUTE_TYPE_LABELS: Record<string, { tr: string; en: string }> = {
+  highway_dominant: { tr: "Otoyol Ağırlıklı", en: "Highway-heavy" },
+  mountain: { tr: "Dağlık", en: "Mountainous" },
+  urban: { tr: "Şehir İçi", en: "Urban" },
+  mixed: { tr: "Karışık", en: "Mixed" },
+};
+
+export function getRouteTypeLabel(routeType: string, lang = "tr"): string {
+  const en = lang.startsWith("en");
+  const known = ROUTE_TYPE_LABELS[routeType];
+  if (known) return en ? known.en : known.tr;
+  return routeType;
+}

@@ -217,7 +217,7 @@
     "severity_low": "Low",
     "severity_medium": "Medium",
     "severity_high": "High",
-    "receipt_label": "Receipt (OCR)",
+    "receipt_label": "Upload Receipt (OCR)",
     "receipt_field": "Station",
     "ocr_error": "OCR failed; you can fill in the fields manually.",
     "monthly_trend_title": "Monthly Consumption Trend",

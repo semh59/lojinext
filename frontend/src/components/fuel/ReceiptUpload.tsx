@@ -53,7 +53,7 @@ export function ReceiptUpload({ onConfirm }: Props) {
         {t("fuel.receipt_label")}
       </h3>
       <label className="block text-sm text-tertiary">
-        {t("fuel.receipt_label")}
+        <span className="sr-only">{t("fuel.receipt_label")}</span>
         <input
           type="file"
           accept="image/*"

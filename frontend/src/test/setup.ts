@@ -12,7 +12,15 @@ configure({ asyncUtilTimeout: 5000 });
 // translations via useTranslation()/t() resolve real strings (default locale
 // tr) instead of returning the raw key. Without this, t()-based components
 // render translation keys and text assertions fail.
-import "../i18n";
+//
+// i18n.ts intentionally has no hardcoded `lng` (production should honor a
+// saved/detected language), which means jsdom's navigator.language ("en-US")
+// would otherwise win as the detected default here — silently flipping every
+// test suite that asserts hardcoded Turkish text. Pin it explicitly instead
+// of relying on that undocumented accident; top-level await blocks Vitest
+// from running any test until this resolves.
+import i18n from "../i18n";
+await i18n.changeLanguage("tr");
 
 // Polyfill for ResizeObserver
 class ResizeObserver {

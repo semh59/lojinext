@@ -11,12 +11,23 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+from token_resolver import resolve_bot_token
 
 logger = logging.getLogger(__name__)
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
-DRIVER_BOT_TOKEN = os.environ["TELEGRAM_DRIVER_BOT_TOKEN"]
 _INTERNAL_SECRET = os.environ.get("INTERNAL_API_SECRET", "")
+DRIVER_BOT_TOKEN = resolve_bot_token(
+    "telegram_driver_bot",
+    BACKEND_URL,
+    _INTERNAL_SECRET,
+    os.environ.get("TELEGRAM_DRIVER_BOT_TOKEN", ""),
+)
+if not DRIVER_BOT_TOKEN:
+    raise RuntimeError(
+        "Telegram driver bot token yapılandırılmamış "
+        "(ne admin panelden ne TELEGRAM_DRIVER_BOT_TOKEN .env'den)"
+    )
 
 
 def _internal_headers() -> dict:

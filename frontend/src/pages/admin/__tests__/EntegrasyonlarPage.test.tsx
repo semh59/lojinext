@@ -93,7 +93,7 @@ describe.skipIf(!backendUp)("EntegrasyonlarPage (real backend)", () => {
     );
   });
 
-  it("lists all three known services with status badges", async () => {
+  it("lists all known services (incl. the 2 Telegram bots) with status badges", async () => {
     render(<EntegrasyonlarPage />);
     await waitFor(
       () => {
@@ -105,6 +105,14 @@ describe.skipIf(!backendUp)("EntegrasyonlarPage (real backend)", () => {
         ).toBeInTheDocument();
         expect(
           screen.getByText(adminIntegrationsText.serviceNames.groq),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            adminIntegrationsText.serviceNames.telegram_driver_bot,
+          ),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(adminIntegrationsText.serviceNames.telegram_ops_bot),
         ).toBeInTheDocument();
       },
       { timeout: 10000 },

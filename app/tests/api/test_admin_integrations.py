@@ -52,14 +52,21 @@ async def _reset_entegrasyon_rows(db_session):
 
 @pytest.mark.asyncio
 async def test_list_integrations_default_unconfigured(async_client, admin_auth_headers):
-    """Fresh DB — all three known services report configured=false."""
+    """Fresh DB — every known service (incl. the 2 Telegram bot tokens)
+    reports configured=false."""
     response = await async_client.get(
         "/api/v1/admin/integrations/", headers=admin_auth_headers
     )
     assert response.status_code == 200
     body = response.json()
     names = {item["servis_adi"] for item in body}
-    assert names == {"mapbox", "openroute", "groq"}
+    assert names == {
+        "mapbox",
+        "openroute",
+        "groq",
+        "telegram_driver_bot",
+        "telegram_ops_bot",
+    }
     assert all(item["configured"] is False for item in body)
     assert all(item["guncellenme_tarihi"] is None for item in body)
 
@@ -101,6 +108,29 @@ async def test_update_key_then_status_never_leaks_value(
         "guncellenme_tarihi",
         "guncelleyen_id",
     }
+
+
+@pytest.mark.asyncio
+async def test_update_telegram_bot_token_through_same_generic_endpoint(
+    async_client, admin_auth_headers
+):
+    """No dedicated endpoint for bot tokens — same PUT/GET contract as
+    mapbox/openroute/groq, including the never-leaks-the-value property."""
+    secret_value = "123456:AAF-fake-telegram-bot-token"  # pragma: allowlist secret
+
+    put_resp = await async_client.put(
+        "/api/v1/admin/integrations/telegram_driver_bot",
+        json={"api_key": secret_value},
+        headers=admin_auth_headers,
+    )
+    assert put_resp.status_code == 200
+    assert secret_value not in put_resp.text
+    assert put_resp.json()["configured"] is True
+
+    get_resp = await async_client.get(
+        "/api/v1/admin/integrations/", headers=admin_auth_headers
+    )
+    assert secret_value not in get_resp.text
 
 
 @pytest.mark.asyncio

@@ -22,6 +22,10 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 
 from app.config import settings
+from app.core.services.integration_secrets import (
+    BOT_TOKEN_SERVICES,
+    get_integration_secret,
+)
 from app.core.services.internal_service import InternalService, get_internal_service
 from app.infrastructure.metrics import telegram_belge_upload_total
 from app.schemas.api_responses import PDF_RESPONSES, CoachingSnapshotResponse
@@ -70,6 +74,25 @@ def _looks_like_allowed_image(data: bytes) -> bool:
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":  # WEBP
         return True
     return False
+
+
+# ── Bot token bootstrap (admin-configurable Telegram tokens) ────────────────
+# The telegram-driver-bot/telegram-ops-bot containers call this ONCE at
+# startup to resolve their token: DB override (set via the admin UI) else
+# their own .env fallback. This is the only place a plaintext value from
+# entegrasyon_ayarlari ever leaves this backend process — deliberately
+# restricted to BOT_TOKEN_SERVICES (NOT all of KNOWN_SERVICES), so a bug
+# here can never leak the mapbox/openroute/groq keys.
+
+
+@router.get("/bot-token/{servis_adi}")
+async def bot_token(servis_adi: str) -> dict:
+    if servis_adi not in BOT_TOKEN_SERVICES:
+        raise HTTPException(status_code=404, detail="Bilinmeyen bot servisi")
+    token = await get_integration_secret(servis_adi, env_fallback=None)
+    if not token:
+        raise HTTPException(status_code=404, detail="Yapılandırılmamış")
+    return {"token": token}
 
 
 # ── Şoför kimlik doğrulaması ─────────────────────────────────────────────────

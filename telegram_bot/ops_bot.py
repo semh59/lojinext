@@ -9,12 +9,24 @@ import uvicorn
 from fastapi import FastAPI, Header, HTTPException
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from token_resolver import resolve_bot_token
 
 logger = logging.getLogger(__name__)
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
-OPS_BOT_TOKEN = os.environ["TELEGRAM_OPS_BOT_TOKEN"]
+_INTERNAL_SECRET = os.environ.get("INTERNAL_API_SECRET", "")
+OPS_BOT_TOKEN = resolve_bot_token(
+    "telegram_ops_bot",
+    BACKEND_URL,
+    _INTERNAL_SECRET,
+    os.environ.get("TELEGRAM_OPS_BOT_TOKEN", ""),
+)
+if not OPS_BOT_TOKEN:
+    raise RuntimeError(
+        "Telegram ops bot token yapılandırılmamış "
+        "(ne admin panelden ne TELEGRAM_OPS_BOT_TOKEN .env'den)"
+    )
 OPS_CHAT_ID = os.environ["TELEGRAM_OPS_CHAT_ID"]
 
 # Comma-separated Telegram user IDs allowed to run destructive commands.

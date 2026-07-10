@@ -12,6 +12,13 @@
 `telegram_bot/ops_bot.py` modül-seviyesinde `os.environ["TELEGRAM_OPS_BOT_TOKEN"]`
 gibi zorunlu env var okumaları yaptığı için, bu dosya import edilmeden ÖNCE
 gerekli env var'lar set edilir.
+
+Token artık modül-seviyesinde `token_resolver.resolve_bot_token()` üzerinden
+(admin-configured DB override + gerçek HTTP çağrısı, .env fallback'li)
+çözülüyor — bu dosyanın amacı o çözümleme değil, `_check_webhook_secret`/chat
+gating testleri, o yüzden import ÖNCESİ `resolve_bot_token`'ı sahte bir
+fonksiyonla değiştiriyoruz: gerçek ağ çağrısı (backend:8000'e erişilemez,
+retry+sleep ile testi yavaşlatır) yerine anında env fallback'i döndürür.
 """
 
 import os
@@ -26,6 +33,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 os.environ.setdefault("TELEGRAM_OPS_BOT_TOKEN", "test-token-123")
 os.environ.setdefault("TELEGRAM_OPS_CHAT_ID", "-100123456789")
+
+import token_resolver  # noqa: E402
+
+token_resolver.resolve_bot_token = (
+    lambda servis_adi, backend_url, internal_secret, env_fallback: env_fallback
+)
 
 import ops_bot  # noqa: E402
 

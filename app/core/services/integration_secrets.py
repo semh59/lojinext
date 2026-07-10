@@ -25,7 +25,23 @@ from app.infrastructure.security.pii_encryption import decrypt_pii, encrypt_pii
 
 logger = get_logger(__name__)
 
-KNOWN_SERVICES = ("mapbox", "openroute", "groq")
+KNOWN_SERVICES = (
+    "mapbox",
+    "openroute",
+    "groq",
+    "telegram_driver_bot",
+    "telegram_ops_bot",
+)
+
+# Subset of KNOWN_SERVICES whose plaintext value is ever returned to a
+# caller other than this module's own outbound-call sites. Telegram bots
+# run as separate containers and must authenticate with Telegram's API
+# themselves, so (unlike mapbox/openroute/groq, whose plaintext never
+# leaves this backend process) the value has to cross a process boundary.
+# See app/api/v1/endpoints/internal.py's /bot-token/{servis_adi} — it
+# checks membership in THIS set, not KNOWN_SERVICES, so a bug there can
+# never leak the non-bot secrets.
+BOT_TOKEN_SERVICES = frozenset({"telegram_driver_bot", "telegram_ops_bot"})
 
 
 class IntegrationStatus(TypedDict):

@@ -251,6 +251,8 @@ export const adminIntegrationsText = {
     mapbox: "Mapbox",
     openroute: "OpenRoute Service",
     groq: "Groq (LLM)",
+    telegram_driver_bot: "Telegram Driver Bot",
+    telegram_ops_bot: "Telegram Ops Bot",
   },
 } as const;
 

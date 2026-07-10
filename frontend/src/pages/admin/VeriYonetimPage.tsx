@@ -23,19 +23,26 @@ export default function AdminDataManagementPage() {
   const { adminDataManagementText } = useAdminResources();
   const { t } = useTranslation();
   const locale = useLocale();
+  // Backend contract (ImportHistoryItem, /admin/imports/history) writes
+  // durum as "COMPLETED" | "COMPLETED_WITH_ERRORS" | "ROLLED_BACK" (see
+  // import_service.py) — NOT "tamamlandi"/"hata"/"geri_alindi". The
+  // previous switch matched a value shape that never existed on the wire,
+  // so every job silently fell through to the default "İşleniyor" badge
+  // regardless of its real status (same bug class already fixed once in
+  // BakimPage.tsx's mapMaintenanceStatus).
   const mapImportStatus = (status?: string) => {
     switch (status) {
-      case "tamamlandi":
+      case "COMPLETED":
         return {
           label: adminDataManagementText.statusLabels.completed,
           variant: "success" as const,
         };
-      case "hata":
+      case "COMPLETED_WITH_ERRORS":
         return {
           label: adminDataManagementText.statusLabels.error,
           variant: "danger" as const,
         };
-      case "geri_alindi":
+      case "ROLLED_BACK":
         return {
           label: adminDataManagementText.statusLabels.rolledBack,
           variant: "warning" as const,
@@ -164,7 +171,7 @@ export default function AdminDataManagementPage() {
                         className="h-8 border-warning/20 text-warning hover:bg-warning/5 hover:text-warning/80"
                         onClick={() => handleRollback(job.id)}
                         disabled={
-                          job.durum === "geri_alindi" ||
+                          job.durum === "ROLLED_BACK" ||
                           (rollbackMutation.isPending &&
                             rollbackMutation.variables === job.id)
                         }

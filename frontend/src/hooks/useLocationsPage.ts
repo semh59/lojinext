@@ -17,7 +17,7 @@ const LIMIT = 12;
 
 export function useLocationsPage() {
   const { locationsPageText } = useLocationsResources();
-  usePageTitle("Güzergahlar");
+  usePageTitle(locationsPageText.heading);
 
   const [filters, setFilters] = useUrlState({
     search: "",

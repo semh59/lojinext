@@ -13,7 +13,7 @@ CREATED_BY: app/core/container.py (lazy property)
 
 import math
 import os
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from app.config import settings
 from app.core.services.route_validator import RouteValidator
@@ -47,6 +47,15 @@ class RouteService:
             or os.getenv("OPENROUTE_API_KEY")
         )
         self.base_url = settings.OPENROUTE_API_BASE_URL
+
+    async def _resolve_api_key(self) -> Optional[str]:
+        """DB-configured key (admin UI) takes priority over the .env
+        fallback — see app.core.services.integration_secrets. RouteService
+        is a container-managed singleton, so this must be re-resolved per
+        call rather than baked in at __init__."""
+        from app.core.services.integration_secrets import get_integration_secret
+
+        return await get_integration_secret("openroute", self.api_key)
 
     async def get_route_details(
         self,
@@ -85,7 +94,8 @@ class RouteService:
                         result["route_analysis"] = cached.get("route_analysis")
                     return RouteValidator.validate_and_correct(result)
 
-        if not self.api_key:
+        api_key = await self._resolve_api_key()
+        if not api_key:
             logger.warning("OpenRouteService API key is missing.")
             return {
                 "error": "Routing provider credentials are missing.",
@@ -100,7 +110,7 @@ class RouteService:
             client = await ext_service._get_client()
 
             headers = {
-                "Authorization": self.api_key,
+                "Authorization": api_key,
                 "Content-Type": "application/json",
             }
             body = {

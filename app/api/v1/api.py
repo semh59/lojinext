@@ -7,6 +7,7 @@ from app.api.v1.endpoints import (
     admin_fuel_accuracy,
     admin_health,
     admin_imports,
+    admin_integrations,
     admin_maintenance,
     admin_ml,
     admin_notifications,
@@ -58,6 +59,11 @@ api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(
     admin_config.router, prefix="/admin/config", tags=["admin-config"]
+)
+api_router.include_router(
+    admin_integrations.router,
+    prefix="/admin/integrations",
+    tags=["admin-integrations"],
 )
 api_router.include_router(
     admin_roles.router, prefix="/admin/roles", tags=["admin-roles"]

@@ -899,6 +899,35 @@ class Kullanici(Base):
         return value
 
 
+class EntegrasyonAyari(Base):
+    """Admin-configurable external API keys (Mapbox/OpenRoute/Groq).
+
+    `deger_sifreli` deliberately does NOT use the `EncryptedPII` type
+    decorator — that decorator decrypts transparently on every ORM read,
+    which is the opposite of what this table needs (write-only: nobody,
+    not even an admin, can ever read the plaintext back). It stores raw
+    Fernet ciphertext; the ONLY place that ever calls decrypt_pii() on it
+    is app.core.services.integration_secrets.get_integration_secret(),
+    used exclusively to build outbound API requests — never returned in
+    any response, never written to admin_audit_log.
+    """
+
+    __tablename__ = "entegrasyon_ayarlari"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    servis_adi: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    deger_sifreli: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    guncelleyen_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+    )
+    guncellenme_tarihi: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class KullaniciOturumu(Base):
     __tablename__ = "kullanici_oturumlari"
 

@@ -72,6 +72,13 @@ class OpenRouteClient:
         self._client: Optional[httpx.AsyncClient] = None
         self._db = None  # Lazy loading
 
+    async def _resolve_api_key(self) -> Optional[str]:
+        """DB-configurable key (admin UI) takes priority over the .env
+        fallback — see app.core.services.integration_secrets."""
+        from app.core.services.integration_secrets import get_integration_secret
+
+        return await get_integration_secret("openroute", self.api_key)
+
     @property
     def db(self):
         """Deprecated: Use get_sync_session directly"""
@@ -121,9 +128,10 @@ class OpenRouteClient:
                 logger.debug(f"Cache hit: {origin} -> {destination}")
                 return {**result, "source": "cache"}
 
-        if not self.api_key:
-            logger.error("API key eksik, mesafe hesaplanamadı")
-            return None
+        # Not gated on self.api_key here — that's only the .env fallback;
+        # an admin-configured DB key (checked in _call_api via
+        # _resolve_api_key) must also be honored, so the real presence
+        # check happens there.
 
         # Phase 3: Centralized Circuit Breaker
         breaker = CircuitBreakerRegistry.get_sync("openroute")
@@ -161,7 +169,7 @@ class OpenRouteClient:
         Returns:
             (latitude, longitude) veya hata durumunda None
         """
-        if not text or not self.api_key:
+        if not text:
             return None
 
         # Circuit Breaker kontrolü
@@ -178,12 +186,16 @@ class OpenRouteClient:
 
     async def _call_geocode_api(self, text: str) -> Optional[Tuple[float, float]]:
         """ORS Geocoding API çağrısı (async)"""
+        api_key = await self._resolve_api_key()
+        if not api_key:
+            logger.error("API key eksik, geocode yapılamadı")
+            return None
         params: Dict[str, Any] = {
             "text": text,
             "size": 1,
             "boundary.country": "TUR",  # Türkiye dışı aramaları kısıtla
         }
-        headers = {"Authorization": f"api-key {self.api_key}"}
+        headers = {"Authorization": f"api-key {api_key}"}
 
         try:
             if self._client is None:
@@ -230,7 +242,8 @@ class OpenRouteClient:
         include_details: bool = True,
     ) -> Optional[Dict]:
         """Gerçek API çağrısını yap (async)"""
-        if not self.api_key:
+        api_key = await self._resolve_api_key()
+        if not api_key:
             return None
 
         # Rate limiting (async-safe)
@@ -247,7 +260,7 @@ class OpenRouteClient:
         # JSON endpoint for better extra_info support
         url = f"{self.base_url}/directions/{self.PROFILE}/json"
 
-        headers = {"Authorization": self.api_key, "Content-Type": "application/json"}
+        headers = {"Authorization": api_key, "Content-Type": "application/json"}
         # ORS [lon, lat] bekler
         payload = {
             "coordinates": [[origin[1], origin[0]], [destination[1], destination[0]]],

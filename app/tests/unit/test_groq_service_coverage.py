@@ -19,24 +19,32 @@ pytestmark = pytest.mark.unit
 
 
 def _make_service_no_key():
-    """GroqService with no API key."""
+    """GroqService with no API key.
+
+    chat()/chat_stream() resolve their client via _get_client() (fresh per
+    call, so an admin-updated key takes effect without a process restart) —
+    not a cached self.client attribute. Mock _get_client() directly rather
+    than setting .client, which is no longer read by production code.
+    """
     from app.core.ai.groq_service import GroqService
 
     svc = GroqService.__new__(GroqService)
     svc.api_key = None
     svc.model_name = "llama-3.1-70b-versatile"
     svc.client = None
+    svc._get_client = AsyncMock(return_value=None)
     return svc
 
 
 def _make_service_with_client():
-    """GroqService with a mocked Groq client."""
+    """GroqService with a mocked Groq client returned by _get_client()."""
     from app.core.ai.groq_service import GroqService
 
     svc = GroqService.__new__(GroqService)
     svc.api_key = "test-key"  # pragma: allowlist secret
     svc.model_name = "llama-3.1-70b-versatile"
     svc.client = MagicMock()
+    svc._get_client = AsyncMock(return_value=svc.client)
     return svc
 
 

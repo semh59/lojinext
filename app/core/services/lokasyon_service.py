@@ -64,7 +64,7 @@ class LokasyonService:
         from app.core.services.openroute_service import get_openroute_service
 
         openroute_service = get_openroute_service()
-        if not openroute_service.is_configured():
+        if not await openroute_service.is_configured_async():
             return []
 
         try:

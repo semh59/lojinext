@@ -49,9 +49,16 @@ class LLMClient:
         if not self.api_key:
             logger.warning("LLMClient: API key yok, istekler başarısız olacaktır.")
 
-    def _headers(self) -> dict:
+    async def _resolve_headers(self) -> dict:
+        """DB-configured key (admin UI) takes priority over the .env
+        fallback — see app.core.services.integration_secrets. LLMClient is
+        a process-lifetime singleton (get_llm_client()), so this must be
+        re-resolved per call rather than baked in at __init__."""
+        from app.core.services.integration_secrets import get_integration_secret
+
+        api_key = await get_integration_secret("groq", self.api_key)
         return {
-            "Authorization": f"Bearer {self.api_key}" if self.api_key else "",
+            "Authorization": f"Bearer {api_key}" if api_key else "",
             "Content-Type": "application/json",
         }
 
@@ -74,6 +81,7 @@ class LLMClient:
 
         attempt = 0
         last_error = None
+        headers = await self._resolve_headers()
         while attempt <= self.max_retries:
             attempt += 1
             try:
@@ -81,7 +89,7 @@ class LLMClient:
                     timeout=self.timeout_seconds, base_url=self.base_url
                 ) as client:
                     resp = await client.post(
-                        "/chat/completions", headers=self._headers(), json=payload
+                        "/chat/completions", headers=headers, json=payload
                     )
                     resp.raise_for_status()
                     data = resp.json()

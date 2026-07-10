@@ -73,8 +73,23 @@ class OpenRouteService:
         return self._client
 
     def is_configured(self) -> bool:
-        """API key var mı kontrol et"""
+        """API key var mı kontrol et (.env fallback ile — sync, hızlı ön-kontrol)."""
         return bool(self.api_key) and HTTPX_AVAILABLE
+
+    async def _resolve_api_key(self) -> Optional[str]:
+        """DB-configured key (admin UI) takes priority over the .env
+        fallback — see app.core.services.integration_secrets."""
+        if not HTTPX_AVAILABLE:
+            return None
+        from app.core.services.integration_secrets import get_integration_secret
+
+        return await get_integration_secret("openroute", self.api_key)
+
+    async def is_configured_async(self) -> bool:
+        """DB-aware configured check — use this instead of is_configured()
+        wherever a caller can await, so an admin-only (no .env fallback)
+        key is honored instead of silently falling to offline mode."""
+        return bool(await self._resolve_api_key())
 
     def _haversine_distance(
         self, lon1: float, lat1: float, lon2: float, lat2: float
@@ -130,7 +145,8 @@ class OpenRouteService:
         İnternet yoksa veya API anahtarı eksikse offline fallback kullanır.
         """
         # Eğer yapılandırılmamışsa direkt offline'a düş
-        if not self.is_configured():
+        api_key = await self._resolve_api_key()
+        if not api_key:
             return self.get_route_profile_offline(start_coords, end_coords)
 
         try:
@@ -150,7 +166,7 @@ class OpenRouteService:
             headers = {
                 "Content-Type": "application/json",
             }
-            params = {"api_key": self.api_key}
+            params = {"api_key": api_key}
             body = {
                 "coordinates": [list(start_coords), list(end_coords)],
                 "elevation": True,
@@ -205,14 +221,15 @@ class OpenRouteService:
         """
         Adres -> Koordinat dönüşümü (Async).
         """
-        if not self.is_configured():
+        api_key = await self._resolve_api_key()
+        if not api_key:
             return self.geocode_offline(address)
 
         try:
             client = await self._get_client()
             url = self.geocode_url
             params: Dict[str, Any] = {
-                "api_key": self.api_key,
+                "api_key": api_key,
                 "text": address,
                 "size": 1,
                 "boundary.country": "TR",

@@ -53,6 +53,25 @@ class GroqService:
         else:
             logger.warning("GROQ_API_KEY is not set. GroqService will be inactive.")
 
+    async def _get_client(self):
+        """Resolve the active API key (admin-configured DB override takes
+        priority over the .env fallback) and build a client for it.
+
+        GroqService is a process-lifetime singleton (get_groq_service()),
+        so unlike a per-request client this can't just bake the key in at
+        __init__ — a key entered via the admin UI would never take effect
+        without a full restart otherwise. AsyncGroq(...) construction is
+        cheap (no network I/O), so resolving + rebuilding per call is fine.
+        """
+        if AsyncGroq is None:
+            return None
+        from app.core.services.integration_secrets import get_integration_secret
+
+        api_key = await get_integration_secret("groq", self.api_key)
+        if not api_key:
+            return None
+        return AsyncGroq(api_key=api_key, base_url=settings.GROQ_API_BASE_URL)
+
     async def chat_stream(
         self,
         user_message: str,
@@ -63,7 +82,8 @@ class GroqService:
         temperature: float = 0.7,
     ) -> AsyncGenerator[str, None]:
         """Groq API üzerinden streaming yanıt üretir."""
-        if not self.client:
+        client = await self._get_client()
+        if not client:
             yield "Groq API anahtarı ayarlanmamış."
             return
 
@@ -71,7 +91,7 @@ class GroqService:
 
         try:
             stream = await asyncio.wait_for(
-                self.client.chat.completions.create(
+                client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
                     temperature=temperature,
@@ -103,14 +123,15 @@ class GroqService:
         temperature: float = 0.7,
     ) -> str:
         """Groq API üzerinden blok (non-streaming) yanıt üretir."""
-        if not self.client:
+        client = await self._get_client()
+        if not client:
             return "Groq API anahtarı ayarlanmamış."
 
         messages = self._prepare_messages(user_message, history, context, system_prompt)
 
         try:
             completion = await asyncio.wait_for(
-                self.client.chat.completions.create(
+                client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
                     temperature=temperature,

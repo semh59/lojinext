@@ -46,10 +46,19 @@ class MapboxClient:
         else:
             self.api_key = str(raw_key)
         self.base_url = settings.MAPBOX_API_BASE_URL
+        # self.api_key above is the .env-sourced fallback; _resolve_api_key()
+        # checks the admin-configurable entegrasyon_ayarlari row first (see
+        # app.core.services.integration_secrets) so a key entered via the
+        # admin UI takes effect immediately, without a restart.
         # Phase 2.3: Redis-backed cache. None geçilirse singleton CacheManager.
         # Sync API (get/set) async handler içinden de güvenli — Redis çağrıları
         # non-blocking IO açısından ms ölçeğinde.
         self._cache = cache if cache is not None else get_cache_manager()
+
+    async def _resolve_api_key(self) -> Optional[str]:
+        from app.core.services.integration_secrets import get_integration_secret
+
+        return await get_integration_secret("mapbox", self.api_key)
 
     async def get_route(
         self,
@@ -66,7 +75,8 @@ class MapboxClient:
         Returns:
             Dict with standardized route structure including road analysis, or None if failed.
         """
-        if not self.api_key:
+        api_key = await self._resolve_api_key()
+        if not api_key:
             logger.warning("Mapbox API Key missing. Skipping fallback.")
             return None
 
@@ -87,7 +97,7 @@ class MapboxClient:
         # (~99.9% doluluk, bkz. docs/.../mapbox-samples/_summary.md).
         # `steps=true` o veriyi getirir.
         params = {
-            "access_token": self.api_key,
+            "access_token": api_key,
             "geometries": "geojson",
             "overview": "full",
             "steps": "true",
@@ -498,7 +508,8 @@ class MapboxClient:
         end_coords: Tuple[float, float],
     ) -> Optional[Tuple[List[SegmentInput], List[Tuple[float, float]]]]:
         """Cache'siz network çağrısı — get_segments tarafından kullanılır."""
-        if not self.api_key:
+        api_key = await self._resolve_api_key()
+        if not api_key:
             logger.warning("Mapbox API Key missing. fetch_segments aborted.")
             return None
 
@@ -510,7 +521,7 @@ class MapboxClient:
         # get_route() ile aynı params: steps=true (intersections için),
         # road_class YOK (Phase 0.1 422 bug'ı), traffic-aware annotation'lar.
         params = {
-            "access_token": self.api_key,
+            "access_token": api_key,
             "geometries": "geojson",
             "overview": "full",
             "steps": "true",

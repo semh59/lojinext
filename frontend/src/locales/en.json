@@ -546,7 +546,8 @@
     "inspection_expiring_empty": "No upcoming inspections.",
     "inspection_days_overdue": "{{n}} days overdue",
     "inspection_days_remaining": "{{n}} days left",
-    "inspection_date_label": "Inspection:"
+    "inspection_date_label": "Inspection:",
+    "insights_subtitle": "FVI + period-over-period + cross-feature impact"
   },
   "drivers": {
     "title": "Drivers",

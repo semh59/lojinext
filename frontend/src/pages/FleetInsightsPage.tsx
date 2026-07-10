@@ -9,15 +9,15 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import type { PeriodType } from "@/api/fleet-insights";
 import { useTranslation } from "react-i18next";
 
-const PERIODS: Array<{ id: PeriodType; label: string }> = [
-  { id: "week", label: "Bu Hafta" },
-  { id: "month", label: "Bu Ay" },
-];
-
 export default function FleetInsightsPage() {
   const { t } = useTranslation();
   usePageTitle(t("nav.fleet_insights", "Fleet Insights"));
   const [period, setPeriod] = useState<PeriodType>("month");
+
+  const PERIODS: Array<{ id: PeriodType; label: string }> = [
+    { id: "week", label: t("fleet.period_week", "This Week") },
+    { id: "month", label: t("fleet.period_month", "This Month") },
+  ];
 
   return (
     <div className="space-y-6 p-6">
@@ -26,10 +26,13 @@ export default function FleetInsightsPage() {
           <Sparkles className="mt-1 h-6 w-6 text-accent" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-primary">
-              Filo İçgörü
+              {t("nav.fleet_insights", "Fleet Insights")}
             </h1>
             <p className="mt-1 text-sm text-secondary">
-              FVI + period-over-period + cross-feature etki
+              {t(
+                "fleet.insights_subtitle",
+                "FVI + period-over-period + cross-feature impact",
+              )}
             </p>
           </div>
         </div>

@@ -546,7 +546,8 @@
     "inspection_expiring_empty": "Yaklaşan muayene yok.",
     "inspection_days_overdue": "{{n}} gün geçmiş",
     "inspection_days_remaining": "{{n}} gün kaldı",
-    "inspection_date_label": "Muayene:"
+    "inspection_date_label": "Muayene:",
+    "insights_subtitle": "FVI + dönemsel karşılaştırma + çapraz özellik etkisi"
   },
   "drivers": {
     "title": "Şoförler",

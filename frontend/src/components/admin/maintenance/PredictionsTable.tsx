@@ -10,6 +10,7 @@ import type {
 } from "@/api/maintenance-predictions";
 import { MaintenanceDetailDrawer } from "./MaintenanceDetailDrawer";
 import { useMaintenancePredictionsResources } from "@/resources/useResources";
+import { getBakimTipiMeta, type BakimTipi } from "@/lib/status-labels";
 
 const RISK_ORDER: Record<RiskLevel, number> = {
   overdue: 0,
@@ -26,7 +27,7 @@ const RISK_BADGE: Record<RiskLevel, string> = {
 };
 
 export function PredictionsTable() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   function formatDate(iso: string | null): string {
     if (!iso) return maintenancePredictionsText.table.notApplicable;
@@ -130,7 +131,12 @@ export function PredictionsTable() {
                 <td className="px-3 py-2 font-mono font-bold text-primary">
                   {p.plaka}
                 </td>
-                <td className="px-3 py-2 text-secondary">{p.bakim_tipi}</td>
+                <td className="px-3 py-2 text-secondary">
+                  {
+                    getBakimTipiMeta(p.bakim_tipi as BakimTipi, i18n.language)
+                      .label
+                  }
+                </td>
                 <td className="px-3 py-2 text-right font-mono tabular-nums text-primary">
                   {p.predictable ? (
                     formatDate(p.predicted_date ?? null)

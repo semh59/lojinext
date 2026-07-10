@@ -80,7 +80,7 @@ export const formatCoordinate = (value?: number): string =>
   typeof value === "number" && !Number.isNaN(value) ? value.toFixed(6) : "-";
 
 const mapDifficulty = (difficulty?: string): LocationDifficulty => {
-  if (difficulty === "Duz" || difficulty === "Normal") {
+  if (difficulty === "Düz" || difficulty === "Normal") {
     return "Normal";
   }
   if (

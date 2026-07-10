@@ -8,6 +8,7 @@ import { Modal } from "../ui/Modal";
 import { useVehicleData, YAKIT_TIPLERI } from "../../hooks/useVehicleData";
 import { useVehiclesResources } from "../../resources/useResources";
 import { useTranslation } from "react-i18next";
+import { getFuelTypeLabel } from "../../lib/status-labels";
 
 interface VehicleModalProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export function VehicleModal({
   onSave,
   vehicle,
 }: VehicleModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { vehicleModalText } = useVehiclesResources();
   const {
     showAdvanced,
@@ -177,7 +178,7 @@ export function VehicleModal({
             >
               {YAKIT_TIPLERI.map((yakitTipi) => (
                 <option key={yakitTipi} value={yakitTipi}>
-                  {yakitTipi}
+                  {getFuelTypeLabel(yakitTipi, i18n.language)}
                 </option>
               ))}
             </select>

@@ -115,3 +115,22 @@ export function getRouteTypeLabel(routeType: string, lang = "tr"): string {
   if (known) return en ? known.en : known.tr;
   return routeType;
 }
+
+// araclar.yakit_tipi enum (useVehicleData.ts's YAKIT_TIPLERI) — the vehicle
+// add/edit form's <select> rendered these raw DB values directly as its own
+// option labels ("DIZEL", "BENZIN", "ELEKTRIK"), never translated even
+// though "LPG"/"HYBRID" happen to read the same in both languages.
+const FUEL_TYPE_LABELS: Record<string, { tr: string; en: string }> = {
+  DIZEL: { tr: "DIZEL", en: "DIESEL" },
+  BENZIN: { tr: "BENZIN", en: "GASOLINE" },
+  LPG: { tr: "LPG", en: "LPG" },
+  HYBRID: { tr: "HYBRID", en: "HYBRID" },
+  ELEKTRIK: { tr: "ELEKTRIK", en: "ELECTRIC" },
+};
+
+export function getFuelTypeLabel(fuelType: string, lang = "tr"): string {
+  const en = lang.startsWith("en");
+  const known = FUEL_TYPE_LABELS[fuelType];
+  if (known) return en ? known.en : known.tr;
+  return fuelType;
+}

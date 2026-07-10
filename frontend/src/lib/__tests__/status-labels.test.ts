@@ -3,6 +3,7 @@ import {
   getConfigGroupLabel,
   getTrailerTipiLabel,
   getRouteTypeLabel,
+  getFuelTypeLabel,
 } from "../status-labels";
 
 describe("getConfigGroupLabel", () => {
@@ -60,5 +61,22 @@ describe("getRouteTypeLabel", () => {
 
   it("falls back to the raw key for an unrecognised route type", () => {
     expect(getRouteTypeLabel("unknown_type", "en")).toBe("unknown_type");
+  });
+});
+
+describe("getFuelTypeLabel", () => {
+  it("maps araclar.yakit_tipi values to English", () => {
+    expect(getFuelTypeLabel("DIZEL", "en")).toBe("DIESEL");
+    expect(getFuelTypeLabel("BENZIN", "en")).toBe("GASOLINE");
+    expect(getFuelTypeLabel("ELEKTRIK", "en")).toBe("ELECTRIC");
+  });
+
+  it("keeps already-English-looking values unchanged", () => {
+    expect(getFuelTypeLabel("LPG", "en")).toBe("LPG");
+    expect(getFuelTypeLabel("HYBRID", "en")).toBe("HYBRID");
+  });
+
+  it("keeps Turkish labels unchanged for the Turkish locale", () => {
+    expect(getFuelTypeLabel("DIZEL", "tr")).toBe("DIZEL");
   });
 });

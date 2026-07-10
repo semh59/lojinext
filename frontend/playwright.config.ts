@@ -20,6 +20,14 @@ export default defineConfig({
         trace: 'retain-on-failure',
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',
+        // i18n.ts has no hardcoded `lng` (a saved/detected language should
+        // survive reload — see commit 834e007), so a fresh browser context
+        // with no localStorage falls through to navigator.language. Every
+        // spec in this suite asserts Turkish text; without pinning this,
+        // a runner whose OS/container locale isn't Turkish would boot the
+        // app in English and fail most of the suite for a reason that has
+        // nothing to do with the feature under test.
+        locale: 'tr-TR',
     },
 
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

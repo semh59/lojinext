@@ -22,8 +22,16 @@ import { LojiNextLogo } from "@/components/common/LojiNextLogo";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { useAdminResources } from "@/resources/useResources";
+import { useDarkMode } from "@/hooks/useDarkMode";
 export default function AdminLayout() {
   const { adminLayoutText } = useAdminResources();
+  // AdminLayout has no theme toggle of its own (the admin panel relies on
+  // the preference set in AppLayout) — but it still needs to APPLY the
+  // saved preference on mount, since landing here directly (fresh tab,
+  // hard refresh) never runs AppLayout's own effect. Without this call,
+  // the whole admin panel silently rendered in light mode regardless of
+  // the user's saved dark-mode choice.
+  useDarkMode();
   const ADMIN_NAV = [
     {
       path: "/admin",

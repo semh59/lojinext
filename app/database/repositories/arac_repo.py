@@ -277,6 +277,12 @@ class AracRepository(BaseRepository[Arac]):
         3. Toplam sefer km > 500,000
         4. Son bakım > 365 gün önce (veya hiç bakım kaydı yok)
         Severity: 3+ kriter = critical, 2 = high, 1 = medium
+
+        Her aday'ın "reason_codes" alanı [{"code": str, "params": dict}, ...]
+        şeklinde döner (önceden tek bir önceden-Türkçeleştirilmiş "reason"
+        string'iydi) — frontend'in her dile göre kendi formatlayıp
+        birleştirmesi için. code değerleri: old_vehicle, high_consumption,
+        high_mileage, no_maintenance_record, overdue_maintenance.
         """
         query = """
             SELECT
@@ -313,30 +319,45 @@ class AracRepository(BaseRepository[Arac]):
 
         candidates = []
         for row in rows:
-            reasons = []
+            # Structured (code, params) instead of a pre-formatted Turkish
+            # sentence — lets the frontend translate/format per the active
+            # UI language instead of always showing Turkish text.
+            reason_codes: List[Dict[str, Any]] = []
             age = current_year - (row["yil"] or current_year)
 
             if age > 15:
-                reasons.append(f"Yaşlı araç ({age} yıl)")
+                reason_codes.append({"code": "old_vehicle", "params": {"age": age}})
             if row["ort_tuketim"] > 35:
-                reasons.append(f"Yuksek tuketim ({row['ort_tuketim']:.1f} L/100km)")
+                reason_codes.append(
+                    {
+                        "code": "high_consumption",
+                        "params": {"value": round(float(row["ort_tuketim"]), 1)},
+                    }
+                )
             if row["toplam_km"] > 500_000:
-                reasons.append(f"Yuksek km ({int(row['toplam_km']):,} km)")
+                reason_codes.append(
+                    {"code": "high_mileage", "params": {"km": int(row["toplam_km"])}}
+                )
 
             son_bakim = row["son_bakim"]
             if son_bakim is None:
-                reasons.append("Bakim kaydi yok")
+                reason_codes.append({"code": "no_maintenance_record", "params": {}})
             elif hasattr(son_bakim, "tzinfo"):
                 if son_bakim.tzinfo is None:
                     son_bakim = son_bakim.replace(tzinfo=_tz.utc)
                 days_since = (now - son_bakim).days
                 if days_since > 365:
-                    reasons.append(f"Son bakim {days_since} gun once")
+                    reason_codes.append(
+                        {
+                            "code": "overdue_maintenance",
+                            "params": {"days": days_since},
+                        }
+                    )
 
-            if not reasons:
+            if not reason_codes:
                 continue
 
-            criterion_count = len(reasons)
+            criterion_count = len(reason_codes)
             if criterion_count >= 3:
                 severity = "critical"
             elif criterion_count == 2:
@@ -348,7 +369,7 @@ class AracRepository(BaseRepository[Arac]):
                 {
                     "id": row["id"],
                     "plaka": row["plaka"],
-                    "reason": ", ".join(reasons),
+                    "reason_codes": reason_codes,
                     "severity": severity,
                     "toplam_km": int(row["toplam_km"]),
                     "ort_tuketim": round(float(row["ort_tuketim"]), 1),

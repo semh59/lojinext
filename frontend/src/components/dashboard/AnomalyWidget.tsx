@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import type { FleetInsightsData } from "@/api/anomalies";
 import { useLocale } from "../../hooks/useLocale";
+import { formatMaintenanceReason } from "../../lib/status-labels";
 
 interface Props {
   data: FleetInsightsData | undefined;
@@ -96,7 +97,9 @@ export function AnomalyWidget({ data, isLoading }: Props) {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-secondary truncate max-w-[120px]">
-                      {v.reason}
+                      {v.reason_codes
+                        .map((r) => formatMaintenanceReason(r, locale))
+                        .join(", ")}
                     </span>
                     <Badge
                       variant={v.severity === "high" ? "danger" : "warning"}

@@ -112,7 +112,7 @@ const INSIGHTS_ALERT: FleetInsightsData = {
       {
         id: 1,
         plaka: "06ABC01",
-        reason: "Yağ değişimi",
+        reason_codes: [{ code: "overdue_maintenance", params: { days: 400 } }],
         severity: "high" as const,
         toplam_km: 95000,
         ort_tuketim: 32,

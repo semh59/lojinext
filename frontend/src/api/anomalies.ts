@@ -18,10 +18,15 @@ const LeakageStatsSchema = z.object({
   total_leakage_cost: z.number().optional().default(0),
 });
 
+const MaintenanceReasonCodeSchema = z.object({
+  code: z.string(),
+  params: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+
 const MaintenanceVehicleSchema = z.object({
   id: z.number(),
   plaka: z.string(),
-  reason: z.string(),
+  reason_codes: z.array(MaintenanceReasonCodeSchema),
   severity: z.enum(["medium", "high", "critical"]),
   toplam_km: z.number().optional().default(0),
   ort_tuketim: z.number().optional().default(0),
@@ -73,6 +78,7 @@ const RecentAnomaliesResponseSchema = z.object({
 });
 
 export type LeakageStats = z.infer<typeof LeakageStatsSchema>;
+export type MaintenanceReasonCode = z.infer<typeof MaintenanceReasonCodeSchema>;
 export type MaintenanceVehicle = z.infer<typeof MaintenanceVehicleSchema>;
 export type MaintenanceStats = z.infer<typeof MaintenanceStatsSchema>;
 export type FleetInsightsData = z.infer<typeof FleetInsightsDataSchema>;

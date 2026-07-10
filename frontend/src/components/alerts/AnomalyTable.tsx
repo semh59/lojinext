@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/Table";
 import type { LeakageStats, MaintenanceVehicle } from "@/api/anomalies";
 import { useLocale } from "../../hooks/useLocale";
+import { formatMaintenanceReason } from "../../lib/status-labels";
 
 // ─── LeakageSummary ──────────────────────────────────────────────────────────
 
@@ -134,7 +135,9 @@ export function MaintenanceTable({
               {vehicle.plaka}
             </TableCell>
             <TableCell className="text-secondary text-sm">
-              {vehicle.reason}
+              {vehicle.reason_codes
+                .map((r) => formatMaintenanceReason(r, locale))
+                .join(", ")}
             </TableCell>
             <TableCell className="text-secondary text-sm tabular-nums">
               {vehicle.toplam_km > 0

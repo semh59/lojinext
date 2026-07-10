@@ -451,7 +451,12 @@ class TestAracRepoGetMaintenanceCandidates:
         repo._session.execute = AsyncMock(return_value=_mappings_result([row]))
         result = await repo.get_maintenance_candidates()
         vehicle = result["vehicles"][0]
-        assert "gun once" in vehicle["reason"]
+        codes = {r["code"] for r in vehicle["reason_codes"]}
+        assert "overdue_maintenance" in codes
+        overdue = next(
+            r for r in vehicle["reason_codes"] if r["code"] == "overdue_maintenance"
+        )
+        assert overdue["params"]["days"] > 365
 
     async def test_son_bakim_naive_datetime_handled(self):
         """son_bakim without tzinfo is made UTC-aware."""

@@ -134,3 +134,50 @@ export function getFuelTypeLabel(fuelType: string, lang = "tr"): string {
   if (known) return en ? known.en : known.tr;
   return fuelType;
 }
+
+// arac_repo.py's get_maintenance_candidates() used to pre-format a single
+// Turkish sentence per reason ("Yaşlı araç (18 yıl)", etc.) and join them
+// with commas — always Turkish regardless of app language. It now returns
+// {code, params} pairs instead; this formats each one per the active
+// locale. Locale (not just language) matters here for the numeric params,
+// so this takes the full useLocale() string ("tr-TR"/"en-US"), not just
+// the 2-letter language.
+export interface MaintenanceReasonCodeInput {
+  code: string;
+  params: Record<string, string | number>;
+}
+
+export function formatMaintenanceReason(
+  reason: MaintenanceReasonCodeInput,
+  locale = "tr-TR",
+): string {
+  const en = locale.startsWith("en");
+  const { code, params } = reason;
+  switch (code) {
+    case "old_vehicle":
+      return en
+        ? `Old vehicle (${params.age} yr)`
+        : `Yaşlı araç (${params.age} yıl)`;
+    case "high_consumption": {
+      const value = Number(params.value).toLocaleString(locale, {
+        maximumFractionDigits: 1,
+        minimumFractionDigits: 1,
+      });
+      return en
+        ? `High consumption (${value} L/100km)`
+        : `Yüksek tüketim (${value} L/100km)`;
+    }
+    case "high_mileage": {
+      const km = Number(params.km).toLocaleString(locale);
+      return en ? `High mileage (${km} km)` : `Yüksek km (${km} km)`;
+    }
+    case "no_maintenance_record":
+      return en ? "No maintenance record" : "Bakım kaydı yok";
+    case "overdue_maintenance":
+      return en
+        ? `Last maintenance ${params.days} days ago`
+        : `Son bakım ${params.days} gün önce`;
+    default:
+      return code;
+  }
+}

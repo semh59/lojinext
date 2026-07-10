@@ -4,6 +4,7 @@ import {
   getTrailerTipiLabel,
   getRouteTypeLabel,
   getFuelTypeLabel,
+  formatMaintenanceReason,
 } from "../status-labels";
 
 describe("getConfigGroupLabel", () => {
@@ -78,5 +79,61 @@ describe("getFuelTypeLabel", () => {
 
   it("keeps Turkish labels unchanged for the Turkish locale", () => {
     expect(getFuelTypeLabel("DIZEL", "tr")).toBe("DIZEL");
+  });
+});
+
+describe("formatMaintenanceReason", () => {
+  it("formats each arac_repo.py reason code in English", () => {
+    expect(
+      formatMaintenanceReason(
+        { code: "old_vehicle", params: { age: 18 } },
+        "en-US",
+      ),
+    ).toBe("Old vehicle (18 yr)");
+    expect(
+      formatMaintenanceReason(
+        { code: "high_consumption", params: { value: 37.2 } },
+        "en-US",
+      ),
+    ).toBe("High consumption (37.2 L/100km)");
+    expect(
+      formatMaintenanceReason(
+        { code: "high_mileage", params: { km: 523000 } },
+        "en-US",
+      ),
+    ).toBe("High mileage (523,000 km)");
+    expect(
+      formatMaintenanceReason(
+        { code: "no_maintenance_record", params: {} },
+        "en-US",
+      ),
+    ).toBe("No maintenance record");
+    expect(
+      formatMaintenanceReason(
+        { code: "overdue_maintenance", params: { days: 400 } },
+        "en-US",
+      ),
+    ).toBe("Last maintenance 400 days ago");
+  });
+
+  it("formats the same codes in Turkish", () => {
+    expect(
+      formatMaintenanceReason(
+        { code: "old_vehicle", params: { age: 18 } },
+        "tr-TR",
+      ),
+    ).toBe("Yaşlı araç (18 yıl)");
+    expect(
+      formatMaintenanceReason(
+        { code: "no_maintenance_record", params: {} },
+        "tr-TR",
+      ),
+    ).toBe("Bakım kaydı yok");
+  });
+
+  it("falls back to the raw code for an unrecognised reason", () => {
+    expect(
+      formatMaintenanceReason({ code: "unknown_reason", params: {} }, "en-US"),
+    ).toBe("unknown_reason");
   });
 });

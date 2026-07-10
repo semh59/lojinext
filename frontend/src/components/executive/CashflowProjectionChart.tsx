@@ -55,7 +55,10 @@ export function CashflowProjectionChart({ className }: Props) {
   const chartData = data.weeks.map((w) => {
     const d = new Date(w.week_start);
     return {
-      week: `${d.getDate()}.${d.getMonth() + 1}`,
+      // Was hardcoded `${getDate()}.${getMonth()+1}` (Turkish day.month
+      // convention) regardless of app language — used the locale-aware
+      // formatter already in scope instead.
+      week: d.toLocaleDateString(locale, { day: "numeric", month: "numeric" }),
       fuel: w.fuel_tl,
       maintenance: w.maintenance_tl,
       penalty: w.penalty_tl,

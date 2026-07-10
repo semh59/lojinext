@@ -271,3 +271,20 @@ export function getReportTemplateMeta(
   if (!known) return null;
   return en ? known.en : known.tr;
 }
+
+// ml_service.py's training-queue task status (app/schemas/ml_schemas.py's
+// durum: str) — a fixed, closed set of English constants, but shown raw
+// and uppercase-only in MLYonetimPage's table regardless of app language.
+export type MlTaskDurum = "WAITING" | "RUNNING" | "COMPLETED" | "FAILED";
+
+export function getMlTaskStatusMeta(durum: string, lang = "tr"): StatusMeta {
+  const en = lang.startsWith("en");
+  const map: Record<MlTaskDurum, StatusMeta> = {
+    WAITING: { label: en ? "Waiting" : "Bekliyor", variant: "neutral" },
+    RUNNING: { label: en ? "Running" : "Çalışıyor", variant: "warning" },
+    COMPLETED: { label: en ? "Completed" : "Tamamlandı", variant: "success" },
+    FAILED: { label: en ? "Failed" : "Başarısız", variant: "danger" },
+  };
+  const known = map[durum.toUpperCase() as MlTaskDurum];
+  return known ?? { label: durum, variant: "neutral" };
+}

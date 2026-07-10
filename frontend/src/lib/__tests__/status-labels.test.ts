@@ -5,6 +5,7 @@ import {
   getRouteTypeLabel,
   getFuelTypeLabel,
   formatMaintenanceReason,
+  getMlTaskStatusMeta,
 } from "../status-labels";
 
 describe("getConfigGroupLabel", () => {
@@ -135,5 +136,29 @@ describe("formatMaintenanceReason", () => {
     expect(
       formatMaintenanceReason({ code: "unknown_reason", params: {} }, "en-US"),
     ).toBe("unknown_reason");
+  });
+});
+
+describe("getMlTaskStatusMeta", () => {
+  it("maps ml_service.py's task durum values to English", () => {
+    expect(getMlTaskStatusMeta("COMPLETED", "en").label).toBe("Completed");
+    expect(getMlTaskStatusMeta("RUNNING", "en").label).toBe("Running");
+    expect(getMlTaskStatusMeta("FAILED", "en").label).toBe("Failed");
+    expect(getMlTaskStatusMeta("WAITING", "en").label).toBe("Waiting");
+  });
+
+  it("maps the same values to Turkish", () => {
+    expect(getMlTaskStatusMeta("COMPLETED", "tr").label).toBe("Tamamlandı");
+    expect(getMlTaskStatusMeta("FAILED", "tr").label).toBe("Başarısız");
+  });
+
+  it("is case-insensitive on the raw durum value", () => {
+    expect(getMlTaskStatusMeta("completed", "en").label).toBe("Completed");
+  });
+
+  it("falls back to the raw value for an unrecognised status", () => {
+    expect(getMlTaskStatusMeta("unknown_status", "en").label).toBe(
+      "unknown_status",
+    );
   });
 });

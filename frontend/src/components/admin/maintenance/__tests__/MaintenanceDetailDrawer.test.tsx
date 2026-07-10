@@ -70,6 +70,9 @@ describe("MaintenanceDetailDrawer", () => {
     expect(screen.getByText("34 ABC 123")).toBeInTheDocument();
     expect(screen.getByText("15.06.2026")).toBeInTheDocument();
     expect(screen.getByText("14 gün")).toBeInTheDocument();
+    // bakim_tipi backend'den ham "PERIYODIK" gelir, getBakimTipiMeta ile
+    // yerelleştirilmiş "Periyodik" olarak gösterilmeli.
+    expect(screen.getByText("Periyodik")).toBeInTheDocument();
     expect(screen.getByText("84%")).toBeInTheDocument();
     expect(screen.getByText("%5.5")).toBeInTheDocument();
     // İndirme butonu görünür

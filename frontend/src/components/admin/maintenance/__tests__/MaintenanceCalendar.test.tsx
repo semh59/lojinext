@@ -119,8 +119,8 @@ describe("MaintenanceCalendar", () => {
     // Sadece 2 predictable kayıt → 2 event
     expect(events.length).toBe(2);
     const titles = events.map((e) => e.textContent);
-    expect(titles).toContain("34 AAA 11 — PERIYODIK");
-    expect(titles).toContain("34 BBB 22 — PERIYODIK");
+    expect(titles).toContain("34 AAA 11 — Periyodik");
+    expect(titles).toContain("34 BBB 22 — Periyodik");
   });
 
   it("503 hatası → flagOff mesajı", async () => {

@@ -13,6 +13,7 @@ import type {
 } from "@/api/maintenance-predictions";
 import { MaintenanceDetailDrawer } from "./MaintenanceDetailDrawer";
 import { useMaintenancePredictionsResources } from "@/resources/useResources";
+import { getBakimTipiMeta, type BakimTipi } from "@/lib/status-labels";
 
 const RISK_COLOR: Record<RiskLevel, string> = {
   overdue: "#dc2626", // red-600
@@ -21,11 +22,16 @@ const RISK_COLOR: Record<RiskLevel, string> = {
   low: "#10b981", // emerald-500
 };
 
-function predictionToEvent(p: MaintenancePrediction): EventInput | null {
+function predictionToEvent(
+  p: MaintenancePrediction,
+  lang: string,
+): EventInput | null {
   if (!p.predictable || !p.predicted_date) return null;
   return {
     id: `${p.arac_id}:${p.bakim_tipi}`,
-    title: `${p.plaka} — ${p.bakim_tipi}`,
+    title: `${p.plaka} — ${
+      getBakimTipiMeta(p.bakim_tipi as BakimTipi, lang).label
+    }`,
     start: p.predicted_date,
     allDay: true,
     backgroundColor: RISK_COLOR[(p.risk_level ?? "low") as RiskLevel],
@@ -44,9 +50,9 @@ export function MaintenanceCalendar() {
   const events = useMemo<EventInput[]>(() => {
     if (!data) return [];
     return data
-      .map(predictionToEvent)
+      .map((p) => predictionToEvent(p, i18n.language))
       .filter((e): e is EventInput => e !== null);
-  }, [data]);
+  }, [data, i18n.language]);
 
   const handleEventClick = (arg: EventClickArg) => {
     const pred = arg.event.extendedProps?.prediction as

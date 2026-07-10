@@ -10,6 +10,7 @@ import {
   type RiskLevel,
 } from "@/api/maintenance-predictions";
 import { useMaintenancePredictionsResources } from "@/resources/useResources";
+import { getBakimTipiMeta, type BakimTipi } from "@/lib/status-labels";
 
 const RISK_STYLE: Record<RiskLevel, string> = {
   overdue: "bg-danger/10 text-danger border-danger/30",
@@ -24,7 +25,7 @@ interface DrawerProps {
 }
 
 export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { maintenancePredictionsText } = useMaintenancePredictionsResources();
   function formatDate(iso: string | null): string {
     if (!iso) return maintenancePredictionsText.table.notApplicable;
@@ -91,7 +92,12 @@ export function MaintenanceDetailDrawer({ prediction, onClose }: DrawerProps) {
                 {prediction.plaka}
               </h3>
               <p className="text-[11px] text-secondary">
-                {prediction.bakim_tipi}
+                {
+                  getBakimTipiMeta(
+                    prediction.bakim_tipi as BakimTipi,
+                    i18n.language,
+                  ).label
+                }
               </p>
             </div>
           </div>

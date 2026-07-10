@@ -38,10 +38,11 @@ import { useMaintenancePredictionsResources } from "@/resources/useResources";
 import { useAdminResources } from "@/resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
 import { useTranslation } from "react-i18next";
+import { getBakimTipiMeta } from "@/lib/status-labels";
 
 export default function AdminMaintenancePage() {
   const { adminMaintenanceText } = useAdminResources();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = useLocale();
   // Backend contract (MaintenanceAlertItem, /admin/maintenance/alerts) sends
   // `vade_durumu: "OVERDUE" | "UPCOMING"` — NOT `durum: "gecikmis"/"yaklasiyor"`.
@@ -333,7 +334,12 @@ export default function AdminMaintenancePage() {
                         {adminMaintenanceText.vehiclePrefix} #{alert.arac_id}
                       </TableCell>
                       <TableCell className="text-xs font-bold uppercase text-secondary">
-                        {alert.bakim_tipi}
+                        {
+                          getBakimTipiMeta(
+                            alert.bakim_tipi as BakimTipi,
+                            i18n.language,
+                          ).label
+                        }
                       </TableCell>
                       <TableCell className="text-sm">
                         {alert.tarih

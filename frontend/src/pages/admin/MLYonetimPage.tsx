@@ -20,10 +20,11 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
 import { useLocale } from "../../hooks/useLocale";
 import { useTranslation } from "react-i18next";
+import { getMlTaskStatusMeta } from "@/lib/status-labels";
 
 export default function AdminModelManagementPage() {
   const { adminMlText } = useAdminResources();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const locale = useLocale();
   usePageTitle(t("admin.ml_models", "ML Models"));
   const queryClient = useQueryClient();
@@ -223,7 +224,10 @@ export default function AdminModelManagementPage() {
                               : "default"
                       }
                     >
-                      {task.durum}
+                      {
+                        getMlTaskStatusMeta(task.durum ?? "", i18n.language)
+                          .label
+                      }
                     </Badge>
                   </TableCell>
                   <TableCell>

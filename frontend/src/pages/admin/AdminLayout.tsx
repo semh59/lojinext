@@ -120,8 +120,13 @@ export default function AdminLayout() {
 
   const currentLabel =
     ADMIN_NAV.find((item) =>
-      location.pathname === "/admin"
-        ? item.path === "/admin"
+      // Overview's path ("/admin") is a string-prefix of every other admin
+      // route, so it must require an exact match — otherwise it always wins
+      // .find()'s first-match-in-array-order on every single subpage (it's
+      // first in ADMIN_NAV), and the header label never changes off
+      // "Overview" no matter which admin page is actually open.
+      item.path === "/admin"
+        ? location.pathname === "/admin"
         : location.pathname.startsWith(item.path),
     )?.label || adminLayoutText.nav.fallback;
 

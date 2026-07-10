@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "../../../test/test-utils";
+import { render, screen } from "../../../test/test-utils";
 import AdminLayout from "../AdminLayout";
 
 // Regression test: AdminLayout never applied the user's saved dark-mode
@@ -15,6 +15,8 @@ vi.mock("framer-motion", () => ({
   },
 }));
 
+let mockPathname = "/admin";
+
 vi.mock("react-router-dom", async () => {
   const actual =
     await vi.importActual<typeof import("react-router-dom")>(
@@ -23,7 +25,7 @@ vi.mock("react-router-dom", async () => {
   return {
     ...actual,
     Outlet: () => <div data-testid="admin-outlet">Admin Page Content</div>,
-    useLocation: () => ({ pathname: "/admin" }),
+    useLocation: () => ({ pathname: mockPathname }),
   };
 });
 
@@ -43,6 +45,7 @@ vi.mock("../../../context/AuthContext", () => ({
 describe("AdminLayout", () => {
   beforeEach(() => {
     document.documentElement.classList.remove("dark");
+    mockPathname = "/admin";
   });
 
   afterEach(() => {
@@ -61,5 +64,31 @@ describe("AdminLayout", () => {
     document.documentElement.classList.add("dark");
     render(<AdminLayout />);
     expect(document.documentElement.classList.contains("dark")).toBe(false);
+  });
+
+  // Regression: "/admin" (Overview's own path) is a string-prefix of every
+  // other admin route. The header's currentLabel lookup used to run
+  // location.pathname.startsWith(item.path) for every ADMIN_NAV entry once
+  // pathname !== "/admin" exactly — including Overview's own "/admin" entry,
+  // which matched via startsWith on every subpage and, being first in the
+  // array, always won .find(). The header showed "Overview" on every single
+  // admin subpage regardless of which one was actually open.
+  it("shows the current page's own label in the header, not Overview, on a subpage", () => {
+    mockPathname = "/admin/kullanicilar";
+    render(<AdminLayout />);
+    expect(
+      screen.getByRole("heading", { name: "Kullanıcılar" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Genel Bakış" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still shows Overview's own label when on /admin exactly", () => {
+    mockPathname = "/admin";
+    render(<AdminLayout />);
+    expect(
+      screen.getByRole("heading", { name: "Genel Bakış" }),
+    ).toBeInTheDocument();
   });
 });

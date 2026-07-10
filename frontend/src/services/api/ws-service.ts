@@ -15,7 +15,11 @@ export const wsService = {
    */
   getTicket: async (): Promise<string> => {
     try {
-      const response = await axiosInstance.post<TicketResponse>("/ws/ticket");
+      const response = await axiosInstance.post<TicketResponse>(
+        "/ws/ticket",
+        undefined,
+        { _silent: true },
+      );
       return response.data.ticket;
     } catch (error) {
       console.error("Failed to fetch WS ticket:", error);

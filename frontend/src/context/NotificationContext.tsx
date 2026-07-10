@@ -78,6 +78,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!isAdmin) return;
 
     let stopped = false;
+    // Uncapped, no-delay reconnect used to let a transient backend hiccup
+    // (WS handshake rejected right after ticket creation, e.g. admin-check
+    // blip or the per-user connection cap) turn into a tight loop that
+    // hammered both /ws/ticket and the WS handshake as fast as the event
+    // loop allowed. Exponential backoff (capped, reset on a real open)
+    // applies to both retry paths below.
+    const MAX_RETRY_DELAY_MS = 60_000;
+    let retryCount = 0;
+    const nextRetryDelay = () => {
+      const delay = Math.min(MAX_RETRY_DELAY_MS, 5000 * 2 ** retryCount);
+      retryCount += 1;
+      return delay;
+    };
 
     const connect = (wsUrl: string) => {
       if (stopped) return;
@@ -85,6 +98,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         console.debug("Connecting to Notification WS...");
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+
+      ws.onopen = () => {
+        retryCount = 0;
+      };
 
       ws.onmessage = (event) => {
         try {
@@ -125,10 +142,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
       ws.onclose = () => {
         if (stopped) return;
+        const delay = nextRetryDelay();
         if (import.meta.env.DEV)
-          console.debug("Notification WS closed. Reconnecting in 5s...");
+          console.debug(
+            `Notification WS closed. Reconnecting in ${delay}ms...`,
+          );
         // Re-fetch a fresh ticket on reconnect to avoid stale/expired ticket.
-        void init();
+        setTimeout(() => void init(), delay);
       };
 
       ws.onerror = () => {
@@ -144,7 +164,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         const url = `${protocol}//${window.location.host}/api/v1/admin/ws/live?ticket=${ticket}`;
         connect(url);
       } catch {
-        if (!stopped) setTimeout(() => void init(), 5000);
+        if (!stopped) setTimeout(() => void init(), nextRetryDelay());
       }
     };
 

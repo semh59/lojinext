@@ -17,6 +17,11 @@ interface ApiErrorResponse {
 declare module "axios" {
   export interface InternalAxiosRequestConfig {
     _retry?: boolean;
+    /** Skip the global error-toast/report side effects below (e.g. silent background polling). */
+    _silent?: boolean;
+  }
+  export interface AxiosRequestConfig {
+    _silent?: boolean;
   }
 }
 
@@ -138,7 +143,7 @@ axiosInstance.interceptors.response.use(
         }
       }
 
-      if (status === 403) {
+      if (status === 403 && !originalRequest?._silent) {
         toast.error(
           i18n.t(
             "errors.forbidden",
@@ -147,7 +152,7 @@ axiosInstance.interceptors.response.use(
         );
       }
 
-      if (status === 400) {
+      if (status === 400 && !originalRequest?._silent) {
         const errData = data as ApiErrorResponse;
         const message =
           errData?.error?.message ??
@@ -156,7 +161,7 @@ axiosInstance.interceptors.response.use(
         toast.error(message);
       }
 
-      if (status === 422) {
+      if (status === 422 && !originalRequest?._silent) {
         const errData = data as ApiErrorResponse;
         if (errData?.error?.message) {
           toast.error(errData.error.message);
@@ -173,7 +178,7 @@ axiosInstance.interceptors.response.use(
         }
       }
 
-      if (status === 429) {
+      if (status === 429 && !originalRequest?._silent) {
         const errData = data as ApiErrorResponse;
         const message =
           errData?.error?.message ??
@@ -185,7 +190,7 @@ axiosInstance.interceptors.response.use(
         toast.error(message);
       }
 
-      if (status >= 500) {
+      if (status >= 500 && !originalRequest?._silent) {
         toast.error(
           i18n.t(
             "errors.server_error",
@@ -216,12 +221,14 @@ axiosInstance.interceptors.response.use(
         errorCode,
       });
     } else if (error.request) {
-      toast.error(
-        i18n.t(
-          "errors.network_error",
-          "Cannot reach server. Please check your internet connection.",
-        ),
-      );
+      if (!originalRequest?._silent) {
+        toast.error(
+          i18n.t(
+            "errors.network_error",
+            "Cannot reach server. Please check your internet connection.",
+          ),
+        );
+      }
       errorTracker.captureApiError({
         severity: "fatal",
         path: error.config?.url ?? "unknown",

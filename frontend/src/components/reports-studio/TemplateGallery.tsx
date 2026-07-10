@@ -8,6 +8,7 @@ import {
   Truck,
 } from "lucide-react";
 
+import { useTranslation } from "react-i18next";
 import { cn } from "../../lib/utils";
 import type {
   TemplateCategory,
@@ -15,6 +16,7 @@ import type {
   TemplateMeta,
 } from "../../api/reports-studio";
 import { useReportsStudioResources } from "../../resources/useResources";
+import { getReportTemplateMeta } from "../../lib/status-labels";
 
 const TEMPLATE_ICONS: Record<TemplateId, typeof FileText> = {
   ceo_1pager: FileText,
@@ -44,11 +46,13 @@ export function TemplateGallery({
   onSelect,
 }: TemplateGalleryProps) {
   const { reportsStudioText } = useReportsStudioResources();
+  const { i18n } = useTranslation();
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {templates.map((tmpl, index) => {
         const Icon = TEMPLATE_ICONS[tmpl.id] ?? FileText;
         const isSelected = selectedId === tmpl.id;
+        const meta = getReportTemplateMeta(tmpl.id, i18n.language);
         return (
           <motion.button
             key={tmpl.id}
@@ -85,10 +89,10 @@ export function TemplateGallery({
             </div>
             <div>
               <h3 className="text-base font-semibold text-primary">
-                {tmpl.title}
+                {meta?.title ?? tmpl.title}
               </h3>
               <p className="mt-1 text-xs leading-relaxed text-secondary">
-                {tmpl.description}
+                {meta?.description ?? tmpl.description}
               </p>
             </div>
             <div className="mt-auto flex items-center gap-1.5">

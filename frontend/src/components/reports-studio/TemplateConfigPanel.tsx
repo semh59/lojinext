@@ -1,11 +1,13 @@
 ﻿import { useState } from "react";
 import { ChevronRight, Download, Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import type { PeriodKey } from "../../resources/tr/reports-studio";
 import type { TemplateFormat, TemplateMeta } from "../../api/reports-studio";
 import { Button } from "../ui/Button";
 import { cn } from "../../lib/utils";
 import { useReportsStudioResources } from "../../resources/useResources";
+import { getReportTemplateMeta } from "../../lib/status-labels";
 
 interface TemplateConfigPanelProps {
   template: TemplateMeta | null;
@@ -31,6 +33,7 @@ export function TemplateConfigPanel({
   onDownload,
 }: TemplateConfigPanelProps) {
   const { reportsStudioText } = useReportsStudioResources();
+  const { i18n } = useTranslation();
   const [format, setFormat] = useState<TemplateFormat>("pdf");
   const [period, setPeriod] = useState<PeriodKey>("current_month");
   const [busy, setBusy] = useState(false);
@@ -57,6 +60,7 @@ export function TemplateConfigPanel({
   const effectiveFormat = supportedFormats.includes(format)
     ? format
     : supportedFormats[0];
+  const meta = getReportTemplateMeta(template.id, i18n.language);
 
   const handleDownload = async () => {
     setBusy(true);
@@ -85,8 +89,12 @@ export function TemplateConfigPanel({
   return (
     <div className="space-y-4 rounded-modal border border-border bg-surface p-5 shadow-sm">
       <div>
-        <h3 className="text-sm font-semibold text-primary">{template.title}</h3>
-        <p className="mt-0.5 text-xs text-secondary">{template.description}</p>
+        <h3 className="text-sm font-semibold text-primary">
+          {meta?.title ?? template.title}
+        </h3>
+        <p className="mt-0.5 text-xs text-secondary">
+          {meta?.description ?? template.description}
+        </p>
       </div>
 
       {template.supports_period && (

@@ -181,3 +181,93 @@ export function formatMaintenanceReason(
       return code;
   }
 }
+
+// reports_studio.py's 6 static templates (Plan §5.1 — a fixed, coded list,
+// not LLM/DB content) send title/description in Turkish only. The
+// TemplateGallery already keys icon + category label off tmpl.id/category —
+// title/description were the only fields on the same card left untranslated.
+const REPORT_TEMPLATE_LABELS: Record<
+  string,
+  {
+    tr: { title: string; description: string };
+    en: { title: string; description: string };
+  }
+> = {
+  ceo_1pager: {
+    tr: {
+      title: "CEO Aylık 1-Pager",
+      description:
+        "Tek sayfalık üst yönetim özeti — FVI, maliyet, anomali ve uyum metrikleri.",
+    },
+    en: {
+      title: "CEO Monthly 1-Pager",
+      description:
+        "A one-page executive summary — FVI, cost, anomaly, and compliance metrics.",
+    },
+  },
+  fleet_weekly: {
+    tr: {
+      title: "Filo Müdürü Haftalık",
+      description:
+        "Haftalık operasyon özeti — FVI, period karşılaştırma, cross-feature kazanım.",
+    },
+    en: {
+      title: "Fleet Manager Weekly",
+      description:
+        "Weekly operations summary — FVI, period comparison, cross-feature savings.",
+    },
+  },
+  fuel_cost_analysis: {
+    tr: {
+      title: "Yakıt Maliyet Analizi",
+      description: "Aylık yakıt maliyet trendi ve dönem karşılaştırması.",
+    },
+    en: {
+      title: "Fuel Cost Analysis",
+      description: "Monthly fuel cost trend and period-over-period comparison.",
+    },
+  },
+  vehicle_comparison: {
+    tr: {
+      title: "Araç Karşılaştırma",
+      description:
+        "Filodaki araçların ortalama tüketim ve maliyet karşılaştırması.",
+    },
+    en: {
+      title: "Vehicle Comparison",
+      description:
+        "Average consumption and cost comparison across the fleet's vehicles.",
+    },
+  },
+  carbon_report: {
+    tr: {
+      title: "Karbon Raporu",
+      description: "12 ay CO₂ emisyon özeti ve hedef sapması.",
+    },
+    en: {
+      title: "Carbon Report",
+      description: "12-month CO₂ emissions summary and target deviation.",
+    },
+  },
+  what_if: {
+    tr: {
+      title: "What-If Sonucu",
+      description:
+        "Strategic Cockpit'te çalıştırılan senaryonun PDF olarak indirilmesi.",
+    },
+    en: {
+      title: "What-If Result",
+      description: "Download the scenario run in Strategic Cockpit as a PDF.",
+    },
+  },
+};
+
+export function getReportTemplateMeta(
+  id: string,
+  lang = "tr",
+): { title: string; description: string } | null {
+  const en = lang.startsWith("en");
+  const known = REPORT_TEMPLATE_LABELS[id];
+  if (!known) return null;
+  return en ? known.en : known.tr;
+}

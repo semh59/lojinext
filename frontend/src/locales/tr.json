@@ -920,7 +920,8 @@
     "closed_warning": "Bu soruşturma kapatıldı; değişiklik yapılamaz.",
     "no_resolution": "— yok —",
     "notes_placeholder": "Soruşturma notları...",
-    "no_evidence": "— henüz kanıt yok —"
+    "no_evidence": "— henüz kanıt yok —",
+    "deviation_label": "sapma"
   },
   "maintenance": {
     "loading": "Yükleniyor…",

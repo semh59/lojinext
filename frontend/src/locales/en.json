@@ -920,7 +920,8 @@
     "closed_warning": "This investigation is closed; no changes can be made.",
     "no_resolution": "— none —",
     "notes_placeholder": "Investigation notes...",
-    "no_evidence": "— no evidence yet —"
+    "no_evidence": "— no evidence yet —",
+    "deviation_label": "deviation"
   },
   "maintenance": {
     "loading": "Loading…",

@@ -163,7 +163,7 @@ export function InvestigationDetailDialog({
                 {inv.plaka ?? "—"}
                 {inv.sofor_adi ? ` · ${inv.sofor_adi}` : ""}
                 {inv.sapma_yuzde != null &&
-                  ` · sapma ${
+                  ` · ${t("investigations.deviation_label")} ${
                     inv.sapma_yuzde > 0 ? "+" : ""
                   }${inv.sapma_yuzde.toFixed(1)}%`}
               </p>

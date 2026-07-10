@@ -26,6 +26,17 @@ export function FuelStats({ stats, loading }: FuelStatsProps) {
       currency: "TRY",
       maximumFractionDigits: 0,
     }).format(value);
+  // Average price needs 2 decimals (unlike the rounded total-cost figure
+  // above) but must stay on the same locale-aware currency formatting —
+  // a hardcoded "TL/L" suffix here previously showed literal Turkish
+  // Lira notation even while the rest of the page was in English.
+  const formatPricePerLiter = (value: number) =>
+    `${new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "TRY",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value)}/L`;
 
   // Aynı queryKey'i FuelAnomalyWidget ile paylaşan ortak hook —
   // TanStack Query cache üzerinden tek HTTP isteğine indirgenir.
@@ -75,7 +86,7 @@ export function FuelStats({ stats, loading }: FuelStatsProps) {
     },
     {
       label: fuelStatsText.averagePrice,
-      value: hasData ? `${(stats?.avg_price ?? 0).toFixed(2)} TL/L` : "—",
+      value: hasData ? formatPricePerLiter(stats?.avg_price ?? 0) : "—",
       icon: TrendingUp,
       color: "text-success",
       bg: "bg-success/10",

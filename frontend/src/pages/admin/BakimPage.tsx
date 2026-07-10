@@ -467,7 +467,7 @@ export default function AdminMaintenancePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-secondary mb-1">
-                {t("admin.bakim_cost_label", "Cost (TL)")}
+                {t("admin.bakim_cost_label", "Cost (TRY)")}
               </label>
               <input
                 type="number"

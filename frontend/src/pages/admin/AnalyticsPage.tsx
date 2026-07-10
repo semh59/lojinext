@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { fetchPageViewStats } from "../../api/analytics";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 function RouteList({
   title,
@@ -29,6 +30,7 @@ function RouteList({
 
 export default function AnalyticsPage() {
   const { t } = useTranslation();
+  usePageTitle(t("admin.usage_analytics", "Usage Analytics"));
   const { data, isLoading } = useQuery({
     queryKey: ["pageViewStats", 30],
     queryFn: () => fetchPageViewStats(30),

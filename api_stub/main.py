@@ -422,6 +422,123 @@ async def telegram_send_message(token: str, request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Mobiliz AVL (app/core/integrations/avl/mobiliz.py) — NOT a confirmed real
+# Mobiliz API contract. This shape is the adapter's own documented TODO
+# ("Beklenen request" comments), used here purely to make the adapter
+# testable with real HTTP while the real provider docs are pending
+# (Faz 1 of the AVL/fuel-card integration plan). AVL_BASE_URL = this host.
+# ---------------------------------------------------------------------------
+@app.get("/v1/health")
+async def mobiliz_health(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/v1/accounts/{account_id}/trips")
+async def mobiliz_trips(account_id: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+    return JSONResponse(
+        {
+            "trips": [
+                {
+                    "trip_id": "T-1001",
+                    "plate": "34 ABC 123",
+                    "start_time": "2026-07-01T08:00:00+00:00",
+                    "end_time": "2026-07-01T11:30:00+00:00",
+                    "start_lat": 41.0,
+                    "start_lon": 28.9,
+                    "end_lat": 39.93,
+                    "end_lon": 32.85,
+                    "distance_km": 450.0,
+                    "driver_id": "DRV-42",
+                },
+                {
+                    "trip_id": "T-1002",
+                    "plate": "06 XYZ 456",
+                    "start_time": "2026-07-02T09:00:00+00:00",
+                    "end_time": None,
+                    "start_lat": 40.2,
+                    "start_lon": 29.0,
+                    "end_lat": None,
+                    "end_lon": None,
+                    "distance_km": 120.0,
+                    "driver_id": None,
+                },
+            ]
+        }
+    )
+
+
+@app.get("/v1/accounts/{account_id}/positions/latest")
+async def mobiliz_positions(account_id: str, request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+    plates_param = request.query_params.get("plates", "")
+    plate_list = [p for p in plates_param.split(",") if p] or ["34ABC123"]
+    return JSONResponse(
+        {
+            "positions": [
+                {
+                    "vehicle_id": f"V-{i + 1}",
+                    "plate": plate,
+                    "timestamp": "2026-07-11T12:00:00+00:00",
+                    "lat": 41.0 + i * 0.1,
+                    "lon": 28.9 + i * 0.1,
+                    "speed_kmh": 85.0,
+                    "heading_deg": 90.0,
+                }
+                for i, plate in enumerate(plate_list)
+            ]
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# OPET Fuel Card (app/core/integrations/fuel/opet.py) — same caveat as
+# Mobiliz above: adapter's own documented TODO shape, not a confirmed real
+# OPET B2B contract. FUEL_BASE_URL = this host.
+# ---------------------------------------------------------------------------
+@app.get("/api/health")
+async def opet_health(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+    return JSONResponse({"status": "ok"})
+
+
+@app.get("/api/transactions")
+async def opet_transactions(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+    return JSONResponse(
+        {
+            "transactions": [
+                {
+                    "transactionId": "TX-9001",
+                    "plateNumber": "34 ABC 123",
+                    "timestamp": "2026-07-01T10:15:00+00:00",
+                    "stationName": "OPET Bolu",
+                    "stationCity": "Bolu",
+                    "liters": 180.5,
+                    "unitPrice": 42.3,
+                    "total": 7636.65,
+                    "odometer": 125430,
+                    "cardId": "CARD-1",
+                    "receiptNo": "R-556677",
+                    "fuelType": "MOTORIN",
+                }
+            ]
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
 # Groq / OpenAI-compatible — GROQ_API_BASE_URL = "{host}/openai/v1"; SDK
 # appends "/chat/completions".
 # ---------------------------------------------------------------------------

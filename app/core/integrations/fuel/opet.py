@@ -1,27 +1,43 @@
-"""OPET Filo Kart adapter stub.
+"""OPET Filo Kart adapter.
+
+DÜRÜST NOT: Bu adapter gerçek OPET API'sine karşı DOĞRULANMAMIŞ — OPET'in
+gerçek B2B endpoint/auth/response şeması henüz elimizde yok (sağlayıcı
+seçimi Faz 1, bkz. AVL/fuel-card entegrasyon planı). Aşağıdaki request/
+response şekli bu dosyanın önceki "Beklenen request" TODO yorumlarından
+türetildi ve api_stub/main.py'deki deterministik stub'a karşı test
+edilebilir hale getirildi — gerçek OPET sözleşmesi netleştiğinde bu
+mapping'in güncellenmesi gerekir.
 
 Üretime almak için:
   1. .env'ye FUEL_PROVIDER=opet, FUEL_BASE_URL, FUEL_API_KEY,
      FUEL_ACCOUNT_ID alanlarını doldur.
-  2. Aşağıdaki TODO'ları OPET'in B2B fiş entegrasyon endpoint'lerine
-     bağla.
+  2. OPET'in gerçek B2B dokümanı geldiğinde bu dosyadaki endpoint
+     path'lerini ve response mapping'ini gerçek şemaya göre güncelle.
   3. registry.py'de FUEL_PROVIDERS["opet"] = OpetFuelProvider
      zaten kayıtlı.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
+
+import httpx
 
 from app.core.integrations.fuel.base import FuelTransaction
 from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.monitoring.external_api_probe import (
+    emit_network_error,
+    get_monitored_client,
+)
 
 logger = get_logger(__name__)
 
+_TIMEOUT = 10.0
+
 
 class OpetFuelProvider:
-    """OPET Filo Kart B2B adapter (stub)."""
+    """OPET Filo Kart B2B adapter."""
 
     provider_key = "opet"
 
@@ -34,20 +50,55 @@ class OpetFuelProvider:
         self.api_key = api_key
         self.account_id = account_id
 
+    def _headers(self) -> dict:
+        return {"Authorization": f"Bearer {self.api_key}"}
+
     async def fetch_transactions(
         self, since: datetime, until: Optional[datetime] = None
     ) -> List[FuelTransaction]:
-        # Beklenen request:
-        #   GET {base_url}/api/transactions
-        #   ?accountId={account_id}&from={since}&to={until or now}
-        # Response → FuelTransaction listesine map et:
-        #   transactionId → external_transaction_id
-        #   plateNumber → plaka
-        #   stationName, stationCity, liters, unitPrice, total, odometer
-        raise NotImplementedError(
-            "OPET fetch_transactions: gerçek API endpoint'i ve response şeması "
-            "OPET filo kart dokümantasyonundan doldurulacak."
-        )
+        until_val = until or datetime.now(timezone.utc)
+        url = f"{self.base_url}/api/transactions"
+        params = {
+            "accountId": self.account_id,
+            "from": since.isoformat(),
+            "to": until_val.isoformat(),
+        }
+        try:
+            async with get_monitored_client(timeout=_TIMEOUT) as client:
+                resp = await client.get(url, params=params, headers=self._headers())
+        except httpx.RequestError as exc:
+            await emit_network_error(exc, url)
+            raise
+        resp.raise_for_status()
+        payload = resp.json()
+
+        transactions: List[FuelTransaction] = []
+        for item in payload.get("transactions", []):
+            transactions.append(
+                FuelTransaction(
+                    external_transaction_id=str(item["transactionId"]),
+                    plaka=item["plateNumber"].upper().replace(" ", ""),
+                    timestamp=datetime.fromisoformat(item["timestamp"]),
+                    station_name=item.get("stationName", ""),
+                    station_city=item.get("stationCity"),
+                    liters=item["liters"],
+                    price_per_liter=item["unitPrice"],
+                    total_amount_tl=item["total"],
+                    odometer_km=item.get("odometer"),
+                    driver_card_id=item.get("cardId"),
+                    receipt_no=item.get("receiptNo"),
+                    fuel_type=item.get("fuelType"),
+                    raw_payload=item,
+                )
+            )
+        return transactions
 
     async def healthcheck(self) -> bool:
-        return False  # stub her zaman False
+        url = f"{self.base_url}/api/health"
+        try:
+            async with get_monitored_client(timeout=5.0) as client:
+                resp = await client.get(url)
+            return resp.status_code == 200
+        except Exception as exc:
+            logger.warning("OPET healthcheck başarısız: %s", exc)
+            return False

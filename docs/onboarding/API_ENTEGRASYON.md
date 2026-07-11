@@ -18,14 +18,14 @@ Provider abstraction: `app/core/integrations/{avl,fuel}/base.py`.
 ### AVL (Araç Takip)
 | Provider | Key | Dosya | Durum |
 |---|---|---|---|
-| Mobiliz | `mobiliz` | `avl/mobiliz.py` | stub — endpoint dokümanı bekleniyor |
+| Mobiliz | `mobiliz` | `avl/mobiliz.py` | gerçek HTTP + api_stub'a karşı test edilmiş, **gerçek Mobiliz sözleşmesiyle doğrulanmamış** — endpoint dokümanı bekleniyor |
 | Arvento | `arvento` | (planlandı) | yok |
 | Vodafone Araç Takip | `vodafone` | (planlandı) | yok |
 
 ### Akaryakıt Kart
 | Provider | Key | Dosya | Durum |
 |---|---|---|---|
-| OPET | `opet` | `fuel/opet.py` | stub — endpoint dokümanı bekleniyor |
+| OPET | `opet` | `fuel/opet.py` | gerçek HTTP + api_stub'a karşı test edilmiş, **gerçek OPET sözleşmesiyle doğrulanmamış** — endpoint dokümanı bekleniyor |
 | Shell | `shell` | (planlandı) | yok |
 | BP Truckmaster | `bp` | (planlandı) | yok |
 | Petrol Ofisi | `po` | (planlandı) | yok |
@@ -52,20 +52,25 @@ FUEL_POLL_INTERVAL_SECONDS=3600  # 1 saat default
 
 ## Bir provider'ı production'a almak (kısa adım listesi)
 
-1. Adapter dosyasında `fetch_trips`/`fetch_transactions` içindeki
-   `NotImplementedError`'ı **gerçek HTTP çağrısı** ile değiştir.
-2. Response → normalize'lenmiş dataclass mapping'i yaz.
-3. `.env`'i doldur.
-4. Migration: `araclar.external_id` (provider'da bu aracın ID'si) ve
+1. ~~Adapter dosyasında `fetch_trips`/`fetch_transactions` içindeki
+   `NotImplementedError`'ı **gerçek HTTP çağrısı** ile değiştir.~~ **Yapıldı**
+   (2026-07-11) — ama aşağıdaki "gerçek sağlayıcı doğrulaması" hâlâ eksik,
+   bkz. sınırlamalar.
+1b. Sağlayıcı seçildiğinde: gerçek API dokümanı geldiğinde adapter'daki
+    endpoint path'lerini/response mapping'ini gerçek şemaya göre güncelle
+    (şu anki mapping `api_stub/main.py`'deki varsayım şemasına göre).
+2. `.env`'i doldur.
+3. Migration: `araclar.external_id` (provider'da bu aracın ID'si) ve
    `yakit_alimlari.external_transaction_id` (kart işlem ID) field'ları
    eklenir; UNIQUE constraint ile idempotent insert.
-5. Celery beat task'ı aktive et (mevcut `app/workers/tasks/` altına eklenir):
+4. Celery beat task'ı aktive et (mevcut `app/workers/tasks/` altına eklenir):
    - `integrations.avl_poll` (15 dk)
    - `integrations.fuel_poll` (1 saat)
-6. Healthcheck doğrula:
+5. Healthcheck doğrula (Faz 0'dan beri admin panelde görünür — bkz.
+   Entegrasyonlar sayfası "Planlanan Entegrasyonlar" bölümü):
    ```bash
    curl -H "Authorization: Bearer $TOKEN" \
-     https://api.lojinext.com/api/v1/admin/health/integrations
+     https://api.lojinext.com/api/v1/admin/integrations/planned
    ```
 
 ## Veri Akışı: AVL → Sefer
@@ -104,10 +109,20 @@ recalculate_vehicle_periods(arac_id)
 
 ## Şu an için sınırlamalar (dürüst not)
 
-- Adapter'lar **stub**: gerçek HTTP çağrısı yapmıyor.
+- Adapter'lar (`mobiliz.py`/`opet.py`) artık gerçek HTTP çağrısı yapıyor ve
+  `api_stub/main.py`'deki deterministik stub'a karşı test edilmiş (2026-07-11)
+  — ama **gerçek Mobiliz/OPET API sözleşmesiyle hiç doğrulanmadı**. Şu anki
+  request/response şekli adapter dosyalarının kendi TODO yorumlarından
+  türetildi, gerçek sağlayıcı dokümanından değil.
+- `get_avl_provider()`/`get_fuel_provider()` hâlâ uygulamada hiçbir yerde
+  (endpoint/worker/servis) çağrılmıyor — sadece adapter+registry seviyesinde
+  test edilebilir durumda.
 - Migration eklenmedi: `external_id` field'ları henüz tablo schema'sında yok.
 - Celery beat task'ları kayıtlı değil.
 - Webhook desteği planlanmadı (provider push event'leri için).
+- Admin panelde (Entegrasyonlar sayfası → "Planlanan Entegrasyonlar")
+  Faz 0 görünürlüğü var: `AVL_PROVIDER`/`FUEL_PROVIDER` env durumu +
+  "Uygulanmadı" rozeti — gerçek çalışma durumu değil.
 
-Provider seçildiğinde yukarıdaki 4 madde **birlikte** çalışılır; tek
-seferde tam akış kurulur.
+Provider seçildiğinde ("Faz 1" — iş kararı) yukarıdaki maddeler
+**birlikte** çalışılır; tek seferde tam akış kurulur.

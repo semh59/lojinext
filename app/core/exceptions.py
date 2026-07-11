@@ -114,3 +114,10 @@ class AnomalyDetectionError(DomainError):
 
 class AuditLogError(DomainError):
     """Audit log yazım hatası — asla kullanıcıya yayılmamalı. → HTTP 500"""
+
+
+class LLMProviderError(DomainError):
+    """Dış LLM sağlayıcı çağrısı başarısız (Groq API hatası/timeout/geçersiz
+    anahtar). → HTTP 503. GroqService/LLMClient tarafından fırlatılır —
+    önceden bu hatayı sessizce yutup metnini sahte bir "asistan cevabı"
+    olarak dönüyorlardı (çağıran taraftaki try/except hiç tetiklenmiyordu)."""

@@ -232,7 +232,14 @@ async def test_chat_with_system_prompt():
     assert result == "Sistem yanıtı."
 
 
-async def test_chat_exception_returns_error_str():
+async def test_chat_exception_raises_llm_provider_error():
+    """Regression: chat() used to swallow the exception and return
+    "Hata: ..." as if it were a real assistant reply — callers' own
+    try/except (driver_coaching_engine.py, anomalies.py, ai_service.py)
+    were written assuming this call could raise, so it never actually
+    engaged their fallback paths correctly."""
+    from app.core.exceptions import LLMProviderError
+
     svc = _make_service_with_client()
     svc.client.chat = MagicMock()
     svc.client.chat.completions = MagicMock()
@@ -240,9 +247,29 @@ async def test_chat_exception_returns_error_str():
         side_effect=Exception("Connection refused")
     )
 
-    result = await svc.chat("Soru?")
-    assert "Hata" in result
-    assert "Connection refused" in result
+    with pytest.raises(LLMProviderError, match="Connection refused"):
+        await svc.chat("Soru?")
+
+
+async def test_chat_timeout_raises_llm_provider_error():
+    import asyncio
+
+    from app.core.exceptions import LLMProviderError
+
+    svc = _make_service_with_client()
+    svc.client.chat = MagicMock()
+    svc.client.chat.completions = MagicMock()
+
+    async def _never_returns(*args, **kwargs):
+        await asyncio.sleep(999)
+
+    svc.client.chat.completions.create = _never_returns
+
+    with (
+        patch("app.core.ai.groq_service._GROQ_TIMEOUT_S", 0.01),
+        pytest.raises(LLMProviderError, match="zaman aşımına"),
+    ):
+        await svc.chat("Soru?")
 
 
 # ---------------------------------------------------------------------------
@@ -293,7 +320,9 @@ async def test_chat_stream_success():
     assert None not in chunks
 
 
-async def test_chat_stream_exception():
+async def test_chat_stream_exception_raises_llm_provider_error():
+    from app.core.exceptions import LLMProviderError
+
     svc = _make_service_with_client()
     svc.client.chat = MagicMock()
     svc.client.chat.completions = MagicMock()
@@ -301,12 +330,9 @@ async def test_chat_stream_exception():
         side_effect=Exception("Stream error")
     )
 
-    chunks = []
-    async for chunk in svc.chat_stream("Test"):
-        chunks.append(chunk)
-
-    assert len(chunks) == 1
-    assert "Hata" in chunks[0]
+    with pytest.raises(LLMProviderError, match="Stream error"):
+        async for _ in svc.chat_stream("Test"):
+            pass
 
 
 # ---------------------------------------------------------------------------

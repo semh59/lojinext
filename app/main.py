@@ -26,6 +26,7 @@ from app.core.exceptions import (
     ExcelExportError,
     FuelCalculationError,
     ImportValidationError,
+    LLMProviderError,
     MLPredictionError,
     RouteProcessingError,
 )
@@ -576,6 +577,7 @@ _DOMAIN_ERROR_STATUS: dict[type[DomainError], int] = {
     RouteProcessingError: 422,  # Default; can be overridden to 424 if provider_status is set
     MLPredictionError: 503,
     AnomalyDetectionError: 503,
+    LLMProviderError: 503,
     AuditLogError: 500,
 }
 

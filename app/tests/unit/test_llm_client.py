@@ -2,6 +2,7 @@ import httpx
 import pytest
 
 from app.core.ai.llm_client import LLMClient, LLMMessage
+from app.core.exceptions import LLMProviderError
 
 
 class _FakeResponse:
@@ -52,7 +53,11 @@ async def test_llm_client_success(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_llm_client_retries_then_fails(monkeypatch):
+async def test_llm_client_retries_then_raises(monkeypatch):
+    """Regression: chat() used to swallow every retry's failure and return
+    "LLM hatası: ..." as if it were a real reply — smart_ai_service.py and
+    prediction_tasks.py (the latter has a full Celery retry + dead-letter-
+    queue flow ready and waiting) never actually saw a failure to react to."""
     counter = {"count": 0}
     monkeypatch.setattr(
         "app.core.ai.llm_client.get_monitored_client",
@@ -61,8 +66,7 @@ async def test_llm_client_retries_then_fails(monkeypatch):
     client = LLMClient(api_key="key", model="m", max_retries=1, timeout_seconds=0.1)
     msgs = [LLMMessage(role="user", content="hi")]
 
-    result = await client.chat(messages=msgs)
-
-    assert "LLM hata" in result
+    with pytest.raises(LLMProviderError, match="boom"):
+        await client.chat(messages=msgs)
     # 1 initial + 1 retry
     assert counter["count"] == 2

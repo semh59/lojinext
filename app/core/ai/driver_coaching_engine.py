@@ -70,7 +70,9 @@ class DriverCoachingEngine:
         self.detector = get_anomaly_detector()
 
     async def generate_coaching(self, sofor_id: int) -> CoachingInsightsResponse:
-        """Ana giriş noktası. LLM hatası fırlatmaz — fallback'e düşer."""
+        """Ana giriş noktası. LLM hatası (LLMProviderError) generate_coaching
+        içindeki try/except tarafından yakalanır — dışarıya asla fırlamaz,
+        _fallback_response()'a düşer."""
         # SoforService.get_score_breakdown/get_route_profile self.repo'nun
         # session-aware olmasını gerektirir → singleton container service'i
         # bunu sağlamaz. Yeni UoW + inline service ile bağlıyoruz.

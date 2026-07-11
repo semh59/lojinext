@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from app.config import settings
+from app.core.exceptions import LLMProviderError
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.pii_scrubber import scrub_pii
 
@@ -120,12 +121,12 @@ class GroqService:
                 content = chunk.choices[0].delta.content or ""
                 if content:
                     yield content
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             logger.error("Groq streaming timeout after %ss", _GROQ_TIMEOUT_S)
-            yield "Hata: Yanıt zaman aşımına uğradı."
+            raise LLMProviderError("Yanıt zaman aşımına uğradı.") from e
         except Exception as e:
             logger.error(f"Groq Streaming Error: {e}")
-            yield f"Hata: {str(e)}"
+            raise LLMProviderError(str(e)) from e
 
     async def chat(
         self,
@@ -157,12 +158,12 @@ class GroqService:
                 timeout=_GROQ_TIMEOUT_S,
             )
             return completion.choices[0].message.content
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as e:
             logger.error("Groq chat timeout after %ss", _GROQ_TIMEOUT_S)
-            return "Hata: Yanıt zaman aşımına uğradı."
+            raise LLMProviderError("Yanıt zaman aşımına uğradı.") from e
         except Exception as e:
             logger.error(f"Groq API Error: {e}")
-            return f"Hata: {str(e)}"
+            raise LLMProviderError(str(e)) from e
 
     def _prepare_messages(
         self,

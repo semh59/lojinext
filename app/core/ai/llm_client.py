@@ -11,6 +11,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.exceptions import LLMProviderError
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
 
@@ -104,7 +105,7 @@ class LLMClient:
                 )
                 await asyncio.sleep(0.5 * attempt)
 
-        return f"LLM hatası: {last_error}"
+        raise LLMProviderError(str(last_error)) from last_error
 
     @staticmethod
     def _mask_pii(text: str) -> str:

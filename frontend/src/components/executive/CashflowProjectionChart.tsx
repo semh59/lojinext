@@ -90,7 +90,19 @@ export function CashflowProjectionChart({ className }: Props) {
       </div>
 
       <div className="h-48">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* Inside a CSS grid column (md:col-span-8 on ExecutivePage), the
+            grid track width isn't committed on ResponsiveContainer's first
+            ResizeObserver callback — it measures -1x-1, renders an empty
+            chart, remeasures, and repeats several times per mount (visible
+            as repeated "width(-1) and height(-1)" console warnings). Explicit
+            min dimensions give it a valid size immediately so it never
+            renders the -1 frame or loops. */}
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={200}
+          minHeight={120}
+        >
           <BarChart data={chartData}>
             <XAxis
               dataKey="week"

@@ -15,6 +15,7 @@ export function DownloadPdfButton() {
     setDownloading(true);
     try {
       await executiveService.downloadPdf();
+      notify("success", t.success);
     } catch (err: unknown) {
       const e = err as {
         response?: {
@@ -23,7 +24,7 @@ export function DownloadPdfButton() {
         };
       };
       if (e?.response?.status === 404 || e?.response?.status === 501) {
-        notify("warning", t.notReady, t.notReady);
+        notify("warning", t.notReady);
       } else {
         const detail =
           e?.response?.data?.error?.message ?? e?.response?.data?.detail;

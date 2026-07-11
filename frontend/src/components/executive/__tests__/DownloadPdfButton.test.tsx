@@ -22,7 +22,7 @@ describe("DownloadPdfButton", () => {
     notifyMock.mockClear();
   });
 
-  it("happy path → downloadPdf çağrılır", async () => {
+  it("happy path → downloadPdf çağrılır ve başarı toast'ı gösterilir", async () => {
     (
       executiveService.downloadPdf as ReturnType<typeof vi.fn>
     ).mockResolvedValue(undefined);
@@ -31,6 +31,10 @@ describe("DownloadPdfButton", () => {
     await waitFor(() =>
       expect(executiveService.downloadPdf).toHaveBeenCalled(),
     );
+    // Regression: a successful download previously gave no feedback at
+    // all (no toast, no visible state change) — a user had no way to
+    // know the download started or finished.
+    expect(notifyMock).toHaveBeenCalledWith("success", expect.any(String));
   });
 
   it('404 → "henüz hazır değil" uyarı toast', async () => {
@@ -43,7 +47,6 @@ describe("DownloadPdfButton", () => {
       expect(notifyMock).toHaveBeenCalledWith(
         "warning",
         expect.stringContaining("hazır değil"),
-        expect.any(String),
       ),
     );
   });

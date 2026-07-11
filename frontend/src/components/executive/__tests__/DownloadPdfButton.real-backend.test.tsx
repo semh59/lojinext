@@ -73,7 +73,7 @@ describe.skipIf(!backendUp)("DownloadPdfButton (real backend)", () => {
     vi.unstubAllEnvs();
   });
 
-  it("happy path → gerçek backend PDF blob indirir, hata bildirimi olmaz", async () => {
+  it("happy path → gerçek backend PDF blob indirir, başarı toast'ı gösterilir", async () => {
     sessionStorage.setItem("access_token", authToken);
     render(<DownloadPdfButton />);
     fireEvent.click(screen.getByRole("button", { name: /CEO 1-pager/i }));
@@ -85,6 +85,9 @@ describe.skipIf(!backendUp)("DownloadPdfButton (real backend)", () => {
         ).not.toBeDisabled(),
       { timeout: 10000 },
     );
-    expect(notifyMock).not.toHaveBeenCalled();
+    // Regression: indirme öncesi başarılı indirmede HİÇ geri bildirim
+    // yoktu (ne toast ne görünür durum değişikliği) — kullanıcı indirmenin
+    // başlayıp bittiğini anlayamıyordu.
+    expect(notifyMock).toHaveBeenCalledWith("success", expect.any(String));
   }, 15000);
 });

@@ -136,6 +136,7 @@ export const executiveText = {
     downloading: "Preparing...",
     notReady: "PDF feature not ready yet",
     error: "PDF could not be downloaded",
+    success: "PDF downloaded",
   },
 
   errors: {

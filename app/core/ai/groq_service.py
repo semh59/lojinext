@@ -20,6 +20,18 @@ _GROQ_TIMEOUT_S = 30.0
 logger = get_logger(__name__)
 
 
+def _sdk_base_url(configured: str) -> str:
+    """AsyncGroq's own request builder already appends "/openai/v1"
+    internally (its default base_url, when none is passed, is just
+    "https://api.groq.com" — see groq.AsyncGroq.__init__). Passing our
+    already-suffixed settings.GROQ_API_BASE_URL (correct as-is for
+    llm_client.py's raw httpx client, which appends only "/chat/completions")
+    straight to the SDK doubles the prefix to
+    ".../openai/v1/openai/v1/chat/completions", 404ing on every call.
+    Strip the suffix here so the SDK adds it exactly once."""
+    return configured.removesuffix("/openai/v1")
+
+
 @dataclass
 class ChatMessage:
     role: str
@@ -44,7 +56,7 @@ class GroqService:
         self.client = None
         if self.api_key and AsyncGroq is not None:
             self.client = AsyncGroq(
-                api_key=self.api_key, base_url=settings.GROQ_API_BASE_URL
+                api_key=self.api_key, base_url=_sdk_base_url(settings.GROQ_API_BASE_URL)
             )
         elif self.api_key and AsyncGroq is None:
             logger.warning(
@@ -70,7 +82,9 @@ class GroqService:
         api_key = await get_integration_secret("groq", self.api_key)
         if not api_key:
             return None
-        return AsyncGroq(api_key=api_key, base_url=settings.GROQ_API_BASE_URL)
+        return AsyncGroq(
+            api_key=api_key, base_url=_sdk_base_url(settings.GROQ_API_BASE_URL)
+        )
 
     async def chat_stream(
         self,

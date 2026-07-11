@@ -137,9 +137,27 @@ def test_groq_service_init_with_key_and_groq():
 
     expected_key = "sk-real-key"  # pragma: allowlist secret
     assert svc.client is not None
+    # Regression: AsyncGroq's own request builder already appends
+    # "/openai/v1" internally (its default base_url is just
+    # "https://api.groq.com") — passing the already-suffixed
+    # GROQ_API_BASE_URL straight through doubled the prefix to
+    # ".../openai/v1/openai/v1/chat/completions", 404ing on every real
+    # call. The suffix must be stripped before reaching AsyncGroq.
     mock_groq_cls.assert_called_once_with(
-        api_key=expected_key, base_url="https://api.groq.com/openai/v1"
+        api_key=expected_key, base_url="https://api.groq.com"
     )
+
+
+def test_sdk_base_url_strips_openai_v1_suffix():
+    from app.core.ai.groq_service import _sdk_base_url
+
+    assert _sdk_base_url("https://api.groq.com/openai/v1") == "https://api.groq.com"
+
+
+def test_sdk_base_url_leaves_bare_host_unchanged():
+    from app.core.ai.groq_service import _sdk_base_url
+
+    assert _sdk_base_url("https://api.groq.com") == "https://api.groq.com"
 
 
 # ---------------------------------------------------------------------------

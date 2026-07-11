@@ -22,7 +22,7 @@ const MOCK_DRIVERS: Driver[] = [
     ad_soyad: "Ahmet Yılmaz",
     telefon: "0532 111 22 33",
     ehliyet_sinifi: "CE",
-    score: 4,
+    score: 1.9, // near the 0.1-2.0 scale's max
     aktif: true,
   },
   {
@@ -30,7 +30,7 @@ const MOCK_DRIVERS: Driver[] = [
     ad_soyad: "Mehmet Kara",
     telefon: null,
     ehliyet_sinifi: "C",
-    score: 2,
+    score: 1.0, // scale midpoint — the regression case (used to show 1/5 stars)
     aktif: false,
   },
 ];
@@ -82,6 +82,30 @@ describe("DriverTable", () => {
     );
     expect(screen.getByText("Ahmet Yılmaz")).toBeInTheDocument();
     expect(screen.getByText("Mehmet Kara")).toBeInTheDocument();
+  });
+
+  it("renders star count from the 0.1-2.0 score scale, not the raw score value", () => {
+    // Regression: index < driver.score directly treated the 0.1-2.0 score
+    // as a star count — a driver with the scale's midpoint (1.0) showed
+    // only 1/5 stars instead of the intended mid-range rating.
+    render(
+      <DriverTable
+        drivers={MOCK_DRIVERS}
+        onEdit={mockOnEdit}
+        onDelete={mockOnDelete}
+        onScoreClick={mockOnScoreClick}
+        onPerformanceClick={mockOnPerformanceClick}
+      />,
+    );
+    const row1 = screen.getByText("Ahmet Yılmaz").closest(".group");
+    const row2 = screen.getByText("Mehmet Kara").closest(".group");
+    expect(row1).not.toBeNull();
+    expect(row2).not.toBeNull();
+
+    const filledStars1 = row1!.querySelectorAll("svg.fill-warning");
+    const filledStars2 = row2!.querySelectorAll("svg.fill-warning");
+    expect(filledStars1.length).toBe(5); // score 1.9 -> 5 stars
+    expect(filledStars2.length).toBe(2); // score 1.0 (midpoint) -> 2 stars
   });
 
   it("renders license class suffix for each driver", () => {

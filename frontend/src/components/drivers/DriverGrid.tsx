@@ -4,6 +4,7 @@ import { BrainCircuit, Edit2, Star, Trash2 } from "lucide-react";
 import { Driver } from "../../types";
 import { cn } from "../../lib/utils";
 import { useDriversResources } from "../../resources/useResources";
+import { scoreToStars } from "../../lib/driver-score";
 
 interface DriverGridProps {
   drivers: Driver[];
@@ -67,7 +68,7 @@ export function DriverGrid({
                   key={index}
                   className={cn(
                     "h-3.5 w-3.5",
-                    index < (driver.score || 0)
+                    index < scoreToStars(driver.score || 1.0)
                       ? "fill-warning text-warning"
                       : "text-border",
                   )}

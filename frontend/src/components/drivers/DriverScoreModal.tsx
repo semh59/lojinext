@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Driver } from "../../types";
 import { useDriversResources } from "../../resources/useResources";
+import { scoreToStars } from "../../lib/driver-score";
 interface DriverScoreModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -21,14 +22,6 @@ const calculateHybridScore = (
   const estimatedPerformance = (currentHybrid - 0.4 * oldManual) / 0.6;
   const newHybrid = 0.6 * estimatedPerformance + 0.4 * newManual;
   return Math.max(0.1, Math.min(2.0, newHybrid));
-};
-
-const scoreToStars = (score: number): number => {
-  if (score >= 1.8) return 5;
-  if (score >= 1.5) return 4;
-  if (score >= 1.2) return 3;
-  if (score >= 0.8) return 2;
-  return 1;
 };
 
 export function DriverScoreModal({

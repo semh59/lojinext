@@ -8,6 +8,7 @@ import { useDebounce } from "../../hooks/useDebounce";
 import { cn } from "../../lib/utils";
 import { useCoachingResources } from "../../resources/useResources";
 import { useTranslation } from "react-i18next";
+import { scoreToStars } from "../../lib/driver-score";
 interface CoachingDriverListProps {
   selectedDriverId: number | null;
   onSelect: (driver: Driver) => void;
@@ -104,7 +105,7 @@ export function CoachingDriverList({
                 </p>
                 <div className="flex items-center gap-1.5 text-[10px] text-secondary">
                   <Star className="h-2.5 w-2.5 text-warning fill-warning" />
-                  {driver.score?.toFixed(2) ?? "—"}
+                  {scoreToStars(driver.score ?? 1.0)}/5
                 </div>
               </div>
             </button>

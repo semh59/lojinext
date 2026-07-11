@@ -470,6 +470,21 @@ class TestAracRepoGetMaintenanceCandidates:
         # Should not crash; should produce a vehicle entry
         assert len(result["vehicles"]) == 1
 
+    async def test_brand_new_vehicle_no_maintenance_record_not_flagged(self):
+        """Regression: a vehicle registered this year with no completed
+        maintenance yet used to be flagged unconditionally (no_maintenance_record
+        had no age/usage threshold, unlike every other criterion). A car that
+        simply hasn't reached its first periodic-maintenance due date (same
+        365-day window as overdue_maintenance) shouldn't be a candidate."""
+        repo = _make_repo()
+        current_year = datetime.now(timezone.utc).year
+        row = self._make_row(
+            yil=current_year, ort_tuketim=20.0, toplam_km=0, son_bakim=None
+        )
+        repo._session.execute = AsyncMock(return_value=_mappings_result([row]))
+        result = await repo.get_maintenance_candidates()
+        assert result["vehicles"] == []
+
     async def test_empty_result_returns_zero_counts(self):
         """No candidates → urgent_count=0, warning_count=0."""
         repo = _make_repo()

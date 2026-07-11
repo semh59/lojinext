@@ -304,7 +304,10 @@ class AracRepository(BaseRepository[Arac]):
                 OR AVG(s.tuketim) > 35
                 OR COALESCE(SUM(s.mesafe_km), 0) > 500000
                 OR MAX(b.bakim_tarihi) < NOW() - INTERVAL '365 days'
-                OR MAX(b.bakim_tarihi) IS NULL
+                OR (
+                    MAX(b.bakim_tarihi) IS NULL
+                    AND (EXTRACT(YEAR FROM NOW()) - a.yil) >= 1
+                )
             ORDER BY ort_tuketim DESC
             LIMIT 10
         """
@@ -341,7 +344,13 @@ class AracRepository(BaseRepository[Arac]):
 
             son_bakim = row["son_bakim"]
             if son_bakim is None:
-                reason_codes.append({"code": "no_maintenance_record", "params": {}})
+                # 1 yıldan taze araçlar için "hiç bakım kaydı yok" henüz
+                # anlamlı bir sinyal değil — ilk periyodik bakım vadesi
+                # (overdue_maintenance ile aynı 365 gün eşiği) daha
+                # dolmamış olabilir. Eşiksiz haliyle sıfır km'li yepyeni
+                # bir araç bile sürekli "bakım adayı" görünüyordu.
+                if age >= 1:
+                    reason_codes.append({"code": "no_maintenance_record", "params": {}})
             elif hasattr(son_bakim, "tzinfo"):
                 if son_bakim.tzinfo is None:
                     son_bakim = son_bakim.replace(tzinfo=_tz.utc)

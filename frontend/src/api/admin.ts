@@ -170,6 +170,12 @@ export interface AdminIntegrationStatus {
   // itself failed (never treat null as "inactive").
   container_running?: boolean | null;
   container_health?: "healthy" | "unhealthy" | "starting" | null;
+  // Populated only for mapbox/openroute/groq — whether this backend's own
+  // env fallback (settings.MAPBOX_API_KEY etc.) is set, independent of
+  // `configured` (the admin-panel DB override). Same underlying issue as
+  // the bot containers: a service can work fine via .env while showing
+  // "Not configured" here. null = not an API-key service (the 2 bots).
+  env_fallback_configured?: boolean | null;
 }
 
 // ── Known permissions ─────────────────────────────────────────────────────────

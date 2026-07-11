@@ -168,6 +168,12 @@ export default function EntegrasyonlarPage() {
             const botMeta = isBotService
               ? getBotStatusMeta(status, adminIntegrationsText.botStatus)
               : null;
+            // Only surfaced when it adds information the "configured"
+            // badge doesn't already carry — i.e. the exact scenario that
+            // was misleading (panel says "not configured" but the
+            // backend's own .env fallback works fine).
+            const showEnvFallbackBadge =
+              !status.configured && status.env_fallback_configured === true;
 
             return (
               <div
@@ -206,6 +212,14 @@ export default function EntegrasyonlarPage() {
                       >
                         <Bot size={10} />
                         {botMeta.label}
+                      </span>
+                    )}
+                    {showEnvFallbackBadge && (
+                      <span
+                        title={adminIntegrationsText.envFallback.hint}
+                        className="rounded-full border border-success/10 bg-success/5 px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter text-success"
+                      >
+                        {adminIntegrationsText.envFallback.label}
                       </span>
                     )}
                     <span className="text-[11px] text-tertiary">

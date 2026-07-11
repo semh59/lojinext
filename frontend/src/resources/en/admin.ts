@@ -244,6 +244,12 @@ export const adminIntegrationsText = {
       "own .env file, not the panel above — bot status reflects the " +
       "container's actual running state.",
   },
+  envFallback: {
+    label: "Active via env",
+    hint:
+      "This service isn't set via the panel, but the backend has a key " +
+      "from its own environment (.env) — it's still active.",
+  },
   lastUpdated: (date: string) => `Last updated: ${date}`,
   neverUpdated: "Never updated",
   inputPlaceholder: "Enter new API key...",

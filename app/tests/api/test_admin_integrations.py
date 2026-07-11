@@ -68,6 +68,13 @@ async def test_list_integrations_default_unconfigured(async_client, admin_auth_h
         "telegram_ops_bot",
     }
     assert all(item["configured"] is False for item in body)
+
+    by_name = {item["servis_adi"]: item for item in body}
+    # env_fallback_configured only applies to the 3 API-key services.
+    for servis in ("mapbox", "openroute", "groq"):
+        assert isinstance(by_name[servis]["env_fallback_configured"], bool)
+    for servis in ("telegram_driver_bot", "telegram_ops_bot"):
+        assert by_name[servis]["env_fallback_configured"] is None
     assert all(item["guncellenme_tarihi"] is None for item in body)
 
 
@@ -109,9 +116,12 @@ async def test_update_key_then_status_never_leaks_value(
         "guncelleyen_id",
         "container_running",
         "container_health",
+        "env_fallback_configured",
     }
     # mapbox isn't a bot service — container fields never populate for it.
     assert mapbox_status["container_running"] is None
+    # env_fallback_configured is a bool for mapbox, never the secret itself.
+    assert isinstance(mapbox_status["env_fallback_configured"], bool)
     assert mapbox_status["container_health"] is None
 
 

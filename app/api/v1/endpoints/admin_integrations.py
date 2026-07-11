@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.middleware.rate_limiter import limiter
+from app.config import settings
 from app.core.services.admin_audit_service import AdminAuditService
 from app.core.services.integration_secrets import (
     KNOWN_SERVICES,
@@ -38,6 +39,24 @@ _BOT_COMPOSE_SERVICE = {
 }
 
 
+def _env_fallback_present(servis_adi: str) -> Optional[bool]:
+    """Same underlying issue as the bot containers, one level milder: these
+    3 services' `get_integration_secret()` call sites (route_service.py,
+    llm_client.py, etc.) already pass settings.<X>_API_KEY as env_fallback,
+    so — unlike bots — the backend itself CAN see whether an env value is
+    set. Returns None for non-API-key services (the 2 bots, handled via
+    container_running instead)."""
+    if servis_adi == "mapbox":
+        return bool(
+            settings.MAPBOX_API_KEY and settings.MAPBOX_API_KEY.get_secret_value()
+        )
+    if servis_adi == "openroute":
+        return bool(settings.OPENROUTESERVICE_API_KEY)
+    if servis_adi == "groq":
+        return bool(settings.GROQ_API_KEY and settings.GROQ_API_KEY.get_secret_value())
+    return None
+
+
 class IntegrationStatusRead(BaseModel):
     servis_adi: str
     configured: bool
@@ -45,6 +64,7 @@ class IntegrationStatusRead(BaseModel):
     guncelleyen_id: Optional[int] = None
     container_running: Optional[bool] = None
     container_health: Optional[str] = None
+    env_fallback_configured: Optional[bool] = None
 
 
 class IntegrationKeyUpdate(BaseModel):
@@ -68,6 +88,7 @@ async def _to_status_read(s: IntegrationStatus) -> IntegrationStatusRead:
         guncelleyen_id=s["guncelleyen_id"],
         container_running=container_running,
         container_health=container_health,
+        env_fallback_configured=_env_fallback_present(s["servis_adi"]),
     )
 
 

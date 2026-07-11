@@ -245,6 +245,12 @@ export const adminIntegrationsText = {
       "yukarıdaki panelden ayarlanması gerekmez — bot durumu container'ın " +
       "gerçek çalışma durumunu gösterir.",
   },
+  envFallback: {
+    label: "Env'den aktif",
+    hint:
+      "Bu servis panelden ayarlanmamış ama backend'in kendi ortam " +
+      "değişkeninden (.env) çalışan bir anahtarı var — yine de aktif.",
+  },
   lastUpdated: (date: string) => `Son güncelleme: ${date}`,
   neverUpdated: "Hiç güncellenmedi",
   inputPlaceholder: "Yeni API anahtarını girin...",

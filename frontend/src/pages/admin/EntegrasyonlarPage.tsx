@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Key, Lock, Save } from "lucide-react";
+import { Bot, Key, Lock, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -12,6 +12,54 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
 import { useLocale } from "@/hooks/useLocale";
 import { useTranslation } from "react-i18next";
+
+// The 2 services whose `configured` DB flag alone can't tell an admin
+// whether the integration is actually running — bot tokens are typically
+// provisioned via container .env, not this panel (see
+// app/core/services/integration_secrets.py's BOT_TOKEN_SERVICES).
+const BOT_SERVICES = new Set(["telegram_driver_bot", "telegram_ops_bot"]);
+
+interface BotStatusText {
+  active: string;
+  unhealthy: string;
+  starting: string;
+  inactive: string;
+  unknown: string;
+}
+
+function getBotStatusMeta(
+  status: AdminIntegrationStatus,
+  text: BotStatusText,
+): { label: string; className: string } {
+  if (status.container_running === true) {
+    if (status.container_health === "unhealthy") {
+      return {
+        label: text.unhealthy,
+        className: "border-warning/10 bg-warning/5 text-warning",
+      };
+    }
+    if (status.container_health === "starting") {
+      return {
+        label: text.starting,
+        className: "border-info/10 bg-info/5 text-info",
+      };
+    }
+    return {
+      label: text.active,
+      className: "border-success/10 bg-success/5 text-success",
+    };
+  }
+  if (status.container_running === false) {
+    return {
+      label: text.inactive,
+      className: "border-danger/10 bg-danger/5 text-danger",
+    };
+  }
+  return {
+    label: text.unknown,
+    className: "border-border/50 bg-elevated/50 text-tertiary",
+  };
+}
 
 export default function EntegrasyonlarPage() {
   const { adminIntegrationsText } = useAdminResources();
@@ -116,6 +164,10 @@ export default function EntegrasyonlarPage() {
               ] ?? status.servis_adi;
             const draftValue = drafts[status.servis_adi] ?? "";
             const canSave = draftValue.trim().length > 0;
+            const isBotService = BOT_SERVICES.has(status.servis_adi);
+            const botMeta = isBotService
+              ? getBotStatusMeta(status, adminIntegrationsText.botStatus)
+              : null;
 
             return (
               <div
@@ -131,7 +183,7 @@ export default function EntegrasyonlarPage() {
                       {serviceLabel}
                     </label>
                   </div>
-                  <div className="flex items-center gap-2 pl-10">
+                  <div className="flex flex-wrap items-center gap-2 pl-10">
                     <span
                       className={cn(
                         "rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter",
@@ -144,6 +196,18 @@ export default function EntegrasyonlarPage() {
                         ? adminIntegrationsText.statusLabels.configured
                         : adminIntegrationsText.statusLabels.notConfigured}
                     </span>
+                    {botMeta && (
+                      <span
+                        title={adminIntegrationsText.botStatus.hint}
+                        className={cn(
+                          "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter",
+                          botMeta.className,
+                        )}
+                      >
+                        <Bot size={10} />
+                        {botMeta.label}
+                      </span>
+                    )}
                     <span className="text-[11px] text-tertiary">
                       {status.guncellenme_tarihi
                         ? adminIntegrationsText.lastUpdated(

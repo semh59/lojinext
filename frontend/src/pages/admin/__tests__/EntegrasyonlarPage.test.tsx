@@ -119,6 +119,40 @@ describe.skipIf(!backendUp)("EntegrasyonlarPage (real backend)", () => {
     );
   });
 
+  it("shows a bot status badge for the 2 telegram rows (not for mapbox)", async () => {
+    render(<EntegrasyonlarPage />);
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          adminIntegrationsText.serviceNames.telegram_driver_bot,
+        ),
+      ).toBeInTheDocument(),
+    );
+    const botStatus = adminIntegrationsText.botStatus;
+    const possibleLabels = [
+      botStatus.active,
+      botStatus.unhealthy,
+      botStatus.starting,
+      botStatus.inactive,
+      botStatus.unknown,
+    ];
+    const driverRow = within(
+      getServiceRow(adminIntegrationsText.serviceNames.telegram_driver_bot),
+    );
+    const matches = possibleLabels.filter(
+      (label) => driverRow.queryAllByText(label).length > 0,
+    );
+    expect(matches.length).toBe(1);
+
+    // mapbox is not a bot service — none of the bot-status labels apply.
+    const mapboxRow = within(
+      getServiceRow(adminIntegrationsText.serviceNames.mapbox),
+    );
+    for (const label of possibleLabels) {
+      expect(mapboxRow.queryAllByText(label).length).toBe(0);
+    }
+  });
+
   it("save button stays disabled until a value is typed", async () => {
     render(<EntegrasyonlarPage />);
     await waitFor(() =>

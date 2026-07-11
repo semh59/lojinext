@@ -233,6 +233,18 @@ export const adminIntegrationsText = {
     configured: "Yapılandırıldı",
     notConfigured: "Yapılandırılmadı",
   },
+  botStatus: {
+    label: "Bot Durumu",
+    active: "Aktif",
+    unhealthy: "Aktif (sağlıksız)",
+    starting: "Başlıyor",
+    inactive: "Pasif",
+    unknown: "Bilinmiyor",
+    hint:
+      "Bu servisin token'ı genellikle konteyner .env dosyasından gelir, " +
+      "yukarıdaki panelden ayarlanması gerekmez — bot durumu container'ın " +
+      "gerçek çalışma durumunu gösterir.",
+  },
   lastUpdated: (date: string) => `Son güncelleme: ${date}`,
   neverUpdated: "Hiç güncellenmedi",
   inputPlaceholder: "Yeni API anahtarını girin...",

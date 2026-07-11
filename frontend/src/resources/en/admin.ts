@@ -232,6 +232,18 @@ export const adminIntegrationsText = {
     configured: "Configured",
     notConfigured: "Not configured",
   },
+  botStatus: {
+    label: "Bot Status",
+    active: "Active",
+    unhealthy: "Active (unhealthy)",
+    starting: "Starting",
+    inactive: "Inactive",
+    unknown: "Unknown",
+    hint:
+      "This service's token is typically provisioned via the container's " +
+      "own .env file, not the panel above — bot status reflects the " +
+      "container's actual running state.",
+  },
   lastUpdated: (date: string) => `Last updated: ${date}`,
   neverUpdated: "Never updated",
   inputPlaceholder: "Enter new API key...",

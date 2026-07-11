@@ -162,6 +162,14 @@ export interface AdminIntegrationStatus {
   configured: boolean;
   guncellenme_tarihi?: string | null;
   guncelleyen_id?: number | null;
+  // Populated only for telegram_driver_bot/telegram_ops_bot — the actual
+  // docker-compose container state (queried via docker-socket-proxy),
+  // since `configured` alone can't tell an admin whether the bot is
+  // running (its token is typically provisioned via container .env, not
+  // this panel). null = not a bot service, or the container/proxy query
+  // itself failed (never treat null as "inactive").
+  container_running?: boolean | null;
+  container_health?: "healthy" | "unhealthy" | "starting" | null;
 }
 
 // ── Known permissions ─────────────────────────────────────────────────────────

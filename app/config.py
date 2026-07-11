@@ -304,6 +304,14 @@ class Settings(BaseSettings):
     OCR_SERVICE_API_KEY: str = ""  # Set to a random secret; empty = auth disabled (dev)
     BELGELER_UPLOAD_DIR: str = "/belgeler"
 
+    # Read-only Docker Engine API proxy (see docker-compose.yml's
+    # docker-socket-proxy: CONTAINERS+NETWORKS+EVENTS=1, POST=0) — used to
+    # report the telegram bot containers' actual running/health state on the
+    # admin Integrations page, since a DB-configured-key flag alone can't
+    # tell an admin whether the bot (usually token-provisioned via .env, not
+    # this panel) is actually up.
+    DOCKER_SOCKET_PROXY_URL: str = "http://docker-socket-proxy:2375"
+
     # Internal API secret — shared between backend and telegram bot containers.
     # Requests to /api/v1/internal/* must carry: X-Internal-Token: <this value>
     INTERNAL_API_SECRET: str = ""

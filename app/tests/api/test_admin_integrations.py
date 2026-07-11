@@ -107,7 +107,12 @@ async def test_update_key_then_status_never_leaks_value(
         "configured",
         "guncellenme_tarihi",
         "guncelleyen_id",
+        "container_running",
+        "container_health",
     }
+    # mapbox isn't a bot service — container fields never populate for it.
+    assert mapbox_status["container_running"] is None
+    assert mapbox_status["container_health"] is None
 
 
 @pytest.mark.asyncio

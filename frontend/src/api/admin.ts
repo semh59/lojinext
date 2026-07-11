@@ -395,6 +395,26 @@ export const adminNotificationsApi = {
       >[0],
     );
   },
+
+  updateRule: async (
+    ruleId: number,
+    body: Partial<{
+      olay_tipi: string;
+      kanallar: string[];
+      alici_rol_id: number;
+      aktif: boolean;
+    }>,
+  ) => {
+    const { data } = await axiosInstance.patch(
+      `/admin/notifications/rules/${ruleId}`,
+      body,
+    );
+    return data;
+  },
+
+  deleteRule: async (ruleId: number): Promise<void> => {
+    await axiosInstance.delete(`/admin/notifications/rules/${ruleId}`);
+  },
 };
 
 export const adminFuelAccuracyApi = {
@@ -498,6 +518,8 @@ export const adminService = {
   alertRules: {
     getRules: adminNotificationsApi.getRules,
     createRule: adminNotificationsApi.createRule,
+    updateRule: adminNotificationsApi.updateRule,
+    deleteRule: adminNotificationsApi.deleteRule,
   },
 
   fuelAccuracy: {

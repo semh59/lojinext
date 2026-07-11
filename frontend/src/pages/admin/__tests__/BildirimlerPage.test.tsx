@@ -164,9 +164,9 @@ describe.skipIf(!backendUp)(
           () => expect(screen.getByText(eventType1)).toBeInTheDocument(),
           { timeout: 10000 },
         );
-        // The shared test DB has no DELETE endpoint for notification rules,
-        // so rules created by earlier runs of this file accumulate — use
-        // getAllByText (>=1) rather than asserting a single match.
+        // Rules from earlier runs of this file (and other suites sharing
+        // the same DB) may still be present — use getAllByText (>=1)
+        // rather than asserting a single match.
         expect(
           screen.getAllByText(adminNotificationsText.statuses.active).length,
         ).toBeGreaterThanOrEqual(1);
@@ -234,6 +234,130 @@ describe.skipIf(!backendUp)(
           },
           { timeout: 10000 },
         );
+      }, 15000);
+
+      it("toggles a rule's active status via the status badge (real mutation)", async () => {
+        const headers = { Authorization: `Bearer ${token}` };
+        const toggleEventType = `TOGGLE_RULE_${suffix}`;
+        await axios.post(
+          `${REAL_BACKEND_URL}/admin/notifications/rules`,
+          {
+            olay_tipi: toggleEventType,
+            kanallar: ["EMAIL"],
+            alici_rol_id: roleId1,
+            aktif: true,
+          },
+          { headers },
+        );
+
+        sessionStorage.setItem("access_token", token);
+        render(<AdminNotificationsPage />);
+        await waitFor(
+          () => expect(screen.getByText(toggleEventType)).toBeInTheDocument(),
+          { timeout: 10000 },
+        );
+
+        const row = screen.getByText(toggleEventType).closest("tr");
+        expect(row).not.toBeNull();
+        const toggleBtn = row!.querySelector('button[role="switch"]');
+        expect(toggleBtn).not.toBeNull();
+        fireEvent.click(toggleBtn!);
+
+        await waitFor(() => {
+          const updatedRow = screen.getByText(toggleEventType).closest("tr");
+          expect(
+            updatedRow!.querySelector('button[aria-checked="false"]'),
+          ).not.toBeNull();
+        });
+      }, 15000);
+
+      it("edits a rule's event type through the edit modal (real mutation)", async () => {
+        const headers = { Authorization: `Bearer ${token}` };
+        const originalEventType = `EDIT_ME_${suffix}`;
+        const editedEventType = `EDITED_${suffix}`;
+        await axios.post(
+          `${REAL_BACKEND_URL}/admin/notifications/rules`,
+          {
+            olay_tipi: originalEventType,
+            kanallar: ["EMAIL"],
+            alici_rol_id: roleId1,
+            aktif: true,
+          },
+          { headers },
+        );
+
+        sessionStorage.setItem("access_token", token);
+        render(<AdminNotificationsPage />);
+        await waitFor(
+          () => expect(screen.getByText(originalEventType)).toBeInTheDocument(),
+          { timeout: 10000 },
+        );
+
+        const row = screen.getByText(originalEventType).closest("tr");
+        const editBtn = row!.querySelector(
+          `button[title="${adminNotificationsText.actions.edit}"]`,
+        );
+        expect(editBtn).not.toBeNull();
+        fireEvent.click(editBtn!);
+
+        await waitFor(() => {
+          expect(screen.getByRole("dialog")).toBeInTheDocument();
+          expect(
+            screen.getByDisplayValue(originalEventType),
+          ).toBeInTheDocument();
+        });
+
+        fireEvent.change(screen.getByDisplayValue(originalEventType), {
+          target: { value: editedEventType },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Kaydet" }));
+
+        await waitFor(
+          () => {
+            expect(screen.getByText(editedEventType)).toBeInTheDocument();
+          },
+          { timeout: 10000 },
+        );
+      }, 15000);
+
+      it("deletes a rule via the delete button after confirmation (real mutation)", async () => {
+        const headers = { Authorization: `Bearer ${token}` };
+        const deleteEventType = `DELETE_ME_${suffix}`;
+        await axios.post(
+          `${REAL_BACKEND_URL}/admin/notifications/rules`,
+          {
+            olay_tipi: deleteEventType,
+            kanallar: ["EMAIL"],
+            alici_rol_id: roleId1,
+            aktif: true,
+          },
+          { headers },
+        );
+
+        const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+        sessionStorage.setItem("access_token", token);
+        render(<AdminNotificationsPage />);
+        await waitFor(
+          () => expect(screen.getByText(deleteEventType)).toBeInTheDocument(),
+          { timeout: 10000 },
+        );
+
+        const row = screen.getByText(deleteEventType).closest("tr");
+        const deleteBtn = row!.querySelector(
+          `button[title="${adminNotificationsText.actions.delete}"]`,
+        );
+        expect(deleteBtn).not.toBeNull();
+        fireEvent.click(deleteBtn!);
+
+        expect(confirmSpy).toHaveBeenCalled();
+        await waitFor(
+          () => {
+            expect(screen.queryByText(deleteEventType)).not.toBeInTheDocument();
+          },
+          { timeout: 10000 },
+        );
+        confirmSpy.mockRestore();
       }, 15000);
     });
   },

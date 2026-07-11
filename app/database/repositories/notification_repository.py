@@ -1,5 +1,5 @@
 from datetime import timezone
-from typing import Any, List, cast
+from typing import Any, List, Optional, cast
 
 from sqlalchemy import and_, select
 
@@ -45,6 +45,27 @@ class NotificationRepository(BaseRepository[BildirimGecmisi]):
         self.session.add(rule)
         await self.session.flush()
         return rule
+
+    async def update_rule(
+        self, rule_id: int, rule_data: dict
+    ) -> Optional[BildirimKurali]:
+        """Partially update a notification rule. Returns None if not found."""
+        rule = await self.session.get(BildirimKurali, rule_id)
+        if rule is None:
+            return None
+        for key, value in rule_data.items():
+            setattr(rule, key, value)
+        await self.session.flush()
+        return rule
+
+    async def delete_rule(self, rule_id: int) -> bool:
+        """Delete a notification rule. Returns True if a row was removed."""
+        rule = await self.session.get(BildirimKurali, rule_id)
+        if rule is None:
+            return False
+        await self.session.delete(rule)
+        await self.session.flush()
+        return True
 
     async def mark_as_read_for_user(self, notification_id: int, user_id: int) -> bool:
         """Mark a single notification as read only if it belongs to ``user_id``.

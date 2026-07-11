@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Plus } from "lucide-react";
+import { Bell, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/Badge";
@@ -46,6 +46,8 @@ export default function AdminNotificationsPage() {
   const [isModalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<RuleForm>(EMPTY_RULE_FORM);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
+  const [togglingRuleId, setTogglingRuleId] = useState<number | null>(null);
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ["adminNotificationRules"],
@@ -78,6 +80,90 @@ export default function AdminNotificationsPage() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({
+      ruleId,
+      body,
+    }: {
+      ruleId: number;
+      body: {
+        olay_tipi: string;
+        kanallar: string[];
+        alici_rol_id: number;
+        aktif: boolean;
+      };
+    }) => adminNotificationsApi.updateRule(ruleId, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adminNotificationRules"] });
+      toast.success(adminNotificationsText.notifications.updateSuccess);
+      setModalOpen(false);
+      setEditingRuleId(null);
+      setForm(EMPTY_RULE_FORM);
+    },
+    onError: (err: any) => {
+      setFormError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          adminNotificationsText.notifications.updateFailedFallback,
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (ruleId: number) => adminNotificationsApi.deleteRule(ruleId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adminNotificationRules"] });
+      toast.success(adminNotificationsText.notifications.deleteSuccess);
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          adminNotificationsText.notifications.deleteFailedFallback,
+      );
+    },
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ ruleId, aktif }: { ruleId: number; aktif: boolean }) =>
+      adminNotificationsApi.updateRule(ruleId, { aktif }),
+    onMutate: ({ ruleId }) => setTogglingRuleId(ruleId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["adminNotificationRules"] });
+    },
+    onError: (err: any) => {
+      toast.error(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.detail ||
+          adminNotificationsText.notifications.updateFailedFallback,
+      );
+    },
+    onSettled: () => setTogglingRuleId(null),
+  });
+
+  const openEditModal = (rule: {
+    id: number;
+    olay_tipi: string;
+    kanallar: string[];
+    alici_rol_id: number;
+    aktif: boolean;
+  }) => {
+    setEditingRuleId(rule.id);
+    setForm({
+      olay_tipi: rule.olay_tipi,
+      kanallar: rule.kanallar ?? [],
+      alici_rol_id: String(rule.alici_rol_id),
+      aktif: rule.aktif,
+    });
+    setFormError(null);
+    setModalOpen(true);
+  };
+
+  const handleDelete = (ruleId: number) => {
+    if (!window.confirm(adminNotificationsText.actions.deleteConfirm)) return;
+    deleteMutation.mutate(ruleId);
+  };
+
   const toggleChannel = (ch: string) => {
     setForm((prev) => ({
       ...prev,
@@ -102,13 +188,20 @@ export default function AdminNotificationsPage() {
       return setFormError(
         t("admin.bildirim_role_required", "Target role is required"),
       );
-    createMutation.mutate({
+    const body = {
       olay_tipi: form.olay_tipi.trim(),
       kanallar: form.kanallar,
       alici_rol_id: Number(form.alici_rol_id),
       aktif: form.aktif,
-    });
+    };
+    if (editingRuleId != null) {
+      updateMutation.mutate({ ruleId: editingRuleId, body });
+    } else {
+      createMutation.mutate(body);
+    }
   };
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -124,6 +217,7 @@ export default function AdminNotificationsPage() {
         <Button
           variant="primary"
           onClick={() => {
+            setEditingRuleId(null);
             setForm(EMPTY_RULE_FORM);
             setFormError(null);
             setModalOpen(true);
@@ -161,6 +255,9 @@ export default function AdminNotificationsPage() {
                 </TableHead>
                 <TableHead>{adminNotificationsText.headers.template}</TableHead>
                 <TableHead>{adminNotificationsText.headers.status}</TableHead>
+                <TableHead className="text-right">
+                  {adminNotificationsText.headers.actions}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -189,18 +286,57 @@ export default function AdminNotificationsPage() {
                     {rule.sablon_icerik || "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={rule.aktif ? "success" : "default"}>
-                      {rule.aktif
-                        ? adminNotificationsText.statuses.active
-                        : adminNotificationsText.statuses.passive}
-                    </Badge>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={rule.aktif}
+                      aria-label={
+                        rule.aktif
+                          ? adminNotificationsText.statuses.active
+                          : adminNotificationsText.statuses.passive
+                      }
+                      disabled={togglingRuleId === rule.id}
+                      onClick={() =>
+                        toggleMutation.mutate({
+                          ruleId: rule.id,
+                          aktif: !rule.aktif,
+                        })
+                      }
+                      className="disabled:opacity-50"
+                    >
+                      <Badge variant={rule.aktif ? "success" : "default"}>
+                        {rule.aktif
+                          ? adminNotificationsText.statuses.active
+                          : adminNotificationsText.statuses.passive}
+                      </Badge>
+                    </button>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        title={adminNotificationsText.actions.edit}
+                        onClick={() => openEditModal(rule)}
+                        className="rounded-lg p-1.5 text-secondary transition-colors hover:bg-elevated hover:text-accent"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title={adminNotificationsText.actions.delete}
+                        onClick={() => handleDelete(rule.id)}
+                        className="rounded-lg p-1.5 text-secondary transition-colors hover:bg-danger/10 hover:text-danger"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
               {rules.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="h-32 text-center text-secondary"
                   >
                     {adminNotificationsText.empty}
@@ -214,8 +350,15 @@ export default function AdminNotificationsPage() {
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        title={t("admin.bildirim_form_title", "New Notification Rule")}
+        onClose={() => {
+          setModalOpen(false);
+          setEditingRuleId(null);
+        }}
+        title={
+          editingRuleId != null
+            ? adminNotificationsText.editTitle
+            : t("admin.bildirim_form_title", "New Notification Rule")
+        }
         size="md"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -314,19 +457,22 @@ export default function AdminNotificationsPage() {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => setModalOpen(false)}
-              disabled={createMutation.isPending}
+              onClick={() => {
+                setModalOpen(false);
+                setEditingRuleId(null);
+              }}
+              disabled={isSubmitting}
             >
               {t("common.cancel", "Cancel")}
             </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={createMutation.isPending}
-            >
-              {createMutation.isPending
-                ? t("admin.bildirim_creating", "Creating...")
-                : t("common.create", "Create")}
+            <Button type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting
+                ? editingRuleId != null
+                  ? t("common.saving", "Saving...")
+                  : t("admin.bildirim_creating", "Creating...")
+                : editingRuleId != null
+                  ? t("common.save", "Save")
+                  : t("common.create", "Create")}
             </Button>
           </div>
         </form>

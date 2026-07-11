@@ -208,16 +208,27 @@ export const adminNotificationsText = {
     targetRole: "Hedef Rol ID",
     template: "Şablon",
     status: "Durum",
+    actions: "İşlemler",
   },
   rolePrefix: "Rol",
   statuses: {
     active: "Aktif",
     passive: "Pasif",
   },
+  actions: {
+    edit: "Düzenle",
+    delete: "Sil",
+    deleteConfirm: "Bu bildirim kuralını silmek istediğinize emin misiniz?",
+  },
+  editTitle: "Bildirim Kuralını Düzenle",
   empty: "Bildirim kuralı bulunamadı.",
   notifications: {
     loadFailedTitle: "Hata",
     loadFailedMessage: "Bildirim kuralları yüklenemedi",
+    updateSuccess: "Bildirim kuralı güncellendi",
+    updateFailedFallback: "Bildirim kuralı güncellenemedi",
+    deleteSuccess: "Bildirim kuralı silindi",
+    deleteFailedFallback: "Bildirim kuralı silinemedi",
   },
 } as const;
 

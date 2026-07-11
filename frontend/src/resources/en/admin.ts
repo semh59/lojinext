@@ -207,16 +207,27 @@ export const adminNotificationsText = {
     targetRole: "Target Role ID",
     template: "Template",
     status: "Status",
+    actions: "Actions",
   },
   rolePrefix: "Role",
   statuses: {
     active: "Active",
     passive: "Inactive",
   },
+  actions: {
+    edit: "Edit",
+    delete: "Delete",
+    deleteConfirm: "Are you sure you want to delete this notification rule?",
+  },
+  editTitle: "Edit Notification Rule",
   empty: "No notification rules found.",
   notifications: {
     loadFailedTitle: "Error",
     loadFailedMessage: "Notification rules could not be loaded",
+    updateSuccess: "Notification rule updated",
+    updateFailedFallback: "Failed to update notification rule",
+    deleteSuccess: "Notification rule deleted",
+    deleteFailedFallback: "Failed to delete notification rule",
   },
 } as const;
 

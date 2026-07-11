@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -26,6 +26,13 @@ class NotificationRuleCreate(BaseModel):
     kanallar: List[str]
     alici_rol_id: int
     aktif: bool = True
+
+
+class NotificationRuleUpdate(BaseModel):
+    olay_tipi: Optional[str] = None
+    kanallar: Optional[List[str]] = None
+    alici_rol_id: Optional[int] = None
+    aktif: Optional[bool] = None
 
 
 @router.get(
@@ -70,6 +77,69 @@ async def create_rule(
     except Exception as exc:  # pragma: no cover
         logger.warning("Audit log failed: %s", exc)
     return NotificationRuleResponse.model_validate(rule)
+
+
+@router.patch(
+    "/rules/{rule_id}",
+    response_model=NotificationRuleResponse,
+    dependencies=[Depends(require_yetki(["notification_rule_duzenle", "all", "*"]))],
+)
+async def update_rule(
+    rule_id: int,
+    data: NotificationRuleUpdate,
+    current_user: Kullanici = Depends(get_current_active_user),
+) -> NotificationRuleResponse:
+    """Admin: partially update a notification rule (e.g. toggle aktif)."""
+    from app.database.unit_of_work import UnitOfWork
+
+    changes = data.model_dump(exclude_unset=True)
+    async with UnitOfWork() as uow:
+        rule = await uow.notification_repo.update_rule(rule_id, changes)
+        if rule is None:
+            raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
+        await uow.commit()
+    user_id = current_user.id if current_user.id and current_user.id > 0 else None
+    try:
+        await log_audit_event(
+            action="notification.rule_updated",
+            module="notifications",
+            entity_id=str(rule_id),
+            user_id=user_id,
+            new_value=changes,
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Audit log failed: %s", exc)
+    return NotificationRuleResponse.model_validate(rule)
+
+
+@router.delete(
+    "/rules/{rule_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(require_yetki(["notification_rule_sil", "all", "*"]))],
+)
+async def delete_rule(
+    rule_id: int,
+    current_user: Kullanici = Depends(get_current_active_user),
+) -> None:
+    """Admin: delete a notification rule."""
+    from app.database.unit_of_work import UnitOfWork
+
+    async with UnitOfWork() as uow:
+        deleted = await uow.notification_repo.delete_rule(rule_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
+        await uow.commit()
+    user_id = current_user.id if current_user.id and current_user.id > 0 else None
+    try:
+        await log_audit_event(
+            action="notification.rule_deleted",
+            module="notifications",
+            entity_id=str(rule_id),
+            user_id=user_id,
+            new_value=None,
+        )
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Audit log failed: %s", exc)
 
 
 @router.get("/my", response_model=List[NotificationItemResponse])

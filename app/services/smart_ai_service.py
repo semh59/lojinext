@@ -222,50 +222,6 @@ class SmartAIService:
     async def teach(self, knowledge: str, category: str = "genel") -> bool:
         return await self.kb.add_document(knowledge, category=category)
 
-    async def ask(self, question: str, use_context: bool = True) -> Dict:
-        context = ""
-        sources: List[Dict[str, Any]] = []
-
-        if use_context:
-            relevant_docs = await self.kb.search(question, top_k=3)
-            if relevant_docs:
-                context = "Ilgili Bilgiler:\n"
-                for doc in relevant_docs:
-                    context += f"- {doc['content']}\n"
-                    sources.append(
-                        {
-                            "id": doc["id"],
-                            "category": doc["category"],
-                            "score": doc["score"],
-                        }
-                    )
-
-        llm = self._get_llm()
-        if llm:
-            messages = []
-            if context:
-                messages.append({"role": "system", "content": context})
-            messages.append({"role": "user", "content": question})
-            response = await llm.chat(
-                messages=messages,
-                max_tokens=512,
-                temperature=0.3,
-                system_prompt=(
-                    "Sen bir TIR yakit ve lojistik uzmansin. "
-                    "Context varsa zorunlu kullan, Turkce ve kisa yanit ver."
-                ),
-            )
-        else:
-            response = (
-                "AI istemcisi kullanilamiyor. Lutfen LLM API anahtarini kontrol et."
-            )
-
-        return {
-            "answer": response,
-            "sources": sources,
-            "context_used": bool(context),
-        }
-
     def get_stats(self) -> Dict:
         kb_stats = self.kb.get_stats()
         llm_status = "available" if self._get_llm() else "unavailable"

@@ -100,15 +100,6 @@ class AIService:
             logger.error(f"generate_response failed: {exc}")
             return "Uzgunum, su an cevap veremiyorum."
 
-    async def stream_response(self, user_input: str):
-        """Yield response tokens one by one."""
-        context = await self._build_context()
-        safe_prompt = self._sanitize_prompt(user_input)
-        async for token in self.groq.chat_stream(
-            f"Filo Bağlamı:\n{context}\n\nKullanıcı: {safe_prompt}"
-        ):
-            yield token
-
     def get_progress(self) -> Dict[str, Any]:
         """RAG engine'in yüklenme durumu — /ai/progress endpoint'i kullanır.
 

@@ -196,27 +196,6 @@ class TestGenerateResponse:
 
 
 # ---------------------------------------------------------------------------
-# stream_response
-# ---------------------------------------------------------------------------
-
-
-class TestStreamResponse:
-    async def test_yields_tokens(self):
-        svc = _make_service()
-        svc._build_context = AsyncMock(return_value="ctx")
-
-        async def _fake_stream(*args, **kwargs):
-            for tok in ["a", "b", "c"]:
-                yield tok
-
-        svc.groq.chat_stream = _fake_stream
-        tokens = []
-        async for tok in svc.stream_response("q"):
-            tokens.append(tok)
-        assert tokens == ["a", "b", "c"]
-
-
-# ---------------------------------------------------------------------------
 # get_progress
 # ---------------------------------------------------------------------------
 

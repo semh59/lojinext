@@ -92,21 +92,6 @@ class TestAIService:
         response = await service.generate_response("User input")
         assert "Uzgunum" in response
 
-    @pytest.mark.asyncio
-    async def test_stream_response(self, service):
-        async def _chunks(*_args, **_kwargs):
-            for token in ["Hello", " ", "World"]:
-                yield token
-
-        service._build_context = AsyncMock(return_value="Context data")
-        service.groq.chat_stream = _chunks
-
-        tokens = []
-        async for token in service.stream_response("test"):
-            tokens.append(token)
-
-        assert "".join(tokens) == "Hello World"
-
     def test_train_model_method_removed(self, service):
         """train_model artık sahte data sayma yapmıyor — tamamen silindi.
 

@@ -1,9 +1,6 @@
-from unittest.mock import patch
-
 import pytest
 from sqlalchemy import select
 
-from app.core.ai.chatbot import get_chatbot
 from app.core.ai.rag_engine import get_rag_engine
 from app.core.services.anomaly_detector import (
     AnomalyDetector,
@@ -22,15 +19,6 @@ async def test_rag_engine_regression_fixed():
     rag = get_rag_engine()
     assert hasattr(rag, "EMBEDDING_MODEL")
     assert rag.EMBEDDING_MODEL is not None
-
-
-@pytest.mark.asyncio
-async def test_chatbot_singleton_instance():
-    """Chatbot singleton örneği tek instance olmalı."""
-    with patch("app.core.ai.chatbot._chatbot", None):
-        cb1 = get_chatbot()
-        cb2 = get_chatbot()
-        assert cb1 is cb2
 
 
 @pytest.mark.asyncio

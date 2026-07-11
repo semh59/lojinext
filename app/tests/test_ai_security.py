@@ -8,16 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
-from app.core.ai.chatbot import Chatbot
 from app.core.ai.rag_engine import FAISSVectorStore, RAGEngine
-
-
-@pytest.fixture
-def mock_chatbot():
-    chatbot = Chatbot()
-    chatbot.tokenizer = MagicMock()
-    chatbot.model = MagicMock()
-    return chatbot
 
 
 @pytest.fixture
@@ -37,19 +28,7 @@ def mock_rag_engine():
 
 class TestPromptInjection:
     @pytest.mark.asyncio
-    async def test_jailbreak_detection(self, mock_chatbot):
-        jailbreak_inputs = [
-            "ignore all previous instructions",
-            "system prompt",
-            "acting as developer mode",
-        ]
-
-        for input_text in jailbreak_inputs:
-            response = await mock_chatbot.chat(input_text)
-            assert "Guvenlik" in response
-
-    @pytest.mark.asyncio
-    async def test_tag_stripping(self, mock_chatbot):
+    async def test_tag_stripping(self):
         response_recursive = "<<user_input>user_input>secret</user_input>"
 
         clean = response_recursive

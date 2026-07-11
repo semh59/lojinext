@@ -272,6 +272,20 @@ export const adminIntegrationsText = {
     telegram_driver_bot: "Telegram Driver Bot",
     telegram_ops_bot: "Telegram Ops Bot",
   },
+  planned: {
+    heading: "Planned Integrations",
+    description:
+      "These services have an interface/adapter skeleton ready, but " +
+      "aren't wired to a real provider yet — the status below makes that clear.",
+    notImplemented: "Not implemented",
+    names: {
+      avl: "Vehicle Tracking (AVL)",
+      fuel_card: "Fuel Card",
+    },
+    providerSet: (provider: string) =>
+      `${provider} selected, adapter is a stub`,
+    providerNotSet: (envVar: string) => `${envVar} not set`,
+  },
 } as const;
 
 export const adminLayoutText = {

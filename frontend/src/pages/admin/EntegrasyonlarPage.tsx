@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Key, Lock, Save } from "lucide-react";
+import { Bot, Construction, Key, Lock, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { useNotify } from "@/context/NotificationContext";
 import { cn } from "@/lib/utils";
-import { adminIntegrationsApi, type AdminIntegrationStatus } from "@/api/admin";
+import {
+  adminIntegrationsApi,
+  type AdminIntegrationStatus,
+  type PlannedIntegrationStatus,
+} from "@/api/admin";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAdminResources } from "@/resources/useResources";
 import { useLocale } from "@/hooks/useLocale";
@@ -78,6 +82,14 @@ export default function EntegrasyonlarPage() {
       staleTime: 60 * 1000,
     },
   );
+
+  const { data: plannedIntegrations = [] } = useQuery<
+    PlannedIntegrationStatus[]
+  >({
+    queryKey: ["adminPlannedIntegrations"],
+    queryFn: () => adminIntegrationsApi.getPlanned(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const updateMutation = useMutation({
     mutationFn: ({
@@ -275,6 +287,52 @@ export default function EntegrasyonlarPage() {
           })}
         </div>
       </Card>
+
+      {plannedIntegrations.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-bold text-primary">
+              {adminIntegrationsText.planned.heading}
+            </h2>
+            <p className="text-sm text-secondary">
+              {adminIntegrationsText.planned.description}
+            </p>
+          </div>
+          <Card
+            padding="none"
+            className="overflow-hidden border-border/50 glass"
+          >
+            <div className="divide-y divide-border/30">
+              {plannedIntegrations.map((planned) => (
+                <div key={planned.key} className="flex items-center gap-3 p-6">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-tertiary/10 text-tertiary">
+                    <Construction size={16} />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-bold text-primary">
+                        {adminIntegrationsText.planned.names[planned.key]}
+                      </label>
+                      <span className="rounded-full border border-border/50 bg-elevated/50 px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter text-tertiary">
+                        {adminIntegrationsText.planned.notImplemented}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-tertiary">
+                      {planned.provider_key
+                        ? adminIntegrationsText.planned.providerSet(
+                            planned.provider_key,
+                          )
+                        : adminIntegrationsText.planned.providerNotSet(
+                            planned.provider_env_var,
+                          )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

@@ -67,6 +67,13 @@ class IntegrationStatusRead(BaseModel):
     env_fallback_configured: Optional[bool] = None
 
 
+class PlannedIntegrationRead(BaseModel):
+    key: str
+    provider_env_var: str
+    provider_key: Optional[str] = None
+    implemented: bool
+
+
 class IntegrationKeyUpdate(BaseModel):
     api_key: str = Field(..., min_length=1, max_length=500)
 
@@ -99,6 +106,38 @@ async def list_integration_statuses(
     """List every known integration's configured-status (never the value)."""
     statuses = await get_integration_statuses()
     return [await _to_status_read(s) for s in statuses]
+
+
+@router.get("/planned", response_model=List[PlannedIntegrationRead])
+async def list_planned_integrations(
+    current_user: Annotated[Kullanici, Depends(require_yetki("konfig_goruntule"))],
+):
+    """Honest-visibility read for the AVL/fuel-card provider scaffolding
+    (app/core/integrations/{avl,fuel}/) — these are real Protocol/adapter
+    interfaces with a wired-up registry, but every adapter is a stub
+    (fetch_trips/fetch_transactions raise NotImplementedError,
+    healthcheck() always returns False) and get_avl_provider()/
+    get_fuel_provider() are never actually called anywhere in the app
+    (see docs/onboarding/API_ENTEGRASYON.md's own "Şu an için sınırlamalar"
+    section). Not in KNOWN_SERVICES/the admin-panel-secret flow above —
+    AVL_PROVIDER/FUEL_PROVIDER are plain provider-name strings, not
+    secrets, and there's nothing to configure via PUT yet. This exists so
+    "is this feature silently broken or does it just not exist yet" has an
+    answer somewhere in the admin UI, instead of nowhere."""
+    return [
+        PlannedIntegrationRead(
+            key="avl",
+            provider_env_var="AVL_PROVIDER",
+            provider_key=settings.AVL_PROVIDER or None,
+            implemented=False,
+        ),
+        PlannedIntegrationRead(
+            key="fuel_card",
+            provider_env_var="FUEL_PROVIDER",
+            provider_key=settings.FUEL_PROVIDER or None,
+            implemented=False,
+        ),
+    ]
 
 
 @router.put("/{servis_adi}", response_model=IntegrationStatusRead)

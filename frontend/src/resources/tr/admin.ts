@@ -273,6 +273,19 @@ export const adminIntegrationsText = {
     telegram_driver_bot: "Telegram Şoför Botu",
     telegram_ops_bot: "Telegram Operasyon Botu",
   },
+  planned: {
+    heading: "Planlanan Entegrasyonlar",
+    description:
+      "Bu servisler için arayüz/adapter iskeleti hazır ama henüz gerçek " +
+      "bir sağlayıcıya bağlanmadı — aşağıdaki durum bunu netleştirmek için.",
+    notImplemented: "Uygulanmadı",
+    names: {
+      avl: "Araç Takip (AVL)",
+      fuel_card: "Yakıt Kartı",
+    },
+    providerSet: (provider: string) => `${provider} seçili, adapter stub`,
+    providerNotSet: (envVar: string) => `${envVar} ayarlanmamış`,
+  },
 } as const;
 
 export const adminLayoutText = {

@@ -178,6 +178,19 @@ export interface AdminIntegrationStatus {
   env_fallback_configured?: boolean | null;
 }
 
+// AVL/fuel-card provider scaffolding (app/core/integrations/{avl,fuel}/) —
+// real interfaces + registry exist, but every adapter is a stub (no real
+// HTTP call, healthcheck() always false) and is never actually invoked
+// anywhere in the app. Not a secret (provider_key is a plain name like
+// "mobiliz", not an API key) so it's a separate read-only endpoint, not
+// part of the KNOWN_SERVICES panel above.
+export interface PlannedIntegrationStatus {
+  key: "avl" | "fuel_card";
+  provider_env_var: string;
+  provider_key: string | null;
+  implemented: boolean;
+}
+
 // ── Known permissions ─────────────────────────────────────────────────────────
 
 export const KNOWN_PERMISSIONS: { group: string; keys: string[] }[] = [
@@ -432,6 +445,11 @@ export const adminIntegrationsApi = {
     );
     return data as AdminIntegrationStatus;
   },
+
+  getPlanned: async (): Promise<PlannedIntegrationStatus[]> => {
+    const { data } = await axiosInstance.get("/admin/integrations/planned");
+    return data as PlannedIntegrationStatus[];
+  },
 };
 
 // ── Unified adminService object (the shape the task requires) ─────────────────
@@ -489,5 +507,6 @@ export const adminService = {
   integrations: {
     getStatuses: adminIntegrationsApi.getStatuses,
     updateKey: adminIntegrationsApi.updateKey,
+    getPlanned: adminIntegrationsApi.getPlanned,
   },
 };

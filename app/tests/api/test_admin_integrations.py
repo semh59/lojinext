@@ -179,6 +179,46 @@ async def test_list_requires_permission(async_client, normal_auth_headers):
 
 
 @pytest.mark.asyncio
+async def test_planned_integrations_lists_avl_and_fuel_card(
+    async_client, admin_auth_headers
+):
+    """AVL/fuel-card providers are stub-only (app/core/integrations/) — not
+    KNOWN_SERVICES, no secret to configure — but this Faz 0 endpoint gives
+    admins an honest 'not implemented yet' signal instead of the feature
+    being invisible/silently absent from the Integrations page."""
+    response = await async_client.get(
+        "/api/v1/admin/integrations/planned", headers=admin_auth_headers
+    )
+    assert response.status_code == 200
+    body = response.json()
+    keys = {item["key"] for item in body}
+    assert keys == {"avl", "fuel_card"}
+    assert all(item["implemented"] is False for item in body)
+
+    by_key = {item["key"]: item for item in body}
+    assert by_key["avl"]["provider_env_var"] == "AVL_PROVIDER"
+    assert by_key["fuel_card"]["provider_env_var"] == "FUEL_PROVIDER"
+    # No value/secret of any kind — provider_key is just the plain (non-secret)
+    # provider name string (e.g. "mobiliz"), never an API key.
+    assert set(by_key["avl"].keys()) == {
+        "key",
+        "provider_env_var",
+        "provider_key",
+        "implemented",
+    }
+
+
+@pytest.mark.asyncio
+async def test_planned_integrations_requires_permission(
+    async_client, normal_auth_headers
+):
+    response = await async_client.get(
+        "/api/v1/admin/integrations/planned", headers=normal_auth_headers
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_unauthenticated_rejected(async_client):
     response = await async_client.get("/api/v1/admin/integrations/")
     assert response.status_code == 401

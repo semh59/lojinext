@@ -105,10 +105,7 @@ export function VehicleFilters({
                 placeholder={vehicleFilterText.placeholders.brand}
                 value={filters.marka}
                 onChange={(event) =>
-                  setFilters((current: any) => ({
-                    ...current,
-                    marka: event.target.value,
-                  }))
+                  setFilters({ ...filters, marka: event.target.value })
                 }
                 className="h-10 rounded-xl border-border bg-elevated text-primary placeholder:text-secondary"
               />
@@ -121,10 +118,7 @@ export function VehicleFilters({
                 placeholder={vehicleFilterText.placeholders.model}
                 value={filters.model}
                 onChange={(event) =>
-                  setFilters((current: any) => ({
-                    ...current,
-                    model: event.target.value,
-                  }))
+                  setFilters({ ...filters, model: event.target.value })
                 }
                 className="h-10 rounded-xl border-border bg-elevated text-primary placeholder:text-secondary"
               />
@@ -138,10 +132,7 @@ export function VehicleFilters({
                 placeholder={vehicleFilterText.placeholders.minYear}
                 value={filters.min_yil}
                 onChange={(event) =>
-                  setFilters((current: any) => ({
-                    ...current,
-                    min_yil: event.target.value,
-                  }))
+                  setFilters({ ...filters, min_yil: event.target.value })
                 }
                 className="h-10 rounded-xl border-border bg-elevated text-primary placeholder:text-secondary"
               />
@@ -155,10 +146,7 @@ export function VehicleFilters({
                 placeholder={vehicleFilterText.placeholders.maxYear}
                 value={filters.max_yil}
                 onChange={(event) =>
-                  setFilters((current: any) => ({
-                    ...current,
-                    max_yil: event.target.value,
-                  }))
+                  setFilters({ ...filters, max_yil: event.target.value })
                 }
                 className="h-10 rounded-xl border-border bg-elevated text-primary placeholder:text-secondary"
               />

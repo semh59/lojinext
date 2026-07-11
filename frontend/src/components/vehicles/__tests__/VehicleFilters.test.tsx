@@ -124,6 +124,29 @@ describe("VehicleFilters", () => {
     expect(setIsFilterOpen).toHaveBeenCalledWith(false);
   });
 
+  it("calls setFilters with a merged plain object when typing brand/model/year, not an updater function", () => {
+    // Regression: onChange handlers called setFilters with a React-updater
+    // callback `(current) => ({...current, marka: value})`. The real
+    // setFilters prop (VehiclesModule.tsx wires it to useUrlState) only
+    // accepts a plain object — spreading a function produces `{}`, so
+    // every keystroke silently dropped marka/model/min_yil/max_yil.
+    const setFilters = vi.fn();
+    render(
+      <VehicleFilters {...buildProps({ isFilterOpen: true, setFilters })} />,
+    );
+
+    fireEvent.change(
+      screen.getByPlaceholderText(vehicleFilterText.placeholders.brand),
+      { target: { value: "Volvo" } },
+    );
+
+    expect(setFilters).toHaveBeenCalledWith({
+      ...defaultFilters,
+      marka: "Volvo",
+    });
+    expect(typeof setFilters.mock.calls[0][0]).not.toBe("function");
+  });
+
   it("resets filters and search when Temizle is clicked", () => {
     const setFilters = vi.fn();
     const setSearch = vi.fn();

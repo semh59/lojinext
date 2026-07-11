@@ -65,4 +65,5 @@ async def test_get_maintenance_candidates_logic():
 
     v3 = next(v for v in result["vehicles"] if v["id"] == 3)
     assert v3["severity"] == "high"
-    assert "," in v3["reason"]
+    codes = {r["code"] for r in v3["reason_codes"]}
+    assert codes == {"old_vehicle", "high_consumption"}

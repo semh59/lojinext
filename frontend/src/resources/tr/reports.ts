@@ -28,8 +28,8 @@ export const reportPageText = {
   exportErrorMessage: "Rapor oluşturulamadı.",
   costLoading: "Veriler hazırlanıyor...",
   overviewKpi: {
-    totalTrips: "Toplam Sefer",
-    totalKm: "Toplam KM",
+    totalTrips: "Bu Ay Sefer",
+    totalKm: "Bu Ay KM",
     fleetAvg: "Filo Ortalaması",
     todayTrips: "Bugün Sefer",
     trend: (pct: number) =>

@@ -2,7 +2,7 @@ export const adminOverviewText = {
   heading: "System Overview",
   description: "The management panel shows only real service and report data.",
   cards: {
-    totalTrips: "Total Trips",
+    totalTrips: "Trips This Month",
     activeVehicles: "Active Vehicles",
     systemStatus: "System Status",
     database: "Database",

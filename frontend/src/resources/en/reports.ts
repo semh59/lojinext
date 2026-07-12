@@ -28,8 +28,8 @@ export const reportPageText = {
   exportErrorMessage: "Report could not be generated.",
   costLoading: "Preparing data...",
   overviewKpi: {
-    totalTrips: "Total Trips",
-    totalKm: "Total KM",
+    totalTrips: "Trips This Month",
+    totalKm: "KM This Month",
     fleetAvg: "Fleet Average",
     todayTrips: "Today's Trips",
     trend: (pct: number) =>

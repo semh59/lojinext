@@ -19,7 +19,7 @@ export const fleetInsightsText = {
   cards: {
     total: (label: string) => `Toplam ${label}`,
     active: (label: string) => `Aktif ${label}`,
-    trips: "Toplam Sefer",
+    trips: "Bu Ay Sefer",
     recordsUnit: "kayıt",
     inspectionWarning: "Muayene Uyarısı",
     vehicleUnit: "araç",

@@ -168,7 +168,7 @@ describe.skipIf(!backendUp)(
             fleetStats.inspection_overdue + fleetStats.inspection_expiring,
           ),
         );
-        expect(getCardValue("Toplam Sefer")).toBe(String(toplamSefer));
+        expect(getCardValue("Bu Ay Sefer")).toBe(String(toplamSefer));
       });
     }, 90000);
 

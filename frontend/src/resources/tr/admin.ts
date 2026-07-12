@@ -3,7 +3,7 @@ export const adminOverviewText = {
   description:
     "Yönetim paneli yalnız gerçek servis ve rapor verilerini gösterir.",
   cards: {
-    totalTrips: "Toplam Sefer",
+    totalTrips: "Bu Ay Sefer",
     activeVehicles: "Aktif Araç",
     systemStatus: "Sistem Durumu",
     database: "Veritabanı",

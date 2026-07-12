@@ -132,7 +132,7 @@ function HataAnaliziTab() {
     return () => {
       cancelled = true;
     };
-  }, []); // mount only — the backend token has 90s TTL, reconnect handles refresh
+  }, []); // mount only — every reconnect after this needs a fresh token (see onSseError)
 
   const liveBuffer = useRef<BackendErrorEvent[]>([]);
   const rafRef = useRef<number | null>(null);
@@ -154,9 +154,47 @@ function HataAnaliziTab() {
       });
     }
   }, []);
+  // The SSE URL embeds a one-time, 90s-TTL token (consumed on first
+  // connect) — useEventSource's built-in reconnect just retries the SAME
+  // (now-dead) url, which the backend always 401s. Fetch a fresh token on
+  // error so automatic reconnect can succeed instead of silently looping
+  // on an expired token forever. Capped + backed off: if the connection
+  // is failing for a reason a fresh token can't fix (e.g. permissions),
+  // this must not turn into a request-storm retry loop — give up after a
+  // few tries and fall back to the manual "Reconnect" link below.
+  const SSE_MAX_AUTO_RETRIES = 5;
+  const sseRetryCount = useRef(0);
+  const sseRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const onSseError = useCallback(() => {
+    if (sseRetryCount.current >= SSE_MAX_AUTO_RETRIES) return;
+    const delay = Math.min(1000 * 2 ** sseRetryCount.current, 30_000);
+    sseRetryCount.current += 1;
+    if (sseRetryTimer.current) clearTimeout(sseRetryTimer.current);
+    sseRetryTimer.current = setTimeout(() => {
+      errorService
+        .getSseToken()
+        .then((url) => setSseUrl(url))
+        .catch(() => {
+          // backend unreachable — leave sseUrl as-is, manual Reconnect still works
+        });
+    }, delay);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (sseRetryTimer.current) clearTimeout(sseRetryTimer.current);
+    };
+  }, []);
+
   const { status: sseStatus } = useEventSource(sseUrl, {
     onMessage: onSseMessage,
+    onError: onSseError,
   });
+
+  useEffect(() => {
+    if (sseStatus === "open") sseRetryCount.current = 0;
+  }, [sseStatus]);
 
   // Build chart data: group last 12 hours by severity
   const chartData = useMemo(() => {
@@ -215,6 +253,7 @@ function HataAnaliziTab() {
           <button
             className="text-xs text-accent underline"
             onClick={() => {
+              sseRetryCount.current = 0;
               setSseUrl("");
               errorService
                 .getSseToken()

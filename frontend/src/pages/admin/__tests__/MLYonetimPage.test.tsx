@@ -135,10 +135,12 @@ describe.skipIf(!backendUp)(
       // ("WAITING") — the badge must still render it (previously the
       // component only matched lowercase "completed"/"running"/"failed"
       // literals, so a real WAITING/RUNNING/COMPLETED task always fell
-      // through to the default badge silently).
+      // through to the default badge silently). The component now renders
+      // this via getMlTaskStatusMeta() as a translated label ("Bekliyor" in
+      // Turkish), not the raw enum string.
       // The queue accumulates WAITING rows across repeated test runs
       // (no delete endpoint) — assert presence, not a single match.
-      expect(screen.getAllByText("WAITING").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Bekliyor").length).toBeGreaterThanOrEqual(1);
 
       // Regression check: real backend sends `olusturma`, not
       // `created_at` — previously `new Date(undefined)` rendered

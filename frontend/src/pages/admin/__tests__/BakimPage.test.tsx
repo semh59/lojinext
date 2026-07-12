@@ -193,8 +193,8 @@ describe.skipIf(!backendUp)(
           },
           { timeout: 10000 },
         );
-        expect(screen.getByText("PERIYODIK")).toBeInTheDocument();
-        expect(screen.getByText("ARIZA")).toBeInTheDocument();
+        expect(screen.getByText("Periyodik")).toBeInTheDocument();
+        expect(screen.getByText("Arıza")).toBeInTheDocument();
         // Regression check: alert.vade_durumu (backend contract) must map to
         // the "Yaklaşıyor" badge — previously read the nonexistent
         // alert.durum field and always rendered the default badge instead.
@@ -208,7 +208,7 @@ describe.skipIf(!backendUp)(
         sessionStorage.setItem("access_token", token);
         render(<AdminMaintenancePage />);
         await waitFor(() =>
-          expect(screen.getByText("PERIYODIK")).toBeInTheDocument(),
+          expect(screen.getByText("Periyodik")).toBeInTheDocument(),
         );
         expect(
           screen.getByText(adminMaintenanceText.headers.vehicle),
@@ -225,23 +225,23 @@ describe.skipIf(!backendUp)(
         sessionStorage.setItem("access_token", token);
         render(<AdminMaintenancePage />);
         await waitFor(() =>
-          expect(screen.getByText("PERIYODIK")).toBeInTheDocument(),
+          expect(screen.getByText("Periyodik")).toBeInTheDocument(),
         );
         const completeBtns = screen.getAllByText(
           adminMaintenanceText.completeAction,
         );
         fireEvent.click(completeBtns[0]);
 
-        // The row for the completed alert (PERIYODIK) disappears once the
+        // The row for the completed alert (Periyodik) disappears once the
         // mutation succeeds and the query is invalidated + refetched; the
-        // other seeded alert (ARIZA) stays.
+        // other seeded alert (Arıza) stays.
         await waitFor(
           () => {
-            expect(screen.queryByText("PERIYODIK")).not.toBeInTheDocument();
+            expect(screen.queryByText("Periyodik")).not.toBeInTheDocument();
           },
           { timeout: 10000 },
         );
-        expect(screen.getByText("ARIZA")).toBeInTheDocument();
+        expect(screen.getByText("Arıza")).toBeInTheDocument();
 
         const resp = await axios.get(
           `${REAL_BACKEND_URL}/admin/maintenance/alerts`,

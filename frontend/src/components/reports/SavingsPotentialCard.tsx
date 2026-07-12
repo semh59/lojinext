@@ -22,7 +22,11 @@ interface SavingsResult {
 }
 
 function pickMonthly(d: SavingsResult): number {
-  return Number(d.potential_savings ?? d.potential_savings_tl ?? 0);
+  // potential_savings (and its legacy potential_savings_tl alias) is a
+  // 90-day total (calculate_savings_potential's fixed window) — divide by
+  // 3 to get a real monthly figure, matching ROICalculator.tsx's identical
+  // conversion for the same backend field.
+  return Number(d.potential_savings ?? d.potential_savings_tl ?? 0) / 3;
 }
 
 function pickPercentage(d: SavingsResult): number {

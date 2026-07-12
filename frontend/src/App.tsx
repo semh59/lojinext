@@ -16,6 +16,7 @@ const FleetPage = lazy(() => import("./pages/FleetPage"));
 const DriversPage = lazy(() => import("./pages/DriversPage"));
 const FuelPage = lazy(() => import("./pages/FuelPage"));
 const ReportsStudioPage = lazy(() => import("./pages/ReportsStudioPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const RouteLabPage = lazy(() => import("./pages/RouteLabPage"));
 const ExecutivePage = lazy(() => import("./pages/ExecutivePage"));
 const TodayPage = lazy(() => import("./pages/TodayPage"));
@@ -89,10 +90,7 @@ function App() {
                     <Route path="/coaching" element={<CoachingPage />} />
                     <Route path="/reports" element={<ReportsStudioPage />} />
                     <Route path="/route-lab" element={<RouteLabPage />} />
-                    <Route
-                      path="/reports/legacy"
-                      element={<Navigate to="/reports" replace />}
-                    />
+                    <Route path="/reports/legacy" element={<ReportsPage />} />
                     <Route path="/executive" element={<ExecutivePage />} />
                     <Route path="/today" element={<TodayPage />} />
                     <Route

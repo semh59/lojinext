@@ -16,6 +16,10 @@ describe("SavingsPotentialCard", () => {
   });
 
   it("aylık + yıllık tasarrufu ve % iyileşmeyi gösterir", async () => {
+    // Regression: potential_savings backend'de 90-günlük (sabit) bir
+    // toplamdır (calculate_savings_potential'ın penceresi) — pickMonthly()
+    // bunu 3'e bölmeden doğrudan "Aylık Potansiyel" olarak gösteriyordu,
+    // gerçek aylık değerin ~3 katını yanlış etiketle sunuyordu.
     (
       reportService.getSavingsPotential as ReturnType<typeof vi.fn>
     ).mockResolvedValue({
@@ -23,7 +27,7 @@ describe("SavingsPotentialCard", () => {
       target_consumption: 30,
       current_cost: 10000,
       target_cost: 8500,
-      potential_savings: 1500,
+      potential_savings: 1500, // 90-günlük toplam → aylık 500 olmalı
       annual_projection: 18000,
       savings_percentage: 15,
     });
@@ -35,7 +39,8 @@ describe("SavingsPotentialCard", () => {
     );
     expect(screen.getByText("15.0%")).toBeInTheDocument();
     // Currency Turkish format ₺ with optional thousands separator
-    expect(screen.getByText(/1\.?500/)).toBeInTheDocument();
+    expect(screen.getByText(/₺?\s?500\b/)).toBeInTheDocument();
+    expect(screen.queryByText(/1\.?500/)).not.toBeInTheDocument();
     expect(screen.getByText(/18\.?000/)).toBeInTheDocument();
     // Mevcut ortalama
     expect(screen.getByText(/35\.0 L\/100km/)).toBeInTheDocument();

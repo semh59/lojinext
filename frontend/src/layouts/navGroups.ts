@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   BarChart3,
   BrainCircuit,
+  Calculator,
   FileText,
   Fuel,
   GraduationCap,
@@ -123,6 +124,11 @@ export function buildNavGroups(
           icon: FileText,
           label: t("nav.reports", "Report Studio"),
           path: "/reports",
+        },
+        {
+          icon: Calculator,
+          label: t("nav.cost_reports", "Cost Reports"),
+          path: "/reports/legacy",
         },
         {
           icon: Route,

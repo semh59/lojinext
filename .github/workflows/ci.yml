@@ -635,18 +635,6 @@ jobs:
           API_BASE_URL=http://127.0.0.1:8000 npm --prefix frontend run codegen:dump
           git diff --exit-code frontend/openapi.json
 
-      # TEMP debug step (2026-07-12): local reproduction attempts (Docker,
-      # fresh pip install, restarted process) all produced byte-identical
-      # output to the committed file, yet CI's own dump differs — capture
-      # CI's exact output to diagnose the discrepancy. Remove after diagnosis.
-      - name: TEMP — upload CI-generated openapi.json for diagnosis
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-openapi-dump
-          path: frontend/openapi.json
-          retention-days: 1
-
       - name: Install Playwright browsers
         run: npx --prefix frontend playwright install chromium --with-deps
 

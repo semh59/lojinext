@@ -307,7 +307,7 @@ async def test_geocode_too_short(async_client, admin_auth_headers):
 async def test_geocode_service_error(async_client, admin_auth_headers):
     """GET /geocode with service RuntimeError → 500."""
     with _patch_location_route_function(
-        "geocode_location", side_effect=RuntimeError("external API down")
+        "geocode_location_usecase", side_effect=RuntimeError("external API down")
     ):
         resp = await async_client.get(
             "/api/v1/locations/geocode?q=Istanbul",

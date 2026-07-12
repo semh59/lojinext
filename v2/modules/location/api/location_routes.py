@@ -32,7 +32,9 @@ from v2.modules.location.application.analyze_location_route import (
 )
 from v2.modules.location.application.create_location import create_location
 from v2.modules.location.application.delete_location import delete_location
-from v2.modules.location.application.geocode_location import geocode_location
+from v2.modules.location.application.geocode_location import (
+    geocode_location as geocode_location_usecase,
+)
 from v2.modules.location.application.list_locations import list_locations
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.domain.hydration import LokasyonHydrator, get_lokasyon_hydrator
@@ -121,13 +123,13 @@ async def get_route_info(
 
 
 @router.get("/geocode", response_model=List[GeocodeSuggestion])
-async def geocode_location_endpoint(
+async def geocode_location(
     q: str = Query(..., min_length=2, description="Adres veya tesis arama metni"),
     limit: int = Query(5, ge=1, le=10),
     current_user: Annotated[Kullanici, Depends(get_current_active_user)] = None,
 ) -> List[GeocodeSuggestion]:
     try:
-        results = await geocode_location(q, limit=limit)
+        results = await geocode_location_usecase(q, limit=limit)
         return [GeocodeSuggestion.model_validate(result) for result in results]
     except DomainError:
         raise

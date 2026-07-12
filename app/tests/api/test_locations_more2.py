@@ -610,7 +610,7 @@ async def test_geocode_domain_error_reraise(async_client, admin_auth_headers):
     from app.core.exceptions import DomainError
 
     with _patch_location_route_function(
-        "geocode_location", side_effect=DomainError("domain issue")
+        "geocode_location_usecase", side_effect=DomainError("domain issue")
     ):
         resp = await async_client.get(
             "/api/v1/locations/geocode?q=Istanbul",
@@ -626,7 +626,7 @@ async def test_geocode_http_exception_passthrough(async_client, admin_auth_heade
     from fastapi import HTTPException
 
     with _patch_location_route_function(
-        "geocode_location",
+        "geocode_location_usecase",
         side_effect=HTTPException(status_code=429, detail="rate limited"),
     ):
         resp = await async_client.get(

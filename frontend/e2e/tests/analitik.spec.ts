@@ -23,11 +23,14 @@ test.describe('AdminAnalyticsPage — Kullanım Analitiği', () => {
     test.beforeEach(async ({ authedPage: page }) => {
         await page.route('**/api/v1/admin/analytics**', r => r.fulfill(json(MOCK_ANALYTICS)))
         await page.goto('/admin/analitik', { waitUntil: 'domcontentloaded' })
-        await expect(page.getByRole('heading', { name: 'Kullanım Analitiği' })).toBeVisible({ timeout: 15_000 })
+        // AdminLayout'un üst çubuğu (h2) VE sayfanın kendi başlığı (h1) aynı
+        // metni ("Kullanım Analitiği") gösteriyor — level:1 ile sayfanın kendi
+        // h1'i hedeflenir, strict-mode çift-eşleşme önlenir.
+        await expect(page.getByRole('heading', { name: 'Kullanım Analitiği', level: 1 })).toBeVisible({ timeout: 15_000 })
     })
 
     test('sayfa başlığı görünür', async ({ authedPage: page }) => {
-        await expect(page.getByRole('heading', { name: 'Kullanım Analitiği' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Kullanım Analitiği', level: 1 })).toBeVisible()
     })
 
     test('periyot ve toplam görüntüleme bilgisi gösterilir', async ({ authedPage: page }) => {

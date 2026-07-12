@@ -1,11 +1,15 @@
 import { test, expect } from '../fixtures/auth'
 
+// Backend contract (ImportHistoryItem, /admin/imports/history) writes durum
+// as "COMPLETED" | "COMPLETED_WITH_ERRORS" | "ROLLED_BACK" (import_service.py),
+// NOT the lowercase Turkish values — see VeriYonetimPage.tsx's mapImportStatus
+// comment for the same bug class already fixed once in BakimPage.tsx.
 const MOCK_JOB_TAMAMLANDI = {
     id: 1,
     dosya_adi: 'seferler_ocak.xlsx',
     aktarim_tipi: 'sefer',
     baslama_zamani: '2026-06-15T10:00:00Z',
-    durum: 'tamamlandi',
+    durum: 'COMPLETED',
     basarili: 42,
     hatali: 2,
     toplam: 44,
@@ -16,7 +20,7 @@ const MOCK_JOB_GERI_ALINDI = {
     dosya_adi: 'yakitlar_subat.csv',
     aktarim_tipi: 'yakit',
     baslama_zamani: '2026-06-10T08:30:00Z',
-    durum: 'geri_alindi',
+    durum: 'ROLLED_BACK',
     basarili: 15,
     hatali: 0,
     toplam: 15,

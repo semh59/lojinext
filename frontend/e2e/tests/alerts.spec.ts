@@ -14,13 +14,17 @@ const FLEET_INSIGHTS = {
             fuel_gap_liters: 20921.6,
             fuel_gap_cost: 805475.2,
         },
+        // MaintenanceVehicleSchema (frontend/src/api/anomalies.ts) requires
+        // reason_codes: {code, params}[] — not a pre-formatted string. Backend
+        // moved from a single Turkish sentence to i18n-able reason codes;
+        // formatMaintenanceReason() (lib/status-labels.ts) renders these per locale.
         maintenance: {
             urgent_count: 1,
             warning_count: 2,
             vehicles: [
-                { id: 2, plaka: '34XYZ02', reason: 'Yüksek yakıt tüketimi', severity: 'high' },
-                { id: 3, plaka: '34DEF03', reason: 'Km bazlı bakım', severity: 'medium' },
-                { id: 4, plaka: '06GHI04', reason: 'Periyodik bakım', severity: 'medium' },
+                { id: 2, plaka: '34XYZ02', reason_codes: [{ code: 'high_consumption', params: { value: 18.5 } }], severity: 'high' },
+                { id: 3, plaka: '34DEF03', reason_codes: [{ code: 'high_mileage', params: { km: 250000 } }], severity: 'medium' },
+                { id: 4, plaka: '06GHI04', reason_codes: [{ code: 'overdue_maintenance', params: { days: 45 } }], severity: 'medium' },
             ],
         },
     },
@@ -69,7 +73,8 @@ test.describe('Anomaliler sayfası', () => {
 
         await expect(page.getByText('34XYZ02')).toBeVisible()
         await expect(page.getByText('34DEF03')).toBeVisible()
-        await expect(page.getByText('Yüksek yakıt tüketimi')).toBeVisible()
+        // formatMaintenanceReason('high_consumption', {value:18.5}) → "Yüksek tüketim (18.5 L/100km)"
+        await expect(page.getByText(/Yüksek tüketim/)).toBeVisible()
     })
 
     test('Acil ve Uyarı badge\'leri doğru', async ({ authedPage: page }) => {

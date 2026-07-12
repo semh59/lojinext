@@ -29,10 +29,12 @@ const FLEET_INSIGHTS_RAW = {
         fuel_gap_liters: 20921.6,
         fuel_gap_cost: 805475.2,
     },
+    // MaintenanceVehicleSchema (frontend/src/api/anomalies.ts) requires
+    // reason_codes: {code, params}[] — not a pre-formatted string, see alerts.spec.ts.
     maintenance: {
         urgent_count: 1,
         warning_count: 0,
-        vehicles: [{ id: 2, plaka: '34XYZ02', reason: 'Yüksek tüketim', severity: 'high' }],
+        vehicles: [{ id: 2, plaka: '34XYZ02', reason_codes: [{ code: 'high_consumption', params: { value: 18.5 } }], severity: 'high' }],
     },
 }
 const FLEET_INSIGHTS = { status: 'success', data: FLEET_INSIGHTS_RAW }

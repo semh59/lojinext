@@ -19,6 +19,9 @@ const MOCK_ALERT = {
 const MOCK_PREDICTION = {
     arac_id: 3,
     plaka: '34ABC03',
+    // PredictionsTable.tsx getBakimTipiMeta(p.bakim_tipi, ...) zorunlu — eksikse
+    // map[undefined] undefined döner, .label undefined üzerinde crash eder.
+    bakim_tipi: 'PERIYODIK',
     predicted_date: '2026-08-15',
     risk_level: 'soon',
     predictable: true,

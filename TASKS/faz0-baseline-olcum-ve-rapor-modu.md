@@ -70,12 +70,16 @@ gh run list --branch main --limit 5
 3. `maintenance.spec.ts` (1 test): `MOCK_PREDICTION`'da `bakim_tipi` alanı hiç yoktu → `getBakimTipiMeta(undefined).label` çöküyordu.
 4. `veri-yonetim.spec.ts` (2 test): mock `durum: 'tamamlandi'/'geri_alindi'` (Türkçe) kullanıyordu, uygulama kodu (kendi yorumunda açıkça belirtilmiş) gerçek backend kontratı `"COMPLETED"/"ROLLED_BACK"` (İngilizce) bekliyor.
 
-Hepsi `frontend/e2e/tests/` altında test-only düzeltmeler, ayrı commit'te (`fix(e2e): 5 stale test fixture/locator failures...`). `tsc --noEmit` temiz. Yerel authedPage koşumu, yerel dev DB'nin `.env.test` kimlik bilgileriyle eşleşen bir admin seed'i olmadığı için yapılamadı (CI kendi taze admin'ini seed ediyor) — kanıt kod-seviyesinde (gerçek Zod şeması + uygulamanın kendi açıklayıcı yorumları + tam eşleşen stack-trace satırları) çok güçlü olduğundan, doğrulama CI'nin bir sonraki koşusuna bırakıldı.
+Hepsi `frontend/e2e/tests/` altında test-only düzeltmeler, ayrı commit'te (`3840de3 fix(e2e): 5 stale test fixture/locator failures...`). `tsc --noEmit` temiz.
+
+**Doğrulama (2026-07-12, push sonrası main run `29197112262`):** `hard-gates` job'ı (backend/unit/integration/coverage/Frontend E2E tests/OpenAPI drift/import-linter rapor adımı dahil TÜM gerçek kalite kapıları) **✓ YEŞİL, 46m15s** — 5 e2e düzeltmesi doğrulandı, 257/257 test PASS. Workflow'un genel sonucu yine de FAILURE görünüyor çünkü downstream "Build & Push to GHCR" işi **GitHub hesap faturalama sorunu** yüzünden hiç başlamadı ("recent account payments have failed or your spending limit needs to be increased") — bu kod/test dışı, kullanıcının GitHub Billing & Plans ayarlarında çözmesi gereken bir konu, bu görevin/oturumun kapsamı dışında.
 
 ## Kabul Kriterleri
 - [x] `.importlinter` dosyası var, `lint-imports --config .importlinter` lokal çalışıyor (hata vermeden, rapor basıyor)
-- [x] CI'daki rapor adımı eklendi (`continue-on-error: true`) — push sonrası CI koşumunda gözlemle doğrulanacak
+- [x] CI'daki rapor adımı eklendi (`continue-on-error: true`) — main run 29197112262'de ✓ doğrulandı
 - [x] Baseline ölçüldü ve commit'lendi: `docs/superpowers/audits/faz0-baseline-sonuclari.md` (ham json/txt repo kuralı gereği lokal)
 - [x] model_versions/model_versiyonlar sorusu cevaplanmış ve not düşülmüş
 - [x] iceri_aktarim_gecmisi kararı verilmiş, 2 bağımlı görev dosyasına işlenmiş
-- [x] main dalını kırmızı yapan harici sorun kök-neden bulunup düzeltildi; push sonrası CI'da yeşil teyidi bekleniyor
+- [x] **main dalı YEŞİL** (hard-gates job'ı, yani tüm gerçek CI kalite kapıları) — GHCR push/deploy'u engelleyen GitHub faturalama sorunu ayrı, kullanıcı tarafından çözülecek, FAZ0/FAZ1 kapsamı dışı
+
+**FAZ0 TAMAMLANDI.** Sıradaki onay: FAZ1 (modül registry/iskelet/shim + import-linter gate + davranışsal testler + dosya-kalite gate + CLAUDE.md şablonu), `TASKS/README.md`'deki dalga sırasıyla, pilot=location'dan başlar.

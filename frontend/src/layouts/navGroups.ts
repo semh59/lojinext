@@ -10,6 +10,7 @@ import {
   LineChart,
   ListChecks,
   MapPin,
+  RadioTower,
   Route,
   Shield,
   Sparkles,
@@ -147,6 +148,11 @@ export function buildNavGroups(
           icon: Shield,
           label: t("admin.title", "Administration"),
           path: "/admin",
+        },
+        {
+          icon: RadioTower,
+          label: t("nav.monitoring", "Live Monitoring"),
+          path: "/monitoring",
         },
       ],
     });

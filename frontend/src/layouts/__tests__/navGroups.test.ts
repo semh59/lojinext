@@ -28,10 +28,11 @@ describe("buildNavGroups — RV2.9 sidebar", () => {
     expect(insightPaths).toContain("/executive");
     expect(insightPaths).toContain("/reports");
 
-    // Sistem grubu var
+    // Sistem grubu var — Administration + Live Monitoring
     const sistem = groups.find((g) => g.label === "Sistem");
     expect(sistem).toBeDefined();
     expect(sistem?.items[0].path).toBe("/admin");
+    expect(sistem?.items.map((i) => i.path)).toContain("/monitoring");
   });
 
   it("fleet_manager: Bugün + İçgörü görünür, Sistem yok", () => {

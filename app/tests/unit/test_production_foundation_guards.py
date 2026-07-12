@@ -502,9 +502,14 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
     route_calibration_service = (
         ROOT / "app" / "core" / "services" / "route_calibration_service.py"
     ).read_text(encoding="utf-8")
-    route_service = (ROOT / "app" / "services" / "route_service.py").read_text(
-        encoding="utf-8"
-    )
+    route_service = (
+        ROOT
+        / "v2"
+        / "modules"
+        / "route_simulation"
+        / "application"
+        / "get_route_details.py"
+    ).read_text(encoding="utf-8")
     weather_service = (
         ROOT / "app" / "core" / "services" / "weather_service.py"
     ).read_text(encoding="utf-8")

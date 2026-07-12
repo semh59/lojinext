@@ -52,7 +52,6 @@ class TestContainerLazyLoading:
         # Infrastructure
         assert hasattr(container, "event_bus")
         assert hasattr(container, "health_service")
-        assert hasattr(container, "route_service")
         # Repos
         assert hasattr(container, "arac_repo")
         assert hasattr(container, "sefer_repo")

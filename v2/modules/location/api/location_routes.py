@@ -95,11 +95,10 @@ async def get_route_info(
 ) -> RouteInfoResponse:
     """Return live route details for a coordinate pair."""
     from v2.modules.route_simulation.application.get_route_details import (
-        get_route_service,
+        get_route_details,
     )
 
-    route_service = get_route_service()
-    route_details = await route_service.get_route_details(
+    route_details = await get_route_details(
         start_coords=(cikis_lon, cikis_lat),
         end_coords=(varis_lon, varis_lat),
         use_cache=True,

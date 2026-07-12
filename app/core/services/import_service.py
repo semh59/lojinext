@@ -70,7 +70,6 @@ class ImportService:
         self._lokasyon_repo = lokasyon_repo
         self.guzergah_service = None
         self._guzergah_service = None
-        self._route_service_lazy = None
 
     async def _report_infra_failure(self, source: str, exc: Exception) -> None:
         """Üst-seviye (parse/altyapı) hatalarını gerçek bir monitoring alarmına
@@ -1041,17 +1040,6 @@ class ImportService:
             raise ImportValidationError(
                 [f"{field} sayı olmalı"], reason="INVALID_NUMERIC"
             )
-
-    @property
-    def route_service(self):
-        """Lazy-loaded route service to avoid circular imports at module level."""
-        if self._route_service_lazy is None:
-            from v2.modules.route_simulation.application.get_route_details import (
-                RouteService,
-            )
-
-            self._route_service_lazy = RouteService()
-        return self._route_service_lazy
 
 
 def _parse_date_flexible(val):

@@ -138,10 +138,8 @@ async def test_analyze_location_route_success(db_session):
         "distributions": {},
     }
 
-    mock_rs = AsyncMock()
-    mock_rs.get_route_details = AsyncMock(return_value=route_result)
     mock_route_service_module = MagicMock()
-    mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
+    mock_route_service_module.get_route_details = AsyncMock(return_value=route_result)
 
     # Fuel predictor
     fuel_pred = MagicMock()
@@ -200,10 +198,8 @@ async def test_analyze_location_route_success_no_fuel_predictor(db_session):
         "distributions": None,
     }
 
-    mock_rs = AsyncMock()
-    mock_rs.get_route_details = AsyncMock(return_value=route_result)
     mock_route_service_module = MagicMock()
-    mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
+    mock_route_service_module.get_route_details = AsyncMock(return_value=route_result)
 
     # Physics predictor raises
     mock_physics_module = MagicMock()
@@ -242,10 +238,10 @@ async def test_analyze_location_route_error_response_raises_value_error(db_sessi
     await db_session.commit()
     repo = LokasyonRepository(session=db_session)
 
-    mock_rs = AsyncMock()
-    mock_rs.get_route_details = AsyncMock(return_value={"error": "no route found"})
     mock_route_service_module = MagicMock()
-    mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
+    mock_route_service_module.get_route_details = AsyncMock(
+        return_value={"error": "no route found"}
+    )
 
     with patch.dict(
         "sys.modules",

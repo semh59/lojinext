@@ -1,4 +1,5 @@
-"""Coverage tests for app/services/route_service.py.
+"""Coverage tests for v2/modules/route_simulation/application/get_route_details.py
+(+ get_base_location.py, get_route_difficulty.py, domain/route_geometry.py).
 
 Extends app/tests/unit/test_services/test_route_service.py with additional
 coverage for: cache hit path, 401/403 errors, no-api-key path, haversine,
@@ -20,18 +21,28 @@ from unittest.mock import patch
 import pytest
 
 from app.config import settings
+from v2.modules.route_simulation.application.get_base_location import (
+    get_base_location,
+)
+from v2.modules.route_simulation.application.get_route_details import (
+    get_route_details,
+)
+from v2.modules.route_simulation.application.get_route_difficulty import (
+    get_route_difficulty,
+)
+from v2.modules.route_simulation.domain.route_geometry import (
+    analyze_elevation_profile,
+    haversine,
+    segment_distance,
+)
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.fixture
-def route_service(monkeypatch):
-    from v2.modules.route_simulation.application.get_route_details import RouteService
-
+@pytest.fixture(autouse=True)
+def _ors_base_url(monkeypatch):
     monkeypatch.setattr(settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2")
-    svc = RouteService()
-    svc.api_key = "test-key-xyz"  # pragma: allowlist secret
-    return svc
+    monkeypatch.setenv("OPENROUTESERVICE_API_KEY", "test-key-xyz")
 
 
 # ---------------------------------------------------------------------------
@@ -40,118 +51,105 @@ def route_service(monkeypatch):
 
 
 class TestHaversine:
-    def test_same_point_is_zero(self, route_service):
-        d = route_service.haversine(29.0, 41.0, 29.0, 41.0)
+    def test_same_point_is_zero(self):
+        d = haversine(29.0, 41.0, 29.0, 41.0)
         assert d == pytest.approx(0.0, abs=1e-6)
 
-    def test_known_distance_istanbul_ankara(self, route_service):
+    def test_known_distance_istanbul_ankara(self):
         # Istanbul ~(28.97, 41.01) -> Ankara ~(32.86, 39.93)
-        d = route_service.haversine(28.97, 41.01, 32.86, 39.93)
+        d = haversine(28.97, 41.01, 32.86, 39.93)
         # Should be roughly 350-400 km in meters
         assert 350_000 < d < 420_000
 
-    def test_symmetry(self, route_service):
-        d1 = route_service.haversine(28.0, 41.0, 33.0, 40.0)
-        d2 = route_service.haversine(33.0, 40.0, 28.0, 41.0)
+    def test_symmetry(self):
+        d1 = haversine(28.0, 41.0, 33.0, 40.0)
+        d2 = haversine(33.0, 40.0, 28.0, 41.0)
         assert d1 == pytest.approx(d2, rel=1e-6)
 
 
 # ---------------------------------------------------------------------------
-# _get_segment_distance
+# segment_distance
 # ---------------------------------------------------------------------------
 
 
-class TestGetSegmentDistance:
-    def test_zero_when_start_equals_end(self, route_service):
+class TestSegmentDistance:
+    def test_zero_when_start_equals_end(self):
         coords = [[29.0, 41.0], [30.0, 41.0], [31.0, 41.0]]
-        d = route_service._get_segment_distance(coords, 0, 0)
+        d = segment_distance(coords, 0, 0)
         assert d == 0.0
 
-    def test_single_segment(self, route_service):
+    def test_single_segment(self):
         coords = [[29.0, 41.0], [29.1, 41.0]]
-        d = route_service._get_segment_distance(coords, 0, 1)
+        d = segment_distance(coords, 0, 1)
         assert d > 0
 
-    def test_index_beyond_coords_breaks_safely(self, route_service):
+    def test_index_beyond_coords_breaks_safely(self):
         coords = [[29.0, 41.0]]
         # end_idx=5 but coords has only 1 point
-        d = route_service._get_segment_distance(coords, 0, 5)
+        d = segment_distance(coords, 0, 5)
         assert d == 0.0
 
 
 # ---------------------------------------------------------------------------
-# _analyze_elevation_profile
+# analyze_elevation_profile
 # ---------------------------------------------------------------------------
 
 
 class TestAnalyzeElevationProfile:
-    def test_returns_flat_100_for_less_than_2_coords(self, route_service):
-        result = route_service._analyze_elevation_profile({"coordinates": []})
+    def test_returns_flat_100_for_less_than_2_coords(self):
+        result = analyze_elevation_profile({"coordinates": []})
         assert result["flat_pct"] == 100
         assert result["ramp_pct"] == 0
 
-    def test_returns_flat_100_for_single_coord(self, route_service):
-        result = route_service._analyze_elevation_profile(
-            {"coordinates": [[29.0, 41.0, 100]]}
-        )
+    def test_returns_flat_100_for_single_coord(self):
+        result = analyze_elevation_profile({"coordinates": [[29.0, 41.0, 100]]})
         assert result["flat_pct"] == 100
 
-    def test_flat_terrain_2d_coords(self, route_service):
+    def test_flat_terrain_2d_coords(self):
         # 2D coords (no elevation) -> all classified as flat
         coords = [[29.0 + i * 0.01, 41.0] for i in range(5)]
-        result = route_service._analyze_elevation_profile({"coordinates": coords})
+        result = analyze_elevation_profile({"coordinates": coords})
         assert result["flat_pct"] == 100
 
-    def test_steep_terrain_3d_coords(self, route_service):
+    def test_steep_terrain_3d_coords(self):
         # Steep gradient: each step +100m elevation over ~1000m horizontal -> ~10%
         coords = [[29.0 + i * 0.01, 41.0, i * 100] for i in range(5)]
-        result = route_service._analyze_elevation_profile({"coordinates": coords})
+        result = analyze_elevation_profile({"coordinates": coords})
         # Should have ramp_pct > 0
         assert "ramp_pct" in result
 
-    def test_near_zero_horizontal_distance_skipped(self, route_service):
+    def test_near_zero_horizontal_distance_skipped(self):
         # Points extremely close together (< 5m) should be skipped
         coords = [[29.0, 41.0, 0], [29.000001, 41.0, 100]]
-        result = route_service._analyze_elevation_profile({"coordinates": coords})
+        result = analyze_elevation_profile({"coordinates": coords})
         # Should return valid dict without crashing
         assert "flat_pct" in result
 
 
 # ---------------------------------------------------------------------------
-# _get_route_difficulty
+# get_route_difficulty
 # ---------------------------------------------------------------------------
 
 
 class TestGetRouteDifficulty:
-    def test_zero_distance_returns_bilinmiyor(self, route_service):
-        result = route_service._get_route_difficulty(100, 100, 0)
+    def test_zero_distance_returns_bilinmiyor(self):
+        result = get_route_difficulty(100, 100, 0)
         assert result == "Bilinmiyor"
 
-    def test_flat_route(self, route_service):
+    def test_flat_route(self):
         # 0 ascent -> gradient_factor = 0 -> Düz
-        result = route_service._get_route_difficulty(0, 0, 100)
+        result = get_route_difficulty(0, 0, 100)
         assert result == "Düz"
 
-    def test_light_grade(self, route_service):
+    def test_light_grade(self):
         # 600m ascent over 100km -> 0.6% -> Hafif Eğimli
-        result = route_service._get_route_difficulty(600, 0, 100)
+        result = get_route_difficulty(600, 0, 100)
         assert result == "Hafif Eğimli"
 
-    def test_steep_grade(self, route_service):
+    def test_steep_grade(self):
         # 2000m ascent over 100km -> 2% -> Dik/Dağlık
-        result = route_service._get_route_difficulty(2000, 0, 100)
+        result = get_route_difficulty(2000, 0, 100)
         assert result == "Dik/Dağlık"
-
-
-# ---------------------------------------------------------------------------
-# analyze_route_difficulty  (public wrapper)
-# ---------------------------------------------------------------------------
-
-
-class TestAnalyzeRouteDifficulty:
-    def test_delegates_to_private(self, route_service):
-        assert route_service.analyze_route_difficulty(0, 0, 100) == "Düz"
-        assert route_service.analyze_route_difficulty(2000, 0, 100) == "Dik/Dağlık"
 
 
 # ---------------------------------------------------------------------------
@@ -160,12 +158,12 @@ class TestAnalyzeRouteDifficulty:
 
 
 class TestGetRouteDetailsNoApiKey:
-    async def test_returns_error_when_no_api_key(self, route_service, db_session):
-        route_service.api_key = None  # No key
+    async def test_returns_error_when_no_api_key(self, db_session, monkeypatch):
+        monkeypatch.delenv("OPENROUTESERVICE_API_KEY", raising=False)
+        monkeypatch.delenv("OPENROUTE_API_KEY", raising=False)
+        monkeypatch.setattr(settings, "OPENROUTESERVICE_API_KEY", None)
 
-        result = await route_service.get_route_details(
-            (29.0, 41.0), (33.0, 40.0), use_cache=True
-        )
+        result = await get_route_details((29.0, 41.0), (33.0, 40.0), use_cache=True)
 
         assert result["error_code"] == "SERVICE_UNAVAILABLE"
         assert result["source"] == "configuration"
@@ -177,7 +175,7 @@ class TestGetRouteDetailsNoApiKey:
 
 
 class TestGetRouteDetailsCacheHit:
-    async def test_returns_cached_result(self, route_service, db_session):
+    async def test_returns_cached_result(self, db_session):
         from app.database.unit_of_work import unit_of_work as get_uow
 
         async with get_uow() as uow:
@@ -202,14 +200,12 @@ class TestGetRouteDetailsCacheHit:
             )
             await uow.commit()
 
-        result = await route_service.get_route_details(
-            (29.0, 41.0), (33.0, 40.0), use_cache=True
-        )
+        result = await get_route_details((29.0, 41.0), (33.0, 40.0), use_cache=True)
 
         assert result["source"] == "cache"
         assert result["distance_km"] == 450.0
 
-    async def test_cache_hit_with_include_details(self, route_service, db_session):
+    async def test_cache_hit_with_include_details(self, db_session):
         from app.database.unit_of_work import unit_of_work as get_uow
 
         async with get_uow() as uow:
@@ -234,7 +230,7 @@ class TestGetRouteDetailsCacheHit:
             )
             await uow.commit()
 
-        result = await route_service.get_route_details(
+        result = await get_route_details(
             (29.0, 41.0), (33.0, 40.0), use_cache=True, include_details=True
         )
 
@@ -247,22 +243,16 @@ class TestGetRouteDetailsCacheHit:
 
 
 class TestGetRouteDetailsAuthErrors:
-    async def test_401_returns_auth_failure(self, route_service, db_session):
-        result = await route_service.get_route_details(
-            (0.0, 0.0), (0.0, 401.0), use_cache=False
-        )
+    async def test_401_returns_auth_failure(self, db_session):
+        result = await get_route_details((0.0, 0.0), (0.0, 401.0), use_cache=False)
 
         assert result["error_code"] == "AUTH_FAILURE"
         assert result["provider_status"] == 401
 
-    async def test_403_both_profiles_returns_quota_exceeded(
-        self, route_service, db_session
-    ):
+    async def test_403_both_profiles_returns_quota_exceeded(self, db_session):
         # Real retry: hgv -> 403 -> retries with driving-car -> stub returns
         # 403 again regardless of profile (sentinel dispatches on coords).
-        result = await route_service.get_route_details(
-            (0.0, 0.0), (0.0, 403.0), use_cache=False
-        )
+        result = await get_route_details((0.0, 0.0), (0.0, 403.0), use_cache=False)
 
         assert result["error_code"] == "QUOTA_EXCEEDED"
         assert result["provider_status"] == 403
@@ -274,7 +264,7 @@ class TestGetRouteDetailsAuthErrors:
 
 
 class TestGetRouteDetailsException:
-    async def test_exception_returns_internal_error(self, route_service, db_session):
+    async def test_exception_returns_internal_error(self, db_session):
         """external_service crashing before a client is even obtained is not
         reproducible via real infra -- documented mock (forces the outer
         except Exception branch in get_route_details)."""
@@ -282,7 +272,7 @@ class TestGetRouteDetailsException:
             "app.services.external_service.get_external_service",
             side_effect=RuntimeError("external crashed"),
         ):
-            result = await route_service.get_route_details(
+            result = await get_route_details(
                 (29.0, 41.0), (33.0, 40.0), use_cache=False
             )
 
@@ -296,7 +286,7 @@ class TestGetRouteDetailsException:
 
 
 class TestGetBaseLocation:
-    async def test_returns_config_value(self, route_service, db_session):
+    async def test_returns_config_value(self, db_session):
         from app.database.models import SistemKonfig
 
         db_session.add(
@@ -309,11 +299,11 @@ class TestGetBaseLocation:
         )
         await db_session.flush()
 
-        result = await route_service.get_base_location()
+        result = await get_base_location()
 
         assert result == "ISTANBUL"
 
-    async def test_returns_default_when_not_configured(self, route_service, db_session):
-        result = await route_service.get_base_location()
+    async def test_returns_default_when_not_configured(self, db_session):
+        result = await get_base_location()
 
         assert result == "FABRIKA"

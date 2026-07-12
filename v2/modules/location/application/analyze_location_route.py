@@ -1,4 +1,4 @@
-"""Use-case: analyze a location's route via the hybrid route service.
+"""Use-case: analyze a location's route via the hybrid get_route_details use-case.
 
 NOT (geçici, mimari borç): route_simulation modülünün henüz public.py'si
 yok (application/get_route_details.py'den doğrudan import ediliyor) — o
@@ -15,9 +15,9 @@ logger = get_logger(__name__)
 
 
 async def analyze_location_route(repo: LokasyonRepository, lokasyon_id: int) -> dict:
-    """Hibrit RouteService kullanarak güzergahı analiz et ve güncelle"""
+    """Hibrit rota tespit use-case'i kullanarak güzergahı analiz et ve güncelle"""
     from v2.modules.route_simulation.application.get_route_details import (
-        get_route_service,
+        get_route_details,
     )
 
     loc = await repo.get_by_id(lokasyon_id)
@@ -31,14 +31,11 @@ async def analyze_location_route(repo: LokasyonRepository, lokasyon_id: int) -> 
     ):
         raise ValueError(f"Lokasyon {lokasyon_id} koordinat bilgileri eksik.")
 
-    route_service = get_route_service()
     start_coords = (loc["cikis_lon"], loc["cikis_lat"])
     end_coords = (loc["varis_lon"], loc["varis_lat"])
 
     # use_cache=False because we want fresh analysis/correction
-    result = await route_service.get_route_details(
-        start_coords, end_coords, use_cache=False
-    )
+    result = await get_route_details(start_coords, end_coords, use_cache=False)
 
     if "error" in result:
         raise ValueError(f"Analiz hatası: {result['error']}")

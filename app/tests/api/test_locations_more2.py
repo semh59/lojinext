@@ -99,26 +99,23 @@ def _patch_location_route_function(name, side_effect=None, return_value=None):
 
 
 async def test_route_info_success_explicit(async_client, admin_auth_headers):
-    """GET /route-info → 200 when route service returns valid data."""
-    route_mock = AsyncMock()
-    route_mock.get_route_details = AsyncMock(
-        return_value={
-            "distance_km": 450.0,
-            "duration_min": 300.0,
-            "ascent_m": 500.0,
-            "descent_m": 500.0,
-            "otoban_mesafe_km": 400.0,
-            "sehir_ici_mesafe_km": 50.0,
-            "source": "mapbox",
-            "is_corrected": False,
-            "correction_reason": None,
-            "route_analysis": {},
-        }
-    )
-
+    """GET /route-info → 200 when the get_route_details use-case returns valid data."""
     with patch(
-        "v2.modules.route_simulation.application.get_route_details.get_route_service",
-        return_value=route_mock,
+        "v2.modules.route_simulation.application.get_route_details.get_route_details",
+        new=AsyncMock(
+            return_value={
+                "distance_km": 450.0,
+                "duration_min": 300.0,
+                "ascent_m": 500.0,
+                "descent_m": 500.0,
+                "otoban_mesafe_km": 400.0,
+                "sehir_ici_mesafe_km": 50.0,
+                "source": "mapbox",
+                "is_corrected": False,
+                "correction_reason": None,
+                "route_analysis": {},
+            }
+        ),
     ):
         resp = await async_client.get(
             "/api/v1/locations/route-info"
@@ -132,17 +129,14 @@ async def test_route_info_success_explicit(async_client, admin_auth_headers):
 
 async def test_route_info_error_with_provider_status(async_client, admin_auth_headers):
     """GET /route-info when provider returns error with provider_status field."""
-    route_mock = AsyncMock()
-    route_mock.get_route_details = AsyncMock(
-        return_value={
-            "error": "Mapbox unreachable",
-            "provider_status": 503,
-        }
-    )
-
     with patch(
-        "v2.modules.route_simulation.application.get_route_details.get_route_service",
-        return_value=route_mock,
+        "v2.modules.route_simulation.application.get_route_details.get_route_details",
+        new=AsyncMock(
+            return_value={
+                "error": "Mapbox unreachable",
+                "provider_status": 503,
+            }
+        ),
     ):
         resp = await async_client.get(
             "/api/v1/locations/route-info"
@@ -157,14 +151,9 @@ async def test_route_info_error_without_provider_status(
     async_client, admin_auth_headers
 ):
     """GET /route-info when error dict has no provider_status field → 503."""
-    route_mock = AsyncMock()
-    route_mock.get_route_details = AsyncMock(
-        return_value={"error": "Route provider offline"}
-    )
-
     with patch(
-        "v2.modules.route_simulation.application.get_route_details.get_route_service",
-        return_value=route_mock,
+        "v2.modules.route_simulation.application.get_route_details.get_route_details",
+        new=AsyncMock(return_value={"error": "Route provider offline"}),
     ):
         resp = await async_client.get(
             "/api/v1/locations/route-info"

@@ -1,4 +1,4 @@
-"""Unit tests for RouteService.
+"""Unit tests for v2/modules/route_simulation/application/get_route_details.py.
 
 0-mock epigi (Faz1 dilim4): ORS `httpx.AsyncClient.post` -> real HTTP against
 api_stub (sentinel coordinates select scenario). route_analyzer.analyze_segments
@@ -12,19 +12,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.config import settings
-from v2.modules.route_simulation.application.get_route_details import RouteService
+from v2.modules.route_simulation.application.get_route_details import (
+    _env_api_key,
+    get_route_details,
+)
 
 pytestmark = pytest.mark.integration
 
 
-@pytest.fixture
-def route_service():
-    return RouteService()
-
-
 @pytest.mark.asyncio
 async def test_get_route_details_parses_waycategory_and_returns_analysis(
-    route_service, db_session, monkeypatch
+    db_session, monkeypatch
 ):
     """Real ORS call (api_stub) + real RouteAnalyzer segment classification;
     only the fuel-prediction ML call stays documented-mocked."""
@@ -32,8 +30,7 @@ async def test_get_route_details_parses_waycategory_and_returns_analysis(
     end = (0.0, 777.0)
 
     monkeypatch.setattr(settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2")
-    route_service.base_url = settings.OPENROUTE_API_BASE_URL
-    route_service.api_key = "test_key"
+    monkeypatch.setenv("OPENROUTESERVICE_API_KEY", "test_key")
 
     with patch(
         "app.services.prediction_service.get_prediction_service"
@@ -42,7 +39,7 @@ async def test_get_route_details_parses_waycategory_and_returns_analysis(
         mock_get_pred_service.return_value = mock_pred_service
         mock_pred_service.predict_consumption = AsyncMock(return_value=150.0)
 
-        result = await route_service.get_route_details(start, end, use_cache=False)
+        result = await get_route_details(start, end, use_cache=False)
 
     assert "error" not in result, f"Service returned error: {result}"
     assert isinstance(result["route_analysis"], dict)
@@ -56,18 +53,13 @@ async def test_get_route_details_parses_waycategory_and_returns_analysis(
 
 
 @pytest.mark.asyncio
-async def test_get_route_details_surfaces_provider_failure(
-    route_service, db_session, monkeypatch
-):
+async def test_get_route_details_surfaces_provider_failure(db_session, monkeypatch):
     """Real ORS call against api_stub; sentinel coords (0,0)->(0,500) trigger
     a real 500 response."""
     monkeypatch.setattr(settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2")
-    route_service.base_url = settings.OPENROUTE_API_BASE_URL
-    route_service.api_key = "test_key"
+    monkeypatch.setenv("OPENROUTESERVICE_API_KEY", "test_key")
 
-    result = await route_service.get_route_details(
-        (0.0, 0.0), (0.0, 500.0), use_cache=False
-    )
+    result = await get_route_details((0.0, 0.0), (0.0, 500.0), use_cache=False)
 
     assert result["error_code"] == "SERVICE_UNAVAILABLE"
     assert result["source"] == "provider_error"
@@ -79,9 +71,7 @@ def test_route_service_prefers_canonical_api_key(monkeypatch):
     monkeypatch.setenv("OPENROUTESERVICE_API_KEY", "canonical-key")
     monkeypatch.setenv("OPENROUTE_API_KEY", "legacy-key")
 
-    service = RouteService()
-
-    assert service.api_key == "canonical-key"
+    assert _env_api_key() == "canonical-key"
 
 
 def test_route_service_uses_settings_key_when_env_missing(monkeypatch):
@@ -89,6 +79,4 @@ def test_route_service_uses_settings_key_when_env_missing(monkeypatch):
     monkeypatch.delenv("OPENROUTE_API_KEY", raising=False)
 
     with patch.object(settings, "OPENROUTESERVICE_API_KEY", "settings-key"):
-        service = RouteService()
-
-    assert service.api_key == "settings-key"
+        assert _env_api_key() == "settings-key"

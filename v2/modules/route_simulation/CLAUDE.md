@@ -23,15 +23,28 @@ yolunda kalıyor.
 ## Public API (henüz public.py YOK — application/ dosyalarından doğrudan import)
 
 ```python
-# application/get_route_details.py
-RouteService, get_route_service()
-  .get_route_details(start_coords, end_coords, use_cache=True, include_details=False) -> dict
-  .analyze_route_difficulty(ascent, descent, distance_km) -> str
+# application/get_route_details.py — TEK use-case, free function (B.1 uyumlu)
+get_route_details(start_coords, end_coords, use_cache=True, include_details=False) -> dict
+
+# application/get_route_difficulty.py
+get_route_difficulty(ascent, descent, distance_km) -> str
+
+# application/get_base_location.py
+get_base_location() -> str
 
 # application/simulate_route.py
 RouteSimulator, get_route_simulator()
   .simulate(cikis_lon, cikis_lat, varis_lon, varis_lat, ton=15.0, arac_yasi=5,
             target_length_km=0.5, vehicle=None) -> Optional[SimulationResult]
+# (Sınıf olarak kaldı — TEK use-case/tek pipeline, LokasyonHydrator ile aynı
+# gerekçe: constructor yalnız mapbox_client/elevation_client DI'sini tutuyor.)
+
+# domain/route_geometry.py — RouteService'ten ayrıştırılmış, hiçbir prod kod
+# çağırmıyor (yalnız kendi testleri); route_analyzer.py'nin kendi haversine'i
+# asıl canlı yolda kullanılan.
+haversine(lon1, lat1, lon2, lat2) -> float
+segment_distance(coordinates, start_idx, end_idx) -> float
+analyze_elevation_profile(geometry) -> dict
 
 # domain/
 PolylineDecoder.decode(polyline_str) -> list[tuple[float, float]]
@@ -49,6 +62,12 @@ RouteRepository, get_route_repo(session=None)
 # api/route_routes.py
 router  # POST /analyze, POST /simulate, GET /simulate/{id}
 ```
+
+**Önemli**: `RouteService` sınıfı YOK (2026-07-13'te bölündü — STATUS.md'nin
+"v2'de bir-dosya-bir-use-case istisnası yok" kararıyla uyumlu hâle
+getirildi). `container.route_service`/`import_service.route_service`
+property'leri de hiçbir prod kod tarafından çağrılmadığı için kaldırıldı
+(dead code).
 
 ## Yayınladığı / dinlediği event'ler
 
@@ -92,7 +111,7 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
   None/exception döner, retry boşa gitmez.
 - **Directions cache 24h TTL** (`_MAPBOX_DIRECTIONS_CACHE_TTL_S`): traffic
   değişken olduğu için elevation'ın (30 gün TTL) aksine kısa tutulur.
-- **`RouteService.get_route_details`'te ORS→Mapbox hibrit fallback**:
+- **`get_route_details`'te ORS→Mapbox hibrit fallback**:
   `RouteValidator.validate_and_correct` anomali (`is_corrected=True`)
   bulursa VE `settings.MAPBOX_API_KEY` varsa Mapbox'a geçilir; delta
   eşikleri (`ROUTE_DIST_DELTA_*_PCT`) aşılırsa log uyarısı (fail değil).
@@ -113,8 +132,8 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
   hata senaryosu seçimi — bkz. `api_stub/main.py`).
 - `app/tests/api/test_routes_*.py`, `test_locations_*.py` (route-info kısmı) —
   endpoint testleri.
-- Free-function/class-method `unittest.mock.patch` hedefi: modül-seviyesi
-  importlar için TÜKETEN modül (`v2.modules.route_simulation.api.route_routes.RouteService`
+- Free-function `unittest.mock.patch` hedefi: modül-seviyesi importlar için
+  TÜKETEN modül (`v2.modules.route_simulation.api.route_routes.get_route_details`
   gibi); fonksiyon-içi (inline) importlar için KAYNAK modül
   (`v2.modules.route_simulation.application.get_route_details.get_prediction_service`
   gibi — `get_prediction_service` orada her çağrıda taze import edilir).

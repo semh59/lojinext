@@ -11,7 +11,12 @@ from app.core.ml.physics_fuel_predictor import VehicleSpecs
 from app.database.models import Arac, Kullanici, Lokasyon, RouteSegment, RouteSimulation
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import RouteAnalysisResponse
-from v2.modules.route_simulation.application.get_route_details import RouteService
+from v2.modules.route_simulation.application.get_route_details import (
+    get_route_details,
+)
+from v2.modules.route_simulation.application.get_route_difficulty import (
+    get_route_difficulty,
+)
 from v2.modules.route_simulation.application.simulate_route import (
     RouteSimulator,
     get_route_simulator,
@@ -33,11 +38,9 @@ async def analyze_route(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ) -> RouteAnalysisResponse:
-    service = RouteService()
-
     start_coords = (request.start_lon, request.start_lat)
     end_coords = (request.end_lon, request.end_lat)
-    result = await service.get_route_details(start_coords, end_coords)
+    result = await get_route_details(start_coords, end_coords)
 
     if "error" in result:
         raise HTTPException(
@@ -45,7 +48,7 @@ async def analyze_route(
             detail=result.get("error", "Route provider is currently unavailable."),
         )
 
-    result["difficulty"] = service.analyze_route_difficulty(
+    result["difficulty"] = get_route_difficulty(
         result.get("ascent_m", 0),
         result.get("descent_m", 0),
         result.get("distance_km", 0),

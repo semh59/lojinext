@@ -12,13 +12,12 @@ Covers:
   - process_yakit_import (empty plaka, missing tarih, period_recalc skip)
   - _resolve_dorse_id (not found returns None)
   - _normalize_text (Turkish İ mapping)
-  - route_service lazy property
 """
 
 import io
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
@@ -804,26 +803,6 @@ class TestResolverHelpers:
         svc = ImportService()
         assert svc._normalize_text(None) == ""
         assert svc._normalize_text("") == ""
-
-
-# ---------------------------------------------------------------------------
-# route_service lazy property
-# ---------------------------------------------------------------------------
-
-
-class TestRouteServiceLazyProperty:
-    def test_lazy_property_initialises_once(self):
-        svc = ImportService()
-        assert svc._route_service_lazy is None
-
-        with patch(
-            "v2.modules.route_simulation.application.get_route_details.RouteService"
-        ) as MockRS:
-            MockRS.return_value = MagicMock()
-            rs = svc.route_service
-            rs2 = svc.route_service  # second access should be same instance
-        # Both accesses return the same object (lazy-loaded once)
-        assert rs is rs2
 
 
 # ---------------------------------------------------------------------------

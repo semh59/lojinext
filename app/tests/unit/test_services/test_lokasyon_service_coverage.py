@@ -533,10 +533,10 @@ class TestAnalyzeLocationRoute:
 
         repo = LokasyonRepository(session=db_session)
 
-        mock_rs = AsyncMock()
-        mock_rs.get_route_details = AsyncMock(return_value={"error": "timeout"})
         mock_route_service_module = MagicMock()
-        mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
+        mock_route_service_module.get_route_details = AsyncMock(
+            return_value={"error": "timeout"}
+        )
 
         with patch.dict(
             "sys.modules",

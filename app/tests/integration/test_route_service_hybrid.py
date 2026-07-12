@@ -42,17 +42,16 @@ class TestRouteServiceHybrid:
     async def test_route_service_falls_back_to_mapbox_on_anomaly(
         self, db_session, monkeypatch
     ):
-        """RouteService switches to Mapbox when RouteValidator detects an anomaly."""
+        """get_route_details switches to Mapbox when RouteValidator detects an anomaly."""
         from v2.modules.route_simulation.application.get_route_details import (
-            RouteService,
+            get_route_details,
         )
 
         _patch_ors_and_mapbox_base_urls(monkeypatch)
         monkeypatch.setattr(settings, "MAPBOX_API_KEY", "pk.test_key")
         monkeypatch.setattr(settings, "OPENROUTESERVICE_API_KEY", "test_key")
 
-        service = RouteService()
-        result = await service.get_route_details(
+        result = await get_route_details(
             _SENTINEL_START, _SENTINEL_END, use_cache=False
         )
 
@@ -65,9 +64,9 @@ class TestRouteServiceHybrid:
     async def test_route_service_self_heals_if_mapbox_fails(
         self, db_session, monkeypatch
     ):
-        """RouteService falls back to ORS self-correction when Mapbox fails."""
+        """get_route_details falls back to ORS self-correction when Mapbox fails."""
         from v2.modules.route_simulation.application.get_route_details import (
-            RouteService,
+            get_route_details,
         )
 
         _patch_ors_and_mapbox_base_urls(monkeypatch)
@@ -77,8 +76,7 @@ class TestRouteServiceHybrid:
         monkeypatch.setattr(settings, "MAPBOX_API_KEY", None)
         monkeypatch.setattr(settings, "OPENROUTESERVICE_API_KEY", "test_key")
 
-        service = RouteService()
-        result = await service.get_route_details(
+        result = await get_route_details(
             _SENTINEL_START, _SENTINEL_END, use_cache=False
         )
 

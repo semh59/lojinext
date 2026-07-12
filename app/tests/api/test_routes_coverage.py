@@ -151,7 +151,7 @@ class TestAnalyzeRouteEndpoint:
         return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
     async def test_analyze_route_provider_error_returns_503(self):
-        """analyze_route returns 503 when RouteService reports error."""
+        """analyze_route returns 503 when get_route_details reports error."""
         from app.api.deps import get_current_active_user
         from app.database.connection import get_db
         from app.main import app
@@ -166,15 +166,16 @@ class TestAnalyzeRouteEndpoint:
         async def _fake_db():
             yield AsyncMock()
 
-        with patch(
-            "v2.modules.route_simulation.api.route_routes.RouteService"
-        ) as MockService:
-            svc = MockService.return_value
-            svc.get_route_details = AsyncMock(
-                return_value={"error": "Provider unavailable"}
-            )
-            svc.analyze_route_difficulty = MagicMock(return_value="Normal")
-
+        with (
+            patch(
+                "v2.modules.route_simulation.api.route_routes.get_route_details",
+                new=AsyncMock(return_value={"error": "Provider unavailable"}),
+            ),
+            patch(
+                "v2.modules.route_simulation.api.route_routes.get_route_difficulty",
+                new=MagicMock(return_value="Normal"),
+            ),
+        ):
             app.dependency_overrides[get_current_active_user] = _fake_user
             app.dependency_overrides[get_db] = _fake_db
             try:
@@ -193,7 +194,7 @@ class TestAnalyzeRouteEndpoint:
                 app.dependency_overrides.clear()
 
     async def test_analyze_route_success_returns_200(self):
-        """analyze_route returns 200 when RouteService succeeds."""
+        """analyze_route returns 200 when get_route_details succeeds."""
         from app.api.deps import get_current_active_user
         from app.database.connection import get_db
         from app.main import app
@@ -207,21 +208,24 @@ class TestAnalyzeRouteEndpoint:
         async def _fake_db():
             yield AsyncMock()
 
-        with patch(
-            "v2.modules.route_simulation.api.route_routes.RouteService"
-        ) as MockService:
-            svc = MockService.return_value
-            svc.get_route_details = AsyncMock(
-                return_value={
-                    "distance_km": 450.0,
-                    "duration_min": 300.0,
-                    "ascent_m": 200.0,
-                    "descent_m": 190.0,
-                    "source": "mapbox",
-                }
-            )
-            svc.analyze_route_difficulty = MagicMock(return_value="Normal")
-
+        with (
+            patch(
+                "v2.modules.route_simulation.api.route_routes.get_route_details",
+                new=AsyncMock(
+                    return_value={
+                        "distance_km": 450.0,
+                        "duration_min": 300.0,
+                        "ascent_m": 200.0,
+                        "descent_m": 190.0,
+                        "source": "mapbox",
+                    }
+                ),
+            ),
+            patch(
+                "v2.modules.route_simulation.api.route_routes.get_route_difficulty",
+                new=MagicMock(return_value="Normal"),
+            ),
+        ):
             app.dependency_overrides[get_current_active_user] = _fake_user
             app.dependency_overrides[get_db] = _fake_db
             try:

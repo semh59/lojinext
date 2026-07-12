@@ -47,7 +47,6 @@ if TYPE_CHECKING:
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
     from v2.modules.location.infrastructure.repository import LokasyonRepository
-    from v2.modules.route_simulation.application.get_route_details import RouteService
 
 
 class Container:
@@ -125,7 +124,6 @@ class Container:
         # Ağ bağımlı veya konfigürasyon tabanlı servisler.
         self._license_service: Optional["LicenseEngine"] = None
         self._health_service: Optional["HealthService"] = None
-        self._route_service: Optional["RouteService"] = None
         self._external_service = None
         self._weather_service = None
         self._export_service = None
@@ -376,18 +374,6 @@ class Container:
         return self._health_service
 
     @property
-    def route_service(self) -> "RouteService":
-        if self._route_service is None:
-            with self._lock:
-                if self._route_service is None:
-                    from v2.modules.route_simulation.application.get_route_details import (
-                        RouteService,
-                    )
-
-                    self._route_service = RouteService()
-        return self._route_service
-
-    @property
     def ai_service(self):
         if self._ai_service is None:
             with self._lock:
@@ -498,7 +484,6 @@ class Container:
             self._yakit_tahmin_service = None
             self._smart_ai_service = None
             self._ai_service = None
-            self._route_service = None
             self._health_service = None
             self._license_service = None
             self._time_series_service = None

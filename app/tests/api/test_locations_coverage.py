@@ -419,26 +419,23 @@ async def test_route_info_missing_params(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_route_info_success(async_client, admin_auth_headers):
-    """GET /route-info with mocked route service → 200."""
-    route_mock = AsyncMock()
-    route_mock.get_route_details = AsyncMock(
-        return_value={
-            "distance_km": 450.0,
-            "duration_min": 300.0,
-            "ascent_m": 500.0,
-            "descent_m": 500.0,
-            "otoban_mesafe_km": 400.0,
-            "sehir_ici_mesafe_km": 50.0,
-            "source": "mapbox",
-            "is_corrected": False,
-            "correction_reason": None,
-            "route_analysis": {},
-        }
-    )
-
+    """GET /route-info with mocked route details use-case → 200."""
     with patch(
-        "v2.modules.route_simulation.application.get_route_details.get_route_service",
-        return_value=route_mock,
+        "v2.modules.route_simulation.application.get_route_details.get_route_details",
+        new=AsyncMock(
+            return_value={
+                "distance_km": 450.0,
+                "duration_min": 300.0,
+                "ascent_m": 500.0,
+                "descent_m": 500.0,
+                "otoban_mesafe_km": 400.0,
+                "sehir_ici_mesafe_km": 50.0,
+                "source": "mapbox",
+                "is_corrected": False,
+                "correction_reason": None,
+                "route_analysis": {},
+            }
+        ),
     ):
         resp = await async_client.get(
             "/api/v1/locations/route-info"
@@ -452,14 +449,11 @@ async def test_route_info_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_route_info_provider_error(async_client, admin_auth_headers):
     """GET /route-info when provider returns error → 503."""
-    route_mock = AsyncMock()
-    route_mock.get_route_details = AsyncMock(
-        return_value={"error": "Mapbox unreachable", "provider_status": 503}
-    )
-
     with patch(
-        "v2.modules.route_simulation.application.get_route_details.get_route_service",
-        return_value=route_mock,
+        "v2.modules.route_simulation.application.get_route_details.get_route_details",
+        new=AsyncMock(
+            return_value={"error": "Mapbox unreachable", "provider_status": 503}
+        ),
     ):
         resp = await async_client.get(
             "/api/v1/locations/route-info"

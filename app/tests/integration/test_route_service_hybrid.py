@@ -43,7 +43,9 @@ class TestRouteServiceHybrid:
         self, db_session, monkeypatch
     ):
         """RouteService switches to Mapbox when RouteValidator detects an anomaly."""
-        from app.services.route_service import RouteService
+        from v2.modules.route_simulation.application.get_route_details import (
+            RouteService,
+        )
 
         _patch_ors_and_mapbox_base_urls(monkeypatch)
         monkeypatch.setattr(settings, "MAPBOX_API_KEY", "pk.test_key")
@@ -64,7 +66,9 @@ class TestRouteServiceHybrid:
         self, db_session, monkeypatch
     ):
         """RouteService falls back to ORS self-correction when Mapbox fails."""
-        from app.services.route_service import RouteService
+        from v2.modules.route_simulation.application.get_route_details import (
+            RouteService,
+        )
 
         _patch_ors_and_mapbox_base_urls(monkeypatch)
         # No Mapbox API key configured -> MapboxClient.get_route short-circuits

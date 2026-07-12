@@ -128,7 +128,7 @@ async def get_dashboard_weather_summary(
     guzergah_ids = {trip.guzergah_id for trip in all_active if trip.guzergah_id}
     routes_map = {}
     if guzergah_ids:
-        from app.database.repositories.lokasyon_repo import get_lokasyon_repo
+        from v2.modules.location.infrastructure.repository import get_lokasyon_repo
 
         lokasyon_repo = get_lokasyon_repo(db)
         all_routes = await lokasyon_repo.get_all(limit=1000)

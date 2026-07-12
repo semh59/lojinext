@@ -23,6 +23,10 @@ Sentinel davranışlar:
 - Mapbox çağrısı None döndü → None döner (caller 502)
 - Bütün elevation çağrısı None → grade_pct=0 default (degrade ama tamamlanır)
 - Bazı elevation None → o bucket için grade=0 fallback
+
+NOT (cross-module, geçici): ``VehicleSpecs`` (physics_fuel_predictor)
+prediction_ml modülüne ait, henüz taşınmadı — eski yoldan import ediliyor,
+dokümante edilmiş geçici bağımlılık.
 """
 
 from __future__ import annotations
@@ -31,18 +35,18 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from app.core.ml.physics_fuel_predictor import VehicleSpecs
-from app.core.ml.segment_simulator import (
+from app.infrastructure.logging.logger import get_logger
+from v2.modules.route_simulation.domain.segment_resampler import resample_segments
+from v2.modules.route_simulation.domain.segment_simulator import (
     SegmentInput,
     SegmentSummary,
     simulate_route,
 )
-from app.core.services.segment_resampler import resample_segments
-from app.infrastructure.elevation.open_meteo_client import (
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
+from v2.modules.route_simulation.infrastructure.open_meteo_client import (
     OpenMeteoElevationClient,
     get_elevation_client,
 )
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.routing.mapbox_client import MapboxClient
 
 logger = get_logger(__name__)
 

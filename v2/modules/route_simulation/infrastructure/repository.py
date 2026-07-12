@@ -3,9 +3,11 @@ TIR Yakıt Takip - Route Path Repository
 Rota geometrisi ve API cache yönetimi
 """
 
+import threading
 from typing import Dict, Optional
 
 from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
 from app.database.models import RoutePath
@@ -68,11 +70,6 @@ class RouteRepository(BaseRepository[RoutePath]):
 
 
 # Thread-safe Singleton
-import threading  # noqa: E402
-from typing import Optional  # noqa: E402
-
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
-
 _route_repo_lock = threading.Lock()
 _route_repo: Optional[RouteRepository] = None
 

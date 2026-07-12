@@ -14,13 +14,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.ml.segment_simulator import (
-    SegmentOutput,
-    SegmentSummary,
-)
-from app.core.services.route_simulator import (
+from v2.modules.route_simulation.application.simulate_route import (
     SimulationResult,
     get_route_simulator,
+)
+from v2.modules.route_simulation.domain.segment_simulator import (
+    SegmentOutput,
+    SegmentSummary,
 )
 
 pytestmark = pytest.mark.integration

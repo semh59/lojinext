@@ -1,4 +1,4 @@
-from app.domain.services.route_analyzer import RouteAnalyzer
+from v2.modules.route_simulation.domain.route_analyzer import RouteAnalyzer
 
 
 class TestRouteAnalyzer:

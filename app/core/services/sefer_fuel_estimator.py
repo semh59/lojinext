@@ -33,11 +33,6 @@ from app.core.ml.adjustment_factors import (
     weather_temperature_factor,
     weather_wind_factor,
 )
-from app.core.services.route_simulator import (
-    RouteSimulator,
-    SimulationResult,
-    get_route_simulator,
-)
 from app.core.services.weather_service import (
     WeatherSample,
     WeatherService,
@@ -52,6 +47,11 @@ from app.database.models import (
     Sofor,
 )
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.route_simulation.application.simulate_route import (
+    RouteSimulator,
+    SimulationResult,
+    get_route_simulator,
+)
 
 logger = get_logger(__name__)
 

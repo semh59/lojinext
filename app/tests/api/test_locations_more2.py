@@ -75,18 +75,22 @@ def _make_lokasyon_dict(**kwargs):
 
 
 @contextmanager
-def _override_lokasyon_service(mock_svc):
-    from app.api.deps import get_lokasyon_service
-    from app.main import app
+def _patch_location_route_function(name, side_effect=None, return_value=None):
+    """Patch a use-case function as imported into location_routes.py.
 
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_lokasyon_service] = _fake
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_lokasyon_service, None)
+    v2 rebuild: there is no LokasyonService/DI-overridable service anymore
+    (bkz. v2/modules/location/public.py) — location_routes.py calls the
+    standalone use-case functions directly, each imported at module level,
+    so the patch target is the *consuming* module's attribute.
+    """
+    target = f"v2.modules.location.api.location_routes.{name}"
+    kwargs = {}
+    if side_effect is not None:
+        kwargs["side_effect"] = side_effect
+    if return_value is not None:
+        kwargs["return_value"] = return_value
+    with patch(target, new=AsyncMock(**kwargs)) as mock_fn:
+        yield mock_fn
 
 
 # ---------------------------------------------------------------------------
@@ -113,19 +117,14 @@ async def test_route_info_success_explicit(async_client, admin_auth_headers):
     )
 
     with patch(
-        "app.api.v1.endpoints.locations.get_route_service",
+        "v2.modules.route_simulation.application.get_route_details.get_route_service",
         return_value=route_mock,
-        create=True,
     ):
-        with patch(
-            "app.services.route_service.get_route_service",
-            return_value=route_mock,
-        ):
-            resp = await async_client.get(
-                "/api/v1/locations/route-info"
-                "?cikis_lat=41.0&cikis_lon=29.0&varis_lat=39.9&varis_lon=32.8",
-                headers=admin_auth_headers,
-            )
+        resp = await async_client.get(
+            "/api/v1/locations/route-info"
+            "?cikis_lat=41.0&cikis_lon=29.0&varis_lat=39.9&varis_lon=32.8",
+            headers=admin_auth_headers,
+        )
 
     # Either 200 or 503 depending on mock scope; main goal is route executed
     assert resp.status_code in (200, 503)
@@ -142,7 +141,7 @@ async def test_route_info_error_with_provider_status(async_client, admin_auth_he
     )
 
     with patch(
-        "app.services.route_service.get_route_service",
+        "v2.modules.route_simulation.application.get_route_details.get_route_service",
         return_value=route_mock,
     ):
         resp = await async_client.get(
@@ -164,7 +163,7 @@ async def test_route_info_error_without_provider_status(
     )
 
     with patch(
-        "app.services.route_service.get_route_service",
+        "v2.modules.route_simulation.application.get_route_details.get_route_service",
         return_value=route_mock,
     ):
         resp = await async_client.get(
@@ -271,13 +270,13 @@ async def test_hydrate_provider_unavailable(
     sentinel koordinat (varis_lat=401.0) stub'ın gerçek 401 dönmesini
     tetikler → get_segments None → hydrate() None → endpoint 502."""
     from app.config import settings
-    from app.core.services.lokasyon_hydrator import (
+    from app.database.models import Lokasyon
+    from app.main import app
+    from v2.modules.location.domain.hydration import (
         LokasyonHydrator,
         get_lokasyon_hydrator,
     )
-    from app.database.models import Lokasyon
-    from app.infrastructure.routing.mapbox_client import MapboxClient
-    from app.main import app
+    from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
     fake_key = MagicMock()
     fake_key.__bool__ = lambda self: True
@@ -428,7 +427,7 @@ async def test_search_by_route_special_chars(async_client, admin_auth_headers):
 async def test_analyze_value_error_with_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze ValueError containing 'Analiz' → 503."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=ValueError("Analiz sağlayıcı çevrimdışı")),
     ):
         resp = await async_client.post(
@@ -442,7 +441,7 @@ async def test_analyze_value_error_with_analiz(async_client, admin_auth_headers)
 async def test_analyze_value_error_without_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze ValueError not containing 'Analiz' → 400."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=ValueError("koordinat geçersiz")),
     ):
         resp = await async_client.post(
@@ -456,7 +455,7 @@ async def test_analyze_value_error_without_analiz(async_client, admin_auth_heade
 async def test_analyze_generic_exception(async_client, admin_auth_headers):
     """POST /{id}/analyze generic exception → 500."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=RuntimeError("unexpected")),
     ):
         resp = await async_client.post(
@@ -475,7 +474,7 @@ async def test_analyze_generic_exception(async_client, admin_auth_headers):
 async def test_create_generic_exception(async_client, admin_auth_headers):
     """POST / generic exception → 500 (exception raised before UoW fetch needed)."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
+        "v2.modules.location.api.location_routes.create_location",
         new=AsyncMock(side_effect=RuntimeError("db crash")),
     ):
         resp = await async_client.post(
@@ -499,7 +498,7 @@ async def test_create_generic_exception(async_client, admin_auth_headers):
 async def test_update_generic_exception(async_client, admin_auth_headers):
     """PUT /{id} generic exception → 500 (exception raised before UoW post-update fetch)."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
+        "v2.modules.location.api.location_routes.update_location",
         new=AsyncMock(side_effect=RuntimeError("db crash")),
     ):
         resp = await async_client.put(
@@ -566,7 +565,7 @@ async def test_delete_inactive_hard_delete(
     await db_session.flush()
 
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        "v2.modules.location.api.location_routes.delete_location",
         new=AsyncMock(return_value=True),
     ):
         resp = await async_client.delete(
@@ -590,7 +589,7 @@ async def test_delete_generic_exception(async_client, admin_auth_headers, db_ses
     await db_session.flush()
 
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        "v2.modules.location.api.location_routes.delete_location",
         new=AsyncMock(side_effect=RuntimeError("unexpected")),
     ):
         resp = await async_client.delete(
@@ -610,10 +609,9 @@ async def test_geocode_domain_error_reraise(async_client, admin_auth_headers):
     """GET /geocode DomainError is re-raised (not converted to 500)."""
     from app.core.exceptions import DomainError
 
-    mock_svc = AsyncMock()
-    mock_svc.geocode_query = AsyncMock(side_effect=DomainError("domain issue"))
-
-    with _override_lokasyon_service(mock_svc):
+    with _patch_location_route_function(
+        "geocode_location", side_effect=DomainError("domain issue")
+    ):
         resp = await async_client.get(
             "/api/v1/locations/geocode?q=Istanbul",
             headers=admin_auth_headers,
@@ -627,12 +625,10 @@ async def test_geocode_http_exception_passthrough(async_client, admin_auth_heade
     """GET /geocode HTTPException is re-raised directly."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.geocode_query = AsyncMock(
-        side_effect=HTTPException(status_code=429, detail="rate limited")
-    )
-
-    with _override_lokasyon_service(mock_svc):
+    with _patch_location_route_function(
+        "geocode_location",
+        side_effect=HTTPException(status_code=429, detail="rate limited"),
+    ):
         resp = await async_client.get(
             "/api/v1/locations/geocode?q=Istanbul",
             headers=admin_auth_headers,
@@ -650,10 +646,9 @@ async def test_list_domain_error_passthrough(async_client, admin_auth_headers):
     """GET / DomainError is re-raised."""
     from app.core.exceptions import DomainError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain err"))
-
-    with _override_lokasyon_service(mock_svc):
+    with _patch_location_route_function(
+        "list_locations", side_effect=DomainError("domain err")
+    ):
         resp = await async_client.get("/api/v1/locations/", headers=admin_auth_headers)
 
     assert resp.status_code in (400, 422, 503, 500)
@@ -663,12 +658,10 @@ async def test_list_http_exception_passthrough(async_client, admin_auth_headers)
     """GET / HTTPException is re-raised."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="service down")
-    )
-
-    with _override_lokasyon_service(mock_svc):
+    with _patch_location_route_function(
+        "list_locations",
+        side_effect=HTTPException(status_code=503, detail="service down"),
+    ):
         resp = await async_client.get("/api/v1/locations/", headers=admin_auth_headers)
 
     assert resp.status_code == 503

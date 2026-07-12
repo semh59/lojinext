@@ -66,7 +66,7 @@ class TestSerializeSimulation:
 
     def test_serialize_simulation_basic(self):
         """_serialize_simulation converts ORM to response shape."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = self._make_sim()
         seg = self._make_segment(seq=0)
@@ -81,7 +81,7 @@ class TestSerializeSimulation:
 
     def test_serialize_simulation_empty_segments(self):
         """_serialize_simulation works with no segments."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = self._make_sim()
         result = _serialize_simulation(sim, [])
@@ -89,7 +89,7 @@ class TestSerializeSimulation:
 
     def test_serialize_simulation_none_road_class(self):
         """_serialize_simulation converts None road_class to empty string."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = self._make_sim()
         seg = self._make_segment()
@@ -99,7 +99,7 @@ class TestSerializeSimulation:
 
     def test_serialize_duration_in_minutes(self):
         """duration_min is correctly computed from total_eta_sec / 60."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = self._make_sim()
         sim.total_eta_sec = 3600.0  # 1 hour
@@ -115,7 +115,7 @@ class TestSerializeSimulation:
 class TestRouteSimulateRequest:
     def test_defaults(self):
         """RouteSimulateRequest defaults are applied."""
-        from app.api.v1.endpoints.routes import RouteSimulateRequest
+        from v2.modules.route_simulation.api.route_routes import RouteSimulateRequest
 
         req = RouteSimulateRequest()
         assert req.ton == 15.0
@@ -125,7 +125,7 @@ class TestRouteSimulateRequest:
 
     def test_with_coords(self):
         """RouteSimulateRequest accepts optional coordinates."""
-        from app.api.v1.endpoints.routes import RouteSimulateRequest
+        from v2.modules.route_simulation.api.route_routes import RouteSimulateRequest
 
         req = RouteSimulateRequest(
             cikis_lat=41.0,
@@ -166,7 +166,9 @@ class TestAnalyzeRouteEndpoint:
         async def _fake_db():
             yield AsyncMock()
 
-        with patch("app.api.v1.endpoints.routes.RouteService") as MockService:
+        with patch(
+            "v2.modules.route_simulation.api.route_routes.RouteService"
+        ) as MockService:
             svc = MockService.return_value
             svc.get_route_details = AsyncMock(
                 return_value={"error": "Provider unavailable"}
@@ -205,7 +207,9 @@ class TestAnalyzeRouteEndpoint:
         async def _fake_db():
             yield AsyncMock()
 
-        with patch("app.api.v1.endpoints.routes.RouteService") as MockService:
+        with patch(
+            "v2.modules.route_simulation.api.route_routes.RouteService"
+        ) as MockService:
             svc = MockService.return_value
             svc.get_route_details = AsyncMock(
                 return_value={
@@ -251,10 +255,12 @@ class TestSimulateRouteLogic:
         from httpx._transports.asgi import ASGITransport
 
         from app.api.deps import get_current_active_user
-        from app.core.services.route_simulator import get_route_simulator
         from app.database.connection import get_db
         from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
         from app.main import app
+        from v2.modules.route_simulation.application.simulate_route import (
+            get_route_simulator,
+        )
 
         async def _fake_user():
             return fake_user
@@ -341,7 +347,7 @@ class TestSimulateRouteLogic:
         Pydantic kısıtına sahip (401.0 doğrudan payload'da 422'ye düşer) —
         sentinel bu yüzden lokasyon_id yolundan geçiriliyor: Lokasyon.cikis_lat/
         varis_lat düz DB float kolonu, Pydantic kısıtı yok."""
-        import app.core.services.route_simulator as sim_mod
+        import v2.modules.route_simulation.application.simulate_route as sim_mod
         from app.config import settings
         from app.database.models import Lokasyon
 

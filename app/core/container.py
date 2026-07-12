@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from app.core.services.health_service import HealthService
     from app.core.services.import_service import ImportService
     from app.core.services.license_service import LicenseEngine
-    from app.core.services.lokasyon_service import LokasyonService
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_analiz_service import SoforAnalizService
@@ -40,15 +39,15 @@ if TYPE_CHECKING:
     from app.database.repositories.analiz_repo import AnalizRepository
     from app.database.repositories.arac_repo import AracRepository
     from app.database.repositories.dorse_repo import DorseRepository
-    from app.database.repositories.lokasyon_repo import LokasyonRepository
     from app.database.repositories.sefer_repo import SeferRepository
     from app.database.repositories.sofor_repo import SoforRepository
     from app.database.repositories.yakit_repo import YakitRepository
     from app.infrastructure.events.event_bus import EventBus
     from app.services.prediction_service import PredictionService
-    from app.services.route_service import RouteService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.location.infrastructure.repository import LokasyonRepository
+    from v2.modules.route_simulation.application.get_route_details import RouteService
 
 
 class Container:
@@ -102,7 +101,6 @@ class Container:
         self._sofor_service: Optional["SoforService"] = None
         self._sefer_service: Optional["SeferService"] = None
         self._yakit_service: Optional["YakitService"] = None
-        self._lokasyon_service: Optional["LokasyonService"] = None
         self._dorse_service: Optional["DorseService"] = None
         self._analiz_service: Optional["AnalizService"] = None
 
@@ -190,7 +188,7 @@ class Container:
         if self._lokasyon_repo is None:
             with self._lock:
                 if self._lokasyon_repo is None:
-                    from app.database.repositories.lokasyon_repo import (
+                    from v2.modules.location.infrastructure.repository import (
                         LokasyonRepository,
                     )
 
@@ -256,18 +254,6 @@ class Container:
                         repo=self.yakit_repo, event_bus=self.event_bus
                     )
         return self._yakit_service
-
-    @property
-    def lokasyon_service(self) -> "LokasyonService":
-        if self._lokasyon_service is None:
-            with self._lock:
-                if self._lokasyon_service is None:
-                    from app.core.services.lokasyon_service import LokasyonService
-
-                    self._lokasyon_service = LokasyonService(
-                        repo=self.lokasyon_repo, event_bus=self.event_bus
-                    )
-        return self._lokasyon_service
 
     @property
     def dorse_service(self) -> "DorseService":
@@ -394,7 +380,9 @@ class Container:
         if self._route_service is None:
             with self._lock:
                 if self._route_service is None:
-                    from app.services.route_service import RouteService
+                    from v2.modules.route_simulation.application.get_route_details import (
+                        RouteService,
+                    )
 
                     self._route_service = RouteService()
         return self._route_service
@@ -519,7 +507,6 @@ class Container:
             self._report_service = None
             self._import_service = None
             self._analiz_service = None
-            self._lokasyon_service = None
             self._sefer_service = None
             self._sofor_service = None
             self._arac_service = None

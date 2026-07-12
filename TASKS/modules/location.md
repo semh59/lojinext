@@ -1,7 +1,8 @@
 # Modül Görevi: location (PİLOT — dalga 1/17)
 
-> **DURMA NOKTASI:** Bu görev, kullanıcının açık onayı olmadan uygulanmaz.
-> **1. Adım:** `app/modules/location/CLAUDE.md` henüz yok — bu görev onu oluşturur (bkz. madde 7). Sonraki her oturumda, bu modülde çalışmadan önce o dosya Read ile okunur.
+> **DURUM (2026-07-12): KOD+TEST TAMAM.** Hedef klasör bu dosyanın yazıldığı andan sonra `app/modules/location/` → **`v2/modules/location/`** olarak değişti (bkz. `TASKS/STATUS.md` "KARAR (2026-07-12)"), ve "eski dosyalarda tek-satır shim" stratejisi terk edildi — eski 5 dosya shim'siz TAMAMEN SİLİNDİ. Aşağıdaki plan (adım 6, shim) bu yüzden GÜNCEL DEĞİL; gerçek uygulanan hâl için `v2/modules/location/CLAUDE.md` ve `TASKS/STATUS.md`'deki "DALGA 1" bölümüne bakın. Bu dosya tarihsel planlama kaydı olarak kalıyor.
+>
+> **1. Adım:** ~~`app/modules/location/CLAUDE.md` henüz yok~~ → **`v2/modules/location/CLAUDE.md` yazıldı ve dolu.**
 
 **Neden pilot:** En küçük modül (5 dosya / 1.695 LOC, 2 tablo), dış bağımlılığı düşük (in=3 import statement), taşıma deseninin ilk kez kanıtlanacağı yer.
 

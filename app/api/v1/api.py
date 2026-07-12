@@ -31,14 +31,12 @@ from app.api.v1.endpoints import (
     health,
     internal,
     investigations,
-    locations,
     maintenance,
     predictions,
     preferences,
     push,
     reports,
     reports_studio,
-    routes,
     system,
     today_triage,
     trailers,
@@ -48,10 +46,12 @@ from app.api.v1.endpoints import (
     weather,
     ws_ticket,
 )
+from v2.modules.location.api.location_routes import router as location_router
+from v2.modules.route_simulation.api.route_routes import router as route_router
 
 api_router = APIRouter()
-api_router.include_router(routes.router, prefix="/routes", tags=["routes"])
-api_router.include_router(locations.router, prefix="/locations", tags=["locations"])
+api_router.include_router(route_router, prefix="/routes", tags=["routes"])
+api_router.include_router(location_router, prefix="/locations", tags=["locations"])
 api_router.include_router(
     maintenance.router, prefix="/maintenance", tags=["maintenance"]
 )

@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.routing.openroute_client import OpenRouteClient
+from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 
 class TestOpenRouteClient:
@@ -76,7 +76,7 @@ class TestOpenRouteClientIntegration:
     )
     @pytest.mark.asyncio
     @patch(
-        "app.infrastructure.routing.openroute_client.OpenRouteClient._call_api",
+        "v2.modules.route_simulation.infrastructure.openroute_client.OpenRouteClient._call_api",
         new_callable=AsyncMock,
     )
     async def test_real_api_call(self, mock_call):

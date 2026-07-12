@@ -1,6 +1,8 @@
 # Modül Görevi: route_simulation (dalga 7/17)
 
-> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz. **1. Adım:** `app/modules/route_simulation/CLAUDE.md`'yi Read ile oku.
+> **DURUM (2026-07-12): KOD+API TAMAM, orkestrasyon-yan-parçaları kapsam dışı bırakıldı.** Hedef klasör `app/modules/route_simulation/` → **`v2/modules/route_simulation/`**. Bu modül aslında dalga 1'de (location ile birlikte, 7 karşılıklı-bağımlı kenar yüzünden) taşındı — "dalga 7" artık geçerli değil. Tamamlanan: `mapbox_client.py`, `open_meteo_client.py`, `openroute_client.py`, `polyline.py`, `route_analyzer.py`, `segment_simulator.py`, `segment_resampler.py`, `repository.py`, `get_route_details.py` (RouteService), `simulate_route.py` (RouteSimulator), `route_routes.py`. KALAN (bu görevin ileriki dilimi): `weather_service.py`, `route_validator.py`, `openroute_service.py`, `route_calibration_service.py`, `weather.py`/`admin_calibration.py` endpoint'leri, `route_similarity.py` — hâlâ eski `app/` yolunda. Gerçek uygulanan hâl için `v2/modules/route_simulation/CLAUDE.md` ve `TASKS/STATUS.md`'ye bakın. Bu dosya tarihsel planlama kaydı olarak kalıyor.
+>
+> **1. Adım:** ~~`app/modules/route_simulation/CLAUDE.md`'yi Read ile oku~~ → **`v2/modules/route_simulation/CLAUDE.md` yazıldı ve dolu.**
 
 **Giriş kriteri:** auth-rbac dalgası tamamlandı. **Çıkış kriteri:** import-linter kontratı yeşil.
 

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.lokasyon import (
+from v2.modules.location.schemas import (
     LokasyonBase,
     LokasyonCreate,
     LokasyonResponse,

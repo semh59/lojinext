@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from app.infrastructure.routing.mapbox_client import MapboxClient
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 pytestmark = pytest.mark.integration
 

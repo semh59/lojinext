@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.ml.segment_simulator import SegmentInput
-from app.infrastructure.routing.mapbox_client import MapboxClient
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 
 class FakeCache:

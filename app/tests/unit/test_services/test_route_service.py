@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.config import settings
-from app.services.route_service import RouteService
+from v2.modules.route_simulation.application.get_route_details import RouteService
 
 pytestmark = pytest.mark.integration
 
@@ -36,7 +36,7 @@ async def test_get_route_details_parses_waycategory_and_returns_analysis(
     route_service.api_key = "test_key"
 
     with patch(
-        "app.services.route_service.get_prediction_service"
+        "app.services.prediction_service.get_prediction_service"
     ) as mock_get_pred_service:
         mock_pred_service = MagicMock()
         mock_get_pred_service.return_value = mock_pred_service

@@ -8,14 +8,14 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import SessionDep, get_current_active_user
 from app.core.ml.physics_fuel_predictor import VehicleSpecs
-from app.core.services.route_simulator import (
-    RouteSimulator,
-    get_route_simulator,
-)
 from app.database.models import Arac, Kullanici, Lokasyon, RouteSegment, RouteSimulation
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import RouteAnalysisResponse
-from app.services.route_service import RouteService
+from v2.modules.route_simulation.application.get_route_details import RouteService
+from v2.modules.route_simulation.application.simulate_route import (
+    RouteSimulator,
+    get_route_simulator,
+)
 
 router = APIRouter()
 

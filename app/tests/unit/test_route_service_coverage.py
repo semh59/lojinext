@@ -26,7 +26,7 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def route_service(monkeypatch):
-    from app.services.route_service import RouteService
+    from v2.modules.route_simulation.application.get_route_details import RouteService
 
     monkeypatch.setattr(settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2")
     svc = RouteService()

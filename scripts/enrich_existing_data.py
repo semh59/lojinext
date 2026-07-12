@@ -18,7 +18,9 @@ from sqlalchemy import select, update  # noqa: E402
 from app.database.connection import AsyncSessionLocal  # noqa: E402
 from app.database.models import Lokasyon, Sefer  # noqa: E402
 from app.infrastructure.logging.logger import get_logger  # noqa: E402
-from app.infrastructure.routing.openroute_client import OpenRouteClient  # noqa: E402
+from v2.modules.route_simulation.infrastructure.openroute_client import (  # noqa: E402
+    OpenRouteClient,
+)
 
 logger = get_logger(__name__)
 

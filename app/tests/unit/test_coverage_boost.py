@@ -762,13 +762,13 @@ class TestIdempotencyGuard:
 
 class TestPolylineDecoder:
     def test_empty_string(self):
-        from app.core.utils.polyline import PolylineDecoder
+        from v2.modules.route_simulation.domain.polyline import PolylineDecoder
 
         result = PolylineDecoder.decode("")
         assert result == []
 
     def test_known_polyline(self):
-        from app.core.utils.polyline import PolylineDecoder
+        from v2.modules.route_simulation.domain.polyline import PolylineDecoder
 
         # "_p~iF~ps|U_ulLnnqC_mqNvxq`@" encodes 3 known points
         encoded = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
@@ -779,7 +779,7 @@ class TestPolylineDecoder:
         assert abs(lng0 - (-120.2)) < 0.01
 
     def test_single_point(self):
-        from app.core.utils.polyline import PolylineDecoder
+        from v2.modules.route_simulation.domain.polyline import PolylineDecoder
 
         # Istanbul approx: 41.015, 28.979 → encode manually
         # Simple test: decode should return at least 1 point for non-empty valid input
@@ -788,7 +788,7 @@ class TestPolylineDecoder:
         assert len(points) == 1
 
     def test_negative_coordinates(self):
-        from app.core.utils.polyline import PolylineDecoder
+        from v2.modules.route_simulation.domain.polyline import PolylineDecoder
 
         # Negative coordinates are properly decoded
         encoded = "_p~iF~ps|U_ulLnnqC_mqNvxq`@"
@@ -796,7 +796,7 @@ class TestPolylineDecoder:
         assert any(lng < 0 for _, lng in points)
 
     def test_returns_float_tuples(self):
-        from app.core.utils.polyline import PolylineDecoder
+        from v2.modules.route_simulation.domain.polyline import PolylineDecoder
 
         encoded = "_p~iF~ps|U"
         points = PolylineDecoder.decode(encoded)

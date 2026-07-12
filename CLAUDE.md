@@ -124,9 +124,20 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 
 `app/core/container.py` is the singleton DI container. All major services (SeferService, AracService, AIService, RAGEngine, etc.) are lazy-loaded, thread-safe properties. Endpoints receive services via FastAPI `Depends()` wired through `app/api/deps.py`. In tests, patch `container_mod.*` or pass explicit instances.
 
+### v2 modular-monolith rebuild (in progress)
+
+`v2/modules/<name>/` is the target architecture for a from-scratch, vertical-slice rebuild — `api/`, `application/`, `domain/`, `infrastructure/`, plus `public.py` (the module's only external surface), `events.py`, and a per-module `CLAUDE.md`. **Always `Read` a module's own `v2/modules/<name>/CLAUDE.md` before touching its code** — it documents that module's exact public API, cross-module dependencies (including temporary/undone ones), and gotchas; this root file only tracks which modules exist and their end-state intent. New code for a migrated domain goes in `v2/`, never back into the old `app/` location — once a module is migrated, its old `app/` files are deleted (not shimmed), and any remaining `app/` consumers are updated to import from `v2.modules.<name>...` directly.
+
+| Module | Status | CLAUDE.md |
+|---|---|---|
+| `location` | Done (code) — CRUD, geocoding, route hydration | `v2/modules/location/CLAUDE.md` |
+| `route_simulation` | Partial — ORS/Mapbox/Open-Meteo clients + segment simulator + `/routes` endpoints done; `weather_service.py`/`route_validator.py`/`openroute_service.py`/`route_calibration_service.py`/`admin_calibration.py` endpoint still on old `app/` paths; module has no `public.py`/`events.py` yet | `v2/modules/route_simulation/CLAUDE.md` |
+
+There is no `LokasyonService`/`RouteService`-as-DI-singleton-only pattern inside these modules for CRUD-style use-cases — each use-case in `location` is a standalone function (see that module's `public.py` docstring). `route_simulation`'s two orchestrators (`RouteService`, `RouteSimulator`) remain classes because they're single cohesive pipelines (cache → provider → fallback → persist), not multi-use-case service objects — same rationale as `LokasyonHydrator`.
+
 ### Route grade/segment analysis
 
-`app/domain/services/route_analyzer.py` — module-level `RouteAnalyzer` singleton, `analyze_segments()` classifies elevation-derived grade % into `GradeClass` buckets (downhill_steep/moderate, flat, uphill_moderate/steep) and groups consecutive same-class points into segments. Used by `openroute_client.py` and `route_service.py`'s route-simulation path — not dead code, just previously undocumented here.
+`v2/modules/route_simulation/domain/route_analyzer.py` — module-level `RouteAnalyzer` singleton (`route_analyzer`), `analyze_segments()` classifies elevation-derived grade % into `GradeClass` buckets (downhill_steep/moderate, flat, uphill_moderate/steep) and groups consecutive same-class points into segments. Used by `v2/modules/route_simulation/infrastructure/openroute_client.py` and `application/get_route_details.py`'s route-simulation path.
 
 ### Unit of Work
 
@@ -351,7 +362,7 @@ Project lives in EU (`de.sentry.io`). API base is `https://de.sentry.io/api/0/`,
 
 Free tier nominal 600 req/min ama **saturated minute**'da 429 hızla biter. Tek sefer simülasyonu 5-10 elevation chunk + 2-N weather midpoint atıyor → tek istemcide dahi sınıra çarpar.
 
-Pattern (P5.1 sonrası): 429 → `Retry-After` header (varsa) veya 1.5s + tek retry. 5xx/network hataları `with_async_retry` decorator'ında zaten 3 deneme exponential backoff. Yeni Open-Meteo endpoint çağrısı eklerken aynı pattern'i koru — yoksa `app/infrastructure/elevation/open_meteo_client.py:_request_once`'taki gibi 4xx sessizce None'a düşer ve physics underestimate eder (ANK-KON elevation_coverage=0% bulundu, P5.1).
+Pattern (P5.1 sonrası): 429 → `Retry-After` header (varsa) veya 1.5s + tek retry. 5xx/network hataları `with_async_retry` decorator'ında zaten 3 deneme exponential backoff. Yeni Open-Meteo endpoint çağrısı eklerken aynı pattern'i koru — yoksa `v2/modules/route_simulation/infrastructure/open_meteo_client.py:_request_once`'taki gibi 4xx sessizce None'a düşer ve physics underestimate eder (ANK-KON elevation_coverage=0% bulundu, P5.1).
 
 ### Container'da script çalıştırma
 

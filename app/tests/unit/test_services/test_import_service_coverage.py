@@ -816,7 +816,9 @@ class TestRouteServiceLazyProperty:
         svc = ImportService()
         assert svc._route_service_lazy is None
 
-        with patch("app.services.route_service.RouteService") as MockRS:
+        with patch(
+            "v2.modules.route_simulation.application.get_route_details.RouteService"
+        ) as MockRS:
             MockRS.return_value = MagicMock()
             rs = svc.route_service
             rs2 = svc.route_service  # second access should be same instance
@@ -1144,22 +1146,17 @@ class TestImportRoutesExtra:
             ]
         )
 
-        good_service = AsyncMock()
-        good_service.add_lokasyon = AsyncMock(return_value=1)
-        bad_service = AsyncMock()
-        bad_service.add_lokasyon = AsyncMock(side_effect=ValueError("invalid lokasyon"))
-
         call_count = [0]
 
-        def _make_lokasyon_service(**kwargs):
+        async def _fake_create_location(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
-                return good_service
-            return bad_service
+                return 1
+            raise ValueError("invalid lokasyon")
 
         monkeypatch.setattr(
-            "app.core.services.lokasyon_service.LokasyonService",
-            _make_lokasyon_service,
+            "v2.modules.location.application.create_location.create_location",
+            _fake_create_location,
         )
 
         count, errors = await svc.import_routes(b"fake")

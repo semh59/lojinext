@@ -9,6 +9,14 @@ TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: Güzergah servisi — HTTP client pool, ORS API wrapper.
 CREATED_BY: app/core/container.py (lazy property)
+
+NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) ve
+``prediction_service`` (prediction_ml modülü) henüz v2'ye taşınmadı — eski
+yoldan import ediliyor, dokümante edilmiş geçici bağımlılık.
+
+Kept as one cohesive class (B.1 istisnası, ``LokasyonHydrator`` ile aynı
+gerekçe): tek bir orkestrasyon akışı (cache → ORS → Mapbox hibrit fallback →
+fuel-estimate → persist), yardımcı metodlar yalnız bu akışa hizmet ediyor.
 """
 
 import math
@@ -16,14 +24,14 @@ import os
 from typing import Dict, Optional, Tuple
 
 from app.config import settings
-from app.core.services.route_validator import RouteValidator
 from app.database.unit_of_work import unit_of_work as get_uow
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.circuit_breaker import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
 )
-from app.services.prediction_service import get_prediction_service
+from v2.modules.route_simulation.domain.route_analyzer import route_analyzer
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 logger = get_logger(__name__)
 
@@ -69,6 +77,8 @@ class RouteService:
 
         Returns an error payload with `error_code` when provider access fails.
         """
+        from app.core.services.route_validator import RouteValidator
+
         lon1, lat1 = start_coords
         lon2, lat2 = end_coords
 
@@ -205,8 +215,6 @@ class RouteService:
             ascent = props.get("ascent", 0.0) * smoothing_factor
             descent = props.get("descent", 0.0) * smoothing_factor
 
-            from app.domain.services.route_analyzer import route_analyzer
-
             analysis_result = route_analyzer.analyze_segments(
                 geometry["coordinates"],
                 props.get("extras", {}),
@@ -243,8 +251,6 @@ class RouteService:
                     "ORS anomaly detected (%s). Trying Mapbox hybrid fallback.",
                     result.get("correction_reason"),
                 )
-                from app.infrastructure.routing.mapbox_client import MapboxClient
-
                 mapbox_client = MapboxClient()
                 mb_result = None
                 try:
@@ -309,6 +315,8 @@ class RouteService:
             )
 
             try:
+                from app.services.prediction_service import get_prediction_service
+
                 pred_service = get_prediction_service()
                 fuel_estimate = await pred_service.predict_consumption(
                     arac_id=0,
@@ -449,7 +457,7 @@ class RouteService:
         return self._get_route_difficulty(ascent, descent, distance_km)
 
 
-def get_route_service() -> RouteService:
+def get_route_service() -> "RouteService":
     """Return the container-managed route service singleton."""
     from app.core.container import get_container
 

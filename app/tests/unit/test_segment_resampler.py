@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from app.core.ml.segment_simulator import SegmentInput
-from app.core.services.segment_resampler import resample_segments
-from app.infrastructure.routing.mapbox_client import MapboxClient
+from v2.modules.route_simulation.domain.segment_resampler import resample_segments
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 SAMPLES_DIR = Path(
     "docs/superpowers/plans/2026-05-29-route-segment-simulation-plan-mapbox-samples"

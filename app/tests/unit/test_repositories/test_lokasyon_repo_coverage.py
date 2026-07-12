@@ -35,7 +35,7 @@ pytestmark = pytest.mark.integration
 
 def _make_repo(session=None):
     """Return a LokasyonRepository with a mocked async session."""
-    from app.database.repositories.lokasyon_repo import LokasyonRepository
+    from v2.modules.location.infrastructure.repository import LokasyonRepository
 
     repo = LokasyonRepository.__new__(LokasyonRepository)
     repo._session = session if session is not None else AsyncMock()
@@ -132,8 +132,8 @@ class TestLokasyonRepoGetByRoute:
     eşleme (neutralize_sql, İ/ı harmanlama) gerçek Postgres'e karşı kanıtlanır."""
 
     async def test_found_returns_dict(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
         from app.tests._helpers.seed import seed_lokasyon
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         await seed_lokasyon(db_session, cikis_yeri="İstanbul", varis_yeri="Ankara")
         await db_session.commit()
@@ -144,7 +144,7 @@ class TestLokasyonRepoGetByRoute:
         assert result["cikis_yeri"] == "İstanbul"
 
     async def test_not_found_returns_none(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         repo = LokasyonRepository(session=db_session)
         result = await repo.get_by_route("NonExist", "NoWhere")
@@ -192,8 +192,8 @@ class TestLokasyonRepoGetBenzersizLokasyonlar:
     clamping gerçek SQL ile kanıtlanır."""
 
     async def test_returns_list_of_location_names(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
         from app.tests._helpers.seed import seed_lokasyon
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         await seed_lokasyon(db_session, cikis_yeri="Ankara", varis_yeri="İstanbul")
         await seed_lokasyon(db_session, cikis_yeri="İzmir", varis_yeri="Ankara")
@@ -204,7 +204,7 @@ class TestLokasyonRepoGetBenzersizLokasyonlar:
         assert set(result) == {"Ankara", "İstanbul", "İzmir"}
 
     async def test_returns_empty_list(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         repo = LokasyonRepository(session=db_session)
         result = await repo.get_benzersiz_lokasyonlar()
@@ -212,7 +212,7 @@ class TestLokasyonRepoGetBenzersizLokasyonlar:
 
     async def test_limit_clamped_to_5000(self, db_session):
         """Limit above 5000 is clamped to 5000 (gerçek sorgu hata vermeden döner)."""
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         repo = LokasyonRepository(session=db_session)
         # Gerçek clamp'i doğrudan gözlemlemek yerine (private davranış),
@@ -221,8 +221,8 @@ class TestLokasyonRepoGetBenzersizLokasyonlar:
         assert isinstance(result, list)
 
     async def test_limit_minimum_is_1(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
         from app.tests._helpers.seed import seed_lokasyon
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B")
         await seed_lokasyon(db_session, cikis_yeri="C", varis_yeri="D")
@@ -234,8 +234,8 @@ class TestLokasyonRepoGetBenzersizLokasyonlar:
 
     async def test_offset_minimum_is_0(self, db_session):
         """Negative offset is clamped to 0 (gerçek sorgu hata vermeden döner)."""
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
         from app.tests._helpers.seed import seed_lokasyon
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B")
         await db_session.commit()
@@ -457,7 +457,7 @@ class TestLokasyonRepoFindClosestMatch:
 class TestGetLokasyonRepo:
     def test_session_arg_returns_new_instance(self):
         """Passing session always returns a fresh LokasyonRepository."""
-        from app.database.repositories.lokasyon_repo import get_lokasyon_repo
+        from v2.modules.location.infrastructure.repository import get_lokasyon_repo
 
         mock_session = MagicMock()
         repo = get_lokasyon_repo(session=mock_session)
@@ -465,8 +465,8 @@ class TestGetLokasyonRepo:
 
     def test_no_session_returns_singleton(self):
         """Calling twice without session returns same singleton."""
-        import app.database.repositories.lokasyon_repo as mod
-        from app.database.repositories.lokasyon_repo import get_lokasyon_repo
+        import v2.modules.location.infrastructure.repository as mod
+        from v2.modules.location.infrastructure.repository import get_lokasyon_repo
 
         # Reset singleton for clean test
         mod._lokasyon_repo = None
@@ -476,8 +476,8 @@ class TestGetLokasyonRepo:
 
     def test_no_session_singleton_is_lokasyon_repo(self):
         """Singleton instance is LokasyonRepository."""
-        import app.database.repositories.lokasyon_repo as mod
-        from app.database.repositories.lokasyon_repo import (
+        import v2.modules.location.infrastructure.repository as mod
+        from v2.modules.location.infrastructure.repository import (
             LokasyonRepository,
             get_lokasyon_repo,
         )

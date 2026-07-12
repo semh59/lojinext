@@ -16,7 +16,7 @@ from sqlalchemy import insert, select
 
 from app.config import settings
 from app.database.models import Lokasyon
-from app.infrastructure.routing.openroute_client import OpenRouteClient
+from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 
 @pytest.mark.asyncio

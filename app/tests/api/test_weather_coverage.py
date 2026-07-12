@@ -355,7 +355,7 @@ class TestDashboardWeatherSummary:
         # patch it in its defining module.
         mock_db = AsyncMock()
         with patch(
-            "app.database.repositories.lokasyon_repo.get_lokasyon_repo"
+            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
         ) as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
@@ -400,7 +400,7 @@ class TestDashboardWeatherSummary:
 
         mock_db = AsyncMock()
         with patch(
-            "app.database.repositories.lokasyon_repo.get_lokasyon_repo"
+            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
         ) as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
@@ -445,7 +445,7 @@ class TestDashboardWeatherSummary:
 
         mock_db = AsyncMock()
         with patch(
-            "app.database.repositories.lokasyon_repo.get_lokasyon_repo"
+            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
         ) as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
@@ -489,7 +489,7 @@ class TestDashboardWeatherSummary:
 
         mock_db = AsyncMock()
         with patch(
-            "app.database.repositories.lokasyon_repo.get_lokasyon_repo"
+            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
         ) as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(

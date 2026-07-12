@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.api.v1.endpoints.routes import _serialize_simulation
+from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
 pytestmark = pytest.mark.unit
 

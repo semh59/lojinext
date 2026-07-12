@@ -1,10 +1,28 @@
 """
-LokasyonService coverage tests — targeting uncovered branches.
+Location use-case coverage tests — targeting uncovered branches.
+
+v2 rebuild: LokasyonService sınıfı yok, her use-case standalone fonksiyon
+(bkz. v2/modules/location/public.py docstring'i).
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from v2.modules.location.application.analyze_location_route import (
+    analyze_location_route,
+)
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.application.delete_location import delete_location
+from v2.modules.location.application.geocode_location import geocode_location
+from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.infrastructure.geocode_providers import (
+    dedupe_geocode_results,
+    geocode_via_offline,
+    geocode_via_openroute,
+)
+from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.location.schemas import LokasyonCreate
 
 # 0-mock epiği CTO denetimi (bağımsız ajan) buldu: bu dosya c05e9a4'te
 # TestAddLokasyon/TestDeleteLokasyon/TestGetAllPaged/TestAnalyzeRoute (9 test)
@@ -15,18 +33,7 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-def _make_service(repo=None, event_bus=None):
-    from app.core.services.lokasyon_service import LokasyonService
-
-    mock_repo = repo or AsyncMock()
-    mock_bus = event_bus or MagicMock()
-    mock_bus.publish = MagicMock()
-    return LokasyonService(repo=mock_repo, event_bus=mock_bus), mock_repo
-
-
 def _make_create(**kwargs):
-    from app.schemas.lokasyon import LokasyonCreate
-
     defaults = dict(
         cikis_yeri="İstanbul",
         varis_yeri="Ankara",
@@ -37,62 +44,61 @@ def _make_create(**kwargs):
 
 
 # ---------------------------------------------------------------------------
-# geocode_query
+# geocode_location
 # ---------------------------------------------------------------------------
 
 
-class TestGeocodeQuery:
+class TestGeocodeLocation:
     async def test_short_query_returns_empty(self):
-        svc, _ = _make_service()
-        result = await svc.geocode_query("A")
+        result = await geocode_location("A")
         assert result == []
 
     async def test_empty_query_returns_empty(self):
-        svc, _ = _make_service()
-        result = await svc.geocode_query("")
+        result = await geocode_location("")
         assert result == []
 
     async def test_whitespace_only_returns_empty(self):
-        svc, _ = _make_service()
-        result = await svc.geocode_query("  ")
+        result = await geocode_location("  ")
         assert result == []
 
     @patch(
-        "app.core.services.lokasyon_service.LokasyonService._geocode_with_openroute",
+        "v2.modules.location.application.geocode_location.geocode_via_openroute",
         new_callable=AsyncMock,
     )
     @patch(
-        "app.core.services.lokasyon_service.LokasyonService._geocode_with_nominatim",
+        "v2.modules.location.application.geocode_location.geocode_via_nominatim",
         new_callable=AsyncMock,
     )
     async def test_falls_back_to_offline_when_both_empty(self, mock_nom, mock_ors):
         mock_ors.return_value = []
         mock_nom.return_value = []
 
-        svc, _ = _make_service()
         with patch(
-            "app.core.services.lokasyon_service.LokasyonService._geocode_offline"
+            "v2.modules.location.application.geocode_location.geocode_via_offline"
         ) as mock_offline:
             mock_offline.return_value = [
                 {"lat": 39.0, "lon": 35.0, "label": "TR", "source": "offline"}
             ]
-            result = await svc.geocode_query("Ankara")
+            result = await geocode_location("Ankara")
 
         mock_offline.assert_called_once_with("Ankara")
         assert result[0]["source"] == "offline"
 
-    async def test_geocode_query_strips_whitespace_in_query(self):
-        svc, _ = _make_service()
+    async def test_geocode_location_strips_whitespace_in_query(self):
         with (
-            patch.object(
-                svc, "_geocode_with_openroute", new_callable=AsyncMock
+            patch(
+                "v2.modules.location.application.geocode_location.geocode_via_openroute",
+                new_callable=AsyncMock,
             ) as mock_ors,
-            patch.object(svc, "_geocode_with_nominatim", new_callable=AsyncMock),
+            patch(
+                "v2.modules.location.application.geocode_location.geocode_via_nominatim",
+                new_callable=AsyncMock,
+            ),
         ):
             mock_ors.return_value = [
                 {"lat": 41.0, "lon": 29.0, "label": "Istanbul", "source": "ors"}
             ]
-            result = await svc.geocode_query("  Istanbul  ")
+            result = await geocode_location("  Istanbul  ")
 
         # query should have been stripped
         mock_ors.assert_awaited_once_with("Istanbul", limit=5)
@@ -100,43 +106,37 @@ class TestGeocodeQuery:
 
 
 # ---------------------------------------------------------------------------
-# _dedupe_geocode_results
+# dedupe_geocode_results
 # ---------------------------------------------------------------------------
 
 
 class TestDedupeGeocodeResults:
     def test_dedupes_identical_coords_and_label(self):
-        from app.core.services.lokasyon_service import LokasyonService
-
         items = [
             {"lat": 41.0, "lon": 29.0, "label": "Istanbul"},
             {"lat": 41.0, "lon": 29.0, "label": "Istanbul"},
         ]
-        result = LokasyonService._dedupe_geocode_results(items)
+        result = dedupe_geocode_results(items)
         assert len(result) == 1
 
     def test_keeps_distinct_coords(self):
-        from app.core.services.lokasyon_service import LokasyonService
-
         items = [
             {"lat": 41.0, "lon": 29.0, "label": "Istanbul"},
             {"lat": 39.9, "lon": 32.8, "label": "Ankara"},
         ]
-        result = LokasyonService._dedupe_geocode_results(items)
+        result = dedupe_geocode_results(items)
         assert len(result) == 2
 
     def test_empty_input(self):
-        from app.core.services.lokasyon_service import LokasyonService
-
-        assert LokasyonService._dedupe_geocode_results([]) == []
+        assert dedupe_geocode_results([]) == []
 
 
 # ---------------------------------------------------------------------------
-# _geocode_with_openroute
+# geocode_via_openroute
 # ---------------------------------------------------------------------------
 
 
-class TestGeocodeWithOpenroute:
+class TestGeocodeViaOpenroute:
     """0-mock epiği: gerçek OpenRouteService singleton'ı gerçek api_stub'a
     (Faz 0/1) işaret eder — sys.modules/httpx mock'u değil."""
 
@@ -153,19 +153,17 @@ class TestGeocodeWithOpenroute:
         return ors
 
     async def test_returns_empty_when_not_configured(self):
-        svc, _ = _make_service()
         ors = self._real_ors(configured=False)
 
         with patch(
             "app.core.services.openroute_service.get_openroute_service",
             return_value=ors,
         ):
-            result = await svc._geocode_with_openroute("Istanbul")
+            result = await geocode_via_openroute("Istanbul")
 
         assert result == []
 
     async def test_returns_empty_on_non_200_status(self):
-        svc, _ = _make_service()
         ors = self._real_ors()
 
         with patch(
@@ -173,19 +171,18 @@ class TestGeocodeWithOpenroute:
             return_value=ors,
         ):
             # __ERROR401__ sentinel (bkz. api_stub/main.py) gerçek 401 döner.
-            result = await svc._geocode_with_openroute("__ERROR401__")
+            result = await geocode_via_openroute("__ERROR401__")
 
         assert result == []
 
     async def test_returns_parsed_features_on_success(self):
-        svc, _ = _make_service()
         ors = self._real_ors()
 
         with patch(
             "app.core.services.openroute_service.get_openroute_service",
             return_value=ors,
         ):
-            result = await svc._geocode_with_openroute("Istanbul")
+            result = await geocode_via_openroute("Istanbul")
 
         assert len(result) == 1
         # api_stub'ın deterministik canned response'u.
@@ -193,7 +190,6 @@ class TestGeocodeWithOpenroute:
         assert result[0]["source"] == "ors"
 
     async def test_returns_empty_on_exception(self):
-        svc, _ = _make_service()
         ors = self._real_ors()
         ors.base_url = "http://localhost:1/v2"  # gerçek bağlantı hatası
 
@@ -201,32 +197,31 @@ class TestGeocodeWithOpenroute:
             "app.core.services.openroute_service.get_openroute_service",
             return_value=ors,
         ):
-            result = await svc._geocode_with_openroute("Istanbul")
+            result = await geocode_via_openroute("Istanbul")
 
         assert result == []
 
     async def test_skips_features_with_insufficient_coords(self):
         """__MULTI_ONE_BAD__ sentinel iki feature döner, biri koordinatsız —
         gerçek stub'a karşı, mock değil."""
-        svc, _ = _make_service()
         ors = self._real_ors()
 
         with patch(
             "app.core.services.openroute_service.get_openroute_service",
             return_value=ors,
         ):
-            result = await svc._geocode_with_openroute("__MULTI_ONE_BAD__")
+            result = await geocode_via_openroute("__MULTI_ONE_BAD__")
 
         assert len(result) == 1
         assert result[0]["label"] == "Istanbul"
 
 
 # ---------------------------------------------------------------------------
-# _geocode_with_nominatim
+# geocode_via_nominatim
 # ---------------------------------------------------------------------------
 
 
-class TestGeocodeWithNominatim:
+class TestGeocodeViaNominatim:
     """DOKÜMANTE BACKLOG: Nominatim (nominatim.openstreetmap.org) hardcoded,
     settings'ten override edilebilir değil (Faz 0 sadece Mapbox/OpenRoute/
     Open-Meteo/Telegram/Groq'u kapsadı) — bu üçüncü-parti sınır bu turun
@@ -247,34 +242,43 @@ class TestGeocodeWithNominatim:
         return mock_ctx
 
     async def test_returns_results_on_success(self):
-        svc, _ = _make_service()
+        from v2.modules.location.infrastructure.geocode_providers import (
+            geocode_via_nominatim,
+        )
+
         json_data = [{"lat": "41.0", "lon": "29.0", "display_name": "Istanbul, TR"}]
         mock_ctx = await self._mock_monitored_client(json_data)
 
         with patch(
-            "app.core.services.lokasyon_service.get_monitored_client",
+            "v2.modules.location.infrastructure.geocode_providers.get_monitored_client",
             return_value=mock_ctx,
         ):
-            result = await svc._geocode_with_nominatim("Istanbul")
+            result = await geocode_via_nominatim("Istanbul")
 
         assert len(result) == 1
         assert result[0]["source"] == "nominatim"
         assert result[0]["lat"] == 41.0
 
     async def test_returns_empty_on_non_200_status(self):
-        svc, _ = _make_service()
+        from v2.modules.location.infrastructure.geocode_providers import (
+            geocode_via_nominatim,
+        )
+
         mock_ctx = await self._mock_monitored_client([], status_code=503)
 
         with patch(
-            "app.core.services.lokasyon_service.get_monitored_client",
+            "v2.modules.location.infrastructure.geocode_providers.get_monitored_client",
             return_value=mock_ctx,
         ):
-            result = await svc._geocode_with_nominatim("Istanbul")
+            result = await geocode_via_nominatim("Istanbul")
 
         assert result == []
 
     async def test_skips_items_missing_coords(self):
-        svc, _ = _make_service()
+        from v2.modules.location.infrastructure.geocode_providers import (
+            geocode_via_nominatim,
+        )
+
         json_data = [
             {"lat": None, "lon": None, "display_name": "Bad Item"},
             {"lat": "39.9", "lon": "32.8", "display_name": "Ankara"},
@@ -282,46 +286,47 @@ class TestGeocodeWithNominatim:
         mock_ctx = await self._mock_monitored_client(json_data)
 
         with patch(
-            "app.core.services.lokasyon_service.get_monitored_client",
+            "v2.modules.location.infrastructure.geocode_providers.get_monitored_client",
             return_value=mock_ctx,
         ):
-            result = await svc._geocode_with_nominatim("query")
+            result = await geocode_via_nominatim("query")
 
         assert len(result) == 1
         assert "Ankara" in result[0]["label"]
 
     async def test_returns_empty_on_exception(self):
-        svc, _ = _make_service()
+        from v2.modules.location.infrastructure.geocode_providers import (
+            geocode_via_nominatim,
+        )
+
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__ = AsyncMock(side_effect=Exception("network down"))
         mock_ctx.__aexit__ = AsyncMock(return_value=None)
 
         with patch(
-            "app.core.services.lokasyon_service.get_monitored_client",
+            "v2.modules.location.infrastructure.geocode_providers.get_monitored_client",
             return_value=mock_ctx,
         ):
-            result = await svc._geocode_with_nominatim("Istanbul")
+            result = await geocode_via_nominatim("Istanbul")
 
         assert result == []
 
 
 # ---------------------------------------------------------------------------
-# _geocode_offline
+# geocode_via_offline
 # ---------------------------------------------------------------------------
 
 
-class TestGeocodeOffline:
+class TestGeocodeViaOffline:
     """0-mock epiği: geocode_offline gerçek bir haversine/hardcoded-şehir
     lookup'u (ağ/DB yok) — gerçek OpenRouteService instance'ı kullanılır."""
 
     def test_returns_empty_when_openroute_returns_none(self):
-        svc, _ = _make_service()
-        result = svc._geocode_offline("unknownplace-xyz")
+        result = geocode_via_offline("unknownplace-xyz")
         assert result == []
 
     def test_returns_result_when_coords_found(self):
-        svc, _ = _make_service()
-        result = svc._geocode_offline("Istanbul")
+        result = geocode_via_offline("Istanbul")
 
         assert len(result) == 1
         assert result[0]["source"] == "offline"
@@ -331,20 +336,14 @@ class TestGeocodeOffline:
 
 
 # ---------------------------------------------------------------------------
-# add_lokasyon — reactivation branch
+# create_location — reactivation branch
 # ---------------------------------------------------------------------------
 
 
-class TestAddLokasyon:
+class TestCreateLocation:
     """0-mock epiği: gerçek LokasyonRepository + gerçek DB (db_session)."""
 
-    def _real_service(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
-
-        repo = LokasyonRepository(session=db_session)
-        return _make_service(repo=repo)[0]
-
-    async def test_add_lokasyon_raises_if_active_route_exists(self, db_session):
+    async def test_create_location_raises_if_active_route_exists(self, db_session):
         from app.tests._helpers.seed import seed_lokasyon
 
         await seed_lokasyon(
@@ -352,12 +351,12 @@ class TestAddLokasyon:
         )
         await db_session.commit()
 
-        svc = self._real_service(db_session)
+        repo = LokasyonRepository(session=db_session)
         data = _make_create()
         with pytest.raises(ValueError, match="zaten mevcut"):
-            await svc.add_lokasyon(data)
+            await create_location(repo, data)
 
-    async def test_add_lokasyon_reactivates_passive_route(self, db_session):
+    async def test_create_location_reactivates_passive_route(self, db_session):
         from sqlalchemy import text
 
         from app.tests._helpers.seed import seed_lokasyon
@@ -367,8 +366,8 @@ class TestAddLokasyon:
         )
         await db_session.commit()
 
-        svc = self._real_service(db_session)
-        result = await svc.add_lokasyon(_make_create())
+        repo = LokasyonRepository(session=db_session)
+        result = await create_location(repo, _make_create())
 
         assert result == lokasyon.id
         row = (
@@ -379,12 +378,12 @@ class TestAddLokasyon:
         ).fetchone()
         assert row.aktif is True
 
-    async def test_add_lokasyon_normalizes_names_to_titlecase(self, db_session):
+    async def test_create_location_normalizes_names_to_titlecase(self, db_session):
         from sqlalchemy import text
 
-        svc = self._real_service(db_session)
+        repo = LokasyonRepository(session=db_session)
         data = _make_create(cikis_yeri="istanbul", varis_yeri="ankara")
-        lokasyon_id = await svc.add_lokasyon(data)
+        lokasyon_id = await create_location(repo, data)
 
         row = (
             await db_session.execute(
@@ -398,26 +397,22 @@ class TestAddLokasyon:
 
 
 # ---------------------------------------------------------------------------
-# delete_lokasyon — error paths
+# delete_location — error paths
 # ---------------------------------------------------------------------------
 
 
-class TestDeleteLokasyon:
+class TestDeleteLocation:
     """0-mock epiği: gerçek LokasyonRepository + gerçek DB (db_session)."""
 
     async def test_delete_returns_false_when_not_found(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
-
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
 
-        result = await svc.delete_lokasyon(999999)
+        result = await delete_location(repo, 999999)
         assert result is False
 
     async def test_hard_delete_raises_value_error_on_constraint(self, db_session):
         """FK ihlali (başka bir tablo bu lokasyon'a referans veriyor) →
         gerçek DB IntegrityError'ı ValueError'a çevrilir."""
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
         from app.tests._helpers.seed import (
             seed_arac,
             seed_lokasyon,
@@ -439,18 +434,17 @@ class TestDeleteLokasyon:
         await db_session.commit()
 
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
 
         with pytest.raises(ValueError, match="silinemez"):
-            await svc.delete_lokasyon(lokasyon.id)
+            await delete_location(repo, lokasyon.id)
 
 
 # ---------------------------------------------------------------------------
-# get_all_paged — validation error path
+# list_locations — validation error path
 # ---------------------------------------------------------------------------
 
 
-class TestGetAllPaged:
+class TestListLocations:
     """0-mock epiği: gerçek LokasyonRepository + gerçek DB (db_session)."""
 
     async def test_skips_invalid_records_gracefully(self, db_session):
@@ -459,25 +453,23 @@ class TestGetAllPaged:
 
         Gerçek DB kolonu `mesafe_km` NOT NULL ama >0 CHECK constraint'i YOK
         (sadece Sefer.mesafe_km'de var, models.py:556) — Pydantic şeması ise
-        `gt=0` zorunlu kılıyor (schemas/lokasyon.py:15). Bu, DB'nin izin
-        verdiği ama response şemasının reddettiği GERÇEK bir tutarsızlık;
-        mesafe_km=0 seed edilerek bire bir üretiliyor (mock değil)."""
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+        `gt=0` zorunlu kılıyor (v2/modules/location/schemas.py). Bu, DB'nin
+        izin verdiği ama response şemasının reddettiği GERÇEK bir
+        tutarsızlık; mesafe_km=0 seed edilerek bire bir üretiliyor (mock
+        değil)."""
         from app.tests._helpers.seed import seed_lokasyon
 
         await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B", mesafe_km=0)
         await db_session.commit()
 
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
-        result = await svc.get_all_paged()
+        result = await list_locations(repo)
 
         # AUDIT-073: atlanan satır kadar total aşağı çekilir (sayfa-kayması düzeltmesi).
         assert result["items"] == []
         assert result["total"] == 0
 
-    async def test_get_all_paged_with_filters(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+    async def test_list_locations_with_filters(self, db_session):
         from app.tests._helpers.seed import seed_lokasyon
 
         await seed_lokasyon(
@@ -489,64 +481,70 @@ class TestGetAllPaged:
         await db_session.commit()
 
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
-        result = await svc.get_all_paged(
-            skip=0, limit=10, zorluk="Zor", search="Ankara"
+        result = await list_locations(
+            repo, skip=0, limit=10, zorluk="Zor", search="Ankara"
         )
 
         assert result["total"] == 1
 
 
 # ---------------------------------------------------------------------------
-# analyze_route
+# analyze_location_route
 # ---------------------------------------------------------------------------
 
 
-class TestAnalyzeRoute:
+class TestAnalyzeLocationRoute:
     """0-mock epiği: ilk iki test gerçek DB'ye (db_session) çevrildi."""
 
-    async def test_analyze_route_raises_if_no_coords(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+    async def test_analyze_raises_if_no_coords(self, db_session):
         from app.tests._helpers.seed import seed_lokasyon
 
         lokasyon = await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B")
         await db_session.commit()
 
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
 
         with pytest.raises(ValueError, match="koordinat"):
-            await svc.analyze_route(lokasyon.id)
+            await analyze_location_route(repo, lokasyon.id)
 
-    async def test_analyze_route_raises_if_not_found(self, db_session):
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+    async def test_analyze_raises_if_not_found(self, db_session):
+        repo = LokasyonRepository(session=db_session)
+
+        with pytest.raises(ValueError, match="koordinat"):
+            await analyze_location_route(repo, 999999)
+
+    async def test_analyze_raises_on_route_service_error(self, db_session):
+        """DOKÜMANTE İSTİSNA: route_service (route_simulation modülü) ayrı
+        bir domain — o modülün kendi test dilimi ayrıca gerçek stub'a
+        çevrilecek. Burada sadece bu servisin hata-yayma davranışı
+        (analyze_location_route'un ValueError'a çevirmesi) test ediliyor."""
+        from app.tests._helpers.seed import seed_lokasyon
+
+        lokasyon = await seed_lokasyon(
+            db_session,
+            cikis_yeri="A",
+            varis_yeri="B",
+            cikis_lat=41.0,
+            cikis_lon=29.0,
+            varis_lat=39.9,
+            varis_lon=32.8,
+        )
+        await db_session.commit()
 
         repo = LokasyonRepository(session=db_session)
-        svc, _ = _make_service(repo=repo)
 
-        with pytest.raises(ValueError, match="koordinat"):
-            await svc.analyze_route(999999)
-
-    async def test_analyze_route_raises_on_route_service_error(self):
-        """DOKÜMANTE İSTİSNA: route_service (app.services.route_service) ayrı
-        bir domain — Faz 1'in ilerideki 'route_service*' diliminde ayrıca
-        gerçek stub'a çevrilecek. Burada sadece bu servisin hata-yayma
-        davranışı (analyze_route'un ValueError'a çevirmesi) test ediliyor."""
-        svc, mock_repo = _make_service()
-        mock_repo.get_by_id.return_value = {
-            "id": 1,
-            "cikis_lat": 41.0,
-            "cikis_lon": 29.0,
-            "varis_lat": 39.9,
-            "varis_lon": 32.8,
-        }
         mock_rs = AsyncMock()
         mock_rs.get_route_details = AsyncMock(return_value={"error": "timeout"})
         mock_route_service_module = MagicMock()
         mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
 
         with patch.dict(
-            "sys.modules", {"app.services.route_service": mock_route_service_module}
+            "sys.modules",
+            {
+                "v2.modules.route_simulation.application.get_route_details": (
+                    mock_route_service_module
+                )
+            },
         ):
             with pytest.raises(ValueError, match="Analiz hatası"):
-                await svc.analyze_route(1)
+                await analyze_location_route(repo, lokasyon.id)

@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.infrastructure.routing.openroute_client import OpenRouteClient
+from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 pytestmark = pytest.mark.integration
 
@@ -77,7 +77,9 @@ def test_init_no_api_key_warns():
     """When no api_key is found, a warning is logged (line 60)."""
     with (
         patch("os.getenv", return_value=None),
-        patch("app.infrastructure.routing.openroute_client.settings") as mock_settings,
+        patch(
+            "v2.modules.route_simulation.infrastructure.openroute_client.settings"
+        ) as mock_settings,
     ):
         mock_settings.OPENROUTESERVICE_API_KEY = None
         mock_settings.OPENROUTE_API_BASE_URL = "https://api.openrouteservice.org/v2"
@@ -99,7 +101,7 @@ async def test_get_distance_generic_exception_returns_none():
 
     with (
         patch(
-            "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+            "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
             return_value=breaker,
         ),
         patch.object(
@@ -126,7 +128,7 @@ async def test_geocode_circuit_breaker_open_returns_none():
     breaker.call_async = AsyncMock(side_effect=CircuitBreakerError("geo cb open"))
 
     with patch(
-        "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+        "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
         return_value=breaker,
     ):
         result = await client.geocode("Ankara")
@@ -141,7 +143,7 @@ async def test_geocode_generic_exception_returns_none():
     breaker.call_async = AsyncMock(side_effect=RuntimeError("geo error"))
 
     with patch(
-        "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+        "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
         return_value=breaker,
     ):
         result = await client.geocode("Ankara")
@@ -233,7 +235,7 @@ async def test_call_api_analyze_segments_exception_skips_details():
     client = _make_client()
 
     with patch(
-        "app.infrastructure.routing.openroute_client.route_analyzer.analyze_segments",
+        "v2.modules.route_simulation.infrastructure.openroute_client.route_analyzer.analyze_segments",
         side_effect=RuntimeError("analysis fail"),
     ):
         result = await client._call_api((0.0, 0.0), (0.0, 777.0), include_details=True)

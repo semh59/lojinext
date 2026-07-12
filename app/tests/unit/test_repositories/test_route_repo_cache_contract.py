@@ -1,6 +1,6 @@
 import pytest
 
-from app.database.repositories.route_repo import RouteRepository
+from v2.modules.route_simulation.infrastructure.repository import RouteRepository
 
 pytestmark = pytest.mark.integration
 

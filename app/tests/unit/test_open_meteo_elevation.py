@@ -20,7 +20,7 @@ from typing import Any
 
 import pytest
 
-from app.infrastructure.elevation.open_meteo_client import (
+from v2.modules.route_simulation.infrastructure.open_meteo_client import (
     OpenMeteoElevationClient,
 )
 
@@ -100,7 +100,8 @@ async def test_full_cache_hit_skips_http(
         raise AssertionError("HTTP çağrılmamalıydı — full cache hit")
 
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient", _boom
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
+        _boom,
     )
 
     result = await client.get_elevations([(28.9784, 41.0082), (32.8597, 39.9334)])
@@ -114,7 +115,7 @@ async def test_full_cache_miss_fetches_and_caches(
 ):
     fake_http = FakeAsyncClient([FakeHttpResponse(200, {"elevation": [36.0, 850.0]})])
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 
@@ -136,7 +137,7 @@ async def test_partial_cache_only_fetches_misses(
 
     fake_http = FakeAsyncClient([FakeHttpResponse(200, {"elevation": [850.0, 5.0]})])
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 
@@ -159,7 +160,7 @@ async def test_duplicate_coords_deduplicated_in_fetch(
 ):
     fake_http = FakeAsyncClient([FakeHttpResponse(200, {"elevation": [36.0]})])
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 
@@ -185,7 +186,8 @@ async def test_coordinate_precision_rounds_to_4_decimal(
         raise AssertionError("4 decimal round başarısız — cache miss")
 
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient", _boom
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
+        _boom,
     )
 
     result = await client.get_elevations([(28.97843, 41.00821)])
@@ -201,7 +203,7 @@ async def test_api_error_returns_cached_only(
         [FakeHttpResponse(500, payload=None, text="server boom")]
     )
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 
@@ -225,7 +227,7 @@ async def test_http_exception_returns_cached_only(
             return None
 
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: ExplodingClient(),
     )
 
@@ -246,7 +248,7 @@ async def test_large_batch_splits_into_chunks(
         ]
     )
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 
@@ -266,7 +268,7 @@ async def test_null_elevations_in_response_are_preserved(
         [FakeHttpResponse(200, {"elevation": [36.0, None, 850.0]})]
     )
     monkeypatch.setattr(
-        "app.infrastructure.elevation.open_meteo_client.httpx.AsyncClient",
+        "v2.modules.route_simulation.infrastructure.open_meteo_client.httpx.AsyncClient",
         lambda *_a, **_kw: fake_http,
     )
 

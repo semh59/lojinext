@@ -1,15 +1,19 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.services.lokasyon_service import LokasyonService
-from app.database.repositories.lokasyon_repo import LokasyonRepository
-from app.schemas.lokasyon import LokasyonCreate, LokasyonUpdate
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.application.delete_location import delete_location
+from v2.modules.location.application.geocode_location import geocode_location
+from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.application.update_location import update_location
+from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.location.schemas import LokasyonCreate, LokasyonUpdate
 
 pytestmark = pytest.mark.integration
-# 0-mock epiği: repo artık gerçek LokasyonRepository + gerçek DB (db_session).
-# event_bus MagicMock kalır (iç pub/sub yan kanalı, bu testin odağı değil —
-# önceki oturumlarda kurulan konvansiyonla tutarlı).
+# 0-mock epiği: repo gerçek LokasyonRepository + gerçek DB (db_session).
+# LokasyonService sınıfı yok — her use-case standalone fonksiyon (bkz.
+# v2/modules/location/public.py docstring'i).
 
 
 @pytest.fixture
@@ -17,27 +21,20 @@ def repo(db_session):
     return LokasyonRepository(session=db_session)
 
 
-@pytest.fixture
-def service(repo):
-    mock_bus = MagicMock()
-    mock_bus.publish = AsyncMock()
-    return LokasyonService(repo=repo, event_bus=mock_bus)
-
-
 @pytest.mark.asyncio
-class TestLokasyonService:
-    async def test_get_all_paged(self, service, db_session):
+class TestLocationUseCases:
+    async def test_list_locations(self, repo, db_session):
         from app.tests._helpers.seed import seed_lokasyon
 
         await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B", mesafe_km=100.0)
         await db_session.commit()
 
-        result = await service.get_all_paged(skip=0, limit=10)
+        result = await list_locations(repo, skip=0, limit=10)
 
         assert result["total"] == 1
         assert len(result["items"]) == 1
 
-    async def test_add_lokasyon_simple(self, service, db_session):
+    async def test_create_location_simple(self, repo, db_session):
         data = LokasyonCreate(
             cikis_yeri="İstanbul",
             varis_yeri="Ankara",
@@ -46,7 +43,7 @@ class TestLokasyonService:
             zorluk="Normal",
         )
 
-        result = await service.add_lokasyon(data)
+        result = await create_location(repo, data)
 
         assert result is not None
         from sqlalchemy import text
@@ -60,9 +57,12 @@ class TestLokasyonService:
         assert row.cikis_yeri == "İstanbul"
         assert row.varis_yeri == "Ankara"
 
-    @patch.object(LokasyonService, "analyze_route")
-    async def test_add_lokasyon_with_coords_triggers_analysis(
-        self, mock_analyze, service
+    @patch(
+        "v2.modules.location.application.create_location.analyze_location_route",
+        new_callable=AsyncMock,
+    )
+    async def test_create_location_with_coords_triggers_analysis(
+        self, mock_analyze, repo
     ):
         data = LokasyonCreate(
             cikis_yeri="İstanbul",
@@ -74,19 +74,19 @@ class TestLokasyonService:
             varis_lon=29.4,
         )
 
-        result = await service.add_lokasyon(data)
+        result = await create_location(repo, data)
 
         assert result is not None
-        mock_analyze.assert_called_once_with(result)
+        mock_analyze.assert_called_once_with(repo, result)
 
-    async def test_update_lokasyon(self, service, db_session):
+    async def test_update_location(self, repo, db_session):
         from app.tests._helpers.seed import seed_lokasyon
 
         lokasyon = await seed_lokasyon(db_session, cikis_yeri="A", varis_yeri="B")
         await db_session.commit()
 
         data = LokasyonUpdate(mesafe_km=500, notlar="Updated Info")
-        result = await service.update_lokasyon(lokasyon.id, data)
+        result = await update_location(repo, lokasyon.id, data)
 
         assert result is True
         from sqlalchemy import text
@@ -100,7 +100,7 @@ class TestLokasyonService:
         assert row.mesafe_km == 500
         assert row.notlar == "Updated Info"
 
-    async def test_delete_lokasyon_soft(self, service, db_session):
+    async def test_delete_location_soft(self, repo, db_session):
         """Active location -> soft delete (aktif=False, row stays)."""
         from sqlalchemy import text
 
@@ -111,7 +111,7 @@ class TestLokasyonService:
         )
         await db_session.commit()
 
-        result = await service.delete_lokasyon(lokasyon.id)
+        result = await delete_location(repo, lokasyon.id)
 
         assert result is True
         row = (
@@ -122,7 +122,7 @@ class TestLokasyonService:
         ).fetchone()
         assert row.aktif is False
 
-    async def test_delete_lokasyon_hard(self, service, db_session):
+    async def test_delete_location_hard(self, repo, db_session):
         """Inactive location -> hard delete (row removed)."""
         from sqlalchemy import text
 
@@ -133,7 +133,7 @@ class TestLokasyonService:
         )
         await db_session.commit()
 
-        result = await service.delete_lokasyon(lokasyon.id)
+        result = await delete_location(repo, lokasyon.id)
 
         assert result is True
         row = (
@@ -144,10 +144,16 @@ class TestLokasyonService:
         ).fetchone()
         assert row is None
 
-    @patch.object(LokasyonService, "_geocode_with_openroute", new_callable=AsyncMock)
-    @patch.object(LokasyonService, "_geocode_with_nominatim", new_callable=AsyncMock)
-    async def test_geocode_query_prefers_openroute_results(
-        self, mock_nominatim, mock_openroute, service
+    @patch(
+        "v2.modules.location.application.geocode_location.geocode_via_nominatim",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "v2.modules.location.application.geocode_location.geocode_via_openroute",
+        new_callable=AsyncMock,
+    )
+    async def test_geocode_location_prefers_openroute_results(
+        self, mock_openroute, mock_nominatim
     ):
         mock_openroute.return_value = [
             {
@@ -166,16 +172,22 @@ class TestLokasyonService:
             }
         ]
 
-        result = await service.geocode_query("Hadimkoy", limit=5)
+        result = await geocode_location("Hadimkoy", limit=5)
 
         assert result[0]["source"] == "ors"
         mock_openroute.assert_awaited_once_with("Hadimkoy", limit=5)
         mock_nominatim.assert_not_awaited()
 
-    @patch.object(LokasyonService, "_geocode_with_openroute", new_callable=AsyncMock)
-    @patch.object(LokasyonService, "_geocode_with_nominatim", new_callable=AsyncMock)
-    async def test_geocode_query_falls_back_to_nominatim(
-        self, mock_nominatim, mock_openroute, service
+    @patch(
+        "v2.modules.location.application.geocode_location.geocode_via_nominatim",
+        new_callable=AsyncMock,
+    )
+    @patch(
+        "v2.modules.location.application.geocode_location.geocode_via_openroute",
+        new_callable=AsyncMock,
+    )
+    async def test_geocode_location_falls_back_to_nominatim(
+        self, mock_openroute, mock_nominatim
     ):
         mock_openroute.return_value = []
         mock_nominatim.return_value = [
@@ -187,7 +199,7 @@ class TestLokasyonService:
             }
         ]
 
-        result = await service.geocode_query("Ostim", limit=3)
+        result = await geocode_location("Ostim", limit=3)
 
         assert result[0]["source"] == "nominatim"
         mock_openroute.assert_awaited_once_with("Ostim", limit=3)

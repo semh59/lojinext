@@ -12,15 +12,9 @@ from app.api.deps import (
     UOWDep,
     get_current_active_admin,
     get_current_active_user,
-    get_lokasyon_service,
 )
 from app.core.exceptions import DomainError
-from app.core.services.lokasyon_hydrator import (
-    LokasyonHydrator,
-    get_lokasyon_hydrator,
-)
 from app.database.models import Kullanici
-from app.database.repositories.lokasyon_repo import get_lokasyon_repo
 from app.infrastructure.audit import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
@@ -33,7 +27,17 @@ from app.schemas.api_responses import (
     RouteInfoResponse,
     StaleLocationsResponse,
 )
-from app.schemas.lokasyon import (
+from v2.modules.location.application.analyze_location_route import (
+    analyze_location_route,
+)
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.application.delete_location import delete_location
+from v2.modules.location.application.geocode_location import geocode_location
+from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.application.update_location import update_location
+from v2.modules.location.domain.hydration import LokasyonHydrator, get_lokasyon_hydrator
+from v2.modules.location.infrastructure.repository import get_lokasyon_repo
+from v2.modules.location.schemas import (
     GeocodeSuggestion,
     LokasyonCreate,
     LokasyonPaginationResponse,
@@ -88,7 +92,9 @@ async def get_route_info(
     varis_lon: float = Query(..., description="Varış boylamı"),
 ) -> RouteInfoResponse:
     """Return live route details for a coordinate pair."""
-    from app.services.route_service import get_route_service
+    from v2.modules.route_simulation.application.get_route_details import (
+        get_route_service,
+    )
 
     route_service = get_route_service()
     route_details = await route_service.get_route_details(
@@ -115,14 +121,13 @@ async def get_route_info(
 
 
 @router.get("/geocode", response_model=List[GeocodeSuggestion])
-async def geocode_location(
+async def geocode_location_endpoint(
     q: str = Query(..., min_length=2, description="Adres veya tesis arama metni"),
     limit: int = Query(5, ge=1, le=10),
     current_user: Annotated[Kullanici, Depends(get_current_active_user)] = None,
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ) -> List[GeocodeSuggestion]:
     try:
-        results = await service.geocode_query(q, limit=limit)
+        results = await geocode_location(q, limit=limit)
         return [GeocodeSuggestion.model_validate(result) for result in results]
     except DomainError:
         raise
@@ -136,18 +141,18 @@ async def geocode_location(
 @router.get("/", response_model=LokasyonPaginationResponse)
 async def list_lokasyonlar(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
+    uow: UOWDep,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     zorluk: Optional[str] = Query(
         None, description="Zorluk filtresi: Düz, Hafif Eğimli, Dik/Dağlık"
     ),
     search: Optional[str] = Query(None, description="Arama metni (şehir, notlar)"),
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ):
-    """List locations through the service layer."""
+    """List locations through the application layer."""
     try:
-        return await service.get_all_paged(
-            skip=skip, limit=limit, zorluk=zorluk, search=search
+        return await list_locations(
+            uow.lokasyon_repo, skip=skip, limit=limit, zorluk=zorluk, search=search
         )
     except DomainError:
         raise
@@ -163,16 +168,10 @@ async def create_lokasyon(
     lokasyon: LokasyonCreate,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ):
     """Create a new location."""
-    from app.core.services.lokasyon_service import LokasyonService
-
-    service = LokasyonService(
-        repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
-    )
     try:
-        lokasyon_id = await service.add_lokasyon(lokasyon)
+        lokasyon_id = await create_location(uow.lokasyon_repo, lokasyon)
         await uow.commit()
         created = await uow.lokasyon_repo.get_by_id(lokasyon_id)
 
@@ -200,10 +199,10 @@ async def create_lokasyon(
 async def get_lokasyon(
     lokasyon_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
+    uow: UOWDep,
 ):
     """Return location details."""
-    location = await service.repo.get_by_id(lokasyon_id)
+    location = await uow.lokasyon_repo.get_by_id(lokasyon_id)
     if not location:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
     return LokasyonResponse.model_validate(dict(location))
@@ -215,29 +214,27 @@ async def update_lokasyon(
     lokasyon_in: LokasyonUpdate,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ):
     """Update a location."""
-    from app.core.services.lokasyon_service import LokasyonService
-
-    service = LokasyonService(
-        repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
-    )
     try:
         # include_inactive=True: pasif bir lokasyon güncellenirken (reaktive
         # etmeden, örn. sadece notlar) bu fetch'lerin None dönüp aşağıdaki
         # `dict(updated_loc)`'u çökertmemesi gerekiyor.
         # Audit Snapshot: Pre
-        current_loc = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
+        current_loc = await uow.lokasyon_repo.get_by_id(
+            lokasyon_id, include_inactive=True
+        )
         pre_snapshot = dict(current_loc) if current_loc else {}
 
-        success = await service.update_lokasyon(lokasyon_id, lokasyon_in)
+        success = await update_location(uow.lokasyon_repo, lokasyon_id, lokasyon_in)
         if not success:
             raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
         await uow.commit()
 
         # Audit Snapshot: Post
-        updated_loc = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
+        updated_loc = await uow.lokasyon_repo.get_by_id(
+            lokasyon_id, include_inactive=True
+        )
         post_snapshot = dict(updated_loc) if updated_loc else {}
 
         await log_audit_event(
@@ -253,8 +250,6 @@ async def update_lokasyon(
         raise
     except DomainError:
         raise
-    except HTTPException:
-        raise
     except Exception as exc:
         logger.error("Error updating location: %s", exc)
         raise HTTPException(status_code=500, detail="Sunucu hatası")
@@ -266,24 +261,18 @@ async def delete_lokasyon(
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     response: Response,
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ):
     """Delete a location."""
-    from app.core.services.lokasyon_service import LokasyonService
-
-    service = LokasyonService(
-        repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
-    )
     # include_inactive=True: bu endpoint pasif (soft-deleted) kayıtları da
     # görmesi gerekiyor — `was_active` hesabı ve hard-delete yolu buna dayanır.
-    current = await service.repo.get_by_id(lokasyon_id, include_inactive=True)
+    current = await uow.lokasyon_repo.get_by_id(lokasyon_id, include_inactive=True)
     if not current:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 
     was_active = current.get("aktif", False)
 
     try:
-        success = await service.delete_lokasyon(lokasyon_id)
+        success = await delete_location(uow.lokasyon_repo, lokasyon_id)
         if not success:
             raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
         await uow.commit()
@@ -301,8 +290,6 @@ async def delete_lokasyon(
     except HTTPException:
         raise
     except DomainError:
-        raise
-    except HTTPException:
         raise
     except Exception as exc:
         logger.error("Error deleting location: %s", exc)
@@ -341,16 +328,10 @@ async def analyze_with_openroute(
     lokasyon_id: int,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
 ):
     """Analyze a location with the live route provider."""
-    from app.core.services.lokasyon_service import LokasyonService
-
-    service = LokasyonService(
-        repo=uow.lokasyon_repo, event_bus=getattr(service, "event_bus", None)
-    )
     try:
-        result = await service.analyze_route(lokasyon_id)
+        result = await analyze_location_route(uow.lokasyon_repo, lokasyon_id)
         if isinstance(result, dict) and result.get("error"):
             raise HTTPException(
                 status_code=503,
@@ -380,8 +361,6 @@ async def analyze_with_openroute(
     except HTTPException:
         raise
     except DomainError:
-        raise
-    except HTTPException:
         raise
     except Exception as exc:
         logger.error("Error analyzing route: %s", exc)
@@ -418,12 +397,12 @@ async def get_excel_template(
 )
 async def export_locations(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: Annotated[Any, Depends(get_lokasyon_service)] = None,
+    uow: UOWDep,
 ):
     """Export locations as Excel."""
     from app.core.services.excel_service import ExcelService
 
-    data = await service.repo.get_all()
+    data = await uow.lokasyon_repo.get_all()
     content = await ExcelService.export_data(data, type="lokasyon_listesi")
 
     return Response(

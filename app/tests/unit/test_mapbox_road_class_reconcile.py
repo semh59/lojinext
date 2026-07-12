@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.routing.mapbox_client import MapboxClient
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 SAMPLES_DIR = Path(
     "docs/superpowers/plans/2026-05-29-route-segment-simulation-plan-mapbox-samples"

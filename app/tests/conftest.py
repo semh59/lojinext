@@ -41,11 +41,11 @@ import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: 
 import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
 import app.database.repositories.arac_repo as arac_mod  # noqa: E402
 import app.database.repositories.dorse_repo as dorse_mod  # noqa: E402
-import app.database.repositories.lokasyon_repo as lokasyon_mod  # noqa: E402
-import app.database.repositories.route_repo as route_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
 import app.database.repositories.sofor_repo as sofor_mod  # noqa: E402
 import app.database.repositories.yakit_repo as yakit_mod  # noqa: E402
+import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
+import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
 from app.database.models import Base  # noqa: E402
 
 

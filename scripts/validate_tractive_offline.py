@@ -17,8 +17,11 @@ import asyncio
 from sqlalchemy import text
 
 import app.config as cfg
-from app.core.ml.segment_simulator import SegmentInput, simulate_route
 from app.database.connection import AsyncSessionLocal
+from v2.modules.route_simulation.domain.segment_simulator import (
+    SegmentInput,
+    simulate_route,
+)
 
 # lokasyon_id → (ad, yük_t, band_low, band_high)
 ROUTES = {

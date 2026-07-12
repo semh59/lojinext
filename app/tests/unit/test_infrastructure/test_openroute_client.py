@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.routing.openroute_client import OpenRouteClient
+from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 pytestmark = pytest.mark.integration
 
@@ -87,7 +87,7 @@ async def test_get_distance_requests_details_by_default(monkeypatch):
 
     with (
         patch(
-            "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+            "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
             return_value=breaker,
         ),
         patch.object(client, "_save_to_cache"),

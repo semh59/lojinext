@@ -1,3 +1,10 @@
+"""OpenRouteService (ORS) API client — secondary/fallback routing provider.
+
+NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) ve
+``integration_secrets`` henüz v2'ye taşınmadı — eski yoldan import ediliyor,
+dokümante edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar kaydı).
+"""
+
 import asyncio
 import os
 from datetime import datetime, timezone
@@ -8,13 +15,13 @@ import httpx
 from dotenv import load_dotenv
 
 from app.config import settings
-from app.core.utils.polyline import PolylineDecoder
-from app.domain.services.route_analyzer import route_analyzer
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.circuit_breaker import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
 )
+from v2.modules.route_simulation.domain.polyline import PolylineDecoder
+from v2.modules.route_simulation.domain.route_analyzer import route_analyzer
 
 # Load environment
 load_dotenv()

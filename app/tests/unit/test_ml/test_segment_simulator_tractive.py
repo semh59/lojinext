@@ -2,7 +2,10 @@
 
 import pytest
 
-from app.core.ml.segment_simulator import SegmentInput, simulate_route
+from v2.modules.route_simulation.domain.segment_simulator import (
+    SegmentInput,
+    simulate_route,
+)
 
 pytestmark = pytest.mark.unit
 

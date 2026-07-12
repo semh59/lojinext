@@ -215,7 +215,6 @@ async def test_service_factories_build_real_services():
     from app.core.services.arac_service import AracService
     from app.core.services.auth_service import AuthService
     from app.core.services.dorse_service import DorseService
-    from app.core.services.lokasyon_service import LokasyonService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
     from app.core.services.yakit_service import YakitService
@@ -226,7 +225,6 @@ async def test_service_factories_build_real_services():
         assert isinstance(await deps.get_sofor_service(uow), SoforService)
         assert isinstance(await deps.get_sefer_service(uow), SeferService)
         assert isinstance(await deps.get_yakit_service(uow), YakitService)
-        assert isinstance(await deps.get_lokasyon_service(uow), LokasyonService)
         assert isinstance(await deps.get_dorse_service(uow), DorseService)
         assert isinstance(await deps.get_auth_service(uow), AuthService)
 

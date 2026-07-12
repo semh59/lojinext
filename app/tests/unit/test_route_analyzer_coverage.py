@@ -7,7 +7,7 @@ granular_nodes + ratios + December-boundary logic.
 
 import pytest
 
-from app.domain.services.route_analyzer import (
+from v2.modules.route_simulation.domain.route_analyzer import (
     GradeClass,
     RouteAnalyzer,
     Segment,

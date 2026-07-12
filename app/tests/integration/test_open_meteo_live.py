@@ -19,7 +19,9 @@ import os
 
 import pytest
 
-from app.infrastructure.elevation.open_meteo_client import OpenMeteoElevationClient
+from v2.modules.route_simulation.infrastructure.open_meteo_client import (
+    OpenMeteoElevationClient,
+)
 
 pytestmark = pytest.mark.integration
 

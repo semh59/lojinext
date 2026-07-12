@@ -8,11 +8,11 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 
 from app.config import settings
-from app.core.ml.segment_simulator import SegmentInput
 from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
 from app.infrastructure.resilience.retry import with_async_retry
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 
 # Phase 2.3: Mapbox Directions response cache TTL.
 # Plan §9 Phase 2: "Directions response cache (1-gün TTL — traffic değişir)".
@@ -581,3 +581,15 @@ class MapboxClient:
         except Exception as exc:
             logger.exception("Mapbox get_segments error: %s", exc)
             return None
+
+
+# Singleton instance
+_client_instance: Optional[MapboxClient] = None
+
+
+def get_mapbox_client() -> MapboxClient:
+    """Lazy singleton getter."""
+    global _client_instance
+    if _client_instance is None:
+        _client_instance = MapboxClient()
+    return _client_instance

@@ -94,7 +94,7 @@ async def test_create_location_success(async_client, admin_auth_headers):
 async def test_create_location_value_error(async_client, admin_auth_headers):
     """POST / with service raising ValueError → 400 (ValueError raised before UoW needed)."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.add_lokasyon",
+        "v2.modules.location.api.location_routes.create_location",
         new=AsyncMock(side_effect=ValueError("duplicate route")),
     ):
         resp = await async_client.post(
@@ -134,7 +134,7 @@ async def test_update_location_success(async_client, admin_auth_headers, db_sess
 async def test_update_location_not_found(async_client, admin_auth_headers):
     """PUT /{id} when service returns False → 404 (real DB, patched update returns False)."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.update_lokasyon",
+        "v2.modules.location.api.location_routes.update_location",
         new=AsyncMock(return_value=False),
     ):
         resp = await async_client.put(
@@ -192,7 +192,7 @@ async def test_delete_location_value_error(
     await db_session.flush()
 
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.delete_lokasyon",
+        "v2.modules.location.api.location_routes.delete_location",
         new=AsyncMock(side_effect=ValueError("has active trips")),
     ):
         resp = await async_client.delete(
@@ -211,7 +211,7 @@ async def test_delete_location_value_error(
 async def test_analyze_location_success(async_client, admin_auth_headers):
     """POST /{id}/analyze → 200 with route data (analyze_route patched, real DB commit)."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(
             return_value={
                 "distance_km": 450.0,
@@ -239,7 +239,7 @@ async def test_analyze_location_success(async_client, admin_auth_headers):
 async def test_analyze_location_error_result(async_client, admin_auth_headers):
     """POST /{id}/analyze when route analysis returns error dict → 503."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(return_value={"error": "Mapbox unavailable"}),
     ):
         resp = await async_client.post(
@@ -253,7 +253,7 @@ async def test_analyze_location_error_result(async_client, admin_auth_headers):
 async def test_analyze_location_value_error_analiz(async_client, admin_auth_headers):
     """POST /{id}/analyze with ValueError containing 'Analiz' → 503."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=ValueError("Analiz başarısız")),
     ):
         resp = await async_client.post(
@@ -267,7 +267,7 @@ async def test_analyze_location_value_error_analiz(async_client, admin_auth_head
 async def test_analyze_location_value_error_other(async_client, admin_auth_headers):
     """POST /{id}/analyze with ValueError without 'Analiz' → 400."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=ValueError("bad coordinates")),
     ):
         resp = await async_client.post(
@@ -281,7 +281,7 @@ async def test_analyze_location_value_error_other(async_client, admin_auth_heade
 async def test_analyze_location_unexpected_exception(async_client, admin_auth_headers):
     """POST /{id}/analyze unexpected error → 500."""
     with patch(
-        "app.core.services.lokasyon_service.LokasyonService.analyze_route",
+        "v2.modules.location.api.location_routes.analyze_location_route",
         new=AsyncMock(side_effect=RuntimeError("crash")),
     ):
         resp = await async_client.post(

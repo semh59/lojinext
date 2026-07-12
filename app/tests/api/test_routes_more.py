@@ -100,7 +100,7 @@ def _make_persisted_sim():
 class TestSerializeSimulationExtra:
     def test_multiple_segments_serialized_in_order(self):
         """_serialize_simulation serialises multiple segments correctly."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = _make_persisted_sim()
         segs = []
@@ -128,7 +128,7 @@ class TestSerializeSimulationExtra:
 
     def test_meta_fields_populated(self):
         """_serialize_simulation correctly populates meta dict."""
-        from app.api.v1.endpoints.routes import _serialize_simulation
+        from v2.modules.route_simulation.api.route_routes import _serialize_simulation
 
         sim = _make_persisted_sim()
         result = _serialize_simulation(sim, [])
@@ -146,7 +146,7 @@ class TestSerializeSimulationExtra:
 class TestRouteSimulateRequestExtra:
     def test_lokasyon_id_set(self):
         """RouteSimulateRequest accepts lokasyon_id."""
-        from app.api.v1.endpoints.routes import RouteSimulateRequest
+        from v2.modules.route_simulation.api.route_routes import RouteSimulateRequest
 
         req = RouteSimulateRequest(lokasyon_id=10, ton=20.0)
         assert req.lokasyon_id == 10
@@ -155,7 +155,7 @@ class TestRouteSimulateRequestExtra:
         """RouteSimulateRequest validates segment_length_m boundaries."""
         from pydantic import ValidationError
 
-        from app.api.v1.endpoints.routes import RouteSimulateRequest
+        from v2.modules.route_simulation.api.route_routes import RouteSimulateRequest
 
         with pytest.raises(ValidationError):
             RouteSimulateRequest(segment_length_m=50)  # below min 100
@@ -178,8 +178,10 @@ class TestSimulateRouteSuccess:
     async def _call_simulate(
         self, async_client, admin_auth_headers, request_body, mock_simulator
     ):
-        from app.core.services.route_simulator import get_route_simulator
         from app.main import app
+        from v2.modules.route_simulation.application.simulate_route import (
+            get_route_simulator,
+        )
 
         async def _dep_simulator():
             return mock_simulator
@@ -330,7 +332,7 @@ class TestRouteAnalysisRequest:
         """RouteAnalysisRequest rejects lat > 90."""
         from pydantic import ValidationError
 
-        from app.api.v1.endpoints.routes import RouteAnalysisRequest
+        from v2.modules.route_simulation.api.route_routes import RouteAnalysisRequest
 
         with pytest.raises(ValidationError):
             RouteAnalysisRequest(
@@ -341,7 +343,7 @@ class TestRouteAnalysisRequest:
         """RouteAnalysisRequest rejects lon > 180."""
         from pydantic import ValidationError
 
-        from app.api.v1.endpoints.routes import RouteAnalysisRequest
+        from v2.modules.route_simulation.api.route_routes import RouteAnalysisRequest
 
         with pytest.raises(ValidationError):
             RouteAnalysisRequest(
@@ -350,7 +352,7 @@ class TestRouteAnalysisRequest:
 
     def test_valid_coords_accepted(self):
         """RouteAnalysisRequest accepts valid coordinates."""
-        from app.api.v1.endpoints.routes import RouteAnalysisRequest
+        from v2.modules.route_simulation.api.route_routes import RouteAnalysisRequest
 
         req = RouteAnalysisRequest(
             start_lat=41.0, start_lon=28.9, end_lat=39.9, end_lon=32.8

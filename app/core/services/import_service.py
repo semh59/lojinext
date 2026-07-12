@@ -896,15 +896,14 @@ class ImportService:
     async def import_routes(self, content: bytes) -> Tuple[int, list]:
         """Lokasyon/güzergah Excel'ini içe aktarır.
 
-        Hedef: ``LokasyonService.add_lokasyon`` — dict → ``LokasyonCreate``
-        Pydantic. Her satır kendi UoW'unda işlenir; container.lokasyon_service
-        singleton repo'su session'sız raw SQL atınca crash ediyordu.
+        Hedef: ``v2.modules.location.application.create_location`` — dict →
+        ``LokasyonCreate`` Pydantic. Her satır kendi UoW'unda işlenir;
+        container.lokasyon_repo singleton'ı (session'sız) raw SQL atınca
+        crash ediyordu.
         """
-        from app.core.services.lokasyon_service import LokasyonService, route_key
-        from app.infrastructure.events.event_bus import get_event_bus
-        from app.schemas.lokasyon import LokasyonCreate
-
-        event_bus = get_event_bus()
+        from v2.modules.location.application.create_location import create_location
+        from v2.modules.location.domain.route_key import route_key
+        from v2.modules.location.schemas import LokasyonCreate
 
         try:
             items = await ExcelService.parse_route_excel(content)
@@ -913,11 +912,11 @@ class ImportService:
 
             # N+1 önleme (Sentry LOJINEXT-17A): satır-başına ayrı get_by_route
             # SELECT'i atmak yerine mevcut tüm güzergahları TEK sorguyla
-            # bellek-içi index'e çek; LokasyonService.add_lokasyon bu index
-            # verildiğinde kendi SELECT'ini atlar (aynı batch içi tekrarlar
-            # dahil, index insert/reaktivasyon sonrası yerinde güncelleniyor).
+            # bellek-içi index'e çek; create_location bu index verildiğinde
+            # kendi SELECT'ini atlar (aynı batch içi tekrarlar dahil,
+            # index insert/reaktivasyon sonrası yerinde güncelleniyor).
             # route_key modül-seviyesinde serbest bir fonksiyon — testlerin
-            # LokasyonService sınıfını monkeypatch'lediği senaryolarda bile
+            # create_location'ı monkeypatch'lediği senaryolarda bile
             # (bkz. test_import_routes_valid) çağrılabilir kalması için.
             async with UnitOfWork() as index_uow:
                 existing_rows = await index_uow.lokasyon_repo.get_all_route_keys()
@@ -935,11 +934,8 @@ class ImportService:
                 try:
                     payload = LokasyonCreate(**item)
                     async with UnitOfWork() as uow:
-                        service = LokasyonService(
-                            repo=uow.lokasyon_repo, event_bus=event_bus
-                        )
-                        await service.add_lokasyon(
-                            payload, existing_index=existing_index
+                        await create_location(
+                            uow.lokasyon_repo, payload, existing_index=existing_index
                         )
                         await uow.commit()
                     count += 1
@@ -1050,7 +1046,9 @@ class ImportService:
     def route_service(self):
         """Lazy-loaded route service to avoid circular imports at module level."""
         if self._route_service_lazy is None:
-            from app.services.route_service import RouteService
+            from v2.modules.route_simulation.application.get_route_details import (
+                RouteService,
+            )
 
             self._route_service_lazy = RouteService()
         return self._route_service_lazy

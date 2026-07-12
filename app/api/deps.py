@@ -32,7 +32,6 @@ from fastapi.security import OAuth2PasswordBearer
 if TYPE_CHECKING:
     from app.core.services.arac_service import AracService
     from app.core.services.dorse_service import DorseService
-    from app.core.services.lokasyon_service import LokasyonService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
     from app.core.services.yakit_service import YakitService
@@ -95,12 +94,6 @@ async def get_yakit_service(uow: UOWDep) -> "YakitService":
     from app.core.services.yakit_service import YakitService
 
     return YakitService(repo=uow.yakit_repo)
-
-
-async def get_lokasyon_service(uow: UOWDep) -> "LokasyonService":
-    from app.core.services.lokasyon_service import LokasyonService
-
-    return LokasyonService(repo=uow.lokasyon_repo)
 
 
 async def get_dorse_service(uow: UOWDep) -> "DorseService":

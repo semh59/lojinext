@@ -11,8 +11,11 @@ from typing import List, Tuple
 
 import pytest
 
-from app.core.ml.segment_simulator import SegmentInput
-from app.core.services.route_simulator import RouteSimulator, SimulationResult
+from v2.modules.route_simulation.application.simulate_route import (
+    RouteSimulator,
+    SimulationResult,
+)
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 
 
 class FakeMapboxClient:

@@ -229,23 +229,22 @@ class TestProcessImports:
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_import_routes_valid(self, MockExcelService, service, monkeypatch):
-        """import_routes → LokasyonService.add_lokasyon (ayrı service sınırı)."""
+        """import_routes → v2 create_location (ayrı use-case sınırı)."""
         MockExcelService.parse_route_excel = AsyncMock(
             return_value=[
                 {"cikis_yeri": "Istanbul", "varis_yeri": "Ankara", "mesafe_km": 450.0}
             ]
         )
-        fake_service = AsyncMock()
-        fake_service.add_lokasyon = AsyncMock(return_value=1)
+        fake_create_location = AsyncMock(return_value=1)
         monkeypatch.setattr(
-            "app.core.services.lokasyon_service.LokasyonService",
-            lambda **_: fake_service,
+            "v2.modules.location.application.create_location.create_location",
+            fake_create_location,
         )
 
         count, errors = await service.import_routes(b"fake")
         assert count == 1, f"errors={errors}"
         assert len(errors) == 0
-        fake_service.add_lokasyon.assert_called_once()
+        fake_create_location.assert_called_once()
 
     @patch("app.core.services.import_service.ExcelService")
     async def test_import_routes_avoids_n_plus_one(
@@ -254,7 +253,7 @@ class TestProcessImports:
         """Sentry LOJINEXT-17A: bulk import must not issue one get_by_route
         SELECT per row. get_all_route_keys is called exactly once regardless
         of row count, and the per-row get_by_route path is never hit."""
-        from app.database.repositories.lokasyon_repo import LokasyonRepository
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
 
         MockExcelService.parse_route_excel = AsyncMock(
             return_value=[

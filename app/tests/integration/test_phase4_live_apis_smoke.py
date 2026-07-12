@@ -54,14 +54,14 @@ def _skip_if_no_live() -> str:
 def _build_live_estimator():
     """Test başına yeni MapboxClient + WeatherService inject et — singleton bypass."""
     _skip_if_no_live()
-    from app.core.services.route_simulator import RouteSimulator
     from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
     from app.core.services.weather_service import WeatherService
-    from app.infrastructure.elevation.open_meteo_client import (
+    from app.services.external_service import ExternalService
+    from v2.modules.route_simulation.application.simulate_route import RouteSimulator
+    from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
+    from v2.modules.route_simulation.infrastructure.open_meteo_client import (
         OpenMeteoElevationClient,
     )
-    from app.infrastructure.routing.mapbox_client import MapboxClient
-    from app.services.external_service import ExternalService
 
     mapbox = MapboxClient()  # settings'ten fresh key okur
     elev = OpenMeteoElevationClient()

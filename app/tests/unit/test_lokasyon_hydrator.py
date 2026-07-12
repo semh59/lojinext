@@ -10,9 +10,9 @@ from typing import List
 
 import pytest
 
-from app.core.ml.segment_simulator import SegmentInput
-from app.core.services.lokasyon_hydrator import LokasyonHydrator
 from app.database.models import Lokasyon
+from v2.modules.location.domain.hydration import LokasyonHydrator
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 
 
 class FakeMapbox:

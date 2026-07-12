@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from app.config import settings
-from app.infrastructure.routing.mapbox_client import MapboxClient
+from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
 
 @pytest.mark.asyncio

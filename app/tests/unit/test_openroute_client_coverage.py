@@ -14,7 +14,7 @@ import httpx
 import pytest
 
 from app.core.exceptions import RouteProcessingError
-from app.infrastructure.routing.openroute_client import (
+from v2.modules.route_simulation.infrastructure.openroute_client import (
     OpenRouteClient,
     get_route_client,
 )
@@ -129,7 +129,7 @@ async def test_get_distance_api_success_returns_source_api():
     # RouteValidator is imported lazily inside the method → patch at source module
     with (
         patch(
-            "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+            "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
             return_value=breaker,
         ),
         patch.object(
@@ -190,7 +190,7 @@ async def test_get_distance_circuit_breaker_open_returns_none():
 
     with (
         patch(
-            "app.infrastructure.routing.openroute_client.CircuitBreakerRegistry.get_sync",
+            "v2.modules.route_simulation.infrastructure.openroute_client.CircuitBreakerRegistry.get_sync",
             return_value=breaker,
         ),
         patch.object(
@@ -322,13 +322,13 @@ async def test_geocode_api_error_status_returns_none():
 
 
 async def test_get_route_client_returns_singleton():
-    import app.infrastructure.routing.openroute_client as mod
+    import v2.modules.route_simulation.infrastructure.openroute_client as mod
 
     # Reset singleton for clean test
     mod._client_instance = None
 
     with patch(
-        "app.infrastructure.routing.openroute_client.OpenRouteClient"
+        "v2.modules.route_simulation.infrastructure.openroute_client.OpenRouteClient"
     ) as MockCls:
         instance = MagicMock()
         MockCls.return_value = instance
@@ -434,7 +434,7 @@ async def test_call_api_polyline_decode_error_no_details():
     client = _make_client()
 
     with patch(
-        "app.infrastructure.routing.openroute_client.PolylineDecoder.decode",
+        "v2.modules.route_simulation.infrastructure.openroute_client.PolylineDecoder.decode",
         side_effect=Exception("bad polyline"),
     ):
         result = await client._call_api(

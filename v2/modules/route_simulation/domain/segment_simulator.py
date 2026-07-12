@@ -11,9 +11,11 @@ Phase 0.4 kapsamı:
 - ``simulate_segment(seg, vehicle, ton, arac_yasi) → SegmentOutput``
 - ``simulate_route(segments, vehicle, ton, arac_yasi) → SegmentSummary``
 
-NOT (DB/endpoint yok): bu modül in-memory, salt fonksiyonel. Phase 1'de
-``route_simulator.py`` service'i Mapbox Directions + Open-Meteo Elevation
-çekip bu modülü besleyecek; ardından persist + endpoint katmanı eklenecek.
+NOT (DB/endpoint yok): bu modül in-memory, salt fonksiyonel.
+
+NOT (cross-module, geçici): ``PhysicsBasedFuelPredictor`` prediction_ml
+modülüne ait, henüz taşınmadı — eski yoldan import ediliyor, dokümante
+edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar kaydı).
 """
 
 from __future__ import annotations

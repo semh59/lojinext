@@ -22,13 +22,13 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from app.config import settings
-from app.core.services.lokasyon_service import LokasyonService
 from app.core.services.sefer_fuel_estimator import (
     SeferFuelEstimator,
     SeferFuelInput,
 )
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.lokasyon import LokasyonCreate
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.schemas import LokasyonCreate
 
 # ---------------------------------------------------------------------------
 # Test verisi
@@ -294,7 +294,6 @@ async def get_or_create_location(uow: UnitOfWork, route: Dict[str, Any]) -> int:
         print(f"[setup] Location exists id={row[0]} {cikis_norm} -> {varis_norm}")
         return int(row[0])
 
-    svc = LokasyonService(repo=uow.lokasyon_repo)
     payload = LokasyonCreate(
         ad=route["ad"],
         cikis_yeri=route["cikis_yeri"],
@@ -306,7 +305,7 @@ async def get_or_create_location(uow: UnitOfWork, route: Dict[str, Any]) -> int:
         varis_lon=route["varis_lon"],
         notlar=route["literature_note"],
     )
-    lokasyon_id = await svc.add_lokasyon(payload)
+    lokasyon_id = await create_location(uow.lokasyon_repo, payload)
     print(f"[setup] Location CREATED id={lokasyon_id} {cikis_norm} -> {varis_norm}")
     return lokasyon_id
 

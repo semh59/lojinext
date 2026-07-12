@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import List, Optional, Sequence, Tuple
 
-from app.core.ml.segment_simulator import SegmentInput
+from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 
 _DEFAULT_TARGET_KM = 0.5
 

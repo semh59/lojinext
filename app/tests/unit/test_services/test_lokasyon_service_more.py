@@ -1,37 +1,34 @@
 """
-Additional coverage for app/core/services/lokasyon_service.py.
+Additional coverage for v2/modules/location/application/{create_location,
+delete_location,analyze_location_route}.py.
 
-Targets missing lines:
-  206-207 — add_lokasyon: analyze_route raises → warning logged, lokasyon_id still returned
-  255-257 — delete_lokasyon: outer except catches non-ValueError (not FK) → re-raises as ValueError
-  324-372 — analyze_route: happy path (success with route service + fuel predictor)
-  376-378 — get_lokasyon_service (container access)
+Targets:
+  create_location: analyze_location_route raises → warning logged, id still returned
+  delete_location: outer except catches non-ValueError (not FK) → re-raises as ValueError
+  analyze_location_route: happy path (success with route service + fuel predictor)
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from v2.modules.location.application.analyze_location_route import (
+    analyze_location_route,
+)
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.application.delete_location import delete_location
+from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.location.schemas import LokasyonCreate
+
 pytestmark = pytest.mark.integration
-# 0-mock epiği: add_lokasyon/delete_lokasyon testleri gerçek
-# LokasyonRepository + gerçek DB'ye (db_session) çevrildi. analyze_route
-# testleri route_service/physics_fuel_predictor'ı (ayrı domainler — ilki
-# Faz 1'in ilerideki dilimi, ikincisi ML domain'i, bu turun kapsamı dışı)
-# mock'lu bırakıyor — DOKÜMANTE.
-
-
-def _make_service(repo=None, event_bus=None):
-    from app.core.services.lokasyon_service import LokasyonService
-
-    mock_repo = repo or AsyncMock()
-    mock_bus = event_bus or MagicMock()
-    mock_bus.publish = MagicMock()
-    return LokasyonService(repo=mock_repo, event_bus=mock_bus), mock_repo
+# 0-mock epiği: create_location/delete_location testleri gerçek
+# LokasyonRepository + gerçek DB'ye (db_session) çevrildi.
+# analyze_location_route testleri route_service/physics_fuel_predictor'ı
+# (ayrı domainler — ilki route_simulation modülünün kendi dilimi, ikincisi
+# ML domain'i, bu turun kapsamı dışı) mock'lu bırakıyor — DOKÜMANTE.
 
 
 def _make_create_with_coords():
-    from app.schemas.lokasyon import LokasyonCreate
-
     return LokasyonCreate(
         cikis_yeri="İstanbul",
         varis_yeri="Ankara",
@@ -44,85 +41,86 @@ def _make_create_with_coords():
 
 
 # ---------------------------------------------------------------------------
-# add_lokasyon — analyze_route raises → warning, id still returned (lines 206-207)
+# create_location — analyze_location_route raises → warning, id still returned
 # ---------------------------------------------------------------------------
 
 
-async def test_add_lokasyon_analyze_route_exception_still_returns_id(db_session):
-    """When analyze_route raises an exception, the warning is logged
-    but add_lokasyon still returns the new lokasyon id (gerçek DB'ye
-    karşı — analyze_route ayrı domain, dokümante mock'lu kalıyor)."""
-    from app.database.repositories.lokasyon_repo import LokasyonRepository
-
+async def test_create_location_analyze_route_exception_still_returns_id(db_session):
+    """When analyze_location_route raises an exception, the warning is logged
+    but create_location still returns the new lokasyon id (gerçek DB'ye
+    karşı — route analysis ayrı domain, dokümante mock'lu kalıyor)."""
     repo = LokasyonRepository(session=db_session)
-    svc, _ = _make_service(repo=repo)
 
-    with patch.object(svc, "analyze_route", side_effect=Exception("route api error")):
-        result = await svc.add_lokasyon(_make_create_with_coords())
+    with patch(
+        "v2.modules.location.application.create_location.analyze_location_route",
+        side_effect=Exception("route api error"),
+    ):
+        result = await create_location(repo, _make_create_with_coords())
 
     assert result is not None
 
 
-async def test_add_lokasyon_analyze_route_called_with_returned_id(db_session):
-    """analyze_route is called with the id returned by repo.add."""
-    from app.database.repositories.lokasyon_repo import LokasyonRepository
-
+async def test_create_location_analyze_route_called_with_returned_id(db_session):
+    """analyze_location_route is called with the id returned by repo.add."""
     repo = LokasyonRepository(session=db_session)
-    svc, _ = _make_service(repo=repo)
 
     analyze_calls = []
 
-    async def _fake_analyze(lok_id):
+    async def _fake_analyze(_repo, lok_id):
         analyze_calls.append(lok_id)
         return {"distance_km": 450.0}
 
-    with patch.object(svc, "analyze_route", side_effect=_fake_analyze):
-        result = await svc.add_lokasyon(_make_create_with_coords())
+    with patch(
+        "v2.modules.location.application.create_location.analyze_location_route",
+        side_effect=_fake_analyze,
+    ):
+        result = await create_location(repo, _make_create_with_coords())
 
     assert analyze_calls == [result]
 
 
 # ---------------------------------------------------------------------------
-# delete_lokasyon — outer except catches unexpected exception (lines 255-257)
+# delete_location — outer except catches unexpected exception
 # ---------------------------------------------------------------------------
 
 
-async def test_delete_lokasyon_unexpected_exception_raises_value_error(db_session):
-    """An unexpected exception (not ValueError) during delete_lokasyon should
+async def test_delete_location_unexpected_exception_raises_value_error(db_session):
+    """An unexpected exception (not ValueError) during delete_location should
     be caught and re-raised as ValueError with a generic message.
 
     DOKÜMANTE: get_by_id'nin gerçek DB'de RuntimeError fırlatmasını güvenle
     üretmek pratik değil (bkz. openroute_client_coverage'daki aynı gerekçe)
     — hedefli mock ile test ediliyor, repo'nun gerçek kurulumu (db_session)
     yine de kullanılıyor."""
-    from app.database.repositories.lokasyon_repo import LokasyonRepository
-
     repo = LokasyonRepository(session=db_session)
     repo.get_by_id = AsyncMock(side_effect=RuntimeError("unexpected db failure"))
-    svc, _ = _make_service(repo=repo)
 
     with pytest.raises(ValueError, match="Silme işlemi"):
-        await svc.delete_lokasyon(99)
+        await delete_location(repo, 99)
 
 
 # ---------------------------------------------------------------------------
-# analyze_route — happy path (lines 324-372)
+# analyze_location_route — happy path
 # ---------------------------------------------------------------------------
 
 
-async def test_analyze_route_success():
-    """analyze_route: location found with coords, route service succeeds,
-    fuel predictor succeeds — all fields updated in repo."""
-    svc, mock_repo = _make_service()
+async def test_analyze_location_route_success(db_session):
+    """analyze_location_route: location found with coords, route service
+    succeeds, fuel predictor succeeds — all fields updated in repo."""
+    from app.tests._helpers.seed import seed_lokasyon
 
-    mock_repo.get_by_id.return_value = {
-        "id": 1,
-        "cikis_lat": 41.0,
-        "cikis_lon": 29.0,
-        "varis_lat": 39.9,
-        "varis_lon": 32.8,
-        "zorluk": "Normal",
-    }
+    lokasyon = await seed_lokasyon(
+        db_session,
+        cikis_yeri="A",
+        varis_yeri="B",
+        cikis_lat=41.0,
+        cikis_lon=29.0,
+        varis_lat=39.9,
+        varis_lon=32.8,
+        zorluk="Normal",
+    )
+    await db_session.commit()
+    repo = LokasyonRepository(session=db_session)
 
     route_result = {
         "distance_km": 450.0,
@@ -158,29 +156,34 @@ async def test_analyze_route_success():
     with patch.dict(
         "sys.modules",
         {
-            "app.services.route_service": mock_route_service_module,
+            "v2.modules.route_simulation.application.get_route_details": (
+                mock_route_service_module
+            ),
             "app.core.ml.physics_fuel_predictor": mock_physics_module,
         },
     ):
         with patch("asyncio.to_thread", new_callable=AsyncMock, return_value=fuel_pred):
-            result = await svc.analyze_route(1)
+            result = await analyze_location_route(repo, lokasyon.id)
 
     assert result["distance_km"] == 450.0
-    mock_repo.update.assert_called()
 
 
-async def test_analyze_route_success_no_fuel_predictor():
-    """analyze_route works even if fuel predictor raises — warning logged."""
-    svc, mock_repo = _make_service()
+async def test_analyze_location_route_success_no_fuel_predictor(db_session):
+    """analyze_location_route works even if fuel predictor raises — warning logged."""
+    from app.tests._helpers.seed import seed_lokasyon
 
-    mock_repo.get_by_id.return_value = {
-        "id": 2,
-        "cikis_lat": 41.0,
-        "cikis_lon": 29.0,
-        "varis_lat": 39.9,
-        "varis_lon": 32.8,
-        "zorluk": "Zor",
-    }
+    lokasyon = await seed_lokasyon(
+        db_session,
+        cikis_yeri="A",
+        varis_yeri="B",
+        cikis_lat=41.0,
+        cikis_lon=29.0,
+        varis_lat=39.9,
+        varis_lon=32.8,
+        zorluk="Zor",
+    )
+    await db_session.commit()
+    repo = LokasyonRepository(session=db_session)
 
     route_result = {
         "distance_km": 600.0,
@@ -212,28 +215,32 @@ async def test_analyze_route_success_no_fuel_predictor():
     with patch.dict(
         "sys.modules",
         {
-            "app.services.route_service": mock_route_service_module,
+            "v2.modules.route_simulation.application.get_route_details": (
+                mock_route_service_module
+            ),
             "app.core.ml.physics_fuel_predictor": mock_physics_module,
         },
     ):
-        result = await svc.analyze_route(2)
+        result = await analyze_location_route(repo, lokasyon.id)
 
     assert result["distance_km"] == 600.0
-    # Should still have called repo.update once for route data
-    mock_repo.update.assert_called()
 
 
-async def test_analyze_route_error_response_raises_value_error():
+async def test_analyze_location_route_error_response_raises_value_error(db_session):
     """If route service returns error key, raises ValueError."""
-    svc, mock_repo = _make_service()
+    from app.tests._helpers.seed import seed_lokasyon
 
-    mock_repo.get_by_id.return_value = {
-        "id": 3,
-        "cikis_lat": 41.0,
-        "cikis_lon": 29.0,
-        "varis_lat": 39.9,
-        "varis_lon": 32.8,
-    }
+    lokasyon = await seed_lokasyon(
+        db_session,
+        cikis_yeri="A",
+        varis_yeri="B",
+        cikis_lat=41.0,
+        cikis_lon=29.0,
+        varis_lat=39.9,
+        varis_lon=32.8,
+    )
+    await db_session.commit()
+    repo = LokasyonRepository(session=db_session)
 
     mock_rs = AsyncMock()
     mock_rs.get_route_details = AsyncMock(return_value={"error": "no route found"})
@@ -241,28 +248,12 @@ async def test_analyze_route_error_response_raises_value_error():
     mock_route_service_module.get_route_service = MagicMock(return_value=mock_rs)
 
     with patch.dict(
-        "sys.modules", {"app.services.route_service": mock_route_service_module}
+        "sys.modules",
+        {
+            "v2.modules.route_simulation.application.get_route_details": (
+                mock_route_service_module
+            )
+        },
     ):
         with pytest.raises(ValueError, match="Analiz hatası"):
-            await svc.analyze_route(3)
-
-
-# ---------------------------------------------------------------------------
-# get_lokasyon_service — container access (lines 376-378)
-# ---------------------------------------------------------------------------
-
-
-def test_get_lokasyon_service_from_container():
-    """get_lokasyon_service retrieves from the container singleton."""
-    from app.core.services.lokasyon_service import LokasyonService
-
-    fake_svc = MagicMock(spec=LokasyonService)
-    fake_container = MagicMock()
-    fake_container.lokasyon_service = fake_svc
-
-    with patch("app.core.container.get_container", return_value=fake_container):
-        from app.core.services.lokasyon_service import get_lokasyon_service
-
-        result = get_lokasyon_service()
-
-    assert result is fake_svc
+            await analyze_location_route(repo, lokasyon.id)

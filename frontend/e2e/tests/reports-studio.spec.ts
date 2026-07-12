@@ -4,11 +4,21 @@ function json(body: unknown) {
     return { status: 200, contentType: 'application/json', body: JSON.stringify(body) }
 }
 
+// title/description burada gercekten onemsiz gibi gorunse de asagidaki
+// REPORT_TEMPLATE_LABELS (frontend/src/lib/status-labels.ts) her zaman bu 6
+// ID icin hardcoded Turkce/Ingilizce metni kullanip API'nin donduguu title/
+// description'i TAMAMEN gormezden geliyor (backend'in 6 statik sablonu
+// yalniz Turkce gonderdigi icin eklenen bir i18n override). Playwright
+// locale'i 'tr-TR' oldugundan .tr degerleri render edilir — bu yuzden
+// mock'taki title/description alanlari REPORT_TEMPLATE_LABELS'teki gercek
+// degerlerle BIREBIR ayni olmali, yoksa asagidaki testler (ekranda gercekte
+// gorunen metni degil, mock'un kendi metnini arayarak) hep FAIL eder.
 const MOCK_TEMPLATES = [
     {
         id: 'ceo_1pager',
-        title: 'CEO 1-Sayfa Özet',
-        description: 'Yönetim için kısa özet raporu.',
+        title: 'CEO Aylık 1-Pager',
+        description:
+            'Tek sayfalık üst yönetim özeti — FVI, maliyet, anomali ve uyum metrikleri.',
         category: 'executive',
         formats: ['pdf'],
         endpoint_hint: '/reports/executive/pdf',
@@ -17,8 +27,9 @@ const MOCK_TEMPLATES = [
     },
     {
         id: 'fleet_weekly',
-        title: 'Haftalık Filo Raporu',
-        description: 'Araç bazlı haftalık performans.',
+        title: 'Filo Müdürü Haftalık',
+        description:
+            'Haftalık operasyon özeti — FVI, period karşılaştırma, cross-feature kazanım.',
         category: 'fleet',
         formats: ['pdf', 'excel'],
         endpoint_hint: '/reports/fleet',
@@ -28,7 +39,7 @@ const MOCK_TEMPLATES = [
     {
         id: 'fuel_cost_analysis',
         title: 'Yakıt Maliyet Analizi',
-        description: 'Yakıt gider kırılımı.',
+        description: 'Aylık yakıt maliyet trendi ve dönem karşılaştırması.',
         category: 'fuel',
         formats: ['pdf', 'excel'],
         endpoint_hint: '/reports/fuel',
@@ -38,7 +49,8 @@ const MOCK_TEMPLATES = [
     {
         id: 'vehicle_comparison',
         title: 'Araç Karşılaştırma',
-        description: 'Araç bazlı verimlilik karşılaştırması.',
+        description:
+            'Filodaki araçların ortalama tüketim ve maliyet karşılaştırması.',
         category: 'fleet',
         formats: ['pdf', 'excel'],
         endpoint_hint: '/reports/vehicle',
@@ -47,8 +59,8 @@ const MOCK_TEMPLATES = [
     },
     {
         id: 'carbon_report',
-        title: 'Karbon Ayak İzi',
-        description: 'CO₂ emisyon raporu.',
+        title: 'Karbon Raporu',
+        description: '12 ay CO₂ emisyon özeti ve hedef sapması.',
         category: 'compliance',
         formats: ['pdf', 'excel'],
         endpoint_hint: '/reports/carbon',
@@ -57,8 +69,9 @@ const MOCK_TEMPLATES = [
     },
     {
         id: 'what_if',
-        title: 'What-If Senaryosu',
-        description: 'Senaryo bazlı analiz.',
+        title: 'What-If Sonucu',
+        description:
+            "Strategic Cockpit'te çalıştırılan senaryonun PDF olarak indirilmesi.",
         category: 'executive',
         formats: ['pdf'],
         endpoint_hint: '/reports/executive/pdf',
@@ -89,11 +102,11 @@ test.describe('ReportsStudioPage — Rapor Stüdyosu', () => {
     })
 
     test('tüm 6 şablon kartı render edilir', async ({ authedPage: page }) => {
-        await expect(page.getByRole('button', { name: /CEO 1-Sayfa/i })).toBeVisible({ timeout: 8_000 })
-        await expect(page.getByRole('button', { name: /Haftalık Filo/i })).toBeVisible()
+        await expect(page.getByRole('button', { name: /CEO Aylık/i })).toBeVisible({ timeout: 8_000 })
+        await expect(page.getByRole('button', { name: /Filo Müdürü Haftalık/i })).toBeVisible()
         await expect(page.getByRole('button', { name: /Yakıt Maliyet/i })).toBeVisible()
         await expect(page.getByRole('button', { name: /Araç Karşılaştırma/i })).toBeVisible()
-        await expect(page.getByRole('button', { name: /Karbon Ayak/i })).toBeVisible()
+        await expect(page.getByRole('button', { name: /Karbon Raporu/i })).toBeVisible()
         await expect(page.getByRole('button', { name: /What-If/i })).toBeVisible()
     })
 
@@ -102,19 +115,19 @@ test.describe('ReportsStudioPage — Rapor Stüdyosu', () => {
     })
 
     test('şablona tıklayınca config paneli aktif olur', async ({ authedPage: page }) => {
-        await page.getByRole('button', { name: /Haftalık Filo/i }).click()
+        await page.getByRole('button', { name: /Filo Müdürü Haftalık/i }).click()
         // Config panel - İndir butonu görünmeli
         await expect(page.getByRole('button', { name: /İndir/i })).toBeVisible({ timeout: 8_000 })
     })
 
     test('periyot seçim render edilir (şablon seçince)', async ({ authedPage: page }) => {
-        await page.getByRole('button', { name: /Haftalık Filo/i }).click()
+        await page.getByRole('button', { name: /Filo Müdürü Haftalık/i }).click()
         // Periyot label'ı görünmeli
         await expect(page.getByText('Periyot')).toBeVisible({ timeout: 5_000 })
     })
 
     test('format seçimi PDF görünür (şablon seçince)', async ({ authedPage: page }) => {
-        await page.getByRole('button', { name: /Haftalık Filo/i }).click()
+        await page.getByRole('button', { name: /Filo Müdürü Haftalık/i }).click()
         await expect(page.getByText('PDF').first()).toBeVisible({ timeout: 5_000 })
     })
 

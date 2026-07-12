@@ -5,11 +5,17 @@ function json(body: unknown) {
     return { status: 200, contentType: 'application/json', body: JSON.stringify(body) }
 }
 
+// title/description gercekte onemsiz gorunse de REPORT_TEMPLATE_LABELS
+// (frontend/src/lib/status-labels.ts) bu 6 ID icin her zaman hardcoded
+// Turkce/Ingilizce metni kullanip API'nin donduguu title/description'i
+// gormezden geliyor — mock'taki degerler o tablodaki gercek degerlerle
+// eslesmezse asagidaki testler hep FAIL eder (bkz reports-studio.spec.ts).
 const MOCK_TEMPLATES = [
     {
         id: 'fleet_weekly',
-        title: 'Haftalık Filo Raporu',
-        description: 'Araç bazlı haftalık performans.',
+        title: 'Filo Müdürü Haftalık',
+        description:
+            'Haftalık operasyon özeti — FVI, period karşılaştırma, cross-feature kazanım.',
         category: 'fleet',
         formats: ['pdf', 'excel'],
         endpoint_hint: '/reports/fleet',
@@ -54,14 +60,14 @@ test.describe('Raporlar sayfası', () => {
     test('rapor kartları görünür', async ({ authedPage: page }) => {
         await page.goto('/reports')
         await expect(page.getByRole('heading', { name: 'Rapor Stüdyosu' })).toBeVisible({ timeout: 10_000 })
-        await expect(page.getByRole('button', { name: /Haftalık Filo/i })).toBeVisible({ timeout: 8_000 })
+        await expect(page.getByRole('button', { name: /Filo Müdürü Haftalık/i })).toBeVisible({ timeout: 8_000 })
         await expect(page.getByRole('button', { name: /Yakıt Maliyet/i })).toBeVisible()
     })
 
     test('rapor kartına tıklayınca config paneli açılır', async ({ authedPage: page }) => {
         await page.goto('/reports')
         await expect(page.getByRole('heading', { name: 'Rapor Stüdyosu' })).toBeVisible({ timeout: 10_000 })
-        await page.getByRole('button', { name: /Haftalık Filo/i }).click()
+        await page.getByRole('button', { name: /Filo Müdürü Haftalık/i }).click()
         await expect(page.getByRole('button', { name: /İndir/i })).toBeVisible({ timeout: 8_000 })
     })
 
@@ -82,7 +88,7 @@ test.describe('Raporlar sayfası', () => {
     test('araç raporu şablonu seçince format seçimi (PDF/Excel) görünür', async ({ authedPage: page }) => {
         await page.goto('/reports')
         await expect(page.getByRole('heading', { name: 'Rapor Stüdyosu' })).toBeVisible({ timeout: 10_000 })
-        await page.getByRole('button', { name: /Haftalık Filo/i }).click()
+        await page.getByRole('button', { name: /Filo Müdürü Haftalık/i }).click()
         await expect(page.getByText('PDF').first()).toBeVisible({ timeout: 5_000 })
     })
 })

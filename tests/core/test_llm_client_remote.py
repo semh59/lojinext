@@ -3,6 +3,7 @@ import respx
 from httpx import Response
 
 from app.core.ai.llm_client import LLMClient, LLMMessage
+from app.core.exceptions import LLMProviderError
 
 
 @pytest.mark.anyio
@@ -41,12 +42,12 @@ async def test_llm_client_chat_success_masks_pii():
 
 @pytest.mark.anyio
 @respx.mock
-async def test_llm_client_retries_and_returns_error_on_fail():
+async def test_llm_client_retries_and_raises_on_fail():
     respx.post("https://api.groq.com/openai/v1/chat/completions").mock(
         return_value=Response(500, json={"error": "boom"})
     )
 
     client = LLMClient(api_key="dummy", timeout_seconds=0.1, max_retries=1)
-    result = await client.chat([LLMMessage(role="user", content="hello")])
 
-    assert "LLM hatası" in result
+    with pytest.raises(LLMProviderError):
+        await client.chat([LLMMessage(role="user", content="hello")])

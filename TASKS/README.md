@@ -1,5 +1,7 @@
 # TASKS/ — LOJINEXT Modüler Monolit Refaktörü Görev Dizini
 
+> **Önce `TASKS/STATUS.md`'yi oku.** Hangi modülün sırada olduğunu, oturum-hijyeni kuralını (bir oturum = bir modül) ve bilinen açık notları orada bulursun — bu dosyayı (README) baştan sona yeniden okumana gerek yok.
+
 ## DURMA NOKTASI
 
 **Hiçbir görev dosyası, kullanıcının o dosyaya özel onayı olmadan uygulanmaz.** Bu dizin tamamen plandır. Bir görev dosyasını uygulamaya başlamadan önce:

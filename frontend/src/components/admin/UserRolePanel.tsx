@@ -59,7 +59,10 @@ export function UserRolePanel({
         label={t("auth.name", "Full Name")}
         type="text"
         placeholder="John Smith"
-        error={formError?.toLowerCase().includes("ad")}
+        // "soyad" not "ad" — the duplicate-email backend error ("Bu e-posta
+        // adresi zaten kullanımda") contains "ad" (from "adresi"), which
+        // used to also flag this unrelated field as errored.
+        error={formError?.toLowerCase().includes("soyad")}
         {...onFieldChange("ad_soyad")}
       />
       <Input

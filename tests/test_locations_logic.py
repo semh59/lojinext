@@ -2,8 +2,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.core.services.lokasyon_service import LokasyonService
-from app.schemas.lokasyon import LokasyonCreate
+from v2.modules.location.application.create_location import create_location
+from v2.modules.location.application.delete_location import delete_location
+from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.schemas import LokasyonCreate
 
 
 @pytest.mark.asyncio
@@ -28,32 +30,32 @@ async def test_locations_logic():
     repo.update.return_value = True
     repo.hard_delete.return_value = True
 
-    service = LokasyonService(repo=repo, event_bus=AsyncMock())
-
-    page = await service.get_all_paged(limit=5)
+    page = await list_locations(repo, limit=5)
     assert page["total"] == 1
     assert page["items"][0].cikis_yeri == "Istanbul"
 
-    lokasyon_id = await service.add_lokasyon(
+    lokasyon_id = await create_location(
+        repo,
         LokasyonCreate(
             cikis_yeri="istanbul",
             varis_yeri="ankara",
             mesafe_km=450,
             zorluk="Normal",
-        )
+        ),
     )
     assert lokasyon_id == 5
 
     with pytest.raises(ValueError, match="zaten mevcut"):
-        await service.add_lokasyon(
+        await create_location(
+            repo,
             LokasyonCreate(
                 cikis_yeri="istanbul",
                 varis_yeri="ankara",
                 mesafe_km=450,
                 zorluk="Normal",
-            )
+            ),
         )
 
-    assert await service.delete_lokasyon(5) is True
-    assert await service.delete_lokasyon(5) is True
+    assert await delete_location(repo, 5) is True
+    assert await delete_location(repo, 5) is True
     repo.hard_delete.assert_awaited_once_with(5)

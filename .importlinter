@@ -1,0 +1,9 @@
+[importlinter]
+root_package = app
+
+[importlinter:contract:report-only]
+name = Modular monolith boundary (report-only, FAZ0)
+type = independence
+modules =
+    app.core.services
+    app.services

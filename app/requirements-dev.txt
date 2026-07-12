@@ -20,6 +20,9 @@ anyio>=4.0           # async test runtime
 ruff>=0.4            # fast Python linter + formatter
 black>=24.0          # code formatter (optional, ruff can replace)
 
+# ── Architecture boundary enforcement (modular monolith, FAZ0+) ─
+import-linter==2.13  # static import-graph contracts, report-only until FAZ1 gate
+
 # ── Type checking ─────────────────────────────────────────────
 mypy>=1.10
 # PyJWT ships its own type hints (py.typed); python-jose stubs removed with the

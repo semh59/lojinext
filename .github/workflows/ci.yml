@@ -283,6 +283,14 @@ jobs:
         # `# noqa: E501`.
         run: ruff check app/ --select=E,F,W,I
 
+      - name: Import boundary report (non-blocking, FAZ0)
+        # Modular-monolith refactor baseline measurement — see
+        # TASKS/faz0-baseline-olcum-ve-rapor-modu.md and TASKS/faz1-import-linter-baseline-ve-gate.md.
+        # Report-only until FAZ1 promotes this to a blocking gate with a frozen
+        # ignore_imports baseline (181 measured edges).
+        run: lint-imports --config .importlinter || true
+        continue-on-error: true
+
       - name: Backend type check (mypy)
         # Soft-baseline gate: fails only if the error count GROWS beyond the
         # known pre-existing count.

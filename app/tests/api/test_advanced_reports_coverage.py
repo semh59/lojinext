@@ -603,3 +603,74 @@ async def test_driver_comparison_pdf_happy_path(async_client, admin_auth_headers
 
     assert resp.status_code == 200
     assert resp.content[:4] == b"%PDF"
+
+
+# ---------------------------------------------------------------------------
+# GET /pdf/vehicle-comparison
+# ---------------------------------------------------------------------------
+
+
+async def test_vehicle_comparison_pdf_happy_path(async_client, admin_auth_headers):
+    """Returns PDF for vehicle comparison.
+
+    Regression: the frontend's "Vehicle Comparison" template used to call
+    /pdf/vehicle/{id} (id required) and report_type=vehicle_report on the
+    excel endpoint — neither existed, so this template 404'd/400'd on every
+    download. This endpoint is the real fix.
+    """
+    fake_vehicle = {
+        "arac_id": 1,
+        "plaka": "34 TEST 001",
+        "fuel_cost": 5000.0,
+        "total_distance": 12000.0,
+        "cost_per_km": 0.42,
+        "avg_consumption": 32.0,
+    }
+    fake_pdf = b"%PDF-1.4 vehicle-comparison %%EOF"
+    mock_analyzer = MagicMock()
+    mock_analyzer.get_vehicle_cost_comparison = AsyncMock(return_value=[fake_vehicle])
+    mock_gen = MagicMock()
+    mock_gen.generate_vehicle_comparison.return_value = fake_pdf
+
+    with (
+        patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
+    ):
+        resp = await async_client.get(
+            f"{BASE}/pdf/vehicle-comparison",
+            headers=admin_auth_headers,
+        )
+
+    assert resp.status_code == 200
+    assert resp.content[:4] == b"%PDF"
+    mock_gen.generate_vehicle_comparison.assert_called_once_with([fake_vehicle])
+
+
+async def test_excel_export_vehicle_comparison(async_client, admin_auth_headers):
+    """Exports vehicle_comparison Excel successfully."""
+    fake_vehicle = {
+        "arac_id": 1,
+        "plaka": "34 TEST 001",
+        "fuel_cost": 5000.0,
+        "total_distance": 12000.0,
+        "cost_per_km": 0.42,
+        "avg_consumption": 32.0,
+    }
+    fake_xlsx = b"PK\x03\x04" + b"\x00" * 50
+    mock_analyzer = MagicMock()
+    mock_analyzer.get_vehicle_cost_comparison = AsyncMock(return_value=[fake_vehicle])
+
+    with (
+        patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(
+            "app.core.services.excel_service.ExcelService.export_data",
+            new=AsyncMock(return_value=fake_xlsx),
+        ),
+    ):
+        resp = await async_client.get(
+            f"{BASE}/excel/export",
+            params={"report_type": "vehicle_comparison"},
+            headers=admin_auth_headers,
+        )
+
+    assert resp.status_code == 200

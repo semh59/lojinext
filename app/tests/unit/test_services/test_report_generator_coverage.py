@@ -229,6 +229,45 @@ class TestWithReportlab:
         assert isinstance(result, bytes)
         assert len(result) > 0
 
+    def test_generate_vehicle_comparison_returns_bytes(self):
+        gen = self._generator()
+        vehicle_data = [
+            {
+                "plaka": "34 TEST 001",
+                "total_distance": 12000.0,
+                "fuel_cost": 5000.0,
+                "cost_per_km": 0.42,
+                "avg_consumption": 32.0,
+            },
+            {
+                "plaka": "34 TEST 002",
+                "total_distance": 8000.0,
+                "fuel_cost": 3200.0,
+                "cost_per_km": 0.40,
+                "avg_consumption": 30.5,
+            },
+        ]
+        result = gen.generate_vehicle_comparison(vehicle_data)
+        assert isinstance(result, bytes)
+        assert len(result) > 0
+
+    def test_generate_vehicle_comparison_empty_list(self):
+        """Empty vehicle list → 'no data' paragraph PDF."""
+        gen = self._generator()
+        result = gen.generate_vehicle_comparison([])
+        assert isinstance(result, bytes)
+        assert len(result) > 0
+
+    def test_generate_vehicle_comparison_tolerates_missing_fields(self):
+        """A vehicle with unavailable=True (calculation failed) has no
+        numeric fields — must not crash, should render as zeros."""
+        gen = self._generator()
+        result = gen.generate_vehicle_comparison(
+            [{"plaka": "34 TEST 003", "unavailable": True}]
+        )
+        assert isinstance(result, bytes)
+        assert len(result) > 0
+
     def test_vehicle_performance_score_critical_label(self):
         """Score < 50 → 'KRİTİK' status in vehicle table."""
         gen = self._generator()

@@ -548,6 +548,61 @@ class PDFReportGenerator:
         doc.build(elements)
         return buffer.getvalue()
 
+    def generate_vehicle_comparison(self, vehicle_data: List[Dict]) -> bytes:
+        """Araç maliyet karşılaştırma PDF raporu."""
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2 * cm,
+            leftMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+        )
+        elements: List[Any] = []
+
+        self._create_header(
+            elements,
+            "Araç Karşılaştırma Raporu",
+            f"Oluşturulma: {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M')}",
+        )
+
+        if not vehicle_data:
+            elements.append(
+                Paragraph("Gösterilecek araç verisi bulunamadı.", self.styles["Normal"])
+            )
+            doc.build(elements)
+            return buffer.getvalue()
+
+        headers = ["Plaka", "Mesafe (km)", "Yakıt (TL)", "TL/km", "L/100km"]
+        table_data = [headers] + [
+            [
+                str(v.get("plaka") or "-"),
+                f"{v.get('total_distance') or 0:.0f}",
+                f"{v.get('fuel_cost') or 0:.2f}",
+                f"{v.get('cost_per_km') or 0:.2f}",
+                f"{v.get('avg_consumption') or 0:.1f}",
+            ]
+            for v in vehicle_data
+        ]
+        col_widths = [4 * cm, 4 * cm, 4 * cm, 3 * cm, 3 * cm]
+        table = Table(table_data, colWidths=col_widths)
+        table.setStyle(
+            TableStyle(
+                [
+                    ("BACKGROUND", (0, 0), (-1, 0), self.PRIMARY),
+                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                    ("FONTNAME", (0, 0), (-1, 0), self.font_name),
+                    ("FONTSIZE", (0, 0), (-1, 0), 10),
+                    ("GRID", (0, 0), (-1, -1), 0.5, self.SECONDARY),
+                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, self.BG_LIGHT]),
+                ]
+            )
+        )
+        elements.append(table)
+        doc.build(elements)
+        return buffer.getvalue()
+
 
 # Thread-safe Singleton
 import threading  # noqa: E402

@@ -151,6 +151,57 @@ describe.skipIf(!backendUp)("ReportsStudioPage (real backend)", () => {
     });
   }, 20000);
 
+  it("Araç Karşılaştırma PDF: reportsApi.downloadPdf 'vehicle_comparison' ile çağrılır", async () => {
+    // Regression: bu şablon eskiden "vehicle_detail" (id zorunlu, tek-araç
+    // detay rotası) çağırıyordu → backend'de id'siz karşılığı yoktu, 404.
+    // Artık gerçek çoklu-araç karşılaştırma tipini kullanıyor.
+    (reportsApi.downloadPdf as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Blob(["x"], { type: "application/pdf" }),
+    );
+
+    render(<ReportsStudioPage />);
+    await waitFor(() => screen.getByText("Araç Karşılaştırma"), {
+      timeout: 15000,
+    });
+
+    fireEvent.click(screen.getByTestId("template-card-vehicle_comparison"));
+    fireEvent.click(screen.getByTestId("download-button"));
+
+    await waitFor(() => {
+      expect(reportsApi.downloadPdf).toHaveBeenCalledTimes(1);
+      expect(reportsApi.downloadPdf).toHaveBeenCalledWith(
+        "vehicle_comparison",
+        undefined,
+        expect.any(Object),
+      );
+    });
+  }, 20000);
+
+  it("Araç Karşılaştırma Excel: reportsApi.downloadExcel 'vehicle_comparison' ile çağrılır", async () => {
+    // Regression: eskiden "vehicle_report" gönderiyordu → backend'in
+    // /excel/export'u bu tipi tanımıyordu, 400.
+    (reportsApi.downloadExcel as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Blob(["x"], { type: "application/vnd.ms-excel" }),
+    );
+
+    render(<ReportsStudioPage />);
+    await waitFor(() => screen.getByText("Araç Karşılaştırma"), {
+      timeout: 15000,
+    });
+
+    fireEvent.click(screen.getByTestId("template-card-vehicle_comparison"));
+    fireEvent.click(screen.getByTestId("format-excel"));
+    fireEvent.click(screen.getByTestId("download-button"));
+
+    await waitFor(() => {
+      expect(reportsApi.downloadExcel).toHaveBeenCalledTimes(1);
+      expect(reportsApi.downloadExcel).toHaveBeenCalledWith(
+        "vehicle_comparison",
+        expect.any(Object),
+      );
+    });
+  }, 20000);
+
   it("İndirme hatası: feedback-error görünür", async () => {
     (executiveApi.downloadPdf as ReturnType<typeof vi.fn>).mockRejectedValue(
       new Error("network"),

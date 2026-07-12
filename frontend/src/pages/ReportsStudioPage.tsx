@@ -110,14 +110,14 @@ async function dispatchDownload(config: TemplateDownloadConfig): Promise<void> {
   if (template.id === "vehicle_comparison") {
     if (format === "pdf") {
       const blob = await reportsApi.downloadPdf(
-        "vehicle_detail",
+        "vehicle_comparison",
         undefined,
         params as Record<string, string | number>,
       );
       triggerBlobDownload(blob, `arac-karsilastirma-${dateStr}.pdf`);
     } else {
       const blob = await reportsApi.downloadExcel(
-        "vehicle_report",
+        "vehicle_comparison",
         params as Record<string, string | number>,
       );
       triggerBlobDownload(blob, `arac-karsilastirma-${dateStr}.xlsx`);

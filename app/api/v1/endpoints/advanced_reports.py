@@ -226,6 +226,42 @@ async def get_driver_comparison_pdf(
         raise HTTPException(status_code=500, detail="PDF oluşturulamadı.")
 
 
+@router.get(
+    "/pdf/vehicle-comparison",
+    responses=PDF_RESPONSES,
+    response_model=None,
+    response_class=Response,
+)
+async def get_vehicle_comparison_pdf(
+    current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
+    months: int = Query(3, ge=1, le=12),
+):
+    """Araç maliyet karşılaştırma raporu PDF"""
+    try:
+        analyzer = get_cost_analyzer()
+        vehicles = await analyzer.get_vehicle_cost_comparison(months)
+
+        generator = get_report_generator()
+        pdf_bytes = await asyncio.to_thread(
+            generator.generate_vehicle_comparison, vehicles
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": "attachment; filename=arac-karsilastirma.pdf"
+            },
+        )
+    except HTTPException:
+        raise
+    except DomainError:
+        raise
+    except Exception as e:
+        logger.error(f"Vehicle comparison PDF error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="PDF oluşturulamadı.")
+
+
 @router.get("/cost/period", response_model=CostBreakdownResponse)
 async def get_period_cost(
     db: SessionDep,
@@ -365,7 +401,8 @@ async def get_excel_template(
 )
 async def export_analytical_report_excel(
     report_type: str = Query(
-        ..., description="fleet_summary, driver_comparison, cost_trend"
+        ...,
+        description="fleet_summary, driver_comparison, cost_trend, vehicle_comparison",
     ),
     db: SessionDep = None,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)] = None,
@@ -410,6 +447,20 @@ async def export_analytical_report_excel(
             analyzer = get_cost_analyzer()
             trend = await analyzer.get_monthly_trend(months)
             data = trend if isinstance(trend, list) else [trend]
+
+        elif report_type == "vehicle_comparison":
+            analyzer = get_cost_analyzer()
+            vehicles = await analyzer.get_vehicle_cost_comparison(months)
+            data = [
+                {
+                    "Plaka": v.get("plaka"),
+                    "Toplam Mesafe (km)": v.get("total_distance"),
+                    "Yakıt Maliyeti (TL)": v.get("fuel_cost"),
+                    "km Başı Maliyet (TL)": v.get("cost_per_km"),
+                    "Ort. Tüketim (L/100km)": v.get("avg_consumption"),
+                }
+                for v in vehicles
+            ]
 
         else:
             raise HTTPException(status_code=400, detail="Geçersiz rapor tipi")

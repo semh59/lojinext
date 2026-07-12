@@ -298,6 +298,61 @@ class TestJobManager:
 
         assert status["status"] == "running"
 
+    async def test_task_does_not_inherit_callers_session_context(self):
+        """Regression: asyncio.create_task() copies the caller's context by
+        default. If the caller is a request handler with an active
+        UnitOfWork (its _session_ctx contextvar set), the submitted task
+        used to "re-enter" that same UoW and reuse the request's
+        AsyncSession (UnitOfWork.__aenter__'s reuse-on-re-entry logic) —
+        that session gets torn down once the request returns while the
+        background task keeps running on it, so asyncpg raises "cannot
+        perform operation: another operation is in progress" (caught live
+        in CI run 29192467229, GET /trips/{id}/cost-analysis). submit()
+        must run the task in a context where _session_ctx is reset to its
+        default (None) so func's own UnitOfWork opens an independent
+        session."""
+        from app.database.db_session import _session_ctx
+
+        mgr = BackgroundJobManager()
+        seen_session_ctx = {}
+
+        async def reads_session_ctx():
+            seen_session_ctx["value"] = _session_ctx.get()
+            return "done"
+
+        # Simulate an active request-scoped UnitOfWork session at the
+        # moment submit() is called.
+        token = _session_ctx.set("fake-request-session")  # type: ignore[arg-type]
+        try:
+            job_id = await mgr.submit(reads_session_ctx)
+            await mgr._tasks[job_id]
+        finally:
+            _session_ctx.reset(token)
+
+        assert seen_session_ctx["value"] is None
+
+    async def test_task_still_inherits_correlation_id(self):
+        """Regression guard for the fix above: only _session_ctx should be
+        reset — correlation_id/user_id (used for audit-log attribution of
+        background-job side effects) must still propagate to the task."""
+        from app.infrastructure.context.request_context import (
+            get_correlation_id,
+            set_correlation_id,
+        )
+
+        mgr = BackgroundJobManager()
+        seen_correlation_id = {}
+
+        async def reads_correlation_id():
+            seen_correlation_id["value"] = get_correlation_id()
+            return "done"
+
+        set_correlation_id("test-correlation-id-123")
+        job_id = await mgr.submit(reads_correlation_id)
+        await mgr._tasks[job_id]
+
+        assert seen_correlation_id["value"] == "test-correlation-id-123"
+
     async def test_non_json_result_is_stringified(self):
         """Results that are not JSON-serializable are stored as strings."""
         mgr = BackgroundJobManager()

@@ -9,6 +9,7 @@ awaiting task completion in tests/callers that need it.
 
 import asyncio
 import contextlib
+import contextvars
 import json
 import logging
 import threading
@@ -178,7 +179,25 @@ class BackgroundJobManager:
                 with contextlib.suppress(asyncio.CancelledError):
                     await heartbeat_task
 
-        task = asyncio.create_task(_wrapper())
+        # asyncio.create_task() copies the CALLER's context by default —
+        # since the request handler's UnitOfWork is still active (its
+        # _session_ctx contextvar is set) at the moment submit() runs, the
+        # background task would otherwise "re-enter" and REUSE the
+        # request's AsyncSession (see UnitOfWork.__aenter__'s reuse-on-
+        # re-entry logic) instead of opening its own. That request session
+        # gets torn down once the endpoint returns, while this task keeps
+        # running concurrently on it — asyncpg raises "cannot perform
+        # operation: another operation is in progress" (caught live in CI,
+        # run 29192467229: GET /trips/{id}/cost-analysis's reconcile_costs).
+        # Copy the context (keeps correlation_id/user_id/request_path for
+        # audit-log attribution) but reset _session_ctx to its default
+        # (None) so func's own UnitOfWork opens a fresh, independent
+        # session instead of inheriting the request's.
+        from app.database.db_session import _session_ctx
+
+        task_ctx = contextvars.copy_context()
+        task_ctx.run(_session_ctx.set, None)
+        task = asyncio.create_task(_wrapper(), context=task_ctx)
         self._tasks[job_id] = task
         task.add_done_callback(lambda _t: self._tasks.pop(job_id, None))
         return job_id

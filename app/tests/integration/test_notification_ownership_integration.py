@@ -1,5 +1,7 @@
 """
-Real-object integration tests for NotificationService.mark_as_read ownership guard.
+Real-object integration tests for the notification module's mark_as_read
+use-case (v2/modules/notification/application/mark_notification_read.py)
+ownership guard.
 
 SEC-001 regression guard: mark_as_read must reject cross-user read attempts
 (IDOR). Previously the service accepted user_id as a keyword arg but never
@@ -62,7 +64,9 @@ async def test_mark_as_read_rejects_wrong_user(db_session):
     SEC-001: mark_as_read(notification_id, user_id=wrong_user) must return
     False and leave the notification unread.
     """
-    from app.core.services.notification_service import NotificationService
+    from v2.modules.notification.application.mark_notification_read import (
+        mark_as_read,
+    )
 
     rol_id = await _create_rol(db_session)
     user_a_id = await _create_user(db_session, "owner_a@test.local", rol_id)
@@ -70,8 +74,7 @@ async def test_mark_as_read_rejects_wrong_user(db_session):
 
     notif_id = await _create_notification(db_session, user_a_id)
 
-    svc = NotificationService()
-    result = await svc.mark_as_read(notif_id, user_id=user_b_id)
+    result = await mark_as_read(notif_id, user_id=user_b_id)
 
     assert result is False, (
         "SEC-001: mark_as_read returned True for wrong user — IDOR still present"
@@ -83,15 +86,16 @@ async def test_mark_as_read_accepts_owner(db_session):
     SEC-001: mark_as_read(notification_id, user_id=owner) must return True
     and update the notification status.
     """
-    from app.core.services.notification_service import NotificationService
+    from v2.modules.notification.application.mark_notification_read import (
+        mark_as_read,
+    )
 
     rol_id = await _create_rol(db_session)
     user_id = await _create_user(db_session, "real_owner@test.local", rol_id)
 
     notif_id = await _create_notification(db_session, user_id)
 
-    svc = NotificationService()
-    result = await svc.mark_as_read(notif_id, user_id=user_id)
+    result = await mark_as_read(notif_id, user_id=user_id)
 
     assert result is True, (
         "SEC-001: mark_as_read returned False for legitimate owner — ownership check too strict"
@@ -103,13 +107,14 @@ async def test_mark_as_read_nonexistent_notification(db_session):
     mark_as_read on a non-existent notification_id must return False,
     not raise an exception.
     """
-    from app.core.services.notification_service import NotificationService
+    from v2.modules.notification.application.mark_notification_read import (
+        mark_as_read,
+    )
 
     rol_id = await _create_rol(db_session)
     user_id = await _create_user(db_session, "ghost_user@test.local", rol_id)
 
-    svc = NotificationService()
-    result = await svc.mark_as_read(999_999_999, user_id=user_id)
+    result = await mark_as_read(999_999_999, user_id=user_id)
 
     assert result is False
 
@@ -120,7 +125,9 @@ async def test_mark_as_read_cross_user_does_not_alter_row(db_session):
     """
     from sqlalchemy import select
 
-    from app.core.services.notification_service import NotificationService
+    from v2.modules.notification.application.mark_notification_read import (
+        mark_as_read,
+    )
 
     rol_id = await _create_rol(db_session)
     user_a_id = await _create_user(db_session, "owner_dup@test.local", rol_id)
@@ -128,8 +135,7 @@ async def test_mark_as_read_cross_user_does_not_alter_row(db_session):
 
     notif_id = await _create_notification(db_session, user_a_id)
 
-    svc = NotificationService()
-    await svc.mark_as_read(notif_id, user_id=user_b_id)
+    await mark_as_read(notif_id, user_id=user_b_id)
 
     row = (
         await db_session.execute(

@@ -161,7 +161,9 @@ async def _notify_serious_alerts(payloads: List[Dict[str, Any]]) -> None:
     if not serious:
         return
     try:
-        from app.core.services.push_sender import send_push_broadcast
+        from v2.modules.notification.application.send_push_broadcast import (
+            send_push_broadcast,
+        )
 
         body = (
             serious[0]["message"]

@@ -252,7 +252,7 @@ async def test_critical_event_triggers_telegram_call(fresh_bus):
             return_value=False,
         ),
         patch(
-            "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+            "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
             return_value=mock_client,
         ),
     ):

@@ -2,18 +2,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.notification_service import NotificationService
 from app.infrastructure.events.event_bus import Event, EventType
+from v2.modules.notification.application import handle_trip_events
 
 
 @pytest.mark.asyncio
 async def test_end_to_end_flow_sefer_update_to_notification():
-    notif_service = NotificationService()
-
     with (
-        patch("app.core.services.notification_service.UnitOfWork") as mock_uow_cls,
+        patch.object(handle_trip_events, "UnitOfWork") as mock_uow_cls,
         patch(
-            "app.api.v1.endpoints.admin_ws.notification_ws_manager.send_personal_message",
+            "v2.modules.notification.infrastructure.ws_broadcaster."
+            "notification_ws_manager.send_personal_message",
             new_callable=AsyncMock,
         ) as mock_send_ws,
     ):
@@ -40,7 +39,7 @@ async def test_end_to_end_flow_sefer_update_to_notification():
             data={"sefer_id": 999, "status": "COMPLETED", "trigger": "test_e2e"},
         )
 
-        await notif_service.handle_event(event)
+        await handle_trip_events.handle_event(event)
 
     mock_uow.commit.assert_awaited_once()
     mock_send_ws.assert_awaited_once()

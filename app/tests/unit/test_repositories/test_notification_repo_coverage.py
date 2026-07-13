@@ -1,4 +1,4 @@
-"""Coverage tests for app/database/repositories/notification_repository.py
+"""Coverage tests for v2/modules/notification/infrastructure/repository.py
 
 Targets ~38% → ≥75%
 Covers: get_rules_by_event, get_user_notifications, get_all_rules,
@@ -18,7 +18,9 @@ pytestmark = pytest.mark.unit
 
 
 def _make_repo():
-    from app.database.repositories.notification_repository import NotificationRepository
+    from v2.modules.notification.infrastructure.repository import (
+        NotificationRepository,
+    )
 
     mock_session = AsyncMock()
     repo = NotificationRepository.__new__(NotificationRepository)

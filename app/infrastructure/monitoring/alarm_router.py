@@ -194,7 +194,7 @@ class AlarmRouter:
             f"`{event.category}` — {event.message[:300]}\n"
             f"trace: `{event.trace_id or 'n/a'}`"
         )
-        from app.infrastructure.notifications.telegram_notifier import notify_error
+        from v2.modules.notification.infrastructure.telegram_client import notify_error
 
         task = asyncio.create_task(
             notify_error(

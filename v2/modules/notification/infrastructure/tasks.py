@@ -8,10 +8,10 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.core.services.push_sender import send_push_to_user
 from app.core.services.triage_aggregator import aggregate_today_triage
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.notification.application.send_push_to_user import send_push_to_user
 
 logger = logging.getLogger(__name__)
 

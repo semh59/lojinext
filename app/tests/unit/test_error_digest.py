@@ -95,7 +95,7 @@ async def test_digest_sends_telegram_when_keys_present():
             return_value=mock_mgr,
         ),
         patch(
-            "app.infrastructure.notifications.telegram_notifier.notify_error",
+            "v2.modules.notification.infrastructure.telegram_client.notify_error",
             mock_notify,
         ),
         patch(

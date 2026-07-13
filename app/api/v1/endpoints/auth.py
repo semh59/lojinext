@@ -229,7 +229,9 @@ async def request_password_reset(
     data: PasswordResetRequest, auth_service: AuthServiceDep
 ):
     """Password reset token generation logic."""
-    from app.core.services.email_service import send_password_reset
+    from v2.modules.notification.infrastructure.email_client import (
+        send_password_reset,
+    )
 
     token = await auth_service.request_password_reset(data.email)
 

@@ -42,7 +42,11 @@ def is_within_quiet_hours(deger: dict, now_t: time) -> bool:
 
 
 async def is_user_quiet_now(user_id: int, *, now: Optional[datetime] = None) -> bool:
-    """Kullanıcının /preferences sessiz saat ayarına göre şu an sessiz mi."""
+    """Kullanıcının /preferences sessiz saat ayarına göre şu an sessiz mi.
+
+    Çapraz-modül bağımlılık (geçici, dokümante): PreferenceService henüz
+    v2'ye taşınmadı (bkz. CLAUDE.md).
+    """
     try:
         from app.core.services.preference_service import PreferenceService
 

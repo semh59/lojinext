@@ -7,9 +7,11 @@ import logging
 from typing import Any
 
 from app.core.services.compliance_scanner import scan_compliance
-from app.core.services.push_sender import send_push_broadcast
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.notification.application.send_push_broadcast import (
+    send_push_broadcast,
+)
 
 logger = logging.getLogger(__name__)
 

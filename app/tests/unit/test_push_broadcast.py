@@ -75,32 +75,30 @@ def _enable_vapid(monkeypatch):
 @pytest.mark.asyncio
 async def test_broadcast_skipped_when_vapid_unconfigured(monkeypatch):
     from app.config import settings as s
-    from app.core.services import push_sender
+    from v2.modules.notification.application import send_push_broadcast as mod
 
     monkeypatch.setattr(s, "PUSH_NOTIFICATION_ENABLED", False)
-    result = await push_sender.send_push_broadcast(title="t", body="b")
+    result = await mod.send_push_broadcast(title="t", body="b")
     assert result.sent == 0
 
 
 @pytest.mark.asyncio
 async def test_broadcast_sends_to_all_users_and_cleans_expired(monkeypatch):
-    from app.core.services import push_sender
+    from v2.modules.notification.application import send_push_broadcast as mod
 
     _enable_vapid(monkeypatch)
     # Farklı kullanıcılara ait 3 abonelik (broadcast hepsine gitmeli)
     subs = [_FakeSub(1, user_id=7), _FakeSub(2, user_id=8), _FakeSub(3, user_id=9)]
     fake_uow = _FakeUoW(subs)
 
-    async def fake_do_send(sub, payload):
+    async def fake_send_webpush(sub, payload):
         if sub.id == 2:
             return (False, True)  # expired (410)
         return (True, False)
 
-    monkeypatch.setattr(push_sender, "_do_send", fake_do_send)
+    monkeypatch.setattr(mod, "send_webpush", fake_send_webpush)
 
-    result = await push_sender.send_push_broadcast(
-        title="Kritik", body="3 uyarı", uow=fake_uow
-    )
+    result = await mod.send_push_broadcast(title="Kritik", body="3 uyarı", uow=fake_uow)
 
     assert result.sent == 2
     assert result.expired == 1

@@ -60,8 +60,7 @@ async def _seed_rule(db_session, olay_tipi, rol_id, kanallar):
 async def test_notification_uses_bulk_query_not_per_rule(db_session):
     """handle_event fetches users with ONE bulk query and persists exactly the
     right notifications to the real DB (no N+1 per rule)."""
-    import app.core.services.notification_service as ns_mod
-    from app.core.services.notification_service import NotificationService
+    import v2.modules.notification.application.handle_trip_events as ns_mod
     from app.database.repositories.kullanici_repo import KullaniciRepository
     from app.infrastructure.events.event_bus import Event
     from app.infrastructure.events.event_types import EventType
@@ -95,7 +94,7 @@ async def test_notification_uses_bulk_query_not_per_rule(db_session):
     ns_mod.notification_ws_manager = AsyncMock()
     try:
         with patch.object(KullaniciRepository, "get_by_rol_ids", _spy):
-            await NotificationService().handle_event(Event(type=event_type, data={}))
+            await ns_mod.handle_event(Event(type=event_type, data={}))
     finally:
         ns_mod.notification_ws_manager = original_ws
 

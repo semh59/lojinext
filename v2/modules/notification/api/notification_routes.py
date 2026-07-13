@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
-from app.core.services.notification_service import NotificationService
 from app.database.models import Kullanici
+from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.permission_checker import require_yetki
@@ -15,6 +15,13 @@ from app.schemas.api_responses import (
     NotificationItemResponse,
     NotificationRuleResponse,
 )
+from v2.modules.notification.application.get_user_notifications import (
+    get_user_notifications,
+)
+from v2.modules.notification.application.mark_all_notifications_read import (
+    mark_all_as_read,
+)
+from v2.modules.notification.application.mark_notification_read import mark_as_read
 
 logger = get_logger(__name__)
 
@@ -42,8 +49,6 @@ class NotificationRuleUpdate(BaseModel):
 )
 async def list_rules() -> List[NotificationRuleResponse]:
     """Admin: list every notification rule."""
-    from app.database.unit_of_work import UnitOfWork
-
     async with UnitOfWork() as uow:
         rules = await uow.notification_repo.get_all_rules()
         return [NotificationRuleResponse.model_validate(rule) for rule in rules]
@@ -60,8 +65,6 @@ async def create_rule(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> NotificationRuleResponse:
     """Admin: create a new notification rule."""
-    from app.database.unit_of_work import UnitOfWork
-
     async with UnitOfWork() as uow:
         rule = await uow.notification_repo.create_rule(data.model_dump())
         await uow.commit()
@@ -90,8 +93,6 @@ async def update_rule(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> NotificationRuleResponse:
     """Admin: partially update a notification rule (e.g. toggle aktif)."""
-    from app.database.unit_of_work import UnitOfWork
-
     changes = data.model_dump(exclude_unset=True)
     async with UnitOfWork() as uow:
         rule = await uow.notification_repo.update_rule(rule_id, changes)
@@ -122,8 +123,6 @@ async def delete_rule(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> None:
     """Admin: delete a notification rule."""
-    from app.database.unit_of_work import UnitOfWork
-
     async with UnitOfWork() as uow:
         deleted = await uow.notification_repo.delete_rule(rule_id)
         if not deleted:
@@ -147,8 +146,7 @@ async def get_my_notifications(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> List[NotificationItemResponse]:
     """User: notifications for the logged-in user."""
-    service = NotificationService()
-    notifications = await service.get_user_notifications(current_user.id)
+    notifications = await get_user_notifications(current_user.id)
     return [
         NotificationItemResponse(
             id=n.id,
@@ -169,8 +167,7 @@ async def mark_all_read(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> MarkAllReadResponse:
     """User: mark every notification as read."""
-    service = NotificationService()
-    count = await service.mark_all_as_read(current_user.id)
+    count = await mark_all_as_read(current_user.id)
     return MarkAllReadResponse(success=True, count=count)
 
 
@@ -180,8 +177,7 @@ async def mark_single_read(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> MarkSingleReadResponse:
     """User: mark a single notification as read."""
-    service = NotificationService()
-    success = await service.mark_as_read(notification_id, user_id=current_user.id)
+    success = await mark_as_read(notification_id, user_id=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Bildirim bulunamadı.")
     return MarkSingleReadResponse(success=True)

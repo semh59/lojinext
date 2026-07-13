@@ -1,4 +1,4 @@
-"""Coverage tests for app/api/v1/endpoints/admin_notifications.py
+"""Coverage tests for v2/modules/notification/api/notification_routes.py
 
 Targets ~51% → ≥75%  (missed: list_rules, create_rule, get_my_notifications,
 mark_all_read, mark_single_read success + 404)
@@ -111,11 +111,9 @@ class TestGetMyNotifications:
         notif = _make_bildirim(bid=99, durum="SENT")
 
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.get_user_notifications = AsyncMock(
-                return_value=[notif]
-            )
+            "v2.modules.notification.api.notification_routes.get_user_notifications",
+            AsyncMock(return_value=[notif]),
+        ):
             resp = await async_client.get(
                 "/api/v1/admin/notifications/my", headers=admin_auth_headers
             )
@@ -131,11 +129,9 @@ class TestGetMyNotifications:
         notif = _make_bildirim(bid=5, durum="READ")
 
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.get_user_notifications = AsyncMock(
-                return_value=[notif]
-            )
+            "v2.modules.notification.api.notification_routes.get_user_notifications",
+            AsyncMock(return_value=[notif]),
+        ):
             resp = await async_client.get(
                 "/api/v1/admin/notifications/my", headers=admin_auth_headers
             )
@@ -146,9 +142,9 @@ class TestGetMyNotifications:
     async def test_my_notifications_empty(self, async_client, admin_auth_headers):
         """get_my_notifications returns [] when no notifications."""
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.get_user_notifications = AsyncMock(return_value=[])
+            "v2.modules.notification.api.notification_routes.get_user_notifications",
+            AsyncMock(return_value=[]),
+        ):
             resp = await async_client.get(
                 "/api/v1/admin/notifications/my", headers=admin_auth_headers
             )
@@ -171,9 +167,9 @@ class TestMarkAllRead:
     async def test_mark_all_read_returns_count(self, async_client, admin_auth_headers):
         """mark_all_read returns success=True and count."""
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.mark_all_as_read = AsyncMock(return_value=5)
+            "v2.modules.notification.api.notification_routes.mark_all_as_read",
+            AsyncMock(return_value=5),
+        ):
             resp = await async_client.post(
                 "/api/v1/admin/notifications/mark-all-read",
                 headers=admin_auth_headers,
@@ -187,9 +183,9 @@ class TestMarkAllRead:
     async def test_mark_all_read_zero(self, async_client, admin_auth_headers):
         """mark_all_read returns count=0 when nothing to mark."""
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.mark_all_as_read = AsyncMock(return_value=0)
+            "v2.modules.notification.api.notification_routes.mark_all_as_read",
+            AsyncMock(return_value=0),
+        ):
             resp = await async_client.post(
                 "/api/v1/admin/notifications/mark-all-read",
                 headers=admin_auth_headers,
@@ -208,9 +204,9 @@ class TestMarkSingleRead:
     async def test_mark_single_read_success(self, async_client, admin_auth_headers):
         """mark_single_read returns success=True when notification found."""
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.mark_as_read = AsyncMock(return_value=True)
+            "v2.modules.notification.api.notification_routes.mark_as_read",
+            AsyncMock(return_value=True),
+        ):
             resp = await async_client.patch(
                 "/api/v1/admin/notifications/55/read", headers=admin_auth_headers
             )
@@ -221,9 +217,9 @@ class TestMarkSingleRead:
     async def test_mark_single_read_not_found(self, async_client, admin_auth_headers):
         """mark_single_read returns 404 when notification not found."""
         with patch(
-            "app.api.v1.endpoints.admin_notifications.NotificationService"
-        ) as MockSvc:
-            MockSvc.return_value.mark_as_read = AsyncMock(return_value=False)
+            "v2.modules.notification.api.notification_routes.mark_as_read",
+            AsyncMock(return_value=False),
+        ):
             resp = await async_client.patch(
                 "/api/v1/admin/notifications/9999/read", headers=admin_auth_headers
             )

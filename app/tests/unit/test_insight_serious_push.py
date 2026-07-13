@@ -18,7 +18,7 @@ async def test_critical_severity_triggers_broadcast():
         {"severity": "critical", "message": "Depo anomalisi: ARAÇ-1"},
     ]
     with patch(
-        "app.core.services.push_sender.send_push_broadcast",
+        "v2.modules.notification.application.send_push_broadcast.send_push_broadcast",
         new=AsyncMock(),
     ) as mock_broadcast:
         await _notify_serious_alerts(payloads)
@@ -36,7 +36,7 @@ async def test_no_serious_severity_does_not_broadcast():
         {"severity": "medium", "message": "b"},
     ]
     with patch(
-        "app.core.services.push_sender.send_push_broadcast",
+        "v2.modules.notification.application.send_push_broadcast.send_push_broadcast",
         new=AsyncMock(),
     ) as mock_broadcast:
         await _notify_serious_alerts(payloads)
@@ -47,7 +47,7 @@ async def test_no_serious_severity_does_not_broadcast():
 async def test_push_failure_is_swallowed():
     payloads = [{"severity": "high", "message": "x"}]
     with patch(
-        "app.core.services.push_sender.send_push_broadcast",
+        "v2.modules.notification.application.send_push_broadcast.send_push_broadcast",
         new=AsyncMock(side_effect=RuntimeError("push down")),
     ):
         # raise etmemeli — best-effort
@@ -61,7 +61,7 @@ async def test_multiple_serious_uses_count_body():
         {"severity": "critical", "message": "y"},
     ]
     with patch(
-        "app.core.services.push_sender.send_push_broadcast",
+        "v2.modules.notification.application.send_push_broadcast.send_push_broadcast",
         new=AsyncMock(),
     ) as mock_broadcast:
         await _notify_serious_alerts(payloads)

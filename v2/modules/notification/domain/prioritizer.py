@@ -2,6 +2,13 @@
 
 olay_tipi bazlı okuma oranı (okundu/toplam) → öncelik. Yeterli geçmiş yoksa
 'normal'. Yüksek okuma oranı = kullanıcı umursuyor = high; düşük = low.
+
+STATUS: ``NotificationPrioritizer`` hiçbir prod kod tarafından
+çağrılmıyor — repo-genelinde dead code (yalnız kendi testlerinde
+kullanılıyor). location modülünün taşınan-ama-ölü event publish
+dekoratörüyle aynı durum; bu taşıma sırasında bir regresyon değil,
+taşınırken keşfedilen pre-existing bir boşluk. Sessizce atılmadı,
+buraya dokümante edildi.
 """
 
 from __future__ import annotations

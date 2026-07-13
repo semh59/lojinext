@@ -4,7 +4,7 @@ from datetime import time
 
 import pytest
 
-from app.core.services.quiet_hours import is_within_quiet_hours
+from v2.modules.notification.domain.quiet_hours import is_within_quiet_hours
 
 pytestmark = pytest.mark.unit
 
@@ -45,18 +45,18 @@ async def test_send_push_skipped_during_quiet_hours(monkeypatch):
     from unittest.mock import AsyncMock
 
     from app.config import settings as s
-    from app.core.services import push_sender
+    from v2.modules.notification.application import send_push_to_user as send_push_mod
 
     monkeypatch.setattr(s, "VAPID_PUBLIC_KEY", "pub")
     monkeypatch.setattr(s, "VAPID_PRIVATE_KEY", "priv")
     monkeypatch.setattr(s, "VAPID_SUBJECT", "mailto:a@b")
     monkeypatch.setattr(s, "PUSH_NOTIFICATION_ENABLED", True)
     monkeypatch.setattr(
-        "app.core.services.quiet_hours.is_user_quiet_now",
+        "v2.modules.notification.domain.quiet_hours.is_user_quiet_now",
         AsyncMock(return_value=True),
     )
 
-    result = await push_sender.send_push_to_user(
+    result = await send_push_mod.send_push_to_user(
         7, title="t", body="b", respect_quiet_hours=True
     )
     assert result.sent == 0

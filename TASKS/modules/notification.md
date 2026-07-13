@@ -45,8 +45,42 @@ app/workers/tasks/notification_tasks.py
 7. `app/modules/notification/CLAUDE.md` doldurulur.
 
 ## 6. Kabul kriterleri
-- [ ] admin_ws.py kararı verildi ve iki modülün de CLAUDE.md'sine + import-linter kontratına işlendi
-- [ ] `notification_service.py`→`admin_ws.py` katman ihlali düzeltildi (davranışsal test bunu doğruluyor)
-- [ ] 13 (veya 14, karara göre) dosya taşındı, shim tek satır
-- [ ] SEFER_UPDATED/SLA_DELAY event aboneliği `events.py`'de DTO tipli
-- [ ] Celery isim-uzayı testi `notifications.weekly_digest` için yeşil
+- [x] admin_ws.py kararı verildi ve iki modülün de CLAUDE.md'sine + import-linter kontratına işlendi
+      — üçüncü bir seçenek çıktı (madde 2'nin (a)/(b) varsayımı yanlıştı): dosya
+      İKİ bağımsız route içeriyordu (`/training` admin_platform, `/live`
+      notification). Dosyanın kendisi bölündü; paylaşılan `ConnectionManager`+
+      WS-auth helper'ları `app/infrastructure/websocket/` altına (event_bus ile
+      aynı gerekçeyle) gerçek shared-infra olarak çıkarıldı. Karar +
+      import-linter notu `v2/modules/notification/CLAUDE.md`'de. admin_platform
+      henüz taşınmadığı için kendi CLAUDE.md'si yok — dalga 15'te işlenecek.
+- [x] `notification_service.py`→`admin_ws.py` katman ihlali düzeltildi (davranışsal test bunu doğruluyor)
+      — `handle_trip_events.py` artık kendi modülünün `ws_broadcaster.py`'sinden
+      import ediyor, hiçbir endpoint dosyasına bağımlı değil.
+- [x] 13 (veya 14, karara göre) dosya taşındı, shim tek satır YOK (location'daki
+      "shim bile yok" kararıyla aynı) — **gerçek sayı 12**: `schemas/telegram.py`
+      taşıma sırasında incelendiğinde notification'a değil trip/telegram-bot
+      DTO'larına ait çıktı (tüketicileri `internal.py`/`trips.py`, notification'ın
+      kendi dosyalarının hiçbiri değil) — varsayılan 13'ten çıkarıldı, taşınmadı.
+      admin_ws.py'nin `/live` route'u (13. dosyanın YARISI) ayrıca taşındı.
+- [x] SEFER_UPDATED/SLA_DELAY event aboneliği `events.py`'de DTO tipli
+      (`SeferUpdatedPayload`/`SlaDelayPayload`, tüm alanlar Optional — 4 farklı
+      trip-modülü publish call-site'ı hafif farklı payload şekli gönderiyor)
+- [x] Celery isim-uzayı testi `notifications.weekly_digest` için yeşil
+      (`test_celery_app_config.py` + `test_weekly_digest_task.py`, container'da
+      gerçek koşum: 24/24 pass)
+
+**🔴 Kapsam dışı bırakılan kritik keşif** (bkz. CLAUDE.md): `register_handlers()`
+hiçbir yerde çağrılmıyor — event-subscriber pipeline PROD'da hiç tetiklenmiyor.
+Taşımanın getirdiği bir regresyon değil, öncesinde de böyleydi; davranış
+değişikliği gerektirdiği için bu dalganın kapsamına alınmadı, kullanıcıya
+raporlandı.
+
+**Doğrulama (gerçek Docker container, gerçek pytest koşumu, 2026-07-13):**
+ruff temiz (host kaynağına karşı, `python:3.12-slim` + mount), `mypy app/`
+7/7 baseline (regresyon yok), `pytest --collect-only` 6767 test/0 hata,
+notification'a özgü 24 dosya (yeni+değişen) gerçek `lojinext_test` DB'sine
+karşı **194/194 pass** (159 unit + 11 integration/N+1/IDOR + 24 kök-`tests/`
+ve dokunulan-tüketici regresyon seti), OpenAPI şema drift YOK (websocket
+route'ları zaten şemada yok). Yan bulgu: Docker C-sürücüsü doluydu (bilinen
+gotcha, kullanıcı onayıyla kurtarma reçetesi uygulandı, ~87GB host alanı
+geri kazanıldı).

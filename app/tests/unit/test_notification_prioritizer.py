@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.core.services.notification_prioritizer import score_priority
+from v2.modules.notification.domain.prioritizer import score_priority
 
 pytestmark = pytest.mark.unit
 

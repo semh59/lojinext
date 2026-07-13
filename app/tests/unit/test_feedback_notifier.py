@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.notifications import telegram_notifier as tn
+from v2.modules.notification.infrastructure import telegram_client as tn
 
 pytestmark = pytest.mark.unit
 

@@ -10,7 +10,6 @@ from app.api.v1.endpoints import (
     admin_integrations,
     admin_maintenance,
     admin_ml,
-    admin_notifications,
     admin_pilot,
     admin_predictions,
     admin_roles,
@@ -34,7 +33,6 @@ from app.api.v1.endpoints import (
     maintenance,
     predictions,
     preferences,
-    push,
     reports,
     reports_studio,
     system,
@@ -47,6 +45,13 @@ from app.api.v1.endpoints import (
     ws_ticket,
 )
 from v2.modules.location.api.location_routes import router as location_router
+from v2.modules.notification.api.live_ws_routes import (
+    router as notification_live_ws_router,
+)
+from v2.modules.notification.api.notification_routes import (
+    router as notification_router,
+)
+from v2.modules.notification.api.push_routes import router as push_router
 from v2.modules.route_simulation.api.route_routes import router as route_router
 
 api_router = APIRouter()
@@ -98,6 +103,9 @@ api_router.include_router(ai.router, prefix="/ai", tags=["AI"])
 api_router.include_router(ws_ticket.router, prefix="/ws", tags=["websocket"])
 api_router.include_router(admin_ws.router, prefix="/admin/ws", tags=["admin-ws"])
 api_router.include_router(
+    notification_live_ws_router, prefix="/admin/ws", tags=["notifications"]
+)
+api_router.include_router(
     admin_imports.router, prefix="/admin/imports", tags=["admin-imports"]
 )
 api_router.include_router(admin_ml.router, prefix="/admin/ml", tags=["admin-ml"])
@@ -122,7 +130,7 @@ api_router.include_router(
     admin_maintenance.router, prefix="/admin/maintenance", tags=["admin-maintenance"]
 )
 api_router.include_router(
-    admin_notifications.router,
+    notification_router,
     prefix="/admin/notifications",
     tags=["admin-notifications"],
 )
@@ -148,6 +156,6 @@ api_router.include_router(
     prefix="/reports/studio",
     tags=["reports-v2"],
 )
-api_router.include_router(push.router, prefix="/push", tags=["push"])
+api_router.include_router(push_router, prefix="/push", tags=["push"])
 api_router.include_router(error_stream.router, prefix="/system", tags=["monitoring"])
 api_router.include_router(internal.router, prefix="/internal", tags=["internal"])

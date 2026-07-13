@@ -18,10 +18,10 @@ from sqlalchemy import delete, select
 
 from app.api.deps import get_current_active_admin, get_current_active_user
 from app.config import settings
-from app.core.services.push_sender import send_push_to_user
 from app.database.models import Kullanici, PushSubscription
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.push import (
+from v2.modules.notification.application.send_push_to_user import send_push_to_user
+from v2.modules.notification.schemas import (
     PushSendResult,
     PushSubscriptionRequest,
     PushSubscriptionResponse,

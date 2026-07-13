@@ -1,4 +1,4 @@
-"""Unit tests for app.core.services.email_service."""
+"""Unit tests for v2.modules.notification.infrastructure.email_client."""
 
 import smtplib
 from unittest.mock import MagicMock, patch
@@ -10,7 +10,7 @@ import pytest
 class TestSendSmtpSync:
     def test_noop_when_smtp_host_empty(self):
         """No SMTP host configured → function returns without sending."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         with patch.object(email_service.settings, "SMTP_HOST", ""):
             # Should not raise and should not call smtplib
@@ -26,7 +26,7 @@ class TestSendSmtpSync:
 
     def test_sends_via_starttls_when_use_tls_true(self):
         """SMTP_USE_TLS=True uses SMTP + starttls."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         mock_server = MagicMock()
         mock_server.starttls = MagicMock()
@@ -50,7 +50,7 @@ class TestSendSmtpSync:
 
     def test_sends_via_ssl_when_use_tls_false(self):
         """SMTP_USE_TLS=False uses SMTP_SSL directly."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         mock_server = MagicMock()
 
@@ -69,7 +69,7 @@ class TestSendSmtpSync:
 
     def test_raises_on_smtp_error(self):
         """SMTP connection failure propagates the exception."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         with (
             patch.object(email_service.settings, "SMTP_HOST", "smtp.example.com"),
@@ -88,7 +88,7 @@ class TestSendSmtpSync:
         """SMTP_USERNAME + SMTP_PASSWORD → server.login() called."""
         from unittest.mock import MagicMock, patch
 
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         mock_server = MagicMock()
         fake_secret = MagicMock()
@@ -114,7 +114,7 @@ class TestSendText:
     @pytest.mark.asyncio
     async def test_send_text_noop_when_no_smtp_host(self):
         """send_text with no SMTP host completes without error."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         with patch.object(email_service.settings, "SMTP_HOST", ""):
             await email_service.send_text("to@example.com", "Hello", "body text")
@@ -125,7 +125,7 @@ class TestSendPasswordReset:
     @pytest.mark.asyncio
     async def test_password_reset_noop_when_no_smtp_host(self):
         """send_password_reset with no SMTP host completes without error."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         with patch.object(email_service.settings, "SMTP_HOST", ""):
             await email_service.send_password_reset("user@example.com", "tok123", "Ali")
@@ -133,7 +133,7 @@ class TestSendPasswordReset:
     @pytest.mark.asyncio
     async def test_password_reset_builds_reset_url(self):
         """Reset URL includes the token and is passed to _send_smtp_sync."""
-        from app.core.services import email_service
+        from v2.modules.notification.infrastructure import email_client as email_service
 
         calls = []
 
@@ -153,7 +153,8 @@ class TestSendPasswordReset:
                 email_service.settings, "CORS_ORIGINS", "https://app.example.com"
             ),
             patch(
-                "app.core.services.email_service._send_smtp_sync", side_effect=capture
+                "v2.modules.notification.infrastructure.email_client._send_smtp_sync",
+                side_effect=capture,
             ),
         ):
             await email_service.send_password_reset(

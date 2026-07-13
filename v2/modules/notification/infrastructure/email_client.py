@@ -3,8 +3,8 @@ E-posta gönderim servisi — stdlib smtplib kullanır, ek bağımlılık gerekm
 Async: asyncio.to_thread ile event loop bloklanmaz.
 
 Kullanım:
-    await email_service.send_password_reset(email, token, name)
-    await email_service.send_text(to="user@example.com", subject="...", body="...")
+    await send_password_reset(email, token, name)
+    await send_text(to="user@example.com", subject="...", body="...")
 
 SMTP_HOST boşsa tüm metodlar sessizce no-op döner (dev/test uyumu).
 """

@@ -29,10 +29,10 @@ async def test_notify_error_success_no_exception():
     mock_client, _ = _make_mock_client()
 
     with patch(
-        "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+        "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
         return_value=mock_client,
     ):
-        from app.infrastructure.notifications.telegram_notifier import notify_error
+        from v2.modules.notification.infrastructure.telegram_client import notify_error
 
         # Must not raise
         await notify_error(level="critical", message="test msg")
@@ -48,15 +48,15 @@ async def test_notify_error_logs_warning_on_network_failure(caplog):
 
     with (
         patch(
-            "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+            "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
             return_value=mock_client,
         ),
-        patch("app.infrastructure.notifications.telegram_notifier.asyncio.sleep"),
+        patch("v2.modules.notification.infrastructure.telegram_client.asyncio.sleep"),
         patch(
-            "app.infrastructure.notifications.telegram_notifier._push_to_sync_fallback"
+            "v2.modules.notification.infrastructure.telegram_client._push_to_sync_fallback"
         ) as mock_fb,
     ):
-        import app.infrastructure.notifications.telegram_notifier as mod
+        import v2.modules.notification.infrastructure.telegram_client as mod
 
         with caplog.at_level(logging.WARNING, logger=mod.logger.name):
             await mod.notify_error(level="critical", message="fail test")
@@ -76,10 +76,10 @@ async def test_notify_error_sends_correct_payload():
     mock_client, _ = _make_mock_client()
 
     with patch(
-        "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+        "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
         return_value=mock_client,
     ):
-        from app.infrastructure.notifications.telegram_notifier import notify_error
+        from v2.modules.notification.infrastructure.telegram_client import notify_error
 
         await notify_error(
             level="error",
@@ -102,10 +102,10 @@ async def test_notify_error_default_path_and_trace():
     mock_client, _ = _make_mock_client()
 
     with patch(
-        "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+        "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
         return_value=mock_client,
     ):
-        from app.infrastructure.notifications.telegram_notifier import notify_error
+        from v2.modules.notification.infrastructure.telegram_client import notify_error
 
         await notify_error(level="warning", message="test")
 
@@ -135,15 +135,15 @@ async def test_notify_error_retries_then_fallback():
 
     with (
         patch(
-            "app.infrastructure.notifications.telegram_notifier.get_monitored_client",
+            "v2.modules.notification.infrastructure.telegram_client.get_monitored_client",
             return_value=mock_client,
         ),
-        patch("app.infrastructure.notifications.telegram_notifier.asyncio.sleep"),
+        patch("v2.modules.notification.infrastructure.telegram_client.asyncio.sleep"),
         patch(
-            "app.infrastructure.notifications.telegram_notifier._push_to_sync_fallback"
+            "v2.modules.notification.infrastructure.telegram_client._push_to_sync_fallback"
         ) as mock_fb,
     ):
-        from app.infrastructure.notifications.telegram_notifier import notify_error
+        from v2.modules.notification.infrastructure.telegram_client import notify_error
 
         await notify_error(level="error", message="transient")
 
@@ -159,7 +159,7 @@ async def test_push_to_sync_fallback_uses_async_redis_not_blocking_client():
     previously froze the whole event loop (every concurrent coroutine,
     including in-flight SQL query callbacks), which is the proven root
     cause of a "Slow query" false alarm on an otherwise trivial query."""
-    from app.infrastructure.notifications.telegram_notifier import (
+    from v2.modules.notification.infrastructure.telegram_client import (
         _push_to_sync_fallback,
     )
 
@@ -182,7 +182,7 @@ async def test_push_to_sync_fallback_uses_async_redis_not_blocking_client():
 @pytest.mark.unit
 async def test_push_to_sync_fallback_noop_when_redis_unavailable():
     """No async Redis client configured — returns cleanly, no exception."""
-    from app.infrastructure.notifications.telegram_notifier import (
+    from v2.modules.notification.infrastructure.telegram_client import (
         _push_to_sync_fallback,
     )
 

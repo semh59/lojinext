@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 2/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) kod tamam+lokal doğrulandı, main'e push bekliyor; sıradaki: dalga 3 (fleet) |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 2/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; sıradaki: dalga 3 (fleet), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -35,7 +35,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | 🔲 |
 | — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |
 | 1 | **location + route-simulation** (PİLOT ÇİFTİ — karşılıklı bağımlı 7/1 kenar, birlikte) | `modules/location.md` + `modules/route-simulation.md` | ✅ main'de yeşil (commit `4ebabca`) |
-| 2 | notification | `modules/notification.md` | ✅ kod tamam, lokal doğrulama yeşil — main'e henüz push edilmedi |
+| 2 | notification | `modules/notification.md` | ✅ main'de yeşil (commit `34e40c8`) |
 | 3 | fleet | `modules/fleet.md` | 🔲 |
 | 4 | fuel | `modules/fuel.md` | 🔲 |
 | 5 | driver | `modules/driver.md` | 🔲 |
@@ -117,7 +117,9 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - `test_event_bus_more.py`, `test_health_service_more.py` — container'da gerçek Redis Sentinel çalışıyor, testler "Redis kapalı" senaryosu bekliyor.
 - `test_analysis_and_report.py`, `test_admin_backend_operations.py`, `test_job_manager.py` — location/route_simulation'la alakasız, bağımsız pre-existing sorunlar (araştırılmadı, bu dalganın kapsamı dışı).
 
-## DALGA 2 — kod tamam + lokal doğrulama yeşil, main'e push BEKLİYOR (2026-07-13)
+## DALGA 2 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-13)
+
+**Push geçmişi:** `eb9464d` (ana taşıma) → CI mypy gate'te kırmızı çıktı (9/7 baseline, `handle_trip_events.py`'deki 2 `subscribe()` çağrısı). Aynı zamanda bağımsız fresh-context denetim ajanı `domain/prioritizer.py`'de B.1 ihlali buldu (DB-sorgulu sınıf domain'de kalmıştı). İkisi `34e40c8` ile düzeltildi, tekrar push edildi. **CI Hard Gates tam yeşil** (`gh run view 29239910485` → `success`, hard-gates 33dk14sn, GHCR build+push 26dk29sn, prod deploy 10sn) — commit `34e40c8` main'in HEAD'i.
 
 **Kapsam:** notification modülü (13 dosya envanterinden 12'si taşındı — `schemas/telegram.py` incelemede trip/telegram-bot'a ait çıktı, taşınmadı; `admin_ws.py` iki bağımsız route'a bölündü, `/live` notification'a taşındı, `/training` admin_platform'da kaldı). Detaylar `TASKS/modules/notification.md` madde 6 (kabul kriterleri) + `v2/modules/notification/CLAUDE.md`.
 
@@ -134,7 +136,7 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - Notification'a özgü + dokunulan tüketici test dosyaları, gerçek `lojinext_test` DB'sine karşı: **194/194 pass** (159 unit + 11 integration/N+1/IDOR + 24 kök-`tests/`+consumer regresyon).
 - OpenAPI şema drift: YOK (gerçek `dump-openapi.mjs` script'i node container'ıyla çalıştırıldı, `git diff --exit-code frontend/openapi.json` temiz).
 
-**Sıradaki adım:** kullanıcı onayı ile main'e commit+push, CI Hard Gates'i doğrula (dalga 1'deki gibi ilk push sonrası ad-hoc-ortam kaynaklı sürprizlere karşı hazırlıklı ol), sonra dalga 3 (fleet) için yeni oturum.
+**Bağımsız denetim (kullanıcı talebiyle, push sonrası):** 2 fresh-context ajan paralel çalıştırıldı — (1) davranışsal regresyon denetimi (eski/yeni kod satır satır) → TEMİZ, hiçbir fark yok; (2) görev-dosyası uyum denetimi → dosya envanteri/taşıma adımları/katman-ihlali/route-mount/stale-referans hepsi PASS, ama 2 gerçek sorun buldu: `NotificationPrioritizer` sınıfı yanlışlıkla `domain/`de kalmıştı (B.1 ihlali, düzeltildi → `infrastructure/prioritizer.py`), STATUS.md push-durumu güncel değildi (düzeltildi). Bu denetim ayrıca CI'nin mypy gate'inde gerçek bir kırmızıyı (9/7 baseline) yakalanmasına giden düzeltme dalgasıyla aynı ana denk geldi.
 
 ## Son güncelleme
-2026-07-13 — **FAZ1 dalga 2 (notification) kod tamam, lokal doğrulama tam yeşil.** main'e push edilmedi — kullanıcı onayı gerekiyor (OTURUM HİJYENİ: push sonrası bu oturum kapatılacak, dalga 3 yeni oturumda). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-13 — **FAZ1 dalga 2 (notification) TAMAMLANDI ve main'de yeşil** (commit `34e40c8`, CI Hard Gates `success`). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 3 (fleet) yeni oturumda `TASKS/modules/fleet.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

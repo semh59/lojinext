@@ -8,12 +8,6 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.core.ml.maintenance_predictor import MaintenancePredictor
-from app.core.services.ics_generator import generate_ics_for_maintenance
-from app.core.services.maintenance_service import (
-    PREDICTIONS_CACHE_ALL,
-    MaintenanceService,
-)
 from app.database.models import BakimTipi, Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -25,7 +19,20 @@ from app.schemas.api_responses import (
     MaintenanceCompleteResponse,
     MaintenanceRecordResponse,
 )
-from app.schemas.maintenance_prediction import MaintenancePrediction
+from v2.modules.fleet.application.create_maintenance_record import (
+    create_maintenance_record,
+)
+from v2.modules.fleet.application.export_maintenance_calendar import (
+    generate_ics_for_maintenance,
+)
+from v2.modules.fleet.application.get_vehicle_maintenance_history import (
+    get_upcoming_maintenance_alerts,
+    get_vehicle_maintenance_history,
+    mark_maintenance_completed,
+)
+from v2.modules.fleet.application.maintenance_cache import PREDICTIONS_CACHE_ALL
+from v2.modules.fleet.domain.maintenance_prediction import MaintenancePredictor
+from v2.modules.fleet.schemas import MaintenancePrediction
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +74,7 @@ async def create_maintenance(
     data: MaintenanceCreateSchema,
 ) -> MaintenanceRecordResponse:
     """Admin: create a new maintenance record."""
-    service = MaintenanceService()
-    record = await service.create_maintenance_record(
+    record = await create_maintenance_record(
         arac_id=data.arac_id,
         bakim_tipi=data.bakim_tipi,
         km_bilgisi=data.km_bilgisi,
@@ -86,8 +92,7 @@ async def create_maintenance(
 )
 async def get_upcoming_alerts() -> List[MaintenanceAlertItem]:
     """List maintenance tasks that are due or overdue."""
-    service = MaintenanceService()
-    alerts = await service.get_upcoming_alerts()
+    alerts = await get_upcoming_maintenance_alerts()
     return [MaintenanceAlertItem.model_validate(a) for a in alerts]
 
 
@@ -244,8 +249,7 @@ async def download_ics(
 )
 async def get_vehicle_history(arac_id: int) -> List[MaintenanceRecordResponse]:
     """Full maintenance history for a single vehicle."""
-    service = MaintenanceService()
-    history = await service.get_vehicle_maintenance_history(arac_id)
+    history = await get_vehicle_maintenance_history(arac_id)
     return [MaintenanceRecordResponse.model_validate(r) for r in history]
 
 
@@ -256,6 +260,5 @@ async def get_vehicle_history(arac_id: int) -> List[MaintenanceRecordResponse]:
 )
 async def mark_complete(bakim_id: int) -> MaintenanceCompleteResponse:
     """Mark a maintenance record as completed."""
-    service = MaintenanceService()
-    success = await service.mark_as_completed(bakim_id)
+    success = await mark_maintenance_completed(bakim_id)
     return MaintenanceCompleteResponse(success=success)

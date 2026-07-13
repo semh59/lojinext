@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 # ── _escape_text ────────────────────────────────────────────────────────
 def test_escape_text_order_backslash_first():
     """RFC 5545 §3.3.11: backslash escape önce, sonra special char."""
-    from app.core.services.ics_generator import _escape_text
+    from v2.modules.fleet.application.export_maintenance_calendar import _escape_text
 
     # Önce gelen \ → \\, sonra \n → \n (literal) olmalı
     src = "satır1\nsatır2,virgül;noktalı"
@@ -22,7 +22,7 @@ def test_escape_text_order_backslash_first():
 
 
 def test_escape_text_backslash_doubled():
-    from app.core.services.ics_generator import _escape_text
+    from v2.modules.fleet.application.export_maintenance_calendar import _escape_text
 
     # Mevcut \ önce \\ olur, sonra newline escape edilir
     src = "a\\b\nc"
@@ -34,7 +34,7 @@ def test_escape_text_backslash_doubled():
 # ── _fold_line ──────────────────────────────────────────────────────────
 def test_fold_line_short_unchanged():
     """75 oktet altında olan satır değişmez."""
-    from app.core.services.ics_generator import _fold_line
+    from v2.modules.fleet.application.export_maintenance_calendar import _fold_line
 
     short = "DESCRIPTION:kısa metin"
     assert _fold_line(short) == short
@@ -42,7 +42,7 @@ def test_fold_line_short_unchanged():
 
 def test_fold_line_long_split_with_crlf_space():
     """Uzun satır CRLF + boşluk ile katlanır."""
-    from app.core.services.ics_generator import _fold_line
+    from v2.modules.fleet.application.export_maintenance_calendar import _fold_line
 
     long_line = "DESCRIPTION:" + ("x" * 200)
     out = _fold_line(long_line)
@@ -60,7 +60,7 @@ def test_fold_line_long_split_with_crlf_space():
 
 def test_fold_line_utf8_multibyte_not_split_midchar():
     """Türkçe karakter ortadan bölünmemeli."""
-    from app.core.services.ics_generator import _fold_line
+    from v2.modules.fleet.application.export_maintenance_calendar import _fold_line
 
     # 50+ Türkçe karakter — her biri 2 byte → satır kesin katlanır
     long = "DESCRIPTION:" + ("ş" * 60)
@@ -98,7 +98,9 @@ class _StubArac:
 
 
 def test_generate_ics_envelope_and_event():
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=42,
@@ -125,7 +127,9 @@ def test_generate_ics_envelope_and_event():
 
 def test_generate_ics_multiline_description_escaped():
     """Detaylar newline'lı geldiğinde tek DESCRIPTION satırında escaped."""
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=1,
@@ -150,7 +154,9 @@ def test_generate_ics_multiline_description_escaped():
 
 def test_generate_ics_naive_datetime_treated_as_utc():
     """tzinfo=None datetime UTC kabul edilir, ZuluZ formatı."""
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     naive = datetime(2026, 6, 15, 10, 0, 0)  # no tzinfo
     bakim = _StubBakim(id=99, bakim_tarihi=naive)
@@ -160,8 +166,10 @@ def test_generate_ics_naive_datetime_treated_as_utc():
 
 def test_generate_ics_handles_enum_bakim_tipi():
     """BakimTipi enum'u .value ile string'e çevrilir."""
-    from app.core.services.ics_generator import generate_ics_for_maintenance
     from app.database.models import BakimTipi
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=1,
@@ -175,7 +183,9 @@ def test_generate_ics_handles_enum_bakim_tipi():
 
 def test_generate_ics_utf8_round_trip():
     """Türkçe karakterler UTF-8 round-trip'te bozulmaz."""
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=1,
@@ -198,7 +208,9 @@ def test_generate_ics_dtend_is_one_hour_after_dtstart():
     test sadece DTSTART'ı kontrol ediyordu — bu yüzden bug tarafından
     yakalanmamıştı.
     """
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=42,
@@ -215,7 +227,9 @@ def test_generate_ics_dtend_is_one_hour_after_dtstart():
 
 def test_generate_ics_dtend_crosses_day_boundary():
     """Gece geç saatte bakım → DTEND ertesi güne taşmalı."""
-    from app.core.services.ics_generator import generate_ics_for_maintenance
+    from v2.modules.fleet.application.export_maintenance_calendar import (
+        generate_ics_for_maintenance,
+    )
 
     bakim = _StubBakim(
         id=43,

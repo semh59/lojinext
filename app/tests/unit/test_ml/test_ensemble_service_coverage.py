@@ -97,7 +97,7 @@ class TestLazyRepoProperties:
         mock_repo = MagicMock()
 
         with patch(
-            "app.database.repositories.arac_repo.get_arac_repo",
+            "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
             return_value=mock_repo,
         ):
             repo = svc.arac_repo
@@ -125,7 +125,7 @@ class TestLazyRepoProperties:
         mock_repo = MagicMock()
 
         with patch(
-            "app.database.repositories.dorse_repo.get_dorse_repo",
+            "v2.modules.fleet.infrastructure.trailer_repository.get_dorse_repo",
             return_value=mock_repo,
         ):
             repo = svc.dorse_repo

@@ -116,7 +116,7 @@ async def project_cashflow(
 
     # 3. MaintenancePredictor — yeni instance veya parametre ile gelen
     if predictor is None:
-        from app.core.ml.maintenance_predictor import MaintenancePredictor
+        from v2.modules.fleet.domain.maintenance_prediction import MaintenancePredictor
 
         predictor = MaintenancePredictor()
     try:

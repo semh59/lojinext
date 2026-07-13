@@ -210,22 +210,23 @@ async def test_get_current_user_expired_token(async_client):
 
 
 async def test_service_factories_build_real_services():
-    """Each get_*_service factory builds the real service from a real UoW."""
+    """Each get_*_service factory builds the real service from a real UoW.
+
+    get_arac_service/get_dorse_service removed from deps.py in dalga 3 —
+    fleet no longer has service classes (B.1 free-function refactor); the
+    v2 routers call use-case functions directly, no DI factory to assert on.
+    """
     from app.api import deps
-    from app.core.services.arac_service import AracService
     from app.core.services.auth_service import AuthService
-    from app.core.services.dorse_service import DorseService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
     from app.core.services.yakit_service import YakitService
     from app.database.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
-        assert isinstance(await deps.get_arac_service(uow), AracService)
         assert isinstance(await deps.get_sofor_service(uow), SoforService)
         assert isinstance(await deps.get_sefer_service(uow), SeferService)
         assert isinstance(await deps.get_yakit_service(uow), YakitService)
-        assert isinstance(await deps.get_dorse_service(uow), DorseService)
         assert isinstance(await deps.get_auth_service(uow), AuthService)
 
 

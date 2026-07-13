@@ -14,17 +14,15 @@ duplicate-check'i HİÇ yapmıyordu (AracService ile asimetrik).
 Gerçek DB + gerçek servis; sadece event_bus MagicMock (dış altyapı).
 """
 
-from unittest.mock import AsyncMock, MagicMock
-
 import pytest
 from sqlalchemy import insert, select
 
 from app.core.entities.models import AracCreate
-from app.core.services.arac_service import AracService
-from app.core.services.dorse_service import DorseService
 from app.database.models import Arac, Dorse
-from app.database.repositories.dorse_repo import DorseRepository
-from app.schemas.dorse import DorseCreate
+from v2.modules.fleet.application.create_trailer import create_trailer
+from v2.modules.fleet.application.create_vehicle import create_vehicle
+from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+from v2.modules.fleet.schemas import DorseCreate
 
 pytestmark = pytest.mark.integration
 
@@ -65,7 +63,6 @@ class TestVehicleReactivationCarriesTechnicalSpecs:
         plaka = "34 SPEC 001"
         seeded_id = await _seed_arac(db_session, plaka)
 
-        svc = AracService(event_bus=MagicMock())
         data = AracCreate(
             plaka=plaka,
             marka="YeniMarka",
@@ -77,7 +74,7 @@ class TestVehicleReactivationCarriesTechnicalSpecs:
             motor_verimliligi=0.42,
             maks_yuk_kapasitesi_kg=27000,
         )
-        result_id = await svc.create_arac(data)
+        result_id = await create_vehicle(data)
         assert result_id == seeded_id
 
         row = (
@@ -92,22 +89,21 @@ class TestVehicleReactivationCarriesTechnicalSpecs:
 
 
 class TestDorseServiceDuplicateAndReactivation:
-    def _service(self, db_session) -> DorseService:
-        repo = DorseRepository(session=db_session)
-        return DorseService(repo=repo, event_bus=AsyncMock())
+    def _repo(self, db_session) -> DorseRepository:
+        return DorseRepository(session=db_session)
 
     async def test_create_reactivates_passive_trailer_with_new_specs(self, db_session):
         plaka = "34 DSPEC 001"
         seeded_id = await _seed_dorse(db_session, plaka, aktif=False)
 
-        svc = self._service(db_session)
+        repo = self._repo(db_session)
         payload = DorseCreate(
             plaka=plaka,
             marka="YeniDorseMarka",
             bos_agirlik_kg=7000.0,
             maks_yuk_kapasitesi_kg=30000,
         )
-        result_id = await svc.create(**payload.model_dump())
+        result_id = await create_trailer(repo, **payload.model_dump())
         assert result_id == seeded_id
 
         row = (
@@ -124,15 +120,15 @@ class TestDorseServiceDuplicateAndReactivation:
         plaka = "34 DSPEC 002"
         await _seed_dorse(db_session, plaka, aktif=True)
 
-        svc = self._service(db_session)
+        repo = self._repo(db_session)
         payload = DorseCreate(plaka=plaka, marka="Baska")
         with pytest.raises(ValueError, match="already exists"):
-            await svc.create(**payload.model_dump())
+            await create_trailer(repo, **payload.model_dump())
 
     async def test_create_fresh_plate_still_inserts(self, db_session):
-        svc = self._service(db_session)
+        repo = self._repo(db_session)
         payload = DorseCreate(plaka="34 DSPEC 003", marka="TamamenYeni")
-        new_id = await svc.create(**payload.model_dump())
+        new_id = await create_trailer(repo, **payload.model_dump())
         assert new_id is not None
 
         row = (

@@ -39,11 +39,11 @@ os.environ["MAPBOX_API_KEY"] = ""
 import app.core.container as container_mod  # noqa: E402
 import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
 import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
-import app.database.repositories.arac_repo as arac_mod  # noqa: E402
-import app.database.repositories.dorse_repo as dorse_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
 import app.database.repositories.sofor_repo as sofor_mod  # noqa: E402
 import app.database.repositories.yakit_repo as yakit_mod  # noqa: E402
+import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
+import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
 from app.database.models import Base  # noqa: E402
@@ -446,7 +446,7 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
 
 @pytest.fixture
 def arac_repo(db_session):
-    from app.database.repositories.arac_repo import AracRepository
+    from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
     return AracRepository(session=db_session)
 
@@ -481,19 +481,12 @@ def analiz_repo(db_session):
 
 @pytest.fixture
 def dorse_repo(db_session):
-    from app.database.repositories.dorse_repo import DorseRepository
+    from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
 
     return DorseRepository(session=db_session)
 
 
 # --- Service fixtures ---
-
-
-@pytest.fixture
-def arac_service(db_session):
-    from app.core.services.arac_service import get_arac_service
-
-    return get_arac_service()
 
 
 @pytest.fixture

@@ -94,7 +94,6 @@ class TestContainer(unittest.TestCase):
         self.assertIsNotNone(container.analiz_service)
         self.assertIsNotNone(container.import_service)
         self.assertIsNotNone(container.report_service)
-        self.assertIsNotNone(container.arac_service)
         self.assertIsNotNone(container.sofor_service)
 
         # Check Injection (White-box testing)

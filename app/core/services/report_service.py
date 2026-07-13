@@ -48,10 +48,12 @@ class ReportService:
         self._degerlendirme_service = None
 
         if session is not None:
-            from app.database.repositories.arac_repo import AracRepository
             from app.database.repositories.sefer_repo import SeferRepository
             from app.database.repositories.sofor_repo import SoforRepository
             from app.database.repositories.yakit_repo import YakitRepository
+            from v2.modules.fleet.infrastructure.vehicle_repository import (
+                AracRepository,
+            )
 
             self.arac_repo = arac_repo or AracRepository(session=session)
             self.sofor_repo = sofor_repo or SoforRepository(session=session)
@@ -66,7 +68,9 @@ class ReportService:
         if arac_repo:
             self.arac_repo = arac_repo
         else:
-            from app.database.repositories.arac_repo import get_arac_repo
+            from v2.modules.fleet.infrastructure.vehicle_repository import (
+                get_arac_repo,
+            )
 
             self.arac_repo = get_arac_repo()
 

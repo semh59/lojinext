@@ -1,71 +1,63 @@
 """
-Unit Tests - AracService
+Unit Tests - fleet vehicle use-cases (free functions, v2.modules.fleet)
 """
 
 import pytest
 
+pytestmark = pytest.mark.integration
 
-class TestAracService:
-    """Test suite for AracService."""
 
-    def test_service_singleton(self, arac_service):
-        """Service should return singleton instance."""
-        from app.core.services.arac_service import get_arac_service
+class TestVehicleUseCases:
+    """Test suite for vehicle listing/lookup use-cases."""
 
-        service2 = get_arac_service()
-        assert arac_service is service2
+    async def test_get_all_vehicles_returns_list(self, db_session):
+        from v2.modules.fleet.application.list_vehicles import get_all_vehicles
 
-    async def test_get_all_vehicles_returns_list(self, arac_service):
-        """get_all_vehicles should return a list."""
-        vehicles = await arac_service.get_all_vehicles()
+        vehicles = await get_all_vehicles()
         assert isinstance(vehicles, list)
 
-    async def test_get_all_vehicles_only_active(self, arac_service):
-        """Default should return only active vehicles."""
-        vehicles = await arac_service.get_all_vehicles()
+    async def test_get_all_vehicles_only_active(self, db_session):
+        from v2.modules.fleet.application.list_vehicles import get_all_vehicles
+
+        vehicles = await get_all_vehicles()
         for v in vehicles:
             assert v.aktif
 
-    async def test_get_vehicle_by_id(self, arac_service):
-        """Should retrieve vehicle by ID."""
-        vehicles = await arac_service.get_all_vehicles()
-        if vehicles:
-            try:
-                first_id = vehicles[0].id
-            except (AttributeError, KeyError):
-                # Handle both object and dict access for flexibility in tests
-                first_id = (
-                    vehicles[0]["id"]
-                    if isinstance(vehicles[0], dict)
-                    else vehicles[0].id
-                )
+    async def test_get_vehicle_by_id(self, db_session):
+        from v2.modules.fleet.application.list_vehicles import (
+            get_all_vehicles,
+            get_vehicle_by_id,
+        )
 
-            vehicle = await arac_service.get_by_id(first_id)
+        vehicles = await get_all_vehicles()
+        if vehicles:
+            first_id = (
+                vehicles[0]["id"] if isinstance(vehicles[0], dict) else vehicles[0].id
+            )
+
+            vehicle = await get_vehicle_by_id(first_id)
             assert vehicle is not None
-            # Handle both object and dict access for flexibility in tests
             v_id = vehicle["id"] if isinstance(vehicle, dict) else vehicle.id
             assert v_id == first_id
 
-    async def test_get_vehicle_by_invalid_id(self, arac_service):
-        """Should return None for invalid ID."""
-        vehicle = await arac_service.get_by_id(99999)
+    async def test_get_vehicle_by_invalid_id(self, db_session):
+        from v2.modules.fleet.application.list_vehicles import get_vehicle_by_id
+
+        vehicle = await get_vehicle_by_id(99999)
         assert vehicle is None
 
 
-class TestAracServiceValidation:
-    """Test input validation in AracService."""
+class TestVehicleValidation:
+    """Test input validation in vehicle schemas."""
 
-    async def test_add_vehicle_plaka_required(self, arac_service):
-        """Adding a vehicle without plaka should fail."""
-        from app.core.entities.models import AracCreate
+    def test_add_vehicle_plaka_required(self):
+        """Adding a vehicle without plaka should fail validation."""
+        from pydantic import ValidationError
 
-        with pytest.raises((ValueError, TypeError)):
-            # Pydantic validation error or service logic
-            try:
-                model = AracCreate(plaka="", marka="Test", model="Test", yil=2020)
-                await arac_service.create_arac(model)
-            except Exception as e:
-                raise ValueError(f"Plaka required: {e}")
+        from v2.modules.fleet.schemas import AracCreate
+
+        with pytest.raises((ValueError, TypeError, ValidationError)):
+            AracCreate(plaka="", marka="Test", model="Test", yil=2020)
 
     @pytest.mark.parametrize(
         "plaka,expected_normalized",
@@ -79,10 +71,8 @@ class TestAracServiceValidation:
         """2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 23): eskiden
         `validate_plaka_str` gerçekten hata fırlatırsa test `pytest.skip`
         ile geçiyordu — gevşek/bozuk bir validasyon kalıcı olarak fark
-        edilmeden kalırdı. `validate_plaka_str` (app/core/entities/models.py)
-        gerçek regex-tabanlı bir validasyon uyguluyor; bu 3 format zaten
-        geçerli — artık gerçek bir assertion, skip yok."""
-        from app.core.entities.models import AracCreate
+        edilmeden kalırdı. Artık gerçek bir assertion, skip yok."""
+        from v2.modules.fleet.schemas import AracCreate
 
         model = AracCreate(plaka=plaka, marka="Test", model="Test", yil=2020)
         assert model.plaka == expected_normalized
@@ -93,24 +83,27 @@ class TestAracServiceValidation:
         kalmamalı)."""
         from pydantic import ValidationError
 
-        from app.core.entities.models import AracCreate
+        from v2.modules.fleet.schemas import AracCreate
 
         with pytest.raises(ValidationError):
             AracCreate(plaka="INVALID!!!", marka="Test", model="Test", yil=2020)
 
 
-class TestAracServiceStats:
-    """Test statistics methods in AracService."""
+class TestVehicleStats:
+    """Test statistics use-case."""
 
-    async def test_get_vehicle_stats(self, arac_service):
-        """Should return vehicle statistics."""
+    async def test_get_vehicle_stats(self, db_session):
         from app.core.entities.models import VehicleStats
+        from v2.modules.fleet.application.list_vehicles import (
+            get_all_vehicles,
+            get_vehicle_stats,
+        )
 
-        vehicles = await arac_service.get_all_vehicles()
+        vehicles = await get_all_vehicles()
         if vehicles:
             v_id = (
                 vehicles[0]["id"] if isinstance(vehicles[0], dict) else vehicles[0].id
             )
-            stats = await arac_service.get_vehicle_stats(v_id)
+            stats = await get_vehicle_stats(v_id)
             if stats:
                 assert isinstance(stats, VehicleStats)

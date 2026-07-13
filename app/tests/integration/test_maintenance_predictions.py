@@ -158,14 +158,14 @@ class TestCacheInvalidation:
         self, async_client, admin_auth_headers, db_session, monkeypatch
     ):
         """Yeni bakım eklenince /predictions cache miss → fresh hesap."""
-        from app.core.services import maintenance_service as ms_mod
+        from v2.modules.fleet.application import create_maintenance_record as cmr_mod
 
         invalidation_count = {"n": 0}
 
         async def _fake_invalidate():
             invalidation_count["n"] += 1
 
-        monkeypatch.setattr(ms_mod, "_invalidate_predictions_cache", _fake_invalidate)
+        monkeypatch.setattr(cmr_mod, "invalidate_predictions_cache", _fake_invalidate)
 
         aid = await _seed_arac(db_session, plaka="34 DDD 44")
         resp = await async_client.post(

@@ -34,7 +34,7 @@ class ContextBuilder:
 
     @property
     def arac_repo(self):
-        from app.database.repositories.arac_repo import get_arac_repo
+        from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
 
         return get_arac_repo()
 

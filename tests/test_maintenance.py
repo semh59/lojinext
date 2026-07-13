@@ -3,16 +3,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.maintenance_service import MaintenanceService
 from app.database.models import AracBakim, BakimTipi
+from v2.modules.fleet.application.create_maintenance_record import (
+    create_maintenance_record,
+)
+from v2.modules.fleet.application.get_vehicle_maintenance_history import (
+    get_upcoming_maintenance_alerts,
+    get_vehicle_maintenance_history,
+    mark_maintenance_completed,
+)
 
 
 @pytest.mark.asyncio
 async def test_create_maintenance_record():
     """Verify maintenance record creation logic."""
-    service = MaintenanceService()
-
-    with patch("app.core.services.maintenance_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.fleet.application.create_maintenance_record.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -25,7 +32,7 @@ async def test_create_maintenance_record():
         mock_bakim = AracBakim(id=10, arac_id=1, bakim_tipi=BakimTipi.PERIYODIK)
         mock_uow.maintenance_repo.add = AsyncMock(return_value=mock_bakim)
 
-        result = await service.create_maintenance_record(
+        result = await create_maintenance_record(
             arac_id=1,
             bakim_tipi=BakimTipi.PERIYODIK,
             km_bilgisi=50000,
@@ -39,9 +46,9 @@ async def test_create_maintenance_record():
 @pytest.mark.asyncio
 async def test_get_upcoming_alerts():
     """Verify enrichment of maintenance alerts with vehicle plates."""
-    service = MaintenanceService()
-
-    with patch("app.core.services.maintenance_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -56,13 +63,13 @@ async def test_get_upcoming_alerts():
                 )
             ]
         )
-        # Service batch-fetches vehicles via get_by_ids (N+1 fix) → returns a
-        # {arac_id: Arac} map, not a single record.
+        # get_upcoming_maintenance_alerts batch-fetches vehicles via get_by_ids
+        # (N+1 fix) → returns a {arac_id: Arac} map, not a single record.
         mock_uow.arac_repo.get_by_ids = AsyncMock(
             return_value={101: MagicMock(plaka="PLK-99")}
         )
 
-        alerts = await service.get_upcoming_alerts()
+        alerts = await get_upcoming_maintenance_alerts()
 
         assert len(alerts) == 1
         assert alerts[0]["plaka"] == "PLK-99"
@@ -71,9 +78,9 @@ async def test_get_upcoming_alerts():
 @pytest.mark.asyncio
 async def test_mark_as_completed():
     """Verify that maintenance can be marked as completed."""
-    service = MaintenanceService()
-
-    with patch("app.core.services.maintenance_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -81,7 +88,7 @@ async def test_mark_as_completed():
         mock_uow.commit = AsyncMock()
         mock_uow.maintenance_repo.update = AsyncMock(return_value=True)
 
-        success = await service.mark_as_completed(10)
+        success = await mark_maintenance_completed(10)
         assert success is True
         mock_uow.maintenance_repo.update.assert_called_with(10, tamamlandi=True)
         mock_uow.commit.assert_called_once()
@@ -90,9 +97,9 @@ async def test_mark_as_completed():
 @pytest.mark.asyncio
 async def test_get_vehicle_maintenance_history():
     """Verify history retrieval for a specific vehicle."""
-    service = MaintenanceService()
-
-    with patch("app.core.services.maintenance_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -100,7 +107,7 @@ async def test_get_vehicle_maintenance_history():
         mock_record = MagicMock(id=1, arac_id=1, bakim_tipi=BakimTipi.PERIYODIK)
         mock_uow.maintenance_repo.get_by_arac_id = AsyncMock(return_value=[mock_record])
 
-        history = await service.get_vehicle_maintenance_history(1)
+        history = await get_vehicle_maintenance_history(1)
         assert len(history) == 1
         assert history[0].id == 1
         mock_uow.maintenance_repo.get_by_arac_id.assert_called_with(1)

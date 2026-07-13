@@ -4,6 +4,10 @@ Hibrit: kural-tabanlı interval + aracın gerçek kullanım hızı + tüketim
 trendi düzeltmesi. ML modeli eğitilmez; her istekte hesaplanır.
 
 Plan kaynağı: docs/superpowers/plans/2026-05-26-feature-d-predictive-maintenance-v3.md
+
+Fleet-içi kalır (prediction_ml'e taşınmadı) — bakım-tahmini fleet'in kendi
+iş kuralı; vehicle_health_factor'dan farklı olarak trip/fuel prediction
+pipeline'ına post-process olarak eklenmiyor (bkz. TASKS/modules/fleet.md §5.3).
 """
 
 from __future__ import annotations

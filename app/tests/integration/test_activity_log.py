@@ -30,7 +30,7 @@ async def test_vehicle_create_and_delete_invoke_activity_log(
     }
 
     with patch(
-        "app.api.v1.endpoints.vehicles.log_audit_event", new_callable=AsyncMock
+        "v2.modules.fleet.api.vehicle_routes.log_audit_event", new_callable=AsyncMock
     ) as mock_audit:
         resp = await async_client.post(
             "/api/v1/vehicles/", json=payload, headers=admin_auth_headers

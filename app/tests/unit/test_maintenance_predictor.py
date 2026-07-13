@@ -21,7 +21,7 @@ import pytest
     ],
 )
 def test_consumption_trend_pct(recent, previous, expected):
-    from app.core.ml.maintenance_predictor import _consumption_trend_pct
+    from v2.modules.fleet.domain.maintenance_prediction import _consumption_trend_pct
 
     assert _consumption_trend_pct(recent, previous) == expected
 
@@ -41,7 +41,7 @@ def test_consumption_trend_pct(recent, previous, expected):
     ],
 )
 def test_trend_correction_days(trend_pct, expected_min, expected_max):
-    from app.core.ml.maintenance_predictor import _trend_correction_days
+    from v2.modules.fleet.domain.maintenance_prediction import _trend_correction_days
 
     result = _trend_correction_days(trend_pct)
     assert expected_min <= result <= expected_max
@@ -62,14 +62,14 @@ def test_trend_correction_days(trend_pct, expected_min, expected_max):
     ],
 )
 def test_risk_level_boundaries(days, expected):
-    from app.core.ml.maintenance_predictor import _risk_level
+    from v2.modules.fleet.domain.maintenance_prediction import _risk_level
 
     assert _risk_level(days) == expected
 
 
 # ── _confidence ────────────────────────────────────────────────────────
 def test_confidence_no_data():
-    from app.core.ml.maintenance_predictor import _confidence
+    from v2.modules.fleet.domain.maintenance_prediction import _confidence
 
     assert (
         _confidence(
@@ -82,7 +82,7 @@ def test_confidence_no_data():
 
 
 def test_confidence_all_signals():
-    from app.core.ml.maintenance_predictor import _confidence
+    from v2.modules.fleet.domain.maintenance_prediction import _confidence
 
     assert (
         _confidence(
@@ -95,7 +95,7 @@ def test_confidence_all_signals():
 
 
 def test_confidence_partial():
-    from app.core.ml.maintenance_predictor import _confidence
+    from v2.modules.fleet.domain.maintenance_prediction import _confidence
 
     # Sadece history → 0.5 + 0.2 = 0.7
     assert (
@@ -110,7 +110,7 @@ def test_confidence_partial():
 
 # ── _savings_pct ───────────────────────────────────────────────────────
 def test_savings_pct_no_data():
-    from app.core.ml.maintenance_predictor import _savings_pct
+    from v2.modules.fleet.domain.maintenance_prediction import _savings_pct
 
     assert _savings_pct(None, 30.0) == 0.0
     assert _savings_pct(35.0, None) == 0.0
@@ -118,7 +118,7 @@ def test_savings_pct_no_data():
 
 
 def test_savings_pct_below_benchmark():
-    from app.core.ml.maintenance_predictor import _savings_pct
+    from v2.modules.fleet.domain.maintenance_prediction import _savings_pct
 
     # Filo medyandan düşükse tasarruf yok
     assert _savings_pct(28.0, 30.0) == 0.0
@@ -126,14 +126,14 @@ def test_savings_pct_below_benchmark():
 
 
 def test_savings_pct_above_benchmark():
-    from app.core.ml.maintenance_predictor import _savings_pct
+    from v2.modules.fleet.domain.maintenance_prediction import _savings_pct
 
     # 33 vs 30 → (33-30)/33 * 100 ≈ 9.1
     assert _savings_pct(33.0, 30.0) == pytest.approx(9.1, abs=0.1)
 
 
 def test_savings_pct_capped_at_20():
-    from app.core.ml.maintenance_predictor import _savings_pct
+    from v2.modules.fleet.domain.maintenance_prediction import _savings_pct
 
     # Aşırı yüksek tüketim cap'lenmeli
     assert _savings_pct(100.0, 10.0) == 20.0
@@ -141,13 +141,13 @@ def test_savings_pct_capped_at_20():
 
 # ── _predict_for_vehicle scenarios ─────────────────────────────────────
 def _build_engine():
-    from app.core.ml.maintenance_predictor import MaintenancePredictor
+    from v2.modules.fleet.domain.maintenance_prediction import MaintenancePredictor
 
     return MaintenancePredictor()
 
 
 def _build_input(**overrides):
-    from app.core.ml.maintenance_predictor import PredictionInput
+    from v2.modules.fleet.domain.maintenance_prediction import PredictionInput
 
     base = {
         "arac_id": 1,

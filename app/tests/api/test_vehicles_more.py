@@ -14,7 +14,6 @@ Targets missed lines:
   468      — upload: content > MAX_FILE_SIZE mid-stream → 413
 """
 
-from contextlib import contextmanager
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
@@ -23,6 +22,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE = "/api/v1/vehicles"
+ROUTES = "v2.modules.fleet.api.vehicle_routes"
 
 
 # ---------------------------------------------------------------------------
@@ -59,21 +59,6 @@ def _make_arac_response(**kwargs):
     return defaults
 
 
-@contextmanager
-def _override_arac_service(mock_svc):
-    from app.api.deps import get_arac_service
-    from app.main import app
-
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_arac_service] = _fake
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_arac_service, None)
-
-
 VALID_VEHICLE_PAYLOAD = {
     "plaka": "34 TST 001",
     "marka": "Mercedes",
@@ -103,12 +88,10 @@ async def test_list_vehicles_http_exception_propagates(
     """HTTPException from service propagates as-is (not wrapped in 500)."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="Overloaded")
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=HTTPException(status_code=503, detail="Overloaded")),
+    ):
         resp = await async_client.get(f"{BASE}/", headers=admin_auth_headers)
 
     assert resp.status_code == 503
@@ -125,10 +108,10 @@ async def test_export_vehicles_domain_error_propagates(
     """DomainError from export raises (not swallowed as 500)."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=FuelCalculationError("calc error"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=FuelCalculationError("calc error")),
+    ):
         resp = await async_client.get(f"{BASE}/export", headers=admin_auth_headers)
 
     assert resp.status_code == 422
@@ -140,12 +123,10 @@ async def test_export_vehicles_http_exception_propagates(
     """HTTPException from export propagates with original status."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        side_effect=HTTPException(status_code=429, detail="Rate limited")
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=HTTPException(status_code=429, detail="Rate limited")),
+    ):
         resp = await async_client.get(f"{BASE}/export", headers=admin_auth_headers)
 
     assert resp.status_code == 429
@@ -160,10 +141,9 @@ async def test_create_vehicle_created_is_none_returns_500(
     async_client, admin_auth_headers
 ):
     """Service.create_arac returns non-existent ID → uow.arac_repo.get_by_id None → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(return_value=999999)  # no row in test DB
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle", AsyncMock(return_value=999999)
+    ):  # no row in test DB
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -179,12 +159,10 @@ async def test_create_vehicle_integrity_error_returns_400(
     """IntegrityError → 400."""
     from sqlalchemy.exc import IntegrityError
 
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(
-        side_effect=IntegrityError("stmt", {}, Exception("duplicate"))
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle",
+        AsyncMock(side_effect=IntegrityError("stmt", {}, Exception("duplicate"))),
+    ):
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -204,12 +182,10 @@ async def test_create_vehicle_operational_error_returns_503(
     """OperationalError (DB connection) → 503."""
     from sqlalchemy.exc import OperationalError
 
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(
-        side_effect=OperationalError("stmt", {}, Exception("conn lost"))
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle",
+        AsyncMock(side_effect=OperationalError("stmt", {}, Exception("conn lost"))),
+    ):
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -223,10 +199,10 @@ async def test_create_vehicle_domain_error_propagates(async_client, admin_auth_h
     """DomainError → propagates with domain handler (422)."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(side_effect=FuelCalculationError("domain"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle",
+        AsyncMock(side_effect=FuelCalculationError("domain")),
+    ):
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -242,12 +218,10 @@ async def test_create_vehicle_http_exception_propagates(
     """HTTPException from create_arac propagates with original status."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(
-        side_effect=HTTPException(status_code=409, detail="Already exists")
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle",
+        AsyncMock(side_effect=HTTPException(status_code=409, detail="Already exists")),
+    ):
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -261,10 +235,9 @@ async def test_create_vehicle_generic_exception_returns_500(
     async_client, admin_auth_headers
 ):
     """Generic RuntimeError → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(side_effect=RuntimeError("unexpected"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.create_vehicle", AsyncMock(side_effect=RuntimeError("unexpected"))
+    ):
         resp = await async_client.post(
             f"{BASE}/",
             json=VALID_VEHICLE_PAYLOAD,
@@ -285,10 +258,10 @@ async def test_clear_all_vehicles_domain_error_propagates(
     """DomainError from delete_all_vehicles propagates (422)."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_all_vehicles = AsyncMock(side_effect=FuelCalculationError("domain"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_all_vehicles",
+        AsyncMock(side_effect=FuelCalculationError("domain")),
+    ):
         resp = await async_client.delete(
             f"{BASE}/clear-all", headers=admin_auth_headers
         )
@@ -302,12 +275,10 @@ async def test_clear_all_vehicles_http_exception_propagates(
     """HTTPException from delete_all_vehicles propagates with original status."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_all_vehicles = AsyncMock(
-        side_effect=HTTPException(status_code=403, detail="Not allowed")
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_all_vehicles",
+        AsyncMock(side_effect=HTTPException(status_code=403, detail="Not allowed")),
+    ):
         resp = await async_client.delete(
             f"{BASE}/clear-all", headers=admin_auth_headers
         )
@@ -326,12 +297,10 @@ async def test_delete_vehicle_http_exception_propagates(
     """HTTPException from delete_arac propagates with original status."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="overloaded")
-    )
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_vehicle",
+        AsyncMock(side_effect=HTTPException(status_code=503, detail="overloaded")),
+    ):
         resp = await async_client.delete(f"{BASE}/1", headers=admin_auth_headers)
 
     assert resp.status_code == 503

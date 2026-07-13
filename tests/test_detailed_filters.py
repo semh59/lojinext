@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.services.arac_service import AracService
 from app.core.services.sofor_service import SoforService
+from v2.modules.fleet.application.list_vehicles import get_all_vehicles_paged
 
 
 @pytest.mark.asyncio
@@ -35,15 +35,17 @@ async def test_filters():
 
     with (
         patch("app.core.services.sofor_service.UnitOfWork", return_value=sofor_uow),
-        patch("app.core.services.arac_service.UnitOfWork", return_value=arac_uow),
+        patch(
+            "v2.modules.fleet.application.list_vehicles.UnitOfWork",
+            return_value=arac_uow,
+        ),
     ):
         sofor_service = SoforService(repo=AsyncMock(), event_bus=AsyncMock())
-        arac_service = AracService(repo=AsyncMock(), event_bus=AsyncMock())
 
         high_score = await sofor_service.get_all_paged(
             min_score=1.5, ehliyet_sinifi="E"
         )
-        modern_arac = await arac_service.get_all_paged(
+        modern_arac = await get_all_vehicles_paged(
             search="34", marka="SCANIA", min_yil=2022
         )
 

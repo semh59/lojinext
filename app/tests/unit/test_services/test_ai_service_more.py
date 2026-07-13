@@ -107,7 +107,7 @@ class TestPredictTripFuel:
         passed. Fixed to go through `uow.dorse_repo.get_by_id()` and read the real
         `lastik_sayisi` column.
         """
-        from app.database.repositories.dorse_repo import DorseRepository
+        from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
 
         svc = _make_service()
         captured = []
@@ -133,7 +133,7 @@ class TestPredictTripFuel:
 
     async def test_prediction_with_dorse_row_none(self, db_session):
         """dorse_id provided but no row found — proceeds without dorse context."""
-        from app.database.repositories.dorse_repo import DorseRepository
+        from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
 
         svc = _make_service()
         captured = []

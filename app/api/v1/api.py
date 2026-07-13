@@ -8,7 +8,6 @@ from app.api.v1.endpoints import (
     admin_health,
     admin_imports,
     admin_integrations,
-    admin_maintenance,
     admin_ml,
     admin_pilot,
     admin_predictions,
@@ -30,20 +29,23 @@ from app.api.v1.endpoints import (
     health,
     internal,
     investigations,
-    maintenance,
     predictions,
     preferences,
     reports,
     reports_studio,
     system,
     today_triage,
-    trailers,
     trips,
     users,
-    vehicles,
     weather,
     ws_ticket,
 )
+from v2.modules.fleet.api.admin_maintenance_routes import (
+    router as admin_maintenance_router,
+)
+from v2.modules.fleet.api.maintenance_routes import router as maintenance_router
+from v2.modules.fleet.api.trailer_routes import router as trailer_router
+from v2.modules.fleet.api.vehicle_routes import router as vehicle_router
 from v2.modules.location.api.location_routes import router as location_router
 from v2.modules.notification.api.live_ws_routes import (
     router as notification_live_ws_router,
@@ -58,7 +60,7 @@ api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
 api_router.include_router(location_router, prefix="/locations", tags=["locations"])
 api_router.include_router(
-    maintenance.router, prefix="/maintenance", tags=["maintenance"]
+    maintenance_router, prefix="/maintenance", tags=["maintenance"]
 )
 api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
@@ -76,7 +78,7 @@ api_router.include_router(
 api_router.include_router(
     admin_users.router, prefix="/admin/users", tags=["admin-users"]
 )
-api_router.include_router(vehicles.router, prefix="/vehicles", tags=["vehicles"])
+api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
 api_router.include_router(drivers.router, prefix="/drivers", tags=["drivers"])
 api_router.include_router(trips.router, prefix="/trips", tags=["trips"])
 api_router.include_router(fuel.router, prefix="/fuel", tags=["fuel"])
@@ -127,7 +129,7 @@ api_router.include_router(
     analytics.admin_router, prefix="/admin", tags=["admin-analytics"]
 )
 api_router.include_router(
-    admin_maintenance.router, prefix="/admin/maintenance", tags=["admin-maintenance"]
+    admin_maintenance_router, prefix="/admin/maintenance", tags=["admin-maintenance"]
 )
 api_router.include_router(
     notification_router,
@@ -137,7 +139,7 @@ api_router.include_router(
 api_router.include_router(
     admin_health.router, prefix="/admin/health", tags=["admin-health"]
 )
-api_router.include_router(trailers.router, prefix="/trailers", tags=["trailers"])
+api_router.include_router(trailer_router, prefix="/trailers", tags=["trailers"])
 api_router.include_router(
     preferences.router, prefix="/preferences", tags=["preferences"]
 )

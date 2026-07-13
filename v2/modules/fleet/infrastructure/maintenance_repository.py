@@ -46,7 +46,7 @@ class MaintenanceRepository(BaseRepository[AracBakim]):
     async def add(self, bakim: AracBakim) -> AracBakim:
         """Persist a maintenance record via the active UoW session.
 
-        maintenance_service expects this method but BaseRepository does not
+        maintenance use-cases expect this method but BaseRepository does not
         provide a generic `.add`; the maintenance flow predates the typed
         repos. SQLAlchemy session add + flush gives the inserted row with id.
         """

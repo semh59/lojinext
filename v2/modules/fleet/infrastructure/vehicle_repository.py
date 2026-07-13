@@ -262,7 +262,7 @@ class AracRepository(BaseRepository[Arac]):
     async def get_plaka_id_map(self) -> dict[str, tuple[int, bool]]:
         """Tüm araçlar (aktif+pasif) için {plaka: (id, aktif)} haritası döner.
 
-        bulk_add_arac'ta reaktivasyon kararı için kullanılır.
+        bulk_add_vehicles'ta reaktivasyon kararı için kullanılır.
         """
         query = "SELECT id, plaka, aktif FROM araclar WHERE is_deleted = FALSE"
         rows = await self.execute_query(query)

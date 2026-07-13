@@ -1,6 +1,6 @@
 # Modül Görevi: fleet (dalga 3/17)
 
-> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz. **1. Adım:** `app/modules/fleet/CLAUDE.md`'yi Read ile oku.
+> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz. **1. Adım:** `v2/modules/fleet/CLAUDE.md`'yi Read ile oku (henüz yoksa, dalga 1-2'deki `v2/modules/location/CLAUDE.md` / `v2/modules/notification/CLAUDE.md` örneğine bakılarak bu dalgada oluşturulur — hedef klasör kararı STATUS.md "KARAR (2026-07-12)" bölümünde: yeni modül kodu `app/modules/<x>/` DEĞİL, `v2/modules/<x>/` altında yazılır).
 
 **Giriş kriteri:** notification dalgası tamamlandı. **Çıkış kriteri:** import-linter kontratı yeşil; fleet `out=4/in=19` profiliyle "sağlıklı sağlayıcı" — erken taşınması sonraki dalgaların (trip, prediction_ml, driver, reports, import_excel, analytics_executive) fleet'e bağımlılığını public.py üzerinden kurmasını sağlar.
 
@@ -43,7 +43,7 @@ app/core/services/ics_generator.py
 3. `maintenance_predictor.py` (ML) → `domain/maintenance_prediction.py` (fleet-içi, prediction_ml'e taşınmadı çünkü bakım-tahmini fleet'in kendi iş kuralı — vehicle_health_factor'dan farklı olarak trip/fuel prediction pipeline'ına post-process olarak eklenmiyor).
 4. `ics_generator.py` → `application/export_maintenance_calendar.py`.
 5. `vehicles.py`/`trailers.py`/`maintenance.py`/`admin_maintenance.py` router'ları → `api/` altında ayrı dosyalar, RBAC Depends() route ile taşınır.
-6. Shim'ler + `app/modules/fleet/CLAUDE.md`.
+6. Eski dosyalar shim bırakılmadan tamamen silinir (dalga 1-2 paterni) + `v2/modules/fleet/CLAUDE.md`.
 
 ## 6. Kabul kriterleri
 - [ ] 15 dosya taşındı, shim tek satır

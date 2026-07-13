@@ -28,7 +28,7 @@ class TestStringValidation:
 
     def test_max_length_enforced(self):
         """Maximum uzunluk zorlanmalı"""
-        from app.schemas.arac import AracCreate
+        from v2.modules.fleet.schemas import AracCreate
 
         # Çok uzun plaka reddedilmeli
         with pytest.raises(ValidationError):
@@ -43,7 +43,7 @@ class TestStringValidation:
     def test_empty_string_rejected(self):
         """Boş string reddedilmeli (zorunlu field)"""
         # Arac create plaka min_length=5
-        from app.schemas.arac import AracCreate
+        from v2.modules.fleet.schemas import AracCreate
 
         with pytest.raises(ValidationError):
             AracCreate(plaka="", marka="Test", tank_kapasitesi=600, hedef_tuketim=30.0)
@@ -81,7 +81,7 @@ class TestDateValidation:
 
     def test_future_year_validation_arac(self):
         """Araç yılı çok ileri olamaz (Next year + 1 max)"""
-        from app.schemas.arac import AracCreate
+        from v2.modules.fleet.schemas import AracCreate
 
         year = datetime.now(timezone.utc).year + 5
 

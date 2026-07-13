@@ -78,11 +78,11 @@ async def test_export_data_handles_mixed_special_types():
 
 
 @pytest.mark.asyncio
-async def test_dorse_service_export_returns_bytes():
-    """dorse_service export_all_trailers coroutine değil bytes dönmeli."""
-    from unittest.mock import AsyncMock, MagicMock
+async def test_export_all_trailers_returns_bytes():
+    """export_all_trailers coroutine değil bytes dönmeli."""
+    from unittest.mock import AsyncMock
 
-    from app.core.services.dorse_service import DorseService
+    from v2.modules.fleet.application.export_trailers import export_all_trailers
 
     mock_repo = AsyncMock()
     mock_repo.get_all = AsyncMock(
@@ -100,21 +100,16 @@ async def test_dorse_service_export_returns_bytes():
         ]
     )
 
-    mock_event_bus = MagicMock()
-    service = DorseService(repo=mock_repo, event_bus=mock_event_bus)
-    result = await service.export_all_trailers()
+    result = await export_all_trailers(mock_repo)
     assert isinstance(result, bytes), f"bytes beklendi, geldi: {type(result)}"
     assert result[:4] == b"PK\x03\x04", "geçerli XLSX magic bytes olmalı"
 
 
 @pytest.mark.asyncio
-async def test_dorse_service_get_template_returns_bytes():
-    """dorse_service get_template coroutine değil bytes dönmeli."""
-    from unittest.mock import AsyncMock, MagicMock
+async def test_get_trailer_template_returns_bytes():
+    """get_trailer_template coroutine değil bytes dönmeli."""
+    from v2.modules.fleet.application.export_trailers import get_trailer_template
 
-    from app.core.services.dorse_service import DorseService
-
-    service = DorseService(repo=AsyncMock(), event_bus=MagicMock())
-    result = await service.get_template()
+    result = await get_trailer_template()
     assert isinstance(result, bytes), f"bytes beklendi, geldi: {type(result)}"
     assert result[:4] == b"PK\x03\x04", "geçerli XLSX magic bytes olmalı"

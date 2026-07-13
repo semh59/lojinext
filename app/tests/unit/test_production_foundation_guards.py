@@ -587,7 +587,7 @@ def test_runtime_and_persistence_layers_no_longer_reference_is_real():
         ROOT / "app" / "database" / "repositories" / "analiz_repo.py"
     ).read_text(encoding="utf-8")
     vehicle_repo = (
-        ROOT / "app" / "database" / "repositories" / "arac_repo.py"
+        ROOT / "v2" / "modules" / "fleet" / "infrastructure" / "vehicle_repository.py"
     ).read_text(encoding="utf-8")
     test_conftest = (ROOT / "app" / "tests" / "conftest.py").read_text(encoding="utf-8")
     training_contracts = (

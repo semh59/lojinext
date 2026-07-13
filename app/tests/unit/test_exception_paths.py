@@ -155,14 +155,14 @@ class TestBaseRepositorySafety:
             ModellessRepo(session=None)
 
     def test_session_property_raises_runtime_error_without_session(self):
-        from app.database.repositories.arac_repo import AracRepository
+        from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
         repo = AracRepository(session=None)
         with pytest.raises(RuntimeError):
             _ = repo.session
 
     def test_instantiation_with_valid_model_and_no_session_succeeds(self):
-        from app.database.repositories.arac_repo import AracRepository
+        from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
         repo = AracRepository(session=None)
         assert repo._session is None

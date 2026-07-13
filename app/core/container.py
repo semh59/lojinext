@@ -25,8 +25,6 @@ if TYPE_CHECKING:
     from app.core.entities.sofor_degerlendirme import SoforDegerlendirmeService
     from app.core.services.analiz_service import AnalizService
     from app.core.services.anomaly_detector import AnomalyDetector
-    from app.core.services.arac_service import AracService
-    from app.core.services.dorse_service import DorseService
     from app.core.services.health_service import HealthService
     from app.core.services.import_service import ImportService
     from app.core.services.license_service import LicenseEngine
@@ -37,8 +35,6 @@ if TYPE_CHECKING:
     from app.core.services.yakit_service import YakitService
     from app.core.services.yakit_tahmin_service import YakitTahminService
     from app.database.repositories.analiz_repo import AnalizRepository
-    from app.database.repositories.arac_repo import AracRepository
-    from app.database.repositories.dorse_repo import DorseRepository
     from app.database.repositories.sefer_repo import SeferRepository
     from app.database.repositories.sofor_repo import SoforRepository
     from app.database.repositories.yakit_repo import YakitRepository
@@ -46,6 +42,8 @@ if TYPE_CHECKING:
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+    from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
     from v2.modules.location.infrastructure.repository import LokasyonRepository
 
 
@@ -96,11 +94,9 @@ class Container:
         # burada da tutuluyor; ancak gerçek endpoint kullanımı deps.py üzerinden
         # per-request UoW ile yapılır. Bu instance'lar yalnızca diğer singleton
         # servislerin ihtiyaç duyduğu durumlarda devreye girer.
-        self._arac_service: Optional["AracService"] = None
         self._sofor_service: Optional["SoforService"] = None
         self._sefer_service: Optional["SeferService"] = None
         self._yakit_service: Optional["YakitService"] = None
-        self._dorse_service: Optional["DorseService"] = None
         self._analiz_service: Optional["AnalizService"] = None
 
         # ── 4. Composite Services (birden fazla servise/repo'ya bağımlı) ────
@@ -146,7 +142,9 @@ class Container:
         if self._arac_repo is None:
             with self._lock:
                 if self._arac_repo is None:
-                    from app.database.repositories.arac_repo import AracRepository
+                    from v2.modules.fleet.infrastructure.vehicle_repository import (
+                        AracRepository,
+                    )
 
                     self._arac_repo = AracRepository()
         return self._arac_repo
@@ -198,24 +196,14 @@ class Container:
         if self._dorse_repo is None:
             with self._lock:
                 if self._dorse_repo is None:
-                    from app.database.repositories.dorse_repo import DorseRepository
+                    from v2.modules.fleet.infrastructure.trailer_repository import (
+                        DorseRepository,
+                    )
 
                     self._dorse_repo = DorseRepository()
         return self._dorse_repo
 
     # --- Core Services ---
-
-    @property
-    def arac_service(self) -> "AracService":
-        if self._arac_service is None:
-            with self._lock:
-                if self._arac_service is None:
-                    from app.core.services.arac_service import AracService
-
-                    self._arac_service = AracService(
-                        repo=self.arac_repo, event_bus=self.event_bus
-                    )
-        return self._arac_service
 
     @property
     def sofor_service(self) -> "SoforService":
@@ -254,18 +242,6 @@ class Container:
         return self._yakit_service
 
     @property
-    def dorse_service(self) -> "DorseService":
-        if self._dorse_service is None:
-            with self._lock:
-                if self._dorse_service is None:
-                    from app.core.services.dorse_service import DorseService
-
-                    self._dorse_service = DorseService(
-                        repo=self.dorse_repo, event_bus=self.event_bus
-                    )
-        return self._dorse_service
-
-    @property
     def analiz_repo(self) -> "AnalizRepository":
         if self._analiz_repo is None:
             with self._lock:
@@ -301,7 +277,6 @@ class Container:
                         yakit_service=self.yakit_service,
                         arac_repo=self.arac_repo,
                         sofor_repo=self.sofor_repo,
-                        arac_service=self.arac_service,
                         sofor_service=self.sofor_service,
                         dorse_repo=self.dorse_repo,
                         lokasyon_repo=self.lokasyon_repo,
@@ -494,8 +469,6 @@ class Container:
             self._analiz_service = None
             self._sefer_service = None
             self._sofor_service = None
-            self._arac_service = None
-            self._dorse_service = None
 
             # External / infra singletons
             self._weather_service = None

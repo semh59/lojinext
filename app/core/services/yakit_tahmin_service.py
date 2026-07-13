@@ -39,7 +39,9 @@ class YakitTahminService:
     @property
     def arac_repo(self):
         if self._arac_repo is None:
-            from app.database.repositories.arac_repo import get_arac_repo
+            from v2.modules.fleet.infrastructure.vehicle_repository import (
+                get_arac_repo,
+            )
 
             self._arac_repo = get_arac_repo()
         return self._arac_repo

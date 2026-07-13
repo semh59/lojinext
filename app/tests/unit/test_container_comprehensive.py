@@ -181,7 +181,6 @@ class TestContainerInitialization:
 
         container = get_container()
 
-        assert container.arac_service is not None
         assert container.sofor_service is not None
         assert container.sefer_service is not None
         assert container.yakit_service is not None
@@ -230,13 +229,9 @@ class TestDependencyInjection:
 
         assert container.yakit_service.repo is container.yakit_repo
 
-    def test_arac_service_has_correct_repo(self):
-        """AracService doğru repository'yi almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        assert container.arac_service.repo is container.arac_repo
+    # test_arac_service_has_correct_repo removed — AracService class deleted
+    # in dalga 3; container.arac_repo still exists (used by other services
+    # e.g. analiz_service/import_service/report_service, asserted below).
 
     def test_sofor_service_has_correct_repo(self):
         """SoforService doğru repository'yi almalı."""
@@ -292,7 +287,9 @@ class TestDependencyInjection:
 
         assert container.sefer_service.event_bus is event_bus
         assert container.yakit_service.event_bus is event_bus
-        assert container.arac_service.event_bus is event_bus
+        # container.arac_service removed — AracService class deleted (dalga 3,
+        # B.1 free-function refactor); fleet vehicle use-cases don't hold a
+        # persistent event_bus reference to assert against.
         assert container.sofor_service.event_bus is event_bus
 
 
@@ -322,14 +319,9 @@ class TestMockInjection:
         assert service.repo is mock_yakit_repo
         assert service.event_bus is mock_event_bus
 
-    def test_arac_service_accepts_mock_repo(self, mock_arac_repo, mock_event_bus):
-        """AracService mock repo kabul etmeli."""
-        from app.core.services.arac_service import AracService
-
-        service = AracService(repo=mock_arac_repo, event_bus=mock_event_bus)
-
-        assert service.repo is mock_arac_repo
-        assert service.event_bus is mock_event_bus
+    # test_arac_service_accepts_mock_repo removed — AracService class deleted
+    # in dalga 3 (B.1 free-function refactor, v2.modules.fleet); vehicle
+    # use-cases no longer take a constructor-injected repo.
 
     def test_sofor_service_accepts_mock_repo(self, mock_sofor_repo, mock_event_bus):
         """SoforService mock repo kabul etmeli."""
@@ -408,15 +400,9 @@ class TestFactoryFunctions:
 
         assert service is container.yakit_service
 
-    def test_get_arac_service_returns_container_instance(self):
-        """get_arac_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
-        from app.core.services.arac_service import get_arac_service
-
-        container = get_container()
-        service = get_arac_service()
-
-        assert service is container.arac_service
+    # test_get_arac_service_returns_container_instance removed — AracService
+    # class + container.arac_service property deleted in dalga 3 (B.1
+    # free-function refactor, v2.modules.fleet).
 
     def test_get_sofor_service_returns_container_instance(self):
         """get_sofor_service() Container'daki instance'ı döndürmeli."""
@@ -494,7 +480,7 @@ class TestThreadSafety:
                     # Çeşitli servislere erişim
                     _ = container.sefer_service
                     _ = container.yakit_service
-                    _ = container.arac_service
+                    _ = container.arac_repo
                     _ = container.analiz_service
             except Exception as e:
                 errors.append(str(e))
@@ -644,7 +630,6 @@ class TestContainerIntegration:
             container.event_bus,
             container.sefer_service.event_bus,
             container.yakit_service.event_bus,
-            container.arac_service.event_bus,
             container.sofor_service.event_bus,
         ]
 

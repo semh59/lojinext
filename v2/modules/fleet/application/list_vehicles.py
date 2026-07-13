@@ -1,0 +1,79 @@
+"""Use-case: list/paginate vehicles."""
+
+from typing import Any, Dict, List, Optional
+
+from app.core.entities.models import Arac as AracEntity
+from app.core.entities.models import VehicleStats
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.logging.logger import get_logger
+
+logger = get_logger(__name__)
+
+
+async def get_all_vehicles_paged(
+    skip: int = 0,
+    limit: int = 100,
+    aktif_only: bool = True,
+    search: Optional[str] = None,
+    marka: Optional[str] = None,
+    model: Optional[str] = None,
+    min_yil: Optional[int] = None,
+    max_yil: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Returns a paged and filtered list of vehicles."""
+    filters: Dict[str, Any] = {}
+    if marka:
+        filters["marka"] = marka
+    if model:
+        filters["model"] = model
+    if min_yil is not None:
+        filters["yil_ge"] = min_yil
+    if max_yil is not None:
+        filters["yil_le"] = max_yil
+
+    async with UnitOfWork() as uow:
+        rows = await uow.arac_repo.get_all(
+            offset=skip,
+            limit=limit,
+            sadece_aktif=aktif_only,
+            search=search,
+            filters=filters,
+        )
+        total = await uow.arac_repo.count_all(
+            sadece_aktif=aktif_only,
+            search=search,
+            filters=filters,
+        )
+
+    vehicles: List[AracEntity] = []
+    for r in rows:
+        try:
+            vehicles.append(AracEntity.model_validate(dict(r)))
+        except Exception as e:
+            logger.warning(f"Skipping invalid vehicle record ID {r.get('id')}: {e}")
+            continue
+    return {"items": vehicles, "total": total}
+
+
+async def get_all_vehicles(only_active: bool = True) -> List[AracEntity]:
+    """Lists all vehicles (Legacy support)."""
+    result = await get_all_vehicles_paged(aktif_only=only_active)
+    return result["items"]
+
+
+async def get_vehicle_stats(arac_id: int) -> Optional[VehicleStats]:
+    """Returns vehicle details and statistics."""
+    async with UnitOfWork() as uow:
+        row = await uow.arac_repo.get_arac_with_stats(arac_id)
+    if not row:
+        return None
+    return VehicleStats.model_validate(dict(row))
+
+
+async def get_vehicle_by_id(arac_id: int) -> Optional[AracEntity]:
+    """Retrieves a vehicle by ID."""
+    async with UnitOfWork() as uow:
+        row = await uow.arac_repo.get_by_id(arac_id)
+    if not row:
+        return None
+    return AracEntity.model_validate(dict(row))

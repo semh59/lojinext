@@ -1,11 +1,16 @@
 """
 Vehicles endpoint coverage tests.
 
-Targets missing lines in app/api/v1/endpoints/vehicles.py (~43% → ≥75%).
-All service/DB calls are mocked — no real DB needed.
+Targets missing lines in v2/modules/fleet/api/vehicle_routes.py (~43% → ≥75%).
+All use-case/DB calls are mocked — no real DB needed.
+
+Free-function patch target is always the CONSUMING module
+(v2.modules.fleet.api.vehicle_routes.<fn>), not the source module — the
+router imports each use-case at module load time via `from x import y`,
+so `y` lives as an attribute on the router's own namespace (documented
+gotcha, see v2/modules/location/CLAUDE.md's final paragraph).
 """
 
-from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,6 +19,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE = "/api/v1/vehicles"
+ROUTES = "v2.modules.fleet.api.vehicle_routes"
 
 
 # ---------------------------------------------------------------------------
@@ -57,26 +63,6 @@ def _make_paged_result(items=None):
 
 
 # ---------------------------------------------------------------------------
-# Service dependency override helpers
-# ---------------------------------------------------------------------------
-
-
-@contextmanager
-def _override_arac_service(mock_svc):
-    from app.api.deps import get_arac_service
-    from app.main import app
-
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_arac_service] = _fake
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_arac_service, None)
-
-
-# ---------------------------------------------------------------------------
 # GET / — list vehicles
 # ---------------------------------------------------------------------------
 
@@ -89,10 +75,10 @@ async def test_list_vehicles_no_auth(async_client):
 
 async def test_list_vehicles_happy_path(async_client, admin_auth_headers):
     """Returns paginated list of vehicles."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value=_make_paged_result())
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(return_value=_make_paged_result()),
+    ):
         resp = await async_client.get(f"{BASE}/", headers=admin_auth_headers)
 
     assert resp.status_code == 200
@@ -104,10 +90,8 @@ async def test_list_vehicles_happy_path(async_client, admin_auth_headers):
 
 async def test_list_vehicles_with_filters(async_client, admin_auth_headers):
     """Accepts marka, model, min_yil, max_yil filters."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value={"items": [], "total": 0})
-
-    with _override_arac_service(mock_svc):
+    mock_fn = AsyncMock(return_value={"items": [], "total": 0})
+    with patch(f"{ROUTES}.get_all_vehicles_paged", mock_fn):
         resp = await async_client.get(
             f"{BASE}/",
             params={"marka": "Mercedes", "min_yil": 2020, "max_yil": 2026},
@@ -115,21 +99,21 @@ async def test_list_vehicles_with_filters(async_client, admin_auth_headers):
         )
 
     assert resp.status_code == 200
-    mock_svc.get_all_paged.assert_called_once()
-    call_kwargs = mock_svc.get_all_paged.call_args[1]
+    mock_fn.assert_called_once()
+    call_kwargs = mock_fn.call_args[1]
     assert call_kwargs.get("marka") == "Mercedes"
 
 
 async def test_list_vehicles_service_raises_domain_error(
     async_client, admin_auth_headers
 ):
-    """DomainError from service propagates correctly."""
+    """DomainError from use-case propagates correctly."""
     from app.core.exceptions import DomainError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain fail"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=DomainError("domain fail")),
+    ):
         resp = await async_client.get(f"{BASE}/", headers=admin_auth_headers)
 
     # DomainError should be handled by main.py domain_error_handler
@@ -140,10 +124,10 @@ async def test_list_vehicles_service_raises_generic_exception(
     async_client, admin_auth_headers
 ):
     """Generic exception → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=RuntimeError("db crash"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=RuntimeError("db crash")),
+    ):
         resp = await async_client.get(f"{BASE}/", headers=admin_auth_headers)
 
     assert resp.status_code == 500
@@ -177,15 +161,12 @@ async def test_create_vehicle_no_auth(async_client):
 
 
 async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_session):
-    """Returns 201 and vehicle on success (seeds real Arac; service mock returns its id)."""
+    """Returns 201 and vehicle on success (seeds real Arac; use-case mock returns its id)."""
     from app.database.models import Arac
 
     arac = Arac(plaka="34VHC001", marka="Mercedes")
     db_session.add(arac)
     await db_session.flush()
-
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(return_value=arac.id)
 
     payload = {
         "plaka": "34 ABC 123",
@@ -204,7 +185,7 @@ async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_se
         "yakit_tipi": "DIZEL",
         "aktif": True,
     }
-    with _override_arac_service(mock_svc):
+    with patch(f"{ROUTES}.create_vehicle", AsyncMock(return_value=arac.id)):
         resp = await async_client.post(
             f"{BASE}/", json=payload, headers=admin_auth_headers
         )
@@ -213,27 +194,27 @@ async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_se
 
 
 async def test_create_vehicle_value_error(async_client, admin_auth_headers):
-    """Returns 400 on ValueError from service."""
-    mock_svc = AsyncMock()
-    mock_svc.create_arac = AsyncMock(side_effect=ValueError("Plaka zaten mevcut"))
-
-    with _override_arac_service(mock_svc):
-        payload = {
-            "plaka": "34 ABC 123",
-            "marka": "Mercedes",
-            "model": "Actros",
-            "yil": 2022,
-            "tank_kapasitesi": 600,
-            "hedef_tuketim": 32.0,
-            "bos_agirlik_kg": 8000.0,
-            "hava_direnc_katsayisi": 0.7,
-            "on_kesit_alani_m2": 8.5,
-            "motor_verimliligi": 0.38,
-            "lastik_direnc_katsayisi": 0.007,
-            "maks_yuk_kapasitesi_kg": 26000,
-            "dingil_sayisi": 2,
-            "yakit_tipi": "DIZEL",
-        }
+    """Returns 400 on ValueError from use-case."""
+    payload = {
+        "plaka": "34 ABC 123",
+        "marka": "Mercedes",
+        "model": "Actros",
+        "yil": 2022,
+        "tank_kapasitesi": 600,
+        "hedef_tuketim": 32.0,
+        "bos_agirlik_kg": 8000.0,
+        "hava_direnc_katsayisi": 0.7,
+        "on_kesit_alani_m2": 8.5,
+        "motor_verimliligi": 0.38,
+        "lastik_direnc_katsayisi": 0.007,
+        "maks_yuk_kapasitesi_kg": 26000,
+        "dingil_sayisi": 2,
+        "yakit_tipi": "DIZEL",
+    }
+    with patch(
+        f"{ROUTES}.create_vehicle",
+        AsyncMock(side_effect=ValueError("Plaka zaten mevcut")),
+    ):
         resp = await async_client.post(
             f"{BASE}/", json=payload, headers=admin_auth_headers
         )
@@ -286,11 +267,8 @@ async def test_delete_vehicle_no_auth(async_client):
 
 
 async def test_delete_vehicle_not_found(async_client, admin_auth_headers):
-    """Returns 404 when service returns False."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(return_value=False)
-
-    with _override_arac_service(mock_svc):
+    """Returns 404 when use-case returns False."""
+    with patch(f"{ROUTES}.delete_vehicle", AsyncMock(return_value=False)):
         resp = await async_client.delete(f"{BASE}/999", headers=admin_auth_headers)
 
     assert resp.status_code == 404
@@ -298,10 +276,7 @@ async def test_delete_vehicle_not_found(async_client, admin_auth_headers):
 
 async def test_delete_vehicle_success(async_client, admin_auth_headers):
     """Returns 200 with success message when deleted."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(return_value=True)
-
-    with _override_arac_service(mock_svc):
+    with patch(f"{ROUTES}.delete_vehicle", AsyncMock(return_value=True)):
         resp = await async_client.delete(f"{BASE}/1", headers=admin_auth_headers)
 
     assert resp.status_code == 200
@@ -310,11 +285,11 @@ async def test_delete_vehicle_success(async_client, admin_auth_headers):
 
 
 async def test_delete_vehicle_value_error(async_client, admin_auth_headers):
-    """Returns 400 on ValueError from service."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(side_effect=ValueError("Araç aktif seferlerde"))
-
-    with _override_arac_service(mock_svc):
+    """Returns 400 on ValueError from use-case."""
+    with patch(
+        f"{ROUTES}.delete_vehicle",
+        AsyncMock(side_effect=ValueError("Araç aktif seferlerde")),
+    ):
         resp = await async_client.delete(f"{BASE}/1", headers=admin_auth_headers)
 
     assert resp.status_code == 400
@@ -322,10 +297,9 @@ async def test_delete_vehicle_value_error(async_client, admin_auth_headers):
 
 async def test_delete_vehicle_generic_exception(async_client, admin_auth_headers):
     """Returns 500 on unexpected error."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(side_effect=RuntimeError("unexpected"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_vehicle", AsyncMock(side_effect=RuntimeError("unexpected"))
+    ):
         resp = await async_client.delete(f"{BASE}/1", headers=admin_auth_headers)
 
     assert resp.status_code == 500
@@ -344,10 +318,7 @@ async def test_clear_all_vehicles_no_auth(async_client):
 
 async def test_clear_all_vehicles_success(async_client, admin_auth_headers):
     """Returns success count."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_all_vehicles = AsyncMock(return_value=5)
-
-    with _override_arac_service(mock_svc):
+    with patch(f"{ROUTES}.delete_all_vehicles", AsyncMock(return_value=5)):
         resp = await async_client.delete(
             f"{BASE}/clear-all", headers=admin_auth_headers
         )
@@ -360,10 +331,10 @@ async def test_clear_all_vehicles_success(async_client, admin_auth_headers):
 
 async def test_clear_all_vehicles_value_error(async_client, admin_auth_headers):
     """Returns 400 on ValueError."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_all_vehicles = AsyncMock(side_effect=ValueError("not allowed"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_all_vehicles",
+        AsyncMock(side_effect=ValueError("not allowed")),
+    ):
         resp = await async_client.delete(
             f"{BASE}/clear-all", headers=admin_auth_headers
         )
@@ -383,11 +354,8 @@ async def test_get_vehicle_stats_no_auth(async_client):
 
 
 async def test_get_vehicle_stats_not_found(async_client, admin_auth_headers):
-    """Returns 404 when service returns None."""
-    mock_svc = AsyncMock()
-    mock_svc.get_vehicle_stats = AsyncMock(return_value=None)
-
-    with _override_arac_service(mock_svc):
+    """Returns 404 when use-case returns None."""
+    with patch(f"{ROUTES}.get_vehicle_stats_usecase", AsyncMock(return_value=None)):
         resp = await async_client.get(f"{BASE}/999/stats", headers=admin_auth_headers)
 
     assert resp.status_code == 404
@@ -404,10 +372,9 @@ async def test_get_vehicle_stats_happy_path(async_client, admin_auth_headers):
     mock_stats.ort_tuketim = 32.0
     mock_stats.last_sefer_tarih = None
 
-    mock_svc = AsyncMock()
-    mock_svc.get_vehicle_stats = AsyncMock(return_value=mock_stats)
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_vehicle_stats_usecase", AsyncMock(return_value=mock_stats)
+    ):
         resp = await async_client.get(f"{BASE}/1/stats", headers=admin_auth_headers)
 
     assert resp.status_code == 200
@@ -540,10 +507,11 @@ async def test_export_vehicles_no_auth(async_client):
 async def test_export_vehicles_happy_path(async_client, admin_auth_headers):
     """Returns Excel export of vehicles."""
     fake_xlsx = b"PK\x03\x04" + b"\x00" * 50
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value={"items": [], "total": 0})
 
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(return_value={"items": [], "total": 0}),
+    ):
         with patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=fake_xlsx),
@@ -557,10 +525,10 @@ async def test_export_vehicles_happy_path(async_client, admin_auth_headers):
 
 async def test_export_vehicles_generic_exception(async_client, admin_auth_headers):
     """Returns 500 when export raises an unexpected exception."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=RuntimeError("export crash"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_vehicles_paged",
+        AsyncMock(side_effect=RuntimeError("export crash")),
+    ):
         resp = await async_client.get(f"{BASE}/export", headers=admin_auth_headers)
 
     assert resp.status_code == 500
@@ -578,11 +546,8 @@ async def test_update_vehicle_no_auth(async_client):
 
 
 async def test_update_vehicle_not_found(async_client, admin_auth_headers):
-    """Returns 404 when service returns False."""
-    mock_svc = AsyncMock()
-    mock_svc.update_arac = AsyncMock(return_value=False)
-
-    with _override_arac_service(mock_svc):
+    """Returns 404 when use-case returns False."""
+    with patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=False)):
         from app.database.connection import get_db
 
         async def _fake_get_db():
@@ -606,11 +571,11 @@ async def test_update_vehicle_not_found(async_client, admin_auth_headers):
 
 
 async def test_update_vehicle_value_error(async_client, admin_auth_headers):
-    """Returns 400 when service raises ValueError."""
-    mock_svc = AsyncMock()
-    mock_svc.update_arac = AsyncMock(side_effect=ValueError("Plaka çakışması"))
-
-    with _override_arac_service(mock_svc):
+    """Returns 400 when use-case raises ValueError."""
+    with patch(
+        f"{ROUTES}.update_vehicle",
+        AsyncMock(side_effect=ValueError("Plaka çakışması")),
+    ):
         resp = await async_client.put(
             f"{BASE}/1", json={"marka": "Volvo"}, headers=admin_auth_headers
         )
@@ -647,10 +612,7 @@ async def test_update_vehicle_success(async_client, admin_auth_headers):
     mock_vehicle.ort_tuketim = 0.0
     mock_vehicle.created_at = datetime(2022, 1, 1, tzinfo=timezone.utc)
 
-    mock_svc = AsyncMock()
-    mock_svc.update_arac = AsyncMock(return_value=True)
-
-    with _override_arac_service(mock_svc):
+    with patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=True)):
         from app.database.connection import get_db
         from app.main import app
 
@@ -823,13 +785,13 @@ async def test_inspection_alerts_happy_path(async_client, admin_auth_headers):
 
 
 async def test_delete_vehicle_domain_error_propagates(async_client, admin_auth_headers):
-    """DomainError from delete_arac propagates as-is (422)."""
+    """DomainError from delete_vehicle propagates as-is (422)."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_arac = AsyncMock(side_effect=FuelCalculationError("Cannot delete"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_vehicle",
+        AsyncMock(side_effect=FuelCalculationError("Cannot delete")),
+    ):
         resp = await async_client.delete(f"{BASE}/1", headers=admin_auth_headers)
 
     assert resp.status_code == 422
@@ -842,10 +804,9 @@ async def test_delete_vehicle_domain_error_propagates(async_client, admin_auth_h
 
 async def test_clear_all_vehicles_generic_exception(async_client, admin_auth_headers):
     """Returns 500 on unexpected error."""
-    mock_svc = AsyncMock()
-    mock_svc.delete_all_vehicles = AsyncMock(side_effect=RuntimeError("db crash"))
-
-    with _override_arac_service(mock_svc):
+    with patch(
+        f"{ROUTES}.delete_all_vehicles", AsyncMock(side_effect=RuntimeError("db crash"))
+    ):
         resp = await async_client.delete(
             f"{BASE}/clear-all", headers=admin_auth_headers
         )

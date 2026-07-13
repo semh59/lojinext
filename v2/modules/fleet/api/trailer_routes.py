@@ -9,10 +9,8 @@ from app.api.deps import (
     UOWDep,
     get_current_active_admin,
     get_current_active_user,
-    get_dorse_service,
 )
 from app.core.exceptions import DomainError
-from app.core.services.dorse_service import DorseService
 from app.database.models import Dorse, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
@@ -23,7 +21,17 @@ from app.schemas.api_responses import (
     FleetStatsResponse,
 )
 from app.schemas.base import ResponseMeta, StandardResponse
-from app.schemas.dorse import DorseCreate, DorseResponse, DorseUpdate
+from v2.modules.fleet.application.create_trailer import create_trailer
+from v2.modules.fleet.application.export_trailers import (
+    export_all_trailers,
+    get_trailer_template,
+)
+from v2.modules.fleet.application.export_trailers import (
+    import_trailers as import_trailers_usecase,
+)
+from v2.modules.fleet.application.list_trailers import get_all_trailers_paged
+from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
+from v2.modules.fleet.schemas import DorseCreate, DorseResponse, DorseUpdate
 
 logger = get_logger(__name__)
 
@@ -33,8 +41,8 @@ router = APIRouter()
 @router.get("/", response_model=StandardResponse[List[DorseResponse]])
 async def read_dorseler(
     db: SessionDep,
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: DorseService = Depends(get_dorse_service),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     aktif_only: bool = True,
@@ -46,7 +54,8 @@ async def read_dorseler(
 ):
     """Dorseleri listele."""
     try:
-        data = await service.get_all_paged(
+        data = await get_all_trailers_paged(
+            uow.dorse_repo,
             skip=skip,
             limit=limit,
             aktif_only=aktif_only,
@@ -167,13 +176,12 @@ async def create_dorse(
     dorse: DorseCreate,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Yeni dorse oluştur."""
     try:
-        dorse_id = await service.create(**dorse.model_dump())
+        dorse_id = await create_trailer(uow.dorse_repo, **dorse.model_dump())
         # include_inactive=True: az önce oluşturulan kaydı aynı transaction
-        # içinde geri okuyoruz (bkz. vehicles.py:145 için aynı desen).
+        # içinde geri okuyoruz (bkz. vehicle_routes.py:create_arac için aynı desen).
         created = await uow.dorse_repo.get_by_id(dorse_id, include_inactive=True)
         if not created:
             raise HTTPException(
@@ -210,13 +218,13 @@ async def create_dorse(
     response_class=Response,
 )
 async def export_trailers(
+    uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Tüm dorseleri Excel olarak indir."""
     from fastapi.responses import Response
 
-    content = await service.export_all_trailers()
+    content = await export_all_trailers(uow.dorse_repo)
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -230,14 +238,13 @@ async def export_trailers(
     response_model=None,
     response_class=Response,
 )
-async def get_trailer_template(
+async def get_trailer_template_endpoint(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Dorse yükleme şablonunu indir."""
     from fastapi.responses import Response
 
-    content = await service.get_template()
+    content = await get_trailer_template()
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -270,8 +277,8 @@ def _validate_excel_upload(file: UploadFile) -> None:
 @router.post("/import", response_model=StandardResponse[DorseImportResult])
 async def import_trailers(
     file: UploadFile,
+    uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Excel'den dorse verileri yükle."""
     _validate_excel_upload(file)
@@ -282,7 +289,7 @@ async def import_trailers(
                 status_code=413,
                 detail=f"Dosya boyutu sınırı aşıldı (maks {_MAX_UPLOAD_BYTES // 1024 // 1024} MB).",
             )
-        result = await service.import_trailers(content)
+        result = await import_trailers_usecase(uow.dorse_repo, content)
         return StandardResponse(data=result)
     except DomainError:
         raise
@@ -311,13 +318,13 @@ async def update_dorse(
     dorse_id: int,
     dorse_update: DorseUpdate,
     db: SessionDep,
+    uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Dorse güncelle."""
     try:
-        success = await service.update(
-            dorse_id, **dorse_update.model_dump(exclude_unset=True)
+        success = await update_trailer(
+            uow.dorse_repo, dorse_id, **dorse_update.model_dump(exclude_unset=True)
         )
         if not success:
             raise HTTPException(status_code=404, detail="Dorse bulunamadı")
@@ -339,12 +346,12 @@ async def update_dorse(
 @router.delete("/{dorse_id}", response_model=StandardResponse[dict])
 async def delete_dorse(
     dorse_id: int,
+    uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: DorseService = Depends(get_dorse_service),
 ):
     """Dorse sil."""
     try:
-        success = await service.delete(dorse_id)
+        success = await delete_trailer(uow.dorse_repo, dorse_id)
         if not success:
             raise HTTPException(status_code=404, detail="Dorse bulunamadı")
         await log_audit_event(

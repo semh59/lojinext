@@ -124,8 +124,10 @@ class InternalService:
         girmez. ValueError fırlatır: bilinmeyen telegram_id / sürücünün hiç
         seferi yok / son seferde araç tanımsız — endpoint bunları 404'e çevirir.
         """
-        from app.core.services.maintenance_service import MaintenanceService
         from app.database.models import BakimTipi
+        from v2.modules.fleet.application.create_maintenance_record import (
+            create_breakdown,
+        )
 
         sofor = await self._sofor_repo.get_by_telegram_id(telegram_id)
         if sofor is None:
@@ -139,7 +141,7 @@ class InternalService:
             raise ValueError("Son seferde araç tanımlı değil — arıza bildirilemiyor")
 
         tip = BakimTipi.ACIL if acil else BakimTipi.ARIZA
-        rec = await MaintenanceService().create_breakdown(
+        rec = await create_breakdown(
             bakim_tipi=tip, arac_id=int(arac_id), detaylar=detaylar
         )
         return {

@@ -8,11 +8,12 @@ from app.core.entities import YakitAlimiCreate
 
 
 @pytest.fixture
-async def test_arac_id(arac_service):
+async def test_arac_id(db_session):
     """Test için geçici araç oluştur"""
     from app.core.entities import AracCreate
+    from v2.modules.fleet.application.create_vehicle import create_vehicle
 
-    arac_id = await arac_service.create_arac(
+    arac_id = await create_vehicle(
         AracCreate(
             plaka="34 TEST 01", marka="Mercedes", model="Test", yil=2023, aktif=True
         )

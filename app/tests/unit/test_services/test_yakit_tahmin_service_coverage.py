@@ -392,7 +392,7 @@ class TestRepoProperties:
 
         with patch.dict(
             "sys.modules",
-            {"app.database.repositories.arac_repo": mock_arac_module},
+            {"v2.modules.fleet.infrastructure.vehicle_repository": mock_arac_module},
         ):
             svc._arac_repo = None
             repo = svc.arac_repo

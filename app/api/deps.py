@@ -30,8 +30,6 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
 if TYPE_CHECKING:
-    from app.core.services.arac_service import AracService
-    from app.core.services.dorse_service import DorseService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
     from app.core.services.yakit_service import YakitService
@@ -72,12 +70,6 @@ async def get_background_job_manager() -> BackgroundJobManager:
     return get_job_manager()
 
 
-async def get_arac_service(uow: UOWDep) -> "AracService":
-    from app.core.services.arac_service import AracService
-
-    return AracService(repo=uow.arac_repo)
-
-
 async def get_sofor_service(uow: UOWDep) -> "SoforService":
     from app.core.services.sofor_service import SoforService
 
@@ -94,12 +86,6 @@ async def get_yakit_service(uow: UOWDep) -> "YakitService":
     from app.core.services.yakit_service import YakitService
 
     return YakitService(repo=uow.yakit_repo)
-
-
-async def get_dorse_service(uow: UOWDep) -> "DorseService":
-    from app.core.services.dorse_service import DorseService
-
-    return DorseService(repo=uow.dorse_repo, event_bus=uow.event_bus)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]

@@ -8,13 +8,11 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from app.api.deps import (
     SessionDep,
     UOWDep,
-    get_arac_service,
     get_current_active_admin,
     get_current_active_user,
 )
 from app.core.entities.models import VehicleStats
 from app.core.exceptions import DomainError
-from app.core.services.arac_service import AracService
 from app.core.services.excel_service import ExcelService
 from app.database.models import Arac, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -27,24 +25,30 @@ from app.schemas.api_responses import (
     SuccessCountResponse,
     UploadResultResponse,
 )
-from app.schemas.arac import AracCreate, AracResponse, AracUpdate
 from app.schemas.base import ResponseMeta, StandardResponse
+from v2.modules.fleet.application.create_vehicle import create_vehicle
+from v2.modules.fleet.application.delete_vehicle import (
+    delete_all_vehicles,
+    delete_vehicle,
+)
+from v2.modules.fleet.application.list_vehicles import (
+    get_all_vehicles_paged,
+)
+from v2.modules.fleet.application.list_vehicles import (
+    get_vehicle_stats as get_vehicle_stats_usecase,
+)
+from v2.modules.fleet.application.update_vehicle import update_vehicle
+from v2.modules.fleet.schemas import AracCreate, AracResponse, AracUpdate
 
 logger = get_logger(__name__)
 
 router = APIRouter()
-
-# ... read_araclar (Keep as is, but maybe use service.get_all later?) ...
-# For now, let's keep read_araclar direct for performance unless service wraps it.
-# Service does wrap it: get_all_vehicles. But read_araclar has complex filtering.
-# Let's clean up Create/Update/Delete first.
 
 
 @router.get("/", response_model=StandardResponse[List[AracResponse]])
 async def read_araclar(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: AracService = Depends(get_arac_service),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     aktif_only: bool = True,
@@ -54,10 +58,9 @@ async def read_araclar(
     min_yil: Optional[int] = Query(None),
     max_yil: Optional[int] = Query(None),
 ):
-    """Araçları listele (Service Layer)."""
+    """Araçları listele."""
     try:
-        # Centralized listing with safety and filtering
-        data = await service.get_all_paged(
+        data = await get_all_vehicles_paged(
             skip=skip,
             limit=limit,
             aktif_only=aktif_only,
@@ -95,7 +98,6 @@ async def read_araclar(
 )
 async def export_araclar(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: AracService = Depends(get_arac_service),
     aktif_only: bool = True,
     search: str = Query(None, min_length=1),
     marka: Optional[str] = Query(None),
@@ -106,7 +108,7 @@ async def export_araclar(
     """Araç listesini Excel olarak dışa aktar (Filtreli)."""
     try:
         # Export için limit kaldırılır (veya çok yüksek tutulur)
-        vehicles = await service.get_all_paged(
+        vehicles = await get_all_vehicles_paged(
             skip=0,
             limit=10000,  # Makul bir üst sınır
             aktif_only=aktif_only,
@@ -147,17 +149,16 @@ async def create_arac(
     arac: AracCreate,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: AracService = Depends(get_arac_service),
 ):
-    """Yeni araç oluştur (Service: Duplicate Check + Reactivation)."""
+    """Yeni araç oluştur (Duplicate Check + Reactivation)."""
     try:
-        # Service handles Duplicate Check + Reactivation within the same UOW transaction
-        arac_id = await service.create_arac(arac, uow=uow)
+        # aynı UOW transaction içinde çalışır
+        arac_id = await create_vehicle(arac, uow=uow)
 
         # Fetch created (Use UOW for consistency). include_inactive=True: the
-        # duplicate-plate path in AracService.create_arac can *reactivate* an
-        # existing passive vehicle and return its id — by the time we read it
-        # back here it has already been flipped to aktif=True in the same
+        # duplicate-plate path in create_vehicle can *reactivate* an existing
+        # passive vehicle and return its id — by the time we read it back
+        # here it has already been flipped to aktif=True in the same
         # transaction, but we read defensively regardless of that ordering.
         created = await uow.arac_repo.get_by_id(arac_id, include_inactive=True)
         if not created:
@@ -166,7 +167,7 @@ async def create_arac(
             )
 
         logger.info(
-            f"Vehicle processed via Service: {created.get('plaka')} by {current_admin.email}"
+            f"Vehicle processed: {created.get('plaka')} by {current_admin.email}"
         )
         await log_audit_event(
             module="arac",
@@ -210,8 +211,6 @@ async def get_vehicle_template(
 ):
     """Araç yükleme Excel şablonunu indir."""
     from fastapi.responses import Response
-
-    from app.core.services.excel_service import ExcelService
 
     content = await ExcelService.generate_template("arac")
     return Response(
@@ -325,11 +324,10 @@ async def get_inspection_alerts(
 @router.delete("/clear-all", response_model=SuccessCountResponse)
 async def clear_all_vehicles(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: AracService = Depends(get_arac_service),
 ):
     """Tüm araçları temizle (Admin Only)."""
     try:
-        count = await service.delete_all_vehicles()
+        count = await delete_all_vehicles()
         await log_audit_event(
             module="arac",
             action="delete_all",
@@ -354,11 +352,10 @@ async def clear_all_vehicles(
 async def delete_arac(
     arac_id: int,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: AracService = Depends(get_arac_service),
 ):
     """Araç sil (Soft/Hard delete)."""
     try:
-        success = await service.delete_arac(arac_id)
+        success = await delete_vehicle(arac_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except DomainError:
@@ -398,13 +395,10 @@ async def update_arac(
     arac_update: AracUpdate,
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: AracService = Depends(get_arac_service),
 ):
     """Araç güncelle."""
-
-    # Use Service for atomic update and logging
     try:
-        success = await service.update_arac(arac_id, arac_update)
+        success = await update_vehicle(arac_id, arac_update)
         if not success:
             raise HTTPException(status_code=404, detail="Araç bulunamadı")
 
@@ -427,14 +421,12 @@ async def update_arac(
 async def get_vehicle_stats(
     arac_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: AracService = Depends(get_arac_service),
 ):
     """Araç istatistiklerini getir (Sefer sayısı, KM, Tüketim vs)."""
-    stats = await service.get_vehicle_stats(arac_id)
+    stats = await get_vehicle_stats_usecase(arac_id)
     if not stats:
         # Eğer araç yoksa 404
-        # Eğer araç var ama hiç seferi yoksa service yine de boş istatistik (0) dönebilir
-        # Service implementation: returns None if vehicle not found
+        # Eğer araç var ama hiç seferi yoksa yine de boş istatistik (0) dönebilir
         raise HTTPException(status_code=404, detail="Araç bulunamadı")
     return stats
 

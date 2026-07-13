@@ -47,7 +47,6 @@ class ImportService:
         yakit_service=None,
         arac_repo=None,
         sofor_repo=None,
-        arac_service=None,
         sofor_service=None,
         dorse_repo=None,
         lokasyon_repo=None,
@@ -60,8 +59,6 @@ class ImportService:
         self._arac_repo = arac_repo
         self.sofor_repo = sofor_repo
         self._sofor_repo = sofor_repo
-        self.arac_service = arac_service
-        self._arac_service = arac_service
         self.sofor_service = sofor_service
         self._sofor_service = sofor_service
         self.dorse_repo = dorse_repo
@@ -829,7 +826,7 @@ class ImportService:
             if not items:
                 return 0, ["Excel dosyasında veri bulunamadı."]
 
-            from app.schemas.arac import AracCreate
+            from v2.modules.fleet.schemas import AracCreate
 
             errors: List[str] = []
             count = 0
@@ -869,9 +866,13 @@ class ImportService:
                         errors.append(f"Satır {idx}: {str(ve)}")
                 await uow.commit()
 
-            # Phase 2: create new vehicles in bulk_add_arac's own UoW.
+            # Phase 2: create new vehicles in bulk_add_vehicles's own UoW.
             if to_add:
-                count = await self.arac_service.bulk_add_arac(to_add)
+                from v2.modules.fleet.application.bulk_add_vehicles import (
+                    bulk_add_vehicles,
+                )
+
+                count = await bulk_add_vehicles(to_add)
 
             return count, errors
         except Exception as e:

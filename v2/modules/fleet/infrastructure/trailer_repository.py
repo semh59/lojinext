@@ -20,7 +20,7 @@ class DorseRepository(BaseRepository[Dorse]):
     ) -> Optional[Dorse]:
         """Retrieves trailer details by plate (aktif olsun olmasın — sadece
         is_deleted hariç tutulur; duplicate/reaktivasyon kontrolü bunu bekler,
-        bkz DorseService.create)."""
+        bkz application/create_trailer.py)."""
         stmt = select(Dorse).where(Dorse.plaka == plate, ~Dorse.is_deleted)
         if for_update:
             stmt = stmt.with_for_update()

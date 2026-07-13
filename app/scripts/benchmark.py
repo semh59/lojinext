@@ -111,10 +111,10 @@ class Benchmark:
 
 def create_benchmarks() -> List[Benchmark]:
     """Create benchmark suite."""
-    from app.core.services.arac_service import get_arac_service
     from app.core.services.report_service import get_report_service
     from app.core.services.sefer_service import get_sefer_service
     from app.database.connection import get_connection
+    from v2.modules.fleet.application.list_vehicles import get_all_vehicles
 
     return [
         Benchmark(
@@ -131,7 +131,7 @@ def create_benchmarks() -> List[Benchmark]:
         ),
         Benchmark(
             "Get All Vehicles",
-            lambda: get_arac_service().get_all_vehicles(),
+            lambda: get_all_vehicles(),
             iterations=50,
             threshold_ms=50.0,
         ),

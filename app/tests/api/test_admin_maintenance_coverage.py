@@ -1,4 +1,4 @@
-"""Coverage tests for app/api/v1/endpoints/admin_maintenance.py"""
+"""Coverage tests for v2/modules/fleet/api/admin_maintenance_routes.py"""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def _make_alert(**kwargs):
 
 @pytest.mark.asyncio
 async def test_get_redis_returns_client_on_success(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     fake_redis = MagicMock()
     fake_aioredis = MagicMock()
@@ -76,7 +76,7 @@ async def test_get_redis_returns_client_on_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_redis_returns_none_on_exception(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     with patch("redis.asyncio.from_url", side_effect=Exception("boom")):
         await mod._get_redis()
@@ -90,12 +90,11 @@ async def test_get_redis_returns_none_on_exception(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_upcoming_alerts_returns_list(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
-    fake_service.get_upcoming_alerts.return_value = [_make_alert()]
-
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(
+        mod, "get_upcoming_maintenance_alerts", AsyncMock(return_value=[_make_alert()])
+    ):
         result = await mod.get_upcoming_alerts()
 
     assert len(result) == 1
@@ -104,12 +103,11 @@ async def test_get_upcoming_alerts_returns_list(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_upcoming_alerts_empty_list(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
-    fake_service.get_upcoming_alerts.return_value = []
-
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(
+        mod, "get_upcoming_maintenance_alerts", AsyncMock(return_value=[])
+    ):
         result = await mod.get_upcoming_alerts()
 
     assert result == []
@@ -122,12 +120,13 @@ async def test_get_upcoming_alerts_empty_list(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_vehicle_history_returns_list(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
-    fake_service.get_vehicle_maintenance_history.return_value = [_make_bakim_record()]
-
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(
+        mod,
+        "get_vehicle_maintenance_history",
+        AsyncMock(return_value=[_make_bakim_record()]),
+    ):
         result = await mod.get_vehicle_history(arac_id=10)
 
     assert len(result) == 1
@@ -136,15 +135,15 @@ async def test_get_vehicle_history_returns_list(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_vehicle_history_multiple_records(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     records = [
         _make_bakim_record(id=i, km_bilgisi=100000 + i * 10000) for i in range(3)
     ]
-    fake_service = AsyncMock()
-    fake_service.get_vehicle_maintenance_history.return_value = records
 
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(
+        mod, "get_vehicle_maintenance_history", AsyncMock(return_value=records)
+    ):
         result = await mod.get_vehicle_history(arac_id=5)
 
     assert len(result) == 3
@@ -157,12 +156,9 @@ async def test_get_vehicle_history_multiple_records(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_mark_complete_success(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
-    fake_service.mark_as_completed.return_value = True
-
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(mod, "mark_maintenance_completed", AsyncMock(return_value=True)):
         result = await mod.mark_complete(bakim_id=1)
 
     assert result.success is True
@@ -170,12 +166,9 @@ async def test_mark_complete_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_mark_complete_failure(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
-    fake_service.mark_as_completed.return_value = False
-
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    with patch.object(mod, "mark_maintenance_completed", AsyncMock(return_value=False)):
         result = await mod.mark_complete(bakim_id=999)
 
     assert result.success is False
@@ -190,7 +183,7 @@ async def test_mark_complete_failure(monkeypatch):
 async def test_get_all_predictions_feature_disabled(monkeypatch):
     from fastapi import HTTPException
 
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", False)
 
@@ -205,7 +198,7 @@ async def test_get_all_predictions_feature_disabled(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_all_predictions_feature_enabled_no_cache(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
@@ -239,7 +232,7 @@ async def test_get_all_predictions_feature_enabled_no_cache(monkeypatch):
         patch.object(mod, "_get_redis", return_value=fake_redis),
         patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
         patch(
-            "app.api.v1.endpoints.admin_maintenance.log_audit_event",
+            "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
     ):
@@ -252,11 +245,11 @@ async def test_get_all_predictions_feature_enabled_no_cache(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_all_predictions_cache_hit(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
-    from app.schemas.maintenance_prediction import MaintenancePrediction
+    from v2.modules.fleet.schemas import MaintenancePrediction
 
     cached_pred = MaintenancePrediction(
         arac_id=1,
@@ -283,7 +276,7 @@ async def test_get_all_predictions_cache_hit(monkeypatch):
 @pytest.mark.asyncio
 async def test_get_all_predictions_redis_none(monkeypatch):
     """When Redis is unavailable (returns None), fall through to predictor."""
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
@@ -297,7 +290,7 @@ async def test_get_all_predictions_redis_none(monkeypatch):
         patch.object(mod, "_get_redis", return_value=None),
         patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
         patch(
-            "app.api.v1.endpoints.admin_maintenance.log_audit_event",
+            "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
     ):
@@ -315,7 +308,7 @@ async def test_get_all_predictions_redis_none(monkeypatch):
 async def test_get_prediction_for_arac_feature_disabled(monkeypatch):
     from fastapi import HTTPException
 
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", False)
 
@@ -332,7 +325,7 @@ async def test_get_prediction_for_arac_feature_disabled(monkeypatch):
 async def test_get_prediction_for_arac_not_found(monkeypatch):
     from fastapi import HTTPException
 
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
@@ -351,7 +344,7 @@ async def test_get_prediction_for_arac_not_found(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_get_prediction_for_arac_success(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
@@ -377,7 +370,7 @@ async def test_get_prediction_for_arac_success(monkeypatch):
     with (
         patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
         patch(
-            "app.api.v1.endpoints.admin_maintenance.log_audit_event",
+            "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
     ):
@@ -394,12 +387,10 @@ async def test_get_prediction_for_arac_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_create_maintenance_success(monkeypatch):
-    from app.api.v1.endpoints import admin_maintenance as mod
     from app.database.models import BakimTipi
+    from v2.modules.fleet.api import admin_maintenance_routes as mod
 
-    fake_service = AsyncMock()
     record = _make_bakim_record(id=42, bakim_tipi="PERIYODIK")
-    fake_service.create_maintenance_record.return_value = record
 
     schema_data = mod.MaintenanceCreateSchema(
         arac_id=10,
@@ -410,8 +401,9 @@ async def test_create_maintenance_success(monkeypatch):
         detaylar="Rutin",
     )
 
-    with patch.object(mod, "MaintenanceService", return_value=fake_service):
+    fake_create = AsyncMock(return_value=record)
+    with patch.object(mod, "create_maintenance_record", fake_create):
         result = await mod.create_maintenance(data=schema_data)
 
     assert result.id == 42
-    fake_service.create_maintenance_record.assert_called_once()
+    fake_create.assert_called_once()

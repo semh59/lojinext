@@ -47,9 +47,11 @@ class RAGSyncService:
             try:
                 logger.info("Starting initial RAG synchronization...")
 
-                from app.database.repositories.arac_repo import get_arac_repo
                 from app.database.repositories.sefer_repo import get_sefer_repo
                 from app.database.repositories.sofor_repo import get_sofor_repo
+                from v2.modules.fleet.infrastructure.vehicle_repository import (
+                    get_arac_repo,
+                )
 
                 # 1. Araçlar
                 araclar = await get_arac_repo().get_all(sadece_aktif=True)
@@ -87,7 +89,7 @@ class RAGSyncService:
         elif isinstance(
             data, int
         ):  # Sadece ID geldiyse repodan çek (opsiyonel iyileştirme)
-            from app.database.repositories.arac_repo import get_arac_repo
+            from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
 
             arac = await get_arac_repo().get_by_id(data)
             if arac:

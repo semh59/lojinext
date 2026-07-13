@@ -77,31 +77,9 @@ def mock_uow(monkeypatch):
     return uow
 
 
-@pytest.fixture
-def mock_arac_service_uow(monkeypatch, mock_uow):
-    """Patch UnitOfWork in arac_service module and reset container afterward."""
-    from app.database.unit_of_work import UnitOfWork
-
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
-
-    # Reset container so it uses the mocked UnitOfWork
-    import app.core.container as container_mod
-
-    container_mod.reset_container()
-
-    yield mock_uow
-
-    # Reset after test
-    container_mod.reset_container()
-
-
-@pytest.fixture
-def arac_service(mock_arac_service_uow):
-    """Override arac_service fixture to use mocked UnitOfWork."""
-    from app.core.services.arac_service import get_arac_service
-
-    return get_arac_service()
+# mock_arac_service_uow / arac_service fixtures removed — AracService class
+# deleted in dalga 3 (B.1 free-function refactor, v2.modules.fleet); nothing
+# in this directory referenced them as a fixture param.
 
 
 @pytest.fixture

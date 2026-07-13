@@ -13,8 +13,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.deps import get_current_active_user
-from app.core.services.maintenance_service import MaintenanceService
 from app.database.models import BakimTipi, Kullanici
+from v2.modules.fleet.application.create_maintenance_record import create_breakdown
 
 router = APIRouter()
 
@@ -53,8 +53,7 @@ async def report_breakdown(
     Araç VEYA dorse için açık (tamamlanmamış) ARIZA/ACIL kaydı oluşturur.
     404 araç/dorse yoksa.
     """
-    svc = MaintenanceService()
-    rec = await svc.create_breakdown(
+    rec = await create_breakdown(
         arac_id=body.arac_id,
         dorse_id=body.dorse_id,
         bakim_tipi=BakimTipi(body.bakim_tipi),

@@ -3,9 +3,9 @@ Response içerik doğrulama pattern örnekleri.
 Bu testler mock kullanır; gerçek DB testleri integration/ altında.
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.schemas.arac import AracCreate
+from v2.modules.fleet.schemas import AracCreate
 
 
 class TestCRUDResponseContent:
@@ -13,7 +13,7 @@ class TestCRUDResponseContent:
 
     async def test_create_vehicle_returns_id_and_data(self):
         """Araç oluşturma: id > 0 ve doğru veri dönmeli."""
-        from app.api.v1.endpoints.vehicles import create_arac
+        from v2.modules.fleet.api import vehicle_routes as v_mod
 
         # Gelen payload
         arac_data = AracCreate(
@@ -25,9 +25,8 @@ class TestCRUDResponseContent:
             hedef_tuketim=32.0,
         )
 
-        # service.create_arac → yeni ID döner
-        mock_service = MagicMock()
-        mock_service.create_arac = AsyncMock(return_value=42)
+        # create_vehicle use-case → yeni ID döner
+        mock_create_vehicle = AsyncMock(return_value=42)
 
         # uow.arac_repo.get_by_id → oluşturulan kaydı döner
         expected_record = {
@@ -49,64 +48,61 @@ class TestCRUDResponseContent:
         mock_admin = MagicMock()
         mock_admin.email = "admin@test.com"
 
-        result = await create_arac(
-            arac=arac_data,
-            uow=mock_uow,
-            current_admin=mock_admin,
-            service=mock_service,
-        )
+        with patch.object(v_mod, "create_vehicle", mock_create_vehicle):
+            result = await v_mod.create_arac(
+                arac=arac_data,
+                uow=mock_uow,
+                current_admin=mock_admin,
+            )
 
         # ID gerçek bir pozitif tamsayı olmalı
-        assert result["id"] == 42, "Dönen ID, service'in atadığı ID ile eşleşmeli"
+        assert result["id"] == 42, "Dönen ID, use-case'in atadığı ID ile eşleşmeli"
         assert result["id"] > 0, "ID pozitif olmalı"
 
         # Plaka ve marka doğru dönmeli
         assert result["plaka"] == "34 ABC 123"
         assert result["marka"] == "Mercedes"
 
-        # service.create_arac tam doğru argümanlarla çağrılmalı
-        mock_service.create_arac.assert_awaited_once_with(arac_data, uow=mock_uow)
+        # create_vehicle tam doğru argümanlarla çağrılmalı
+        mock_create_vehicle.assert_awaited_once_with(arac_data, uow=mock_uow)
 
     async def test_list_vehicles_returns_list_with_items(self):
         """Araç listesi: içerik ve count doğrulanmalı."""
-        from app.api.v1.endpoints.vehicles import read_araclar
+        from v2.modules.fleet.api import vehicle_routes as v_mod
 
         mock_items = [
             {"id": 1, "plaka": "06 TT 001", "marka": "Volvo"},
             {"id": 2, "plaka": "34 BB 002", "marka": "Scania"},
         ]
 
-        mock_service = MagicMock()
-        mock_service.get_all_paged = AsyncMock(
-            return_value={"items": mock_items, "total": 2}
-        )
+        mock_get_all_paged = AsyncMock(return_value={"items": mock_items, "total": 2})
 
         mock_db = MagicMock()
         mock_user = MagicMock()
 
-        result = await read_araclar(
-            db=mock_db,
-            current_user=mock_user,
-            service=mock_service,
-            skip=0,
-            limit=100,
-            aktif_only=True,
-            search=None,
-            marka=None,
-            model=None,
-            min_yil=None,
-            max_yil=None,
-        )
+        with patch.object(v_mod, "get_all_vehicles_paged", mock_get_all_paged):
+            result = await v_mod.read_araclar(
+                db=mock_db,
+                current_user=mock_user,
+                skip=0,
+                limit=100,
+                aktif_only=True,
+                search=None,
+                marka=None,
+                model=None,
+                min_yil=None,
+                max_yil=None,
+            )
 
         # Dönen yapı StandardResponse olmalı; data listesi içermeli
         assert result.data == mock_items, "data alanı mock items ile eşleşmeli"
         assert result.meta.count == 2, "meta.count doğru adet göstermeli"
-        assert result.meta.total == 2, "meta.total servis toplamını yansıtmalı"
+        assert result.meta.total == 2, "meta.total kullanım-durumu toplamını yansıtmalı"
         assert result.meta.offset == 0
         assert result.meta.limit == 100
 
-        # service.get_all_paged doğru parametrelerle çağrılmalı
-        mock_service.get_all_paged.assert_awaited_once_with(
+        # get_all_vehicles_paged doğru parametrelerle çağrılmalı
+        mock_get_all_paged.assert_awaited_once_with(
             skip=0,
             limit=100,
             aktif_only=True,
@@ -119,24 +115,23 @@ class TestCRUDResponseContent:
 
     async def test_list_vehicles_empty_result(self):
         """Araç listesi boşsa count=0 ve data=[] dönmeli."""
-        from app.api.v1.endpoints.vehicles import read_araclar
+        from v2.modules.fleet.api import vehicle_routes as v_mod
 
-        mock_service = MagicMock()
-        mock_service.get_all_paged = AsyncMock(return_value={"items": [], "total": 0})
+        mock_get_all_paged = AsyncMock(return_value={"items": [], "total": 0})
 
-        result = await read_araclar(
-            db=MagicMock(),
-            current_user=MagicMock(),
-            service=mock_service,
-            skip=0,
-            limit=100,
-            aktif_only=True,
-            search=None,
-            marka=None,
-            model=None,
-            min_yil=None,
-            max_yil=None,
-        )
+        with patch.object(v_mod, "get_all_vehicles_paged", mock_get_all_paged):
+            result = await v_mod.read_araclar(
+                db=MagicMock(),
+                current_user=MagicMock(),
+                skip=0,
+                limit=100,
+                aktif_only=True,
+                search=None,
+                marka=None,
+                model=None,
+                min_yil=None,
+                max_yil=None,
+            )
 
         assert result.data == []
         assert result.meta.count == 0

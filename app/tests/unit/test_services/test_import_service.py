@@ -41,7 +41,6 @@ class TestResolveIds:
             sofor_repo=MagicMock(),
             sefer_service=MagicMock(),
             yakit_service=MagicMock(),
-            arac_service=MagicMock(),
             sofor_service=MagicMock(),
         )
 
@@ -100,12 +99,17 @@ class TestProcessImports:
     """Import flow tests for ImportService (Async) — real DB master data."""
 
     @pytest.fixture
-    async def service(self, db_session):
+    async def service(self, db_session, monkeypatch):
         """ImportService + GERÇEK master satırları (arac/sofor/lokasyon).
 
-        bulk_add_* domain service'leri AsyncMock olarak kalır (ayrı sınır;
-        await_args ile forward edilen payload yakalanır). Master listeleri
-        ``process_*`` / ``execute_import`` içindeki gerçek UoW'tan gelir.
+        bulk_add_* domain service'leri/fonksiyonları mock olarak kalır (ayrı
+        sınır; await_args ile forward edilen payload yakalanır). Master
+        listeleri ``process_*`` / ``execute_import`` içindeki gerçek UoW'tan
+        gelir. ``bulk_add_vehicles`` artık bir servis metodu değil, free
+        function — ``process_vehicle_import`` bunu inline import ile çağırır,
+        bu yüzden patch hedefi KAYNAK modül (v2.modules.fleet.application.
+        bulk_add_vehicles), tüketen modül değil (bkz. location/CLAUDE.md
+        inline-import gotcha'sı).
         """
         arac = await seed_arac(
             db_session, plaka="34ABC123", marka="Mercedes", bos_agirlik_kg=0
@@ -122,15 +126,17 @@ class TestProcessImports:
             sofor_repo=AsyncMock(),
             sefer_service=AsyncMock(),
             yakit_service=AsyncMock(),
-            arac_service=AsyncMock(),
             sofor_service=AsyncMock(),
             dorse_repo=AsyncMock(),
             lokasyon_repo=AsyncMock(),
         )
         svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
         svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=1)
-        svc.arac_service.bulk_add_arac = AsyncMock(return_value=1)
         svc.sofor_service.bulk_add_sofor = AsyncMock(return_value=1)
+        monkeypatch.setattr(
+            "v2.modules.fleet.application.bulk_add_vehicles.bulk_add_vehicles",
+            AsyncMock(return_value=1),
+        )
         # Expose seeded rows + session for assertions.
         svc._seeded = SimpleNamespace(
             arac=arac, sofor=sofor, lok=lok, user=user, db=db_session

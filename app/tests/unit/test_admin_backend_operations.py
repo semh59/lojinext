@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.api.deps import get_dorse_service
 from app.core.services.health_service import HealthService
 from app.infrastructure.resilience.circuit_breaker import CircuitBreakerRegistry
 
@@ -14,18 +13,6 @@ def test_env_examples_define_dev_cors_origins():
         contents = path.read_text(encoding="utf-8")
         assert "CORS_ORIGINS=" in contents
         assert "localhost:3000" in contents
-
-
-@pytest.mark.asyncio
-async def test_get_dorse_service_uses_uow_event_bus_without_debug_logging():
-    uow = SimpleNamespace(dorse_repo=object(), event_bus=object())
-
-    with patch("app.api.deps.logger.debug") as mock_debug:
-        service = await get_dorse_service(uow)
-
-    assert service.repo is uow.dorse_repo
-    assert service.event_bus is uow.event_bus
-    mock_debug.assert_not_called()
 
 
 @pytest.mark.asyncio

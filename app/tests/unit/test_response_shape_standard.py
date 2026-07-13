@@ -9,17 +9,14 @@ pytestmark = pytest.mark.integration
 
 async def test_vehicle_delete_returns_success_true():
     """DELETE vehicle: {success: True, message: ...} olmalı."""
-    from app.api.v1.endpoints import vehicles as v_mod
+    from v2.modules.fleet.api import vehicle_routes as v_mod
 
-    mock_service = AsyncMock()
-    mock_service.delete_arac = AsyncMock(return_value=True)
     mock_user = MagicMock()
 
-    with patch.object(v_mod, "get_arac_service", return_value=mock_service):
+    with patch.object(v_mod, "delete_vehicle", AsyncMock(return_value=True)):
         result = await v_mod.delete_arac(
             arac_id=1,
             current_admin=mock_user,
-            service=mock_service,
         )
 
     assert isinstance(result, dict), f"Dict beklendi, geldi: {type(result)}"
@@ -30,16 +27,14 @@ async def test_vehicle_delete_returns_success_true():
 
 async def test_vehicle_clear_all_returns_success_true():
     """DELETE /clear-all: {success: True, message: ...} olmalı."""
-    from app.api.v1.endpoints import vehicles as v_mod
+    from v2.modules.fleet.api import vehicle_routes as v_mod
 
-    mock_service = AsyncMock()
-    mock_service.delete_all_vehicles = AsyncMock(return_value=5)
     mock_user = MagicMock()
 
-    result = await v_mod.clear_all_vehicles(
-        current_admin=mock_user,
-        service=mock_service,
-    )
+    with patch.object(v_mod, "delete_all_vehicles", AsyncMock(return_value=5)):
+        result = await v_mod.clear_all_vehicles(
+            current_admin=mock_user,
+        )
 
     assert isinstance(result, dict), f"Dict beklendi, geldi: {type(result)}"
     assert "success" in result, f"'success' key beklendi, geldi: {result}"
@@ -51,7 +46,7 @@ async def test_vehicle_upload_returns_success_true():
     """POST /upload: {success: True, message: ..., errors: [...]} olmalı."""
     from unittest.mock import patch as stdlib_patch
 
-    from app.api.v1.endpoints import vehicles as v_mod
+    from v2.modules.fleet.api import vehicle_routes as v_mod
 
     mock_import_service = AsyncMock()
     mock_import_service.process_vehicle_import = AsyncMock(return_value=(3, []))

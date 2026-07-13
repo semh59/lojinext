@@ -53,7 +53,6 @@ def svc():
         yakit_service=AsyncMock(),
         arac_repo=AsyncMock(),
         sofor_repo=AsyncMock(),
-        arac_service=AsyncMock(),
         sofor_service=AsyncMock(),
         dorse_repo=AsyncMock(),
         lokasyon_repo=AsyncMock(),

@@ -31,7 +31,7 @@ class TestAIService:
     @pytest.mark.asyncio
     async def test_build_context(self, service, monkeypatch):
         from app.database.repositories.analiz_repo import AnalizRepository
-        from app.database.repositories.arac_repo import AracRepository
+        from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
         monkeypatch.setattr(
             AnalizRepository,

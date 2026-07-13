@@ -34,7 +34,7 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return an AracRepository with a mocked async session."""
-    from app.database.repositories.arac_repo import AracRepository
+    from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
     repo = AracRepository.__new__(AracRepository)
     repo._session = session if session is not None else AsyncMock()
@@ -300,7 +300,10 @@ class TestAracRepoAdd:
         repo._session.add = MagicMock()
         repo._session.flush = AsyncMock()
 
-        with patch("app.database.repositories.arac_repo.AracRepository.model", Arac):
+        with patch(
+            "v2.modules.fleet.infrastructure.vehicle_repository.AracRepository.model",
+            Arac,
+        ):
             new_arac = await repo.add(
                 plaka="34 NEW 001",
                 marka="MAN",
@@ -585,7 +588,7 @@ class TestAracRepoGetByIds:
 class TestGetAracRepo:
     def test_session_arg_returns_new_instance(self):
         """Passing session always returns a fresh AracRepository."""
-        from app.database.repositories.arac_repo import get_arac_repo
+        from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
 
         mock_session = MagicMock()
         repo = get_arac_repo(session=mock_session)
@@ -593,8 +596,8 @@ class TestGetAracRepo:
 
     def test_no_session_returns_singleton(self):
         """Calling twice without session returns same singleton."""
-        import app.database.repositories.arac_repo as mod
-        from app.database.repositories.arac_repo import get_arac_repo
+        import v2.modules.fleet.infrastructure.vehicle_repository as mod
+        from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
 
         # Reset singleton for clean test
         mod._arac_repo = None

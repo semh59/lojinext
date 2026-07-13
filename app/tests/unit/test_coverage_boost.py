@@ -526,9 +526,26 @@ class TestUserService:
 class TestMaintenanceService:
     @pytest.fixture
     def svc(self):
-        from app.core.services.maintenance_service import MaintenanceService
+        """Namespace binding old MaintenanceService method names to the
+        free functions that replaced it (dalga 3, B.1 refactor) — keeps the
+        test bodies below unchanged."""
+        from types import SimpleNamespace
 
-        return MaintenanceService()
+        from v2.modules.fleet.application.create_maintenance_record import (
+            create_maintenance_record,
+        )
+        from v2.modules.fleet.application.get_vehicle_maintenance_history import (
+            get_upcoming_maintenance_alerts,
+            get_vehicle_maintenance_history,
+            mark_maintenance_completed,
+        )
+
+        return SimpleNamespace(
+            create_maintenance_record=create_maintenance_record,
+            get_vehicle_maintenance_history=get_vehicle_maintenance_history,
+            mark_as_completed=mark_maintenance_completed,
+            get_upcoming_alerts=get_upcoming_maintenance_alerts,
+        )
 
     @pytest.mark.asyncio
     async def test_create_record_raises_404_when_vehicle_missing(self, svc, db_session):

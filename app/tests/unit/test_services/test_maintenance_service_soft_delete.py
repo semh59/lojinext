@@ -15,8 +15,11 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import insert
 
-from app.core.services.maintenance_service import MaintenanceService
 from app.database.models import Arac, BakimTipi, Dorse
+from v2.modules.fleet.application.create_maintenance_record import (
+    create_breakdown,
+    create_maintenance_record,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -40,7 +43,7 @@ class TestMaintenanceServiceSoftDeleteGate:
         arac_id = await _seed_arac(db_session, "34 MNT 001", aktif=False)
 
         with pytest.raises(HTTPException) as exc_info:
-            await MaintenanceService().create_maintenance_record(
+            await create_maintenance_record(
                 arac_id=arac_id,
                 bakim_tipi=BakimTipi.PERIYODIK,
                 km_bilgisi=100000,
@@ -51,7 +54,7 @@ class TestMaintenanceServiceSoftDeleteGate:
     async def test_create_maintenance_record_active_vehicle_succeeds(self, db_session):
         arac_id = await _seed_arac(db_session, "34 MNT 002", aktif=True)
 
-        result = await MaintenanceService().create_maintenance_record(
+        result = await create_maintenance_record(
             arac_id=arac_id,
             bakim_tipi=BakimTipi.PERIYODIK,
             km_bilgisi=100000,
@@ -63,24 +66,18 @@ class TestMaintenanceServiceSoftDeleteGate:
         arac_id = await _seed_arac(db_session, "34 MNT 003", aktif=False)
 
         with pytest.raises(HTTPException) as exc_info:
-            await MaintenanceService().create_breakdown(
-                bakim_tipi=BakimTipi.ARIZA, arac_id=arac_id
-            )
+            await create_breakdown(bakim_tipi=BakimTipi.ARIZA, arac_id=arac_id)
         assert exc_info.value.status_code == 404
 
     async def test_create_breakdown_rejects_passive_dorse(self, db_session):
         dorse_id = await _seed_dorse(db_session, "34 MNT 004", aktif=False)
 
         with pytest.raises(HTTPException) as exc_info:
-            await MaintenanceService().create_breakdown(
-                bakim_tipi=BakimTipi.ARIZA, dorse_id=dorse_id
-            )
+            await create_breakdown(bakim_tipi=BakimTipi.ARIZA, dorse_id=dorse_id)
         assert exc_info.value.status_code == 404
 
     async def test_create_breakdown_active_dorse_succeeds(self, db_session):
         dorse_id = await _seed_dorse(db_session, "34 MNT 005", aktif=True)
 
-        result = await MaintenanceService().create_breakdown(
-            bakim_tipi=BakimTipi.ARIZA, dorse_id=dorse_id
-        )
+        result = await create_breakdown(bakim_tipi=BakimTipi.ARIZA, dorse_id=dorse_id)
         assert result.dorse_id == dorse_id

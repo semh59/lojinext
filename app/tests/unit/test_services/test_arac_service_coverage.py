@@ -1,35 +1,43 @@
-"""AracService coverage tests — real DB, no mocked UnitOfWork.
+"""Fleet vehicle use-case coverage tests — real DB, no mocked UnitOfWork.
 
 Previously these patched UnitOfWork with an AsyncMock and asserted on inner repo
 calls (`arac_repo.update.assert_called_once_with(...)`, mock return values). That
 verifies *that a repo method was called*, not the persisted business outcome —
-the P0-class blind spot. Here the service runs against the real test DB
-(db_session monkeypatches AsyncSessionLocal, so AracService's internal
+the P0-class blind spot. Here the use-case functions run against the real test
+DB (db_session monkeypatches AsyncSessionLocal, so their internal
 `UnitOfWork()` uses the test session) and we assert the real rows (created /
-reactivated / soft- or hard-deleted / filtered). Only the event bus stays a
-MagicMock — it is external infra.
-"""
+reactivated / soft- or hard-deleted / filtered).
 
-from unittest.mock import MagicMock
+Dalga 3 (B.1 free-function refactor): AracService class deleted — these
+functions have no constructor-injected event_bus to mock (the @publishes
+decorator is documented dead code, see v2/modules/fleet/events.py).
+"""
 
 import pytest
 from sqlalchemy import insert, select
 
 from app.core.entities.models import AracCreate, AracUpdate
-from app.core.services.arac_service import AracService
 from app.database.models import Arac
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_sefer, seed_sofor
+from v2.modules.fleet.application.bulk_add_vehicles import bulk_add_vehicles
+from v2.modules.fleet.application.create_vehicle import create_vehicle
+from v2.modules.fleet.application.delete_vehicle import (
+    delete_all_vehicles,
+    delete_vehicle,
+)
+from v2.modules.fleet.application.list_vehicles import (
+    get_all_vehicles,
+    get_all_vehicles_paged,
+    get_vehicle_by_id,
+    get_vehicle_stats,
+)
+from v2.modules.fleet.application.update_vehicle import update_vehicle
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _service() -> AracService:
-    # event_bus is external infra → MagicMock is legitimate; the UoW/DB is real.
-    return AracService(event_bus=MagicMock())
 
 
 def _arac_create(**overrides):
@@ -62,13 +70,13 @@ async def _get_arac(db_session, arac_id: int):
 
 
 # ---------------------------------------------------------------------------
-# create_arac
+# create_vehicle
 # ---------------------------------------------------------------------------
 
 
-class TestCreateArac:
+class TestCreateVehicle:
     async def test_create_new_vehicle_returns_id(self, db_session):
-        result = await _service().create_arac(_arac_create(plaka="34 NEW 001"))
+        result = await create_vehicle(_arac_create(plaka="34 NEW 001"))
         assert isinstance(result, int)
         row = await _get_arac(db_session, result)
         assert row is not None and row.plaka == "34 NEW 001" and row.aktif is True
@@ -76,51 +84,49 @@ class TestCreateArac:
     async def test_create_raises_when_plaka_already_active(self, db_session):
         await _seed_arac(db_session, "34 TEST 001", aktif=True)
         with pytest.raises(ValueError, match="already exists"):
-            await _service().create_arac(_arac_create(plaka="34 TEST 001"))
+            await create_vehicle(_arac_create(plaka="34 TEST 001"))
 
     async def test_create_reactivates_passive_vehicle(self, db_session):
         seeded = await _seed_arac(db_session, "34 TEST 001", aktif=False)
-        result = await _service().create_arac(_arac_create(plaka="34 TEST 001"))
+        result = await create_vehicle(_arac_create(plaka="34 TEST 001"))
         assert result == seeded  # existing id reused, no new insert
         row = await _get_arac(db_session, seeded)
         assert row.aktif is True
 
     async def test_create_with_explicit_uow(self, db_session):
         async with UnitOfWork() as uow:
-            result = await _service().create_arac(
-                _arac_create(plaka="34 UOW 001"), uow=uow
-            )
+            result = await create_vehicle(_arac_create(plaka="34 UOW 001"), uow=uow)
         assert isinstance(result, int)
         assert (await _get_arac(db_session, result)) is not None
 
 
 # ---------------------------------------------------------------------------
-# update_arac
+# update_vehicle
 # ---------------------------------------------------------------------------
 
 
-class TestUpdateArac:
+class TestUpdateVehicle:
     async def test_update_returns_false_for_empty_update(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001")
-        result = await _service().update_arac(aid, _arac_update())
+        result = await update_vehicle(aid, _arac_update())
         assert result is False
 
     async def test_update_raises_when_plaka_belongs_to_another(self, db_session):
         await _seed_arac(db_session, "06 XYZ 789")
         aid = await _seed_arac(db_session, "34 TEST 001")
         with pytest.raises(ValueError, match="another vehicle"):
-            await _service().update_arac(aid, _arac_update(plaka="06 XYZ 789"))
+            await update_vehicle(aid, _arac_update(plaka="06 XYZ 789"))
 
     async def test_update_success_without_status_change(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001")
-        result = await _service().update_arac(aid, _arac_update(notlar="Updated note"))
+        result = await update_vehicle(aid, _arac_update(notlar="Updated note"))
         assert result is True
         row = await _get_arac(db_session, aid)
         assert row.notlar == "Updated note"
 
     async def test_update_status_change_persists(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001", aktif=True)
-        result = await _service().update_arac(aid, _arac_update(aktif=False))
+        result = await update_vehicle(aid, _arac_update(aktif=False))
         assert result is True
         row = await _get_arac(db_session, aid)
         assert row.aktif is False  # status change is the real outcome
@@ -128,32 +134,30 @@ class TestUpdateArac:
     async def test_update_with_explicit_uow(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001")
         async with UnitOfWork() as uow:
-            result = await _service().update_arac(
-                aid, _arac_update(notlar="via uow"), uow=uow
-            )
+            result = await update_vehicle(aid, _arac_update(notlar="via uow"), uow=uow)
         assert result is True
         assert (await _get_arac(db_session, aid)).notlar == "via uow"
 
 
 # ---------------------------------------------------------------------------
-# delete_arac
+# delete_vehicle
 # ---------------------------------------------------------------------------
 
 
-class TestDeleteArac:
+class TestDeleteVehicle:
     async def test_delete_returns_false_when_not_found(self, db_session):
-        assert await _service().delete_arac(999999) is False
+        assert await delete_vehicle(999999) is False
 
     async def test_delete_active_vehicle_sets_passive(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001", aktif=True)
-        result = await _service().delete_arac(aid)
+        result = await delete_vehicle(aid)
         assert result is True
         row = await _get_arac(db_session, aid)
         assert row is not None and row.aktif is False  # soft delete
 
     async def test_delete_passive_vehicle_hard_deletes(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001", aktif=False)
-        result = await _service().delete_arac(aid)
+        result = await delete_vehicle(aid)
         assert result is True
         assert await _get_arac(db_session, aid) is None  # row removed
 
@@ -164,7 +168,7 @@ class TestDeleteArac:
         await seed_sefer(db_session, arac_id=aid, sofor_id=sofor.id)
         await db_session.commit()
         with pytest.raises(ValueError, match="cannot be permanently deleted"):
-            await _service().delete_arac(aid)
+            await delete_vehicle(aid)
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +181,7 @@ class TestDeleteAllVehicles:
         await _seed_arac(db_session, "34 AAA 001")
         await _seed_arac(db_session, "34 AAA 002")
         await _seed_arac(db_session, "34 AAA 003")
-        result = await _service().delete_all_vehicles()
+        result = await delete_all_vehicles()
         assert result == 3
         rows = (await db_session.execute(select(Arac))).scalars().all()
         assert rows == []
@@ -189,72 +193,72 @@ class TestDeleteAllVehicles:
         await seed_sefer(db_session, arac_id=aid, sofor_id=sofor.id)
         await db_session.commit()
         with pytest.raises(ValueError, match="dependencies"):
-            await _service().delete_all_vehicles()
+            await delete_all_vehicles()
 
 
 # ---------------------------------------------------------------------------
-# get_all_paged / get_all_vehicles
+# get_all_vehicles_paged / get_all_vehicles
 # ---------------------------------------------------------------------------
 
 
 class TestGetAllPaged:
     async def test_returns_dict_with_items_and_total(self, db_session):
         await _seed_arac(db_session, "34 TEST 001", marka="VOLVO")
-        result = await _service().get_all_paged()
+        result = await get_all_vehicles_paged()
         assert "items" in result and "total" in result
         assert result["total"] >= 1
         assert any(i.plaka == "34 TEST 001" for i in result["items"])
 
     async def test_get_all_vehicles_delegates_to_paged(self, db_session):
         await _seed_arac(db_session, "34 TEST 001")
-        result = await _service().get_all_vehicles()
+        result = await get_all_vehicles()
         assert isinstance(result, list)
         assert len(result) >= 1
 
     async def test_get_all_paged_with_marka_filter(self, db_session):
         await _seed_arac(db_session, "34 VOL 001", marka="VOLVO")
         await _seed_arac(db_session, "34 MER 001", marka="Mercedes")
-        result = await _service().get_all_paged(marka="VOLVO")
+        result = await get_all_vehicles_paged(marka="VOLVO")
         plakalar = {i.plaka for i in result["items"]}
         assert "34 VOL 001" in plakalar
         assert "34 MER 001" not in plakalar
 
 
 # ---------------------------------------------------------------------------
-# get_vehicle_stats / get_by_id
+# get_vehicle_stats / get_vehicle_by_id
 # ---------------------------------------------------------------------------
 
 
 class TestGetVehicleStats:
     async def test_returns_none_when_not_found(self, db_session):
-        assert await _service().get_vehicle_stats(9999) is None
+        assert await get_vehicle_stats(9999) is None
 
     async def test_get_by_id_returns_none_when_missing(self, db_session):
-        assert await _service().get_by_id(9999) is None
+        assert await get_vehicle_by_id(9999) is None
 
     async def test_get_by_id_returns_seeded_vehicle(self, db_session):
         aid = await _seed_arac(db_session, "34 TEST 001")
-        result = await _service().get_by_id(aid)
+        result = await get_vehicle_by_id(aid)
         assert result is not None
 
 
 # ---------------------------------------------------------------------------
-# bulk_add_arac
+# bulk_add_vehicles
 # ---------------------------------------------------------------------------
 
 
-class TestBulkAddArac:
+class TestBulkAddVehicles:
     async def test_empty_list_returns_zero(self):
-        assert await _service().bulk_add_arac([]) == 0
+        assert await bulk_add_vehicles([]) == 0
 
     async def test_skips_existing_plates(self, db_session):
         await _seed_arac(db_session, "34 TEST 001", aktif=True)
-        result = await _service().bulk_add_arac([_arac_create(plaka="34 TEST 001")])
+        result = await bulk_add_vehicles([_arac_create(plaka="34 TEST 001")])
         # Plate already present → not inserted again.
         assert result == 0
 
     async def test_adds_new_vehicles(self, db_session):
-        result = await _service().bulk_add_arac(
+        result = await bulk_add_vehicles(
             [_arac_create(plaka="34 NEW 001"), _arac_create(plaka="34 NEW 002")]
         )
         assert result == 2

@@ -2,9 +2,9 @@ from datetime import timezone
 
 import pytest
 
-from app.core.services.arac_service import AracService
 from app.core.unit_of_work import get_uow
 from app.database.models import VehicleEventLog
+from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
 
 
 @pytest.mark.asyncio
@@ -42,11 +42,10 @@ async def test_utc_defaults_in_models():
 
 
 @pytest.mark.asyncio
-async def test_atomic_logging_in_arac_service():
+async def test_atomic_logging_in_vehicle_event_log():
     """Verify that vehicle event logs include triggered_by and use UoW."""
-    service = AracService()
     async with get_uow() as uow:
-        await service._log_vehicle_event(
+        await log_vehicle_event(
             arac_id=1,
             event_type="TEST_EVENT",
             details="Audit Test",

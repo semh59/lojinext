@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.database.repositories.arac_repo import AracRepository
 from app.database.repositories.sefer_repo import SeferRepository
+from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
 pytestmark = pytest.mark.asyncio
 

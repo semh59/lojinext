@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 2/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; sıradaki: dalga 3 (fleet), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 3/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; sıradaki: dalga 4 (fuel), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -36,7 +36,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |
 | 1 | **location + route-simulation** (PİLOT ÇİFTİ — karşılıklı bağımlı 7/1 kenar, birlikte) | `modules/location.md` + `modules/route-simulation.md` | ✅ main'de yeşil (commit `4ebabca`) |
 | 2 | notification | `modules/notification.md` | ✅ main'de yeşil (commit `34e40c8`) |
-| 3 | fleet | `modules/fleet.md` | 🔲 |
+| 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
 | 4 | fuel | `modules/fuel.md` | 🔲 |
 | 5 | driver | `modules/driver.md` | 🔲 |
 | 6 | auth-rbac | `modules/auth-rbac.md` | 🔲 |
@@ -138,5 +138,29 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 
 **Bağımsız denetim (kullanıcı talebiyle, push sonrası):** 2 fresh-context ajan paralel çalıştırıldı — (1) davranışsal regresyon denetimi (eski/yeni kod satır satır) → TEMİZ, hiçbir fark yok; (2) görev-dosyası uyum denetimi → dosya envanteri/taşıma adımları/katman-ihlali/route-mount/stale-referans hepsi PASS, ama 2 gerçek sorun buldu: `NotificationPrioritizer` sınıfı yanlışlıkla `domain/`de kalmıştı (B.1 ihlali, düzeltildi → `infrastructure/prioritizer.py`), STATUS.md push-durumu güncel değildi (düzeltildi). Bu denetim ayrıca CI'nin mypy gate'inde gerçek bir kırmızıyı (9/7 baseline) yakalanmasına giden düzeltme dalgasıyla aynı ana denk geldi.
 
+## DALGA 3 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-13)
+
+**Push geçmişi (3 commit):**
+1. `67921c2` — ana taşıma (97 dosya). CI'nin "OpenAPI schema drift check" adımında kırmızı çıktı.
+2. `f82b040` — YANLIŞ teşhisle atılan ilk düzeltme denemesi (bkz. "Öne çıkan kararlar/bulgular" altındaki gotcha) — hâlâ kırmızı.
+3. `26967c3` — gerçek kök nedenle düzeltildi. **CI Hard Gates tam yeşil** (`gh run view 29270155491` → `success`, hard-gates 32dk46sn dahil OpenAPI drift + Playwright E2E, GHCR build+push 17dk33sn, prod deploy 9sn) — commit `26967c3` main'in HEAD'i.
+
+**Kapsam:** fleet modülü (15 dosya, 3.632 LOC envanteri) — `araclar`/`dorseler`/`arac_bakimlari`/`vehicle_event_log`/`vehicle_spec_timeline` tablolarının tek sahibi, 31 route (vehicles+trailers+maintenance+admin_maintenance). Detaylar `TASKS/modules/fleet.md` + `v2/modules/fleet/CLAUDE.md`.
+
+**Öne çıkan kararlar/bulgular:**
+- `AracService`/`DorseService`/`MaintenanceService` sınıfları kaldırıldı (B.1, location/notification'daki kararla aynı gerekçe) — vehicle/trailer/maintenance use-case'leri bağımsız fonksiyonlara bölündü (`v2/modules/fleet/application/`, 15 dosya).
+- TOCTOU plaka-unique-check kilidi (create_vehicle/create_trailer) instance-level'dan modül-level `asyncio.Lock()`'a geçti — davranışsal iyileştirme olarak dokümante edildi (üretim yolunda zaten her request yeni instance/kilit oluşturduğu için önceki hal etkisizdi).
+- ARAC_ADDED/UPDATED/DELETED event publish'leri location/notification'daki gibi ölü kod (hiçbir yerde `event_bus.publish()` çağrılmıyor) — tekrar doğrulandı, events.py'de dokümante.
+- 🔴 **OpenAPI drift gotcha'sı (2 tur kırmızı, gerçek kök neden bulundu):** dalga 3'ün doğrulama Docker container'ı saatlerdir ayaktaydı ve dosya değişiklikleri `docker cp` ile canlı sürece kopyalanıyordu ama backend process'i (uvicorn, tek seferlik `app` nesnesi) hiç yeniden başlatılmamıştı — bu yüzden `/openapi.json` yanıtı GERÇEKTE eski route tablosunu yansıtıyordu. Bu durum yanlışlıkla "main'de zaten var olan 6 fleet-dışı route committed şemada eksik" teşhisine yol açtı (`f82b040` bu yanlış teşhiyle 6 route ekledi — hâlâ kırmızı kaldı). Gerçek kök neden: `v2/modules/fleet/api/trailer_routes.py`'de route handler'ı `get_trailer_template` olarak bırakılmışken aynı isimde import edilen use-case fonksiyonuyla (`export_trailers.get_trailer_template`) çakışıyordu; Python sessizce ikincisini üstüne yazdığı için route handler `get_trailer_template_endpoint` olarak yeniden adlandırılmak zorunda kalınmıştı — bu GERÇEK bir API-kontrat değişikliğiydi (operationId değişti). Düzeltme: import `as get_trailer_template_usecase` alias'landı, route handler orijinal adını korudu. **Ders:** OpenAPI drift/route-tablosu doğrulaması için container'ı HER ZAMAN yeniden başlat (`docker compose restart backend`) ve şemayı gerçek `node scripts/dump-openapi.mjs` ile üret — Python'da elle `json.dumps(..., separators=(',',':'))` ile yeniden serileştirmek JS'in `JSON.stringify` çıktısıyla bit-bit eşleşmeyebilir (blob hash'i CI'nınkiyle tutmaz), yanlış-pozitif/yanlış-negatif teşhise yol açar.
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB):**
+- `ruff check app v2 tests --select E,F,W,I` → temiz.
+- `mypy app/` → 7/7 baseline, regresyon yok.
+- `pytest --collect-only`: `app/tests` 6760 test / kök `tests/` 266 test, 0 hata.
+- Tam suite (`app/tests`, gerçek DB'ye karşı): 6684 passed + 42 pre-existing ortam-kaynaklı hata (route_simulation/location/notification/redis modülleri — api-stub ağ topolojisi, Redis Sentinel, VAPID, `USE_SEFER_FUEL_ESTIMATOR` env, `.env.example` cwd — dalga 1-2'de zaten dokümante edilmiş kategoriler, `git diff --stat` ile bu dosyaların dalga 3'te DOKUNULMADIĞI doğrulandı). Fleet'e özgü 3 gerçek kırık test bulunup düzeltildi: `test_activity_log.py` (patch target eski endpoint modülüne işaret ediyordu), `test_maintenance_predictions.py` (aynı sorun, `maintenance_service` modülü silinmişti), `test_production_foundation_guards.py` (truthfulness-guard testi silinen `arac_repo.py` yolunu okuyordu — dalga 1'deki aynı sınıf gotcha'nın tekrarı).
+- OpenAPI schema drift: nihai halde YOK (yukarıdaki gotcha'da anlatılan 2 turluk düzeltmeden sonra CI'da doğrulandı yeşil).
+
+**Test-dosyası dönüşümü (büyük mekanik iş, ~40 dosya):** Bir fork ajanı ana dönüşümü yaptı ama oturum API limitine takılıp yarıda kesildi (`AracService(arac_service=...)` kalıntıları, `container.arac_service` assertion'ı); ana oturum devraldı, kalanları tamamladı + gerçek DB'ye karşı doğruladı (636/636 + 102/102 + 107/107 pass ayrı batch'lerde).
+
 ## Son güncelleme
-2026-07-13 — **FAZ1 dalga 2 (notification) TAMAMLANDI ve main'de yeşil** (commit `34e40c8`, CI Hard Gates `success`). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 3 (fleet) yeni oturumda `TASKS/modules/fleet.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-13 — **FAZ1 dalga 3 (fleet) TAMAMLANDI ve main'de yeşil** (commit `26967c3`, CI Hard Gates `success`, GHCR+prod deploy dahil). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 4 (fuel) yeni oturumda `TASKS/modules/fuel.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

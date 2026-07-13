@@ -1,21 +1,13 @@
-"""Faz 5 — bildirim önceliklendirme: kullanıcı geçmiş okuma davranışı.
+"""Faz 5 — bildirim önceliklendirme: kullanıcı geçmiş okuma davranışı (saf kural).
 
 olay_tipi bazlı okuma oranı (okundu/toplam) → öncelik. Yeterli geçmiş yoksa
 'normal'. Yüksek okuma oranı = kullanıcı umursuyor = high; düşük = low.
 
-STATUS: ``NotificationPrioritizer`` hiçbir prod kod tarafından
-çağrılmıyor — repo-genelinde dead code (yalnız kendi testlerinde
-kullanılıyor). location modülünün taşınan-ama-ölü event publish
-dekoratörüyle aynı durum; bu taşıma sırasında bir regresyon değil,
-taşınırken keşfedilen pre-existing bir boşluk. Sessizce atılmadı,
-buraya dokümante edildi.
+I/O gerektiren kısım (DB'den read/total sayımı) için bkz.
+`infrastructure/prioritizer.py`'deki `NotificationPrioritizer`.
 """
 
 from __future__ import annotations
-
-from typing import Any, Optional
-
-from sqlalchemy import func, select
 
 # Anlamlı bir oran için minimum geçmiş örnek sayısı.
 _MIN_HISTORY = 5
@@ -33,34 +25,3 @@ def score_priority(*, read: int, total: int) -> str:
     if rate <= _LOW_THRESHOLD:
         return "low"
     return "normal"
-
-
-class NotificationPrioritizer:
-    """bildirim_gecmisi okuma oranından kullanıcı+olay_tipi önceliği."""
-
-    def __init__(self, session: Any) -> None:
-        self.session = session
-
-    async def priority_for(self, *, user_id: int, olay_tipi: Optional[str]) -> str:
-        from app.database.models import BildirimGecmisi
-
-        if not olay_tipi:
-            return "normal"
-        total = (
-            await self.session.execute(
-                select(func.count())
-                .select_from(BildirimGecmisi)
-                .where(BildirimGecmisi.kullanici_id == user_id)
-                .where(BildirimGecmisi.olay_tipi == olay_tipi)
-            )
-        ).scalar() or 0
-        read = (
-            await self.session.execute(
-                select(func.count())
-                .select_from(BildirimGecmisi)
-                .where(BildirimGecmisi.kullanici_id == user_id)
-                .where(BildirimGecmisi.olay_tipi == olay_tipi)
-                .where(BildirimGecmisi.okundu_tarihi.isnot(None))
-            )
-        ).scalar() or 0
-        return score_priority(read=int(read), total=int(total))

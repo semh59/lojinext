@@ -141,11 +141,14 @@ notla aynı durum).
 
 ## Modüle özel iş kuralları & gotcha'lar
 
-- **`notification_prioritizer.py` (→ `domain/prioritizer.py`) tamamen ölü
-  kod**: `NotificationPrioritizer` sınıfı hiçbir prod kod tarafından
-  çağrılmıyor (yalnız kendi testlerinde kullanılıyor) — location'ın
-  `LOKASYON_ADDED` event-publish'inin dead-code durumuyla aynı desen, bu
-  taşımanın getirdiği bir regresyon değil.
+- **`notification_prioritizer.py` tamamen ölü kod**: saf `score_priority`
+  fonksiyonu `domain/prioritizer.py`'ye, DB-sorgulu `NotificationPrioritizer`
+  sınıfı `infrastructure/prioritizer.py`'ye ayrıştırıldı (B.1 + domain'in
+  I/O'suz kalması gerekliliği — ilk taşımada sınıf yanlışlıkla domain/'de
+  bırakılmıştı, bağımsız denetimde yakalanıp düzeltildi). Sınıf hiçbir prod
+  kod tarafından çağrılmıyor (yalnız kendi testlerinde kullanılıyor) —
+  location'ın `LOKASYON_ADDED` event-publish'inin dead-code durumuyla aynı
+  desen, bu taşımanın getirdiği bir regresyon değil.
 - **EMAIL kanal teslimatı log-only stub**: `handle_trip_events.py`'de
   `kanal == "EMAIL"` dalı yalnız log basar, gerçek e-posta göndermez —
   `BildirimDurumu.FAILED` ile işaretlenir (dashboard'larda sahte "delivered"

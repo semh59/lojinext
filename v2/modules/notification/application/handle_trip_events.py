@@ -27,8 +27,13 @@ logger = get_logger(__name__)
 def register_handlers() -> None:
     """Register handle_event to listen for all critical events."""
     event_bus = get_event_bus()
-    event_bus.subscribe(EventType.SEFER_UPDATED, handle_event)
-    event_bus.subscribe(EventType.SLA_DELAY, handle_event)
+    # EventBus.subscribe's Callable[[Event], None] annotation doesn't model
+    # async handlers (repo-wide pattern — same gap in physics_handler.py,
+    # cache_invalidation.py, rag_sync_service.py; those don't surface it
+    # because mypy infers their bound-method/local-function callbacks more
+    # loosely than this fully-typed top-level async function).
+    event_bus.subscribe(EventType.SEFER_UPDATED, handle_event)  # type: ignore[arg-type]
+    event_bus.subscribe(EventType.SLA_DELAY, handle_event)  # type: ignore[arg-type]
     # Add more event types as needed
     logger.info("notification handlers registered.")
 

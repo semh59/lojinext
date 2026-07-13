@@ -24,7 +24,9 @@ from app.schemas.base import ResponseMeta, StandardResponse
 from v2.modules.fleet.application.create_trailer import create_trailer
 from v2.modules.fleet.application.export_trailers import (
     export_all_trailers,
-    get_trailer_template,
+)
+from v2.modules.fleet.application.export_trailers import (
+    get_trailer_template as get_trailer_template_usecase,
 )
 from v2.modules.fleet.application.export_trailers import (
     import_trailers as import_trailers_usecase,
@@ -238,13 +240,13 @@ async def export_trailers(
     response_model=None,
     response_class=Response,
 )
-async def get_trailer_template_endpoint(
+async def get_trailer_template(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Dorse yükleme şablonunu indir."""
     from fastapi.responses import Response
 
-    content = await get_trailer_template()
+    content = await get_trailer_template_usecase()
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

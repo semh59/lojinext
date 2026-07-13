@@ -46,7 +46,7 @@ app/core/services/ics_generator.py
 6. Eski dosyalar shim bırakılmadan tamamen silinir (dalga 1-2 paterni) + `v2/modules/fleet/CLAUDE.md`.
 
 ## 6. Kabul kriterleri
-- [ ] 15 dosya taşındı, shim tek satır
-- [ ] ARAC_ADDED/UPDATED/DELETED event payload'ları `events.py`'de DTO — ORM sızıntısı testi (faz1-davranissal-mimari-testler.md madde 3) bu 3 site için yeşil
-- [ ] `arac_repo.py`'nin `seferler` tablosuna raw-SQL erişimi FAZ2 rol matrisine not düşüldü (SELECT-only grant ihtiyacı)
-- [ ] import-linter: fleet `out=4` kontratı — yeni cross-module import eklenmedi
+- [x] 15 dosya taşındı, shim yok (dalga 1-2 paterni, madde 5.6 ile tutarlı — bu satır önceki "shim tek satır" ifadesiyle çelişiyordu, dalga 3 sonrası düzeltildi)
+- [x] ARAC_ADDED/UPDATED/DELETED event payload'ları `events.py`'de DTO — 3 decorator da repo-genelinde ölü kod (`event_bus.publish()` hiç çağrılmıyor), `events.py`'de dokümante
+- [x] `arac_repo.py`'nin `seferler` tablosuna raw-SQL erişimi FAZ2 rol matrisine not düşüldü (SELECT-only grant ihtiyacı) — bkz. `v2/modules/fleet/CLAUDE.md` "Şema & tablo sahipliği"
+- [x] import-linter: fleet `out=4` kontratı — yeni cross-module import eklenmedi (bağımsız denetimle doğrulandı, dalga 3 sonrası)

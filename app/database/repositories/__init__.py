@@ -23,7 +23,6 @@ from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.session_repo import SessionRepository
 from app.database.repositories.setting_repository import SettingRepository
 from app.database.repositories.sofor_repo import SoforRepository
-from app.database.repositories.yakit_repo import YakitRepository
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
 )
@@ -32,6 +31,7 @@ from v2.modules.fleet.infrastructure.trailer_repository import (
     get_dorse_repo,
 )
 from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
+from v2.modules.fuel.infrastructure.repository import YakitRepository
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.notification.infrastructure.repository import NotificationRepository
 from v2.modules.route_simulation.infrastructure.repository import RouteRepository

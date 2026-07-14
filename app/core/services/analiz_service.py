@@ -1,7 +1,8 @@
 """
 TIR Yakıt Takip Sistemi - Analiz Servisi (Facade)
 Gelişmiş analizleri koordine eden ana servis.
-Bu servis artık PeriodCalculationService ve AnomalyDetectionService'e delegasyon yapar.
+Bu servis artık fuel modülünün periyot use-case'lerine ve
+AnomalyDetectionService'e delegasyon yapar.
 
 TYPE: SINGLETON
 SCOPE: Application lifetime
@@ -21,13 +22,17 @@ from app.core.entities import (
     YakitPeriyodu,
 )
 from app.core.services.anomaly_detection_service import get_anomaly_detection_service
-from app.core.services.period_calculation_service import (
-    PeriodCalculationService,
-    PeriyotSeferMatch,
-    get_period_calculation_service,
-)
 from app.infrastructure.cache.cache_manager import get_cache_manager
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.fuel.application.calculate_period import create_fuel_periods
+from v2.modules.fuel.application.distribute_fuel_to_trips import (
+    distribute_fuel_to_trips,
+    match_periods_with_trips,
+)
+from v2.modules.fuel.application.recalculate_vehicle_periods import (
+    recalculate_vehicle_periods,
+)
+from v2.modules.fuel.domain.period_matcher import PeriyotSeferMatch
 
 logger = get_logger(__name__)
 
@@ -56,7 +61,7 @@ class AnalizService:
         if yakit_repo:
             self.yakit_repo = yakit_repo
         else:
-            from app.database.repositories.yakit_repo import get_yakit_repo
+            from v2.modules.fuel.infrastructure.repository import get_yakit_repo
 
             self.yakit_repo = get_yakit_repo()
 
@@ -69,14 +74,6 @@ class AnalizService:
 
         self.arac_repo = arac_repo
         self.cache = get_cache_manager()
-
-        # Sub-Services
-        if yakit_repo is not None or sefer_repo is not None:
-            self.period_service = PeriodCalculationService(
-                yakit_repo=self.yakit_repo, sefer_repo=self.sefer_repo
-            )
-        else:
-            self.period_service = get_period_calculation_service()
         self.anomaly_service = get_anomaly_detection_service()
 
     # ============== DELEGATED METHODS ==============
@@ -84,24 +81,26 @@ class AnalizService:
     async def create_fuel_periods(
         self, fuel_records: List[YakitAlimi]
     ) -> List[YakitPeriyodu]:
-        """Periyot oluşturmayı PeriodCalculationService'e delege eder."""
-        return await self.period_service.create_fuel_periods(fuel_records)
+        """Periyot oluşturmayı fuel modülünün use-case'ine delege eder."""
+        return await create_fuel_periods(fuel_records)
 
     async def distribute_fuel_to_trips(
         self, period: YakitPeriyodu, trips: List[Sefer]
     ) -> List[Sefer]:
-        """Yakıt dağıtımını PeriodCalculationService'e delege eder."""
-        return await self.period_service.distribute_fuel_to_trips(period, trips)
+        """Yakıt dağıtımını fuel modülünün use-case'ine delege eder."""
+        return await distribute_fuel_to_trips(period, trips)
 
     async def match_periods_with_trips(
         self, periods: List[YakitPeriyodu], all_trips: List[Sefer]
     ) -> List[PeriyotSeferMatch]:
-        """Eşleştirmeyi PeriodCalculationService'e delege eder."""
-        return await self.period_service.match_periods_with_trips(periods, all_trips)
+        """Eşleştirmeyi fuel modülünün use-case'ine delege eder."""
+        return await match_periods_with_trips(periods, all_trips)
 
     async def recalculate_vehicle_periods(self, arac_id: int):
-        """Yeniden hesaplamayı PeriodCalculationService'e delege eder."""
-        return await self.period_service.recalculate_vehicle_periods(arac_id)
+        """Yeniden hesaplamayı fuel modülünün use-case'ine delege eder."""
+        return await recalculate_vehicle_periods(
+            arac_id, yakit_repo=self.yakit_repo, sefer_repo=self.sefer_repo
+        )
 
     async def detect_anomalies(
         self,

@@ -18,7 +18,6 @@ from app.core.ml.physics_fuel_predictor import (
     VehicleSpecs,
 )
 from app.core.services.weather_service import WeatherService
-from app.core.services.yakit_tahmin_service import YakitTahminService
 from app.core.utils.type_helpers import safe_float
 from app.database.unit_of_work import UnitOfWork
 
@@ -35,7 +34,6 @@ class PredictionService:
 
     def __init__(self):
         self.weather_service = WeatherService()
-        self.yakit_tahmin_service = YakitTahminService()
         self.ensemble_service = get_ensemble_service()
 
     @staticmethod

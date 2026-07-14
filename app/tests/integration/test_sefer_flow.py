@@ -12,9 +12,9 @@ sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from app.core.entities.models import SeferCreate, YakitAlimiCreate
 from app.core.services.sefer_service import get_sefer_service
-from app.core.services.yakit_service import get_yakit_service
 from app.database.repositories.sefer_repo import SeferRepository
 from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+from v2.modules.fuel.application.add_yakit import add_yakit
 
 
 @pytest.mark.asyncio
@@ -159,7 +159,6 @@ async def test_transaction_rollback_on_error(db_session):
 @pytest.mark.asyncio
 async def test_add_and_verify_fuel(db_session):
     """Yakıt ekle ve kontrol et"""
-    yakit_service = get_yakit_service()
     unique_suffix = uuid.uuid4().hex[:8]
     plaka = f"99 FUL {unique_suffix}"[-12:]
 
@@ -197,7 +196,7 @@ async def test_add_and_verify_fuel(db_session):
         km_sayac=100000,
     )
 
-    yakit_id = await yakit_service.add_yakit(yakit_data)
+    yakit_id = await add_yakit(yakit_data)
 
     # Doğrula
     assert yakit_id is not None

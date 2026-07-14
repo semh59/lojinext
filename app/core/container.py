@@ -32,18 +32,16 @@ if TYPE_CHECKING:
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_analiz_service import SoforAnalizService
     from app.core.services.sofor_service import SoforService
-    from app.core.services.yakit_service import YakitService
-    from app.core.services.yakit_tahmin_service import YakitTahminService
     from app.database.repositories.analiz_repo import AnalizRepository
     from app.database.repositories.sefer_repo import SeferRepository
     from app.database.repositories.sofor_repo import SoforRepository
-    from app.database.repositories.yakit_repo import YakitRepository
     from app.infrastructure.events.event_bus import EventBus
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
     from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
     from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
+    from v2.modules.fuel.infrastructure.repository import YakitRepository
     from v2.modules.location.infrastructure.repository import LokasyonRepository
 
 
@@ -56,7 +54,7 @@ class Container:
     2. Repositories   : arac, sefer, sofor, yakit, lokasyon, dorse, analiz
     3. Domain Services: arac, sofor, sefer, yakit, lokasyon, dorse, analiz
     4. Composite      : import_service, report_service (birden fazla servise bağımlı)
-    5. ML/AI          : prediction, anomaly_detector, time_series, yakit_tahmin (ağır)
+    5. ML/AI          : prediction, anomaly_detector, time_series (ağır)
     6. External/Infra : license, health, route, smart_ai, weather (ağ bağımlı)
 
     SINGLETON vs PER-REQUEST KURALI:
@@ -96,7 +94,6 @@ class Container:
         # servislerin ihtiyaç duyduğu durumlarda devreye girer.
         self._sofor_service: Optional["SoforService"] = None
         self._sefer_service: Optional["SeferService"] = None
-        self._yakit_service: Optional["YakitService"] = None
         self._analiz_service: Optional["AnalizService"] = None
 
         # ── 4. Composite Services (birden fazla servise/repo'ya bağımlı) ────
@@ -110,7 +107,6 @@ class Container:
         self._prediction_service: Optional["PredictionService"] = None
         self._anomaly_detector: Optional["AnomalyDetector"] = None
         self._time_series_service: Optional["TimeSeriesService"] = None
-        self._yakit_tahmin_service: Optional["YakitTahminService"] = None
         self._ai_service = None
         self._smart_ai_service: Optional["SmartAIService"] = None
         self._sofor_analiz_service: Optional["SoforAnalizService"] = None
@@ -174,7 +170,9 @@ class Container:
         if self._yakit_repo is None:
             with self._lock:
                 if self._yakit_repo is None:
-                    from app.database.repositories.yakit_repo import YakitRepository
+                    from v2.modules.fuel.infrastructure.repository import (
+                        YakitRepository,
+                    )
 
                     self._yakit_repo = YakitRepository()
         return self._yakit_repo
@@ -230,18 +228,6 @@ class Container:
         return self._sefer_service
 
     @property
-    def yakit_service(self) -> "YakitService":
-        if self._yakit_service is None:
-            with self._lock:
-                if self._yakit_service is None:
-                    from app.core.services.yakit_service import YakitService
-
-                    self._yakit_service = YakitService(
-                        repo=self.yakit_repo, event_bus=self.event_bus
-                    )
-        return self._yakit_service
-
-    @property
     def analiz_repo(self) -> "AnalizRepository":
         if self._analiz_repo is None:
             with self._lock:
@@ -274,7 +260,6 @@ class Container:
 
                     self._import_service = ImportService(
                         sefer_service=self.sefer_service,
-                        yakit_service=self.yakit_service,
                         arac_repo=self.arac_repo,
                         sofor_repo=self.sofor_repo,
                         sofor_service=self.sofor_service,
@@ -369,18 +354,6 @@ class Container:
         return self._smart_ai_service
 
     @property
-    def yakit_tahmin_service(self) -> "YakitTahminService":
-        if self._yakit_tahmin_service is None:
-            with self._lock:
-                if self._yakit_tahmin_service is None:
-                    from app.core.services.yakit_tahmin_service import (
-                        YakitTahminService,
-                    )
-
-                    self._yakit_tahmin_service = YakitTahminService()
-        return self._yakit_tahmin_service
-
-    @property
     def sofor_analiz_service(self) -> "SoforAnalizService":
         if self._sofor_analiz_service is None:
             with self._lock:
@@ -456,7 +429,6 @@ class Container:
             # Servisleri sıfırla (Dependency sırasının tersine)
             self._degerlendirme_service = None
             self._sofor_analiz_service = None
-            self._yakit_tahmin_service = None
             self._smart_ai_service = None
             self._ai_service = None
             self._health_service = None

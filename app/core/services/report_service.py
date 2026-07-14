@@ -50,10 +50,10 @@ class ReportService:
         if session is not None:
             from app.database.repositories.sefer_repo import SeferRepository
             from app.database.repositories.sofor_repo import SoforRepository
-            from app.database.repositories.yakit_repo import YakitRepository
             from v2.modules.fleet.infrastructure.vehicle_repository import (
                 AracRepository,
             )
+            from v2.modules.fuel.infrastructure.repository import YakitRepository
 
             self.arac_repo = arac_repo or AracRepository(session=session)
             self.sofor_repo = sofor_repo or SoforRepository(session=session)
@@ -91,7 +91,7 @@ class ReportService:
         if yakit_repo:
             self.yakit_repo = yakit_repo
         else:
-            from app.database.repositories.yakit_repo import get_yakit_repo
+            from v2.modules.fuel.infrastructure.repository import get_yakit_repo
 
             self.yakit_repo = get_yakit_repo()
 

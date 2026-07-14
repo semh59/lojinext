@@ -46,7 +46,7 @@ class ContextBuilder:
 
     @property
     def yakit_repo(self):
-        from app.database.repositories.yakit_repo import get_yakit_repo
+        from v2.modules.fuel.infrastructure.repository import get_yakit_repo
 
         return get_yakit_repo()
 

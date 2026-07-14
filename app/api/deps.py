@@ -32,7 +32,6 @@ from fastapi.security import OAuth2PasswordBearer
 if TYPE_CHECKING:
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
-    from app.core.services.yakit_service import YakitService
 import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,12 +79,6 @@ async def get_sefer_service(uow: UOWDep) -> "SeferService":
     from app.core.services.sefer_service import SeferService
 
     return SeferService(repo=uow.sefer_repo)
-
-
-async def get_yakit_service(uow: UOWDep) -> "YakitService":
-    from app.core.services.yakit_service import YakitService
-
-    return YakitService(repo=uow.yakit_repo)
 
 
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]

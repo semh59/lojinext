@@ -41,9 +41,9 @@ import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: 
 import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
 import app.database.repositories.sofor_repo as sofor_mod  # noqa: E402
-import app.database.repositories.yakit_repo as yakit_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
+import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
 from app.database.models import Base  # noqa: E402
@@ -460,7 +460,7 @@ def sefer_repo(db_session):
 
 @pytest.fixture
 def yakit_repo(db_session):
-    from app.database.repositories.yakit_repo import YakitRepository
+    from v2.modules.fuel.infrastructure.repository import YakitRepository
 
     return YakitRepository(session=db_session)
 
@@ -514,13 +514,6 @@ def mock_event_bus():
     bus.subscribe = Mock()
     bus.unsubscribe = Mock()
     return bus
-
-
-@pytest.fixture
-def yakit_service(db_session):
-    from app.core.services.yakit_service import get_yakit_service
-
-    return get_yakit_service()
 
 
 @pytest.fixture

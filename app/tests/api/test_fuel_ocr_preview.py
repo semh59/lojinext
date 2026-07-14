@@ -39,7 +39,7 @@ async def test_ocr_preview_returns_parsed_fields(
         },
     }
     monkeypatch.setattr(
-        "app.api.v1.endpoints.fuel.get_monitored_client",
+        "v2.modules.fuel.api.fuel_routes.get_monitored_client",
         _ocr_client_mock(payload),
     )
     resp = await async_client.post(

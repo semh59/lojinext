@@ -5,15 +5,15 @@ DB'siz smoke. Endpoint integration test'i DB ile CI'da koşacak.
 
 from __future__ import annotations
 
-from app.api.v1.endpoints.admin_fuel_accuracy import (
+from v2.modules.fuel.api.fuel_routes import (
     FuelAccuracyStats,
-    router,
+    admin_router,
 )
 
 
 def test_router_has_fuel_accuracy_endpoint():
     """Router doğru path'i export ediyor."""
-    paths = [r.path for r in router.routes]
+    paths = [r.path for r in admin_router.routes]
     assert "/fuel-accuracy" in paths
 
 

@@ -190,8 +190,8 @@ class TestGetFleetAverage:
     async def test_returns_float(self, db_session):
         """Seed completed trips with tuketim, then get_fleet_average returns a float."""
         from app.core.services.analiz_service import AnalizService
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34GA001")
         sofor = await seed_sofor(db_session, ad_soyad="Test Sofor GA")
@@ -228,8 +228,8 @@ class TestGetFleetAverage:
 
         from app.core.services.analiz_service import AnalizService
         from app.database.models import Sefer as SeferModel
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34GA002")
         sofor = await seed_sofor(db_session, ad_soyad="Test Sofor GA2")
@@ -275,8 +275,8 @@ class TestCalculateLongTermStats:
     async def test_returns_none_when_insufficient_data(self, db_session):
         """Only 2 yakit rows → len(alimlar) < 3 → None."""
         from app.core.services.analiz_service import AnalizService
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_yakit
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34LT001")
         await seed_yakit(db_session, arac_id=arac.id, km_sayac=10000, litre=300.0)
@@ -297,8 +297,8 @@ class TestCalculateLongTermStats:
     async def test_returns_none_when_all_same_km(self, db_session):
         """3 rows all with same km_sayac → dist == 0 for all → x_data empty → None."""
         from app.core.services.analiz_service import AnalizService
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_yakit
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34LT002")
         # All same km_sayac — use different dates to satisfy unique constraints
@@ -331,8 +331,8 @@ class TestCalculateLongTermStats:
     async def test_returns_result_with_sufficient_data(self, db_session):
         """4 rows with incrementing km → sufficient data → dict with expected keys."""
         from app.core.services.analiz_service import AnalizService
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_yakit
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34LT003")
         rows = [
@@ -368,8 +368,8 @@ class TestCalculateLongTermStats:
 
         from app.core.services.analiz_service import AnalizService
         from app.database.models import YakitAlimi as YakitAlimiModel
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_yakit
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34LT004")
         rows = [
@@ -424,8 +424,8 @@ class TestDelegationMethods:
         < 2 fuel records prevent period creation)."""
         from app.core.services.analiz_service import AnalizService
         from app.database.repositories.sefer_repo import SeferRepository
-        from app.database.repositories.yakit_repo import YakitRepository
         from app.tests._helpers.seed import seed_arac, seed_yakit
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
 
         arac = await seed_arac(db_session, plaka="34RP001")
         # Seed 2 fuel rows at different km — minimum for 1 period

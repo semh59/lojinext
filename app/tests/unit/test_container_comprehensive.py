@@ -183,7 +183,6 @@ class TestContainerInitialization:
 
         assert container.sofor_service is not None
         assert container.sefer_service is not None
-        assert container.yakit_service is not None
         assert container.analiz_service is not None
         assert container.import_service is not None
         assert container.report_service is not None
@@ -221,13 +220,11 @@ class TestDependencyInjection:
 
         assert container.sefer_service.repo is container.sefer_repo
 
-    def test_yakit_service_has_correct_repo(self):
-        """YakitService doğru repository'yi almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        assert container.yakit_service.repo is container.yakit_repo
+    # test_yakit_service_has_correct_repo removed — YakitService class deleted
+    # in dalga 4 (B.1 free-function refactor, v2.modules.fuel); fuel use-cases
+    # open their own UnitOfWork() and never held a constructor-injected repo
+    # (container.yakit_repo still exists, used by other services e.g.
+    # analiz_service/report_service, asserted below).
 
     # test_arac_service_has_correct_repo removed — AracService class deleted
     # in dalga 3; container.arac_repo still exists (used by other services
@@ -263,7 +260,10 @@ class TestDependencyInjection:
         assert container.import_service.lokasyon_repo is container.lokasyon_repo
         # Services
         assert container.import_service.sefer_service is container.sefer_service
-        assert container.import_service.yakit_service is container.yakit_service
+        # container.import_service.yakit_service removed — ImportService no
+        # longer takes a yakit_service constructor kwarg (dalga 4, B.1
+        # free-function refactor); it imports bulk_add_yakit/
+        # recalculate_vehicle_periods from v2.modules.fuel.application inline.
 
     def test_report_service_has_all_repos(self):
         """ReportService tüm repository'leri almalı."""
@@ -286,7 +286,9 @@ class TestDependencyInjection:
         event_bus = container.event_bus
 
         assert container.sefer_service.event_bus is event_bus
-        assert container.yakit_service.event_bus is event_bus
+        # container.yakit_service removed — YakitService class deleted (dalga
+        # 4, B.1 free-function refactor); fuel use-cases don't hold a
+        # persistent event_bus reference to assert against.
         # container.arac_service removed — AracService class deleted (dalga 3,
         # B.1 free-function refactor); fleet vehicle use-cases don't hold a
         # persistent event_bus reference to assert against.
@@ -310,14 +312,9 @@ class TestMockInjection:
         assert service.repo is mock_sefer_repo
         assert service.event_bus is mock_event_bus
 
-    def test_yakit_service_accepts_mock_repo(self, mock_yakit_repo, mock_event_bus):
-        """YakitService mock repo kabul etmeli."""
-        from app.core.services.yakit_service import YakitService
-
-        service = YakitService(repo=mock_yakit_repo, event_bus=mock_event_bus)
-
-        assert service.repo is mock_yakit_repo
-        assert service.event_bus is mock_event_bus
+    # test_yakit_service_accepts_mock_repo removed — YakitService class
+    # deleted in dalga 4 (B.1 free-function refactor, v2.modules.fuel); fuel
+    # use-cases no longer take a constructor-injected repo.
 
     # test_arac_service_accepts_mock_repo removed — AracService class deleted
     # in dalga 3 (B.1 free-function refactor, v2.modules.fleet); vehicle
@@ -354,22 +351,20 @@ class TestMockInjection:
         """ImportService mock bağımlılıklar kabul etmeli."""
         from app.core.services.import_service import ImportService
         from app.core.services.sefer_service import SeferService
-        from app.core.services.yakit_service import YakitService
 
         mock_sefer_service = Mock(spec=SeferService)
-        mock_yakit_service = Mock(spec=YakitService)
 
         service = ImportService(
             arac_repo=mock_arac_repo,
             sofor_repo=mock_sofor_repo,
             sefer_service=mock_sefer_service,
-            yakit_service=mock_yakit_service,
         )
 
         assert service.arac_repo is mock_arac_repo
         assert service.sofor_repo is mock_sofor_repo
         assert service.sefer_service is mock_sefer_service
-        assert service.yakit_service is mock_yakit_service
+        # service.yakit_service removed — ImportService no longer takes a
+        # yakit_service constructor kwarg (dalga 4, B.1 free-function refactor).
 
 
 # =============================================================================
@@ -390,15 +385,9 @@ class TestFactoryFunctions:
 
         assert service is container.sefer_service
 
-    def test_get_yakit_service_returns_container_instance(self):
-        """get_yakit_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
-        from app.core.services.yakit_service import get_yakit_service
-
-        container = get_container()
-        service = get_yakit_service()
-
-        assert service is container.yakit_service
+    # test_get_yakit_service_returns_container_instance removed —
+    # YakitService class + container.yakit_service property + get_yakit_service()
+    # factory all deleted in dalga 4 (B.1 free-function refactor, v2.modules.fuel).
 
     # test_get_arac_service_returns_container_instance removed — AracService
     # class + container.arac_service property deleted in dalga 3 (B.1
@@ -479,7 +468,7 @@ class TestThreadSafety:
                 for _ in range(iterations):
                     # Çeşitli servislere erişim
                     _ = container.sefer_service
-                    _ = container.yakit_service
+                    _ = container.yakit_repo
                     _ = container.arac_repo
                     _ = container.analiz_service
             except Exception as e:
@@ -616,8 +605,10 @@ class TestContainerIntegration:
         # ve o da container'ın sefer_repo'sunu kullanmalı
         assert container.import_service.sefer_service.repo is container.sefer_repo
 
-        # ImportService -> YakitService -> YakitRepo
-        assert container.import_service.yakit_service.repo is container.yakit_repo
+        # ImportService no longer holds a YakitService (dalga 4, B.1
+        # free-function refactor) — its fuel calls import
+        # bulk_add_yakit/recalculate_vehicle_periods from
+        # v2.modules.fuel.application inline instead.
 
     def test_event_bus_consistency(self):
         """Tüm event-publishing servisler aynı bus'ı kullanmalı."""
@@ -629,7 +620,6 @@ class TestContainerIntegration:
         event_buses = [
             container.event_bus,
             container.sefer_service.event_bus,
-            container.yakit_service.event_bus,
             container.sofor_service.event_bus,
         ]
 

@@ -1,11 +1,16 @@
 """
 Fuel endpoint coverage tests.
 
-Targets missing lines in app/api/v1/endpoints/fuel.py (20% → ≥70%).
-All service calls are mocked — no DB needed for most tests.
+Targets missing lines in v2/modules/fuel/api/fuel_routes.py (20% → ≥70%).
+All use-case calls are mocked — no DB needed for most tests.
+
+Free-function patch target is always the CONSUMING module
+(v2.modules.fuel.api.fuel_routes.<fn>), not the source module — the
+router imports each use-case at module load time via `from x import y`,
+so `y` lives as an attribute on the router's own namespace (documented
+gotcha, see v2/modules/location/CLAUDE.md's final paragraph).
 """
 
-from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, patch
@@ -19,6 +24,7 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 
 BASE_URL = "/api/v1/fuel"
+ROUTES = "v2.modules.fuel.api.fuel_routes"
 
 
 def _make_yakit_response_dict(**kwargs):
@@ -42,7 +48,7 @@ def _make_yakit_response_dict(**kwargs):
 
 
 def _make_yakit_response_obj(**kwargs):
-    from app.schemas.yakit import YakitResponse
+    from v2.modules.fuel.schemas import YakitResponse
 
     return YakitResponse.model_validate(_make_yakit_response_dict(**kwargs))
 
@@ -65,26 +71,6 @@ def _make_fuel_stats_dict(**kwargs):
 
 
 # ---------------------------------------------------------------------------
-# Context manager helper for dependency overrides
-# ---------------------------------------------------------------------------
-
-
-@contextmanager
-def _override_yakit_service(mock_svc):
-    from app.api.deps import get_yakit_service
-    from app.main import app
-
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_yakit_service] = _fake
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_yakit_service, None)
-
-
-# ---------------------------------------------------------------------------
 # GET /fuel/stats
 # ---------------------------------------------------------------------------
 
@@ -92,9 +78,7 @@ def _override_yakit_service(mock_svc):
 @pytest.mark.asyncio
 async def test_get_fuel_stats_success(async_client, admin_auth_headers):
     """GET /fuel/stats → 200 with valid stats."""
-    mock_svc = AsyncMock()
-    mock_svc.get_stats = AsyncMock(return_value=_make_fuel_stats_dict())
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.get_stats", AsyncMock(return_value=_make_fuel_stats_dict())):
         resp = await async_client.get(f"{BASE_URL}/stats", headers=admin_auth_headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -111,9 +95,7 @@ async def test_get_fuel_stats_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_get_fuel_stats_with_date_range(async_client, admin_auth_headers):
     """GET /fuel/stats?baslangic_tarih=... → 200."""
-    mock_svc = AsyncMock()
-    mock_svc.get_stats = AsyncMock(return_value=_make_fuel_stats_dict())
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.get_stats", AsyncMock(return_value=_make_fuel_stats_dict())):
         resp = await async_client.get(
             f"{BASE_URL}/stats?baslangic_tarih=2026-01-01&bitis_tarih=2026-03-31",
             headers=admin_auth_headers,
@@ -124,9 +106,7 @@ async def test_get_fuel_stats_with_date_range(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_get_fuel_stats_unexpected_error(async_client, admin_auth_headers):
     """GET /fuel/stats service raises RuntimeError → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.get_stats = AsyncMock(side_effect=RuntimeError("boom"))
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.get_stats", AsyncMock(side_effect=RuntimeError("boom"))):
         resp = await async_client.get(f"{BASE_URL}/stats", headers=admin_auth_headers)
     assert resp.status_code == 500
 
@@ -139,11 +119,10 @@ async def test_get_fuel_stats_unexpected_error(async_client, admin_auth_headers)
 @pytest.mark.asyncio
 async def test_read_yakit_alimlari_success(async_client, admin_auth_headers):
     """GET /fuel/ → 200 list."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        return_value=_make_list_response([_make_yakit_response_obj()])
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged",
+        AsyncMock(return_value=_make_list_response([_make_yakit_response_obj()])),
+    ):
         resp = await async_client.get(f"{BASE_URL}/", headers=admin_auth_headers)
     assert resp.status_code == 200
     data = resp.json()
@@ -160,9 +139,9 @@ async def test_read_yakit_alimlari_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_read_yakit_alimlari_with_filters(async_client, admin_auth_headers):
     """GET /fuel/ with arac_id + date filters."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value=_make_list_response([]))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged", AsyncMock(return_value=_make_list_response([]))
+    ):
         resp = await async_client.get(
             f"{BASE_URL}/?arac_id=1&baslangic_tarih=2026-01-01&skip=0&limit=10",
             headers=admin_auth_headers,
@@ -183,9 +162,9 @@ async def test_read_yakit_alimlari_rejects_huge_limit(async_client, admin_auth_h
 @pytest.mark.asyncio
 async def test_read_yakit_alimlari_unexpected_error(async_client, admin_auth_headers):
     """GET /fuel/ service raises RuntimeError → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=RuntimeError("db error"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged", AsyncMock(side_effect=RuntimeError("db error"))
+    ):
         resp = await async_client.get(f"{BASE_URL}/", headers=admin_auth_headers)
     assert resp.status_code == 500
 
@@ -211,10 +190,13 @@ _CREATE_PAYLOAD = {
 @pytest.mark.asyncio
 async def test_create_yakit_success(async_client, admin_auth_headers):
     """POST /fuel/ → 201 created."""
-    mock_svc = AsyncMock()
-    mock_svc.add_yakit = AsyncMock(return_value=42)
-    mock_svc.get_yakit_by_id = AsyncMock(return_value=_make_yakit_response_obj(id=42))
-    with _override_yakit_service(mock_svc):
+    with (
+        patch(f"{ROUTES}.add_yakit", AsyncMock(return_value=42)),
+        patch(
+            f"{ROUTES}.get_yakit_by_id",
+            AsyncMock(return_value=_make_yakit_response_obj(id=42)),
+        ),
+    ):
         resp = await async_client.post(
             f"{BASE_URL}/", json=_CREATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -231,9 +213,9 @@ async def test_create_yakit_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_create_yakit_value_error(async_client, admin_auth_headers):
     """POST /fuel/ service raises ValueError → 400."""
-    mock_svc = AsyncMock()
-    mock_svc.add_yakit = AsyncMock(side_effect=ValueError("invalid vehicle"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.add_yakit", AsyncMock(side_effect=ValueError("invalid vehicle"))
+    ):
         resp = await async_client.post(
             f"{BASE_URL}/", json=_CREATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -243,9 +225,7 @@ async def test_create_yakit_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_create_yakit_unexpected_error(async_client, admin_auth_headers):
     """POST /fuel/ service raises RuntimeError → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.add_yakit = AsyncMock(side_effect=RuntimeError("db crash"))
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.add_yakit", AsyncMock(side_effect=RuntimeError("db crash"))):
         resp = await async_client.post(
             f"{BASE_URL}/", json=_CREATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -269,9 +249,10 @@ async def test_create_yakit_missing_required_fields(async_client, admin_auth_hea
 @pytest.mark.asyncio
 async def test_read_yakit_success(async_client, admin_auth_headers):
     """GET /fuel/1 → 200."""
-    mock_svc = AsyncMock()
-    mock_svc.get_yakit_by_id = AsyncMock(return_value=_make_yakit_response_obj(id=1))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_yakit_by_id",
+        AsyncMock(return_value=_make_yakit_response_obj(id=1)),
+    ):
         resp = await async_client.get(f"{BASE_URL}/1", headers=admin_auth_headers)
     assert resp.status_code == 200
     assert resp.json()["id"] == 1
@@ -287,9 +268,7 @@ async def test_read_yakit_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_read_yakit_not_found(async_client, admin_auth_headers):
     """GET /fuel/9999 → 404."""
-    mock_svc = AsyncMock()
-    mock_svc.get_yakit_by_id = AsyncMock(return_value=None)
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.get_yakit_by_id", AsyncMock(return_value=None)):
         resp = await async_client.get(f"{BASE_URL}/9999", headers=admin_auth_headers)
     assert resp.status_code == 404
 
@@ -304,12 +283,13 @@ _UPDATE_PAYLOAD = {"litre": "250.00", "fiyat_tl": "46.00"}
 @pytest.mark.asyncio
 async def test_update_yakit_success(async_client, admin_auth_headers):
     """PUT /fuel/1 → 200."""
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(return_value=True)
-    mock_svc.get_yakit_by_id = AsyncMock(
-        return_value=_make_yakit_response_obj(litre=Decimal("250.00"))
-    )
-    with _override_yakit_service(mock_svc):
+    with (
+        patch(f"{ROUTES}.update_yakit_usecase", AsyncMock(return_value=True)),
+        patch(
+            f"{ROUTES}.get_yakit_by_id",
+            AsyncMock(return_value=_make_yakit_response_obj(litre=Decimal("250.00"))),
+        ),
+    ):
         resp = await async_client.put(
             f"{BASE_URL}/1", json=_UPDATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -326,9 +306,7 @@ async def test_update_yakit_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_update_yakit_not_found(async_client, admin_auth_headers):
     """PUT /fuel/9999 → 404 when service returns False."""
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(return_value=False)
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.update_yakit_usecase", AsyncMock(return_value=False)):
         resp = await async_client.put(
             f"{BASE_URL}/9999", json=_UPDATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -338,9 +316,10 @@ async def test_update_yakit_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_yakit_value_error(async_client, admin_auth_headers):
     """PUT /fuel/1 service raises ValueError → 400."""
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(side_effect=ValueError("bad value"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.update_yakit_usecase",
+        AsyncMock(side_effect=ValueError("bad value")),
+    ):
         resp = await async_client.put(
             f"{BASE_URL}/1", json=_UPDATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -350,9 +329,9 @@ async def test_update_yakit_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_yakit_unexpected_error(async_client, admin_auth_headers):
     """PUT /fuel/1 service raises RuntimeError → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(side_effect=RuntimeError("crash"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.update_yakit_usecase", AsyncMock(side_effect=RuntimeError("crash"))
+    ):
         resp = await async_client.put(
             f"{BASE_URL}/1", json=_UPDATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -430,16 +409,19 @@ async def test_get_fuel_excel_template_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_export_yakit_alimlari_success(async_client, admin_auth_headers):
     """GET /fuel/excel/export → 200 xlsx content."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(return_value={"items": [], "total": 0})
-    with _override_yakit_service(mock_svc):
-        with patch(
+    with (
+        patch(
+            f"{ROUTES}.get_all_paged",
+            AsyncMock(return_value={"items": [], "total": 0}),
+        ),
+        patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04fake_xlsx"),
-        ):
-            resp = await async_client.get(
-                f"{BASE_URL}/excel/export", headers=admin_auth_headers
-            )
+        ),
+    ):
+        resp = await async_client.get(
+            f"{BASE_URL}/excel/export", headers=admin_auth_headers
+        )
     assert resp.status_code == 200
 
 
@@ -453,9 +435,9 @@ async def test_export_yakit_alimlari_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_export_yakit_alimlari_error(async_client, admin_auth_headers):
     """GET /fuel/excel/export service error → 500."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=RuntimeError("export error"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged", AsyncMock(side_effect=RuntimeError("export error"))
+    ):
         resp = await async_client.get(
             f"{BASE_URL}/excel/export", headers=admin_auth_headers
         )

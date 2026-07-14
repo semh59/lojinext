@@ -117,28 +117,8 @@ def sofor_service_with_mock_event_bus(mock_sofor_service_uow, mock_event_bus):
     return SoforService(event_bus=mock_event_bus)
 
 
-@pytest.fixture
-def mock_yakit_service_uow(monkeypatch, mock_uow):
-    """Patch UnitOfWork in yakit_service module and reset container afterward."""
-    from app.database.unit_of_work import UnitOfWork
-
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
-
-    # Reset container so it uses the mocked UnitOfWork
-    import app.core.container as container_mod
-
-    container_mod.reset_container()
-
-    yield mock_uow
-
-    # Reset after test
-    container_mod.reset_container()
-
-
-@pytest.fixture
-def yakit_service(mock_yakit_service_uow):
-    """Override yakit_service fixture to use mocked UnitOfWork."""
-    from app.core.services.yakit_service import get_yakit_service
-
-    return get_yakit_service()
+# mock_yakit_service_uow / yakit_service fixtures removed — YakitService
+# class deleted in dalga 4 (B.1 free-function refactor, v2.modules.fuel);
+# nothing in this directory references them as a fixture param anymore
+# (tests import the free functions directly and rely on the real db_session,
+# or patch v2.modules.fuel.application.<file>.UnitOfWork where needed).

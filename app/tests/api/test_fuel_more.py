@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/api/v1/endpoints/fuel.py.
+Additional coverage tests for v2/modules/fuel/api/fuel_routes.py.
 
 Targets uncovered branches beyond test_fuel_coverage.py:
 - GET /fuel/stats: DomainError re-raised (not wrapped in 500)
@@ -18,7 +18,6 @@ Targets uncovered branches beyond test_fuel_coverage.py:
 - POST /fuel/excel/upload: async_mode with large file
 """
 
-from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,6 +27,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE_URL = "/api/v1/fuel"
+ROUTES = "v2.modules.fuel.api.fuel_routes"
 
 
 # ---------------------------------------------------------------------------
@@ -56,41 +56,9 @@ def _make_yakit_response_dict(**kwargs):
 
 
 def _make_yakit_response_obj(**kwargs):
-    from app.schemas.yakit import YakitResponse
+    from v2.modules.fuel.schemas import YakitResponse
 
     return YakitResponse.model_validate(_make_yakit_response_dict(**kwargs))
-
-
-def _make_list_response(items=None):
-    if items is None:
-        items = [_make_yakit_response_obj()]
-    return {"items": items, "total": len(items)}
-
-
-def _make_fuel_stats_dict(**kwargs):
-    defaults = dict(
-        toplam_litre=5000.0,
-        toplam_maliyet=227500.0,
-        ortalama_birim_fiyat=45.5,
-        kayit_sayisi=25,
-    )
-    defaults.update(kwargs)
-    return defaults
-
-
-@contextmanager
-def _override_yakit_service(mock_svc):
-    from app.api.deps import get_yakit_service
-    from app.main import app
-
-    async def _fake():
-        return mock_svc
-
-    app.dependency_overrides[get_yakit_service] = _fake
-    try:
-        yield
-    finally:
-        app.dependency_overrides.pop(get_yakit_service, None)
 
 
 _CREATE_PAYLOAD = {
@@ -116,9 +84,10 @@ async def test_get_fuel_stats_domain_error_reraised(async_client, admin_auth_hea
     """DomainError from get_stats is re-raised (not wrapped in 500)."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_stats = AsyncMock(side_effect=FuelCalculationError("calc error"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_stats",
+        AsyncMock(side_effect=FuelCalculationError("calc error")),
+    ):
         resp = await async_client.get(f"{BASE_URL}/stats", headers=admin_auth_headers)
     # Domain error → 422 (FuelCalculationError maps to 422)
     assert resp.status_code == 422
@@ -136,11 +105,10 @@ async def test_read_yakit_alimlari_domain_error_reraised(
     """DomainError from get_all_paged is re-raised (not wrapped in 500)."""
     from app.core.exceptions import ImportValidationError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        side_effect=ImportValidationError(["bad row"], row=1)
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged",
+        AsyncMock(side_effect=ImportValidationError(["bad row"], row=1)),
+    ):
         resp = await async_client.get(f"{BASE_URL}/", headers=admin_auth_headers)
     assert resp.status_code == 422
 
@@ -155,11 +123,10 @@ async def test_create_yakit_domain_error_reraised(async_client, admin_auth_heade
     """DomainError from add_yakit is re-raised."""
     from app.core.exceptions import RouteProcessingError
 
-    mock_svc = AsyncMock()
-    mock_svc.add_yakit = AsyncMock(
-        side_effect=RouteProcessingError("route error", reason="TEST")
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.add_yakit",
+        AsyncMock(side_effect=RouteProcessingError("route error", reason="TEST")),
+    ):
         resp = await async_client.post(
             f"{BASE_URL}/", json=_CREATE_PAYLOAD, headers=admin_auth_headers
         )
@@ -176,9 +143,10 @@ async def test_update_yakit_domain_error_reraised(async_client, admin_auth_heade
     """DomainError from update_yakit is re-raised."""
     from app.core.exceptions import FuelCalculationError
 
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(side_effect=FuelCalculationError("update error"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.update_yakit_usecase",
+        AsyncMock(side_effect=FuelCalculationError("update error")),
+    ):
         resp = await async_client.put(
             f"{BASE_URL}/1",
             json={"litre": "250.00", "fiyat_tl": "46.00"},
@@ -205,15 +173,12 @@ async def test_delete_yakit_service_returns_false_after_db_get(
     fake_record.id = 1
     fake_record.aktif = True
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_yakit = AsyncMock(return_value=False)
-
     async def _fake_db():
         db = AsyncMock()
         db.get = AsyncMock(return_value=fake_record)
         return db
 
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=False)):
         app.dependency_overrides[get_db] = _fake_db
         try:
             resp = await async_client.delete(
@@ -237,7 +202,7 @@ async def test_delete_yakit_inactive_record_returns_header(
     """
     from app.api.deps import get_db
     from app.main import app
-    from app.schemas.yakit import YakitResponse
+    from v2.modules.fuel.schemas import YakitResponse
 
     # Build a valid YakitResponse-compatible record
     fake_yakit = _make_yakit_response_obj(id=1)
@@ -251,15 +216,12 @@ async def test_delete_yakit_inactive_record_returns_header(
     for field in YakitResponse.model_fields:
         setattr(fake_record, field, getattr(fake_yakit, field, None))
 
-    mock_svc = AsyncMock()
-    mock_svc.delete_yakit = AsyncMock(return_value=True)
-
     async def _fake_db():
         db = AsyncMock()
         db.get = AsyncMock(return_value=fake_record)
         return db
 
-    with _override_yakit_service(mock_svc):
+    with patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=True)):
         app.dependency_overrides[get_db] = _fake_db
         try:
             resp = await async_client.delete(
@@ -282,19 +244,20 @@ async def test_delete_yakit_inactive_record_returns_header(
 @pytest.mark.asyncio
 async def test_export_yakit_alimlari_with_filters(async_client, admin_auth_headers):
     """GET /fuel/excel/export with date range and arac_id."""
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        return_value={"items": [_make_yakit_response_obj()], "total": 1}
-    )
-    with _override_yakit_service(mock_svc):
-        with patch(
+    with (
+        patch(
+            f"{ROUTES}.get_all_paged",
+            AsyncMock(return_value={"items": [_make_yakit_response_obj()], "total": 1}),
+        ),
+        patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04xlsx"),
-        ):
-            resp = await async_client.get(
-                f"{BASE_URL}/excel/export?arac_id=1&baslangic_tarih=2026-01-01&bitis_tarih=2026-12-31",
-                headers=admin_auth_headers,
-            )
+        ),
+    ):
+        resp = await async_client.get(
+            f"{BASE_URL}/excel/export?arac_id=1&baslangic_tarih=2026-01-01&bitis_tarih=2026-12-31",
+            headers=admin_auth_headers,
+        )
     assert resp.status_code == 200
 
 
@@ -305,9 +268,10 @@ async def test_export_yakit_alimlari_domain_error_reraised(
     """GET /fuel/excel/export — DomainError re-raised."""
     from app.core.exceptions import ExcelExportError
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(side_effect=ExcelExportError("export failed"))
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged",
+        AsyncMock(side_effect=ExcelExportError("export failed")),
+    ):
         resp = await async_client.get(
             f"{BASE_URL}/excel/export", headers=admin_auth_headers
         )
@@ -317,18 +281,18 @@ async def test_export_yakit_alimlari_domain_error_reraised(
 @pytest.mark.asyncio
 async def test_export_returns_list_items_not_dict(async_client, admin_auth_headers):
     """When get_all_paged returns list (not dict), export still works."""
-    mock_svc = AsyncMock()
     items = [_make_yakit_response_obj()]
     # Return list instead of {"items": ...} to test isinstance branch
-    mock_svc.get_all_paged = AsyncMock(return_value=items)
-    with _override_yakit_service(mock_svc):
-        with patch(
+    with (
+        patch(f"{ROUTES}.get_all_paged", AsyncMock(return_value=items)),
+        patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04"),
-        ):
-            resp = await async_client.get(
-                f"{BASE_URL}/excel/export", headers=admin_auth_headers
-            )
+        ),
+    ):
+        resp = await async_client.get(
+            f"{BASE_URL}/excel/export", headers=admin_auth_headers
+        )
     assert resp.status_code == 200
 
 
@@ -421,11 +385,10 @@ async def test_get_fuel_stats_http_exception_reraised(async_client, admin_auth_h
     """HTTPException raised inside get_stats is re-raised (not wrapped)."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.get_stats = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="Service down")
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_stats",
+        AsyncMock(side_effect=HTTPException(status_code=503, detail="Service down")),
+    ):
         resp = await async_client.get(f"{BASE_URL}/stats", headers=admin_auth_headers)
     assert resp.status_code == 503
 
@@ -440,11 +403,10 @@ async def test_read_yakit_http_exception_reraised(async_client, admin_auth_heade
     """HTTPException from list is re-raised."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.get_all_paged = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="Unavailable")
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.get_all_paged",
+        AsyncMock(side_effect=HTTPException(status_code=503, detail="Unavailable")),
+    ):
         resp = await async_client.get(f"{BASE_URL}/", headers=admin_auth_headers)
     assert resp.status_code == 503
 
@@ -459,11 +421,10 @@ async def test_update_yakit_http_exception_reraised(async_client, admin_auth_hea
     """HTTPException from update is re-raised."""
     from fastapi import HTTPException
 
-    mock_svc = AsyncMock()
-    mock_svc.update_yakit = AsyncMock(
-        side_effect=HTTPException(status_code=503, detail="DB down")
-    )
-    with _override_yakit_service(mock_svc):
+    with patch(
+        f"{ROUTES}.update_yakit_usecase",
+        AsyncMock(side_effect=HTTPException(status_code=503, detail="DB down")),
+    ):
         resp = await async_client.put(
             f"{BASE_URL}/1",
             json={"litre": "250.00", "fiyat_tl": "46.00"},

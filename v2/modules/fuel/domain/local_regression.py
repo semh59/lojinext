@@ -6,7 +6,7 @@ sklearn.linear_model.LinearRegression + StandardScaler kullanarak aynı
 işi 6 satırda, bakım yükü sıfır ve doğrulama testleriyle yapıyor.
 
 Bu modül yalnızca "lightweight fallback" olarak tutulmaktadır; asıl
-tahmin pipeline'ı EnsembleFuelPredictor üzerinden işler.
+tahmin pipeline'ı EnsembleFuelPredictor (prediction_ml modülü) üzerinden işler.
 """
 
 from typing import Dict, Optional, Tuple

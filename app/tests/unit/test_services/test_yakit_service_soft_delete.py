@@ -1,4 +1,4 @@
-"""YakitService soft-delete guard tests — real DB, no mocked UoW.
+"""Fuel (yakit) soft-delete guard tests — real DB, no mocked UoW.
 
 2026-07-01 prod-grade denetiminde bulunan bug: `update_yakit`, hedef kaydı
 `yakit_repo.get_by_id(yakit_id, for_update=True)` ile çekip sadece `if not
@@ -10,7 +10,11 @@ dosya doğrulanır — ek servis-seviyesi kod değişikliği gerekmedi.
 
 `delete_yakit` (hard-delete) ise tam tersi yönde: soft-deleted bir kaydın da
 kalıcı olarak silinebilmesi GEREKİR — bu yüzden orada `include_inactive=True`
-eklendi (bkz. yakit_service.py:221). Bu dosya o davranışı da doğrular.
+eklendi (bkz. v2/modules/fuel/application/delete_yakit.py). Bu dosya o
+davranışı da doğrular.
+
+Dalga 4 (B.1 free-function refactor): YakitService class deleted — use-cases
+are free functions in v2/modules/fuel/application/.
 """
 
 from datetime import date
@@ -20,8 +24,9 @@ import pytest
 from sqlalchemy import insert, select
 
 from app.core.entities.models import YakitUpdate
-from app.core.services.yakit_service import YakitService
 from app.database.models import Arac, YakitAlimi
+from v2.modules.fuel.application.delete_yakit import delete_yakit
+from v2.modules.fuel.application.update_yakit import update_yakit
 
 pytestmark = pytest.mark.integration
 
@@ -56,18 +61,12 @@ async def _get_yakit(db_session, yakit_id: int):
     ).scalar_one_or_none()
 
 
-def _service() -> YakitService:
-    return YakitService()
-
-
 class TestYakitServiceSoftDeleteGuard:
     async def test_update_yakit_rejects_passive_record(self, db_session):
         arac_id = await _seed_arac(db_session, "34 YKT 001")
         yakit_id = await _seed_yakit(db_session, arac_id, aktif=False)
 
-        success = await _service().update_yakit(
-            yakit_id, YakitUpdate(fiyat_tl=Decimal("99.99"))
-        )
+        success = await update_yakit(yakit_id, YakitUpdate(fiyat_tl=Decimal("99.99")))
 
         assert success is False
         row = await _get_yakit(db_session, yakit_id)
@@ -77,7 +76,7 @@ class TestYakitServiceSoftDeleteGuard:
         arac_id = await _seed_arac(db_session, "34 YKT 002")
         yakit_id = await _seed_yakit(db_session, arac_id, aktif=True)
 
-        success = await _service().update_yakit(
+        success = await update_yakit(
             yakit_id, YakitUpdate(fiyat_tl=Decimal("50.00"), litre=200.0)
         )
 
@@ -91,7 +90,7 @@ class TestYakitServiceSoftDeleteGuard:
         arac_id = await _seed_arac(db_session, "34 YKT 003")
         yakit_id = await _seed_yakit(db_session, arac_id, aktif=False)
 
-        success = await _service().delete_yakit(yakit_id)
+        success = await delete_yakit(yakit_id)
 
         assert success is True
         assert await _get_yakit(db_session, yakit_id) is None

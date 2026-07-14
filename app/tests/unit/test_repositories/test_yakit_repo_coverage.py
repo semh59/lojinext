@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.database.repositories.yakit_repo import YakitRepository, get_yakit_repo
+from v2.modules.fuel.infrastructure.repository import YakitRepository, get_yakit_repo
 
 pytestmark = pytest.mark.unit
 
@@ -600,7 +600,7 @@ class TestGetYakitRepoFactory:
         assert repo._session is session
 
     def test_returns_singleton_without_session(self):
-        import app.database.repositories.yakit_repo as mod
+        import v2.modules.fuel.infrastructure.repository as mod
 
         mod._yakit_repo = None
         repo1 = get_yakit_repo()

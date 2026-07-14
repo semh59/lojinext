@@ -63,7 +63,7 @@ class TestNumericValidation:
         """Negatif değerler reddedilmeli"""
         from decimal import Decimal
 
-        from app.schemas.yakit import YakitCreate
+        from v2.modules.fuel.schemas import YakitCreate
 
         with pytest.raises(ValidationError):
             YakitCreate(

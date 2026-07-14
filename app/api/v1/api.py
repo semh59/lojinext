@@ -4,7 +4,6 @@ from app.api.v1.endpoints import (
     admin_attribution,
     admin_calibration,
     admin_config,
-    admin_fuel_accuracy,
     admin_health,
     admin_imports,
     admin_integrations,
@@ -25,7 +24,6 @@ from app.api.v1.endpoints import (
     executive,
     feedback,
     fleet_insights,
-    fuel,
     health,
     internal,
     investigations,
@@ -46,6 +44,8 @@ from v2.modules.fleet.api.admin_maintenance_routes import (
 from v2.modules.fleet.api.maintenance_routes import router as maintenance_router
 from v2.modules.fleet.api.trailer_routes import router as trailer_router
 from v2.modules.fleet.api.vehicle_routes import router as vehicle_router
+from v2.modules.fuel.api.fuel_routes import admin_router as admin_fuel_accuracy
+from v2.modules.fuel.api.fuel_routes import router as fuel_router
 from v2.modules.location.api.location_routes import router as location_router
 from v2.modules.notification.api.live_ws_routes import (
     router as notification_live_ws_router,
@@ -81,7 +81,7 @@ api_router.include_router(
 api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
 api_router.include_router(drivers.router, prefix="/drivers", tags=["drivers"])
 api_router.include_router(trips.router, prefix="/trips", tags=["trips"])
-api_router.include_router(fuel.router, prefix="/fuel", tags=["fuel"])
+api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
     predictions.router, prefix="/predictions", tags=["predictions"]
 )
@@ -118,7 +118,7 @@ api_router.include_router(
     admin_calibration.router, prefix="/admin/calibration", tags=["admin-calibration"]
 )
 api_router.include_router(
-    admin_fuel_accuracy.router, prefix="/admin", tags=["admin-fuel-accuracy"]
+    admin_fuel_accuracy, prefix="/admin", tags=["admin-fuel-accuracy"]
 )
 api_router.include_router(admin_pilot.router, prefix="/admin", tags=["admin-pilot"])
 api_router.include_router(

@@ -1,1 +1,0 @@
-"""Akaryakıt kart sistemi entegrasyonları."""

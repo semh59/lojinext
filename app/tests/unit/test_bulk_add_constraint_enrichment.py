@@ -22,9 +22,9 @@ import pytest
 
 from app.core.entities.models import SeferCreate
 from app.core.services.sefer_write_service import SeferWriteService
-from app.core.services.yakit_service import YakitService
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.yakit import YakitCreate
+from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
+from v2.modules.fuel.schemas import YakitCreate
 
 
 class _BaseUoW:
@@ -69,7 +69,6 @@ async def test_bulk_add_yakit_emits_fiyat_tl_and_toplam_tutar(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
-    service = YakitService(repo=AsyncMock(), event_bus=MagicMock())
     payload = [
         YakitCreate(
             arac_id=1,
@@ -82,7 +81,7 @@ async def test_bulk_add_yakit_emits_fiyat_tl_and_toplam_tutar(monkeypatch):
         )
     ]
 
-    count = await service.bulk_add_yakit(payload)
+    count = await bulk_add_yakit(payload)
     assert count == 1
     assert len(captured) == 1
     row = captured[0][0]

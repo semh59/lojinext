@@ -12,6 +12,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from app.core.entities import SeferCreate, YakitAlimiCreate
+from v2.modules.fuel.application.add_yakit import add_yakit
 
 
 @pytest.mark.asyncio
@@ -20,13 +21,11 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
     from app.core.services.analiz_service import AnalizService
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
-    from app.core.services.yakit_service import YakitService
     from app.database.repositories.sofor_repo import get_sofor_repo
 
     sofor_repo_local = get_sofor_repo(session=db_session)
 
     sefer_service = SeferService(repo=sefer_repo)
-    yakit_service = YakitService(repo=yakit_repo)
     report_service = ReportService(
         sefer_repo=sefer_repo,
         yakit_repo=yakit_repo,
@@ -100,7 +99,7 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
         )
     )
 
-    await yakit_service.add_yakit(
+    await add_yakit(
         YakitAlimiCreate(
             tarih=date.today() - timedelta(days=5),
             arac_id=arac2_id,
@@ -112,7 +111,7 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
         )
     )
 
-    await yakit_service.add_yakit(
+    await add_yakit(
         YakitAlimiCreate(
             tarih=date.today(),
             arac_id=arac2_id,

@@ -164,11 +164,11 @@ import app.workers.tasks.coaching_tasks  # noqa: E402,F401
 import app.workers.tasks.compliance_tasks  # noqa: E402,F401
 import app.workers.tasks.dlq_tasks  # noqa: E402,F401
 import app.workers.tasks.error_digest  # noqa: E402,F401
-import app.workers.tasks.fuel_coverage_check  # noqa: E402,F401
 import app.workers.tasks.outbox_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_backfill_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_tasks  # noqa: E402,F401
 import app.workers.tasks.theft_tasks  # noqa: E402,F401
+import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
 from app.infrastructure.resilience.shutdown import (  # noqa: E402
     register_shutdown_handlers,

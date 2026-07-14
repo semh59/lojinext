@@ -44,7 +44,6 @@ class ImportService:
     def __init__(
         self,
         sefer_service=None,
-        yakit_service=None,
         arac_repo=None,
         sofor_repo=None,
         sofor_service=None,
@@ -53,8 +52,6 @@ class ImportService:
     ):
         self.sefer_service = sefer_service
         self._sefer_service = sefer_service
-        self.yakit_service = yakit_service
-        self._yakit_service = yakit_service
         self.arac_repo = arac_repo
         self._arac_repo = arac_repo
         self.sofor_repo = sofor_repo
@@ -721,7 +718,7 @@ class ImportService:
           4. Etkilenen her arac için recalculate_vehicle_periods çağrılır
              (km aralıklarına göre tüketim periyotları hesaplanır)
         """
-        from app.schemas.yakit import YakitCreate
+        from v2.modules.fuel.schemas import YakitCreate
 
         try:
             items = await ExcelService.parse_yakit_excel(content)
@@ -791,20 +788,21 @@ class ImportService:
 
             count = 0
             if yakit_list:
-                count = await self.yakit_service.bulk_add_yakit(yakit_list)
+                from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
+
+                count = await bulk_add_yakit(yakit_list)
 
                 # Periyot recalc — yakıt fişi km aralıklarından tüketim türetir.
                 # YAKIT_ADDED event burada subscribe edilmiyor; bulk import'tan
                 # sonra manuel çağrı tek seferde tetikleyici.
                 try:
-                    from app.core.services.period_calculation_service import (
-                        get_period_calculation_service,
+                    from v2.modules.fuel.application.recalculate_vehicle_periods import (
+                        recalculate_vehicle_periods,
                     )
 
-                    period_svc = get_period_calculation_service()
                     for arac_id in affected_arac_ids:
                         try:
-                            await period_svc.recalculate_vehicle_periods(arac_id)
+                            await recalculate_vehicle_periods(arac_id)
                         except Exception as pe:
                             logger.warning(
                                 "Period recalc failed for arac %s: %s",

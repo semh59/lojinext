@@ -215,18 +215,19 @@ async def test_service_factories_build_real_services():
     get_arac_service/get_dorse_service removed from deps.py in dalga 3 —
     fleet no longer has service classes (B.1 free-function refactor); the
     v2 routers call use-case functions directly, no DI factory to assert on.
+    get_yakit_service removed from deps.py in dalga 4 for the same reason —
+    fuel no longer has a YakitService class, v2 fuel routes call use-case
+    functions directly.
     """
     from app.api import deps
     from app.core.services.auth_service import AuthService
     from app.core.services.sefer_service import SeferService
     from app.core.services.sofor_service import SoforService
-    from app.core.services.yakit_service import YakitService
     from app.database.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         assert isinstance(await deps.get_sofor_service(uow), SoforService)
         assert isinstance(await deps.get_sefer_service(uow), SeferService)
-        assert isinstance(await deps.get_yakit_service(uow), YakitService)
         assert isinstance(await deps.get_auth_service(uow), AuthService)
 
 

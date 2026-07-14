@@ -181,7 +181,7 @@ class YakitRepository(BaseRepository[YakitAlimi]):
     ) -> List[Dict[str, Any]]:
         """Aracın son N (aktif) yakıt kaydını km_sayac'a göre azalan sırayla getirir.
 
-        Rolling outlier tespiti (``YakitService._check_rolling_outlier``) için.
+        Rolling outlier tespiti (``application/add_yakit.py``) için.
         """
         query = text(
             """

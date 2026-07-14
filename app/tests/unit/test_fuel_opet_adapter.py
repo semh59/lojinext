@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
-from app.core.integrations.fuel.opet import OpetFuelProvider
+from v2.modules.fuel.infrastructure.integrations.opet_client import OpetFuelProvider
 
 pytestmark = pytest.mark.unit
 

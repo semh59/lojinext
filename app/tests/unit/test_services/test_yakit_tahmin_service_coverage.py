@@ -1,11 +1,26 @@
 """
-YakitTahminService coverage tests — targeting uncovered branches.
-Repos and external calls are fully mocked.
+Fuel consumption-prediction (yakit tahmin) coverage tests — targeting
+uncovered branches. Repos and external calls are fully mocked.
+
+Dalga 4 (B.1 free-function refactor): YakitTahminService class deleted —
+train_model/predict/retrain_all_models are free functions in
+v2/modules/fuel/domain/consumption_prediction.py, each fetching its repo
+fresh via an inline `from ... import get_x_repo` call (no cached instance
+attribute left to inject a mock into) — patch target is the SOURCE module
+(app.database.repositories.analiz_repo.get_analiz_repo /
+v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo), same
+inline-import gotcha documented in location/CLAUDE.md.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from v2.modules.fuel.domain.consumption_prediction import (
+    predict,
+    retrain_all_models,
+    train_model,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -13,12 +28,6 @@ pytestmark = pytest.mark.unit
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_service():
-    from app.core.services.yakit_tahmin_service import YakitTahminService
-
-    return YakitTahminService()
 
 
 def _make_analiz_repo_mock(training_data=None, params=None):
@@ -52,6 +61,20 @@ def _make_valid_params():
     }
 
 
+def _patch_analiz_repo(mock_repo):
+    return patch(
+        "app.database.repositories.analiz_repo.get_analiz_repo",
+        return_value=mock_repo,
+    )
+
+
+def _patch_arac_repo(mock_repo):
+    return patch(
+        "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
+        return_value=mock_repo,
+    )
+
+
 # ---------------------------------------------------------------------------
 # train_model
 # ---------------------------------------------------------------------------
@@ -59,25 +82,20 @@ def _make_valid_params():
 
 class TestTrainModel:
     async def test_returns_failure_when_no_training_data(self):
-        svc = _make_service()
-        svc._analiz_repo = _make_analiz_repo_mock(training_data=[])
-
-        result = await svc.train_model(arac_id=1)
+        with _patch_analiz_repo(_make_analiz_repo_mock(training_data=[])):
+            result = await train_model(arac_id=1)
 
         assert result["success"] is False
         assert "error" in result
 
     async def test_returns_failure_when_all_zero_distance(self):
-        svc = _make_service()
         bad_data = [{"mesafe_km": 0, "tuketim": 100, "ton": 13, "zorluk": "Normal"}]
-        svc._analiz_repo = _make_analiz_repo_mock(training_data=bad_data)
-
-        result = await svc.train_model(arac_id=1)
+        with _patch_analiz_repo(_make_analiz_repo_mock(training_data=bad_data)):
+            result = await train_model(arac_id=1)
 
         assert result["success"] is False
 
     async def test_trains_successfully_with_valid_data(self):
-        svc = _make_service()
         training_data = [
             {
                 "mesafe_km": 450,
@@ -105,9 +123,8 @@ class TestTrainModel:
             },
         ]
         mock_analiz = _make_analiz_repo_mock(training_data=training_data)
-        svc._analiz_repo = mock_analiz
-
-        result = await svc.train_model(arac_id=1)
+        with _patch_analiz_repo(mock_analiz):
+            result = await train_model(arac_id=1)
 
         assert result["success"] is True
         assert "r_squared" in result
@@ -115,7 +132,6 @@ class TestTrainModel:
 
     async def test_uses_zorluk_map_correctly(self):
         """zorluk='Zor' should map to 2 in training features."""
-        svc = _make_service()
         training_data = [
             {
                 "mesafe_km": 300,
@@ -135,17 +151,14 @@ class TestTrainModel:
             },
         ]
         mock_analiz = _make_analiz_repo_mock(training_data=training_data)
-        svc._analiz_repo = mock_analiz
-
-        result = await svc.train_model(arac_id=1)
+        with _patch_analiz_repo(mock_analiz):
+            result = await train_model(arac_id=1)
         assert result["success"] is True
 
     async def test_does_not_save_params_on_failure(self):
-        svc = _make_service()
         mock_analiz = _make_analiz_repo_mock(training_data=[])
-        svc._analiz_repo = mock_analiz
-
-        await svc.train_model(arac_id=1)
+        with _patch_analiz_repo(mock_analiz):
+            await train_model(arac_id=1)
 
         mock_analiz.save_model_params.assert_not_called()
 
@@ -157,10 +170,8 @@ class TestTrainModel:
 
 class TestPredictNoModel:
     async def test_returns_failure_when_no_params(self):
-        svc = _make_service()
-        svc._analiz_repo = _make_analiz_repo_mock(params=None)
-
-        result = await svc.predict(arac_id=1, mesafe_km=300, ton=13)
+        with _patch_analiz_repo(_make_analiz_repo_mock(params=None)):
+            result = await predict(arac_id=1, mesafe_km=300, ton=13)
 
         assert result["success"] is False
         assert result.get("requires_training") is True
@@ -173,13 +184,15 @@ class TestPredictNoModel:
 
 class TestPredictWithModel:
     async def test_predict_success_no_sofor(self):
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
-
-        result = await svc.predict(
-            arac_id=1, mesafe_km=300.0, ton=13.0, ascent_m=300.0, flat_distance_km=240.0
-        )
+        with _patch_analiz_repo(_make_analiz_repo_mock(params=params)):
+            result = await predict(
+                arac_id=1,
+                mesafe_km=300.0,
+                ton=13.0,
+                ascent_m=300.0,
+                flat_distance_km=240.0,
+            )
 
         assert result["success"] is True
         assert result["tahmin_litre"] > 0
@@ -188,9 +201,7 @@ class TestPredictWithModel:
 
     async def test_predict_applies_lower_margin_for_sofor_below_avg(self):
         """sofor_faktor < 1 → margin_percent = 0.05."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = 80  # score > 50 → sofor_faktor < 1.0
@@ -202,10 +213,14 @@ class TestPredictWithModel:
             return_value=mock_analiz_svc
         )
 
-        with patch.dict(
-            "sys.modules", {"app.core.services.sofor_analiz_service": mock_sofor_module}
+        with (
+            _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
+            patch.dict(
+                "sys.modules",
+                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            ),
         ):
-            result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
 
         assert result["success"] is True
         # sofor_faktor should be clamped to 0.9..1.1
@@ -213,9 +228,7 @@ class TestPredictWithModel:
 
     async def test_predict_applies_higher_margin_for_high_risk_sofor(self):
         """sofor_faktor > 1 → margin_percent = 0.08."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = 20  # score < 50 → sofor_faktor > 1.0
@@ -227,19 +240,21 @@ class TestPredictWithModel:
             return_value=mock_analiz_svc
         )
 
-        with patch.dict(
-            "sys.modules", {"app.core.services.sofor_analiz_service": mock_sofor_module}
+        with (
+            _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
+            patch.dict(
+                "sys.modules",
+                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            ),
         ):
-            result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
 
         assert result["success"] is True
         assert result["sofor_faktor"] > 1.0
 
     async def test_predict_sofor_factor_defaults_to_1_when_no_stats(self):
         """Empty stats list → sofor_faktor = 1.0."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
 
         mock_analiz_svc = AsyncMock()
         mock_analiz_svc.get_driver_stats = AsyncMock(return_value=[])
@@ -249,18 +264,20 @@ class TestPredictWithModel:
             return_value=mock_analiz_svc
         )
 
-        with patch.dict(
-            "sys.modules", {"app.core.services.sofor_analiz_service": mock_sofor_module}
+        with (
+            _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
+            patch.dict(
+                "sys.modules",
+                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            ),
         ):
-            result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
 
         assert result["sofor_faktor"] == 1.0
 
     async def test_predict_sofor_factor_defaults_to_1_on_none_score(self):
         """performans_puani = None → sofor_faktor = 1.0."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = None
@@ -272,35 +289,40 @@ class TestPredictWithModel:
             return_value=mock_analiz_svc
         )
 
-        with patch.dict(
-            "sys.modules", {"app.core.services.sofor_analiz_service": mock_sofor_module}
+        with (
+            _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
+            patch.dict(
+                "sys.modules",
+                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            ),
         ):
-            result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
 
         assert result["sofor_faktor"] == 1.0
 
     async def test_predict_sofor_service_exception_caught(self):
         """Exception in driver factor calc falls back to 1.0."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
 
         mock_sofor_module = MagicMock()
         mock_sofor_module.get_sofor_analiz_service = MagicMock(
             side_effect=Exception("sofor service down")
         )
 
-        with patch.dict(
-            "sys.modules", {"app.core.services.sofor_analiz_service": mock_sofor_module}
+        with (
+            _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
+            patch.dict(
+                "sys.modules",
+                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            ),
         ):
-            result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
 
         assert result["success"] is True
         assert result["sofor_faktor"] == 1.0
 
     async def test_predict_uses_scaling_from_top_level_params(self):
         """Params with top-level 'scaling' key (not inside coefficients) are loaded."""
-        svc = _make_service()
         params = {
             "r_squared": 0.85,
             "sample_count": 30,
@@ -314,90 +336,29 @@ class TestPredictWithModel:
                 "intercept": 32.0,
             },
         }
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
-
-        result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0)
+        with _patch_analiz_repo(_make_analiz_repo_mock(params=params)):
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0)
 
         assert result["success"] is True
 
     async def test_predict_all_difficulty_levels(self):
         """Ensure zorluk mapping works for all 3 levels."""
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
-
-        for zorluk in ["Normal", "Orta", "Zor"]:
-            result = await svc.predict(
-                arac_id=1, mesafe_km=300.0, ton=13.0, zorluk=zorluk
-            )
-            assert result["success"] is True, f"Failed for zorluk={zorluk}"
+        with _patch_analiz_repo(_make_analiz_repo_mock(params=params)):
+            for zorluk in ["Normal", "Orta", "Zor"]:
+                result = await predict(
+                    arac_id=1, mesafe_km=300.0, ton=13.0, zorluk=zorluk
+                )
+                assert result["success"] is True, f"Failed for zorluk={zorluk}"
 
     async def test_tuketim_100km_calculation(self):
-        svc = _make_service()
         params = _make_valid_params()
-        svc._analiz_repo = _make_analiz_repo_mock(params=params)
-
-        result = await svc.predict(arac_id=1, mesafe_km=300.0, ton=13.0)
+        with _patch_analiz_repo(_make_analiz_repo_mock(params=params)):
+            result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0)
 
         assert result["success"] is True
         expected = (result["tahmin_litre"] / 300.0) * 100
         assert abs(result["tahmin_tuketim_100km"] - expected) < 0.5
-
-
-# ---------------------------------------------------------------------------
-# lazy repo properties
-# ---------------------------------------------------------------------------
-
-
-class TestRepoProperties:
-    def test_analiz_repo_lazy_loads(self):
-        svc = _make_service()
-        mock_repo = MagicMock()
-        mock_analiz_module = MagicMock()
-        mock_analiz_module.get_analiz_repo = MagicMock(return_value=mock_repo)
-
-        with patch.dict(
-            "sys.modules",
-            {"app.database.repositories.analiz_repo": mock_analiz_module},
-        ):
-            # Reset cached value so property re-fetches
-            svc._analiz_repo = None
-            repo = svc.analiz_repo
-
-        assert repo is mock_repo
-
-    def test_analiz_repo_is_cached(self):
-        svc = _make_service()
-        mock_repo = MagicMock()
-        mock_analiz_module = MagicMock()
-        mock_analiz_module.get_analiz_repo = MagicMock(return_value=mock_repo)
-
-        with patch.dict(
-            "sys.modules",
-            {"app.database.repositories.analiz_repo": mock_analiz_module},
-        ):
-            svc._analiz_repo = None
-            r1 = svc.analiz_repo
-            r2 = svc.analiz_repo  # second access uses cache
-
-        assert r1 is r2
-        # factory called once because cache was populated
-        mock_analiz_module.get_analiz_repo.assert_called_once()
-
-    def test_arac_repo_lazy_loads(self):
-        svc = _make_service()
-        mock_repo = MagicMock()
-        mock_arac_module = MagicMock()
-        mock_arac_module.get_arac_repo = MagicMock(return_value=mock_repo)
-
-        with patch.dict(
-            "sys.modules",
-            {"v2.modules.fleet.infrastructure.vehicle_repository": mock_arac_module},
-        ):
-            svc._arac_repo = None
-            repo = svc.arac_repo
-
-        assert repo is mock_repo
 
 
 # ---------------------------------------------------------------------------
@@ -407,20 +368,16 @@ class TestRepoProperties:
 
 class TestRetrainAllModels:
     async def test_retrain_empty_fleet_returns_zero_success(self):
-        svc = _make_service()
-        svc._arac_repo = _make_arac_repo_mock(vehicles=[])
-        svc._analiz_repo = _make_analiz_repo_mock()
-
-        result = await svc.retrain_all_models()
+        with (
+            _patch_arac_repo(_make_arac_repo_mock(vehicles=[])),
+            _patch_analiz_repo(_make_analiz_repo_mock()),
+        ):
+            result = await retrain_all_models()
 
         assert result["success"] == 0
         assert result["failed"] == 0
 
     async def test_retrain_single_vehicle_success(self):
-        svc = _make_service()
-        svc._arac_repo = _make_arac_repo_mock(
-            vehicles=[{"id": 1, "plaka": "34TEST001"}]
-        )
         training_data = [
             {
                 "mesafe_km": 450,
@@ -439,32 +396,43 @@ class TestRetrainAllModels:
                 "flat_distance_km": 240,
             },
         ]
-        svc._analiz_repo = _make_analiz_repo_mock(training_data=training_data)
-
-        result = await svc.retrain_all_models()
+        with (
+            _patch_arac_repo(
+                _make_arac_repo_mock(vehicles=[{"id": 1, "plaka": "34TEST001"}])
+            ),
+            _patch_analiz_repo(_make_analiz_repo_mock(training_data=training_data)),
+        ):
+            result = await retrain_all_models()
 
         assert result["success"] == 1
         assert result["failed"] == 0
 
     async def test_retrain_single_vehicle_failure(self):
-        svc = _make_service()
-        svc._arac_repo = _make_arac_repo_mock(
-            vehicles=[{"id": 1, "plaka": "34FAIL001"}]
-        )
-        svc._analiz_repo = _make_analiz_repo_mock(training_data=[])
-
-        result = await svc.retrain_all_models()
+        with (
+            _patch_arac_repo(
+                _make_arac_repo_mock(vehicles=[{"id": 1, "plaka": "34FAIL001"}])
+            ),
+            _patch_analiz_repo(_make_analiz_repo_mock(training_data=[])),
+        ):
+            result = await retrain_all_models()
 
         assert result["failed"] == 1
         assert result["success"] == 0
 
     async def test_retrain_details_contains_plaka(self):
-        svc = _make_service()
-        svc._arac_repo = _make_arac_repo_mock(
-            vehicles=[{"id": 1, "plaka": "34DETAIL001"}]
-        )
-        svc._analiz_repo = _make_analiz_repo_mock(training_data=[])
-
-        result = await svc.retrain_all_models()
+        with (
+            _patch_arac_repo(
+                _make_arac_repo_mock(vehicles=[{"id": 1, "plaka": "34DETAIL001"}])
+            ),
+            _patch_analiz_repo(_make_analiz_repo_mock(training_data=[])),
+        ):
+            result = await retrain_all_models()
 
         assert any("34DETAIL001" in d for d in result["details"])
+
+
+# TestRepoProperties removed — YakitTahminService's cached `_analiz_repo`/
+# `_arac_repo` lazy properties deleted in dalga 4 (B.1 free-function
+# refactor, v2.modules.fuel); train_model/predict/retrain_all_models each
+# fetch their repo fresh via an inline import + factory call, no caching
+# behavior left to test.

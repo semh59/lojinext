@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import app.database.repositories.yakit_repo as yakit_repo_mod
+import v2.modules.fuel.infrastructure.repository as yakit_repo_mod
 
 pytestmark = pytest.mark.integration
 

@@ -50,7 +50,6 @@ def svc():
     """
     return ImportService(
         sefer_service=AsyncMock(),
-        yakit_service=AsyncMock(),
         arac_repo=AsyncMock(),
         sofor_repo=AsyncMock(),
         sofor_service=AsyncMock(),
@@ -717,7 +716,6 @@ class TestProcessYakitImportExtra:
                 }
             ]
         )
-        svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=0)
 
         count, errors = await svc.process_yakit_import(b"fake")
         assert count == 0
@@ -740,7 +738,6 @@ class TestProcessYakitImportExtra:
                 }
             ]
         )
-        svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=0)
 
         count, errors = await svc.process_yakit_import(b"fake")
         assert count == 0
@@ -762,12 +759,19 @@ class TestProcessYakitImportExtra:
                 }
             ]
         )
-        svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=1)
 
-        # Simulate period recalc failure by patching at its actual import location
-        with patch(
-            "app.core.services.period_calculation_service.get_period_calculation_service",
-            side_effect=Exception("service unavailable"),
+        # bulk_add_yakit is a free function imported inline inside
+        # process_yakit_import — patch target is the SOURCE module (same
+        # inline-import gotcha as bulk_add_vehicles, see location/CLAUDE.md).
+        with (
+            patch(
+                "v2.modules.fuel.application.bulk_add_yakit.bulk_add_yakit",
+                AsyncMock(return_value=1),
+            ),
+            patch(
+                "v2.modules.fuel.application.recalculate_vehicle_periods.recalculate_vehicle_periods",
+                side_effect=Exception("service unavailable"),
+            ),
         ):
             count, errors = await svc.process_yakit_import(b"fake")
 

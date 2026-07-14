@@ -12,8 +12,10 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
-from app.core.services.fuel_coverage import compute_coverage
-from app.workers.tasks.fuel_coverage_check import _run_fuel_coverage_check
+from v2.modules.fuel.infrastructure.tasks import (
+    _run_fuel_coverage_check,
+    compute_coverage,
+)
 
 pytestmark = pytest.mark.integration
 

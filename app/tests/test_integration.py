@@ -5,6 +5,8 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.entities import YakitAlimiCreate
+from v2.modules.fuel.application.add_yakit import add_yakit
+from v2.modules.fuel.application.update_yakit import update_yakit
 
 
 @pytest.fixture
@@ -22,7 +24,7 @@ async def test_arac_id(db_session):
 
 
 @pytest.mark.asyncio
-async def test_yakit_ekleme_basarili(yakit_service, yakit_repo, test_arac_id):
+async def test_yakit_ekleme_basarili(yakit_repo, test_arac_id):
     """Doğru veriyle yakıt ekleme testi"""
     dto = YakitAlimiCreate(
         tarih=date.today(),
@@ -33,7 +35,7 @@ async def test_yakit_ekleme_basarili(yakit_service, yakit_repo, test_arac_id):
         km_sayac=50100,
     )
 
-    y_id = await yakit_service.add_yakit(dto)
+    y_id = await add_yakit(dto)
 
     # DB'den oku ve doğrula
     from app.database.unit_of_work import UnitOfWork
@@ -48,7 +50,7 @@ async def test_yakit_ekleme_basarili(yakit_service, yakit_repo, test_arac_id):
 
 
 @pytest.mark.asyncio
-async def test_hatali_veri_engelleme(yakit_service, test_arac_id):
+async def test_hatali_veri_engelleme(test_arac_id):
     """Negatif değerlerin engellenmesi testi"""
 
     # Negatif litre - Model validasyonu sırasında hata fırlatmalı
@@ -71,7 +73,7 @@ async def test_hatali_veri_engelleme(yakit_service, test_arac_id):
 
 
 @pytest.mark.asyncio
-async def test_update_islemi(yakit_service, test_arac_id):
+async def test_update_islemi(test_arac_id):
     """Güncelleme testi"""
     # Önce ekle
     dto = YakitAlimiCreate(
@@ -81,13 +83,13 @@ async def test_update_islemi(yakit_service, test_arac_id):
         litre=50.0,
         km_sayac=10000,
     )
-    y_id = await yakit_service.add_yakit(dto)
+    y_id = await add_yakit(dto)
 
     # Güncelle (Fiyat değişti)
     from app.core.entities.models import YakitUpdate
 
     update_dto = YakitUpdate(fiyat_tl=Decimal("50.0"), litre=50.0)
-    await yakit_service.update_yakit(y_id, update_dto)
+    await update_yakit(y_id, update_dto)
 
     # Kontrol et
     from app.database.unit_of_work import UnitOfWork
@@ -100,10 +102,10 @@ async def test_update_islemi(yakit_service, test_arac_id):
 
 
 @pytest.mark.asyncio
-async def test_odometer_rollback_prevented(yakit_service, test_arac_id):
+async def test_odometer_rollback_prevented(test_arac_id):
     """KM düşüşünün engellenmesi testi"""
     # 1. Kayıt
-    await yakit_service.add_yakit(
+    await add_yakit(
         YakitAlimiCreate(
             tarih=date.today(),
             arac_id=test_arac_id,
@@ -123,11 +125,11 @@ async def test_odometer_rollback_prevented(yakit_service, test_arac_id):
     )
 
     with pytest.raises(ValueError, match="KM Sayacı düşemez"):
-        await yakit_service.add_yakit(dto)
+        await add_yakit(dto)
 
 
 @pytest.mark.asyncio
-async def test_future_date_prevented(yakit_service, test_arac_id):
+async def test_future_date_prevented(test_arac_id):
     """İleri tarihli giriş engeli"""
     future = date.today() + timedelta(days=1)
 
@@ -140,4 +142,4 @@ async def test_future_date_prevented(yakit_service, test_arac_id):
     )
     # Service katmanında kontrol yapılmalı
     with pytest.raises(ValueError, match="İleri tarihli"):
-        await yakit_service.add_yakit(dto)
+        await add_yakit(dto)

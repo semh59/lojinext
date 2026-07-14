@@ -1,4 +1,4 @@
-"""OPET Filo Kart adapter.
+"""Akaryakıt kart sistemi provider — OPET Filo Kart adapter + shared Protocol.
 
 DÜRÜST NOT: Bu adapter gerçek OPET API'sine karşı DOĞRULANMAMIŞ — OPET'in
 gerçek B2B endpoint/auth/response şeması henüz elimizde yok (sağlayıcı
@@ -13,18 +13,19 @@ mapping'in güncellenmesi gerekir.
      FUEL_ACCOUNT_ID alanlarını doldur.
   2. OPET'in gerçek B2B dokümanı geldiğinde bu dosyadaki endpoint
      path'lerini ve response mapping'ini gerçek şemaya göre güncelle.
-  3. registry.py'de FUEL_PROVIDERS["opet"] = OpetFuelProvider
-     zaten kayıtlı.
+  3. app/core/integrations/registry.py'de FUEL_PROVIDERS["opet"] =
+     OpetFuelProvider zaten kayıtlı (platform-infra henüz taşınmadı,
+     registry.py bu dosyaya geçici olarak import atar).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Protocol
 
 import httpx
 
-from app.core.integrations.fuel.base import FuelTransaction
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import (
     emit_network_error,
@@ -34,6 +35,48 @@ from app.infrastructure.monitoring.external_api_probe import (
 logger = get_logger(__name__)
 
 _TIMEOUT = 10.0
+
+
+@dataclass
+class FuelTransaction:
+    """Provider'dan gelen tek bir akaryakıt fişi (normalize edilmiş)."""
+
+    external_transaction_id: str  # provider'da unique işlem ID (idempotency)
+    plaka: str  # normalize plaka
+    timestamp: datetime
+    station_name: str  # "Shell Maslak" vb.
+    station_city: Optional[str]
+    liters: float
+    price_per_liter: float
+    total_amount_tl: float
+    odometer_km: Optional[int]  # araç km sayacı (fişte basılı)
+    driver_card_id: Optional[str]  # kart başına şoför çözümleme
+    receipt_no: Optional[str]
+    fuel_type: Optional[str] = None  # "DIZEL", "MOTORIN" vs.
+    raw_payload: dict = field(default_factory=dict)
+
+
+class FuelCardProvider(Protocol):
+    """Tüm akaryakıt kart adapter'larının implement etmesi gereken interface.
+
+    `provider_key` adapter registry'sinde kullanılan kısa isim
+    (opet/shell/bp/po vb.).
+    """
+
+    provider_key: str
+
+    async def fetch_transactions(
+        self, since: datetime, until: Optional[datetime] = None
+    ) -> List[FuelTransaction]:
+        """`since` zamanından sonraki tüm işlemler.
+
+        Production'da pagination + rate-limit aware olmalı.
+        """
+        ...
+
+    async def healthcheck(self) -> bool:
+        """Provider erişilebilir mi."""
+        ...
 
 
 class OpetFuelProvider:

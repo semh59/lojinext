@@ -90,7 +90,6 @@ class TestContainer(unittest.TestCase):
 
         # Check Services
         self.assertIsNotNone(container.sefer_service)
-        self.assertIsNotNone(container.yakit_service)
         self.assertIsNotNone(container.analiz_service)
         self.assertIsNotNone(container.import_service)
         self.assertIsNotNone(container.report_service)
@@ -98,7 +97,6 @@ class TestContainer(unittest.TestCase):
 
         # Check Injection (White-box testing)
         self.assertEqual(container.sefer_service.repo, container.sefer_repo)
-        self.assertEqual(container.yakit_service.repo, container.yakit_repo)
 
         # Analiz Service Injection
         self.assertEqual(container.analiz_service.yakit_repo, container.yakit_repo)

@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 3/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; sıradaki: dalga 4 (fuel), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 4/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; sıradaki: dalga 5 (driver), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |

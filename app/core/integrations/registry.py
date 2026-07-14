@@ -18,9 +18,11 @@ from typing import Dict, Optional, Type
 from app.config import settings
 from app.core.integrations.avl.base import AVLProvider
 from app.core.integrations.avl.mobiliz import MobilizAVLProvider
-from app.core.integrations.fuel.base import FuelCardProvider
-from app.core.integrations.fuel.opet import OpetFuelProvider
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.fuel.infrastructure.integrations.opet_client import (
+    FuelCardProvider,
+    OpetFuelProvider,
+)
 
 logger = get_logger(__name__)
 

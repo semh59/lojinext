@@ -40,7 +40,6 @@ class TestResolveIds:
             arac_repo=MagicMock(),
             sofor_repo=MagicMock(),
             sefer_service=MagicMock(),
-            yakit_service=MagicMock(),
             sofor_service=MagicMock(),
         )
 
@@ -105,11 +104,12 @@ class TestProcessImports:
         bulk_add_* domain service'leri/fonksiyonları mock olarak kalır (ayrı
         sınır; await_args ile forward edilen payload yakalanır). Master
         listeleri ``process_*`` / ``execute_import`` içindeki gerçek UoW'tan
-        gelir. ``bulk_add_vehicles`` artık bir servis metodu değil, free
-        function — ``process_vehicle_import`` bunu inline import ile çağırır,
-        bu yüzden patch hedefi KAYNAK modül (v2.modules.fleet.application.
-        bulk_add_vehicles), tüketen modül değil (bkz. location/CLAUDE.md
-        inline-import gotcha'sı).
+        gelir. ``bulk_add_vehicles``/``bulk_add_yakit`` artık birer servis
+        metodu değil, free function — ``process_vehicle_import``/
+        ``process_yakit_import`` bunları inline import ile çağırır, bu
+        yüzden patch hedefi KAYNAK modül (v2.modules.fleet.application.
+        bulk_add_vehicles / v2.modules.fuel.application.bulk_add_yakit),
+        tüketen modül değil (bkz. location/CLAUDE.md inline-import gotcha'sı).
         """
         arac = await seed_arac(
             db_session, plaka="34ABC123", marka="Mercedes", bos_agirlik_kg=0
@@ -125,16 +125,18 @@ class TestProcessImports:
             arac_repo=AsyncMock(),
             sofor_repo=AsyncMock(),
             sefer_service=AsyncMock(),
-            yakit_service=AsyncMock(),
             sofor_service=AsyncMock(),
             dorse_repo=AsyncMock(),
             lokasyon_repo=AsyncMock(),
         )
         svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
-        svc.yakit_service.bulk_add_yakit = AsyncMock(return_value=1)
         svc.sofor_service.bulk_add_sofor = AsyncMock(return_value=1)
         monkeypatch.setattr(
             "v2.modules.fleet.application.bulk_add_vehicles.bulk_add_vehicles",
+            AsyncMock(return_value=1),
+        )
+        monkeypatch.setattr(
+            "v2.modules.fuel.application.bulk_add_yakit.bulk_add_yakit",
             AsyncMock(return_value=1),
         )
         # Expose seeded rows + session for assertions.

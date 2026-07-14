@@ -144,8 +144,8 @@ async def test_error_stream_inactive_user_returns_403(async_client, db_session):
     """Token valid but user is inactive → 403."""
     from sqlalchemy import select
 
-    from app.core.security import get_password_hash
     from app.database.models import Kullanici, Rol
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     # Ensure role exists
     result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))

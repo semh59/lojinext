@@ -20,13 +20,13 @@ from app.core.services.import_service import ImportService, get_import_service
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.api_responses import (
     ImportCommitResponse,
     ImportHistoryItem,
     ImportPreviewResponse,
     SuccessCountResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 router = APIRouter()
 # Removed global instantiation to support proper DI

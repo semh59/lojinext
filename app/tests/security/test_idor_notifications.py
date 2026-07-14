@@ -38,8 +38,8 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import insert, select
 
-from app.core.security import create_access_token, get_password_hash
 from app.database.models import BildirimGecmisi, Kullanici, Rol
+from v2.modules.auth_rbac.domain.security import create_access_token, get_password_hash
 
 
 @pytest.mark.integration

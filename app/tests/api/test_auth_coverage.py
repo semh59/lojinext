@@ -49,18 +49,38 @@ def _make_fake_auth_service(
 
 @contextmanager
 def _override_auth_service(fake_svc):
-    """Context manager to override the auth service FastAPI dependency."""
-    from app.api.deps import get_auth_service
-    from app.main import app
+    """Context manager to monkeypatch the free-function auth_service module.
 
-    async def _fake():
-        return fake_svc
+    ``v2.modules.auth_rbac.api.auth_routes`` calls ``auth_service.<fn>(...)``
+    directly (no FastAPI DI factory anymore — the ``AuthService`` class and
+    its ``get_auth_service`` dependency were removed in the B.1 free-function
+    migration). Patch each of the 5 use-case functions on the module object
+    that ``auth_routes`` imported, so every call site sees the fake.
+    """
+    from v2.modules.auth_rbac.api import auth_routes
 
-    app.dependency_overrides[get_auth_service] = _fake
+    originals = {
+        name: getattr(auth_routes.auth_service, name)
+        for name in (
+            "authenticate",
+            "refresh_session",
+            "revoke_session",
+            "request_password_reset",
+            "reset_password",
+        )
+    }
+    for name in originals:
+        fake_fn = getattr(fake_svc, name)
+
+        async def _bound(*args, _fake_fn=fake_fn, uow=None, **kwargs):
+            return await _fake_fn(*args, **kwargs)
+
+        setattr(auth_routes.auth_service, name, _bound)
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_auth_service, None)
+        for name, fn in originals.items():
+            setattr(auth_routes.auth_service, name, fn)
 
 
 # ─── POST /auth/token — super-admin bypass ───────────────────────────────────
@@ -327,7 +347,7 @@ async def test_logout_blacklist_failure_returns_warning(
         raise RuntimeError("Redis down")
 
     monkeypatch.setattr(
-        "app.infrastructure.security.token_blacklist.blacklist.add",
+        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.add",
         _bad_add,
     )
 

@@ -1,19 +1,20 @@
-"""PreferenceService tests — real DB, no mocked UoW.
+"""preference_service use-case tests — real DB, no mocked UoW.
 
 Previously these mocked the UnitOfWork/session and asserted on inner calls
 (`session.add.assert_called()`, `setting_repo.update.assert_called()`), which
-verifies *that a method was called* rather than *the persisted result*. Here the
-service runs against the real test DB (db_session monkeypatches AsyncSessionLocal,
-so PreferenceService's internal `UnitOfWork()` uses the test session) and we assert
-the real KullaniciAyari rows (created / updated / deleted / default-flagged).
+verifies *that a method was called* rather than *the persisted result*. Here
+the free functions run against the real test DB (db_session monkeypatches
+AsyncSessionLocal, so the internal `UnitOfWork()` fallback uses the test
+session) and we assert the real KullaniciAyari rows (created / updated /
+deleted / default-flagged).
 """
 
 import pytest
 from sqlalchemy import insert, select
 
-from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici, KullaniciAyari, Rol
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.auth_rbac.application import preference_service
 
 pytestmark = pytest.mark.integration
 
@@ -67,7 +68,7 @@ class TestPreferenceService:
         uid = await _seed_user(db_session)
         await _seed_setting(db_session, uid, "dashboard", "filter", {"theme": "dark"})
 
-        result = await PreferenceService().get_preferences(
+        result = await preference_service.get_preferences(
             user_id=uid, modul="dashboard"
         )
 
@@ -76,13 +77,13 @@ class TestPreferenceService:
 
     async def test_get_preferences_not_found(self, db_session):
         uid = await _seed_user(db_session)
-        result = await PreferenceService().get_preferences(user_id=uid, modul="trips")
+        result = await preference_service.get_preferences(user_id=uid, modul="trips")
         assert result == []
 
     async def test_save_preference_happy_path(self, db_session):
         uid = await _seed_user(db_session)
 
-        result = await PreferenceService().save_preference(
+        result = await preference_service.save_preference(
             user_id=uid, modul="dashboard", ayar_tipi="filter", deger={"theme": "dark"}
         )
 
@@ -99,7 +100,7 @@ class TestPreferenceService:
             db_session, uid, "dashboard", "sutun", {"cols": ["old"]}
         )
 
-        result = await PreferenceService().save_preference(
+        result = await preference_service.save_preference(
             user_id=uid, modul="dashboard", ayar_tipi="sutun", deger={"cols": ["new"]}
         )
 
@@ -122,16 +123,14 @@ class TestPreferenceService:
         uid = await _seed_user(db_session)
         sid = await _seed_setting(db_session, uid, "dashboard", "filter", {"a": 1})
 
-        result = await PreferenceService().delete_preference(user_id=uid, pref_id=sid)
+        result = await preference_service.delete_preference(user_id=uid, pref_id=sid)
 
         assert result is True
         assert await _get_setting(db_session, sid) is None
 
     async def test_delete_preference_not_found(self, db_session):
         uid = await _seed_user(db_session)
-        result = await PreferenceService().delete_preference(
-            user_id=uid, pref_id=999999
-        )
+        result = await preference_service.delete_preference(user_id=uid, pref_id=999999)
         assert result is False
 
     async def test_set_default(self, db_session):
@@ -140,7 +139,7 @@ class TestPreferenceService:
             db_session, uid, "dashboard", "filter", {"a": 1}, is_default=False
         )
 
-        result = await PreferenceService().set_default(user_id=uid, pref_id=sid)
+        result = await preference_service.set_default(user_id=uid, pref_id=sid)
 
         assert result is True
         row = await _get_setting(db_session, sid)
@@ -148,18 +147,16 @@ class TestPreferenceService:
 
     async def test_save_preference_rejects_zero_user_id(self):
         with pytest.raises(ValueError, match="Geçersiz kullanıcı"):
-            await PreferenceService().save_preference(
+            await preference_service.save_preference(
                 user_id=0, modul="dashboard", ayar_tipi="filter", deger={}
             )
 
     async def test_save_preference_rejects_negative_user_id(self):
         with pytest.raises(ValueError, match="Geçersiz kullanıcı"):
-            await PreferenceService().save_preference(
+            await preference_service.save_preference(
                 user_id=-1, modul="dashboard", ayar_tipi="filter", deger={}
             )
 
     def test_service_instantiation(self):
-        service = PreferenceService()
-        assert service is not None
-        assert hasattr(service, "get_preferences")
-        assert hasattr(service, "save_preference")
+        assert hasattr(preference_service, "get_preferences")
+        assert hasattr(preference_service, "save_preference")

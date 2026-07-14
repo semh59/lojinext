@@ -4,18 +4,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import get_current_active_user
 from app.core.exceptions import DomainError
-from app.core.services.preference_service import PreferenceService
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import SuccessOnlyResponse
-from app.schemas.preference import (
+from v2.modules.auth_rbac.application import preference_service
+from v2.modules.auth_rbac.schemas import (
     PreferenceCreate,
     PreferenceItem,
     PreferenceListResponse,
 )
 
 router = APIRouter()
-preference_service = PreferenceService()
 logger = get_logger(__name__)
 
 

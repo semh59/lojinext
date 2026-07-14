@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 5/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; sıradaki: dalga 6 (auth-rbac), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 6/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) yerel doğrulama TAMAM, push/CI bekliyor; sıradaki: dalga 7 (route-simulation kalan parçaları), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -39,7 +39,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
 | 4 | fuel | `modules/fuel.md` | ✅ main'de yeşil (commit `6721cdb`) |
 | 5 | driver | `modules/driver.md` | ✅ main'de yeşil (commit `9206e3f`) |
-| 6 | auth-rbac | `modules/auth-rbac.md` | 🔲 |
+| 6 | auth-rbac | `modules/auth-rbac.md` | 🟡 yerel doğrulama TAMAM, push bekliyor |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | 🔲 |
 | 9 | import-excel | `modules/import-excel.md` | 🔲 |
@@ -220,5 +220,28 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - CI'nın kendi "Backend unit tests" + "Frontend — Unit tests with coverage" koşumu (nihai, 3. push): tüm gate'ler `success`.
 - İlk iki denemede (bir fork ajanı taşımayı yaptı, context/turn limitine 3 kez takılıp yarıda kesildi — commit/push hiç tamamlanamadı) ana oturum devraldı: kalan test dönüşümünü bitirdi, doğrulamayı tekrarladı, mypy + regresyon bulgularını bulup düzeltti, commit/push/CI-izleme döngüsünü tamamladı.
 
+## DALGA 6 — 🟡 YEREL DOĞRULAMA TAMAM (2026-07-15), push/CI bekliyor
+
+**Kapsam:** auth_rbac modülü (21 dosya, 2.340 LOC) — `kullanicilar`/`roller`/`kullanici_oturumlari`/`kullanici_ayarlari` tablolarının tek sahibi, 25 route (auth+users+admin_users+admin_roles+preferences+ws_ticket). Detaylar `TASKS/modules/auth-rbac.md` + `v2/modules/auth_rbac/CLAUDE.md`.
+
+**Öne çıkan kararlar:**
+- `AuthService`/`UserService`/`PreferenceService` sınıfları kaldırıldı (B.1, önceki 5 dalgadaki kararla aynı gerekçe) — her use-case opsiyonel `uow: UnitOfWork | None = None` alan bağımsız fonksiyon (driver dalga 5'in score-breakdown 500 gotcha'sını tekrarlamamak için aynı imza deseni korundu, burada modül-seviyeli session'sız singleton repo riski zaten yoktu).
+- 3 sınıf istisnası: `SecurityService` (yalnız classmethod, hiç constructor/instance-state yok, stateless isim alanı), `LicenseEngine` (env'den bir kez yüklenen mutable `_LICENSE_HASHES` state'i, driver'ın `DriverPerformanceML`'iyle aynı gerekçe), `TokenBlacklist` (Redis-backed thread-safe singleton, pre-migration'dan korundu).
+- `app/api/deps.py` taşınmadı (FastAPI-wiring katmanı, driver/fleet kararıyla aynı) — yalnız importları güncellendi; `get_auth_service`/`AuthServiceDep` kaldırıldı, `auth_routes.py` doğrudan `UOWDep` alıyor.
+- KULLANICI_*/ROL_* event'leri hiçbir zaman event-bus'a bağlanmamış (diğer modüllerdeki ölü-event-publish deseninden FARKLI olarak burada enum değeri bile yok) — regresyon değil, `events.py` boş `__all__` ile dokümante ediyor.
+- 28 inbound FK (`kullanicilar` sistemin en büyük FK mıknatısı) CLAUDE.md'de FAZ2 için özellikle vurgulandı; multi-worker güvenlik state'i (`BruteForceDetector`/`RBACViolationTracker`) bilinçli olarak bu dalgaya taşınmadı, FAZ2 görevi olarak kaldı.
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB, ana oturumda bağımsız tekrar doğrulandı):**
+- `ruff check app v2 alembic` → temiz.
+- `mypy app/` → main ile birebir aynı 7 hata (git stash ile karşılaştırıldı); tek fark `rol_repo.py:40`'daki pre-existing hata dosya taşımasıyla `v2/modules/auth_rbac/infrastructure/repository.py:102`'ye taşındı — regresyon DEĞİL, aynı hatanın yeni konumu.
+- `pytest --collect-only app/tests` → 6739 test, 0 collect hatası.
+- Auth-özgü + dokunulan tüketici test dosyaları (21 dosya, foreground): 396 passed / 0 failed (fork raporu) — ana oturumda 9 kilit dosyadan alt-küme (auth_service/license/security/token_blacklist/rbac/idor/auth/auth_coverage/preferences) bağımsız tekrar koşuldu: **109 passed, 0 failed**.
+- Kök `tests/` (tam suite): 264 passed / 0 failed.
+- OpenAPI şema drift: YOK — ana oturumda container'dan canlı `/openapi.json` çekilip `frontend/openapi.json` ile route+operationId seti birebir karşılaştırıldı, fark 0.
+- Grep ile dangling-import taraması (ana oturum, bağımsız): eski 12 modül yoluna (`app.core.security`, `app.core.services.{auth,user,license,preference,security}_service`, `app.infrastructure.security.{jwt_handler,permission_checker,token_blacklist}`, `app.database.repositories.{kullanici,rol,session}_repo`) hiçbir kalan referans yok.
+- Gerçek bug bulunmadı — mekanik taşıma + B.1 dönüşümü, davranış değişikliği içermiyor.
+
+**Bilinen açık:** Tam `app/tests` suite'inin uçtan uca execute edilmiş hali (yalnız collect değil) lokal olarak teyit edilmedi — CI'nın kendi "Backend unit tests" koşumu bunu netleştirecek (driver dalga 5 emsaliyle aynı strateji).
+
 ## Son güncelleme
-2026-07-14 — **FAZ1 dalga 5 (driver) TAMAMLANDI ve main'de yeşil** (commit `9206e3f`, CI Hard Gates `success`, hard-gates 25dk29sn + GHCR build/push + prod deploy). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 6 (auth-rbac) yeni oturumda `TASKS/modules/auth-rbac.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-15 — **FAZ1 dalga 6 (auth-rbac) yerel doğrulama TAMAM**, henüz push edilmedi. Sıradaki adım: commit + main'e push + CI Hard Gates izleme. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

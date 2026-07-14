@@ -35,7 +35,7 @@ async def test_live_ws_valid_token_ping(async_client):
     """WS /live with valid token → accepts and responds to ping."""
     from datetime import timedelta
 
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token(
         data={"sub": "admin@lojinext.test", "is_super": False},

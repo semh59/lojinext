@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import SessionDep
 from app.database.models import Kullanici
-from app.database.repositories.rol_repo import RolRepository
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.permission_checker import require_yetki
-from app.schemas.user import RolCreate, RolRead
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+from v2.modules.auth_rbac.schemas import RolCreate, RolRead
 
 router = APIRouter()
 logger = get_logger(__name__)

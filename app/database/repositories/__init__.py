@@ -15,13 +15,15 @@ from app.database.repositories.analiz_repo import AnalizRepository
 from app.database.repositories.audit_repo import AuditRepository
 from app.database.repositories.config_repo import ConfigRepository
 from app.database.repositories.import_repo import ImportHistoryRepository
-from app.database.repositories.kullanici_repo import KullaniciRepository
 from app.database.repositories.ml_training_repo import MLTrainingRepository
 from app.database.repositories.model_versiyon_repo import ModelVersiyonRepository
-from app.database.repositories.rol_repo import RolRepository
 from app.database.repositories.sefer_repo import SeferRepository
-from app.database.repositories.session_repo import SessionRepository
 from app.database.repositories.setting_repository import SettingRepository
+from v2.modules.auth_rbac.infrastructure.repository import (
+    KullaniciRepository,
+    RolRepository,
+    SessionRepository,
+)
 from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,

@@ -37,8 +37,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.core.services.auth_service import AuthService
-from app.core.services.security_service import Permission, SecurityService
 from app.core.services.weather_service import WeatherService, get_weather_service
 from app.database.connection import get_db
 from app.database.models import Kullanici, Rol
@@ -48,7 +46,8 @@ from app.infrastructure.background.job_manager import (
     get_job_manager,
 )
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.token_blacklist import blacklist
+from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
+from v2.modules.auth_rbac.domain.token_blacklist import blacklist
 
 logger = get_logger(__name__)
 
@@ -60,10 +59,6 @@ WeatherServiceDep = Annotated[WeatherService, Depends(get_weather_service)]
 UOWDep = Annotated[UnitOfWork, Depends(get_uow)]
 
 
-async def get_auth_service(uow: UOWDep) -> AuthService:
-    return AuthService(uow)
-
-
 async def get_background_job_manager() -> BackgroundJobManager:
     return get_job_manager()
 
@@ -72,9 +67,6 @@ async def get_sefer_service(uow: UOWDep) -> "SeferService":
     from app.core.services.sefer_service import SeferService
 
     return SeferService(repo=uow.sefer_repo)
-
-
-AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
 # Blacklist logic moved to top imports

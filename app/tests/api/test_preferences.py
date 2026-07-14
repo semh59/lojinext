@@ -79,7 +79,7 @@ async def test_save_preference_unexpected_error_does_not_leak_internal_message(
     """
     sensitive_detail = "asyncpg.exceptions.InvalidPasswordError: role lojinext_user"
     with patch(
-        "app.core.services.preference_service.PreferenceService.save_preference",
+        "v2.modules.auth_rbac.api.preference_routes.preference_service.save_preference",
         new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
     ):
         response = await async_client.post(

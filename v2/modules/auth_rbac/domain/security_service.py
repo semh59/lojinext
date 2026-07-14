@@ -18,6 +18,14 @@ class Permission(IntFlag):
 class SecurityService:
     """
     Sovereign Security Service for Zero-Defect RBAC and Isolation.
+
+    B.1 istisnası: bu sınıf yalnız ``@classmethod`` içerir, hiçbir
+    constructor/instance-state yok — namespace/enum-benzeri kullanım
+    (Permission enum ile birlikte). Free function'a bölünmedi çünkü
+    kaldırılan diğer servis sınıflarının (UserService/PreferenceService/
+    LicenseEngine) aksine burada state/DI parametresi hiç olmadı, sadece
+    ilgili beş fonksiyonu bir arada gruplayan bir isim alanı — CLAUDE.md'de
+    dokümante.
     """
 
     ROLE_PERMISSIONS: Dict[str, Permission] = {

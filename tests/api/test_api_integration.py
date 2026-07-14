@@ -43,7 +43,7 @@ async def test_session(db_session):
 @pytest.fixture
 async def test_user(test_session):
     """Create test admin user."""
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     # Create role first
     role = Rol(ad="admin", yetkiler={"*": True})

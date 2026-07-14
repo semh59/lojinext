@@ -335,7 +335,9 @@ async def test_http_exception_handler_dict_detail_with_error_message_key(async_c
 
 async def test_jwks_endpoint(async_client):
     """GET /.well-known/jwks.json returns a dict."""
-    with patch("app.core.security.get_jwks", return_value={"keys": []}):
+    with patch(
+        "v2.modules.auth_rbac.domain.security.get_jwks", return_value={"keys": []}
+    ):
         resp = await async_client.get("/.well-known/jwks.json")
     assert resp.status_code == 200
     data = resp.json()

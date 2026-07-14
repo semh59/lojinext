@@ -57,8 +57,8 @@ async def test_error_stream_non_admin_user_returns_403(async_client, db_session)
     """Valid token, user active, but role doesn't have ADMIN → 403."""
     from sqlalchemy import select
 
-    from app.core.security import get_password_hash
     from app.database.models import Kullanici, Rol
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     # Ensure non-admin role exists
     result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))

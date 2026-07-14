@@ -3,8 +3,8 @@ from typing import List, Union
 from fastapi import Depends
 
 from app.api.deps import get_current_user
-from app.core.services.security_service import Permission, SecurityService
 from app.database.models import Kullanici
+from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
 
 
 class PermissionChecker:

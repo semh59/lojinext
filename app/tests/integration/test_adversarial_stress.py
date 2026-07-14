@@ -329,7 +329,7 @@ async def test_tampered_signature_rejected(async_client):
     Uygulama signature doğrulamasını geçememeli → 401.
     """
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     valid_token = create_access_token(
         data={"sub": settings.SUPER_ADMIN_USERNAME, "is_super": True},

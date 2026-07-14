@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import app.infrastructure.security.token_blacklist as tb
+import v2.modules.auth_rbac.domain.token_blacklist as tb
 
 pytestmark = pytest.mark.asyncio
 

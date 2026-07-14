@@ -13,7 +13,7 @@ class TestSensitiveDataProtection:
 
     def test_password_not_in_response(self):
         """Password response model'de olmamalı"""
-        from app.schemas.user import KullaniciRead
+        from v2.modules.auth_rbac.schemas import KullaniciRead
 
         # UserResponse'da (KullaniciRead) password_hash olmamalı
         fields = KullaniciRead.model_fields.keys()

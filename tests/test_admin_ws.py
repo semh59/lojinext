@@ -7,8 +7,8 @@ from starlette.websockets import WebSocketDisconnect
 
 from app.api.v1.endpoints.admin_ws import training_ws_manager
 from app.config import settings
-from app.infrastructure.security.jwt_handler import create_access_token
 from app.main import app
+from v2.modules.auth_rbac.domain.jwt_handler import create_access_token
 
 client = TestClient(app)
 

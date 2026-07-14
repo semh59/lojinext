@@ -7,12 +7,12 @@ from datetime import date
 from typing import Any, Dict, List, Optional
 
 from app.core.entities.models import Sefer
-from app.core.services.security_service import SecurityService
 from app.database.models import Kullanici
 from app.database.repositories.sefer_repo import SeferRepository, get_sefer_repo
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.sefer import SeferResponse
+from v2.modules.auth_rbac.domain.security_service import SecurityService
 
 logger = get_logger(__name__)
 

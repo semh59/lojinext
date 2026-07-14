@@ -2,12 +2,12 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.core.services.user_service import UserService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.permission_checker import require_yetki
-from app.schemas.user import KullaniciCreate, KullaniciRead, KullaniciUpdate
+from v2.modules.auth_rbac.application import user_service
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.schemas import KullaniciCreate, KullaniciRead, KullaniciUpdate
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -20,8 +20,7 @@ async def list_users(
     limit: int = Query(100, ge=1, le=1000),
 ):
     """Kullanıcıları listele"""
-    service = UserService()
-    return await service.list_users(skip=skip, limit=limit)
+    return await user_service.list_users(skip=skip, limit=limit)
 
 
 @router.get("/{user_id}", response_model=KullaniciRead)
@@ -30,8 +29,7 @@ async def get_user(
     current_user: Kullanici = Depends(require_yetki("kullanici_goruntule")),
 ):
     """Kullanıcı detayını getir"""
-    service = UserService()
-    return await service.get_user(user_id)
+    return await user_service.get_user(user_id)
 
 
 @router.post("/", response_model=KullaniciRead, status_code=status.HTTP_201_CREATED)
@@ -40,8 +38,7 @@ async def create_user(
     current_user: Kullanici = Depends(require_yetki("kullanici_ekle")),
 ):
     """Yeni kullanıcı oluştur"""
-    service = UserService()
-    created = await service.create_user(
+    created = await user_service.create_user(
         data.model_dump(), created_by_id=current_user.id
     )
     await log_audit_event(
@@ -61,10 +58,9 @@ async def update_user(
     current_user: Kullanici = Depends(require_yetki("kullanici_duzenle")),
 ):
     """Kullanıcıyı güncelle"""
-    service = UserService()
     # Filter out None values to avoid overwriting with nulls if update schema allows partials
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
-    result = await service.update_user(user_id, update_data)
+    result = await user_service.update_user(user_id, update_data)
     await log_audit_event(
         module="kullanici",
         action="update",
@@ -82,8 +78,7 @@ async def delete_user(
     current_user: Kullanici = Depends(require_yetki("kullanici_sil")),
 ):
     """Kullanıcıyı sil"""
-    service = UserService()
-    success = await service.delete_user(user_id)
+    success = await user_service.delete_user(user_id)
     if not success:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     await log_audit_event(

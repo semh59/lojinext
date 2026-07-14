@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from app.core.services.anomaly_detector import AnomalyDetector
     from app.core.services.health_service import HealthService
     from app.core.services.import_service import ImportService
-    from app.core.services.license_service import LicenseEngine
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
     from app.database.repositories.analiz_repo import AnalizRepository
@@ -35,6 +34,7 @@ if TYPE_CHECKING:
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.auth_rbac.application.license_service import LicenseEngine
     from v2.modules.driver.infrastructure.repository import SoforRepository
     from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
     from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
@@ -301,7 +301,9 @@ class Container:
         if self._license_service is None:
             with self._lock:
                 if self._license_service is None:
-                    from app.core.services.license_service import LicenseEngine
+                    from v2.modules.auth_rbac.application.license_service import (
+                        LicenseEngine,
+                    )
 
                     self._license_service = LicenseEngine()
         return self._license_service

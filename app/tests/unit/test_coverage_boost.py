@@ -341,9 +341,13 @@ class TestRouteValidatorValidateAndCorrect:
 class TestUserService:
     @pytest.fixture
     def svc(self):
-        from app.core.services.user_service import UserService
+        """B.1 refactor (dalga 6): UserService class removed, use-cases are
+        free functions in v2.modules.auth_rbac.application.user_service —
+        the module itself has the same method names, so it stands in for
+        the old `svc` instance unchanged."""
+        from v2.modules.auth_rbac.application import user_service
 
-        return UserService()
+        return user_service
 
     @pytest.mark.asyncio
     async def test_list_users_returns_list(self, svc, db_session):
@@ -501,7 +505,10 @@ class TestUserService:
         with (
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-            patch("app.core.services.user_service.get_password_hash", return_value="h"),
+            patch(
+                "v2.modules.auth_rbac.application.user_service.get_password_hash",
+                return_value="h",
+            ),
         ):
             from fastapi import HTTPException
 

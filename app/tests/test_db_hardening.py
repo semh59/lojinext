@@ -99,10 +99,10 @@ async def test_uow_reentrant_async_with_raises_instead_of_leaking(db_session):
 async def test_auth_service_authenticate_does_not_leak_connection(db_session):
     """Regression test — connection-pool-leak bug (TASKS/bug-connection-pool-leak-under-load.md).
 
-    Root cause: ``AuthService`` methods received an ALREADY-entered
-    UnitOfWork (exactly as FastAPI's ``get_uow()`` dependency provides it —
-    see ``app/api/deps.py::get_auth_service``) but wrapped it in a SECOND
-    ``async with self.uow:``. Re-entering ``__aenter__`` on the same
+    Root cause (pre-dalga-6, when auth logic lived in a class):
+    ``AuthService`` methods received an ALREADY-entered UnitOfWork (exactly
+    as FastAPI's ``get_uow()`` dependency provides it) but wrapped it in a
+    SECOND ``async with self.uow:``. Re-entering ``__aenter__`` on the same
     instance sets ``_owns = False`` on that shared instance (correct for a
     *new* nested ``UnitOfWork()``, wrong for re-entering the same object) —
     so when the OUTER ``get_uow()`` dependency's own ``__aexit__`` runs at
@@ -112,18 +112,24 @@ async def test_auth_service_authenticate_does_not_leak_connection(db_session):
     "non-checked-in connection" GC warnings per 90s run, 139/185 traced to
     this exact endpoint via request-path-tagged pool-checkout diagnostics.
 
-    Drives the real FastAPI dependency chain (``get_uow()`` generator →
-    ``AuthService(uow).authenticate()`` → generator driven to completion,
-    mirroring what FastAPI does when a request finishes) and asserts
-    ``session.close()`` was actually called — proving the connection was
-    returned, not just that no exception escaped. (See the test above for
-    why this can't assert on ``engine.pool.checkedout()`` under NullPool.)
+    Dalga 6 (B.1 free-function migration) replaced the class with
+    ``v2.modules.auth_rbac.application.auth_service.authenticate(..., uow=...)``
+    — the fix is now structural: when ``uow`` is passed in, the free
+    function uses it DIRECTLY (no ``async with uow:`` re-entry), so this
+    regression class cannot recur here even without the re-entrancy guard.
+    This test still drives the real FastAPI dependency chain (``get_uow()``
+    generator → ``authenticate(..., uow=uow)`` → generator driven to
+    completion, mirroring what FastAPI does when a request finishes) and
+    asserts ``session.close()`` was actually called — proving the
+    connection was returned, not just that no exception escaped. (See the
+    test above for why this can't assert on ``engine.pool.checkedout()``
+    under NullPool.)
     """
     from unittest.mock import MagicMock
 
-    from app.core.services.auth_service import AuthService
     from app.database.unit_of_work import get_uow
     from app.tests._helpers.seed import seed_kullanici
+    from v2.modules.auth_rbac.application import auth_service
 
     user = await seed_kullanici(db_session, email="leak-repro@test.local")
     await db_session.commit()
@@ -142,8 +148,8 @@ async def test_auth_service_authenticate_does_not_leak_connection(db_session):
         with pytest.raises(HTTPException):
             # Wrong password on purpose — exercises the exact buggy code
             # path without needing a real bcrypt-verifiable hash.
-            await AuthService(uow).authenticate(
-                user.email, "definitely-wrong-password", request
+            await auth_service.authenticate(
+                user.email, "definitely-wrong-password", request, uow=uow
             )
     finally:
         # Drive the generator to completion — this is what FastAPI does

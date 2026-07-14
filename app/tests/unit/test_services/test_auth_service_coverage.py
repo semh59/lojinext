@@ -43,6 +43,26 @@ def _make_uow():
     return uow
 
 
+def _bind_auth_service(uow):
+    """B.1 refactor (dalga 6): AuthService class removed, use-cases are free
+    functions in v2.modules.auth_rbac.application.auth_service that take an
+    explicit ``uow`` kwarg. Bind ``uow`` via functools.partial so every
+    ``service.<method>(...)`` call below (written against the old
+    ``AuthService(uow=uow)`` instance API) keeps working unchanged."""
+    from functools import partial
+    from types import SimpleNamespace
+
+    from v2.modules.auth_rbac.application import auth_service
+
+    return SimpleNamespace(
+        authenticate=partial(auth_service.authenticate, uow=uow),
+        refresh_session=partial(auth_service.refresh_session, uow=uow),
+        revoke_session=partial(auth_service.revoke_session, uow=uow),
+        request_password_reset=partial(auth_service.request_password_reset, uow=uow),
+        reset_password=partial(auth_service.reset_password, uow=uow),
+    )
+
+
 def _make_user(
     *,
     email="test@example.com",
@@ -81,7 +101,6 @@ def _make_user(
 class TestAuthServiceAuthenticate:
     async def test_happy_path_returns_tokens(self):
         """Successful login returns (access_token, refresh_token)."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -94,31 +113,31 @@ class TestAuthServiceAuthenticate:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_password",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
                 return_value=True,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_access_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_access_token",
                 return_value=dummy_access,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_refresh_token",
                 return_value=dummy_refresh,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_token",
                 return_value=dummy_access_payload,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value=dummy_refresh_payload,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.hash_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.hash_token",
                 return_value="hashed",
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             result = await service.authenticate(
                 "test@example.com", "correct_password", _make_request()
             )
@@ -128,17 +147,16 @@ class TestAuthServiceAuthenticate:
 
     async def test_wrong_password_raises_401(self):
         """Wrong password raises 401 HTTPException."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.verify_password",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
             return_value=False,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.authenticate(
                     "test@example.com", "wrong_password", _make_request()
@@ -149,17 +167,16 @@ class TestAuthServiceAuthenticate:
 
     async def test_wrong_password_increments_counter(self):
         """Failed login increments basarisiz_giris_sayisi and commits."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user(basarisiz_giris_sayisi=0)
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.verify_password",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
             return_value=False,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException):
                 await service.authenticate("test@example.com", "bad", _make_request())
 
@@ -170,7 +187,6 @@ class TestAuthServiceAuthenticate:
         """2026-07-01 prod-grade denetimi P1: başarısız giriş denemeleri
         önceden yalnız dosya loguna düşüyordu, admin_audit_log'a hiç
         yazılmıyordu (saldırı tespiti/trace UI'da görünmüyordu)."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user(email="victim@example.com", user_id=42)
         uow = _make_uow()
@@ -178,7 +194,7 @@ class TestAuthServiceAuthenticate:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_password",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
                 return_value=False,
             ),
             patch(
@@ -186,7 +202,7 @@ class TestAuthServiceAuthenticate:
                 new_callable=AsyncMock,
             ) as mock_audit,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException):
                 await service.authenticate(
                     "victim@example.com", "wrong_password", _make_request()
@@ -201,17 +217,16 @@ class TestAuthServiceAuthenticate:
 
     async def test_lockout_after_five_failures(self):
         """5th failed attempt sets kilitli_kadar."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user(basarisiz_giris_sayisi=4)
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.verify_password",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
             return_value=False,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.authenticate("test@example.com", "bad", _make_request())
 
@@ -220,14 +235,13 @@ class TestAuthServiceAuthenticate:
 
     async def test_locked_account_raises_401(self):
         """Locked account raises 401 with lockout message."""
-        from app.core.services.auth_service import AuthService
 
         future = datetime.datetime.now(timezone.utc) + datetime.timedelta(minutes=29)
         user = _make_user(kilitli_kadar=future)
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         with pytest.raises(HTTPException) as exc_info:
             await service.authenticate("test@example.com", "any", _make_request())
 
@@ -236,7 +250,6 @@ class TestAuthServiceAuthenticate:
 
     async def test_expired_lock_resets_counter(self):
         """Past kilitli_kadar clears lockout and proceeds normally."""
-        from app.core.services.auth_service import AuthService
 
         past = datetime.datetime.now(timezone.utc) - datetime.timedelta(minutes=1)
         user = _make_user(kilitli_kadar=past, basarisiz_giris_sayisi=5)
@@ -248,31 +261,31 @@ class TestAuthServiceAuthenticate:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_password",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
                 return_value=True,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_access_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_access_token",
                 return_value=dummy_access,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_refresh_token",
                 return_value=dummy_refresh,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.hash_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.hash_token",
                 return_value="hashed",
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             result = await service.authenticate(
                 "test@example.com", "pw", _make_request()
             )
@@ -283,17 +296,16 @@ class TestAuthServiceAuthenticate:
 
     async def test_inactive_user_raises_403(self):
         """Inactive user (aktif=False) raises 403 after password check passes."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user(aktif=False)
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.verify_password",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
             return_value=True,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.authenticate("test@example.com", "pw", _make_request())
 
@@ -301,16 +313,15 @@ class TestAuthServiceAuthenticate:
 
     async def test_nonexistent_user_raises_401(self):
         """Unknown email raises 401 (constant-time, no info leak)."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=None)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.verify_password",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
             return_value=False,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.authenticate("unknown@example.com", "pw", _make_request())
 
@@ -318,7 +329,6 @@ class TestAuthServiceAuthenticate:
 
     async def test_no_client_ip_uses_fallback(self):
         """Request without client still succeeds; IP defaults to 0.0.0.0."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -330,31 +340,31 @@ class TestAuthServiceAuthenticate:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_password",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
                 return_value=True,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_access_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_access_token",
                 return_value="access",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_refresh_token",
                 return_value="refresh",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.hash_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.hash_token",
                 return_value="h",
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             access, _ = await service.authenticate("test@example.com", "pw", req)
 
         assert access == "access"
@@ -362,7 +372,6 @@ class TestAuthServiceAuthenticate:
 
     async def test_previous_failures_reset_on_success(self):
         """basarisiz_giris_sayisi > 0 is cleared on successful login."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user(basarisiz_giris_sayisi=3)
         uow = _make_uow()
@@ -370,31 +379,31 @@ class TestAuthServiceAuthenticate:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_password",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_password",
                 return_value=True,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_access_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_access_token",
                 return_value="access",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_refresh_token",
                 return_value="refresh",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.hash_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.hash_token",
                 return_value="h",
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             await service.authenticate("test@example.com", "pw", _make_request())
 
         assert user.basarisiz_giris_sayisi == 0
@@ -415,7 +424,6 @@ class TestAuthServiceRefreshSession:
           2. decode the newly created refresh token to get its 'exp'
         side_effect list covers both calls.
         """
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -430,34 +438,34 @@ class TestAuthServiceRefreshSession:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 side_effect=[
                     {"sub": "test@example.com"},  # first call: decode incoming token
                     {"exp": 9999999999},  # second call: decode new refresh token
                 ],
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_token_hash",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_token_hash",
                 return_value=True,
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_access_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_access_token",
                 return_value="new_access",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.create_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.create_refresh_token",
                 return_value="new_refresh",
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_token",
                 return_value={"exp": 9999999999},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.hash_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.hash_token",
                 return_value="new_hash",
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             access, refresh = await service.refresh_session("old_refresh_token")
 
         assert access == "new_access"
@@ -466,15 +474,14 @@ class TestAuthServiceRefreshSession:
 
     async def test_invalid_refresh_token_raises_401(self):
         """Non-decodable refresh token raises 401."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
             side_effect=Exception("bad token"),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.refresh_session("garbage")
 
@@ -483,16 +490,15 @@ class TestAuthServiceRefreshSession:
 
     async def test_user_not_found_raises_401(self):
         """Refresh with unknown user raises 401."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=None)
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
             return_value={"sub": "ghost@example.com"},
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.refresh_session("token")
 
@@ -501,7 +507,6 @@ class TestAuthServiceRefreshSession:
 
     async def test_no_matching_session_raises_401(self):
         """No session matching token hash raises 401."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -510,15 +515,15 @@ class TestAuthServiceRefreshSession:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"sub": "test@example.com"},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_token_hash",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_token_hash",
                 return_value=False,
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.refresh_session("token")
 
@@ -527,7 +532,6 @@ class TestAuthServiceRefreshSession:
     async def test_no_matching_session_emits_reuse_signal(self):
         """A validly-decoded refresh token matching no active session emits a
         refresh_token_reuse security signal so theft is detectable."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -536,12 +540,12 @@ class TestAuthServiceRefreshSession:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"sub": "test@example.com"},
             ),
             patch("app.infrastructure.monitoring.emit") as mock_emit,
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException):
                 await service.refresh_session("token")
 
@@ -551,7 +555,6 @@ class TestAuthServiceRefreshSession:
 
     async def test_expired_session_raises_401(self):
         """Session past refresh_bitis raises 401."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
@@ -566,15 +569,15 @@ class TestAuthServiceRefreshSession:
 
         with (
             patch(
-                "app.core.services.auth_service.jwt_handler.decode_refresh_token",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"sub": "test@example.com"},
             ),
             patch(
-                "app.core.services.auth_service.jwt_handler.verify_token_hash",
+                "v2.modules.auth_rbac.application.auth_service.jwt_handler.verify_token_hash",
                 return_value=True,
             ),
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             with pytest.raises(HTTPException) as exc_info:
                 await service.refresh_session("token")
 
@@ -590,12 +593,11 @@ class TestAuthServiceRefreshSession:
 class TestAuthServiceRevokeSession:
     async def test_revoke_deactivates_all_sessions(self):
         """revoke_session calls deactivate_all and commits."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
         uow.session_repo.deactivate_all = AsyncMock()
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         await service.revoke_session(user_id=42)
 
         uow.session_repo.deactivate_all.assert_called_once_with(42)
@@ -610,20 +612,19 @@ class TestAuthServiceRevokeSession:
 class TestAuthServiceRequestPasswordReset:
     async def test_returns_token_for_known_email(self):
         """Known email gets a reset token stored and returned."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=user)
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         token = await service.request_password_reset("test@example.com")
 
         assert token is not None
         assert isinstance(token, str) and len(token) > 10
         # AUDIT-022: DB'de düz-metin token DEĞİL, SHA-256 hash'i saklanır; düz-metin
         # yalnız çağırana (e-posta için) döner.
-        from app.core.services.auth_service import jwt_handler
+        from v2.modules.auth_rbac.application.auth_service import jwt_handler
 
         assert user.sifre_sifir_token != token
         assert user.sifre_sifir_token == jwt_handler.hash_token(token)
@@ -631,12 +632,11 @@ class TestAuthServiceRequestPasswordReset:
 
     async def test_returns_none_for_unknown_email(self):
         """Unknown email returns None without raising."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
         uow.kullanici_repo.get_by_email = AsyncMock(return_value=None)
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         result = await service.request_password_reset("nobody@example.com")
 
         assert result is None
@@ -651,7 +651,6 @@ class TestAuthServiceRequestPasswordReset:
 class TestAuthServiceResetPassword:
     async def test_valid_token_resets_password(self):
         """Valid token resets password and returns True."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         user.sifre_sifir_son = datetime.datetime.now(timezone.utc) + datetime.timedelta(
@@ -662,10 +661,10 @@ class TestAuthServiceResetPassword:
         uow.session_repo.deactivate_all = AsyncMock()
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.get_password_hash",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.get_password_hash",
             return_value="new_hash_value",
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             result = await service.reset_password("valid_token", "newpassword123")
 
         assert result is True
@@ -676,12 +675,11 @@ class TestAuthServiceResetPassword:
 
     async def test_invalid_token_returns_false(self):
         """Unknown token returns False without raising."""
-        from app.core.services.auth_service import AuthService
 
         uow = _make_uow()
         uow.kullanici_repo.get_by_reset_token = AsyncMock(return_value=None)
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         result = await service.reset_password("bad_token", "newpassword")
 
         assert result is False
@@ -689,7 +687,6 @@ class TestAuthServiceResetPassword:
 
     async def test_expired_token_returns_false(self):
         """Expired reset token returns False."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         user.sifre_sifir_son = datetime.datetime.now(timezone.utc) - datetime.timedelta(
@@ -698,7 +695,7 @@ class TestAuthServiceResetPassword:
         uow = _make_uow()
         uow.kullanici_repo.get_by_reset_token = AsyncMock(return_value=user)
 
-        service = AuthService(uow=uow)
+        service = _bind_auth_service(uow)
         result = await service.reset_password("expired_token", "newpassword")
 
         assert result is False
@@ -706,7 +703,6 @@ class TestAuthServiceResetPassword:
 
     async def test_no_expiry_set_skips_check(self):
         """Token with sifre_sifir_son=None skips expiry check and resets password."""
-        from app.core.services.auth_service import AuthService
 
         user = _make_user()
         user.sifre_sifir_son = None
@@ -715,10 +711,10 @@ class TestAuthServiceResetPassword:
         uow.session_repo.deactivate_all = AsyncMock()
 
         with patch(
-            "app.core.services.auth_service.jwt_handler.get_password_hash",
+            "v2.modules.auth_rbac.application.auth_service.jwt_handler.get_password_hash",
             return_value="hashed_new",
         ):
-            service = AuthService(uow=uow)
+            service = _bind_auth_service(uow)
             result = await service.reset_password("token_no_expiry", "newpassword")
 
         assert result is True

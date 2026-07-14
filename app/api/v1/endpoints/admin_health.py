@@ -5,12 +5,12 @@ from app.core.services.health_service import HealthService, get_health_service
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.api_responses import (
     AdminHealthResponse,
     BackupTriggerResponse,
     CircuitBreakerResetResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 logger = get_logger(__name__)
 

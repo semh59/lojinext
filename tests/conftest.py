@@ -114,7 +114,7 @@ def bypass_token_blacklist(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "app.infrastructure.security.token_blacklist.blacklist.is_blacklisted",
+        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.is_blacklisted",
         _not_blacklisted,
     )
 
@@ -179,8 +179,8 @@ async def setup_test_db(db_engine, db_session_factory):
     settings.ALEMBIC_READY = True
 
     from app.api.deps import get_db
-    from app.core.security import get_password_hash
     from app.main import app
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     async def override_get_db():
         async with db_session_factory() as session:
@@ -318,7 +318,7 @@ async def async_client(setup_test_db):
 @pytest_asyncio.fixture(scope="function")
 async def async_superuser_token_headers(async_client):
     """Admin token simulation"""
-    from app.infrastructure.security.jwt_handler import create_access_token
+    from v2.modules.auth_rbac.domain.jwt_handler import create_access_token
 
     token = create_access_token(
         data={"sub": settings.SUPER_ADMIN_USERNAME, "typ": "access", "is_super": True}
@@ -329,7 +329,7 @@ async def async_superuser_token_headers(async_client):
 @pytest_asyncio.fixture(scope="function")
 async def async_normal_user_token_headers(async_client):
     """Normal user token simulation"""
-    from app.infrastructure.security.jwt_handler import create_access_token
+    from v2.modules.auth_rbac.domain.jwt_handler import create_access_token
 
     token = create_access_token(data={"sub": "user@example.com", "typ": "access"})
     return {"Authorization": f"Bearer {token}"}

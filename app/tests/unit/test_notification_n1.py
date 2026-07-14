@@ -21,7 +21,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 async def test_kullanici_repo_has_get_by_rol_ids():
     """KullaniciRepository must expose a get_by_rol_ids bulk method."""
-    from app.database.repositories.kullanici_repo import KullaniciRepository
+    from v2.modules.auth_rbac.infrastructure.repository import KullaniciRepository
 
     assert hasattr(KullaniciRepository, "get_by_rol_ids"), (
         "KullaniciRepository missing get_by_rol_ids method"
@@ -61,9 +61,9 @@ async def test_notification_uses_bulk_query_not_per_rule(db_session):
     """handle_event fetches users with ONE bulk query and persists exactly the
     right notifications to the real DB (no N+1 per rule)."""
     import v2.modules.notification.application.handle_trip_events as ns_mod
-    from app.database.repositories.kullanici_repo import KullaniciRepository
     from app.infrastructure.events.event_bus import Event
     from app.infrastructure.events.event_types import EventType
+    from v2.modules.auth_rbac.infrastructure.repository import KullaniciRepository
 
     event_type = EventType.SEFER_ADDED
     olay = event_type.value

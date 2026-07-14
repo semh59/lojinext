@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from app.infrastructure.cache.redis_pubsub import get_redis_val, set_redis_val
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.jwt_handler import hash_token
+from v2.modules.auth_rbac.domain.jwt_handler import hash_token
 
 logger = get_logger(__name__)
 

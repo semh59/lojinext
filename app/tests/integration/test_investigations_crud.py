@@ -144,8 +144,8 @@ class TestInvestigationsCRUD:
         # FK için gerçek user seed et
         from sqlalchemy import select
 
-        from app.core.security import get_password_hash
         from app.database.models import Kullanici, Rol
+        from v2.modules.auth_rbac.domain.security import get_password_hash
 
         rol = (
             await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))

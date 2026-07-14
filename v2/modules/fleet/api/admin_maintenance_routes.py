@@ -12,13 +12,13 @@ from app.database.models import BakimTipi, Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.api_responses import (
     ICS_RESPONSES,
     MaintenanceAlertItem,
     MaintenanceCompleteResponse,
     MaintenanceRecordResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
 )

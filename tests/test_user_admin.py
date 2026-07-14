@@ -2,13 +2,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.user_service import UserService
+from v2.modules.auth_rbac.application import user_service
 
 
 @pytest.mark.asyncio
 async def test_user_service_list_users():
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -17,7 +18,7 @@ async def test_user_service_list_users():
             return_value=[{"id": 1, "email": "test@test.com"}]
         )
 
-        users = await service.list_users()
+        users = await user_service.list_users()
         assert len(users) == 1
         assert users[0]["email"] == "test@test.com"
         mock_uow.kullanici_repo.get_all.assert_awaited_once_with(
@@ -27,8 +28,9 @@ async def test_user_service_list_users():
 
 @pytest.mark.asyncio
 async def test_user_service_create_user_email_exists():
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -36,7 +38,7 @@ async def test_user_service_create_user_email_exists():
         mock_uow.kullanici_repo.get_by_email = AsyncMock(return_value={"id": 1})
 
         with pytest.raises(Exception) as exc:
-            await service.create_user(
+            await user_service.create_user(
                 {
                     "email": "exists@test.com",
                     "ad_soyad": "X",
@@ -50,8 +52,9 @@ async def test_user_service_create_user_email_exists():
 
 @pytest.mark.asyncio
 async def test_user_service_create_user_success():
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -63,7 +66,7 @@ async def test_user_service_create_user_success():
         )
         mock_uow.commit = AsyncMock()
 
-        created = await service.create_user(
+        created = await user_service.create_user(
             {
                 "email": "new@test.com",
                 "ad_soyad": "Yeni",
@@ -83,8 +86,9 @@ async def test_user_service_create_user_success():
 
 @pytest.mark.asyncio
 async def test_user_service_delete_user():
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -92,7 +96,7 @@ async def test_user_service_delete_user():
         mock_uow.commit = AsyncMock()
         mock_uow.kullanici_repo.delete = AsyncMock(return_value=True)
 
-        success = await service.delete_user(1)
+        success = await user_service.delete_user(1)
         assert success is True
         mock_uow.commit.assert_awaited_once()
 
@@ -100,8 +104,9 @@ async def test_user_service_delete_user():
 @pytest.mark.asyncio
 async def test_user_service_get_user():
     """Verify retrieval of a single user."""
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -110,7 +115,7 @@ async def test_user_service_get_user():
             return_value={"id": 1, "email": "get@test.com"}
         )
 
-        user = await service.get_user(1)
+        user = await user_service.get_user(1)
         assert user["id"] == 1
         assert user["email"] == "get@test.com"
 
@@ -118,8 +123,9 @@ async def test_user_service_get_user():
 @pytest.mark.asyncio
 async def test_user_service_update_user():
     """Verify partial updates for a user."""
-    service = UserService()
-    with patch("app.core.services.user_service.UnitOfWork") as mock_uow_cls:
+    with patch(
+        "v2.modules.auth_rbac.application.user_service.UnitOfWork"
+    ) as mock_uow_cls:
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -133,7 +139,7 @@ async def test_user_service_update_user():
         mock_uow.kullanici_repo.update = AsyncMock(return_value=True)
         mock_uow.commit = AsyncMock()
 
-        updated_user = await service.update_user(1, {"ad_soyad": "New Name"})
+        updated_user = await user_service.update_user(1, {"ad_soyad": "New Name"})
         assert updated_user["ad_soyad"] == "New Name"
         mock_uow.kullanici_repo.update.assert_called_with(1, ad_soyad="New Name")
         mock_uow.commit.assert_awaited_once()

@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 from app.config import settings
-from app.core.security import get_password_hash
+from v2.modules.auth_rbac.domain.security import get_password_hash
 
 revision: str = "0002_seed_and_bootstrap"
 down_revision: Union[str, None] = "0001_baseline_manual"

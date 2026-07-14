@@ -10,14 +10,11 @@ from app.api.v1.endpoints import (
     admin_ml,
     admin_pilot,
     admin_predictions,
-    admin_roles,
-    admin_users,
     admin_ws,
     advanced_reports,
     ai,
     analytics,
     anomalies,
-    auth,
     error_stream,
     executive,
     feedback,
@@ -26,16 +23,19 @@ from app.api.v1.endpoints import (
     internal,
     investigations,
     predictions,
-    preferences,
     reports,
     reports_studio,
     system,
     today_triage,
     trips,
-    users,
     weather,
-    ws_ticket,
 )
+from v2.modules.auth_rbac.api.admin_role_routes import router as admin_roles_router
+from v2.modules.auth_rbac.api.admin_user_routes import router as admin_users_router
+from v2.modules.auth_rbac.api.auth_routes import router as auth_router
+from v2.modules.auth_rbac.api.preference_routes import router as preferences_router
+from v2.modules.auth_rbac.api.user_routes import router as users_router
+from v2.modules.auth_rbac.api.ws_ticket_routes import router as ws_ticket_router
 from v2.modules.driver.api.coaching_routes import router as coaching_router
 from v2.modules.driver.api.driver_routes import router as driver_router
 from v2.modules.fleet.api.admin_maintenance_routes import (
@@ -63,7 +63,7 @@ api_router.include_router(
     maintenance_router, prefix="/maintenance", tags=["maintenance"]
 )
 api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
-api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(
     admin_config.router, prefix="/admin/config", tags=["admin-config"]
 )
@@ -73,10 +73,10 @@ api_router.include_router(
     tags=["admin-integrations"],
 )
 api_router.include_router(
-    admin_roles.router, prefix="/admin/roles", tags=["admin-roles"]
+    admin_roles_router, prefix="/admin/roles", tags=["admin-roles"]
 )
 api_router.include_router(
-    admin_users.router, prefix="/admin/users", tags=["admin-users"]
+    admin_users_router, prefix="/admin/users", tags=["admin-users"]
 )
 api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
 api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
@@ -102,7 +102,7 @@ api_router.include_router(
 )
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI"])
-api_router.include_router(ws_ticket.router, prefix="/ws", tags=["websocket"])
+api_router.include_router(ws_ticket_router, prefix="/ws", tags=["websocket"])
 api_router.include_router(admin_ws.router, prefix="/admin/ws", tags=["admin-ws"])
 api_router.include_router(
     notification_live_ws_router, prefix="/admin/ws", tags=["notifications"]
@@ -141,9 +141,9 @@ api_router.include_router(
 )
 api_router.include_router(trailer_router, prefix="/trailers", tags=["trailers"])
 api_router.include_router(
-    preferences.router, prefix="/preferences", tags=["preferences"]
+    preferences_router, prefix="/preferences", tags=["preferences"]
 )
-api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(
     today_triage.router, prefix="/reports/today", tags=["reports-v2"]

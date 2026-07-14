@@ -10,7 +10,7 @@ pytestmark = pytest.mark.asyncio
 async def test_logout_blacklist_failure_returns_warning(async_client, auth_headers):
     """When blacklist fails, response should contain warning key."""
     with patch(
-        "app.api.v1.endpoints.auth.blacklist.add",
+        "v2.modules.auth_rbac.api.auth_routes.blacklist.add",
         side_effect=Exception("Redis down"),
     ):
         response = await async_client.post("/api/v1/auth/logout", headers=auth_headers)
@@ -23,27 +23,24 @@ async def test_logout_blacklist_failure_revokes_session(async_client, auth_heade
     """When blacklist fails, session must still be revoked."""
     mock_revoke = AsyncMock()
 
-    async def _fake_auth_service():
-        from app.core.services.auth_service import AuthService
+    from v2.modules.auth_rbac.api import auth_routes
 
-        svc = AsyncMock(spec=AuthService)
-        svc.revoke_session = mock_revoke
-        return svc
+    original_revoke = auth_routes.auth_service.revoke_session
 
-    from app.api.deps import get_auth_service
-    from app.main import app
+    async def _fake_revoke(user_id, uow=None):
+        return await mock_revoke(user_id)
 
-    app.dependency_overrides[get_auth_service] = _fake_auth_service
+    auth_routes.auth_service.revoke_session = _fake_revoke
     try:
         with patch(
-            "app.api.v1.endpoints.auth.blacklist.add",
+            "v2.modules.auth_rbac.api.auth_routes.blacklist.add",
             side_effect=Exception("Redis down"),
         ):
             response = await async_client.post(
                 "/api/v1/auth/logout", headers=auth_headers
             )
     finally:
-        app.dependency_overrides.pop(get_auth_service, None)
+        auth_routes.auth_service.revoke_session = original_revoke
 
     assert response.status_code == 200
     mock_revoke.assert_called_once()

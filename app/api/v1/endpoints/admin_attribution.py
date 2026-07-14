@@ -8,11 +8,11 @@ from app.core.exceptions import DomainError
 from app.core.services.attribution_service import AttributionService
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.attribution import (
     AttributionOverrideRequest,
     AttributionOverrideResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 router = APIRouter()
 

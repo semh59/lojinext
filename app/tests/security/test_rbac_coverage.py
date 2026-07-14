@@ -142,7 +142,7 @@ async def test_missing_token_returns_401(async_client, path):
 async def test_expired_token_returns_401(async_client):
     """JWT with past exp claim must be rejected with 401."""
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     expired_token = create_access_token(
         data={"sub": settings.SUPER_ADMIN_USERNAME, "is_super": True},

@@ -44,15 +44,17 @@ def is_within_quiet_hours(deger: dict, now_t: time) -> bool:
 async def is_user_quiet_now(user_id: int, *, now: Optional[datetime] = None) -> bool:
     """Kullanıcının /preferences sessiz saat ayarına göre şu an sessiz mi.
 
-    Çapraz-modül bağımlılık (geçici, dokümante): PreferenceService henüz
-    v2'ye taşınmadı (bkz. CLAUDE.md).
+    Çapraz-modül bağımlılık (dalga 6'da auth_rbac v2'ye taşındı, notification
+    henüz doğrudan `application.preference_service.get_preferences`
+    fonksiyonunu import ediyor — public.py üzerinden erişim import-linter
+    gate aktive olunca netleşecek, bkz. CLAUDE.md).
     """
     try:
-        from app.core.services.preference_service import PreferenceService
-
-        items = await PreferenceService().get_preferences(
-            user_id, "bildirim", "quiet_hours"
+        from v2.modules.auth_rbac.application.preference_service import (
+            get_preferences,
         )
+
+        items = await get_preferences(user_id, "bildirim", "quiet_hours")
     except Exception:  # noqa: BLE001 — pref okunamazsa sessiz değil say
         return False
     if not items:

@@ -8,13 +8,13 @@ from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.api_responses import (
     MarkAllReadResponse,
     MarkSingleReadResponse,
     NotificationItemResponse,
     NotificationRuleResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 from v2.modules.notification.application.get_user_notifications import (
     get_user_notifications,
 )

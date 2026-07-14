@@ -8,14 +8,18 @@ async def test_login_success(async_client, monkeypatch):
     """Test login with valid credentials → 200 with token.
 
     The auth endpoint calls auth_service.authenticate() via FastAPI DI.
-    We mock it by patching AuthService.authenticate directly.
+    We mock it by patching the free function on the consuming module
+    (v2.modules.auth_rbac.api.auth_routes imports the auth_service module
+    and calls auth_service.authenticate(...) — patch target is the
+    consuming module's namespace, not the source module, same gotcha as
+    location/fleet/fuel/driver's free-function migrations).
     """
-    from app.core.services import auth_service as auth_svc_mod
+    from v2.modules.auth_rbac.api import auth_routes
 
-    async def _fake_authenticate(self, email, password, request):
+    async def _fake_authenticate(email, password, request, uow=None):
         return ("fake_access_token", "fake_refresh_token")
 
-    monkeypatch.setattr(auth_svc_mod.AuthService, "authenticate", _fake_authenticate)
+    monkeypatch.setattr(auth_routes.auth_service, "authenticate", _fake_authenticate)
 
     test_password = "password123"  # pragma: allowlist secret
     response = await async_client.post(
@@ -64,14 +68,14 @@ async def test_refresh_token_success(async_client, monkeypatch):
     """Test token refresh with valid refresh token → 200.
 
     The refresh endpoint calls auth_service.refresh_session().
-    We mock it directly on AuthService.
+    We mock it on the consuming module (see test_login_success docstring).
     """
-    from app.core.services import auth_service as auth_svc_mod
+    from v2.modules.auth_rbac.api import auth_routes
 
-    async def _fake_refresh(self, token):
+    async def _fake_refresh(token, uow=None):
         return ("new_access_token", "new_refresh_token")
 
-    monkeypatch.setattr(auth_svc_mod.AuthService, "refresh_session", _fake_refresh)
+    monkeypatch.setattr(auth_routes.auth_service, "refresh_session", _fake_refresh)
 
     response = await async_client.post(
         "/api/v1/auth/refresh", json={"refresh_token": "fake_refresh_token"}

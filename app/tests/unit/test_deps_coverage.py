@@ -18,9 +18,9 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.core.security import create_access_token
 from app.database.models import Kullanici, Rol
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.auth_rbac.domain.security import create_access_token
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
@@ -93,7 +93,7 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
     from fastapi import HTTPException
 
     from app.api import deps
-    from app.infrastructure.security.token_blacklist import TokenBlacklist, blacklist
+    from v2.modules.auth_rbac.domain.token_blacklist import TokenBlacklist, blacklist
 
     # Undo the autouse bypass for THIS test → real is_blacklisted.
     monkeypatch.setattr(
@@ -221,15 +221,17 @@ async def test_service_factories_build_real_services():
     get_sofor_service removed from deps.py in dalga 5 for the same reason —
     driver no longer has a SoforService class, v2 driver routes call
     use-case functions directly.
+    get_auth_service/AuthService removed from deps.py in dalga 6 for the same
+    reason — auth_rbac no longer has an AuthService class, auth_routes.py
+    calls the auth_service module's free functions directly with an
+    explicit uow= kwarg (no DI factory to assert on).
     """
     from app.api import deps
-    from app.core.services.auth_service import AuthService
     from app.core.services.sefer_service import SeferService
     from app.database.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         assert isinstance(await deps.get_sefer_service(uow), SeferService)
-        assert isinstance(await deps.get_auth_service(uow), AuthService)
 
 
 async def test_get_background_job_manager_returns_manager():
@@ -249,7 +251,7 @@ async def test_get_background_job_manager_returns_manager():
 async def test_require_permissions_factory_returns_callable():
     """require_permissions returns an async callable checker."""
     from app.api.deps import require_permissions
-    from app.core.services.security_service import Permission
+    from v2.modules.auth_rbac.domain.security_service import Permission
 
     checker = require_permissions(Permission.ADMIN)
     assert callable(checker)
@@ -260,7 +262,7 @@ async def test_require_permissions_denies_without_perm():
     from fastapi import HTTPException
 
     from app.api.deps import require_permissions
-    from app.core.services.security_service import Permission
+    from v2.modules.auth_rbac.domain.security_service import Permission
 
     # Real entities (no mock); verify_permission reads user.rol.yetkiler.
     user = Kullanici(id=1, email="user@x.com", aktif=True, sifre_hash="x")

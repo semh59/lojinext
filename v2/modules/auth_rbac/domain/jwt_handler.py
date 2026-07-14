@@ -15,11 +15,13 @@ logger = get_logger(__name__)
 def get_password_hash(password: str) -> str:
     """Hash a plain text password using bcrypt.
 
-    Delegates to the single canonical implementation in ``app.core.security``
+    Delegates to the single canonical implementation in ``v2.modules.auth_rbac.domain.security``
     so the 72-byte guard and cost factor (rounds=12) stay consistent across the
     codebase (previously this had no length guard — SEC-007).
     """
-    from app.core.security import get_password_hash as _canonical_hash
+    from v2.modules.auth_rbac.domain.security import (
+        get_password_hash as _canonical_hash,
+    )
 
     return _canonical_hash(password)
 
@@ -27,9 +29,11 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain text password against a bcrypt hash.
 
-    Delegates to ``app.core.security.verify_password`` (single implementation).
+    Delegates to ``v2.modules.auth_rbac.domain.security.verify_password`` (single implementation).
     """
-    from app.core.security import verify_password as _canonical_verify
+    from v2.modules.auth_rbac.domain.security import (
+        verify_password as _canonical_verify,
+    )
 
     return _canonical_verify(plain_password, hashed_password)
 
@@ -47,10 +51,10 @@ def verify_token_hash(token: str, token_hash: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a signed JWT access token.
 
-    Delegates to ``app.core.security.create_access_token`` — single canonical
+    Delegates to ``v2.modules.auth_rbac.domain.security.create_access_token`` — single canonical
     implementation with RS256/HS256 branch logic and correct private-key handling.
     """
-    from app.core.security import create_access_token as _canonical
+    from v2.modules.auth_rbac.domain.security import create_access_token as _canonical
 
     return _canonical(data, expires_delta)
 

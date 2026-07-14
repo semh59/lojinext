@@ -19,7 +19,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_verify_password_correct():
-    from app.core.security import get_password_hash, verify_password
+    from v2.modules.auth_rbac.domain.security import get_password_hash, verify_password
 
     pw = "s3cr3tP@ss"
     hashed = get_password_hash(pw)
@@ -27,33 +27,33 @@ def test_verify_password_correct():
 
 
 def test_verify_password_wrong():
-    from app.core.security import get_password_hash, verify_password
+    from v2.modules.auth_rbac.domain.security import get_password_hash, verify_password
 
     hashed = get_password_hash("correct_password")
     assert verify_password("wrong_password", hashed) is False
 
 
 def test_verify_password_empty_plain():
-    from app.core.security import verify_password
+    from v2.modules.auth_rbac.domain.security import verify_password
 
     assert verify_password("", "$2b$12$fakehash") is False
 
 
 def test_verify_password_empty_hashed():
-    from app.core.security import verify_password
+    from v2.modules.auth_rbac.domain.security import verify_password
 
     assert verify_password("password", "") is False
 
 
 def test_verify_password_both_empty():
-    from app.core.security import verify_password
+    from v2.modules.auth_rbac.domain.security import verify_password
 
     assert verify_password("", "") is False
 
 
 def test_verify_password_bad_hash_returns_false():
     """A malformed bcrypt hash should not crash — returns False."""
-    from app.core.security import verify_password
+    from v2.modules.auth_rbac.domain.security import verify_password
 
     result = verify_password("password", "not_a_bcrypt_hash")
     assert result is False
@@ -65,21 +65,21 @@ def test_verify_password_bad_hash_returns_false():
 
 
 def test_get_password_hash_returns_bcrypt_string():
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     h = get_password_hash("test_password")
     assert h.startswith("$2b$")
 
 
 def test_get_password_hash_empty_raises():
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     with pytest.raises(ValueError, match="empty"):
         get_password_hash("")
 
 
 def test_get_password_hash_too_long_raises():
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     # 73 bytes = > 72 byte bcrypt limit
     long_pw = "a" * 73
@@ -88,7 +88,7 @@ def test_get_password_hash_too_long_raises():
 
 
 def test_get_password_hash_exactly_72_bytes_ok():
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     pw = "a" * 72
     h = get_password_hash(pw)
@@ -96,7 +96,7 @@ def test_get_password_hash_exactly_72_bytes_ok():
 
 
 def test_get_password_hash_unique_salts():
-    from app.core.security import get_password_hash
+    from v2.modules.auth_rbac.domain.security import get_password_hash
 
     h1 = get_password_hash("same_password")
     h2 = get_password_hash("same_password")
@@ -109,7 +109,7 @@ def test_get_password_hash_unique_salts():
 
 
 def test_create_access_token_returns_string():
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token({"sub": "user42"})
     assert isinstance(token, str)
@@ -120,7 +120,7 @@ def test_create_access_token_custom_expiry():
     import jwt
 
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token({"sub": "user1"}, expires_delta=timedelta(hours=2))
     payload = jwt.decode(
@@ -139,7 +139,7 @@ def test_create_access_token_includes_standard_claims():
     import jwt
 
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token({"sub": "tester"})
     payload = jwt.decode(
@@ -162,7 +162,7 @@ def test_create_access_token_default_expiry_used_when_none():
     import jwt
 
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token({"sub": "default_exp"})
     payload = jwt.decode(
@@ -181,7 +181,7 @@ def test_create_access_token_default_expiry_used_when_none():
 
 def test_create_access_token_rs256_path():
     """When ALGORITHM=RS256 and JWT_PRIVATE_KEY is set, use RS256."""
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     mock_settings = MagicMock()
     mock_settings.ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -210,7 +210,7 @@ def test_create_access_token_rs256_path():
     mock_settings.SECRET_KEY = MagicMock()
     mock_settings.SECRET_KEY.get_secret_value.return_value = "fallback_secret"
 
-    with patch("app.core.security.settings", mock_settings):
+    with patch("v2.modules.auth_rbac.domain.security.settings", mock_settings):
         token = create_access_token({"sub": "rs256_user"})
 
     # token should decode with RS256
@@ -243,7 +243,7 @@ def test_create_access_token_rs256_path():
 
 def test_get_jwks_returns_empty_keys_for_hs256():
     """HS256 algorithm → JWKS endpoint returns empty keys list."""
-    import app.core.security as sec
+    import v2.modules.auth_rbac.domain.security as sec
 
     # Reset cache
     sec._jwks_cache = None
@@ -252,7 +252,7 @@ def test_get_jwks_returns_empty_keys_for_hs256():
     mock_settings.ALGORITHM = "HS256"
     mock_settings.JWT_PUBLIC_KEY = None
 
-    with patch("app.core.security.settings", mock_settings):
+    with patch("v2.modules.auth_rbac.domain.security.settings", mock_settings):
         result = sec.get_jwks()
 
     assert result == {"keys": []}
@@ -260,7 +260,7 @@ def test_get_jwks_returns_empty_keys_for_hs256():
 
 def test_get_jwks_caches_result():
     """Second call returns the cached result without re-parsing."""
-    import app.core.security as sec
+    import v2.modules.auth_rbac.domain.security as sec
 
     cached = {"keys": [{"kty": "RSA", "cached": True}]}
     sec._jwks_cache = cached
@@ -274,7 +274,7 @@ def test_get_jwks_caches_result():
 
 def test_get_jwks_rs256_returns_rsa_key():
     """RS256 + valid public key → JWKS contains RSA key."""
-    import app.core.security as sec
+    import v2.modules.auth_rbac.domain.security as sec
 
     sec._jwks_cache = None
 
@@ -297,7 +297,7 @@ def test_get_jwks_rs256_returns_rsa_key():
     mock_pk.get_secret_value.return_value = pub_pem
     mock_settings.JWT_PUBLIC_KEY = mock_pk
 
-    with patch("app.core.security.settings", mock_settings):
+    with patch("v2.modules.auth_rbac.domain.security.settings", mock_settings):
         result = sec.get_jwks()
 
     assert "keys" in result
@@ -314,7 +314,7 @@ def test_get_jwks_rs256_returns_rsa_key():
 
 def test_get_jwks_rs256_bad_key_returns_empty():
     """RS256 + invalid PEM → exception caught, empty keys returned."""
-    import app.core.security as sec
+    import v2.modules.auth_rbac.domain.security as sec
 
     sec._jwks_cache = None
 
@@ -324,7 +324,7 @@ def test_get_jwks_rs256_bad_key_returns_empty():
     mock_pk.get_secret_value.return_value = "INVALID PEM DATA"
     mock_settings.JWT_PUBLIC_KEY = mock_pk
 
-    with patch("app.core.security.settings", mock_settings):
+    with patch("v2.modules.auth_rbac.domain.security.settings", mock_settings):
         result = sec.get_jwks()
 
     assert result == {"keys": []}

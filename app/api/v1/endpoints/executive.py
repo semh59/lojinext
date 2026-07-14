@@ -32,7 +32,6 @@ from app.core.services.what_if_engine import (
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.executive import (
     BusFactorResponse,
     CashflowProjectionResponse,
@@ -49,6 +48,7 @@ from app.schemas.executive import (
     WhatIfRequest,
     WhatIfResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 logger = logging.getLogger(__name__)
 

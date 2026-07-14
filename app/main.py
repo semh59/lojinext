@@ -451,7 +451,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         # asla bloklamaz/bozmaz.
         try:
             from app.infrastructure.audit.audit_logger import log_audit_event
-            from app.infrastructure.security import jwt_handler
+            from v2.modules.auth_rbac.domain import jwt_handler
 
             sub = None
             auth_header = request.headers.get("authorization", "")
@@ -806,6 +806,6 @@ async def readiness() -> JSONResponse:
 @app.get("/.well-known/jwks.json", include_in_schema=False)
 async def jwks() -> dict[str, Any]:
     """RS256 JWKS endpoint (only meaningful when ALGORITHM=RS256)."""
-    from app.core.security import get_jwks
+    from v2.modules.auth_rbac.domain.security import get_jwks
 
     return get_jwks()

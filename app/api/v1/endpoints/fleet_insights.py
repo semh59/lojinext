@@ -15,11 +15,11 @@ from app.core.services.fleet_comparison import (
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.fleet_insights import (
     FleetComparisonResponse,
     PeriodMetricsResponse,
 )
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 logger = logging.getLogger(__name__)
 

@@ -165,7 +165,7 @@ def bypass_token_blacklist(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "app.infrastructure.security.token_blacklist.blacklist.is_blacklisted",
+        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.is_blacklisted",
         _not_blacklisted,
     )
 
@@ -600,7 +600,7 @@ async def auth_headers():
     from datetime import timedelta
 
     from app.config import settings
-    from app.core.security import create_access_token
+    from v2.modules.auth_rbac.domain.security import create_access_token
 
     token = create_access_token(
         data={"sub": settings.SUPER_ADMIN_USERNAME, "is_super": True},
@@ -627,9 +627,12 @@ async def normal_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.core.security import create_access_token, get_password_hash
     from app.database.models import Kullanici, Rol
     from app.infrastructure.security.pii_encryption import blind_index
+    from v2.modules.auth_rbac.domain.security import (
+        create_access_token,
+        get_password_hash,
+    )
 
     # Ensure role exists
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -672,9 +675,12 @@ async def no_trip_read_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.core.security import create_access_token, get_password_hash
     from app.database.models import Kullanici, Rol
     from app.infrastructure.security.pii_encryption import blind_index
+    from v2.modules.auth_rbac.domain.security import (
+        create_access_token,
+        get_password_hash,
+    )
 
     role_name = "kisitli"
     role_result = await db_session.execute(select(Rol).where(Rol.ad == role_name))

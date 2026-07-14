@@ -269,7 +269,7 @@ class TestVerifyWsToken:
     """Tests for the JWT verification helper."""
 
     async def test_valid_token_returns_email(self):
-        from app.core.security import create_access_token
+        from v2.modules.auth_rbac.domain.security import create_access_token
 
         token = create_access_token(
             data={"sub": "admin@lojinext.test", "is_super": False},

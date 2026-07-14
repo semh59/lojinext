@@ -24,7 +24,10 @@ class LicenseEngine:
 
     TYPE: SINGLETON
     SCOPE: Application lifetime
-    SINGLETON_REASON: Lisans doğrulama — konfigürasyon tabanlı, stateless.
+    SINGLETON_REASON: Lisans doğrulama — konfigürasyon tabanlı, stateless
+    olmayan (env'den bir kez yüklenen ``_LICENSE_HASHES`` mutable state'i
+    var) — B.1 istisnası, driver/CLAUDE.md'deki DriverPerformanceML ile aynı
+    gerekçe sınıfı (mutable, tekrar-hesaplanması pahalı/gereksiz durum).
     CREATED_BY: app/core/container.py (lazy property)
     """
 

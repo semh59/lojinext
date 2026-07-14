@@ -11,8 +11,8 @@ from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.permission_checker import require_yetki
 from app.schemas.ml_schemas import MLTaskRead, ModelVersionRead
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 logger = get_logger(__name__)
 

@@ -1,7 +1,7 @@
 """Users endpoints — read-only access for any authenticated caller.
 
 Administrative CRUD (create / update / delete) lives at /api/v1/admin/users
-(see app.api.v1.endpoints.admin_users). This module exposes:
+(see v2.modules.auth_rbac.api.admin_user_routes). This module exposes:
 
 - GET /me                — the currently authenticated user's profile
 - PATCH /me              — update own profile fields (ad_soyad)
@@ -15,10 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
 from app.api.deps import get_current_active_admin, get_current_active_user
-from app.core.services.user_service import UserService
 from app.database.models import Kullanici
 from app.schemas.api_responses import MessageResponse
-from app.schemas.user import KullaniciRead
+from v2.modules.auth_rbac.application import user_service
+from v2.modules.auth_rbac.schemas import KullaniciRead
 
 router = APIRouter()
 
@@ -53,9 +53,8 @@ async def update_me(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Update the currently authenticated user's own profile fields."""
-    service = UserService()
     update_data = data.model_dump(exclude_unset=True)
-    return await service.update_user(current_user.id, update_data)
+    return await user_service.update_user(current_user.id, update_data)
 
 
 @router.post("/me/change-password", status_code=200, response_model=MessageResponse)
@@ -72,8 +71,7 @@ async def change_my_password(
             status_code=403,
             detail="Sistem yöneticisi şifresi ortam değişkeni üzerinden yönetilir.",
         )
-    service = UserService()
-    success = await service.change_password(
+    success = await user_service.change_password(
         current_user.id, data.current_password, data.new_password
     )
     if not success:
@@ -88,5 +86,4 @@ async def list_users(
     limit: int = Query(100, ge=1, le=500, description="Maximum users to return"),
 ):
     """Return active users — admin only (exposes PII: email, IP, role permissions)."""
-    service = UserService()
-    return await service.list_users(skip=skip, limit=limit)
+    return await user_service.list_users(skip=skip, limit=limit)

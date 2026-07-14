@@ -37,7 +37,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 1 | **location + route-simulation** (PİLOT ÇİFTİ — karşılıklı bağımlı 7/1 kenar, birlikte) | `modules/location.md` + `modules/route-simulation.md` | ✅ main'de yeşil (commit `4ebabca`) |
 | 2 | notification | `modules/notification.md` | ✅ main'de yeşil (commit `34e40c8`) |
 | 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
-| 4 | fuel | `modules/fuel.md` | 🔲 |
+| 4 | fuel | `modules/fuel.md` | ✅ main'de yeşil (commit `6721cdb`) |
 | 5 | driver | `modules/driver.md` | 🔲 |
 | 6 | auth-rbac | `modules/auth-rbac.md` | 🔲 |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
@@ -162,5 +162,34 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 
 **Test-dosyası dönüşümü (büyük mekanik iş, ~40 dosya):** Bir fork ajanı ana dönüşümü yaptı ama oturum API limitine takılıp yarıda kesildi (`AracService(arac_service=...)` kalıntıları, `container.arac_service` assertion'ı); ana oturum devraldı, kalanları tamamladı + gerçek DB'ye karşı doğruladı (636/636 + 102/102 + 107/107 pass ayrı batch'lerde).
 
+## DALGA 4 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-14)
+
+**Push geçmişi (4 commit):**
+1. `03e14e5` — ana taşıma (78 dosya, 2.434 satır ekleme/2.439 silme). CI'nin "Backend type check (mypy)" adımında kırmızı çıktı (8 hata / 7 baseline).
+2. `a90027d` — mypy düzeltmesi: `import_service.py`'nin `bulk_add_yakit`'e geçirdiği `YakitCreate` listesi ile fonksiyonun beklediği `YakitAlimiCreate` tipi arasında nominal bir tip farkı vardı — taşımadan ÖNCE de vardı (`self.yakit_service` untyped constructor param olduğu için mypy görmüyordu), free function'a geçişle görünür oldu. `cast()` ile dokümante edildi, davranış değişmedi (duck-typing zaten çalışıyordu). mypy 7/7 baseline'a döndü ama bu turda "Backend unit tests" adımı repo kökündeki **bağımsız `tests/` klasöründe** (dalga 1'in aynı sınıf gotcha'sı) 2 stale import ile kırmızı çıktı.
+3. `d9c4569` — kök `tests/test_fuel_prediction.py` + `tests/unit/test_yakit_service.py` yeni v2 path'lerine dönüştürüldü (`TestYakitService::test_calculation_safety`/`test_service_initialization` kaldırıldı — `YakitTahminService.model` dead constructor attribute'unu test ediyorlardı, free-function tasarımında hiç yok). Bu turda tek bir kalıntı daha çıktı: `test_prediction_service_coverage.py::test_get_prediction_service_singleton` silinen `YakitTahminService`'i patch'liyordu.
+4. `6721cdb` — son kalıntı düzeltildi. **CI Hard Gates tam yeşil** (`gh run view 29318319844` → hard-gates `success`, 33dk1sn) — commit `6721cdb` main'in HEAD'i.
+
+**Kapsam:** fuel modülü (13 dosya, ~2.809 LOC envanteri) — `yakit_alimlari`/`yakit_periyotlari`/`yakit_formul` tablolarının tek sahibi, 12 route (fuel+admin_fuel_accuracy). Detaylar `TASKS/modules/fuel.md` + `v2/modules/fuel/CLAUDE.md`.
+
+**Öne çıkan kararlar/bulgular:**
+- `YakitService`/`PeriodCalculationService`/`YakitTahminService` sınıfları kaldırıldı (B.1, location/notification/fleet'teki kararla aynı gerekçe). Her üçünün de constructor-injected repo/model parametreleri dead weight'ti (hiçbir metot gövdesi okumuyordu) — free function'lara taşınmadı.
+- YAKIT_ADDED/UPDATED/DELETED event publish'leri diğer modüllerdeki gibi ölü kod (`@publishes` yalnız metadata attribute'u set ediyor, gerçek `event_bus.publish()` çağrısı yok) — AMA bu modülde diğerlerinden FARKLI olarak GERÇEK iki abone var (`model_training_handler.py` ML retrain için, `cache_invalidation.py` cache temizliği için) ve ikisi de bugün hiç tetiklenmiyor; taşımadan önce de böyleydi (regresyon değil), events.py'de fleet/location'dan daha yüksek-etkili bir bulgu olarak ayrıca vurgulandı.
+- Rolling outlier check (`_check_rolling_outlier`) GERÇEKTEN event yayınlıyor (`ANOMALY_DETECTED`, `@publishes` dekoratörüne bağımlı değil, doğrudan `event_bus.publish()` çağırıyor) — YAKIT_* event'lerinin aksine bu ölü kod DEĞİL.
+- trip↔fuel senkron çift (`recalculate_vehicle_periods`'in `sefer_repo` bağımlılığı) bilinçli olarak fuel tarafında bırakıldı — görev dosyasının kararı, trip taşınınca güncellenecek.
+- `yakit_alimlari.durum` Türkçe enum'u (`Bekliyor/Onaylandı/Reddedildi`) bu dalgada DEĞİŞTİRİLMEDİ — FAZ3 sözlüğüne not düşüldü.
+- OpenAPI şeması yeniden üretildi — kontrat/route tablosunda değişiklik YOK, yalnız route docstring'lerindeki "(Service Layer)" ibaresi kaldırıldığı için diff oluştu (Service sınıfları artık yok).
+- 🔴 **mypy latent-bug gotcha'sı (fleet'in OpenAPI-drift gotcha'sıyla aynı sınıf bulgu):** `import_service.py`'nin `bulk_add_yakit`'e `YakitCreate` (schemas.py) listesi geçirmesi ile fonksiyonun tipinin `YakitAlimiCreate` (entities/models.py) beklemesi arasındaki nominal-tip uyuşmazlığı taşımadan ÖNCE de vardı ama `self.yakit_service`'in untyped constructor param olması yüzünden mypy'ye görünmüyordu. Free function'a geçiş bunu ortaya çıkardı. **Ders:** bir servis sınıfını free function'a çevirirken çağıranların untyped `self.<servis>` üzerinden geçirdiği argümanlar birden statik olarak kontrol edilir hale gelir — mevcut (görünmeyen) tip uyuşmazlıkları CI'da yeni "regresyon" gibi görünebilir; kök neden taşımadan önce de var olan bir uyuşmazlıktır, `cast()` ile dokümante edilip düzeltilir (fonksiyonun tipini gevşetmek yerine).
+- 🔴 **Kök `tests/` klasörü gotcha'sı tekrarı (dalga 1'de de görülmüştü):** repo kökünde `app/tests/`'ten bağımsız bir `tests/` klasörü var, CI'nın "Backend unit tests" adımı onu da koşuyor; fork'un + ana oturumun `app/tests/` odaklı grep taraması bu klasörü başta kaçırdı (`tests/test_fuel_prediction.py`, `tests/unit/test_yakit_service.py`). 2. turda bulunup düzeltildi.
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB):**
+- `ruff check app v2` → temiz.
+- `mypy app/` → 7/7 baseline, regresyon yok (CI'da doğrulandı).
+- `pytest --collect-only`: `app/tests` 6751 test / kök `tests/` 264 test, 0 hata.
+- Fuel-özgü 27+2 test dosyası (fork + ana oturum bulguları dahil): 493+7+45 = 545 test, hepsi pass (2 skip — OPET api-stub erişilemez, beklenen).
+- CI'nın kendi "Backend unit tests" koşumu (nihai, 4. push): 5423 passed, 23 skipped, 1262 deselected — 0 fail.
+- OpenAPI schema drift: nihai halde YOK.
+- Bir fork ajanı test dönüşümünün büyük kısmını yaptı (18 doğrudan + 12 grep'le bulunan ek dosya = 30 dosya), 1 gerçek prod bug buldu+düzeltti (`import_service.py`'nin Excel yakıt import'u silinen `app.schemas.yakit`'i import ediyordu — `ImportError` riski, canlıya hiç gitmemiş olurdu). Ana oturum kalan 2 tur kırmızıyı (kök `tests/` + `test_prediction_service_coverage.py`) buldu+düzeltti.
+
 ## Son güncelleme
-2026-07-13 — **FAZ1 dalga 3 (fleet) TAMAMLANDI ve main'de yeşil** (commit `26967c3`, CI Hard Gates `success`, GHCR+prod deploy dahil). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 4 (fuel) yeni oturumda `TASKS/modules/fuel.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-14 — **FAZ1 dalga 4 (fuel) TAMAMLANDI ve main'de yeşil** (commit `6721cdb`, CI Hard Gates `success`, 33dk1sn). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 5 (driver) yeni oturumda `TASKS/modules/driver.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

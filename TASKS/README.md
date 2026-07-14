@@ -40,6 +40,7 @@ faz2-db-rol-izolasyonu-ve-read-model-grantlari.md
 faz2-guvenlik-state-redis.md
 faz3-dil-gecisi-kod-db-api-ingilizce.md
 faz4-sikilastirma-ve-kapanis.md
+bug-connection-pool-leak-under-load.md        # BAĞIMSIZ bug — dalga sırası dışında, herhangi bir oturumda ele alınabilir
 ```
 
 ## Modül Taşıma Dalga Sırası (FAZ1, bağımlılık az→çok)

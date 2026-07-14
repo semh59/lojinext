@@ -66,6 +66,7 @@ Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **rep
 ## Bilinen açık notlar (ileride çözülecek, kapsam dışı bırakılmadı)
 - `admin_ws.py` dosya-sahipliği vs route-işlev tutarsızlığı — notification (dalga 2) VE admin-platform (dalga 15) dosyalarında işaretli, dalga 2'de karar verilecek.
 - `model_manager.py`'deki 9 kırık raw-SQL sitesi (`model_versions` tablosu yok) — prediction-ml (dalga 13) dalgasında düzeltilecek/temizlenecek, ayrı bug-fix.
+- ⚠️ **[YÜKSEK ÖNCELİK — dalga sırasını BEKLEMESİN]** Connection-pool leak, eşzamanlı gerçek yük altında (Locust, 30 kullanıcı) SQLAlchemy'nin "non-checked-in connection" uyarısı 52 kez üretti (test öncesi 0). App-geneli (taşınmış/taşınmamış modüller ayrımı yok, `/trips/`, `/auth/token`, `/vehicles/`, `/fuel/` hepsinde görüldü) — kod sahibi nihai olarak `platform-infra` (dalga 17) ama canlı-güvenilirlik riski taşıdığı için dalga 17'ye kadar beklenmemeli. Detay + repro + şüpheli kod konumları: `TASKS/bug-connection-pool-leak-under-load.md`. Herhangi bir oturumda, dalga sırası beklenmeden ele alınabilir.
 
 ## DALGA 1 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-13)
 

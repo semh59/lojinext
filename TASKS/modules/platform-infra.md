@@ -11,6 +11,17 @@
 ## 1. Mevcut envanter (62 dosya, 9.654 LOC — değişmez, bu dalga TAŞIMIYOR, YENİDEN BAĞLIYOR)
 Ana kalemler (tam liste MEMORY/PROGRESS.md kaynak taramasından): `main.py`, `config.py`, `api/deps.py`, `api/v1/api.py`, `core/container.py`, `database/{connection,db_session,init_db}.py`, `infrastructure/{audit,background,cache,context,database,events,logging,middleware,monitoring,resilience,security/pii_*}/*`, `services/external_service.py`, `workers/tasks/{dlq_tasks,outbox_tasks}.py`.
 
+⚠️ **Bilinen açık bug (2026-07-14, ayrı incelenmeli — dalga 17'yi BEKLEMEMELİ):**
+`app/api/deps.py::get_db` ve/veya `app/database/connection.py`'nin pool
+konfigürasyonunda eşzamanlı gerçek yük altında bir connection-leak var
+(Locust'ta doğrulandı — 30 eşzamanlı kullanıcıda 52 "non-checked-in
+connection" uyarısı, test öncesi 0). Bu dosyalar bu dalganın (17) kod
+sahipliği kapsamında olsa da, sorun canlı-güvenilirlik riski taşıdığı için
+platform-infra dalgası sırası gelene kadar beklenmemeli — bağımsız bir
+oturumda ele alınmalı. Detay + repro: `TASKS/bug-connection-pool-leak-under-load.md`.
+Bu dalga başladığında hâlâ çözülmemişse, adım 2'nin "database/connection.py"
+yeniden-bağlama işiyle BİRLİKTE ele alınmalı, ayrı bırakılmamalı.
+
 ## 2. Bu dalganın gerçek işi: main.py/container.py/api.py'yi BOŞALTMAK
 Faz1-registry-iskelet-ve-shim.md'de tanımlanan taşıma tablosu bu dalgada TAMAMLANIR:
 - `api.py:53-153`'teki 47 `include_router` çağrısının HEPSİ artık `app/modules/registry.py` üzerinden geliyor olmalı — `api.py`'de yalnız `APIRouter()` toplama iskeleti kalır.

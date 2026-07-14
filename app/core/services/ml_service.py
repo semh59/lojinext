@@ -83,52 +83,55 @@ class MLService:
         is_error: bool = False,
         error_detail: Optional[str] = None,
     ):
-        """Updates the status and progress of a training task."""
-        async with self.uow:
-            # Need the session-tracked ORM row (not the repo's dict projection)
-            # so the attribute writes below actually persist on commit.
-            task = await self.uow.session.get(EgitimKuyrugu, task_id)
-            if not task:
-                raise HTTPException(status_code=404, detail="Training task not found.")
+        """Updates the status and progress of a training task.
 
-            task.ilerleme = ilerleme
-            task.durum = durum
-            if is_error:
-                task.hata_detay = error_detail
+        NOT: ``self.uow`` çağıran tarafça (endpoint/dependency) zaten
+        `async with` içinde açılmış olarak enjekte edilir — burada ikinci
+        kez `async with self.uow:` yapmak aynı instance'ı yeniden açar ve
+        connection-pool leak'ine yol açar (bkz. `schedule_training`
+        üstündeki NOT + TASKS/bug-connection-pool-leak-under-load.md).
+        """
+        # Need the session-tracked ORM row (not the repo's dict projection)
+        # so the attribute writes below actually persist on commit.
+        task = await self.uow.session.get(EgitimKuyrugu, task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Training task not found.")
 
-            now = datetime.now(timezone.utc)
-            if durum in ["RUNNING", "COMPLETED", "FAILED"]:
-                task.guncelleme = now
-                if durum == "RUNNING" and not task.baslangic_zaman:
-                    task.baslangic_zaman = now
-                if durum in ["COMPLETED", "FAILED"]:
-                    task.bitis_zaman = now
+        task.ilerleme = ilerleme
+        task.durum = durum
+        if is_error:
+            task.hata_detay = error_detail
 
-            await self.uow.commit()
+        now = datetime.now(timezone.utc)
+        if durum in ["RUNNING", "COMPLETED", "FAILED"]:
+            task.guncelleme = now
+            if durum == "RUNNING" and not task.baslangic_zaman:
+                task.baslangic_zaman = now
+            if durum in ["COMPLETED", "FAILED"]:
+                task.bitis_zaman = now
 
-            # Broadcast update via WebSocket
-            await training_ws_manager.broadcast(
-                {
-                    "type": "progress",
-                    "task_id": task_id,
-                    "arac_id": task.arac_id,
-                    "ilerleme": ilerleme,
-                    "durum": durum,
-                    "error": is_error,
-                    "detail": error_detail,
-                }
-            )
+        await self.uow.commit()
+
+        # Broadcast update via WebSocket
+        await training_ws_manager.broadcast(
+            {
+                "type": "progress",
+                "task_id": task_id,
+                "arac_id": task.arac_id,
+                "ilerleme": ilerleme,
+                "durum": durum,
+                "error": is_error,
+                "detail": error_detail,
+            }
+        )
 
     async def get_training_queue(self, limit: int = 50) -> list:
         """Return recent training tasks ordered by newest first."""
         from sqlalchemy import select as sa_select
 
-        async with self.uow:
-            stmt = (
-                sa_select(EgitimKuyrugu).order_by(EgitimKuyrugu.id.desc()).limit(limit)
-            )
-            result = await self.uow.session.execute(stmt)
-            return list(result.scalars().all())
+        stmt = sa_select(EgitimKuyrugu).order_by(EgitimKuyrugu.id.desc()).limit(limit)
+        result = await self.uow.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def register_model_version(
         self,
@@ -140,21 +143,18 @@ class MLService:
         veri_sayisi: int,
     ) -> ModelVersiyon:
         """Register a new trained model version in the database."""
-        async with self.uow:
-            model_ver = ModelVersiyon(
-                arac_id=arac_id,
-                versiyon=versiyon,
-                veri_sayisi=veri_sayisi,
-                r2_skoru=metrics.get("r2_skoru"),
-                mae=metrics.get("mae"),
-                mape=metrics.get("mape"),
-                rmse=metrics.get("rmse"),
-                model_dosya_yolu=model_dosya_yolu,
-                kullanilan_ozellikler=kullanilan_ozellikler,
-            )
-            self.uow.session.add(model_ver)
-            await self.uow.commit()
-            logger.info(
-                f"Model version registered: arac_id={arac_id}, version={versiyon}"
-            )
-            return model_ver
+        model_ver = ModelVersiyon(
+            arac_id=arac_id,
+            versiyon=versiyon,
+            veri_sayisi=veri_sayisi,
+            r2_skoru=metrics.get("r2_skoru"),
+            mae=metrics.get("mae"),
+            mape=metrics.get("mape"),
+            rmse=metrics.get("rmse"),
+            model_dosya_yolu=model_dosya_yolu,
+            kullanilan_ozellikler=kullanilan_ozellikler,
+        )
+        self.uow.session.add(model_ver)
+        await self.uow.commit()
+        logger.info(f"Model version registered: arac_id={arac_id}, version={versiyon}")
+        return model_ver

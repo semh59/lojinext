@@ -31,14 +31,20 @@ async def override_trip_attribution(
     Manually override the vehicle or driver for a specific trip.
     """
     try:
-        async with UnitOfWork(db) as uow:
-            attribution_service = AttributionService(uow)
-            success = await attribution_service.override_attribution(
-                sefer_id=request.sefer_id,
-                arac_id=request.new_arac_id,
-                sofor_id=request.new_sofor_id,
-                reason=request.reason,
-            )
+        # NOT: UnitOfWork(db) burada ÖNCEDEN `async with` ile açılmıyor —
+        # override_attribution()'ın kendi `async with self.uow:` bloğu tek
+        # giriş noktası olmalı. Önceden burada da açılıyordu, bu da aynı
+        # instance'ı iki kez `__aenter__` etmek anlamına geliyordu — connection-
+        # pool leak'ine yol açan kök neden (bkz.
+        # TASKS/bug-connection-pool-leak-under-load.md, AuthService/MLService'te
+        # aynı desen bulunup düzeltildi).
+        attribution_service = AttributionService(UnitOfWork(db))
+        success = await attribution_service.override_attribution(
+            sefer_id=request.sefer_id,
+            arac_id=request.new_arac_id,
+            sofor_id=request.new_sofor_id,
+            reason=request.reason,
+        )
 
         return AttributionOverrideResponse(
             sefer_id=request.sefer_id,

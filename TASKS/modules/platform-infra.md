@@ -11,16 +11,18 @@
 ## 1. Mevcut envanter (62 dosya, 9.654 LOC — değişmez, bu dalga TAŞIMIYOR, YENİDEN BAĞLIYOR)
 Ana kalemler (tam liste MEMORY/PROGRESS.md kaynak taramasından): `main.py`, `config.py`, `api/deps.py`, `api/v1/api.py`, `core/container.py`, `database/{connection,db_session,init_db}.py`, `infrastructure/{audit,background,cache,context,database,events,logging,middleware,monitoring,resilience,security/pii_*}/*`, `services/external_service.py`, `workers/tasks/{dlq_tasks,outbox_tasks}.py`.
 
-⚠️ **Bilinen açık bug (2026-07-14, ayrı incelenmeli — dalga 17'yi BEKLEMEMELİ):**
-`app/api/deps.py::get_db` ve/veya `app/database/connection.py`'nin pool
-konfigürasyonunda eşzamanlı gerçek yük altında bir connection-leak var
-(Locust'ta doğrulandı — 30 eşzamanlı kullanıcıda 52 "non-checked-in
-connection" uyarısı, test öncesi 0). Bu dosyalar bu dalganın (17) kod
-sahipliği kapsamında olsa da, sorun canlı-güvenilirlik riski taşıdığı için
-platform-infra dalgası sırası gelene kadar beklenmemeli — bağımsız bir
-oturumda ele alınmalı. Detay + repro: `TASKS/bug-connection-pool-leak-under-load.md`.
-Bu dalga başladığında hâlâ çözülmemişse, adım 2'nin "database/connection.py"
-yeniden-bağlama işiyle BİRLİKTE ele alınmalı, ayrı bırakılmamalı.
+✅ **Çözüldü (2026-07-14):** connection-pool leak'in kök nedeni bulundu ve
+düzeltildi — `app/api/deps.py::get_db`/`app/database/connection.py`'nin
+kendisinde DEĞİL, `AuthService`/`MLService`/`AttributionService`'in zaten
+FastAPI dependency'si tarafından açılmış (`get_uow()`) bir `UnitOfWork`
+instance'ını ikinci kez `async with self.uow:` ile yeniden açmasıydı —
+bu, `_owns` bayrağını bozup dış `__aexit__`'in `session.close()`'u atlamasına
+yol açıyordu. Ayrıca `AuthService.authenticate()`'teki senkron
+`bcrypt.checkpw()` çağrısı event loop'u bloklayıp eşzamanlı yük altında
+pool tükenmesini şiddetlendiriyordu (`asyncio.to_thread`'e taşındı). Gerçek
+30-kullanıcılı Locust koşumunda leak uyarısı 52→0, p99 latency 4900ms→500ms
+oldu. Detay: `TASKS/bug-connection-pool-leak-under-load.md` (kabul kriterleri
+işaretli). Bu dalga (17) başladığında ayrıca ele alınacak bir şey kalmadı.
 
 ## 2. Bu dalganın gerçek işi: main.py/container.py/api.py'yi BOŞALTMAK
 Faz1-registry-iskelet-ve-shim.md'de tanımlanan taşıma tablosu bu dalgada TAMAMLANIR:

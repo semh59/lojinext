@@ -108,6 +108,7 @@ class UnitOfWork:
         "_committed",
         "_rolled_back",
         "_external_session",
+        "_entered",
         "__dict__",
     )
 
@@ -119,9 +120,38 @@ class UnitOfWork:
         self._rolled_back = False
         # True when the session was injected externally (not created by this UoW)
         self._external_session: bool = session is not None
+        # True while THIS instance's __aenter__ is currently active (not the
+        # same as "has a session" — see __aenter__'s re-entrancy guard below).
+        self._entered = False
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
     async def __aenter__(self) -> "UnitOfWork":
+        if self._entered:
+            # A caller did `async with uow:` a SECOND time on the SAME
+            # instance while it was still active (e.g. a service method
+            # re-wrapping a uow that FastAPI's get_uow() dependency, or an
+            # endpoint, already entered). This is NOT the supported nested
+            # pattern — that requires a NEW `UnitOfWork()` instance, which
+            # transparently joins the existing session via the contextvar
+            # below (see the elif branch) without mutating this instance's
+            # own `_owns`. Re-entering the SAME object flips `_owns` to
+            # False on the OUTER owner too (same underlying `_owns` slot),
+            # so its `__aexit__` silently skips `session.close()` — a
+            # connection-pool leak, only surfaced later as SQLAlchemy's GC
+            # "non-checked-in connection" warning under real concurrent
+            # load (bkz. TASKS/bug-connection-pool-leak-under-load.md —
+            # found live in `AuthService`, `MLService`, `AttributionService`).
+            raise RuntimeError(
+                "UnitOfWork instance re-entered via a second 'async with' "
+                "on the SAME object. If you received an already-active "
+                "`uow` (e.g. injected via FastAPI's get_uow() dependency, "
+                "or passed into a service's __init__), use it directly — "
+                "do NOT wrap it in another 'async with'. To share the "
+                "active session across an independent call site instead, "
+                "open a NEW `UnitOfWork()` there — it joins the existing "
+                "session automatically."
+            )
+        self._entered = True
         existing = _session_ctx.get()
         if self._session is not None:
             self._owns = False
@@ -180,6 +210,7 @@ class UnitOfWork:
                 if self._token is not None:
                     _session_ctx.reset(self._token)
                 await self._session.close()  # type: ignore[union-attr]
+            self._entered = False
             self.__dict__.clear()
 
     # ── Transaction control ───────────────────────────────────────────────────

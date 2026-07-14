@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import text
 
 from app.database.connection import AsyncSessionLocal, engine, get_sync_session
@@ -71,6 +72,94 @@ async def test_connection_leak_prevention(db_session):
             await uow.session.execute(text("SELECT 1"))
             # Explicitly NOT committing to trigger ghost detection
             # but verifying cleanup happens
+
+
+@pytest.mark.asyncio
+async def test_uow_reentrant_async_with_raises_instead_of_leaking(db_session):
+    """Defense-in-depth for the connection-pool-leak bug
+    (TASKS/bug-connection-pool-leak-under-load.md): re-entering an
+    ALREADY-active UnitOfWork instance via a second ``async with`` (the
+    exact anti-pattern found live in ``AuthService``/``MLService``/
+    ``AttributionService`` — all three fixed at their call sites) must now
+    fail LOUDLY at the re-entry point, instead of silently corrupting
+    ``_owns`` and leaking the connection until the garbage collector
+    reclaims it.
+    """
+    async with UnitOfWork() as uow:
+        assert uow._owns is True
+        with pytest.raises(RuntimeError, match="re-entered"):
+            async with uow:
+                pass
+        # The outer instance's ownership must be untouched by the failed
+        # re-entry attempt.
+        assert uow._owns is True
+
+
+@pytest.mark.asyncio
+async def test_auth_service_authenticate_does_not_leak_connection(db_session):
+    """Regression test — connection-pool-leak bug (TASKS/bug-connection-pool-leak-under-load.md).
+
+    Root cause: ``AuthService`` methods received an ALREADY-entered
+    UnitOfWork (exactly as FastAPI's ``get_uow()`` dependency provides it —
+    see ``app/api/deps.py::get_auth_service``) but wrapped it in a SECOND
+    ``async with self.uow:``. Re-entering ``__aenter__`` on the same
+    instance sets ``_owns = False`` on that shared instance (correct for a
+    *new* nested ``UnitOfWork()``, wrong for re-entering the same object) —
+    so when the OUTER ``get_uow()`` dependency's own ``__aexit__`` runs at
+    request end, ``if self._owns:`` is now False and
+    ``await self._session.close()`` is silently skipped. Reproduced live
+    with a 30-user Locust run against the real backend: 30-44
+    "non-checked-in connection" GC warnings per 90s run, 139/185 traced to
+    this exact endpoint via request-path-tagged pool-checkout diagnostics.
+
+    Drives the real FastAPI dependency chain (``get_uow()`` generator →
+    ``AuthService(uow).authenticate()`` → generator driven to completion,
+    mirroring what FastAPI does when a request finishes) and asserts
+    ``session.close()`` was actually called — proving the connection was
+    returned, not just that no exception escaped. (See the test above for
+    why this can't assert on ``engine.pool.checkedout()`` under NullPool.)
+    """
+    from unittest.mock import MagicMock
+
+    from app.core.services.auth_service import AuthService
+    from app.database.unit_of_work import get_uow
+    from app.tests._helpers.seed import seed_kullanici
+
+    user = await seed_kullanici(db_session, email="leak-repro@test.local")
+    await db_session.commit()
+
+    request = MagicMock()
+    request.client.host = "127.0.0.1"
+    request.headers.get = MagicMock(return_value="pytest-client")
+
+    uow_gen = get_uow()
+    uow = await uow_gen.__anext__()
+    original_close = uow._session.close
+    close_calls = []
+    uow._session.close = lambda: (close_calls.append(1), original_close())[1]
+
+    try:
+        with pytest.raises(HTTPException):
+            # Wrong password on purpose — exercises the exact buggy code
+            # path without needing a real bcrypt-verifiable hash.
+            await AuthService(uow).authenticate(
+                user.email, "definitely-wrong-password", request
+            )
+    finally:
+        # Drive the generator to completion — this is what FastAPI does
+        # when the request finishes, running get_uow()'s `await uow.commit()`
+        # and the UnitOfWork's __aexit__ (which is where the leak happened).
+        try:
+            await uow_gen.__anext__()
+        except StopAsyncIteration:
+            pass
+
+    assert close_calls, (
+        "AuthService.authenticate() leaked a connection — the outer "
+        "get_uow() dependency's session.close() was never called. This is "
+        "the connection-pool-leak regression "
+        "(TASKS/bug-connection-pool-leak-under-load.md)."
+    )
 
 
 @pytest.mark.asyncio

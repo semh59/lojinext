@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
 logger = get_logger(__name__)
 
@@ -62,8 +61,11 @@ async def get_score_breakdown_sofor(
     çevirir. ``uow`` verilirse aynı transaction paylaşılır (coaching engine
     gibi çağıranlar için — repo session-aware olmak zorunda).
     """
-    repo = uow.sofor_repo if uow is not None else get_sofor_repo()
-    sofor = await repo.get_by_id(sofor_id)
+    if uow is not None:
+        sofor = await uow.sofor_repo.get_by_id(sofor_id)
+    else:
+        async with UnitOfWork() as _uow:
+            sofor = await _uow.sofor_repo.get_by_id(sofor_id)
     if not sofor:
         raise ValueError("Driver not found")
 

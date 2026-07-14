@@ -19,16 +19,17 @@ Covered here (not in test_sofor_service.py):
 0-mock (Dilim 23): all patch(UnitOfWork) removed → real DB via db_session fixture.
 NOT: eski ``SoforService`` sınıfı silindi (B.1 free-function split, bkz.
 v2/modules/driver/CLAUDE.md). ``get_score_breakdown_sofor``/
-``get_route_profile_sofor`` uow=None verildiğinde modül-seviyeli
-``get_sofor_repo()`` singleton'ını kullanır — bu yüzden svc.repo yerine
-kaynak modüldeki ``get_sofor_repo`` patch'lenir (legitimate targeted mock,
-singleton'ın UoW dışında session'ı yok).
+``get_route_profile_sofor`` uow=None verildiğinde artık kendi
+``UnitOfWork()``'ünü açar (dalga 5 push-sonrası fix — eski modül-seviyeli
+``get_sofor_repo()`` singleton'ı session'sız ORM ``get_by_id`` ile
+prod'da 500 patlıyordu, bkz. CLAUDE.md); bu yüzden bu iki use-case artık
+hiçbir repo patch'i gerektirmiyor, tamamen gerçek DB.
 Documented boundary: exception-path test for calculate_hybrid_score uses a narrow
 patch.object on the repo method (not the whole UoW).
 """
 
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -47,13 +48,6 @@ from v2.modules.driver.application.update_sofor import update_score
 from v2.modules.driver.application.update_sofor import update_sofor as update_sofor_fn
 
 pytestmark = pytest.mark.integration
-
-
-def _fake_sofor_repo(return_value):
-    """Belirli bir sofor kaydı döndüren sahte repo (get_by_id mock'lu)."""
-    repo = MagicMock()
-    repo.get_by_id = AsyncMock(return_value=return_value)
-    return repo
 
 
 # ===========================================================================
@@ -329,40 +323,33 @@ class TestCalculateHybridScore:
 # ===========================================================================
 # get_score_breakdown_sofor
 # ===========================================================================
-# get_sofor_repo() (module-level singleton, resolved when uow=None) is
-# patched at its consuming module (get_score.py) with a targeted AsyncMock
-# repo (legitimate: singleton has no session outside UoW).
-# The UoW block (get_sefer_stats) uses the real test DB via db_session fixture.
-
-_GET_SOFOR_REPO_SCORE = "v2.modules.driver.application.get_score.get_sofor_repo"
+# 0-mock: uow=None yolu artık kendi UnitOfWork()'ünü açıyor (fix — eski
+# get_sofor_repo() singleton'ı session'sız ORM get_by_id ile 500 patlıyordu,
+# bkz. v2/modules/driver/CLAUDE.md "score-breakdown 500" bulgusu). Bu yüzden
+# artık gerçek DB'ye karşı, hiç repo patch'i olmadan test edilebiliyor.
 
 
 class TestGetScoreBreakdown:
     async def test_driver_not_found_raises(self, db_session):
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=_fake_sofor_repo(None)):
-            with pytest.raises(ValueError, match="Driver not found"):
-                await get_score_breakdown_sofor(999)
+        with pytest.raises(ValueError, match="Driver not found"):
+            await get_score_breakdown_sofor(999999)
 
     async def test_no_trips_returns_manual_fallback(self, db_session):
-        sofor = await seed_sofor(db_session, ad_soyad="Score Breakdown No Trips")
+        sofor = await seed_sofor(
+            db_session, ad_soyad="Score Breakdown No Trips", manual_score=1.2
+        )
         await db_session.commit()
 
-        repo = _fake_sofor_repo(
-            {
-                "id": sofor.id,
-                "ad_soyad": sofor.ad_soyad,
-                "manual_score": 1.2,
-            }
-        )
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
-            result = await get_score_breakdown_sofor(sofor.id)
+        result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is False
         assert result["manual"] == 1.2
 
     async def test_with_trips_computes_auto_score(self, db_session):
         arac = await seed_arac(db_session, plaka="34SBREAK01")
-        sofor = await seed_sofor(db_session, ad_soyad="Score Breakdown With Trips")
+        sofor = await seed_sofor(
+            db_session, ad_soyad="Score Breakdown With Trips", manual_score=1.0
+        )
         for _ in range(8):
             await seed_sefer(
                 db_session,
@@ -372,15 +359,7 @@ class TestGetScoreBreakdown:
             )
         await db_session.commit()
 
-        repo = _fake_sofor_repo(
-            {
-                "id": sofor.id,
-                "ad_soyad": sofor.ad_soyad,
-                "manual_score": 1.0,
-            }
-        )
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
-            result = await get_score_breakdown_sofor(sofor.id)
+        result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is True
         assert result["trip_count"] == 8
@@ -388,14 +367,29 @@ class TestGetScoreBreakdown:
         assert "total" in result
 
     async def test_score_clamped_to_valid_range(self, db_session):
+        """manual_score=3.0 should clamp to 2.0.
+
+        DB'nin ``chk_sofor_manual_score_range`` CHECK constraint'i 0.1-2.0
+        dışı bir değerin seed edilmesine izin vermiyor — bu yüzden yalnız
+        bu senaryoda repo.get_by_id() dönüşü dar (narrow) patch'lenir
+        (yazma yolu değil, yalnız okuma; test_stats_exception_falls_back_to_manual
+        ile aynı sınıf istisna).
+        """
         sofor = await seed_sofor(db_session, ad_soyad="Score Clamp Driver")
         await db_session.commit()
 
-        # score=3.0 should be clamped to 2.0
-        repo = _fake_sofor_repo(
-            {"id": sofor.id, "ad_soyad": "X Y", "manual_score": 3.0}
-        )
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+        import v2.modules.driver.infrastructure.repository as sofor_repo_mod
+
+        with patch.object(
+            sofor_repo_mod.SoforRepository,
+            "get_by_id",
+            new_callable=AsyncMock,
+            return_value={
+                "id": sofor.id,
+                "ad_soyad": sofor.ad_soyad,
+                "manual_score": 3.0,
+            },
+        ):
             result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["manual"] == 2.0
@@ -404,9 +398,7 @@ class TestGetScoreBreakdown:
         sofor = await seed_sofor(db_session, ad_soyad="Score Structure Driver")
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": "Test", "score": 1.0})
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
-            result = await get_score_breakdown_sofor(sofor.id)
+        result = await get_score_breakdown_sofor(sofor.id)
 
         required_keys = {
             "sofor_id",
@@ -425,22 +417,20 @@ class TestGetScoreBreakdown:
 
     async def test_stats_exception_falls_back_to_manual(self, db_session):
         """Exception in get_sefer_stats is swallowed; has_trips stays False."""
-        sofor = await seed_sofor(db_session, ad_soyad="Score Exception Driver")
+        sofor = await seed_sofor(
+            db_session, ad_soyad="Score Exception Driver", manual_score=1.1
+        )
         await db_session.commit()
 
-        repo = _fake_sofor_repo(
-            {"id": sofor.id, "ad_soyad": "Ali", "manual_score": 1.1}
-        )
         import v2.modules.driver.infrastructure.repository as sofor_repo_mod
 
-        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
-            with patch.object(
-                sofor_repo_mod.SoforRepository,
-                "get_sefer_stats",
-                new_callable=AsyncMock,
-                side_effect=RuntimeError("boom"),
-            ):
-                result = await get_score_breakdown_sofor(sofor.id)
+        with patch.object(
+            sofor_repo_mod.SoforRepository,
+            "get_sefer_stats",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ):
+            result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is False
 
@@ -448,31 +438,25 @@ class TestGetScoreBreakdown:
 # ===========================================================================
 # get_route_profile_sofor
 # ===========================================================================
-# get_sofor_repo() is patched at its consuming module (get_route_profile.py)
-# (same rationale as get_score_breakdown_sofor above).
-# classify_route is patched: testing the use-case's bucketing logic, not the ML function.
-# UoW sefer_repo uses real DB via db_session fixture.
-
-_GET_SOFOR_REPO_ROUTE = "v2.modules.driver.application.get_route_profile.get_sofor_repo"
+# 0-mock: uow=None yolu artık kendi UnitOfWork()'ünü açıyor (fix — aynı
+# get_score_breakdown_sofor bulgusu, bkz. yukarısı). classify_route hâlâ
+# patch'leniyor: testing the use-case's bucketing logic, not the ML function.
 
 
 class TestGetRouteProfile:
     async def test_driver_not_found_raises(self, db_session):
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=_fake_sofor_repo(None)):
-            with pytest.raises(ValueError, match="Driver not found"):
-                await get_route_profile_sofor(999)
+        with pytest.raises(ValueError, match="Driver not found"):
+            await get_route_profile_sofor(999999)
 
     async def test_empty_trips_returns_zero_profiles(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Route Profile Empty Driver")
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                return_value="mixed",
-            ):
-                result = await get_route_profile_sofor(sofor.id)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            return_value="mixed",
+        ):
+            result = await get_route_profile_sofor(sofor.id)
 
         assert result["best_route_type"] is None
         for profile in result["profiles"]:
@@ -491,13 +475,11 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                return_value="highway_dominant",
-            ):
-                result = await get_route_profile_sofor(sofor.id)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            return_value="highway_dominant",
+        ):
+            result = await get_route_profile_sofor(sofor.id)
 
         highway_profile = next(
             p for p in result["profiles"] if p["route_type"] == "highway_dominant"
@@ -533,13 +515,11 @@ class TestGetRouteProfile:
             # highway trips have highway_km seeded; urban trips have empty analysis
             return "highway_dominant" if "highway_km" in route_analysis else "urban"
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                side_effect=classify_side_effect,
-            ):
-                result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            side_effect=classify_side_effect,
+        ):
+            result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
 
         # highway: deviation=(100-102)/102*100 ≈ -2%; urban: (200-100)/100*100=100%
         # best_route_type = lowest deviation_pct = highway_dominant
@@ -559,13 +539,11 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                return_value="mixed",
-            ):
-                result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            return_value="mixed",
+        ):
+            result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
 
         assert result["best_route_type"] is None
 
@@ -583,13 +561,11 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                side_effect=ValueError("bad route"),
-            ):
-                result = await get_route_profile_sofor(sofor.id)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            side_effect=ValueError("bad route"),
+        ):
+            result = await get_route_profile_sofor(sofor.id)
 
         assert all(p["trip_count"] == 0 for p in result["profiles"])
 
@@ -607,13 +583,11 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
-        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
-            with patch(
-                "v2.modules.driver.application.get_route_profile.classify_route",
-                return_value="unknown_type_xyz",
-            ):
-                result = await get_route_profile_sofor(sofor.id)
+        with patch(
+            "v2.modules.driver.application.get_route_profile.classify_route",
+            return_value="unknown_type_xyz",
+        ):
+            result = await get_route_profile_sofor(sofor.id)
 
         assert all(p["trip_count"] == 0 for p in result["profiles"])
 

@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.domain.route_profile import ROUTE_TYPES, classify_route
-from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
 logger = get_logger(__name__)
 
@@ -30,20 +29,19 @@ async def get_route_profile_sofor(
     seçer; aday yoksa None döner. ``uow`` verilirse aynı transaction
     paylaşılır (coaching engine gibi çağıranlar için).
     """
-    repo = uow.sofor_repo if uow is not None else get_sofor_repo()
-    sofor = await repo.get_by_id(sofor_id)
-    if not sofor:
-        raise ValueError("Driver not found")
-
     if uow is not None:
+        sofor = await uow.sofor_repo.get_by_id(sofor_id)
         trips = await uow.sefer_repo.get_driver_trips_with_route_analysis(
             sofor_id=sofor_id, limit=300, days=365
         )
     else:
         async with UnitOfWork() as _uow:
+            sofor = await _uow.sofor_repo.get_by_id(sofor_id)
             trips = await _uow.sefer_repo.get_driver_trips_with_route_analysis(
                 sofor_id=sofor_id, limit=300, days=365
             )
+    if not sofor:
+        raise ValueError("Driver not found")
 
     buckets: Dict[str, List[Dict[str, float]]] = {rt: [] for rt in ROUTE_TYPES}
     for t in trips:

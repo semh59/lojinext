@@ -45,7 +45,7 @@ app/workers/tasks/fuel_coverage_check.py
 7. Shim'ler + CLAUDE.md.
 
 ## 6. Kabul kriterleri
-- [ ] 13 dosya taşındı
-- [ ] YAKIT_* event payload'ları DTO doğrulaması geçti
-- [ ] `yakit_alimlari.durum` Türkçe enum değerleri FAZ3 sözlüğüne (CLAUDE.md madde 7) not düşüldü — bu FAZda DEĞİŞTİRİLMEDİ
-- [ ] trip↔fuel senkron çiftinin public.py sınırı netleşti
+- [x] 13 dosya taşındı
+- [x] YAKIT_* event payload'ları DTO doğrulaması geçti (`@publishes` ölü kod olduğu doğrulandı — fleet/notification/location'daki aynı bulgu; ayrıca 2 gerçek subscriber'ın da bugün tetiklenmediği ek olarak dokümante edildi, bkz. `v2/modules/fuel/events.py`)
+- [x] `yakit_alimlari.durum` Türkçe enum değerleri FAZ3 sözlüğüne (CLAUDE.md madde 7) not düşüldü — bu FAZda DEĞİŞTİRİLMEDİ
+- [x] trip↔fuel senkron çiftinin public.py sınırı netleşti (`recalculate_vehicle_periods(arac_id, yakit_repo=None, sefer_repo=None)` — bkz. `v2/modules/fuel/CLAUDE.md` "Senkron konuştuğu modüller")

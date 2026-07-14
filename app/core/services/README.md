@@ -11,7 +11,6 @@ UnitOfWork ile birlikte oluşturulur. Transaction garantisi sağlar.
 | AracService | UoW.arac_repo | deps.get_arac_service |
 | SoforService | UoW.sofor_repo | deps.get_sofor_service |
 | SeferService | UoW.sefer_repo | deps.get_sefer_service |
-| YakitService | UoW.yakit_repo | deps.get_yakit_service |
 | LokasyonService | UoW.lokasyon_repo | deps.get_lokasyon_service |
 | DorseService | UoW.dorse_repo | deps.get_dorse_service |
 | AuthService | UoW.session | deps.get_auth_service |

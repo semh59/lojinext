@@ -7,8 +7,16 @@ import pytest
 # Add project root to path (d:/PROJECT/excel)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.ml.fuel_predictor import LinearRegressionModel
-from app.core.services.yakit_tahmin_service import YakitTahminService
+from v2.modules.fuel.domain.local_regression import LinearRegressionModel
+
+# NOTE: the old YakitTahminService class (with its `self.model` constructor
+# attribute) no longer exists — dalga 4 migration replaced it with free
+# functions (v2/modules/fuel/domain/consumption_prediction.py) that create a
+# local LinearRegressionModel per call, never a persistent `self.model`
+# (that attribute was dead weight even before the migration — no method
+# read it). The tests that asserted on `service.model` were testing that
+# dead attribute, not real behavior, so they were dropped rather than
+# ported.
 
 
 class TestFuelPredictor:
@@ -52,29 +60,3 @@ class TestFuelPredictor:
         # Model içindeki check veya numpy hatası
         with pytest.raises((ValueError, IndexError)):
             model.fit(X, y)
-
-
-class TestYakitService:
-    @pytest.fixture
-    def service(self):
-        return YakitTahminService()
-
-    def test_calculation_safety(self, service):
-        """Model parametreleri ile güvenli hesaplama testi"""
-        # Manually set model params to bypass DB params fetch
-        # 0.1L/km, 0.5L/ton, 0.0/ascent
-        service.model.coefficients = np.array([0.1, 0.5, 0.0])
-        service.model.intercept = 0.0
-        service.model.r_squared_score = 0.99
-
-        assert service.model is not None
-        assert service.model.r_squared_score == 0.99
-
-        # Predict metodunu mocklamadan basic attribute kontrolü
-        assert len(service.model.coefficients) == 3
-
-    def test_service_initialization(self, service):
-        """Servis başlatma kontrolü"""
-        # Model objesi initialize edilmiş olmalı
-        assert hasattr(service, "model")
-        assert isinstance(service.model, LinearRegressionModel)

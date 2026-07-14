@@ -46,14 +46,14 @@ def _response_payload(**overrides) -> dict:
 
 class TestSoforBaseSanitizeName:
     def test_name_title_cased(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(ad_soyad="ahmet yılmaz"))
         # sanitize + title case applied
         assert obj.ad_soyad[0].isupper() or len(obj.ad_soyad) > 0
 
     def test_name_with_whitespace_stripped(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(ad_soyad="  Mehmet Demir  "))
         assert "Mehmet" in obj.ad_soyad
@@ -62,7 +62,7 @@ class TestSoforBaseSanitizeName:
         """Non-string passes sanitize_name (string branch skipped) but fails Pydantic type check."""
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         with pytest.raises(ValidationError):
             SoforCreate(**_base_payload(ad_soyad=12345))
@@ -75,19 +75,19 @@ class TestSoforBaseSanitizeName:
 
 class TestSoforBasePhone:
     def test_valid_phone_accepted(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(telefon="05321234567"))
         assert obj.telefon == "05321234567"
 
     def test_none_phone_accepted(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(telefon=None))
         assert obj.telefon is None
 
     def test_empty_phone_becomes_none(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(telefon="   "))
         assert obj.telefon is None
@@ -95,7 +95,7 @@ class TestSoforBasePhone:
     def test_short_phone_raises(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         with pytest.raises(ValidationError):
             SoforCreate(**_base_payload(telefon="12345"))
@@ -110,19 +110,19 @@ class TestSoforBaseNotlar:
     def test_xss_notlar_raises(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         with pytest.raises(ValidationError):
             SoforCreate(**_base_payload(notlar="<script>alert(1)</script>"))
 
     def test_none_notlar_accepted(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(notlar=None))
         assert obj.notlar is None
 
     def test_valid_notlar_accepted(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(notlar="Dikkatli şoför."))
         assert obj.notlar == "Dikkatli şoför."
@@ -135,13 +135,13 @@ class TestSoforBaseNotlar:
 
 class TestSoforCreate:
     def test_with_telegram_id(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload(telegram_id="@driver123"))
         assert obj.telegram_id == "@driver123"
 
     def test_without_telegram_id(self):
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         obj = SoforCreate(**_base_payload())
         assert obj.telegram_id is None
@@ -154,14 +154,14 @@ class TestSoforCreate:
 
 class TestSoforUpdate:
     def test_empty_update_valid(self):
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         obj = SoforUpdate()
         assert obj.ad_soyad is None
         assert obj.score is None
 
     def test_sanitize_name_applied(self):
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         obj = SoforUpdate(ad_soyad="  ali veli  ")
         assert obj.ad_soyad is not None
@@ -170,7 +170,7 @@ class TestSoforUpdate:
     def test_validate_phone_called(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         with pytest.raises(ValidationError):
             SoforUpdate(telefon="123")
@@ -178,7 +178,7 @@ class TestSoforUpdate:
     def test_score_out_of_range_raises(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         with pytest.raises(ValidationError):
             SoforUpdate(score=3.0)
@@ -186,13 +186,13 @@ class TestSoforUpdate:
     def test_manual_score_out_of_range_raises(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         with pytest.raises(ValidationError):
             SoforUpdate(manual_score=0.0)
 
     def test_valid_scores(self):
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         obj = SoforUpdate(score=1.5, manual_score=0.8)
         assert obj.score == 1.5
@@ -200,19 +200,19 @@ class TestSoforUpdate:
     def test_notlar_xss_raises(self):
         from pydantic import ValidationError
 
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         with pytest.raises(ValidationError):
             SoforUpdate(notlar="javascript:void(0)")
 
     def test_hiz_disiplin_skoru(self):
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         obj = SoforUpdate(hiz_disiplin_skoru=1.2)
         assert obj.hiz_disiplin_skoru == 1.2
 
     def test_agresif_surus_faktoru(self):
-        from app.schemas.sofor import SoforUpdate
+        from v2.modules.driver.schemas import SoforUpdate
 
         obj = SoforUpdate(agresif_surus_faktoru=0.9)
         assert obj.agresif_surus_faktoru == 0.9
@@ -226,20 +226,20 @@ class TestSoforUpdate:
 class TestSoforResponseHealName:
     def test_none_name_uses_fallback(self):
         """heal_name returns 'İSİMSİZ SÜRÜCÜ'; sanitize_name then title-cases it."""
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ad_soyad=None))
         # After sanitize_name.title() the fallback gets title-cased
         assert "si" in obj.ad_soyad.lower() or "İ" in obj.ad_soyad
 
     def test_empty_name_uses_fallback(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ad_soyad=""))
         assert len(obj.ad_soyad) > 0
 
     def test_short_name_padded(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ad_soyad="Al"))
         # AUDIT-109: sanitize_name artık .title() KULLANMAZ (Türkçe İ/ı bozulmasını
@@ -248,7 +248,7 @@ class TestSoforResponseHealName:
         assert obj.ad_soyad.startswith("Al")
 
     def test_valid_name_kept(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ad_soyad="Kemal Aydın"))
         assert "Kemal" in obj.ad_soyad
@@ -261,25 +261,25 @@ class TestSoforResponseHealName:
 
 class TestSoforResponseHealScores:
     def test_none_score_becomes_1(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(score=None))
         assert obj.score == 1.0
 
     def test_out_of_range_score_becomes_1(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(score=5.0))
         assert obj.score == 1.0
 
     def test_bad_score_string_becomes_1(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(score="bad"))
         assert obj.score == 1.0
 
     def test_valid_score_kept(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(score=1.5))
         assert obj.score == 1.5
@@ -292,25 +292,25 @@ class TestSoforResponseHealScores:
 
 class TestSoforResponseHealDate:
     def test_none_ise_baslama_stays_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ise_baslama=None))
         assert obj.ise_baslama is None
 
     def test_isostring_date_parsed(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ise_baslama="2020-01-15"))
         assert obj.ise_baslama == date(2020, 1, 15)
 
     def test_bad_date_string_becomes_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ise_baslama="not-a-date"))
         assert obj.ise_baslama is None
 
     def test_datetime_truncated_to_date(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(
             _response_payload(ise_baslama="2022-06-01T10:00:00")
@@ -325,25 +325,25 @@ class TestSoforResponseHealDate:
 
 class TestSoforResponseHealPhone:
     def test_none_phone_stays_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon=None))
         assert obj.telefon is None
 
     def test_empty_phone_becomes_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon="   "))
         assert obj.telefon is None
 
     def test_valid_phone_kept(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon="05321234567"))
         assert obj.telefon == "05321234567"
 
     def test_too_short_phone_becomes_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon="12345"))
         assert obj.telefon is None
@@ -356,25 +356,25 @@ class TestSoforResponseHealPhone:
 
 class TestSoforResponseHealLicenseClass:
     def test_valid_uppercase_kept(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ehliyet_sinifi="CE"))
         assert obj.ehliyet_sinifi == "CE"
 
     def test_lowercase_class_corrected(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ehliyet_sinifi="ce"))
         assert obj.ehliyet_sinifi == "CE"
 
     def test_invalid_class_becomes_E(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ehliyet_sinifi="X99"))
         assert obj.ehliyet_sinifi == "E"
 
     def test_none_class_becomes_E(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(ehliyet_sinifi=None))
         assert obj.ehliyet_sinifi == "E"
@@ -387,14 +387,14 @@ class TestSoforResponseHealLicenseClass:
 
 class TestSoforResponseTelefonMasked:
     def test_masked_phone_format(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon="05321234567"))
         assert obj.telefon_masked is not None
         assert "***" in obj.telefon_masked
 
     def test_none_phone_masked_is_none(self):
-        from app.schemas.sofor import SoforResponse
+        from v2.modules.driver.schemas import SoforResponse
 
         obj = SoforResponse.model_validate(_response_payload(telefon=None))
         assert obj.telefon_masked is None
@@ -407,7 +407,7 @@ class TestSoforResponseTelefonMasked:
 
 class TestDriverPerformanceSchema:
     def test_valid(self):
-        from app.schemas.sofor import DriverPerformanceSchema
+        from v2.modules.driver.schemas import DriverPerformanceSchema
 
         obj = DriverPerformanceSchema(
             safety_score=85.0,
@@ -422,7 +422,7 @@ class TestDriverPerformanceSchema:
         assert obj.trend == "stable"
 
     def test_defaults(self):
-        from app.schemas.sofor import DriverPerformanceSchema
+        from v2.modules.driver.schemas import DriverPerformanceSchema
 
         obj = DriverPerformanceSchema(
             safety_score=80.0, eco_score=70.0, compliance_score=88.0, total_score=79.0
@@ -439,7 +439,7 @@ class TestDriverPerformanceSchema:
 
 class TestDriverScoreBreakdownSchema:
     def test_valid(self):
-        from app.schemas.sofor import DriverScoreBreakdownSchema
+        from v2.modules.driver.schemas import DriverScoreBreakdownSchema
 
         obj = DriverScoreBreakdownSchema(
             sofor_id=1,
@@ -454,7 +454,7 @@ class TestDriverScoreBreakdownSchema:
         assert obj.has_trips is True
 
     def test_no_trips(self):
-        from app.schemas.sofor import DriverScoreBreakdownSchema
+        from v2.modules.driver.schemas import DriverScoreBreakdownSchema
 
         obj = DriverScoreBreakdownSchema(
             sofor_id=2,
@@ -475,7 +475,7 @@ class TestDriverScoreBreakdownSchema:
 
 class TestDriverRouteProfileSchemas:
     def test_route_item(self):
-        from app.schemas.sofor import DriverRouteProfileItemSchema
+        from v2.modules.driver.schemas import DriverRouteProfileItemSchema
 
         item = DriverRouteProfileItemSchema(
             route_type="highway_dominant",
@@ -489,7 +489,7 @@ class TestDriverRouteProfileSchemas:
         assert item.deviation_pct == 6.67
 
     def test_route_profile_with_best(self):
-        from app.schemas.sofor import (
+        from v2.modules.driver.schemas import (
             DriverRouteProfileItemSchema,
             DriverRouteProfileSchema,
         )
@@ -512,7 +512,7 @@ class TestDriverRouteProfileSchemas:
         assert profile.min_trips_for_best == 5
 
     def test_route_profile_no_best(self):
-        from app.schemas.sofor import DriverRouteProfileSchema
+        from v2.modules.driver.schemas import DriverRouteProfileSchema
 
         profile = DriverRouteProfileSchema(
             sofor_id=2,

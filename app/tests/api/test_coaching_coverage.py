@@ -25,7 +25,7 @@ pytestmark = pytest.mark.unit
 
 def _make_insights_response(**kwargs):
     """Build a minimal CoachingInsightsResponse-like object."""
-    from app.schemas.coaching import CoachingInsightsResponse
+    from v2.modules.driver.schemas import CoachingInsightsResponse
 
     defaults = dict(
         sofor_id=1,
@@ -62,8 +62,8 @@ class TestEnsureEnabled:
     def test_raises_503_when_disabled(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import _ensure_enabled
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import _ensure_enabled
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
         with pytest.raises(HTTPException) as exc:
@@ -71,8 +71,8 @@ class TestEnsureEnabled:
         assert exc.value.status_code == 503
 
     def test_no_error_when_enabled(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import _ensure_enabled
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import _ensure_enabled
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         # Should not raise
@@ -86,21 +86,21 @@ class TestEnsureEnabled:
 
 class TestBuildTelegramText:
     def test_escapes_html_entities(self):
-        from app.api.v1.endpoints.coaching import _build_telegram_text
+        from v2.modules.driver.api.coaching_routes import _build_telegram_text
 
         result = _build_telegram_text("<b>Test & Check</b>")
         assert "&lt;b&gt;" in result
         assert "&amp;" in result
 
     def test_contains_bold_title(self):
-        from app.api.v1.endpoints.coaching import _build_telegram_text
+        from v2.modules.driver.api.coaching_routes import _build_telegram_text
 
         result = _build_telegram_text("Merhaba")
         assert "<b>Koçluk Önerisi</b>" in result
         assert "Merhaba" in result
 
     def test_plain_message_unchanged_content(self):
-        from app.api.v1.endpoints.coaching import _build_telegram_text
+        from v2.modules.driver.api.coaching_routes import _build_telegram_text
 
         result = _build_telegram_text("Düz metin mesajı")
         assert "Düz metin mesajı" in result
@@ -113,7 +113,7 @@ class TestBuildTelegramText:
 
 class TestGetRedis:
     async def test_returns_none_when_redis_import_fails(self, monkeypatch):
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         # Reset the module-level singleton
         original = coaching_mod._coaching_redis
@@ -129,7 +129,7 @@ class TestGetRedis:
             coaching_mod._coaching_redis = original
 
     async def test_returns_same_singleton_on_second_call(self, monkeypatch):
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         mock_client = MagicMock()
@@ -150,8 +150,8 @@ class TestGetCoachingInsights:
     async def test_returns_503_when_disabled(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
         mock_db = AsyncMock()
@@ -162,8 +162,8 @@ class TestGetCoachingInsights:
         assert exc.value.status_code == 503
 
     async def test_returns_cached_result(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -176,7 +176,7 @@ class TestGetCoachingInsights:
         mock_db = AsyncMock()
         mock_user = MagicMock()
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
@@ -191,12 +191,12 @@ class TestGetCoachingInsights:
     async def test_raises_404_when_sofor_not_found(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
@@ -205,7 +205,9 @@ class TestGetCoachingInsights:
             mock_db.get = AsyncMock(return_value=None)
             mock_user = MagicMock()
 
-            with patch("app.api.v1.endpoints.coaching._get_redis", return_value=None):
+            with patch(
+                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
+            ):
                 with pytest.raises(HTTPException) as exc:
                     await get_coaching_insights(
                         sofor_id=99999, db=mock_db, current_user=mock_user
@@ -217,8 +219,8 @@ class TestGetCoachingInsights:
     async def test_raises_404_on_value_error_from_engine(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -230,14 +232,16 @@ class TestGetCoachingInsights:
         mock_engine = AsyncMock()
         mock_engine.generate_coaching = AsyncMock(side_effect=ValueError("No data"))
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
         try:
-            with patch("app.api.v1.endpoints.coaching._get_redis", return_value=None):
+            with patch(
+                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
+            ):
                 with patch(
-                    "app.api.v1.endpoints.coaching.get_driver_coaching_engine",
+                    "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
                     return_value=mock_engine,
                 ):
                     with pytest.raises(HTTPException) as exc:
@@ -251,8 +255,8 @@ class TestGetCoachingInsights:
     async def test_raises_500_on_engine_exception(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -264,14 +268,16 @@ class TestGetCoachingInsights:
         mock_engine = AsyncMock()
         mock_engine.generate_coaching = AsyncMock(side_effect=RuntimeError("crash"))
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
         try:
-            with patch("app.api.v1.endpoints.coaching._get_redis", return_value=None):
+            with patch(
+                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
+            ):
                 with patch(
-                    "app.api.v1.endpoints.coaching.get_driver_coaching_engine",
+                    "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
                     return_value=mock_engine,
                 ):
                     with pytest.raises(HTTPException) as exc:
@@ -283,8 +289,8 @@ class TestGetCoachingInsights:
             coaching_mod._coaching_redis = original
 
     async def test_writes_to_cache_after_engine_call(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -301,13 +307,13 @@ class TestGetCoachingInsights:
         mock_redis.get = AsyncMock(return_value=None)  # Cache miss
         mock_redis.setex = AsyncMock()
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
         try:
             with patch(
-                "app.api.v1.endpoints.coaching.get_driver_coaching_engine",
+                "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
                 return_value=mock_engine,
             ):
                 result = await get_coaching_insights(
@@ -320,8 +326,8 @@ class TestGetCoachingInsights:
 
     async def test_cache_read_failure_is_swallowed(self, monkeypatch):
         """Redis read failure should not break the endpoint."""
-        from app.api.v1.endpoints.coaching import get_coaching_insights
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -338,13 +344,13 @@ class TestGetCoachingInsights:
         mock_redis.get = AsyncMock(side_effect=Exception("Redis down"))
         mock_redis.setex = AsyncMock(side_effect=Exception("Redis down"))
 
-        import app.api.v1.endpoints.coaching as coaching_mod
+        import v2.modules.driver.api.coaching_routes as coaching_mod
 
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
         try:
             with patch(
-                "app.api.v1.endpoints.coaching.get_driver_coaching_engine",
+                "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
                 return_value=mock_engine,
             ):
                 result = await get_coaching_insights(
@@ -364,9 +370,9 @@ class TestSendCoaching:
     async def test_returns_503_when_disabled(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import send_coaching
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from v2.modules.driver.api.coaching_routes import send_coaching
+        from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
@@ -379,9 +385,9 @@ class TestSendCoaching:
     async def test_returns_404_when_sofor_not_found(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import send_coaching
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from v2.modules.driver.api.coaching_routes import send_coaching
+        from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         mock_db = AsyncMock()
@@ -397,9 +403,9 @@ class TestSendCoaching:
     async def test_returns_409_when_telegram_id_missing(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import send_coaching
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from v2.modules.driver.api.coaching_routes import send_coaching
+        from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         mock_sofor = _make_sofor(sofor_id=1, telegram_id=None)
@@ -416,9 +422,9 @@ class TestSendCoaching:
     async def test_returns_503_when_bot_token_missing(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import send_coaching
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from v2.modules.driver.api.coaching_routes import send_coaching
+        from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "")
@@ -437,9 +443,9 @@ class TestSendCoaching:
         import httpx
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import send_coaching
         from app.config import settings
-        from app.schemas.coaching import SendCoachingRequest
+        from v2.modules.driver.api.coaching_routes import send_coaching
+        from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
@@ -465,7 +471,7 @@ class TestSendCoaching:
             mock_client_ctx.post = AsyncMock(return_value=mock_response)
 
             with patch(
-                "app.api.v1.endpoints.coaching.log_audit_event", new=AsyncMock()
+                "v2.modules.driver.api.coaching_routes.log_audit_event", new=AsyncMock()
             ):
                 with pytest.raises(HTTPException) as exc:
                     await send_coaching(
@@ -489,9 +495,6 @@ class TestSendCoaching:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        mock_svc = MagicMock()
-        mock_svc.get_score_breakdown = AsyncMock(return_value={"total": 75.0})
-
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client_ctx = AsyncMock()
             mock_client_cls.return_value.__aenter__ = AsyncMock(
@@ -501,11 +504,11 @@ class TestSendCoaching:
             mock_client_ctx.post = AsyncMock(return_value=mock_response)
 
             with patch(
-                "app.api.v1.endpoints.coaching.log_audit_event", new=AsyncMock()
+                "v2.modules.driver.api.coaching_routes.log_audit_event", new=AsyncMock()
             ):
                 with patch(
-                    "app.core.services.sofor_service.SoforService",
-                    return_value=mock_svc,
+                    "v2.modules.driver.api.coaching_routes.get_score_breakdown_sofor",
+                    new=AsyncMock(return_value={"total": 75.0}),
                 ):
                     resp = await async_client.post(
                         f"/api/v1/coaching/{sofor.id}/send",
@@ -529,8 +532,8 @@ class TestGetCoachingEffectiveness:
     async def test_returns_503_when_disabled(self, monkeypatch):
         from fastapi import HTTPException
 
-        from app.api.v1.endpoints.coaching import get_coaching_effectiveness
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_effectiveness
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
         with pytest.raises(HTTPException) as exc:
@@ -540,8 +543,8 @@ class TestGetCoachingEffectiveness:
         assert exc.value.status_code == 503
 
     async def test_clamps_days_below_7(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_effectiveness
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_effectiveness
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -566,8 +569,8 @@ class TestGetCoachingEffectiveness:
         assert result.window_days == 7
 
     async def test_clamps_days_above_180(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_effectiveness
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_effectiveness
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -590,8 +593,8 @@ class TestGetCoachingEffectiveness:
         assert result.window_days == 180
 
     async def test_improve_rate_none_when_no_evaluated(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_effectiveness
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_effectiveness
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
@@ -615,8 +618,8 @@ class TestGetCoachingEffectiveness:
         assert result.avg_score_delta_pct is None
 
     async def test_improve_rate_calculated_when_evaluated(self, monkeypatch):
-        from app.api.v1.endpoints.coaching import get_coaching_effectiveness
         from app.config import settings
+        from v2.modules.driver.api.coaching_routes import get_coaching_effectiveness
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 

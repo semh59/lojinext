@@ -202,18 +202,17 @@ async def test_build_driver_context_invalid_id_returns_error():
 async def test_build_driver_context_no_evaluation_returns_error():
     builder = _make_builder()
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=None)
-
-    with patch("app.core.container.get_container") as mock_container:
-        mock_container.return_value.degerlendirme_service = mock_service
+    with patch(
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=None),
+    ):
         result = await builder.build_driver_context(1)
 
     assert "yapılamadı" in result
 
 
 async def test_build_driver_context_success():
-    from app.core.entities.sofor_degerlendirme import DereceEnum, TrendEnum
+    from v2.modules.driver.domain.evaluation import DereceEnum, TrendEnum
 
     builder = _make_builder()
 
@@ -234,11 +233,10 @@ async def test_build_driver_context_success():
     mock_eval.guclu_yanlar = ["Yakıt verimliliği iyi"]
     mock_eval.tavsiyeler = []
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=mock_eval)
-
-    with patch("app.core.container.get_container") as mock_container:
-        mock_container.return_value.degerlendirme_service = mock_service
+    with patch(
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=mock_eval),
+    ):
         result = await builder.build_driver_context(1)
 
     assert "Mehmet Kaya" in result
@@ -249,8 +247,10 @@ async def test_build_driver_context_success():
 async def test_build_driver_context_exception_returns_fallback():
     builder = _make_builder()
 
-    with patch("app.core.container.get_container") as mock_container:
-        mock_container.side_effect = RuntimeError("Container error")
+    with patch(
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(side_effect=RuntimeError("evaluate_driver error")),
+    ):
         result = await builder.build_driver_context(1)
 
     assert "erişilemiyor" in result.lower()
@@ -278,9 +278,6 @@ async def test_build_analysis_context_success():
         "verimlilik": [],
         "tutarlilik": [],
     }
-    mock_service = MagicMock()
-    mock_service.get_rankings = AsyncMock(return_value=mock_rankings)
-
     with (
         patch.object(
             type(builder),
@@ -292,9 +289,11 @@ async def test_build_analysis_context_success():
             "arac_repo",
             new_callable=lambda: property(lambda self: mock_arac_repo),
         ),
-        patch("app.core.container.get_container") as mock_container,
+        patch(
+            "v2.modules.driver.domain.evaluation.get_rankings",
+            AsyncMock(return_value=mock_rankings),
+        ),
     ):
-        mock_container.return_value.degerlendirme_service = mock_service
         result = await builder.build_analysis_context()
 
     assert "31.8" in result
@@ -311,9 +310,6 @@ async def test_build_analysis_context_filo_none_defaults_to_32():
     mock_arac_repo = MagicMock()
     mock_arac_repo.get_all = AsyncMock(return_value=[])
 
-    mock_service = MagicMock()
-    mock_service.get_rankings = AsyncMock(return_value={"genel": []})
-
     with (
         patch.object(
             type(builder),
@@ -325,9 +321,11 @@ async def test_build_analysis_context_filo_none_defaults_to_32():
             "arac_repo",
             new_callable=lambda: property(lambda self: mock_arac_repo),
         ),
-        patch("app.core.container.get_container") as mock_container,
+        patch(
+            "v2.modules.driver.domain.evaluation.get_rankings",
+            AsyncMock(return_value={"genel": []}),
+        ),
     ):
-        mock_container.return_value.degerlendirme_service = mock_service
         result = await builder.build_analysis_context()
 
     assert "32.0" in result

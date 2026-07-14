@@ -47,7 +47,7 @@ def _make_uow(sofor=None, seferler=None):
 
 
 def _make_service():
-    from app.core.services.sofor_pdf_service import SoforSeferPDFService
+    from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
     svc = SoforSeferPDFService.__new__(SoforSeferPDFService)
     # Minimal base-class init — just set font names to safe defaults
@@ -59,15 +59,15 @@ def _make_service():
 
 class TestSoforPdfService:
     def test_service_exists(self):
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+        from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
         assert SoforSeferPDFService is not None
 
     async def test_basic_initialization(self):
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+        from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
         with patch(
-            "app.core.services.sofor_pdf_service.PDFReportGenerator.__init__",
+            "v2.modules.driver.infrastructure.pdf_export.PDFReportGenerator.__init__",
             return_value=None,
         ):
             svc = SoforSeferPDFService.__new__(SoforSeferPDFService)
@@ -134,7 +134,9 @@ class TestSoforPdfService:
         sofor = _make_sofor()
         seferler = [_make_sefer()]
 
-        with patch("app.core.services.sofor_pdf_service.REPORTLAB_AVAILABLE", False):
+        with patch(
+            "v2.modules.driver.infrastructure.pdf_export.REPORTLAB_AVAILABLE", False
+        ):
             result = svc._build_pdf(
                 sofor, seferler, date(2024, 1, 1), date(2024, 1, 31)
             )
@@ -143,12 +145,12 @@ class TestSoforPdfService:
 
     def test_build_pdf_with_reportlab_returns_nonempty_bytes(self):
         """If reportlab is available, _build_pdf should produce a non-empty bytes PDF."""
-        from app.core.services.sofor_pdf_service import REPORTLAB_AVAILABLE
+        from v2.modules.driver.infrastructure.pdf_export import REPORTLAB_AVAILABLE
 
         if not REPORTLAB_AVAILABLE:
             pytest.skip("reportlab not installed")
 
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+        from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
         svc = SoforSeferPDFService()
         sofor = _make_sofor()
@@ -161,12 +163,12 @@ class TestSoforPdfService:
 
     def test_edge_case_trip_with_none_tuketim(self):
         """_build_pdf should handle None tuketim without crashing."""
-        from app.core.services.sofor_pdf_service import REPORTLAB_AVAILABLE
+        from v2.modules.driver.infrastructure.pdf_export import REPORTLAB_AVAILABLE
 
         if not REPORTLAB_AVAILABLE:
             pytest.skip("reportlab not installed")
 
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+        from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
         svc = SoforSeferPDFService()
         sofor = _make_sofor()

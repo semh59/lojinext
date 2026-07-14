@@ -1,14 +1,25 @@
 """
 TIR Yakıt Takip Sistemi - Faz 3 Şoför Analiz Testleri (Async & Pytest)
-SoforAnalizService ve DB sorguları için entegrasyon ve birim testleri
+v2.modules.driver.domain.driver_stats free function'ları için entegrasyon
+ve birim testleri.
+
+NOT: eski ``SoforAnalizService`` sınıfı silindi (B.1 free-function split,
+bkz. v2/modules/driver/CLAUDE.md). Testler artık ilgili free function'ları
+``uow=`` ile mock'lu bir UnitOfWork geçirerek çağırır.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.core.entities.models import DriverStats
-from app.core.services.sofor_analiz_service import SoforAnalizService
+from v2.modules.driver.domain import driver_stats as driver_stats_mod
+from v2.modules.driver.domain.driver_stats import (
+    calculate_performance_score,
+    calculate_trend,
+    compare_drivers,
+    get_driver_stats,
+)
 
 
 class TestDriverStatsEntity:
@@ -52,74 +63,56 @@ class TestDriverStatsEntity:
         assert stats.en_iyi_tuketim is None
 
 
-class TestSoforAnalizService:
-    """SoforAnalizService birim testleri"""
+class TestDriverStatsFreeFunctions:
+    """v2.modules.driver.domain.driver_stats birim testleri"""
 
     @pytest.fixture
-    def service(self):
-        return SoforAnalizService()
-
-    @pytest.fixture
-    def mock_repos(self, service, monkeypatch):
+    def mock_uow(self):
         mock_sofor = AsyncMock()
         mock_analiz = AsyncMock()
         # AUDIT-045 refactor: elite skor get_recent_trips_batch yolundan gelir.
         mock_sefer = AsyncMock()
         mock_sefer.get_recent_trips_batch = AsyncMock(return_value={})
 
-        # Monkeypatch properties
-        monkeypatch.setattr(
-            SoforAnalizService, "sofor_repo", property(lambda self: mock_sofor)
-        )
-        monkeypatch.setattr(
-            SoforAnalizService, "analiz_repo", property(lambda self: mock_analiz)
-        )
-        monkeypatch.setattr(
-            SoforAnalizService, "sefer_repo", property(lambda self: mock_sefer)
-        )
+        uow = MagicMock()
+        uow.sofor_repo = mock_sofor
+        uow.analiz_repo = mock_analiz
+        uow.sefer_repo = mock_sefer
+        return uow
 
-        return mock_sofor, mock_analiz
-
-    def test_calculate_performance_score_average(self, service):
+    def test_calculate_performance_score_average(self):
         """Performans puanı - filo ortalamasında"""
-        score = service.calculate_performance_score(
+        score = calculate_performance_score(
             ort_tuketim=35.0, filo_ort=35.0, sefer_sayisi=10
         )
         assert 50 < score < 65
 
-    def test_calculate_performance_score_better(self, service):
+    def test_calculate_performance_score_better(self):
         """Performans puanı - filo ortalamasından iyi"""
-        score = service.calculate_performance_score(
+        score = calculate_performance_score(
             ort_tuketim=30.0, filo_ort=35.0, sefer_sayisi=20
         )
         assert score > 70
 
-    def test_calculate_trend_improving(self, service):
+    def test_calculate_trend_improving(self):
         """Trend analizi - iyileşme"""
         values = [40, 39, 38, 37, 36, 35, 34, 33, 32, 31]
-        trend = service.calculate_trend(values)
+        trend = calculate_trend(values)
         assert trend == "improving"
 
     @pytest.mark.asyncio
-    async def test_get_driver_stats_empty(self, service, mock_repos):
+    async def test_get_driver_stats_empty(self, mock_uow):
         """Şoför istatistikleri - boş veri"""
-        mock_sofor, _ = mock_repos
-        mock_sofor.get_sefer_stats.return_value = []
+        mock_uow.sofor_repo.get_sefer_stats.return_value = []
         # Bulk query used for None id
-        with patch.object(
-            service.analiz_repo, "get_bulk_driver_metrics", new_callable=AsyncMock
-        ) as mock_bulk:
-            mock_bulk.return_value = []
-            result = await service.get_driver_stats()
-            assert result == []
+        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+        result = await get_driver_stats(uow=mock_uow)
+        assert result == []
 
     @pytest.mark.asyncio
-    async def test_get_driver_stats_with_data(self, service, mock_repos):
+    async def test_get_driver_stats_with_data(self, mock_uow):
         """Şoför istatistikleri - veri ile"""
-        mock_sofor, mock_analiz = mock_repos
-
-        # Mock DB responses
-        mock_sofor.get_sefer_stats.return_value = [
+        mock_uow.sofor_repo.get_sefer_stats.return_value = [
             {
                 "sofor_id": 1,
                 "ad_soyad": "Test Şoför",
@@ -133,17 +126,17 @@ class TestSoforAnalizService:
             }
         ]
 
-        mock_analiz.get_filo_ortalama_tuketim.return_value = 35.0
-        mock_sofor.get_yakit_tuketimi.return_value = []  # for trend
-        mock_sofor.get_guzergah_performansi.return_value = []
+        mock_uow.analiz_repo.get_filo_ortalama_tuketim.return_value = 35.0
+        mock_uow.sofor_repo.get_yakit_tuketimi.return_value = []  # for trend
+        mock_uow.sofor_repo.get_guzergah_performansi.return_value = []
 
         # AUDIT-045 refactor: elite skor _calc_elite_from_trips ile hesaplanır.
         with patch.object(
-            service, "_calc_elite_from_trips", new_callable=AsyncMock
+            driver_stats_mod, "_calc_elite_from_trips", new_callable=AsyncMock
         ) as mock_elite:
             mock_elite.return_value = 85.0
 
-            result = await service.get_driver_stats(sofor_id=1)
+            result = await get_driver_stats(sofor_id=1, uow=mock_uow)
 
             assert len(result) == 1
             assert result[0].sofor_id == 1
@@ -151,13 +144,11 @@ class TestSoforAnalizService:
             assert result[0].performans_puani == 85.0
 
     @pytest.mark.asyncio
-    async def test_compare_drivers_ranking(self, service, mock_repos):
+    async def test_compare_drivers_ranking(self, mock_uow):
         """Şoför karşılaştırma - sıralama"""
-        mock_sofor, mock_analiz = mock_repos
-
         # get_driver_stats returns a list of DriverStats
         with patch.object(
-            service, "get_driver_stats", new_callable=AsyncMock
+            driver_stats_mod, "get_driver_stats", new_callable=AsyncMock
         ) as mock_stats:
             mock_stats.return_value = [
                 DriverStats(
@@ -178,9 +169,9 @@ class TestSoforAnalizService:
                 ),
             ]
 
-            mock_analiz.get_filo_ortalama_tuketim.return_value = 32.0
+            mock_uow.analiz_repo.get_filo_ortalama_tuketim.return_value = 32.0
 
-            result = await service.compare_drivers()
+            result = await compare_drivers(uow=mock_uow)
 
             # Mock verification
             mock_stats.assert_called_once()

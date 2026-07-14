@@ -873,12 +873,9 @@ class PredictionService:
         # Feature setini hazırla (predict ile uyumlu)
         s_score = sofor_score
         if s_score is None and sofor_id:
-            from app.core.services.sofor_analiz_service import get_sofor_analiz_service
+            from v2.modules.driver.domain.driver_stats import get_driver_stats
 
-            sofor_service = get_sofor_analiz_service()
-            stats = await sofor_service.get_driver_stats(
-                sofor_id, include_elite_score=False
-            )
+            stats = await get_driver_stats(sofor_id, include_elite_score=False)
             if stats:
                 s_score = 1.0 - (stats[0].filo_karsilastirma / 100) * 0.1
 

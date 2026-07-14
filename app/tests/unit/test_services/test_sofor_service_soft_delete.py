@@ -1,4 +1,4 @@
-"""SoforService.update_sofor soft-delete guard tests — real DB, no mocked UoW.
+"""update_sofor soft-delete guard tests — real DB, no mocked UoW.
 
 2026-07-01 prod-grade denetiminde bulunan bug: `update_sofor`'un manual_score
 dalında sadece `get_by_id`'nin truthy sonucu skor yeniden hesabını
@@ -7,14 +7,19 @@ kontrolden bağımsız her koşulda çalışıyordu — soft-deleted (aktif=Fals
 şoförün manual_score'u sessizce güncellenebiliyordu. Fix: metodun başına
 reaktivasyon-farkında bir varlık/aktiflik guard'ı eklendi (bkz.
 arac_service._update_arac_impl için aynı desen).
+
+NOT: eski ``SoforService`` sınıfı silindi (B.1 free-function split) — testler
+artık ``v2.modules.driver.application.update_sofor``'daki free function'ları
+doğrudan çağırır.
 """
 
 import pytest
 from sqlalchemy import insert, select
 
-from app.core.services.sofor_service import SoforService
 from app.database.models import Sofor
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.driver.application.update_sofor import update_score
+from v2.modules.driver.application.update_sofor import update_sofor as update_sofor_fn
 
 pytestmark = pytest.mark.integration
 
@@ -39,17 +44,13 @@ async def _get_sofor(db_session, sofor_id: int):
     ).scalar_one_or_none()
 
 
-def _service() -> SoforService:
-    return SoforService()
-
-
 class TestSoforServiceSoftDeleteGuard:
     async def test_update_sofor_rejects_manual_score_change_on_passive_driver(
         self, db_session
     ):
         sofor_id = await _seed_sofor(db_session, "Pasif Soför Test", aktif=False)
 
-        success = await _service().update_sofor(sofor_id, manual_score=1.8)
+        success = await update_sofor_fn(sofor_id, manual_score=1.8)
 
         assert success is False
         row = await _get_sofor(db_session, sofor_id)
@@ -58,7 +59,7 @@ class TestSoforServiceSoftDeleteGuard:
     async def test_update_sofor_allows_explicit_reactivation(self, db_session):
         sofor_id = await _seed_sofor(db_session, "Reaktive Soför Test", aktif=False)
 
-        success = await _service().update_sofor(sofor_id, aktif=True, manual_score=1.5)
+        success = await update_sofor_fn(sofor_id, aktif=True, manual_score=1.5)
 
         assert success is True
         row = await _get_sofor(db_session, sofor_id)
@@ -68,7 +69,7 @@ class TestSoforServiceSoftDeleteGuard:
     async def test_update_sofor_active_driver_unaffected(self, db_session):
         sofor_id = await _seed_sofor(db_session, "Aktif Soför Test", aktif=True)
 
-        success = await _service().update_sofor(sofor_id, manual_score=1.3)
+        success = await update_sofor_fn(sofor_id, manual_score=1.3)
 
         assert success is True
         row = await _get_sofor(db_session, sofor_id)
@@ -78,4 +79,4 @@ class TestSoforServiceSoftDeleteGuard:
         sofor_id = await _seed_sofor(db_session, "Pasif Skor Test", aktif=False)
 
         with pytest.raises(ValueError, match="not found"):
-            await _service().update_score(sofor_id, 1.7)
+            await update_score(sofor_id, 1.7)

@@ -159,7 +159,7 @@ async def test_driver_comparison_pdf_generic_exception(
 ):
     """GET /pdf/driver-comparison generic exception → 500."""
     with patch(
-        "app.core.services.sofor_analiz_service.SoforAnalizService.get_driver_stats",
+        "v2.modules.driver.domain.driver_stats.get_driver_stats",
         new=AsyncMock(side_effect=RuntimeError("crash")),
     ):
         resp = await async_client.get(
@@ -175,7 +175,7 @@ async def test_driver_comparison_pdf_domain_error(async_client, admin_auth_heade
     from app.core.exceptions import DomainError
 
     with patch(
-        "app.core.services.sofor_analiz_service.SoforAnalizService.get_driver_stats",
+        "v2.modules.driver.domain.driver_stats.get_driver_stats",
         new=AsyncMock(side_effect=DomainError("domain issue")),
     ):
         resp = await async_client.get(
@@ -290,12 +290,9 @@ async def test_excel_export_generic_exception(async_client, admin_auth_headers):
 async def test_excel_export_driver_comparison_empty(async_client, admin_auth_headers):
     """GET /excel/export driver_comparison with empty drivers → 404."""
     with patch(
-        "app.core.services.sofor_analiz_service.get_sofor_analiz_service"
-    ) as mock_svc_factory:
-        mock_svc = MagicMock()
-        mock_svc.get_driver_stats = AsyncMock(return_value=[])  # empty
-        mock_svc_factory.return_value = mock_svc
-
+        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        AsyncMock(return_value=[]),  # empty
+    ):
         resp = await async_client.get(
             f"{BASE}/excel/export",
             params={"report_type": "driver_comparison"},

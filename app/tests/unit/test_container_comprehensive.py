@@ -181,7 +181,6 @@ class TestContainerInitialization:
 
         container = get_container()
 
-        assert container.sofor_service is not None
         assert container.sefer_service is not None
         assert container.analiz_service is not None
         assert container.import_service is not None
@@ -230,13 +229,11 @@ class TestDependencyInjection:
     # in dalga 3; container.arac_repo still exists (used by other services
     # e.g. analiz_service/import_service/report_service, asserted below).
 
-    def test_sofor_service_has_correct_repo(self):
-        """SoforService doğru repository'yi almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        assert container.sofor_service.repo is container.sofor_repo
+    # test_sofor_service_has_correct_repo removed — SoforService class deleted
+    # in dalga 5 (B.1 free-function refactor, v2.modules.driver); driver
+    # use-cases open their own UnitOfWork() and never held a
+    # constructor-injected repo (container.sofor_repo still exists, used by
+    # other services e.g. import_service/report_service, asserted below).
 
     def test_analiz_service_has_all_repos(self):
         """AnalizService tüm gerekli repository'leri almalı."""
@@ -292,7 +289,9 @@ class TestDependencyInjection:
         # container.arac_service removed — AracService class deleted (dalga 3,
         # B.1 free-function refactor); fleet vehicle use-cases don't hold a
         # persistent event_bus reference to assert against.
-        assert container.sofor_service.event_bus is event_bus
+        # container.sofor_service removed — SoforService class deleted (dalga
+        # 5, B.1 free-function refactor); driver use-cases don't hold a
+        # persistent event_bus reference to assert against.
 
 
 # =============================================================================
@@ -320,14 +319,9 @@ class TestMockInjection:
     # in dalga 3 (B.1 free-function refactor, v2.modules.fleet); vehicle
     # use-cases no longer take a constructor-injected repo.
 
-    def test_sofor_service_accepts_mock_repo(self, mock_sofor_repo, mock_event_bus):
-        """SoforService mock repo kabul etmeli."""
-        from app.core.services.sofor_service import SoforService
-
-        service = SoforService(repo=mock_sofor_repo, event_bus=mock_event_bus)
-
-        assert service.repo is mock_sofor_repo
-        assert service.event_bus is mock_event_bus
+    # test_sofor_service_accepts_mock_repo removed — SoforService class
+    # deleted in dalga 5 (B.1 free-function refactor, v2.modules.driver);
+    # driver use-cases no longer take a constructor-injected repo.
 
     def test_analiz_service_accepts_mock_repos(
         self, mock_arac_repo, mock_sefer_repo, mock_yakit_repo
@@ -393,15 +387,9 @@ class TestFactoryFunctions:
     # class + container.arac_service property deleted in dalga 3 (B.1
     # free-function refactor, v2.modules.fleet).
 
-    def test_get_sofor_service_returns_container_instance(self):
-        """get_sofor_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
-        from app.core.services.sofor_service import get_sofor_service
-
-        container = get_container()
-        service = get_sofor_service()
-
-        assert service is container.sofor_service
+    # test_get_sofor_service_returns_container_instance removed — SoforService
+    # class + container.sofor_service property + get_sofor_service() factory
+    # all deleted in dalga 5 (B.1 free-function refactor, v2.modules.driver).
 
     def test_get_import_service_returns_container_instance(self):
         """get_import_service() Container'daki instance'ı döndürmeli."""
@@ -617,10 +605,10 @@ class TestContainerIntegration:
         container = get_container()
 
         # Tüm servisler aynı event_bus instance'ını kullanmalı
+        # (container.sofor_service kaldırıldı — dalga 5, B.1 free-function refactor)
         event_buses = [
             container.event_bus,
             container.sefer_service.event_bus,
-            container.sofor_service.event_bus,
         ]
 
         # Hepsi aynı instance olmalı

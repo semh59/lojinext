@@ -31,8 +31,8 @@ async def test_driver_comparison_pdf_returns_pdf(async_client, admin_auth_header
 
     with (
         patch(
-            "app.core.services.sofor_analiz_service.SoforAnalizService.get_driver_stats",
-            new=AsyncMock(return_value=[fake_driver]),
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=[fake_driver]),
         ),
         patch(
             "app.core.services.report_generator.get_report_generator"

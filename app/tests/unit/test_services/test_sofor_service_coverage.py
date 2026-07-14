@@ -1,24 +1,28 @@
 """
-SoforService coverage tests — targets uncovered branches in sofor_service.py.
+Driver use-case coverage tests — targets uncovered branches in the driver
+module's free-function use-cases (v2/modules/driver/application/*.py).
 
 Covered here (not in test_sofor_service.py):
   - get_all_paged: filter kwargs (ehliyet_sinifi, min_score, max_score, search, aktif_only=False)
   - get_by_id: found case
   - update_sofor: ad_soyad rename, name collision, manual_score recalculation, no-op
-  - delete_sofor / _delete_sofor_uow: happy path, already-deleted guard
+  - delete_sofor: happy path, already-deleted guard
   - bulk_delete: non-empty list
   - update_score: happy path, driver-not-found, score boundary (0.1 / 2.0)
   - calculate_hybrid_score: with trip data (avg_consumption > 0)
-  - get_score_breakdown: driver-not-found, no-trips fallback, trips branch
-  - get_route_profile: driver-not-found, empty trips, trips with data,
+  - get_score_breakdown_sofor: driver-not-found, no-trips fallback, trips branch
+  - get_route_profile_sofor: driver-not-found, empty trips, trips with data,
                        best_route_type selection, insufficient candidates
   - bulk_add_sofor: empty list, skips short names, skips duplicates, inserts new
   - get_performance_details: various anomaly combinations + trend branches
-  - get_sofor_service: factory smoke
 
 0-mock (Dilim 23): all patch(UnitOfWork) removed → real DB via db_session fixture.
-svc.repo is a MagicMock (owned singleton, legitimate targeted mock for get_score_breakdown
-and get_route_profile that call self.repo.get_by_id directly).
+NOT: eski ``SoforService`` sınıfı silindi (B.1 free-function split, bkz.
+v2/modules/driver/CLAUDE.md). ``get_score_breakdown_sofor``/
+``get_route_profile_sofor`` uow=None verildiğinde modül-seviyeli
+``get_sofor_repo()`` singleton'ını kullanır — bu yüzden svc.repo yerine
+kaynak modüldeki ``get_sofor_repo`` patch'lenir (legitimate targeted mock,
+singleton'ın UoW dışında session'ı yok).
 Documented boundary: exception-path test for calculate_hybrid_score uses a narrow
 patch.object on the repo method (not the whole UoW).
 """
@@ -29,14 +33,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.driver.application.add_sofor import bulk_add_sofor
+from v2.modules.driver.application.delete_sofor import bulk_delete
+from v2.modules.driver.application.delete_sofor import delete_sofor as delete_sofor_fn
+from v2.modules.driver.application.get_performance import get_performance_details
+from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
+from v2.modules.driver.application.get_score import (
+    calculate_hybrid_score,
+    get_score_breakdown_sofor,
+)
+from v2.modules.driver.application.list_sofor import get_all_paged, get_by_id
+from v2.modules.driver.application.update_sofor import update_score
+from v2.modules.driver.application.update_sofor import update_sofor as update_sofor_fn
 
 pytestmark = pytest.mark.integration
 
 
-def _svc():
-    from app.core.services.sofor_service import SoforService
-
-    return SoforService(repo=MagicMock(), event_bus=MagicMock())
+def _fake_sofor_repo(return_value):
+    """Belirli bir sofor kaydı döndüren sahte repo (get_by_id mock'lu)."""
+    repo = MagicMock()
+    repo.get_by_id = AsyncMock(return_value=return_value)
+    return repo
 
 
 # ===========================================================================
@@ -60,8 +77,7 @@ class TestGetAllPaged:
         )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_all_paged(
+        result = await get_all_paged(
             skip=0,
             limit=10,
             aktif_only=False,
@@ -75,8 +91,7 @@ class TestGetAllPaged:
         assert result["items"][0]["ehliyet_sinifi"] == "C"
 
     async def test_no_filters(self, db_session):
-        svc = _svc()
-        result = await svc.get_all_paged()
+        result = await get_all_paged()
         assert "items" in result
         assert "total" in result
         assert isinstance(result["total"], int)
@@ -92,8 +107,7 @@ class TestGetById:
         sofor = await seed_sofor(db_session, ad_soyad="TestGetById Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_by_id(sofor.id)
+        result = await get_by_id(sofor.id)
 
         assert result is not None
         assert result["id"] == sofor.id
@@ -109,19 +123,17 @@ class TestUpdateSofor:
         sofor = await seed_sofor(db_session, ad_soyad="Update Phone Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_sofor(sofor.id, telefon="05001112233")
+        result = await update_sofor_fn(sofor.id, telefon="05001112233")
         assert result is True
 
     async def test_ad_soyad_capitalised(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Original Name Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_sofor(sofor.id, ad_soyad="ali veli renk")
+        result = await update_sofor_fn(sofor.id, ad_soyad="ali veli renk")
         assert result is True
 
-        updated = await svc.get_by_id(sofor.id)
+        updated = await get_by_id(sofor.id)
         assert updated["ad_soyad"] == "Ali Veli Renk"
 
     async def test_name_collision_raises(self, db_session):
@@ -129,25 +141,22 @@ class TestUpdateSofor:
         sofor2 = await seed_sofor(db_session, ad_soyad="Collide Beta Driver")
         await db_session.commit()
 
-        svc = _svc()
         with pytest.raises(ValueError, match="another driver"):
-            await svc.update_sofor(sofor2.id, ad_soyad="Collide Alpha Driver")
+            await update_sofor_fn(sofor2.id, ad_soyad="Collide Alpha Driver")
 
     async def test_manual_score_recalculates_hybrid(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Manual Score Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_sofor(sofor.id, manual_score=1.5)
+        result = await update_sofor_fn(sofor.id, manual_score=1.5)
         assert result is True
 
-        updated = await svc.get_by_id(sofor.id)
+        updated = await get_by_id(sofor.id)
         assert updated is not None
         assert "score" in updated
 
     async def test_update_returns_false_when_driver_missing(self, db_session):
-        svc = _svc()
-        result = await svc.update_sofor(999999, telefon="0")
+        result = await update_sofor_fn(999999, telefon="0")
         assert result is False
 
 
@@ -162,16 +171,14 @@ class TestDeleteSofor:
         sofor_id = sofor.id
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.delete_sofor(sofor_id)
+        result = await delete_sofor_fn(sofor_id)
         assert result is True
         # Verify soft-delete: second delete must return False (already deleted)
-        result2 = await svc.delete_sofor(sofor_id)
+        result2 = await delete_sofor_fn(sofor_id)
         assert result2 is False
 
     async def test_returns_false_when_not_found(self, db_session):
-        svc = _svc()
-        result = await svc.delete_sofor(999999)
+        result = await delete_sofor_fn(999999)
         assert result is False
 
     async def test_returns_false_when_already_deleted(self, db_session):
@@ -184,8 +191,7 @@ class TestDeleteSofor:
         await db_session.flush()
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.delete_sofor(sofor.id)
+        result = await delete_sofor_fn(sofor.id)
         assert result is False
 
 
@@ -201,8 +207,7 @@ class TestBulkDelete:
         s3 = await seed_sofor(db_session, ad_soyad="Bulk Del Driver C")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.bulk_delete([s1.id, s2.id, s3.id])
+        result = await bulk_delete([s1.id, s2.id, s3.id])
         assert result["deleted"] == 3
         assert result["status"] == "success"
 
@@ -217,40 +222,34 @@ class TestUpdateScore:
         sofor = await seed_sofor(db_session, ad_soyad="Score Happy Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_score(sofor.id, 1.5)
+        result = await update_score(sofor.id, 1.5)
         assert result is True
 
     async def test_boundary_min_allowed(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Score Min Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_score(sofor.id, 0.1)
+        result = await update_score(sofor.id, 0.1)
         assert result is True
 
     async def test_boundary_max_allowed(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Score Max Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.update_score(sofor.id, 2.0)
+        result = await update_score(sofor.id, 2.0)
         assert result is True
 
     async def test_raises_below_min(self):
-        svc = _svc()
         with pytest.raises(ValueError, match="between 0.1 and 2.0"):
-            await svc.update_score(1, 0.09)
+            await update_score(1, 0.09)
 
     async def test_raises_above_max(self):
-        svc = _svc()
         with pytest.raises(ValueError, match="between 0.1 and 2.0"):
-            await svc.update_score(1, 2.01)
+            await update_score(1, 2.01)
 
     async def test_raises_when_driver_not_found(self, db_session):
-        svc = _svc()
         with pytest.raises(ValueError, match="Driver not found"):
-            await svc.update_score(999999, 1.0)
+            await update_score(999999, 1.0)
 
 
 # ===========================================================================
@@ -271,8 +270,7 @@ class TestCalculateHybridScore:
             )
         await db_session.commit()
 
-        svc = _svc()
-        score = await svc.calculate_hybrid_score(sofor.id, 1.0)
+        score = await calculate_hybrid_score(sofor.id, 1.0)
         # ort_tuketim=30 → perf_factor=30/30=1.0 → hybrid=1.0*0.6+1.0*0.4=1.0
         assert abs(score - 1.0) < 0.05
 
@@ -288,8 +286,7 @@ class TestCalculateHybridScore:
             )
         await db_session.commit()
 
-        svc = _svc()
-        score = await svc.calculate_hybrid_score(sofor.id, 1.0)
+        score = await calculate_hybrid_score(sofor.id, 1.0)
         # ort_tuketim=60 → perf_factor=0.5 → hybrid=0.5*0.6+1.0*0.4=0.7 < 1.0
         assert score < 1.0
 
@@ -305,8 +302,7 @@ class TestCalculateHybridScore:
             )
         await db_session.commit()
 
-        svc = _svc()
-        score = await svc.calculate_hybrid_score(sofor.id, 1.3)
+        score = await calculate_hybrid_score(sofor.id, 1.3)
         assert score == 1.3
 
     async def test_exception_returns_manual(self, db_session):
@@ -318,8 +314,7 @@ class TestCalculateHybridScore:
         sofor = await seed_sofor(db_session, ad_soyad="Hybrid Exception Driver")
         await db_session.commit()
 
-        svc = _svc()
-        import app.database.repositories.sofor_repo as sofor_repo_mod
+        import v2.modules.driver.infrastructure.repository as sofor_repo_mod
 
         with patch.object(
             sofor_repo_mod.SoforRepository,
@@ -327,39 +322,40 @@ class TestCalculateHybridScore:
             new_callable=AsyncMock,
             side_effect=RuntimeError("db error"),
         ):
-            score = await svc.calculate_hybrid_score(sofor.id, 0.9)
+            score = await calculate_hybrid_score(sofor.id, 0.9)
         assert score == 0.9
 
 
 # ===========================================================================
-# get_score_breakdown
+# get_score_breakdown_sofor
 # ===========================================================================
-# svc.repo.get_by_id is a targeted AsyncMock on the constructor-injected
-# singleton repo (legitimate: singleton has no session outside UoW).
+# get_sofor_repo() (module-level singleton, resolved when uow=None) is
+# patched at its consuming module (get_score.py) with a targeted AsyncMock
+# repo (legitimate: singleton has no session outside UoW).
 # The UoW block (get_sefer_stats) uses the real test DB via db_session fixture.
+
+_GET_SOFOR_REPO_SCORE = "v2.modules.driver.application.get_score.get_sofor_repo"
 
 
 class TestGetScoreBreakdown:
     async def test_driver_not_found_raises(self, db_session):
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(return_value=None)
-
-        with pytest.raises(ValueError, match="Driver not found"):
-            await svc.get_score_breakdown(999)
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=_fake_sofor_repo(None)):
+            with pytest.raises(ValueError, match="Driver not found"):
+                await get_score_breakdown_sofor(999)
 
     async def test_no_trips_returns_manual_fallback(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Score Breakdown No Trips")
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={
+        repo = _fake_sofor_repo(
+            {
                 "id": sofor.id,
                 "ad_soyad": sofor.ad_soyad,
                 "manual_score": 1.2,
             }
         )
-        result = await svc.get_score_breakdown(sofor.id)
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+            result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is False
         assert result["manual"] == 1.2
@@ -376,15 +372,15 @@ class TestGetScoreBreakdown:
             )
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={
+        repo = _fake_sofor_repo(
+            {
                 "id": sofor.id,
                 "ad_soyad": sofor.ad_soyad,
                 "manual_score": 1.0,
             }
         )
-        result = await svc.get_score_breakdown(sofor.id)
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+            result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is True
         assert result["trip_count"] == 8
@@ -395,12 +391,12 @@ class TestGetScoreBreakdown:
         sofor = await seed_sofor(db_session, ad_soyad="Score Clamp Driver")
         await db_session.commit()
 
-        svc = _svc()
         # score=3.0 should be clamped to 2.0
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": "X Y", "manual_score": 3.0}
+        repo = _fake_sofor_repo(
+            {"id": sofor.id, "ad_soyad": "X Y", "manual_score": 3.0}
         )
-        result = await svc.get_score_breakdown(sofor.id)
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+            result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["manual"] == 2.0
 
@@ -408,11 +404,9 @@ class TestGetScoreBreakdown:
         sofor = await seed_sofor(db_session, ad_soyad="Score Structure Driver")
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": "Test", "score": 1.0}
-        )
-        result = await svc.get_score_breakdown(sofor.id)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": "Test", "score": 1.0})
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+            result = await get_score_breakdown_sofor(sofor.id)
 
         required_keys = {
             "sofor_id",
@@ -434,51 +428,51 @@ class TestGetScoreBreakdown:
         sofor = await seed_sofor(db_session, ad_soyad="Score Exception Driver")
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": "Ali", "manual_score": 1.1}
+        repo = _fake_sofor_repo(
+            {"id": sofor.id, "ad_soyad": "Ali", "manual_score": 1.1}
         )
-        import app.database.repositories.sofor_repo as sofor_repo_mod
+        import v2.modules.driver.infrastructure.repository as sofor_repo_mod
 
-        with patch.object(
-            sofor_repo_mod.SoforRepository,
-            "get_sefer_stats",
-            new_callable=AsyncMock,
-            side_effect=RuntimeError("boom"),
-        ):
-            result = await svc.get_score_breakdown(sofor.id)
+        with patch(_GET_SOFOR_REPO_SCORE, return_value=repo):
+            with patch.object(
+                sofor_repo_mod.SoforRepository,
+                "get_sefer_stats",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ):
+                result = await get_score_breakdown_sofor(sofor.id)
 
         assert result["has_trips"] is False
 
 
 # ===========================================================================
-# get_route_profile
+# get_route_profile_sofor
 # ===========================================================================
-# svc.repo.get_by_id is a targeted AsyncMock (same rationale as get_score_breakdown).
-# classify_route is patched: testing the service's bucketing logic, not the ML function.
+# get_sofor_repo() is patched at its consuming module (get_route_profile.py)
+# (same rationale as get_score_breakdown_sofor above).
+# classify_route is patched: testing the use-case's bucketing logic, not the ML function.
 # UoW sefer_repo uses real DB via db_session fixture.
+
+_GET_SOFOR_REPO_ROUTE = "v2.modules.driver.application.get_route_profile.get_sofor_repo"
 
 
 class TestGetRouteProfile:
     async def test_driver_not_found_raises(self, db_session):
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(return_value=None)
-
-        with pytest.raises(ValueError, match="Driver not found"):
-            await svc.get_route_profile(999)
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=_fake_sofor_repo(None)):
+            with pytest.raises(ValueError, match="Driver not found"):
+                await get_route_profile_sofor(999)
 
     async def test_empty_trips_returns_zero_profiles(self, db_session):
         sofor = await seed_sofor(db_session, ad_soyad="Route Profile Empty Driver")
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route", return_value="mixed"
-        ):
-            result = await svc.get_route_profile(sofor.id)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                return_value="mixed",
+            ):
+                result = await get_route_profile_sofor(sofor.id)
 
         assert result["best_route_type"] is None
         for profile in result["profiles"]:
@@ -497,15 +491,13 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route",
-            return_value="highway_dominant",
-        ):
-            result = await svc.get_route_profile(sofor.id)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                return_value="highway_dominant",
+            ):
+                result = await get_route_profile_sofor(sofor.id)
 
         highway_profile = next(
             p for p in result["profiles"] if p["route_type"] == "highway_dominant"
@@ -541,15 +533,13 @@ class TestGetRouteProfile:
             # highway trips have highway_km seeded; urban trips have empty analysis
             return "highway_dominant" if "highway_km" in route_analysis else "urban"
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route",
-            side_effect=classify_side_effect,
-        ):
-            result = await svc.get_route_profile(sofor.id, min_trips_for_best=5)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                side_effect=classify_side_effect,
+            ):
+                result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
 
         # highway: deviation=(100-102)/102*100 ≈ -2%; urban: (200-100)/100*100=100%
         # best_route_type = lowest deviation_pct = highway_dominant
@@ -569,15 +559,13 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route",
-            return_value="mixed",
-        ):
-            result = await svc.get_route_profile(sofor.id, min_trips_for_best=5)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                return_value="mixed",
+            ):
+                result = await get_route_profile_sofor(sofor.id, min_trips_for_best=5)
 
         assert result["best_route_type"] is None
 
@@ -595,15 +583,13 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route",
-            side_effect=ValueError("bad route"),
-        ):
-            result = await svc.get_route_profile(sofor.id)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                side_effect=ValueError("bad route"),
+            ):
+                result = await get_route_profile_sofor(sofor.id)
 
         assert all(p["trip_count"] == 0 for p in result["profiles"])
 
@@ -621,15 +607,13 @@ class TestGetRouteProfile:
         )
         await db_session.commit()
 
-        svc = _svc()
-        svc.repo.get_by_id = AsyncMock(
-            return_value={"id": sofor.id, "ad_soyad": sofor.ad_soyad}
-        )
-        with patch(
-            "app.core.ml.driver_route_profile.classify_route",
-            return_value="unknown_type_xyz",
-        ):
-            result = await svc.get_route_profile(sofor.id)
+        repo = _fake_sofor_repo({"id": sofor.id, "ad_soyad": sofor.ad_soyad})
+        with patch(_GET_SOFOR_REPO_ROUTE, return_value=repo):
+            with patch(
+                "v2.modules.driver.application.get_route_profile.classify_route",
+                return_value="unknown_type_xyz",
+            ):
+                result = await get_route_profile_sofor(sofor.id)
 
         assert all(p["trip_count"] == 0 for p in result["profiles"])
 
@@ -641,26 +625,22 @@ class TestGetRouteProfile:
 
 class TestBulkAddSofor:
     async def test_empty_list_returns_zero(self):
-        svc = _svc()
-        result = await svc.bulk_add_sofor([])
+        result = await bulk_add_sofor([])
         assert result == 0
 
     async def test_skips_short_names(self, db_session):
-        svc = _svc()
-        result = await svc.bulk_add_sofor([{"ad_soyad": "Ab"}])
+        result = await bulk_add_sofor([{"ad_soyad": "Ab"}])
         assert result == 0
 
     async def test_skips_duplicate_names(self, db_session):
         await seed_sofor(db_session, ad_soyad="Ali Veli Duplicate")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.bulk_add_sofor([{"ad_soyad": "Ali Veli Duplicate"}])
+        result = await bulk_add_sofor([{"ad_soyad": "Ali Veli Duplicate"}])
         assert result == 0
 
     async def test_inserts_new_drivers(self, db_session):
-        svc = _svc()
-        result = await svc.bulk_add_sofor(
+        result = await bulk_add_sofor(
             [{"ad_soyad": "Bulk New Driver One"}, {"ad_soyad": "Bulk New Driver Two"}]
         )
         assert result == 2
@@ -676,8 +656,7 @@ class TestBulkAddSofor:
                     "ehliyet_sinifi": "E",
                 }
 
-        svc = _svc()
-        result = await svc.bulk_add_sofor([FakeModel()])
+        result = await bulk_add_sofor([FakeModel()])
         assert result == 1
 
     async def test_dict_path(self, db_session):
@@ -687,8 +666,7 @@ class TestBulkAddSofor:
             def dict(self):
                 return {"ad_soyad": "Legacy Sofor Bulk", "ehliyet_sinifi": "E"}
 
-        svc = _svc()
-        result = await svc.bulk_add_sofor([LegacyModel()])
+        result = await bulk_add_sofor([LegacyModel()])
         assert result == 1
 
 
@@ -702,8 +680,7 @@ class TestGetPerformanceDetails:
         sofor = await seed_sofor(db_session, ad_soyad="Perf Basic Driver")
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
 
         assert "safety_score" in result
         assert "eco_score" in result
@@ -724,8 +701,7 @@ class TestGetPerformanceDetails:
             )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
         assert result["trend"] == "increasing"
 
     async def test_trend_decreasing_when_many_anomalies(self, db_session):
@@ -777,8 +753,7 @@ class TestGetPerformanceDetails:
             )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
         assert result["trend"] == "decreasing"
 
     async def test_trend_stable_mid_range(self, db_session):
@@ -811,8 +786,7 @@ class TestGetPerformanceDetails:
             )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
         assert result["trend"] in ("stable", "increasing", "decreasing")
 
     async def test_eco_score_above_target(self, db_session):
@@ -827,8 +801,7 @@ class TestGetPerformanceDetails:
         )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
         assert result["eco_score"] >= 100.0
 
     async def test_eco_score_below_target(self, db_session):
@@ -843,29 +816,10 @@ class TestGetPerformanceDetails:
         )
         await db_session.commit()
 
-        svc = _svc()
-        result = await svc.get_performance_details(sofor.id)
+        result = await get_performance_details(sofor.id)
         assert result["eco_score"] < 100.0
 
 
-# ===========================================================================
-# get_sofor_service factory
-# ===========================================================================
-
-
-class TestGetSoforService:
-    def test_factory_returns_instance(self):
-        from app.core.services.sofor_service import SoforService
-
-        mock_container = MagicMock()
-        mock_container.sofor_service = SoforService(
-            repo=MagicMock(), event_bus=MagicMock()
-        )
-        with patch(
-            "app.core.container.get_container",
-            return_value=mock_container,
-        ):
-            from app.core.services.sofor_service import get_sofor_service
-
-            svc = get_sofor_service()
-        assert isinstance(svc, SoforService)
+# NOTE: eski "get_sofor_service factory" testi kaldırıldı — SoforService
+# sınıfı ve get_sofor_service() factory'si B.1 free-function split'inde
+# silindi, yerine koyulacak bir factory yok (bkz. v2/modules/driver/CLAUDE.md).

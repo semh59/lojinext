@@ -8,14 +8,14 @@ pytestmark = pytest.mark.integration
 
 
 def test_classify_route_highway_dominant():
-    from app.core.ml.driver_route_profile import classify_route
+    from v2.modules.driver.domain.route_profile import classify_route
 
     analysis = {"motorway": {"flat": 600.0, "up": 10.0, "down": 10.0}}
     assert classify_route(analysis) == "highway_dominant"
 
 
 def test_classify_route_mountain():
-    from app.core.ml.driver_route_profile import classify_route
+    from v2.modules.driver.domain.route_profile import classify_route
 
     # ascent_m/total > 15 triggers mountain
     analysis = {
@@ -26,7 +26,7 @@ def test_classify_route_mountain():
 
 
 def test_classify_route_urban():
-    from app.core.ml.driver_route_profile import classify_route
+    from v2.modules.driver.domain.route_profile import classify_route
 
     analysis = {
         "residential": {"flat": 40.0, "up": 2.0, "down": 2.0},
@@ -36,14 +36,14 @@ def test_classify_route_urban():
 
 
 def test_classify_route_empty_returns_mixed():
-    from app.core.ml.driver_route_profile import classify_route
+    from v2.modules.driver.domain.route_profile import classify_route
 
     assert classify_route({}) == "mixed"
 
 
 async def test_coefficient_returns_neutral_when_insufficient_data(db_session):
     """Must return 1.0 when fewer than min_trips exist."""
-    from app.core.ml.driver_route_profile import get_driver_route_coefficient
+    from v2.modules.driver.domain.route_profile import get_driver_route_coefficient
 
     sofor = await seed_sofor(db_session)
     await db_session.commit()
@@ -57,7 +57,7 @@ async def test_coefficient_returns_neutral_when_insufficient_data(db_session):
 async def test_coefficient_returns_median_ratio(db_session):
     """With enough trips, must return median of gercek/tahmini ratios."""
     # Ratios: 1.05, 1.10, 1.075, 1.025, 1.00 → sorted: 1.00, 1.025, 1.05, 1.075, 1.10 → median = 1.05
-    from app.core.ml.driver_route_profile import get_driver_route_coefficient
+    from v2.modules.driver.domain.route_profile import get_driver_route_coefficient
 
     pairs = [(42.0, 40.0), (44.0, 40.0), (43.0, 40.0), (41.0, 40.0), (40.0, 40.0)]
     arac = await seed_arac(db_session)

@@ -499,9 +499,6 @@ async def test_explain_consumption_sofor_id_stats_fetch():
     driver_stat = MagicMock()
     driver_stat.filo_karsilastirma = 10.0
 
-    mock_sofor_svc = MagicMock()
-    mock_sofor_svc.get_driver_stats = AsyncMock(return_value=[driver_stat])
-
     mock_predictor = MagicMock()
     mock_predictor.is_trained = True
     mock_predictor.explain_prediction = MagicMock(
@@ -512,9 +509,9 @@ async def test_explain_consumption_sofor_id_stats_fetch():
 
     with (
         patch(
-            "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-            return_value=mock_sofor_svc,
-        ),
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=[driver_stat]),
+        ) as mock_get_driver_stats,
         patch(
             "app.services.prediction_service.asyncio.to_thread",
             new=AsyncMock(
@@ -530,7 +527,7 @@ async def test_explain_consumption_sofor_id_stats_fetch():
         )
 
     assert result is not None
-    mock_sofor_svc.get_driver_stats.assert_awaited()
+    mock_get_driver_stats.assert_awaited()
 
 
 async def test_explain_consumption_untrained_predictor_falls_back_to_general():
@@ -571,9 +568,6 @@ async def test_explain_consumption_sofor_id_no_stats():
     """sofor_id provided but stats empty → s_score remains None (uses 1.0)."""
     svc = _make_service()
 
-    mock_sofor_svc = MagicMock()
-    mock_sofor_svc.get_driver_stats = AsyncMock(return_value=[])
-
     mock_predictor = MagicMock()
     mock_predictor.is_trained = True
 
@@ -581,8 +575,8 @@ async def test_explain_consumption_sofor_id_no_stats():
 
     with (
         patch(
-            "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-            return_value=mock_sofor_svc,
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=[]),
         ),
         patch(
             "app.services.prediction_service.asyncio.to_thread",

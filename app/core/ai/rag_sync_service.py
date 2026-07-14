@@ -48,7 +48,7 @@ class RAGSyncService:
                 logger.info("Starting initial RAG synchronization...")
 
                 from app.database.repositories.sefer_repo import get_sefer_repo
-                from app.database.repositories.sofor_repo import get_sofor_repo
+                from v2.modules.driver.infrastructure.repository import get_sofor_repo
                 from v2.modules.fleet.infrastructure.vehicle_repository import (
                     get_arac_repo,
                 )

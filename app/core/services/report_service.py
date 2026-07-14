@@ -32,6 +32,18 @@ class TrendReport:
     tuketim_degisim: Optional[float] = None
 
 
+class _AnalizRepoProxy:
+    """Minimal ``uow``-shaped shim for ``v2.modules.driver.domain.evaluation.evaluate_driver``.
+
+    That function's uow-fallback only ever reads ``uow.analiz_repo``; this
+    lets ReportService pass its own already session-consistent
+    ``analiz_repo`` through without evaluate_driver needing a full UnitOfWork.
+    """
+
+    def __init__(self, analiz_repo):
+        self.analiz_repo = analiz_repo
+
+
 class ReportService:
     """Async reporting facade."""
 
@@ -45,11 +57,10 @@ class ReportService:
         session=None,
     ):
         self._analiz_repo = analiz_repo
-        self._degerlendirme_service = None
 
         if session is not None:
             from app.database.repositories.sefer_repo import SeferRepository
-            from app.database.repositories.sofor_repo import SoforRepository
+            from v2.modules.driver.infrastructure.repository import SoforRepository
             from v2.modules.fleet.infrastructure.vehicle_repository import (
                 AracRepository,
             )
@@ -77,7 +88,7 @@ class ReportService:
         if sofor_repo:
             self.sofor_repo = sofor_repo
         else:
-            from app.database.repositories.sofor_repo import get_sofor_repo
+            from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
             self.sofor_repo = get_sofor_repo()
 
@@ -117,16 +128,6 @@ class ReportService:
         from app.database.repositories.analiz_repo import get_analiz_repo
 
         return get_analiz_repo()
-
-    @property
-    def degerlendirme_service(self):
-        if self._degerlendirme_service is None:
-            from app.core.entities.sofor_degerlendirme import SoforDegerlendirmeService
-
-            self._degerlendirme_service = SoforDegerlendirmeService(
-                analiz_repo=self.analiz_repo, sofor_repo=self.sofor_repo
-            )
-        return self._degerlendirme_service
 
     @staticmethod
     def _calculate_performance_score(
@@ -268,12 +269,19 @@ class ReportService:
         }
 
     async def generate_driver_report(self, sofor_id: int, days: int = 30) -> Dict:
+        from v2.modules.driver.domain.evaluation import evaluate_driver
+
         # Raporlar tarihsel veri okur — pasifleştirilmiş şoför için de üretilebilmeli
         sofor = await self.sofor_repo.get_by_id(sofor_id, include_inactive=True)
         if not sofor:
             return {"error": "Sofor bulunamadi"}
 
-        degerlendirme = await self.degerlendirme_service.evaluate_driver(sofor_id)
+        # evaluate_driver's uow-fallback shape needs only `.analiz_repo` —
+        # this proxy shares ReportService's already session-consistent
+        # analiz_repo (see __init__) instead of the singleton fallback.
+        degerlendirme = await evaluate_driver(
+            sofor_id, uow=_AnalizRepoProxy(self.analiz_repo)
+        )
         return {
             "sofor": sofor,
             "donem": f"Son {days} gun",

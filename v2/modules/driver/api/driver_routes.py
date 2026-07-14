@@ -1,3 +1,9 @@
+"""Driver module HTTP routes.
+
+``router`` mounts at ``/drivers`` (14 route), per ``TASKS/modules/driver.md``
+§2 route envanteri.
+"""
+
 import io
 from datetime import datetime, timezone
 from typing import Annotated, Any, Dict, List, Optional
@@ -15,15 +21,9 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import (
-    SessionDep,
-    get_current_active_admin,
-    get_current_active_user,
-    get_sofor_service,
-)
+from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
 from app.core.exceptions import DomainError
 from app.core.services.excel_service import ExcelService
-from app.core.services.sofor_service import SoforService
 from app.database.models import Kullanici, Sofor
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
@@ -33,7 +33,19 @@ from app.schemas.api_responses import (
     UploadResultResponse,
 )
 from app.schemas.base import ResponseMeta, StandardResponse
-from app.schemas.sofor import (
+from v2.modules.driver.application.delete_sofor import bulk_delete
+from v2.modules.driver.application.delete_sofor import (
+    delete_sofor as delete_sofor_usecase,
+)
+from v2.modules.driver.application.get_performance import get_performance_details
+from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
+from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+from v2.modules.driver.application.list_sofor import get_all_paged, get_by_id
+from v2.modules.driver.application.update_sofor import update_score
+from v2.modules.driver.application.update_sofor import (
+    update_sofor as update_sofor_usecase,
+)
+from v2.modules.driver.schemas import (
     DriverPerformanceSchema,
     DriverRouteProfileSchema,
     DriverScoreBreakdownSchema,
@@ -52,7 +64,6 @@ router = APIRouter()
 async def read_soforler(
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SoforService = Depends(get_sofor_service),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     aktif_only: bool = Query(True, description="Sadece aktif şoförler"),
@@ -62,9 +73,7 @@ async def read_soforler(
     max_score: Optional[float] = Query(None, ge=0.1, le=2.0),
 ):
     try:
-        # Service handles skip/limit/safety/validation internally
-        # Service now returns {"items": [...], "total": X}
-        result = await service.get_all_paged(
+        result = await get_all_paged(
             skip=skip,
             limit=limit,
             aktif_only=aktif_only,
@@ -120,11 +129,11 @@ async def create_sofor(
     sofor: SoforCreate,
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: SoforService = Depends(get_sofor_service),
 ) -> Any:
+    from v2.modules.driver.application.add_sofor import add_sofor
+
     try:
-        # Service handles duplicate check and reactivation of passive drivers
-        sofor_id = await service.add_sofor(
+        sofor_id = await add_sofor(
             ad_soyad=sofor.ad_soyad,
             telefon=sofor.telefon,
             ehliyet_sinifi=sofor.ehliyet_sinifi,
@@ -133,18 +142,8 @@ async def create_sofor(
             notlar=sofor.notlar,
             telegram_id=sofor.telegram_id,
         )
-        # Fetch the created/updated object to return
-        # Using DB session directly for fetch to ensure we return Pydantic-compatible DB model
-        # (Service.get_by_id returns dict, we need ORM object for response_model usually
-        # unless we change response_model to accept dict. SoforResponse works with dict too via from_attributes=True)
-
-        # Re-fetch via the SERVICE (shares the request UoW session), NOT via the
-        # endpoint's separate `db` session: the write is staged on the request UoW
-        # and only committed at request end (see get_uow), so a different session
-        # cannot see it yet → was returning 500 "geri getirilemedi".
-        created_sofor = await service.get_by_id(sofor_id)
+        created_sofor = await get_by_id(sofor_id)
         if not created_sofor:
-            # Should not happen
             raise HTTPException(
                 status_code=500, detail="Sürücü oluşturuldu fakat geri getirilemedi."
             )
@@ -164,8 +163,8 @@ async def create_sofor(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except IntegrityError as e:
-        # Concurrent duplicate create: SoforRepository's pre-check SELECT cannot
-        # lock a row that does not exist yet, so two racing inserts both pass it
+        # Concurrent duplicate create: the pre-check SELECT cannot lock a
+        # row that does not exist yet, so two racing inserts both pass it
         # and the UNIQUE(ad_soyad) constraint is the real guard — the loser
         # surfaces here. Map it to the same friendly 400 the vehicle path uses
         # instead of falling through to a misleading 500.
@@ -214,7 +213,6 @@ async def download_template(
 )
 async def export_drivers(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SoforService = Depends(get_sofor_service),
     aktif_only: bool = Query(True, description="Sadece aktif şoförler"),
     search: Optional[str] = Query(None, description="İsim veya telefon araması"),
     ehliyet_sinifi: Optional[str] = Query(None, description="Ehliyet sınıfı"),
@@ -223,8 +221,7 @@ async def export_drivers(
 ):
     """Mevcut şoförleri Excel olarak indir (Filtreli & Kurumsal Format)"""
     try:
-        # Tüm listeyi çek (limit yüksek)
-        drivers = await service.get_all_paged(
+        drivers = await get_all_paged(
             skip=0,
             limit=10000,
             aktif_only=aktif_only,
@@ -234,11 +231,9 @@ async def export_drivers(
             max_score=max_score,
         )
 
-        # get_all_paged returns {"items": [...], "total": N}
         driver_items = (
             drivers.get("items", []) if isinstance(drivers, dict) else drivers
         )
-        # Hassas verileri temizle (PII koruması)
         clean_data = []
         for d in driver_items:
             clean_item = {
@@ -252,7 +247,6 @@ async def export_drivers(
             }
             clean_data.append(clean_item)
 
-        # Excel oluştur
         content = await ExcelService.export_data(clean_data, type="sofor_listesi")
 
         filename = (
@@ -322,18 +316,16 @@ async def get_driver_performance(
     sofor_id: int,
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SoforService = Depends(get_sofor_service),
 ):
     """
     Sürücü performans karnesini getir (AI Analizli)
     """
-    # Check existence
     sofor = await db.get(Sofor, sofor_id)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
     try:
-        performance = await service.get_performance_details(sofor_id)
+        performance = await get_performance_details(sofor_id)
         return performance
     except DomainError:
         raise
@@ -352,7 +344,6 @@ async def get_driver_score_breakdown(
     sofor_id: int,
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SoforService = Depends(get_sofor_service),
 ):
     """Hibrit skorun ağırlık kırılımını (XAI) döner.
 
@@ -364,7 +355,7 @@ async def get_driver_score_breakdown(
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     try:
-        return await service.get_score_breakdown(sofor_id)
+        return await get_score_breakdown_sofor(sofor_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DomainError:
@@ -384,7 +375,6 @@ async def get_driver_route_profile(
     sofor_id: int,
     db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SoforService = Depends(get_sofor_service),
 ):
     """Şoförün güzergah tipi bazlı performans profilini döner.
 
@@ -396,7 +386,7 @@ async def get_driver_route_profile(
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     try:
-        return await service.get_route_profile(sofor_id)
+        return await get_route_profile_sofor(sofor_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except DomainError:
@@ -414,24 +404,21 @@ async def update_sofor(
     sofor_in: SoforUpdate,
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: SoforService = Depends(get_sofor_service),
 ):
     try:
-        # Convert Pydantic to dict, excluding unset
         update_data = sofor_in.model_dump(exclude_unset=True)
         if not update_data:
             raise HTTPException(
                 status_code=400, detail="Güncellenecek veri gönderilmedi"
             )
 
-        success = await service.update_sofor(sofor_id, **update_data)
+        success = await update_sofor_usecase(sofor_id, **update_data)
         if not success:
             raise HTTPException(
                 status_code=404, detail="Şoför bulunamadı veya güncellenemedi"
             )
 
-        # Fetch updated
-        updated_sofor = await service.get_by_id(sofor_id)
+        updated_sofor = await get_by_id(sofor_id)
         await log_audit_event(
             module="sofor",
             action="update",
@@ -455,7 +442,6 @@ async def update_sofor(
 @router.delete("/bulk", response_model=Dict)
 async def bulk_delete_soforler(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: Annotated[SoforService, Depends(get_sofor_service)],
     ids: List[int] = Body(...),
 ):
     """Toplu şoför silme (Soft Delete & Optimized Transaction)."""
@@ -468,8 +454,7 @@ async def bulk_delete_soforler(
         )
 
     try:
-        # Service handles multi-item update in a single UoW
-        result = await service.bulk_delete(ids)
+        result = await bulk_delete(ids)
 
         logger.info(
             f"Bulk delete completed: {result['deleted']} drivers deleted by {current_admin.email}"
@@ -498,7 +483,6 @@ async def delete_sofor(
     sofor_id: int,
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: SoforService = Depends(get_sofor_service),
 ):
     """Şoför sil (Akıllı Silme / Smart Delete).
 
@@ -508,7 +492,6 @@ async def delete_sofor(
 
     Yetki: ADMIN
     """
-    # Check status to determine message
     sofor = await db.get(Sofor, sofor_id)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
@@ -516,8 +499,7 @@ async def delete_sofor(
     was_active = sofor.aktif
 
     try:
-        # Service handles 'Smart Delete' (Soft delete)
-        success = await service.delete_sofor(sofor_id)
+        success = await delete_sofor_usecase(sofor_id)
         if not success:
             raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
@@ -539,7 +521,6 @@ async def delete_sofor(
         raise
     except Exception as e:
         logger.error(f"Error deleting driver: {e}", exc_info=True)
-        # Check if it was an integrity error (raised as ValueError by service)
         if "sefer kayıtları" in str(e):
             raise HTTPException(status_code=409, detail=str(e))
         raise HTTPException(status_code=500, detail="Silme işlemi başarısız")
@@ -550,19 +531,16 @@ async def update_driver_score(
     sofor_id: int,
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
-    service: SoforService = Depends(get_sofor_service),
     score: float = Query(..., ge=0.1, le=2.0),
 ):
     try:
-        # Service handles validation (0.1-2.0) and existence check
-        success = await service.update_score(sofor_id, score)
+        success = await update_score(sofor_id, score)
         if not success:
             raise HTTPException(
                 status_code=404, detail="Şoför bulunamadı veya puan güncellenemedi"
             )
 
-        # Fetch updated to return response
-        updated_sofor = await service.get_by_id(sofor_id)
+        updated_sofor = await get_by_id(sofor_id)
         await log_audit_event(
             module="sofor",
             action="update_score",

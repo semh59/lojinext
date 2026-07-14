@@ -186,12 +186,11 @@ async def get_driver_comparison_pdf(
 ):
     """Şoför performans karşılaştırma raporu PDF"""
     try:
-        from app.core.services.sofor_analiz_service import SoforAnalizService
         from app.database.unit_of_work import UnitOfWork
+        from v2.modules.driver.domain.driver_stats import get_driver_stats
 
         async with UnitOfWork() as uow:
-            sofor_service = SoforAnalizService(uow=uow)
-            drivers = await sofor_service.get_driver_stats()
+            drivers = await get_driver_stats(uow=uow)
 
         driver_data = [
             {
@@ -429,10 +428,9 @@ async def export_analytical_report_excel(
             data = [raw_data] if isinstance(raw_data, dict) else raw_data
 
         elif report_type == "driver_comparison":
-            from app.core.services.sofor_analiz_service import get_sofor_analiz_service
+            from v2.modules.driver.domain.driver_stats import get_driver_stats
 
-            sofor_service = get_sofor_analiz_service()
-            drivers = await sofor_service.get_driver_stats()
+            drivers = await get_driver_stats()
             data = [
                 {
                     "Şoför": d.ad_soyad,

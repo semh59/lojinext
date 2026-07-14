@@ -18,7 +18,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 def test_driver_coaching_engine_singleton_has_lock():
     """Module-level _engine_lock var ve threading.Lock instance'ı."""
-    from app.core.ai import driver_coaching_engine as mod
+    from v2.modules.driver.application import generate_coaching as mod
 
     assert hasattr(mod, "_engine_lock"), "Lock attribute eksik"
     # threading.Lock() bir factory; isinstance test'i lock tipiyle uyum
@@ -35,7 +35,7 @@ def test_fuel_theft_classifier_singleton_has_lock():
 
 def test_driver_coaching_engine_concurrent_calls_return_same_instance():
     """20 paralel thread aynı engine instance'ı almalı."""
-    from app.core.ai import driver_coaching_engine as mod
+    from v2.modules.driver.application import generate_coaching as mod
 
     # Test izolasyonu için sıfırla
     mod._engine_singleton = None

@@ -69,8 +69,10 @@ async def _run_digest() -> Dict[str, Any]:
     `timeout_partial=True` bayrağı operasyon ekibine zaman aşımını
     bildirir.
     """
-    from app.core.ai.driver_coaching_engine import get_driver_coaching_engine
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.application.generate_coaching import (
+        get_driver_coaching_engine,
+    )
 
     engine = get_driver_coaching_engine()
     async with UnitOfWork() as uow:
@@ -149,9 +151,9 @@ async def _run_evaluate_pending() -> Dict[str, Any]:
 
     from sqlalchemy import select, update
 
-    from app.core.services.sofor_service import SoforService
     from app.database.models import CoachingDelivery
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.application.get_score import get_score_breakdown_sofor
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=14)
     results: Dict[str, Any] = {"evaluated": 0, "skipped": 0, "errors": 0}
@@ -165,12 +167,11 @@ async def _run_evaluate_pending() -> Dict[str, Any]:
         if not rows:
             return results
 
-        svc = SoforService(repo=uow.sofor_repo)
         now = datetime.now(timezone.utc)
 
         for d in rows:
             try:
-                score = await svc.get_score_breakdown(d.sofor_id)
+                score = await get_score_breakdown_sofor(d.sofor_id, uow=uow)
                 current_total = float(score.get("total") or 0)
                 if d.score_before and d.score_before > 0:
                     delta = (current_total - d.score_before) / d.score_before * 100.0

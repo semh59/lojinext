@@ -40,7 +40,6 @@ class TestResolveIds:
             arac_repo=MagicMock(),
             sofor_repo=MagicMock(),
             sefer_service=MagicMock(),
-            sofor_service=MagicMock(),
         )
 
     @pytest.fixture
@@ -125,18 +124,20 @@ class TestProcessImports:
             arac_repo=AsyncMock(),
             sofor_repo=AsyncMock(),
             sefer_service=AsyncMock(),
-            sofor_service=AsyncMock(),
             dorse_repo=AsyncMock(),
             lokasyon_repo=AsyncMock(),
         )
         svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
-        svc.sofor_service.bulk_add_sofor = AsyncMock(return_value=1)
         monkeypatch.setattr(
             "v2.modules.fleet.application.bulk_add_vehicles.bulk_add_vehicles",
             AsyncMock(return_value=1),
         )
         monkeypatch.setattr(
             "v2.modules.fuel.application.bulk_add_yakit.bulk_add_yakit",
+            AsyncMock(return_value=1),
+        )
+        monkeypatch.setattr(
+            "v2.modules.driver.application.add_sofor.bulk_add_sofor",
             AsyncMock(return_value=1),
         )
         # Expose seeded rows + session for assertions.
@@ -469,8 +470,11 @@ class TestProcessImports:
 class TestImportValidation:
     @pytest.fixture
     def service(self):
+        # sofor_service param removed (dalga 5, B.1 free-function refactor,
+        # v2.modules.driver) — ImportService.__init__ now takes 5 optional
+        # repo/service args, not 6.
         return ImportService(
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
+            MagicMock(), MagicMock(), MagicMock(), MagicMock(), MagicMock()
         )
 
     def test_validate_plaka(self, service):

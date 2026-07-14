@@ -160,7 +160,9 @@ class TestCoachingEffectiveness:
         await db_session.commit()
 
         # evaluate_pending'i doğrudan çağır
-        from app.workers.tasks.coaching_tasks import _run_evaluate_pending
+        from v2.modules.driver.infrastructure.coaching_tasks import (
+            _run_evaluate_pending,
+        )
 
         result = await _run_evaluate_pending()
         assert result["evaluated"] >= 1

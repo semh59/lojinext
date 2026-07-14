@@ -4,7 +4,7 @@ import uuid
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.database.repositories.sofor_repo import SoforRepository
+from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
 
 

@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.database.unit_of_work import UnitOfWork
-from app.workers.tasks.coaching_tasks import (
+from v2.modules.driver.infrastructure.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
     _send_high_priority_to_telegram,
@@ -34,7 +34,9 @@ def _uow_ctx(mock_uow):
 @pytest.mark.asyncio
 async def test_send_telegram_no_token():
     """No bot token → returns False immediately."""
-    with patch("app.workers.tasks.coaching_tasks.settings") as mock_settings:
+    with patch(
+        "v2.modules.driver.infrastructure.coaching_tasks.settings"
+    ) as mock_settings:
         mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = ""
         result = await _send_high_priority_to_telegram("123", "headline", "suggestion")
     assert result is False
@@ -44,7 +46,9 @@ async def test_send_telegram_no_token():
 async def test_send_telegram_success():
     """Successful HTTP call → returns True."""
 
-    with patch("app.workers.tasks.coaching_tasks.settings") as mock_settings:
+    with patch(
+        "v2.modules.driver.infrastructure.coaching_tasks.settings"
+    ) as mock_settings:
         mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
 
         mock_resp = MagicMock()
@@ -56,7 +60,7 @@ async def test_send_telegram_success():
         mock_client.post = AsyncMock(return_value=mock_resp)
 
         with patch(
-            "app.workers.tasks.coaching_tasks.httpx.AsyncClient",
+            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
             return_value=mock_client,
         ):
             result = await _send_high_priority_to_telegram(
@@ -75,7 +79,9 @@ async def test_send_telegram_http_error_returns_false():
     """HTTP error → returns False, does not raise."""
     import httpx
 
-    with patch("app.workers.tasks.coaching_tasks.settings") as mock_settings:
+    with patch(
+        "v2.modules.driver.infrastructure.coaching_tasks.settings"
+    ) as mock_settings:
         mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
 
         mock_client = AsyncMock()
@@ -84,7 +90,7 @@ async def test_send_telegram_http_error_returns_false():
         mock_client.post = AsyncMock(side_effect=httpx.HTTPError("connection refused"))
 
         with patch(
-            "app.workers.tasks.coaching_tasks.httpx.AsyncClient",
+            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
             return_value=mock_client,
         ):
             result = await _send_high_priority_to_telegram("123", "Headline", None)
@@ -96,7 +102,9 @@ async def test_send_telegram_http_error_returns_false():
 async def test_send_telegram_no_suggestion_omits_line():
     """top_suggestion=None → body does not contain suggestion line."""
 
-    with patch("app.workers.tasks.coaching_tasks.settings") as mock_settings:
+    with patch(
+        "v2.modules.driver.infrastructure.coaching_tasks.settings"
+    ) as mock_settings:
         mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
 
         posted_json = {}
@@ -114,7 +122,7 @@ async def test_send_telegram_no_suggestion_omits_line():
         mock_client.post = fake_post
 
         with patch(
-            "app.workers.tasks.coaching_tasks.httpx.AsyncClient",
+            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
             return_value=mock_client,
         ):
             await _send_high_priority_to_telegram("321", "Only headline", None)
@@ -126,7 +134,9 @@ async def test_send_telegram_no_suggestion_omits_line():
 async def test_send_telegram_html_escapes_special_chars():
     """HTML special characters are escaped in the message body."""
 
-    with patch("app.workers.tasks.coaching_tasks.settings") as mock_settings:
+    with patch(
+        "v2.modules.driver.infrastructure.coaching_tasks.settings"
+    ) as mock_settings:
         mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
 
         sent_texts = []
@@ -144,7 +154,7 @@ async def test_send_telegram_html_escapes_special_chars():
         mock_client.post = fake_post
 
         with patch(
-            "app.workers.tasks.coaching_tasks.httpx.AsyncClient",
+            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
             return_value=mock_client,
         ):
             await _send_high_priority_to_telegram(
@@ -177,14 +187,16 @@ async def test_run_digest_high_priority_sends_telegram():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
         exit_p,
-        patch("app.workers.tasks.coaching_tasks.settings") as mock_settings,
         patch(
-            "app.workers.tasks.coaching_tasks._send_high_priority_to_telegram",
+            "v2.modules.driver.infrastructure.coaching_tasks.settings"
+        ) as mock_settings,
+        patch(
+            "v2.modules.driver.infrastructure.coaching_tasks._send_high_priority_to_telegram",
             new_callable=AsyncMock,
             return_value=True,
         ) as mock_send,
@@ -217,12 +229,14 @@ async def test_run_digest_high_priority_coaching_disabled():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
         exit_p,
-        patch("app.workers.tasks.coaching_tasks.settings") as mock_settings,
+        patch(
+            "v2.modules.driver.infrastructure.coaching_tasks.settings"
+        ) as mock_settings,
     ):
         mock_settings.COACHING_ENABLED = False
         result = await _run_digest()
@@ -249,14 +263,16 @@ async def test_run_digest_high_priority_no_insights():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
         exit_p,
-        patch("app.workers.tasks.coaching_tasks.settings") as mock_settings,
         patch(
-            "app.workers.tasks.coaching_tasks._send_high_priority_to_telegram",
+            "v2.modules.driver.infrastructure.coaching_tasks.settings"
+        ) as mock_settings,
+        patch(
+            "v2.modules.driver.infrastructure.coaching_tasks._send_high_priority_to_telegram",
             new_callable=AsyncMock,
             return_value=True,
         ) as mock_send,
@@ -295,16 +311,13 @@ async def test_run_evaluate_pending_evaluates_rows():
     mock_result.scalars.return_value.all.return_value = [delivery]
     mock_uow.session.execute = AsyncMock(return_value=mock_result)
 
-    mock_svc = AsyncMock()
-    mock_svc.get_score_breakdown = AsyncMock(return_value={"total": 88.0})
-
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         enter_p,
         exit_p,
         patch(
-            "app.core.services.sofor_service.SoforService",
-            return_value=mock_svc,
+            "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+            AsyncMock(return_value={"total": 88.0}),
         ),
     ):
         result = await _run_evaluate_pending()
@@ -334,16 +347,13 @@ async def test_run_evaluate_pending_score_before_zero():
     mock_result.scalars.return_value.all.return_value = [delivery]
     mock_uow.session.execute = AsyncMock(return_value=mock_result)
 
-    mock_svc = AsyncMock()
-    mock_svc.get_score_breakdown = AsyncMock(return_value={"total": 75.0})
-
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         enter_p,
         exit_p,
         patch(
-            "app.core.services.sofor_service.SoforService",
-            return_value=mock_svc,
+            "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+            AsyncMock(return_value={"total": 75.0}),
         ),
     ):
         result = await _run_evaluate_pending()
@@ -372,16 +382,13 @@ async def test_run_evaluate_pending_error_counted():
     mock_result.scalars.return_value.all.return_value = [delivery]
     mock_uow.session.execute = AsyncMock(return_value=mock_result)
 
-    mock_svc = AsyncMock()
-    mock_svc.get_score_breakdown = AsyncMock(side_effect=Exception("DB error"))
-
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         enter_p,
         exit_p,
         patch(
-            "app.core.services.sofor_service.SoforService",
-            return_value=mock_svc,
+            "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+            AsyncMock(side_effect=Exception("DB error")),
         ),
     ):
         result = await _run_evaluate_pending()
@@ -396,7 +403,7 @@ async def test_run_evaluate_pending_error_counted():
 def test_weekly_coaching_digest_runs():
     """Task executes synchronously with mocked _run_digest."""
     with patch(
-        "app.workers.tasks.coaching_tasks._run_digest",
+        "v2.modules.driver.infrastructure.coaching_tasks._run_digest",
         new_callable=AsyncMock,
         return_value={
             "processed": 0,
@@ -414,10 +421,12 @@ def test_weekly_coaching_digest_runs():
 
 def test_evaluate_pending_deliveries_runs():
     """evaluate_pending_deliveries executes synchronously."""
-    from app.workers.tasks.coaching_tasks import evaluate_pending_deliveries
+    from v2.modules.driver.infrastructure.coaching_tasks import (
+        evaluate_pending_deliveries,
+    )
 
     with patch(
-        "app.workers.tasks.coaching_tasks._run_evaluate_pending",
+        "v2.modules.driver.infrastructure.coaching_tasks._run_evaluate_pending",
         new_callable=AsyncMock,
         return_value={"evaluated": 0, "skipped": 0, "errors": 0},
     ):

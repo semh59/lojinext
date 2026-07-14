@@ -199,13 +199,13 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
     If the key bug is present, pred.get("prediction_l_100km", 0) → 0 → expected<=0
     → returns None for every trip → final score is None even with valid data.
     """
-    from app.core.services.sofor_analiz_service import SoforAnalizService
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.domain.driver_stats import _calc_elite_from_trips
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
 
-    # Insert real sefer rows so the service has data to work with
+    # Insert real sefer rows so the use-case has data to work with
     for i in range(3):
         await db_session.execute(
             insert(Sefer).values(
@@ -228,11 +228,10 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
         seferler = await uow.sefer_repo.get_all(
             filters={"sofor_id": sofor_id}, limit=50
         )
-        service = SoforAnalizService(uow=uow)
-        score = await service._calc_elite_from_trips(seferler)
+        score = await _calc_elite_from_trips(seferler)
 
     assert score is not None, (
-        "Elite score is None — sofor_analiz_service is reading wrong key "
+        "Elite score is None — driver_stats is reading wrong key "
         "'prediction_l_100km' (always 0) instead of 'tahmini_tuketim'"
     )
     assert 0.0 <= score <= 100.0, f"Score out of bounds: {score}"
@@ -243,8 +242,10 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
     Full calculate_elite_performance_score path using real DB data and real
     prediction_service — no mocks anywhere in the call chain.
     """
-    from app.core.services.sofor_analiz_service import SoforAnalizService
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.domain.driver_stats import (
+        calculate_elite_performance_score,
+    )
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
@@ -268,10 +269,7 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
     await db_session.commit()
 
     async with UnitOfWork() as uow:
-        service = SoforAnalizService(uow=uow)
-        score = await service.calculate_elite_performance_score(
-            sofor_id=sofor_id, uow=uow
-        )
+        score = await calculate_elite_performance_score(sofor_id=sofor_id, uow=uow)
 
     assert score is not None, (
         "calculate_elite_performance_score returned None with real trip data — "

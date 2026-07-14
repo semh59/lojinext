@@ -31,7 +31,6 @@ from fastapi.security import OAuth2PasswordBearer
 
 if TYPE_CHECKING:
     from app.core.services.sefer_service import SeferService
-    from app.core.services.sofor_service import SoforService
 import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,12 +66,6 @@ async def get_auth_service(uow: UOWDep) -> AuthService:
 
 async def get_background_job_manager() -> BackgroundJobManager:
     return get_job_manager()
-
-
-async def get_sofor_service(uow: UOWDep) -> "SoforService":
-    from app.core.services.sofor_service import SoforService
-
-    return SoforService(repo=uow.sofor_repo)
 
 
 async def get_sefer_service(uow: UOWDep) -> "SeferService":

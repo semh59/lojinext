@@ -22,7 +22,6 @@ import threading
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from app.core.entities.sofor_degerlendirme import SoforDegerlendirmeService
     from app.core.services.analiz_service import AnalizService
     from app.core.services.anomaly_detector import AnomalyDetector
     from app.core.services.health_service import HealthService
@@ -30,15 +29,13 @@ if TYPE_CHECKING:
     from app.core.services.license_service import LicenseEngine
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
-    from app.core.services.sofor_analiz_service import SoforAnalizService
-    from app.core.services.sofor_service import SoforService
     from app.database.repositories.analiz_repo import AnalizRepository
     from app.database.repositories.sefer_repo import SeferRepository
-    from app.database.repositories.sofor_repo import SoforRepository
     from app.infrastructure.events.event_bus import EventBus
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.driver.infrastructure.repository import SoforRepository
     from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
     from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
     from v2.modules.fuel.infrastructure.repository import YakitRepository
@@ -92,7 +89,6 @@ class Container:
         # burada da tutuluyor; ancak gerçek endpoint kullanımı deps.py üzerinden
         # per-request UoW ile yapılır. Bu instance'lar yalnızca diğer singleton
         # servislerin ihtiyaç duyduğu durumlarda devreye girer.
-        self._sofor_service: Optional["SoforService"] = None
         self._sefer_service: Optional["SeferService"] = None
         self._analiz_service: Optional["AnalizService"] = None
 
@@ -109,8 +105,6 @@ class Container:
         self._time_series_service: Optional["TimeSeriesService"] = None
         self._ai_service = None
         self._smart_ai_service: Optional["SmartAIService"] = None
-        self._sofor_analiz_service: Optional["SoforAnalizService"] = None
-        self._degerlendirme_service: Optional["SoforDegerlendirmeService"] = None
 
         # ── 6. External / Infrastructure Services ───────────────────────────
         # Ağ bağımlı veya konfigürasyon tabanlı servisler.
@@ -160,7 +154,9 @@ class Container:
         if self._sofor_repo is None:
             with self._lock:
                 if self._sofor_repo is None:
-                    from app.database.repositories.sofor_repo import SoforRepository
+                    from v2.modules.driver.infrastructure.repository import (
+                        SoforRepository,
+                    )
 
                     self._sofor_repo = SoforRepository()
         return self._sofor_repo
@@ -202,18 +198,6 @@ class Container:
         return self._dorse_repo
 
     # --- Core Services ---
-
-    @property
-    def sofor_service(self) -> "SoforService":
-        if self._sofor_service is None:
-            with self._lock:
-                if self._sofor_service is None:
-                    from app.core.services.sofor_service import SoforService
-
-                    self._sofor_service = SoforService(
-                        repo=self.sofor_repo, event_bus=self.event_bus
-                    )
-        return self._sofor_service
 
     @property
     def sefer_service(self) -> "SeferService":
@@ -262,7 +246,6 @@ class Container:
                         sefer_service=self.sefer_service,
                         arac_repo=self.arac_repo,
                         sofor_repo=self.sofor_repo,
-                        sofor_service=self.sofor_service,
                         dorse_repo=self.dorse_repo,
                         lokasyon_repo=self.lokasyon_repo,
                     )
@@ -354,33 +337,6 @@ class Container:
         return self._smart_ai_service
 
     @property
-    def sofor_analiz_service(self) -> "SoforAnalizService":
-        if self._sofor_analiz_service is None:
-            with self._lock:
-                if self._sofor_analiz_service is None:
-                    from app.core.services.sofor_analiz_service import (
-                        SoforAnalizService,
-                    )
-
-                    self._sofor_analiz_service = SoforAnalizService()
-        return self._sofor_analiz_service
-
-    @property
-    def degerlendirme_service(self) -> "SoforDegerlendirmeService":
-        if self._degerlendirme_service is None:
-            with self._lock:
-                if self._degerlendirme_service is None:
-                    from app.core.entities.sofor_degerlendirme import (
-                        SoforDegerlendirmeService,
-                    )
-
-                    # Get required repos from self properties to ensure they are initialized
-                    self._degerlendirme_service = SoforDegerlendirmeService(
-                        analiz_repo=self.analiz_repo, sofor_repo=self.sofor_repo
-                    )
-        return self._degerlendirme_service
-
-    @property
     def external_service(self):
         if self._external_service is None:
             with self._lock:
@@ -427,8 +383,6 @@ class Container:
         """
         with self._lock:
             # Servisleri sıfırla (Dependency sırasının tersine)
-            self._degerlendirme_service = None
-            self._sofor_analiz_service = None
             self._smart_ai_service = None
             self._ai_service = None
             self._health_service = None
@@ -440,7 +394,6 @@ class Container:
             self._import_service = None
             self._analiz_service = None
             self._sefer_service = None
-            self._sofor_service = None
 
             # External / infra singletons
             self._weather_service = None

@@ -20,9 +20,6 @@ async def test_driver_comparison_uses_real_unit_of_work(db_session):
             performans_puani=85.0,
         )
     ]
-    mock_sofor_service = AsyncMock()
-    mock_sofor_service.get_driver_stats = AsyncMock(return_value=mock_drivers)
-
     mock_generator = MagicMock()
     mock_generator.generate_driver_comparison = MagicMock(return_value=b"%PDF-fake")
 
@@ -30,8 +27,8 @@ async def test_driver_comparison_uses_real_unit_of_work(db_session):
 
     with (
         patch(
-            "app.core.services.sofor_analiz_service.SoforAnalizService",
-            return_value=mock_sofor_service,
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=mock_drivers),
         ),
         patch(
             "app.api.v1.endpoints.advanced_reports.get_report_generator",

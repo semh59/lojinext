@@ -160,7 +160,6 @@ import app.workers.tasks.anomaly_cluster_tasks  # noqa: E402,F401
 
 # OPS-002 — Nightly DB backup task
 import app.workers.tasks.backup_tasks  # noqa: E402,F401
-import app.workers.tasks.coaching_tasks  # noqa: E402,F401
 import app.workers.tasks.compliance_tasks  # noqa: E402,F401
 import app.workers.tasks.dlq_tasks  # noqa: E402,F401
 import app.workers.tasks.error_digest  # noqa: E402,F401
@@ -168,8 +167,14 @@ import app.workers.tasks.outbox_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_backfill_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_tasks  # noqa: E402,F401
 import app.workers.tasks.theft_tasks  # noqa: E402,F401
+import v2.modules.driver.infrastructure.coaching_tasks  # noqa: E402,F401
 import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
+
+# NOT: v2.modules.driver.infrastructure.driver_tasks (driver.calculate_performance_score)
+# taşımadan ÖNCE de burada import edilmiyordu — Celery worker'a hiç
+# kaydedilmemiş, dolayısıyla prod'da hiç çalışmamış bir görev (dead task,
+# regresyon değil; bkz. v2/modules/driver/CLAUDE.md).
 from app.infrastructure.resilience.shutdown import (  # noqa: E402
     register_shutdown_handlers,
 )

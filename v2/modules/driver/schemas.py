@@ -1,14 +1,19 @@
-"""
-Şoför (Driver) Pydantic şemaları.
+"""Driver + coaching Pydantic şemaları.
 
 Güvenlik kontrolleri:
 - İsim validasyonu (Türkçe karakter desteği)
 - Telefon maskeleme (PII koruması)
 - XSS koruması
+
+Coaching tasarım kararları
+(``docs/superpowers/plans/2026-05-22-feature-a-driver-coaching-mini-plan-v2.md``):
+- LLM'e gönderilen prompt'ta ad-soyad/plaka/telegram_id YOK (anonim-tam).
+- Response objesi ad-soyad'ı dahili sayfa render'ı için tutar (Groq'a gitmez).
+- Tüm string alanlar max_length ile sınırlı (LLM hallucination bütçesi).
 """
 
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
@@ -18,6 +23,8 @@ from app.schemas.validators import (
     validate_phone,
     validate_safe_string,
 )
+
+# ── Driver ────────────────────────────────────────────────────────────────
 
 
 class SoforBase(BaseModel):
@@ -140,7 +147,6 @@ class SoforResponse(SoforBase):
     created_at: datetime
     telegram_id: Optional[str] = None
 
-    # Override to be permissive on read
     ehliyet_sinifi: str = Field("E")
 
     # Raw phone excluded from JSON output; only telefon_masked is serialized.
@@ -155,10 +161,8 @@ class SoforResponse(SoforBase):
             v_upper = v.upper().strip()
             if v_upper in valid_classes:
                 return v_upper
-        # Fallback for invalid/empty data in DB
         return "E"
 
-    # Telefon maskelenmiş olarak dönülür (PII koruması)
     @computed_field
     @property
     def telefon_masked(self) -> Optional[str]:
@@ -282,3 +286,79 @@ class DriverRouteProfileSchema(BaseModel):
         Literal["highway_dominant", "mountain", "urban", "mixed"]
     ] = Field(None, description="None → yeterli veri yok")
     min_trips_for_best: int = Field(5, ge=1)
+
+
+# ── Coaching (Feature A) ────────────────────────────────────────────────────
+
+CoachingCategory = Literal[
+    "yakit_yonetimi",
+    "guzergah_tercihi",
+    "sofor_pratigi",
+    "diger",
+]
+
+CoachingPriority = Literal["low", "medium", "high"]
+CoachingSource = Literal["llm", "fallback"]
+
+
+class CoachingInsightItem(BaseModel):
+    """LLM'in ürettiği tek koçluk önerisi."""
+
+    category: CoachingCategory
+    pattern: str = Field(
+        ..., max_length=240, description="Tespit edilen davranış kalıbı"
+    )
+    evidence: List[str] = Field(default_factory=list, max_length=5)
+    suggestion: str = Field(
+        ..., max_length=480, description="Eyleme dönüştürülebilir öneri"
+    )
+    impact_score: float = Field(
+        0.0, ge=0, le=1, description="Önerilen aksiyon etkisi (0..1)"
+    )
+
+
+class CoachingInsightsResponse(BaseModel):
+    """`/coaching/{id}/insights` response payload'u."""
+
+    sofor_id: int
+    ad_soyad: str = Field(..., description="Yalnız UI gösterimi için; LLM'e gitmedi")
+    headline: str = Field(..., max_length=200)
+    priority: CoachingPriority
+    insights: List[CoachingInsightItem]
+    generated_at: str = Field(..., description="ISO datetime")
+    source: CoachingSource
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SendCoachingRequest(BaseModel):
+    """`POST /coaching/{id}/send` body."""
+
+    message: str = Field(..., min_length=10, max_length=1000)
+    channel: Literal["telegram"] = "telegram"
+    insight_category: Optional[CoachingCategory] = Field(
+        None, description="A.5 telemetri için kategori etiketi"
+    )
+
+
+class SendCoachingResponse(BaseModel):
+    sent: bool
+    delivery_id: Optional[int] = None
+    channel: str
+    sent_at: str
+
+
+class CoachingEffectivenessResponse(BaseModel):
+    """`/coaching/effectiveness?days=N` response — A.5."""
+
+    window_days: int
+    total_sent: int
+    total_evaluated: int
+    improved: int
+    worsened: int
+    improve_rate: Optional[float] = Field(None, ge=0, le=1)
+    avg_score_delta_pct: Optional[float] = None
+    caveat: str = Field(
+        ...,
+        description="UI'da açıkça gösterilecek istatistiksel uyarı",
+    )

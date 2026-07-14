@@ -25,7 +25,7 @@ pytestmark = pytest.mark.integration
 
 def test_weekly_digest_has_custom_time_limits():
     """Task decorator'ı soft_time_limit ve time_limit override etmeli."""
-    from app.workers.tasks.coaching_tasks import (
+    from v2.modules.driver.infrastructure.coaching_tasks import (
         WEEKLY_DIGEST_HARD_LIMIT,
         WEEKLY_DIGEST_SOFT_LIMIT,
         weekly_coaching_digest,
@@ -51,7 +51,7 @@ def test_weekly_digest_has_custom_time_limits():
 async def test_run_digest_partial_on_soft_time_limit(db_session):
     """SoftTimeLimitExceeded 3. şoförde fırlatıldığında: 2 işlenmiş,
     timeout_partial=True olmalı; exception caller'a propagasyon YOK (real DB)."""
-    from app.workers.tasks import coaching_tasks as mod
+    from v2.modules.driver.infrastructure import coaching_tasks as mod
 
     # Seed 5 real Sofor rows
     for i in range(1, 6):
@@ -77,7 +77,7 @@ async def test_run_digest_partial_on_soft_time_limit(db_session):
     fake_engine.generate_coaching = _fake_generate
 
     with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+        "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
         return_value=fake_engine,
     ):
         result = await mod._run_digest()
@@ -92,7 +92,7 @@ async def test_run_digest_partial_on_soft_time_limit(db_session):
 @pytest.mark.asyncio
 async def test_run_digest_normal_path_no_timeout_flag(db_session):
     """Tüm şoförler işlenirse timeout_partial=False ve processed==total (real DB)."""
-    from app.workers.tasks import coaching_tasks as mod
+    from v2.modules.driver.infrastructure import coaching_tasks as mod
 
     # Seed 3 real Sofor rows
     for i in range(1, 4):
@@ -108,7 +108,7 @@ async def test_run_digest_normal_path_no_timeout_flag(db_session):
     fake_engine.generate_coaching = AsyncMock(return_value=_FakeInsights())
 
     with patch(
-        "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+        "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
         return_value=fake_engine,
     ):
         result = await mod._run_digest()

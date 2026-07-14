@@ -108,7 +108,7 @@ async def test_get_recent_anomalies_no_filter_when_sofor_id_none():
 @pytest.mark.asyncio
 async def test_coaching_engine_passes_sofor_id_to_detector():
     """driver_coaching_engine sofor_id'yi detector'a iletmeli."""
-    from app.core.ai import driver_coaching_engine as mod
+    from v2.modules.driver.application import generate_coaching as mod
 
     # Engine ve detector mock'la
     engine = mod.DriverCoachingEngine.__new__(mod.DriverCoachingEngine)
@@ -136,12 +136,15 @@ async def test_coaching_engine_passes_sofor_id_to_detector():
     with (
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow_local)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        patch("app.core.services.sofor_service.SoforService") as svc_cls,
+        patch(
+            "v2.modules.driver.application.generate_coaching.get_score_breakdown_sofor",
+            AsyncMock(return_value={"trip_count": 1}),
+        ),
+        patch(
+            "v2.modules.driver.application.generate_coaching.get_route_profile_sofor",
+            AsyncMock(return_value={}),
+        ),
     ):
-        svc_inst = svc_cls.return_value
-        svc_inst.get_score_breakdown = AsyncMock(return_value={"trip_count": 1})
-        svc_inst.get_route_profile = AsyncMock(return_value={})
-
         await engine.generate_coaching(sofor_id=99)
 
     # detector.get_recent_anomalies sofor_id=99 ile çağrılmalı

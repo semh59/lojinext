@@ -1,22 +1,33 @@
 """
-T2-C: sofor_service.delete_sofor() commit başarısız → event yayınlanmamalı.
+T2-C: delete_sofor() commit başarısız → event yayınlanmamalı.
 
 Bug Açıklaması:
   Commit failure durumunda event bus yine yayın yapıyor.
   Veri değişmeyince event gönderilmemeli.
 
 Beklenen: Commit fail → event NOT published.
+
+NOT: eski ``SoforService`` sınıfı silindi (B.1 free-function split, bkz.
+v2/modules/driver/CLAUDE.md). ``delete_sofor`` artık
+``v2.modules.driver.application.delete_sofor``'daki free function; ayrıca
+``@publishes(EventType.SOFOR_DELETED)`` decorator'ı repo-genelinde ölü kod
+(sadece fonksiyona ``_publishes`` attribute'u ekler, hiçbir yerde
+event_bus.publish() çağrılmaz) — bu test artık trivially geçer (publish
+zaten hiç çağrılmıyor), ama UnitOfWork'ü mock'layıp commit-failure'ın
+exception'ı doğru fırlattığını doğrulamaya devam eder.
 """
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.database.unit_of_work import UnitOfWork
+from v2.modules.driver.application.delete_sofor import delete_sofor
 
-async def test_delete_sofor_no_event_on_commit_failure(
-    sofor_service_with_mock_event_bus, mock_event_bus, mock_sofor_service_uow
-):
+
+async def test_delete_sofor_no_event_on_commit_failure(mock_event_bus):
     """
-    sofor_service.delete_sofor() commit başarısız olduğunda,
-    event_bus.publish çağrılmamalı.
+    delete_sofor() commit başarısız olduğunda, event_bus.publish çağrılmamalı.
     """
 
     sofor_id = 99
@@ -28,17 +39,20 @@ async def test_delete_sofor_no_event_on_commit_failure(
         "aktif": True,
         "is_deleted": False,
     }
-    mock_sofor_service_uow.sofor_repo.get_by_id.return_value = mock_sofor
-
-    # Mock the update to return success
-    mock_sofor_service_uow.sofor_repo.update.return_value = True
-
+    mock_uow = MagicMock()
+    mock_uow.sofor_repo = MagicMock()
+    mock_uow.sofor_repo.get_by_id = AsyncMock(return_value=mock_sofor)
+    mock_uow.sofor_repo.update = AsyncMock(return_value=True)
     # UoW.commit() başarısız olması mock et
-    mock_sofor_service_uow.commit.side_effect = Exception("Database connection lost")
+    mock_uow.commit = AsyncMock(side_effect=Exception("Database connection lost"))
 
-    # delete_sofor() exception fırlatmalı
-    with pytest.raises(Exception, match="Database connection lost"):
-        await sofor_service_with_mock_event_bus.delete_sofor(sofor_id=sofor_id)
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
+        # delete_sofor() exception fırlatmalı
+        with pytest.raises(Exception, match="Database connection lost"):
+            await delete_sofor(sofor_id=sofor_id)
 
     # event_bus.publish çağrılmamalı (çünkü commit başarısız)
     assert not mock_event_bus.publish.called, (

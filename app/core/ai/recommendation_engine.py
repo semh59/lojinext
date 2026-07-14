@@ -124,11 +124,10 @@ class RecommendationEngine:
             return self._cache[cache_key]
 
         recommendations: list[Recommendation] = []
-        from app.core.container import get_container
+        from v2.modules.driver.domain.evaluation import evaluate_driver
 
         try:
-            deger_service = get_container().degerlendirme_service
-            degerlendirme = await deger_service.evaluate_driver(sofor_id)
+            degerlendirme = await evaluate_driver(sofor_id)
 
             if not degerlendirme:
                 return recommendations

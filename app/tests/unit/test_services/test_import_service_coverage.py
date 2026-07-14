@@ -52,7 +52,6 @@ def svc():
         sefer_service=AsyncMock(),
         arac_repo=AsyncMock(),
         sofor_repo=AsyncMock(),
-        sofor_service=AsyncMock(),
         dorse_repo=AsyncMock(),
         lokasyon_repo=AsyncMock(),
     )
@@ -1088,12 +1087,13 @@ class TestProcessDriverImportExtra:
         assert count == 0
         assert "Sistem hatası" in errors[0]
 
+    @patch("v2.modules.driver.application.add_sofor.bulk_add_sofor")
     @patch("app.core.services.import_service.ExcelService")
-    async def test_happy_path(self, MockExcelService, svc):
+    async def test_happy_path(self, MockExcelService, mock_bulk_add_sofor, svc):
         MockExcelService.parse_driver_data = AsyncMock(
             return_value=[{"ad_soyad": "Ali Veli", "telefon": "5551234567"}]
         )
-        svc.sofor_service.bulk_add_sofor = AsyncMock(return_value=1)
+        mock_bulk_add_sofor.return_value = 1
 
         count, errors = await svc.process_driver_import(b"fake")
         assert count == 1

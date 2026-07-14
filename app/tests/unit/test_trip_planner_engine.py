@@ -64,32 +64,35 @@ class _FakeUoW:
         return None
 
 
-class _FakeSoforService:
-    """SoforService stub — get_score_breakdown + get_route_profile."""
+async def _fake_get_score_breakdown_sofor(
+    sofor_id: int, uow: Any = None
+) -> Dict[str, Any]:
+    """get_score_breakdown_sofor stub (v2.modules.driver.application.get_score).
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        pass
+    Şoför 100 → mükemmel; 101 → cold-start (has_trips=False); 102 → orta.
+    """
+    if sofor_id == 100:
+        return {"total": 85.0, "has_trips": True}
+    if sofor_id == 101:
+        return {"total": 50.0, "has_trips": False}
+    return {"total": 60.0, "has_trips": True}
 
-    async def get_score_breakdown(self, sofor_id: int) -> Dict[str, Any]:
-        # Şoför 100 → mükemmel; 101 → cold-start (has_trips=False); 102 → orta
-        if sofor_id == 100:
-            return {"total": 85.0, "has_trips": True}
-        if sofor_id == 101:
-            return {"total": 50.0, "has_trips": False}
-        return {"total": 60.0, "has_trips": True}
 
-    async def get_route_profile(self, sofor_id: int) -> Dict[str, Any]:
-        if sofor_id == 100:
-            return {
-                "profiles": [
-                    {
-                        "route_type": "highway_dominant",
-                        "trip_count": 12,
-                        "deviation_pct": -4.5,
-                    }
-                ]
-            }
-        return {"profiles": []}
+async def _fake_get_route_profile_sofor(
+    sofor_id: int, min_trips_for_best: int = 5, uow: Any = None
+) -> Dict[str, Any]:
+    """get_route_profile_sofor stub (v2.modules.driver.application.get_route_profile)."""
+    if sofor_id == 100:
+        return {
+            "profiles": [
+                {
+                    "route_type": "highway_dominant",
+                    "trip_count": 12,
+                    "deviation_pct": -4.5,
+                }
+            ]
+        }
+    return {"profiles": []}
 
 
 @pytest.fixture
@@ -134,8 +137,12 @@ def _patched_engine(monkeypatch):
         lambda: _FakeUoW(arac_rows, sofor_rows),
     )
     monkeypatch.setattr(
-        "app.core.services.sofor_service.SoforService",
-        _FakeSoforService,
+        "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+        _fake_get_score_breakdown_sofor,
+    )
+    monkeypatch.setattr(
+        "v2.modules.driver.application.get_route_profile.get_route_profile_sofor",
+        _fake_get_route_profile_sofor,
     )
 
     # find_similar_trips → 3 benzer sefer (fuel score normalizasyonunu da test eder)
@@ -270,8 +277,12 @@ async def test_engine_empty_candidates_returns_empty_lists(monkeypatch):
         lambda: _FakeUoW([], []),
     )
     monkeypatch.setattr(
-        "app.core.services.sofor_service.SoforService",
-        _FakeSoforService,
+        "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+        _fake_get_score_breakdown_sofor,
+    )
+    monkeypatch.setattr(
+        "v2.modules.driver.application.get_route_profile.get_route_profile_sofor",
+        _fake_get_route_profile_sofor,
     )
 
     async def _empty_similar(*args, **kwargs):

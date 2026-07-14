@@ -36,7 +36,7 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return a SoforRepository with a mocked async session."""
-    from app.database.repositories.sofor_repo import SoforRepository
+    from v2.modules.driver.infrastructure.repository import SoforRepository
 
     repo = SoforRepository.__new__(SoforRepository)
     repo._session = session if session is not None else AsyncMock()
@@ -624,11 +624,11 @@ async def test_get_by_ids_multiple():
 
 def test_get_sofor_repo_with_session():
     """get_sofor_repo with session returns new SoforRepository instance."""
-    import app.database.repositories.sofor_repo as mod
+    import v2.modules.driver.infrastructure.repository as mod
 
     mock_session = AsyncMock()
     repo = mod.get_sofor_repo(session=mock_session)
-    from app.database.repositories.sofor_repo import SoforRepository
+    from v2.modules.driver.infrastructure.repository import SoforRepository
 
     assert isinstance(repo, SoforRepository)
     assert repo._session is mock_session
@@ -636,7 +636,7 @@ def test_get_sofor_repo_with_session():
 
 def test_get_sofor_repo_singleton():
     """get_sofor_repo without session returns same singleton."""
-    import app.database.repositories.sofor_repo as mod
+    import v2.modules.driver.infrastructure.repository as mod
 
     mod._sofor_repo = None  # Reset singleton
     repo1 = mod.get_sofor_repo()

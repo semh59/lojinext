@@ -350,8 +350,6 @@ class TestTrainForVehicleAracEntityFail:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {"success": False, "error": "test"}
@@ -365,8 +363,8 @@ class TestTrainForVehicleAracEntityFail:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             # Make Arac(**arac) fail
             patch(
@@ -410,8 +408,6 @@ class TestTrainForVehicleSoforKatsayi:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[driver_stat])
 
         enriched_calls = []
 
@@ -432,8 +428,8 @@ class TestTrainForVehicleSoforKatsayi:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[driver_stat]),
             ),
         ):
             await svc.train_for_vehicle(arac_id=1)
@@ -470,8 +466,6 @@ class TestTrainForVehicleSaveExceptions:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -497,8 +491,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             patch(
                 "app.core.ml.model_manager.get_model_manager",
@@ -524,8 +518,6 @@ class TestTrainForVehicleSaveExceptions:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -553,8 +545,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             patch(
                 "app.core.ml.model_manager.get_model_manager",
@@ -578,8 +570,6 @@ class TestTrainForVehicleSaveExceptions:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -605,8 +595,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             patch(
                 "app.core.ml.model_manager.get_model_manager",
@@ -795,8 +785,6 @@ class TestPredictConsumptionDorse:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
@@ -805,8 +793,8 @@ class TestPredictConsumptionDorse:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(
@@ -846,8 +834,6 @@ class TestPredictConsumptionDorse:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
@@ -856,8 +842,8 @@ class TestPredictConsumptionDorse:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(
@@ -884,8 +870,6 @@ class TestPredictConsumptionEntityMapFail:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch(
@@ -893,8 +877,8 @@ class TestPredictConsumptionEntityMapFail:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             # Make Arac(**arac) fail
             patch(
@@ -932,8 +916,6 @@ class TestPredictConsumptionSoforStats:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor_svc = MagicMock()
-        mock_sofor_svc.get_driver_stats = AsyncMock(return_value=[driver_stat])
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
@@ -942,8 +924,8 @@ class TestPredictConsumptionSoforStats:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor_svc,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[driver_stat]),
             ),
         ):
             result = await svc.predict_consumption(
@@ -997,8 +979,6 @@ class TestPredictConsumptionGeneralModelFallback:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
@@ -1007,8 +987,8 @@ class TestPredictConsumptionGeneralModelFallback:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(arac_id=1, mesafe_km=500, ton=20)

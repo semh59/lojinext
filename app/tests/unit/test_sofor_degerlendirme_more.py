@@ -1,21 +1,30 @@
 """
-Additional coverage for sofor_degerlendirme.py.
+Additional coverage for v2.modules.driver.domain.evaluation.
 
 Targets missed lines:
   322-323  — generate_suggestions: filo_karsilastirma < -5 → motor devir tavsiyesi
   358      — evaluate_driver: declining trend (trend_degisim > 2)
   368-403  — _add_guzergah_performansi: full path + exception handling
   437-439  — get_all_evaluations: empty bulk_metrics → empty list
+
+NOT: eski ``SoforDegerlendirmeService`` sınıfı silindi (B.1 free-function
+split, bkz. v2/modules/driver/CLAUDE.md). Testler artık modül-seviyeli free
+function'ları çağırır; repo mock'ları bir ``mock_uow`` fixture'ı üzerinden
+``uow=`` kwarg'ıyla geçirilir.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.entities.sofor_degerlendirme import (
+from v2.modules.driver.domain.evaluation import (
     SoforDegerlendirme,
-    SoforDegerlendirmeService,
     TrendEnum,
+    _add_guzergah_performansi,
+    evaluate_driver,
+    generate_suggestions,
+    get_all_evaluations,
+    get_rankings,
 )
 
 pytestmark = pytest.mark.unit
@@ -39,10 +48,11 @@ def _make_degerlendirme(**kwargs) -> SoforDegerlendirme:
     return SoforDegerlendirme(**defaults)
 
 
-def _make_service():
-    analiz_repo = MagicMock()
-    sofor_repo = MagicMock()
-    return SoforDegerlendirmeService(analiz_repo=analiz_repo, sofor_repo=sofor_repo)
+@pytest.fixture
+def mock_uow():
+    uow = MagicMock()
+    uow.analiz_repo = MagicMock()
+    return uow
 
 
 # ---------------------------------------------------------------------------
@@ -53,22 +63,20 @@ def _make_service():
 def test_generate_suggestions_negative_filo_karsilastirma_adds_motor_tavsiye():
     """When filo_karsilastirma < -5 (driver uses much more than fleet average),
     a 'Motor devir' tavsiye should be appended."""
-    svc = _make_service()
     # ort_tuketim=40, filo_ortalama=32 → karsilastirma = (32-40)/32*100 = -25 < -5
     d = _make_degerlendirme(ort_tuketim=40.0, filo_ortalama=32.0)
-    result = svc.generate_suggestions(d)
+    result = generate_suggestions(d)
     # The tavsiye for "Motor devir" should appear when karsilastirma < -5
     assert any("devir" in t.lower() or "motor" in t.lower() for t in result.tavsiyeler)
 
 
 def test_generate_suggestions_filo_karsilastirma_exactly_minus_5_no_motor_tavsiye():
     """filo_karsilastirma exactly -5 → boundary: no motor devir tavsiye."""
-    svc = _make_service()
     # ort_tuketim ~33.68 at 32 filo → karsilastirma ≈ -5.25 (just under)
     # Use -4.8 exact: ort = 32 / (1 + 4.8/100) = 30.534 → karsilastirma = +4.8 > -5
     d = _make_degerlendirme(ort_tuketim=30.5, filo_ortalama=32.0)
     # karsilastirma = (32 - 30.5) / 32 * 100 = 4.69 → NOT < -5
-    result = svc.generate_suggestions(d)
+    result = generate_suggestions(d)
     motor_tavsiye = [t for t in result.tavsiyeler if "devir" in t.lower()]
     assert len(motor_tavsiye) == 0
 
@@ -78,10 +86,9 @@ def test_generate_suggestions_filo_karsilastirma_exactly_minus_5_no_motor_tavsiy
 # ---------------------------------------------------------------------------
 
 
-async def test_evaluate_driver_declining_trend():
+async def test_evaluate_driver_declining_trend(mock_uow):
     """recent_avg > older_avg by >2% → TrendEnum.DECLINING."""
-    svc = _make_service()
-    svc.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
+    mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     pre_metrics = {
         "sofor_id": 7,
@@ -97,11 +104,12 @@ async def test_evaluate_driver_declining_trend():
         "en_kotu_tuketim": 38.0,
     }
 
-    result = await svc.evaluate_driver(
+    result = await evaluate_driver(
         sofor_id=7,
         pre_metrics=pre_metrics,
         pre_filo_ortalama=32.0,
         include_routes=False,
+        uow=mock_uow,
     )
 
     assert result is not None
@@ -109,10 +117,9 @@ async def test_evaluate_driver_declining_trend():
     assert result.trend_degisim > 2.0
 
 
-async def test_evaluate_driver_stable_trend_small_change():
+async def test_evaluate_driver_stable_trend_small_change(mock_uow):
     """trend_degisim in (-2, +2) → TrendEnum.STABLE."""
-    svc = _make_service()
-    svc.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
+    mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     pre_metrics = {
         "sofor_id": 8,
@@ -128,11 +135,12 @@ async def test_evaluate_driver_stable_trend_small_change():
         "en_kotu_tuketim": 34.0,
     }
 
-    result = await svc.evaluate_driver(
+    result = await evaluate_driver(
         sofor_id=8,
         pre_metrics=pre_metrics,
         pre_filo_ortalama=32.0,
         include_routes=False,
+        uow=mock_uow,
     )
 
     assert result is not None
@@ -146,8 +154,6 @@ async def test_evaluate_driver_stable_trend_small_change():
 
 async def test_add_guzergah_performansi_sets_best_and_worst():
     """When guzergah_data returned, en_iyi and en_kotu are set."""
-    svc = _make_service()
-
     guzergah_data = [
         {
             "guzergah": "Ankara-Konya",
@@ -173,10 +179,10 @@ async def test_add_guzergah_performansi_sets_best_and_worst():
     d = _make_degerlendirme()
 
     with patch(
-        "app.database.repositories.sofor_repo.get_sofor_repo",
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
-        result = await svc._add_guzergah_performansi(d, sofor_id=1)
+        result = await _add_guzergah_performansi(d, sofor_id=1)
 
     assert result.en_iyi_guzergah == "Ankara-Konya"
     assert result.en_kotu_guzergah == "Diyarbakır-Erzurum"
@@ -185,18 +191,16 @@ async def test_add_guzergah_performansi_sets_best_and_worst():
 
 async def test_add_guzergah_performansi_empty_data_no_change():
     """When guzergah_data is empty, no en_iyi/en_kotu set."""
-    svc = _make_service()
-
     mock_sofor_repo = MagicMock()
     mock_sofor_repo.get_guzergah_performansi = AsyncMock(return_value=[])
 
     d = _make_degerlendirme()
 
     with patch(
-        "app.database.repositories.sofor_repo.get_sofor_repo",
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
-        result = await svc._add_guzergah_performansi(d, sofor_id=1)
+        result = await _add_guzergah_performansi(d, sofor_id=1)
 
     assert result.en_iyi_guzergah is None
     assert result.en_kotu_guzergah is None
@@ -205,8 +209,6 @@ async def test_add_guzergah_performansi_empty_data_no_change():
 
 async def test_add_guzergah_performansi_exception_swallowed():
     """When get_guzergah_performansi raises, exception is swallowed (logged)."""
-    svc = _make_service()
-
     mock_sofor_repo = MagicMock()
     mock_sofor_repo.get_guzergah_performansi = AsyncMock(
         side_effect=RuntimeError("DB error")
@@ -215,10 +217,10 @@ async def test_add_guzergah_performansi_exception_swallowed():
     d = _make_degerlendirme()
 
     with patch(
-        "app.database.repositories.sofor_repo.get_sofor_repo",
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
-        result = await svc._add_guzergah_performansi(d, sofor_id=1)
+        result = await _add_guzergah_performansi(d, sofor_id=1)
 
     # No crash, original degerlendirme returned unchanged
     assert result is d
@@ -226,8 +228,6 @@ async def test_add_guzergah_performansi_exception_swallowed():
 
 async def test_add_guzergah_performansi_truncates_at_10():
     """More than 10 güzergah items are truncated to 10."""
-    svc = _make_service()
-
     guzergah_data = [
         {
             "guzergah": f"Route-{i}",
@@ -246,10 +246,10 @@ async def test_add_guzergah_performansi_truncates_at_10():
     d = _make_degerlendirme()
 
     with patch(
-        "app.database.repositories.sofor_repo.get_sofor_repo",
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
-        result = await svc._add_guzergah_performansi(d, sofor_id=1)
+        result = await _add_guzergah_performansi(d, sofor_id=1)
 
     assert len(result.guzergah_performansi) == 10
 
@@ -259,10 +259,9 @@ async def test_add_guzergah_performansi_truncates_at_10():
 # ---------------------------------------------------------------------------
 
 
-async def test_evaluate_driver_include_routes_true():
+async def test_evaluate_driver_include_routes_true(mock_uow):
     """include_routes=True triggers _add_guzergah_performansi."""
-    svc = _make_service()
-    svc.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
+    mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     pre_metrics = {
         "sofor_id": 3,
@@ -282,14 +281,15 @@ async def test_evaluate_driver_include_routes_true():
     mock_sofor_repo.get_guzergah_performansi = AsyncMock(return_value=[])
 
     with patch(
-        "app.database.repositories.sofor_repo.get_sofor_repo",
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
-        result = await svc.evaluate_driver(
+        result = await evaluate_driver(
             sofor_id=3,
             pre_metrics=pre_metrics,
             pre_filo_ortalama=32.0,
             include_routes=True,
+            uow=mock_uow,
         )
 
     assert result is not None
@@ -301,13 +301,12 @@ async def test_evaluate_driver_include_routes_true():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_all_evaluations_empty_metrics_returns_empty_list():
+async def test_get_all_evaluations_empty_metrics_returns_empty_list(mock_uow):
     """When bulk_metrics is empty, result is []."""
-    svc = _make_service()
-    svc.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
-    svc.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
+    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+    mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
-    results = await svc.get_all_evaluations(include_routes=False)
+    results = await get_all_evaluations(include_routes=False, uow=mock_uow)
 
     assert results == []
 
@@ -317,10 +316,8 @@ async def test_get_all_evaluations_empty_metrics_returns_empty_list():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_rankings_returns_structured_dict():
+async def test_get_rankings_returns_structured_dict(mock_uow):
     """get_rankings builds genel/verimlilik/tutarlilik lists."""
-    svc = _make_service()
-
     bulk_metrics = [
         {
             "sofor_id": 1,
@@ -336,10 +333,10 @@ async def test_get_rankings_returns_structured_dict():
             "en_kotu_tuketim": 30.0,
         },
     ]
-    svc.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=bulk_metrics)
-    svc.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
+    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=bulk_metrics)
+    mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
-    rankings = await svc.get_rankings()
+    rankings = await get_rankings(uow=mock_uow)
 
     assert "genel" in rankings
     assert "verimlilik" in rankings

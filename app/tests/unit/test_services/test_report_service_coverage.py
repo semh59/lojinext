@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -30,7 +30,9 @@ def _make_report_service(**repo_overrides):
     svc.sefer_repo = repo_overrides.get("sefer_repo", mock_sefer)
     svc.yakit_repo = repo_overrides.get("yakit_repo", mock_yakit)
     svc._analiz_repo = repo_overrides.get("analiz_repo", mock_analiz)
-    svc._degerlendirme_service = None
+    # NOT: `_degerlendirme_service` attribute'u kaldırıldı — ReportService
+    # artık SoforDegerlendirmeService tutmuyor (dalga 5, B.1 free-function
+    # refactor); `generate_driver_report` evaluate_driver'ı doğrudan çağırır.
     return svc
 
 
@@ -292,17 +294,23 @@ class TestGenerateDriverReport:
         assert result == {"error": "Sofor bulunamadi"}
 
     async def test_returns_driver_report(self):
+        # NOT: eski `svc._degerlendirme_service` (SoforDegerlendirmeService)
+        # kaldırıldı (dalga 5, B.1 free-function refactor) — generate_driver_report
+        # artık v2.modules.driver.domain.evaluation.evaluate_driver'ı fonksiyon
+        # gövdesi içinde yerel import ediyor, patch hedefi KAYNAK modül.
         svc = _make_report_service()
         sofor = {"id": 1, "ad_soyad": "Ahmet Yılmaz"}
         svc.sofor_repo.get_by_id = AsyncMock(return_value=sofor)
 
-        mock_deg_svc = AsyncMock()
         mock_eval = MagicMock()
         mock_eval.model_dump.return_value = {"score": 80}
-        mock_deg_svc.evaluate_driver = AsyncMock(return_value=mock_eval)
-        svc._degerlendirme_service = mock_deg_svc
 
-        result = await svc.generate_driver_report(sofor_id=1)
+        with patch(
+            "v2.modules.driver.domain.evaluation.evaluate_driver",
+            AsyncMock(return_value=mock_eval),
+        ):
+            result = await svc.generate_driver_report(sofor_id=1)
+
         assert result["sofor"] == sofor
         assert result["degerlendirme"] == {"score": 80}
 

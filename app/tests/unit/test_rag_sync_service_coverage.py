@@ -125,7 +125,7 @@ async def test_initial_sync_indexes_all_entities():
             return_value=mock_arac_repo,
         ),
         patch(
-            "app.database.repositories.sofor_repo.get_sofor_repo",
+            "v2.modules.driver.infrastructure.repository.get_sofor_repo",
             return_value=mock_sofor_repo,
         ),
         patch(

@@ -326,8 +326,6 @@ class TestPredictConsumption:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
@@ -336,8 +334,8 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(arac_id=1, mesafe_km=500, ton=20)
@@ -367,8 +365,6 @@ class TestPredictConsumption:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
@@ -377,8 +373,8 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(
@@ -417,8 +413,6 @@ class TestPredictConsumption:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
@@ -427,8 +421,8 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.predict_consumption(arac_id=1, mesafe_km=400, ton=20)
@@ -457,8 +451,6 @@ class TestTrainForVehicle:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         with (
             patch(
@@ -466,8 +458,8 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
@@ -494,8 +486,6 @@ class TestTrainForVehicle:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.05
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -512,8 +502,8 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
@@ -542,8 +532,6 @@ class TestTrainForVehicle:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -569,8 +557,8 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             patch(
                 "app.core.ml.model_manager.get_model_manager",
@@ -696,8 +684,6 @@ class TestPredictBatch:
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
-        mock_sofor = MagicMock()
-        mock_sofor.get_driver_stats = AsyncMock(return_value=[])
 
         mock_uow = AsyncMock()
         mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
@@ -716,8 +702,8 @@ class TestPredictBatch:
                 return_value=mock_weather,
             ),
             patch(
-                "app.core.services.sofor_analiz_service.get_sofor_analiz_service",
-                return_value=mock_sofor,
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),

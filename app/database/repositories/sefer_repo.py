@@ -975,7 +975,7 @@ class SeferRepository(BaseRepository[Sefer]):
                 .order_by(Sefer.created_at.desc())
                 .limit(limit)
             )
-            from app.core.ml.driver_route_profile import classify_route
+            from v2.modules.driver.domain.route_profile import classify_route
 
             return [
                 {

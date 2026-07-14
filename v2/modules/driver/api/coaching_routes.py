@@ -1,5 +1,7 @@
 """Feature A.2 — Şoför Koçluk endpoint'leri.
 
+``router`` mounts at ``/coaching`` (3 route).
+
 GET  /api/v1/coaching/{sofor_id}/insights — 30dk Redis cache'li öneriler
 POST /api/v1/coaching/{sofor_id}/send     — Telegram (HTML) üzerinden mesaj
 """
@@ -17,11 +19,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import SessionDep, get_current_active_user, require_permissions
 from app.config import settings
-from app.core.ai.driver_coaching_engine import get_driver_coaching_engine
 from app.database.models import CoachingDelivery, Kullanici, Sofor
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.coaching import (
+from v2.modules.driver.application.generate_coaching import get_driver_coaching_engine
+from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+from v2.modules.driver.schemas import (
     CoachingEffectivenessResponse,
     CoachingInsightsResponse,
     SendCoachingRequest,
@@ -197,15 +200,13 @@ async def send_coaching(
 
     # A.5 — CoachingDelivery kaydı (etki ölçümü için score_before snapshot'ı).
     # Engine zaten score_breakdown'u önbellekte tutmuş olabilir, ama mesaj
-    # gönderildiği tam an'daki skoru almak istiyoruz → inline UoW + service.
+    # gönderildiği tam an'daki skoru almak istiyoruz → inline UoW + free func.
     delivery_id: int | None = None
     try:
-        from app.core.services.sofor_service import SoforService
         from app.database.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
-            svc = SoforService(repo=uow.sofor_repo)
-            score_snapshot = await svc.get_score_breakdown(sofor_id)
+            score_snapshot = await get_score_breakdown_sofor(sofor_id, uow=uow)
             # Virtual super-admin id=0 → DB'de kayıt yok; FK ihlali yaşamamak
             # için yalnız gerçek user id'yi yaz.
             sent_by = getattr(current_admin, "id", None)

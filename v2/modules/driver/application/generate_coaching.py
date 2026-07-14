@@ -6,6 +6,11 @@
 PII Politikası (v2 plan Q1):
 - LLM'e gönderilen prompt'ta plaka, ad-soyad, telegram_id veya sofor_id
   GİTMEZ. Sadece anonim sayısal/kategorik özetler.
+
+Sınıf olarak kalma gerekçesi (B.1 istisnası — RouteSimulator/
+LokasyonHydrator ile aynı sınıf): constructor-injected client bağımlılıkları
+(``groq``, ``anomaly_detector``) olan tek-cohesive-pipeline (``generate_coaching``
+tek giriş noktası). CRUD-benzeri bir servis değil.
 """
 
 from __future__ import annotations
@@ -20,7 +25,9 @@ from typing import Any, Dict, List
 from app.core.ai.groq_service import get_groq_service
 from app.core.services.anomaly_detector import get_anomaly_detector
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.coaching import (
+from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
+from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+from v2.modules.driver.schemas import (
     CoachingCategory,
     CoachingInsightItem,
     CoachingInsightsResponse,
@@ -73,18 +80,12 @@ class DriverCoachingEngine:
         """Ana giriş noktası. LLM hatası (LLMProviderError) generate_coaching
         içindeki try/except tarafından yakalanır — dışarıya asla fırlamaz,
         _fallback_response()'a düşer."""
-        # SoforService.get_score_breakdown/get_route_profile self.repo'nun
-        # session-aware olmasını gerektirir → singleton container service'i
-        # bunu sağlamaz. Yeni UoW + inline service ile bağlıyoruz.
-        from app.core.services.sofor_service import SoforService
-
         async with UnitOfWork() as uow:
             sofor = await uow.sofor_repo.get_by_id(sofor_id)
             if not sofor:
                 raise ValueError("Şoför bulunamadı")
-            svc = SoforService(repo=uow.sofor_repo)
-            score = await svc.get_score_breakdown(sofor_id)
-            route_profile = await svc.get_route_profile(sofor_id)
+            score = await get_score_breakdown_sofor(sofor_id, uow=uow)
+            route_profile = await get_route_profile_sofor(sofor_id, uow=uow)
         # sofor_id filter: anomaly_detector.get_recent_anomalies sefer
         # JOIN üzerinden seferler.sofor_id'ye filtre uygular. Bu sayede
         # başka şoförün anomali örüntüleri Şoför A'nın coaching prompt'una
@@ -95,7 +96,6 @@ class DriverCoachingEngine:
 
         categorized = self._categorize_anomalies(anomalies)
 
-        # Yeterli veri var mı?
         has_any = any(items for items in categorized.values())
         if not has_any and int(score.get("trip_count") or 0) < 5:
             return self._empty_response(sofor_id, sofor.get("ad_soyad", ""))

@@ -21,7 +21,7 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
     from app.core.services.analiz_service import AnalizService
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
-    from app.database.repositories.sofor_repo import get_sofor_repo
+    from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
     sofor_repo_local = get_sofor_repo(session=db_session)
 

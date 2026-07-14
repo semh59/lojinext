@@ -16,9 +16,9 @@ from typing import Dict, List, Optional
 
 from app.database.models import SeferBelge
 from app.database.repositories.sefer_repo import get_sefer_repo
-from app.database.repositories.sofor_repo import get_sofor_repo
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
 logger = get_logger(__name__)
 
@@ -168,7 +168,7 @@ class InternalService:
         self, telegram_id: str, baslangic: date, bitis: date
     ) -> Optional[bytes]:
         """Şofora ait onaylı seferleri PDF olarak üretir."""
-        from app.core.services.sofor_pdf_service import SoforSeferPDFService
+        from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 
         sofor_id = await self.get_sofor_id(telegram_id)
         if sofor_id is None:
@@ -188,7 +188,9 @@ class InternalService:
         if not sofor:
             return None
 
-        from app.core.ai.driver_coaching_engine import get_driver_coaching_engine
+        from v2.modules.driver.application.generate_coaching import (
+            get_driver_coaching_engine,
+        )
 
         engine = get_driver_coaching_engine()
         try:

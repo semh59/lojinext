@@ -16,8 +16,8 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from app.core.ml.driver_route_profile import classify_route
 from app.core.ml.route_similarity import find_similar_trips
+from v2.modules.driver.domain.route_profile import classify_route
 
 logger = logging.getLogger(__name__)
 
@@ -430,23 +430,25 @@ class TripPlannerEngine:
         if not drivers:
             return []
 
-        from app.core.services.sofor_service import SoforService
         from app.database.unit_of_work import UnitOfWork
+        from v2.modules.driver.application.get_route_profile import (
+            get_route_profile_sofor,
+        )
+        from v2.modules.driver.application.get_score import get_score_breakdown_sofor
 
         out: List[DriverCandidate] = []
         async with UnitOfWork() as uow:
-            svc = SoforService(repo=uow.sofor_repo)
             for d in drivers:
                 sofor_id = int(d["id"])
                 try:
-                    score_breakdown = await svc.get_score_breakdown(sofor_id)
+                    score_breakdown = await get_score_breakdown_sofor(sofor_id, uow=uow)
                 except Exception as exc:
                     logger.warning(
                         "get_score_breakdown failed for %s: %s", sofor_id, exc
                     )
                     score_breakdown = {"total": 50.0, "has_trips": False}
                 try:
-                    route_profile = await svc.get_route_profile(sofor_id)
+                    route_profile = await get_route_profile_sofor(sofor_id, uow=uow)
                 except Exception as exc:
                     logger.warning("get_route_profile failed for %s: %s", sofor_id, exc)
                     route_profile = {"profiles": []}

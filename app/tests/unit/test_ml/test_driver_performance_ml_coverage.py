@@ -38,7 +38,7 @@ def _make_driver_list(n=10, **overrides):
 
 
 def _fresh_model():
-    from app.core.ml.driver_performance_ml import DriverPerformanceML
+    from v2.modules.driver.domain.performance_ml import DriverPerformanceML
 
     return DriverPerformanceML()
 
@@ -183,7 +183,7 @@ class TestTrain:
         assert "Yetersiz" in result["error"]
 
     def test_returns_error_when_lightgbm_unavailable(self):
-        from app.core.ml import driver_performance_ml as dpm_mod
+        from v2.modules.driver.domain import performance_ml as dpm_mod
 
         original = dpm_mod.LIGHTGBM_AVAILABLE
         try:
@@ -211,11 +211,11 @@ class TestTrain:
 
         with (
             patch(
-                "app.core.ml.driver_performance_ml.mean_absolute_error",
+                "v2.modules.driver.domain.performance_ml.mean_absolute_error",
                 return_value=2.5,
             ),
             patch(
-                "app.core.ml.driver_performance_ml.r2_score",
+                "v2.modules.driver.domain.performance_ml.r2_score",
                 return_value=0.85,
             ),
         ):
@@ -252,7 +252,7 @@ class TestTrainRanker:
         assert result["success"] is False
 
     def test_returns_error_when_lightgbm_unavailable(self):
-        from app.core.ml import driver_performance_ml as dpm_mod
+        from v2.modules.driver.domain import performance_ml as dpm_mod
 
         original = dpm_mod.LIGHTGBM_AVAILABLE
         try:
@@ -297,7 +297,7 @@ class TestTrainRanker:
 
 class TestPredictScore:
     def test_fallback_when_not_trained(self):
-        from app.core.ml.driver_performance_ml import DriverScorePrediction
+        from v2.modules.driver.domain.performance_ml import DriverScorePrediction
 
         model = _fresh_model()
         result = model.predict_score(_make_driver_stats(filo_karsilastirma=10.0))
@@ -404,7 +404,7 @@ class TestGetModelStatus:
 
 class TestDriverPerformanceMLSingleton:
     def test_get_driver_performance_ml_returns_instance(self):
-        from app.core.ml.driver_performance_ml import (
+        from v2.modules.driver.domain.performance_ml import (
             DriverPerformanceML,
             get_driver_performance_ml,
         )
@@ -413,7 +413,7 @@ class TestDriverPerformanceMLSingleton:
         assert isinstance(ml, DriverPerformanceML)
 
     def test_get_driver_performance_ml_same_instance(self):
-        from app.core.ml.driver_performance_ml import get_driver_performance_ml
+        from v2.modules.driver.domain.performance_ml import get_driver_performance_ml
 
         a = get_driver_performance_ml()
         b = get_driver_performance_ml()

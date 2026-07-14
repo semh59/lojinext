@@ -140,7 +140,9 @@ class TestCalculatePerformanceScore:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            from app.workers.tasks.driver_tasks import calculate_performance_score
+            from v2.modules.driver.infrastructure.driver_tasks import (
+                calculate_performance_score,
+            )
 
             calculate_performance_score.run(driver_id=1)  # no exception
 
@@ -164,7 +166,9 @@ class TestCalculatePerformanceScore:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            from app.workers.tasks.driver_tasks import calculate_performance_score
+            from v2.modules.driver.infrastructure.driver_tasks import (
+                calculate_performance_score,
+            )
 
             calculate_performance_score.run(driver_id=99)
 

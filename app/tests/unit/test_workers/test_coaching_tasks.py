@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.database.unit_of_work import UnitOfWork
-from app.workers.tasks.coaching_tasks import (
+from v2.modules.driver.infrastructure.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
     evaluate_pending_deliveries,
@@ -41,7 +41,7 @@ async def test_run_digest_no_drivers():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
@@ -72,7 +72,7 @@ async def test_run_digest_processes_driver():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
@@ -98,7 +98,7 @@ async def test_run_digest_engine_error_counted():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
@@ -126,7 +126,7 @@ async def test_run_digest_soft_time_limit_sets_partial():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
@@ -156,7 +156,7 @@ async def test_run_digest_high_priority_no_telegram():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=mock_engine,
         ),
         enter_p,
@@ -211,7 +211,7 @@ async def test_run_digest_result_keys():
     enter_p, exit_p = _uow_ctx(mock_uow)
     with (
         patch(
-            "app.core.ai.driver_coaching_engine.get_driver_coaching_engine",
+            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
             return_value=MagicMock(),
         ),
         enter_p,

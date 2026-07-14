@@ -370,20 +370,17 @@ async def test_excel_export_driver_comparison(async_client, admin_auth_headers):
     fake_driver.performans_puani = 80.0
     fake_xlsx = b"PK\x03\x04" + b"\x00" * 50
 
-    # driver_comparison uses an inline import: get_sofor_analiz_service
+    # driver_comparison uses an inline import: get_driver_stats (free function)
     with (
         patch(
-            "app.core.services.sofor_analiz_service.get_sofor_analiz_service"
-        ) as mock_svc_factory,
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=[fake_driver]),
+        ),
         patch(
             "app.core.services.excel_service.ExcelService.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
-        mock_svc = MagicMock()
-        mock_svc.get_driver_stats = AsyncMock(return_value=[fake_driver])
-        mock_svc_factory.return_value = mock_svc
-
         resp = await async_client.get(
             f"{BASE}/excel/export",
             params={"report_type": "driver_comparison"},
@@ -591,8 +588,8 @@ async def test_driver_comparison_pdf_happy_path(async_client, admin_auth_headers
 
     with (
         patch(
-            "app.core.services.sofor_analiz_service.SoforAnalizService.get_driver_stats",
-            new=AsyncMock(return_value=[fake_driver]),
+            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            AsyncMock(return_value=[fake_driver]),
         ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
     ):

@@ -143,10 +143,9 @@ class ContextBuilder:
             return "Geçersiz şoför ID."
 
         try:
-            from app.core.container import get_container
+            from v2.modules.driver.domain.evaluation import evaluate_driver
 
-            service = get_container().degerlendirme_service
-            degerlendirme = await service.evaluate_driver(sofor_id)
+            degerlendirme = await evaluate_driver(sofor_id)
 
             if not degerlendirme:
                 return "Şoför değerlendirmesi yapılamadı."
@@ -193,10 +192,9 @@ class ContextBuilder:
             filo_ort_task = self.analiz_repo.get_filo_ortalama_tuketim()
             araclar_task = self.arac_repo.get_all(sadece_aktif=True)
 
-            from app.core.container import get_container
+            from v2.modules.driver.domain.evaluation import get_rankings
 
-            service = get_container().degerlendirme_service
-            rankings_task = service.get_rankings()
+            rankings_task = get_rankings()
 
             filo_ort, araclar, rankings = await asyncio.gather(
                 filo_ort_task, araclar_task, rankings_task

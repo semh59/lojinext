@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.ai.driver_coaching_engine import DriverCoachingEngine
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.coaching import CoachingInsightsResponse
+from v2.modules.driver.application.generate_coaching import DriverCoachingEngine
+from v2.modules.driver.schemas import CoachingInsightsResponse
 
 # ── Test fixtures ─────────────────────────────────────────────────────────
 
@@ -94,22 +94,20 @@ def _make_engine(
         return_value=anomalies if anomalies is not None else []
     )
 
-    # SoforService inline yaratılıyor — get_score_breakdown + get_route_profile mock
-    class _FakeService:
-        def __init__(self, repo):
-            self.repo = repo
-
-        async def get_score_breakdown(self, _sid):
-            return score or SCORE_OK
-
-        async def get_route_profile(self, _sid):
-            return route or ROUTE_PROFILE_OK
-
-    patcher_svc = patch(
-        "app.core.services.sofor_service.SoforService",
-        _FakeService,
+    # get_score_breakdown_sofor + get_route_profile_sofor free-function mock
+    # (eski SoforService.get_score_breakdown/get_route_profile sınıfı silindi;
+    # engine artık bu iki free function'ı doğrudan import edip çağırıyor).
+    patcher_score = patch(
+        "v2.modules.driver.application.generate_coaching.get_score_breakdown_sofor",
+        AsyncMock(return_value=score or SCORE_OK),
     )
-    patcher_svc.start()
+    patcher_score.start()
+
+    patcher_route = patch(
+        "v2.modules.driver.application.generate_coaching.get_route_profile_sofor",
+        AsyncMock(return_value=route or ROUTE_PROFILE_OK),
+    )
+    patcher_route.start()
 
     # UoW patch
     fake_uow = MagicMock()

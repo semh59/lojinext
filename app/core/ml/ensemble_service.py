@@ -261,8 +261,8 @@ class EnsemblePredictorService:
         Belirli araç için model eğit.
         Veritabanından verileri toplar ve enrich eder.
         """
-        from app.core.services.sofor_analiz_service import get_sofor_analiz_service
         from app.core.services.weather_service import get_weather_service
+        from v2.modules.driver.domain.driver_stats import get_driver_stats
 
         # Araç bilgisini al
         arac = await self.arac_repo.get_by_id(arac_id)
@@ -292,13 +292,10 @@ class EnsemblePredictorService:
 
         # Verileri enrich et
         weather_service = get_weather_service()
-        sofor_service = get_sofor_analiz_service()
 
         # Optimized: Bulk fetch driver stats Once (Phase 2G Optimization)
         # Using include_elite_score=False to prevent QueuePool exhaustion (Phase 2G Fix)
-        all_driver_stats = await sofor_service.get_driver_stats(
-            include_elite_score=False
-        )
+        all_driver_stats = await get_driver_stats(include_elite_score=False)
         driver_map = {d.sofor_id: d for d in all_driver_stats}
 
         enriched_seferler = []
@@ -529,8 +526,8 @@ class EnsemblePredictorService:
         """
         Yakıt tüketimi tahmin et
         """
-        from app.core.services.sofor_analiz_service import get_sofor_analiz_service
         from app.core.services.weather_service import get_weather_service
+        from v2.modules.driver.domain.driver_stats import get_driver_stats
 
         # Single Session Reuse Pattern (Phase 3 Optimization)
         if uow:
@@ -574,11 +571,8 @@ class EnsemblePredictorService:
         # Şoför faktörü
         sofor_katsayi = 1.0
         if sofor_id:
-            sofor_service = get_sofor_analiz_service()
             # Pass 'uow' for session consistency (Phase 3 Optimization)
-            stats = await sofor_service.get_driver_stats(
-                sofor_id, include_elite_score=False, uow=uow
-            )
+            stats = await get_driver_stats(sofor_id, include_elite_score=False, uow=uow)
             if stats:
                 sofor_katsayi = 1.0 - (stats[0].filo_karsilastirma / 100) * 0.1
 

@@ -18,8 +18,6 @@ from app.api.v1.endpoints import (
     analytics,
     anomalies,
     auth,
-    coaching,
-    drivers,
     error_stream,
     executive,
     feedback,
@@ -38,6 +36,8 @@ from app.api.v1.endpoints import (
     weather,
     ws_ticket,
 )
+from v2.modules.driver.api.coaching_routes import router as coaching_router
+from v2.modules.driver.api.driver_routes import router as driver_router
 from v2.modules.fleet.api.admin_maintenance_routes import (
     router as admin_maintenance_router,
 )
@@ -79,7 +79,7 @@ api_router.include_router(
     admin_users.router, prefix="/admin/users", tags=["admin-users"]
 )
 api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
-api_router.include_router(drivers.router, prefix="/drivers", tags=["drivers"])
+api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
 api_router.include_router(trips.router, prefix="/trips", tags=["trips"])
 api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
@@ -91,7 +91,7 @@ api_router.include_router(
     executive.router, prefix="/reports/executive", tags=["executive"]
 )
 api_router.include_router(anomalies.router, prefix="/anomalies", tags=["anomalies"])
-api_router.include_router(coaching.router, prefix="/coaching", tags=["coaching"])
+api_router.include_router(coaching_router, prefix="/coaching", tags=["coaching"])
 api_router.include_router(
     investigations.router,
     prefix="/admin/investigations",

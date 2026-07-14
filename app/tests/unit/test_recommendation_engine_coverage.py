@@ -253,11 +253,12 @@ async def test_get_vehicle_recommendations_cache_hit():
 # ---------------------------------------------------------------------------
 # get_driver_recommendations
 #
-# These delegate to get_container().degerlendirme_service.evaluate_driver(), a
-# separate service (DegerlendirmeService) that computes a full driver evaluation
+# These delegate to v2.modules.driver.domain.evaluation.evaluate_driver(), a
+# free function (dalga 5, B.1 refactor — was SoforDegerlendirmeService via
+# container.degerlendirme_service) that computes a full driver evaluation
 # from trips. The tests below isolate the recommendation engine's branching on
 # that evaluation (score<50, worsening trend, below-fleet-average); de-mocking
-# evaluate_driver to a real seeded computation is the DegerlendirmeService
+# evaluate_driver to a real seeded computation is the evaluation-module
 # de-mock — a dedicated slice, not done here. (vehicle/fleet/cost above are now
 # fully real DB.)
 # ---------------------------------------------------------------------------
@@ -267,14 +268,9 @@ async def test_get_driver_recommendations_none_degerlendirme():
     """get_driver_recommendations returns [] when evaluation is None."""
     engine = _make_engine()
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=None)
-    mock_container = MagicMock()
-    mock_container.degerlendirme_service = mock_service
-
     with patch(
-        "app.core.container.get_container",
-        return_value=mock_container,
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=None),
     ):
         result = await engine.get_driver_recommendations(sofor_id=99)
     assert result == []
@@ -291,14 +287,9 @@ async def test_get_driver_recommendations_low_score():
     degerlendirme.trend.value = "Stabil"
     degerlendirme.filo_karsilastirma = 0
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=degerlendirme)
-    mock_container = MagicMock()
-    mock_container.degerlendirme_service = mock_service
-
     with patch(
-        "app.core.container.get_container",
-        return_value=mock_container,
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=1)
 
@@ -317,14 +308,9 @@ async def test_get_driver_recommendations_worsening_trend():
     degerlendirme.trend_degisim = -8.5
     degerlendirme.filo_karsilastirma = 0
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=degerlendirme)
-    mock_container = MagicMock()
-    mock_container.degerlendirme_service = mock_service
-
     with patch(
-        "app.core.container.get_container",
-        return_value=mock_container,
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=2)
 
@@ -342,14 +328,9 @@ async def test_get_driver_recommendations_below_fleet_average():
     degerlendirme.trend.value = "Stabil"
     degerlendirme.filo_karsilastirma = -15  # <-10
 
-    mock_service = MagicMock()
-    mock_service.evaluate_driver = AsyncMock(return_value=degerlendirme)
-    mock_container = MagicMock()
-    mock_container.degerlendirme_service = mock_service
-
     with patch(
-        "app.core.container.get_container",
-        return_value=mock_container,
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=3)
 
@@ -360,12 +341,9 @@ async def test_get_driver_recommendations_exception_logged():
     """get_driver_recommendations handles exception gracefully and returns []."""
     engine = _make_engine()
 
-    mock_container = MagicMock()
-    mock_container.degerlendirme_service = MagicMock(side_effect=Exception("DB error"))
-
     with patch(
-        "app.core.container.get_container",
-        return_value=mock_container,
+        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        AsyncMock(side_effect=Exception("DB error")),
     ):
         result = await engine.get_driver_recommendations(sofor_id=50)
 

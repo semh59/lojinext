@@ -40,7 +40,7 @@ import app.core.container as container_mod  # noqa: E402
 import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
 import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
-import app.database.repositories.sofor_repo as sofor_mod  # noqa: E402
+import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
 import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
@@ -467,7 +467,7 @@ def yakit_repo(db_session):
 
 @pytest.fixture
 def sofor_repo(db_session):
-    from app.database.repositories.sofor_repo import SoforRepository
+    from v2.modules.driver.infrastructure.repository import SoforRepository
 
     return SoforRepository(session=db_session)
 
@@ -487,13 +487,6 @@ def dorse_repo(db_session):
 
 
 # --- Service fixtures ---
-
-
-@pytest.fixture
-def sofor_service(db_session):
-    from app.core.services.sofor_service import get_sofor_service
-
-    return get_sofor_service()
 
 
 @pytest.fixture

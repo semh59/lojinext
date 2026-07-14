@@ -22,7 +22,7 @@ from app.database.repositories.rol_repo import RolRepository
 from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.session_repo import SessionRepository
 from app.database.repositories.setting_repository import SettingRepository
-from app.database.repositories.sofor_repo import SoforRepository
+from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
 )

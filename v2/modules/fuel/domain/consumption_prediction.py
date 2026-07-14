@@ -119,14 +119,10 @@ async def predict(
         sofor_faktor = 1.0
         if sofor_id:
             try:
-                from app.core.services.sofor_analiz_service import (
-                    get_sofor_analiz_service,
-                )
-
-                analiz_service = get_sofor_analiz_service()
+                from v2.modules.driver.domain.driver_stats import get_driver_stats
 
                 # DOĞRUDAN AWAIT! (Artık async metoddasın)
-                stats_list = await analiz_service.get_driver_stats(sofor_id=sofor_id)
+                stats_list = await get_driver_stats(sofor_id=sofor_id)
 
                 if stats_list:
                     score = stats_list[0].performans_puani

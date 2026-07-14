@@ -59,7 +59,7 @@ async def test_executive_get_redis_singleton(monkeypatch):
 @pytest.mark.asyncio
 async def test_coaching_get_redis_singleton(monkeypatch):
     """coaching._get_redis 3 ardışık çağrıda aynı instance dönmeli."""
-    from app.api.v1.endpoints import coaching as mod
+    from v2.modules.driver.api import coaching_routes as mod
 
     fake_mod = _install_fake_redis(monkeypatch)
     monkeypatch.setattr(mod, "_coaching_redis", None, raising=False)

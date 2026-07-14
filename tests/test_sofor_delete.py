@@ -1,13 +1,12 @@
 import asyncio
 
-from app.core.services.sofor_service import get_sofor_service
+from v2.modules.driver.application.delete_sofor import delete_sofor
 
 
 async def test_delete(sofor_id):
-    service = get_sofor_service()
     try:
         print(f"Attempting to delete driver ID: {sofor_id}")
-        success = await service.delete_sofor(sofor_id)
+        success = await delete_sofor(sofor_id)
         print(f"Success: {success}")
     except Exception as e:
         print(f"Error: {e}")

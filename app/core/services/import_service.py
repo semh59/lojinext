@@ -49,7 +49,6 @@ class ImportService:
         sefer_service=None,
         arac_repo=None,
         sofor_repo=None,
-        sofor_service=None,
         dorse_repo=None,
         lokasyon_repo=None,
     ):
@@ -59,8 +58,6 @@ class ImportService:
         self._arac_repo = arac_repo
         self.sofor_repo = sofor_repo
         self._sofor_repo = sofor_repo
-        self.sofor_service = sofor_service
-        self._sofor_service = sofor_service
         self.dorse_repo = dorse_repo
         self._dorse_repo = dorse_repo
         self.lokasyon_repo = lokasyon_repo
@@ -893,12 +890,14 @@ class ImportService:
     async def process_driver_import(self, content: bytes) -> Tuple[int, list]:
         """Processes driver import."""
         try:
+            from v2.modules.driver.application.add_sofor import bulk_add_sofor
+
             items = await ExcelService.parse_driver_data(content)
             if not items:
                 return 0, ["Excel dosyasında veri bulunamadı."]
 
             errors: List[str] = []
-            count = await self.sofor_service.bulk_add_sofor(items)
+            count = await bulk_add_sofor(items)
             return count, errors
         except Exception as e:
             await self._report_infra_failure("process_driver_import", e)

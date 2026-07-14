@@ -205,19 +205,12 @@ class TestPredictWithModel:
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = 80  # score > 50 → sofor_faktor < 1.0
-        mock_analiz_svc = AsyncMock()
-        mock_analiz_svc.get_driver_stats = AsyncMock(return_value=[mock_stats])
-
-        mock_sofor_module = MagicMock()
-        mock_sofor_module.get_sofor_analiz_service = MagicMock(
-            return_value=mock_analiz_svc
-        )
 
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
-            patch.dict(
-                "sys.modules",
-                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            patch(
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[mock_stats]),
             ),
         ):
             result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
@@ -232,19 +225,12 @@ class TestPredictWithModel:
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = 20  # score < 50 → sofor_faktor > 1.0
-        mock_analiz_svc = AsyncMock()
-        mock_analiz_svc.get_driver_stats = AsyncMock(return_value=[mock_stats])
-
-        mock_sofor_module = MagicMock()
-        mock_sofor_module.get_sofor_analiz_service = MagicMock(
-            return_value=mock_analiz_svc
-        )
 
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
-            patch.dict(
-                "sys.modules",
-                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            patch(
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[mock_stats]),
             ),
         ):
             result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
@@ -256,19 +242,11 @@ class TestPredictWithModel:
         """Empty stats list → sofor_faktor = 1.0."""
         params = _make_valid_params()
 
-        mock_analiz_svc = AsyncMock()
-        mock_analiz_svc.get_driver_stats = AsyncMock(return_value=[])
-
-        mock_sofor_module = MagicMock()
-        mock_sofor_module.get_sofor_analiz_service = MagicMock(
-            return_value=mock_analiz_svc
-        )
-
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
-            patch.dict(
-                "sys.modules",
-                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            patch(
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[]),
             ),
         ):
             result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
@@ -281,19 +259,12 @@ class TestPredictWithModel:
 
         mock_stats = MagicMock()
         mock_stats.performans_puani = None
-        mock_analiz_svc = AsyncMock()
-        mock_analiz_svc.get_driver_stats = AsyncMock(return_value=[mock_stats])
-
-        mock_sofor_module = MagicMock()
-        mock_sofor_module.get_sofor_analiz_service = MagicMock(
-            return_value=mock_analiz_svc
-        )
 
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
-            patch.dict(
-                "sys.modules",
-                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            patch(
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(return_value=[mock_stats]),
             ),
         ):
             result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)
@@ -304,16 +275,11 @@ class TestPredictWithModel:
         """Exception in driver factor calc falls back to 1.0."""
         params = _make_valid_params()
 
-        mock_sofor_module = MagicMock()
-        mock_sofor_module.get_sofor_analiz_service = MagicMock(
-            side_effect=Exception("sofor service down")
-        )
-
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
-            patch.dict(
-                "sys.modules",
-                {"app.core.services.sofor_analiz_service": mock_sofor_module},
+            patch(
+                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                AsyncMock(side_effect=Exception("sofor service down")),
             ),
         ):
             result = await predict(arac_id=1, mesafe_km=300.0, ton=13.0, sofor_id=5)

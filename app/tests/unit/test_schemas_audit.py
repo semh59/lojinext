@@ -50,7 +50,7 @@ class TestStringValidation:
 
     def test_turkish_characters_accepted(self):
         """Türkçe karakterler kabul edilmeli"""
-        from app.schemas.sofor import SoforCreate
+        from v2.modules.driver.schemas import SoforCreate
 
         sofor = SoforCreate(ad_soyad="İsmail Şoför Öğretici")
         assert sofor.ad_soyad == "İsmail Şoför Öğretici"

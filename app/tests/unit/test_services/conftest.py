@@ -82,39 +82,12 @@ def mock_uow(monkeypatch):
 # in this directory referenced them as a fixture param.
 
 
-@pytest.fixture
-def mock_sofor_service_uow(monkeypatch, mock_uow):
-    """Patch UnitOfWork in sofor_service module and reset container afterward."""
-    from app.database.unit_of_work import UnitOfWork
-
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
-
-    # Reset container so it uses the mocked UnitOfWork
-    import app.core.container as container_mod
-
-    container_mod.reset_container()
-
-    yield mock_uow
-
-    # Reset after test
-    container_mod.reset_container()
-
-
-@pytest.fixture
-def sofor_service(mock_sofor_service_uow):
-    """Override sofor_service fixture to use mocked UnitOfWork."""
-    from app.core.services.sofor_service import get_sofor_service
-
-    return get_sofor_service()
-
-
-@pytest.fixture
-def sofor_service_with_mock_event_bus(mock_sofor_service_uow, mock_event_bus):
-    """Create sofor_service with both mocked UnitOfWork and event bus."""
-    from app.core.services.sofor_service import SoforService
-
-    return SoforService(event_bus=mock_event_bus)
+# mock_sofor_service_uow / sofor_service / sofor_service_with_mock_event_bus
+# fixtures removed — SoforService class deleted in dalga 5 (B.1 free-function
+# refactor, v2.modules.driver); use-cases now import UnitOfWork directly
+# (patch v2.modules.driver.application.<file>.UnitOfWork where needed) or
+# accept an explicit uow= kwarg (see test_sofor_service_coverage.py's
+# _fake_sofor_repo pattern for get_score_breakdown_sofor/get_route_profile_sofor).
 
 
 # mock_yakit_service_uow / yakit_service fixtures removed — YakitService

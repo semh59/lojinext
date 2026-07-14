@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
-from app.workers.tasks.driver_tasks import (
+from v2.modules.driver.infrastructure.driver_tasks import (
     _compute_driver_score,
     calculate_performance_score,
 )
@@ -79,7 +79,9 @@ async def test_compute_driver_score_logs_summary(db_session, caplog):
     import logging
 
     sofor = await _seed_driver_with_trips(db_session, [35.0, 45.0])
-    with caplog.at_level(logging.INFO, logger="app.workers.tasks.driver_tasks"):
+    with caplog.at_level(
+        logging.INFO, logger="v2.modules.driver.infrastructure.driver_tasks"
+    ):
         await _compute_driver_score(sofor.id)
 
     assert str(sofor.id) in caplog.text
@@ -89,7 +91,9 @@ async def test_compute_driver_score_logs_summary(db_session, caplog):
 async def test_compute_driver_score_no_trips_logs(db_session, caplog):
     import logging
 
-    with caplog.at_level(logging.INFO, logger="app.workers.tasks.driver_tasks"):
+    with caplog.at_level(
+        logging.INFO, logger="v2.modules.driver.infrastructure.driver_tasks"
+    ):
         await _compute_driver_score(888888)
 
     assert "no qualifying trips" in caplog.text.lower()
@@ -105,7 +109,7 @@ def test_calculate_performance_score_is_celery_task():
 def test_calculate_performance_score_connection_error_retries():
     """ConnectionError from the inner coro → task retry path is taken."""
     with patch(
-        "app.workers.tasks.driver_tasks._compute_driver_score",
+        "v2.modules.driver.infrastructure.driver_tasks._compute_driver_score",
         new=AsyncMock(side_effect=ConnectionError("DB unreachable")),
     ):
         with pytest.raises(Exception):
@@ -115,7 +119,7 @@ def test_calculate_performance_score_connection_error_retries():
 def test_calculate_performance_score_generic_error_reraises():
     """A generic exception is logged and re-raised (no retry)."""
     with patch(
-        "app.workers.tasks.driver_tasks._compute_driver_score",
+        "v2.modules.driver.infrastructure.driver_tasks._compute_driver_score",
         new=AsyncMock(side_effect=ValueError("bad data")),
     ):
         with pytest.raises(Exception):

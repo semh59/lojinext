@@ -872,7 +872,6 @@ def test_get_prediction_service_singleton():
     try:
         with (
             patch("app.services.prediction_service.WeatherService"),
-            patch("app.services.prediction_service.YakitTahminService"),
             patch("app.services.prediction_service.get_ensemble_service"),
         ):
             s1 = mod.get_prediction_service()

@@ -2,7 +2,7 @@
 Domain servisleri — iş kuralları, doğrulama, UoW transaction yönetimi.
 
 Doğrudan DB erişimi yoktur; repository'ler üzerinden çalışır.
-Örnekler: SeferWriteService, YakitService, AnomalyDetector
+Örnekler: SeferWriteService, AnomalyDetector
 
 Yeni servis nereye gider?
   DB + iş kuralı            → app/core/services/

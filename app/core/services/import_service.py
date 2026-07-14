@@ -1,10 +1,13 @@
 import io
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
 import pandas as pd
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import text
+
+if TYPE_CHECKING:
+    from app.core.entities.models import YakitAlimiCreate
 
 from app.core.exceptions import ExcelExportError, ImportValidationError
 from app.core.services.excel_parser import MAX_EXCEL_ROWS
@@ -790,7 +793,17 @@ class ImportService:
             if yakit_list:
                 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 
-                count = await bulk_add_yakit(yakit_list)
+                # bulk_add_yakit's signature types its param as YakitAlimiCreate
+                # (core/entities/models.py) — this pre-existing latent mismatch
+                # (YakitCreate is structurally identical for every attribute
+                # bulk_add_yakit reads: arac_id/tarih/istasyon/litre/fiyat_tl/
+                # km_sayac/fis_no/depo_durumu) was invisible to mypy before this
+                # migration because the old call site (self.yakit_service, an
+                # untyped constructor param) had no static type. Now that the
+                # call is a properly-typed free function, mypy correctly flags
+                # the nominal type difference — cast() documents it's safe
+                # rather than silently widening bulk_add_yakit's signature.
+                count = await bulk_add_yakit(cast("List[YakitAlimiCreate]", yakit_list))
 
                 # Periyot recalc — yakıt fişi km aralıklarından tüketim türetir.
                 # YAKIT_ADDED event burada subscribe edilmiyor; bulk import'tan

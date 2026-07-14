@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 4/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; sıradaki: dalga 5 (driver), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 5/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; sıradaki: dalga 6 (auth-rbac), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -38,7 +38,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 2 | notification | `modules/notification.md` | ✅ main'de yeşil (commit `34e40c8`) |
 | 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
 | 4 | fuel | `modules/fuel.md` | ✅ main'de yeşil (commit `6721cdb`) |
-| 5 | driver | `modules/driver.md` | 🔲 |
+| 5 | driver | `modules/driver.md` | ✅ main'de yeşil (commit `9206e3f`) |
 | 6 | auth-rbac | `modules/auth-rbac.md` | 🔲 |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | 🔲 |
@@ -192,5 +192,32 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - OpenAPI schema drift: nihai halde YOK.
 - Bir fork ajanı test dönüşümünün büyük kısmını yaptı (18 doğrudan + 12 grep'le bulunan ek dosya = 30 dosya), 1 gerçek prod bug buldu+düzeltti (`import_service.py`'nin Excel yakıt import'u silinen `app.schemas.yakit`'i import ediyordu — `ImportError` riski, canlıya hiç gitmemiş olurdu). Ana oturum kalan 2 tur kırmızıyı (kök `tests/` + `test_prediction_service_coverage.py`) buldu+düzeltti.
 
+## DALGA 5 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-14)
+
+**Push geçmişi (3 commit):**
+1. `f2321a1` — ana taşıma (107 dosya, 14 kaynak dosya taşındı/silindi). CI'nin "Backend type check (mypy)" adımında kırmızı çıktı (8 hata / 7 baseline).
+2. `f41f74a` — mypy düzeltmesi: `v2/modules/driver/schemas.py`'ye taşınan `SoforResponse.ehliyet_sinifi` (permissive `str`, `@field_validator(mode="before")` ile runtime'da normalize) base class'taki `Literal` alanını override ediyordu — aynı desen taşımadan önce `app/schemas/sofor.py`'de de vardı ve `[mypy-app.schemas.*]` suppress bloğuyla gizleniyordu; yeni konumda o glob'a uymadığı için ortaya çıktı. `[mypy-v2.modules.*.schemas]` genel section'ı eklendi (regresyon değil, config-kapsama boşluğu). Bu turda mypy 7/7'ye döndü ama "Frontend — Unit tests with coverage" adımı kırmızı çıktı.
+3. `9206e3f` — **gerçek regresyon** bulundu+düzeltildi: `DriverScoreBreakdown.real-backend.test.tsx` (gerçek backend'e karşı koşan frontend testi) `GET /drivers/{id}/score-breakdown`'da 500 yakaladı — backend log: `Database session not initialized in SoforRepository`. Kök neden: `get_score_breakdown_sofor`/`get_route_profile_sofor`, `uow=None` verildiğinde modül-seviyeli `get_sofor_repo()` singleton'ını (hiçbir zaman session'a bağlanmaz) doğrudan `get_by_id()` için kullanıyordu. Eski kod bu ikisini `Depends(get_sofor_service)` → `SoforService(repo=uow.sofor_repo)` (session-bound, per-request) ile çağırıyordu — free-function migrasyonunda route'lar uow hiç geçirmediği için düştü. Fix: `uow=None` olduğunda artık kendi `UnitOfWork()`'ünü açıp session-bound repo üzerinden `get_by_id` çağırıyor (fonksiyonun geri kalanı zaten bu deseni kullanıyordu). **CI Hard Gates tam yeşil** (`gh run view 29344960332` → hard-gates 25dk29sn, GHCR build+push + prod deploy dahil `success`) — commit `9206e3f` main'in HEAD'i.
+
+**Kapsam:** driver modülü (14 dosya, ~4.5K LOC) — `soforler`/`sofor_ad_soyad_trigram`/`sofor_adaptasyon`/`coaching_deliveries` tablolarının tek sahibi, 17 route (drivers+coaching). Detaylar `TASKS/modules/driver.md` + `v2/modules/driver/CLAUDE.md`.
+
+**Öne çıkan kararlar/bulgular:**
+- `SoforService`/`SoforAnalizService`/`SoforDegerlendirmeService` sınıfları kaldırıldı (B.1, location/notification/fleet/fuel'deki kararla aynı gerekçe) — her use-case opsiyonel `uow: UnitOfWork | None = None` parametresi alan bağımsız fonksiyon.
+- 3 sınıf istisnası kaldı (`RouteSimulator`/`LokasyonHydrator` ile aynı gerekçe): `DriverCoachingEngine` (Groq/anomali client'ları enjekte eden tek-pipeline), `DriverPerformanceML` (mutable LightGBM model state — `self.is_trained`/`self.feature_importance`), `SoforSeferPDFService` (template-method builder, `PDFReportGenerator`'dan miras).
+- SOFOR_ADDED/UPDATED/DELETED publish decorator'ları repo-genelinde tekrarlayan ölü kod bulgusuyla aynı sınıf (fuel/fleet/notification/location) — yeniden doğrulandı, `event_bus.publish()` hiç çağrılmıyor.
+- 🔴 **Yeni bulgu (regresyon değil):** `driver.calculate_performance_score` Celery task'ı taşımadan ÖNCE de `celery_app.py`'nin import listesinde yoktu — hiç kayıtlı olmamış, prod'da hiç çalıştırılamamış orphan task. Davranış değişikliği gerektirdiği için import eklenmedi, `v2/modules/driver/CLAUDE.md`'de dokümante.
+- `sefer_repo.py`'deki (trip modülü, henüz taşınmadı) 6 driver-özel sorgu bu dalgada TAŞINMADI (trip dalga 14'e bırakıldı, görev dosyasının kararıyla uyumlu) — yalnız import-path düzeltmesi yapıldı (`app.core.ml.driver_route_profile` → `v2.modules.driver.domain.route_profile`).
+- 🔴 **score-breakdown/route-profile 500 gotcha'sı (yukarıda anlatıldı, commit `9206e3f`):** free-function migrasyonunda "uow verilmezse modül-singleton repo kullan" tasarım kararı, ORM `get_by_id()` gibi session gerektiren İLK çağrı için yanlıştı (yalnız raw-SQL metotlar için değil — CLAUDE.md'deki "Singleton repos need UoW for raw-SQL methods" gotcha'sı eksikti, ORM çağrıları da aynı şekilde çöküyor). **Ders:** bir per-request DI servisini (`Depends(get_sofor_service)` → session-bound repo) free function'a çevirirken, route'un uow'u YENİ fonksiyona geçirip geçirmediğini kontrol et — geçirmiyorsa fonksiyonun `uow=None` fallback'i kendi `UnitOfWork()` açmalı, bare module-singleton'ı asla doğrudan ORM/raw-SQL çağrısında kullanmamalı.
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB):**
+- `ruff check app v2` → temiz, `ruff format` → temiz.
+- `mypy app/` → 6/7 baseline (mypy.ini fix'i sonrası, regresyon yok — CI'da doğrulandı).
+- `pytest --collect-only`: `app/tests` + kök `tests/` toplam 7007 test, 0 hata.
+- Driver-özgü + dokunulan tüketici test dosyaları (46 dosya) gerçek `lojinext_test` DB'ye karşı: 901/902 pass (1 fail pre-existing/migrasyonla ilgisiz — `test_analysis_and_report.py::test_generate_vehicle_report`, `git stash` ile main'de de aynı hatanın var olduğu doğrulandı).
+- `test_sofor_service_coverage.py`'nin `TestGetScoreBreakdown`/`TestGetRouteProfile` sınıfları (13 test) fix sonrası gerçek DB'ye karşı 0-mock'a çevrildi (eski targeted-mock gerekçesi ortadan kalktı) — yalnız clamp-testi DB CHECK constraint'i yüzünden dar bir `get_by_id` patch'i koruyor.
+- OpenAPI schema drift: nihai halde YOK (container restart + `dump-openapi.mjs` ile doğrulandı).
+- CI'nın kendi "Backend unit tests" + "Frontend — Unit tests with coverage" koşumu (nihai, 3. push): tüm gate'ler `success`.
+- İlk iki denemede (bir fork ajanı taşımayı yaptı, context/turn limitine 3 kez takılıp yarıda kesildi — commit/push hiç tamamlanamadı) ana oturum devraldı: kalan test dönüşümünü bitirdi, doğrulamayı tekrarladı, mypy + regresyon bulgularını bulup düzeltti, commit/push/CI-izleme döngüsünü tamamladı.
+
 ## Son güncelleme
-2026-07-14 — **FAZ1 dalga 4 (fuel) TAMAMLANDI ve main'de yeşil** (commit `6721cdb`, CI Hard Gates `success`, 33dk1sn). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 5 (driver) yeni oturumda `TASKS/modules/driver.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-14 — **FAZ1 dalga 5 (driver) TAMAMLANDI ve main'de yeşil** (commit `9206e3f`, CI Hard Gates `success`, hard-gates 25dk29sn + GHCR build/push + prod deploy). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 6 (auth-rbac) yeni oturumda `TASKS/modules/auth-rbac.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

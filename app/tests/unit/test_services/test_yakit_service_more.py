@@ -1,10 +1,17 @@
 """
 Additional coverage tests for fuel (yakit) use-cases.
 
-0-mock (Dilim 26): all patch(UnitOfWork) removed → real DB via db_session fixture.
-Kept targeted mocks:
-  - TestCheckRollingOutlier — patch("...UnitOfWork") for numeric calc branches;
-    testing specific rolling-avg thresholds with controlled SQL rows (not UoW)
+0-mock (Dilim 26 + dedektif denetim, dalga 4 sonrası): all patch(UnitOfWork)
+removed → real DB via db_session fixture, including TestCheckRollingOutlier
+(önceden tüm UoW/yakit_repo mock'lanıyordu — integration mark'ı taşıdığı
+halde gerçek DB'ye hiç dokunmuyordu, bağımsız denetimde ihlal olarak
+bulunup gerçek DB'ye çevrildi).
+Kept targeted mocks (narrow, not UoW):
+  - TestCheckRollingOutlier::test_rolling_avg_too_low_triggers_anomaly —
+    yalnız get_event_bus() call-verification için (DB tarafı gerçek)
+  - TestCheckRollingOutlier::test_rolling_outlier_db_exception_returns_false —
+    yalnız YakitRepository.get_last_n_by_arac exception path injection
+    (gerçek DB'de tetiklenemeyen bir hata senaryosu)
   - patch.object(YakitRepository, 'hard_delete') — exception path injection, not UoW
   - patch.object(YakitRepository, 'get_all') — invalid-record skip (DB can't store bad rows)
   - patch.object(AnalizRepository, 'get_dashboard_stats') — None-fallback path
@@ -14,9 +21,7 @@ are free functions in v2/modules/fuel/application/, each opening its own
 UnitOfWork() (no constructor-injected repo/event_bus left to mock). The
 private `_check_rolling_outlier` helper (previously a bound method) is now
 a module-level function in v2/modules/fuel/application/add_yakit.py that
-opens its own `UnitOfWork()` directly — there is no local `get_uow()` name
-to patch anymore, so tests patch the `UnitOfWork` class reference imported
-into that module instead.
+opens its own `UnitOfWork()` directly.
 """
 
 from datetime import date, timedelta
@@ -222,102 +227,73 @@ class TestDeleteYakitMore:
 
 
 class TestCheckRollingOutlier:
-    async def test_rolling_avg_too_low_triggers_anomaly(self):
-        """rolling_avg < 18 returns True and publishes event."""
-        fake_rows = [
-            {"litre": 1.0, "km_sayac": 199900},
-            {"litre": 1.0, "km_sayac": 199800},
-            {"litre": 1.0, "km_sayac": 199700},
-            {"litre": 1.0, "km_sayac": 199600},
-            {"litre": 1.0, "km_sayac": 199500},
-        ]
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
+    async def test_rolling_avg_too_low_triggers_anomaly(self, db_session):
+        """rolling_avg < 18 returns True and publishes event (real DB rows)."""
+        arac = await seed_arac(db_session, plaka="34ROL001")
+        for km in (199900, 199800, 199700, 199600, 199500):
+            await seed_yakit(db_session, arac_id=arac.id, km_sayac=km, litre=1.0)
+        await db_session.commit()
 
         mock_event_bus = MagicMock()
-        with (
-            patch(
-                "v2.modules.fuel.application.add_yakit.UnitOfWork",
-                return_value=mock_uow,
-            ),
-            patch(
-                "v2.modules.fuel.application.add_yakit.get_event_bus",
-                return_value=mock_event_bus,
-            ),
+        with patch(
+            "v2.modules.fuel.application.add_yakit.get_event_bus",
+            return_value=mock_event_bus,
         ):
-            result = await _check_rolling_outlier(1, 1.0, 200000)
+            result = await _check_rolling_outlier(arac.id, 1.0, 200000)
 
         assert result is True
         mock_event_bus.publish.assert_called_once()
 
-    async def test_rolling_avg_too_high_triggers_anomaly(self):
-        """rolling_avg > 55 returns True."""
-        fake_rows = [
-            {"litre": 100.0, "km_sayac": 199900},
-            {"litre": 100.0, "km_sayac": 199800},
-            {"litre": 100.0, "km_sayac": 199700},
-            {"litre": 100.0, "km_sayac": 199600},
-            {"litre": 100.0, "km_sayac": 199500},
-        ]
+    async def test_rolling_avg_too_high_triggers_anomaly(self, db_session):
+        """rolling_avg > 55 returns True (real DB rows)."""
+        arac = await seed_arac(db_session, plaka="34ROL002")
+        for km in (199900, 199800, 199700, 199600, 199500):
+            await seed_yakit(db_session, arac_id=arac.id, km_sayac=km, litre=100.0)
+        await db_session.commit()
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
-
-        with patch(
-            "v2.modules.fuel.application.add_yakit.UnitOfWork", return_value=mock_uow
-        ):
-            result = await _check_rolling_outlier(1, 100.0, 200000)
+        result = await _check_rolling_outlier(arac.id, 100.0, 200000)
 
         assert result is True
 
-    async def test_rolling_outlier_no_records_returns_false(self):
-        """Empty last_5 → returns False."""
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=[])
+    async def test_rolling_outlier_no_records_returns_false(self, db_session):
+        """No fuel history for the vehicle → returns False (real DB, empty result)."""
+        arac = await seed_arac(db_session, plaka="34ROL003")
+        await db_session.commit()
 
-        with patch(
-            "v2.modules.fuel.application.add_yakit.UnitOfWork", return_value=mock_uow
-        ):
-            result = await _check_rolling_outlier(1, 300.0, 125000)
+        result = await _check_rolling_outlier(arac.id, 300.0, 125000)
 
         assert result is False
 
-    async def test_rolling_outlier_total_dist_zero_returns_false(self):
-        """When all km values are identical, total_dist = 0 → returns False."""
-        fake_rows = [{"litre": 100.0, "km_sayac": 125000}] * 5
+    async def test_rolling_outlier_total_dist_zero_returns_false(self, db_session):
+        """When all km values are identical, total_dist = 0 → returns False (real DB)."""
+        arac = await seed_arac(db_session, plaka="34ROL004")
+        for _ in range(5):
+            await seed_yakit(db_session, arac_id=arac.id, km_sayac=125000, litre=100.0)
+        await db_session.commit()
 
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(return_value=fake_rows)
-
-        with patch(
-            "v2.modules.fuel.application.add_yakit.UnitOfWork", return_value=mock_uow
-        ):
-            result = await _check_rolling_outlier(1, 100.0, 125000)
+        result = await _check_rolling_outlier(arac.id, 100.0, 125000)
 
         assert result is False
 
-    async def test_rolling_outlier_db_exception_returns_false(self):
-        """DB exception in rolling check → returns False (no raise)."""
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.yakit_repo.get_last_n_by_arac = AsyncMock(
-            side_effect=Exception("DB error")
-        )
+    async def test_rolling_outlier_db_exception_returns_false(self, db_session):
+        """DB exception in rolling check → returns False (no raise).
 
-        with patch(
-            "v2.modules.fuel.application.add_yakit.UnitOfWork", return_value=mock_uow
+        Narrow targeted mock (not UoW): a real DB has no way to make
+        get_last_n_by_arac raise on demand, so this specific repo method is
+        patched to simulate a transient DB error while the surrounding
+        UnitOfWork/session stay real.
+        """
+        from v2.modules.fuel.infrastructure.repository import YakitRepository
+
+        arac = await seed_arac(db_session, plaka="34ROL005")
+        await db_session.commit()
+
+        with patch.object(
+            YakitRepository,
+            "get_last_n_by_arac",
+            side_effect=Exception("DB error"),
         ):
-            result = await _check_rolling_outlier(1, 300.0, 125000)
+            result = await _check_rolling_outlier(arac.id, 300.0, 125000)
 
         assert result is False
 

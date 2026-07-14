@@ -1,9 +1,9 @@
-from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from app.database.models import AracBakim, BakimTipi
+from app.tests._helpers.seed import seed_arac
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
 )
@@ -15,99 +15,98 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
 
 
 @pytest.mark.asyncio
-async def test_create_maintenance_record():
-    """Verify maintenance record creation logic."""
-    with patch(
-        "v2.modules.fleet.application.create_maintenance_record.UnitOfWork"
-    ) as mock_uow_cls:
-        mock_uow = MagicMock()
-        mock_uow.__aenter__.return_value = mock_uow
-        mock_uow_cls.return_value = mock_uow
+async def test_create_maintenance_record(db_session):
+    """Verify maintenance record creation persists to the real DB."""
+    arac = await seed_arac(db_session, plaka="34ABC123")
+    await db_session.commit()
 
-        mock_uow.commit = AsyncMock()
-        mock_uow.arac_repo.get_by_id = AsyncMock(
-            return_value=MagicMock(id=1, plaka="34ABC123")
-        )
+    result = await create_maintenance_record(
+        arac_id=arac.id,
+        bakim_tipi=BakimTipi.PERIYODIK,
+        km_bilgisi=50000,
+        bakim_tarihi=datetime.now(timezone.utc),
+    )
 
-        mock_bakim = AracBakim(id=10, arac_id=1, bakim_tipi=BakimTipi.PERIYODIK)
-        mock_uow.maintenance_repo.add = AsyncMock(return_value=mock_bakim)
+    assert result.id is not None
+    assert result.tamamlandi is False
 
-        result = await create_maintenance_record(
-            arac_id=1,
-            bakim_tipi=BakimTipi.PERIYODIK,
-            km_bilgisi=50000,
-            bakim_tarihi=datetime.now(),
-        )
-
-        assert result.id == 10
-        mock_uow.commit.assert_called_once()
+    # Re-read through a fresh session-independent query to prove the row was
+    # actually committed by create_maintenance_record's own UnitOfWork, not
+    # just returned in-memory.
+    history = await get_vehicle_maintenance_history(arac.id)
+    assert any(h.id == result.id for h in history)
 
 
 @pytest.mark.asyncio
-async def test_get_upcoming_alerts():
+async def test_get_upcoming_alerts(db_session):
     """Verify enrichment of maintenance alerts with vehicle plates."""
-    with patch(
-        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
-    ) as mock_uow_cls:
-        mock_uow = MagicMock()
-        mock_uow.__aenter__.return_value = mock_uow
-        mock_uow_cls.return_value = mock_uow
+    arac = await seed_arac(db_session, plaka="34PLK099")
+    bakim = AracBakim(
+        arac_id=arac.id,
+        bakim_tipi=BakimTipi.PERIYODIK,
+        km_bilgisi=1000,
+        bakim_tarihi=datetime.now(timezone.utc) + timedelta(days=7),
+        tamamlandi=False,
+    )
+    db_session.add(bakim)
+    await db_session.commit()
 
-        mock_uow.maintenance_repo.get_upcoming_maintenance = AsyncMock(
-            return_value=[
-                MagicMock(
-                    id=1,
-                    arac_id=101,
-                    bakim_tipi="PERIYODIK",
-                    bakim_tarihi=datetime.now(),
-                )
-            ]
-        )
-        # get_upcoming_maintenance_alerts batch-fetches vehicles via get_by_ids
-        # (N+1 fix) → returns a {arac_id: Arac} map, not a single record.
-        mock_uow.arac_repo.get_by_ids = AsyncMock(
-            return_value={101: MagicMock(plaka="PLK-99")}
-        )
+    alerts = await get_upcoming_maintenance_alerts()
 
-        alerts = await get_upcoming_maintenance_alerts()
-
-        assert len(alerts) == 1
-        assert alerts[0]["plaka"] == "PLK-99"
+    matching = [a for a in alerts if a["arac_id"] == arac.id]
+    assert len(matching) == 1
+    assert matching[0]["plaka"] == "34PLK099"
+    assert matching[0]["vade_durumu"] == "UPCOMING"
 
 
 @pytest.mark.asyncio
-async def test_mark_as_completed():
-    """Verify that maintenance can be marked as completed."""
-    with patch(
-        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
-    ) as mock_uow_cls:
-        mock_uow = MagicMock()
-        mock_uow.__aenter__.return_value = mock_uow
-        mock_uow_cls.return_value = mock_uow
+async def test_mark_as_completed(db_session):
+    """Verify that marking maintenance completed persists to the real DB."""
+    arac = await seed_arac(db_session, plaka="34CMP001")
+    bakim = AracBakim(
+        arac_id=arac.id,
+        bakim_tipi=BakimTipi.PERIYODIK,
+        km_bilgisi=2000,
+        bakim_tarihi=datetime.now(timezone.utc),
+        tamamlandi=False,
+    )
+    db_session.add(bakim)
+    await db_session.commit()
+    await db_session.refresh(bakim)
 
-        mock_uow.commit = AsyncMock()
-        mock_uow.maintenance_repo.update = AsyncMock(return_value=True)
+    success = await mark_maintenance_completed(bakim.id)
+    assert success is True
 
-        success = await mark_maintenance_completed(10)
-        assert success is True
-        mock_uow.maintenance_repo.update.assert_called_with(10, tamamlandi=True)
-        mock_uow.commit.assert_called_once()
+    history = await get_vehicle_maintenance_history(arac.id)
+    updated = next(h for h in history if h.id == bakim.id)
+    assert updated.tamamlandi is True
 
 
 @pytest.mark.asyncio
-async def test_get_vehicle_maintenance_history():
+async def test_get_vehicle_maintenance_history(db_session):
     """Verify history retrieval for a specific vehicle."""
-    with patch(
-        "v2.modules.fleet.application.get_vehicle_maintenance_history.UnitOfWork"
-    ) as mock_uow_cls:
-        mock_uow = MagicMock()
-        mock_uow.__aenter__.return_value = mock_uow
-        mock_uow_cls.return_value = mock_uow
+    arac = await seed_arac(db_session, plaka="34HIS001")
+    other_arac = await seed_arac(db_session, plaka="34HIS002")
+    db_session.add_all(
+        [
+            AracBakim(
+                arac_id=arac.id,
+                bakim_tipi=BakimTipi.PERIYODIK,
+                km_bilgisi=3000,
+                bakim_tarihi=datetime.now(timezone.utc),
+                tamamlandi=False,
+            ),
+            AracBakim(
+                arac_id=other_arac.id,
+                bakim_tipi=BakimTipi.ARIZA,
+                km_bilgisi=4000,
+                bakim_tarihi=datetime.now(timezone.utc),
+                tamamlandi=False,
+            ),
+        ]
+    )
+    await db_session.commit()
 
-        mock_record = MagicMock(id=1, arac_id=1, bakim_tipi=BakimTipi.PERIYODIK)
-        mock_uow.maintenance_repo.get_by_arac_id = AsyncMock(return_value=[mock_record])
-
-        history = await get_vehicle_maintenance_history(1)
-        assert len(history) == 1
-        assert history[0].id == 1
-        mock_uow.maintenance_repo.get_by_arac_id.assert_called_with(1)
+    history = await get_vehicle_maintenance_history(arac.id)
+    assert len(history) == 1
+    assert history[0].arac_id == arac.id

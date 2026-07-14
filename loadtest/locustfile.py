@@ -54,17 +54,18 @@ class OperatorUser(HttpUser):
 
     def on_start(self) -> None:
         """Oturum başında giriş yap, token'ı sakla."""
-        resp = self.client.post(
+        with self.client.post(
             f"{API_PREFIX}/auth/token",
             data={"username": LOAD_USER, "password": LOAD_PASS},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             name="POST /auth/token",
-        )
-        if resp.status_code != 200:
-            resp.failure(f"Login failed: {resp.status_code} {resp.text[:120]}")
-            self.token = None
-            return
-        self.token = resp.json().get("access_token")
+            catch_response=True,
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure(f"Login failed: {resp.status_code} {resp.text[:120]}")
+                self.token = None
+                return
+            self.token = resp.json().get("access_token")
 
     @property
     def _auth(self) -> dict:

@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 6/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) yerel doğrulama TAMAM, push/CI bekliyor; sıradaki: dalga 7 (route-simulation kalan parçaları), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 6/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; sıradaki: dalga 8 (anomaly, 7 numarası route-simulation'a taşınmıştı), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -39,7 +39,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
 | 4 | fuel | `modules/fuel.md` | ✅ main'de yeşil (commit `6721cdb`) |
 | 5 | driver | `modules/driver.md` | ✅ main'de yeşil (commit `9206e3f`) |
-| 6 | auth-rbac | `modules/auth-rbac.md` | 🟡 yerel doğrulama TAMAM, push bekliyor |
+| 6 | auth-rbac | `modules/auth-rbac.md` | ✅ main'de yeşil (commit `e9a0328`) |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | 🔲 |
 | 9 | import-excel | `modules/import-excel.md` | 🔲 |
@@ -220,7 +220,12 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - CI'nın kendi "Backend unit tests" + "Frontend — Unit tests with coverage" koşumu (nihai, 3. push): tüm gate'ler `success`.
 - İlk iki denemede (bir fork ajanı taşımayı yaptı, context/turn limitine 3 kez takılıp yarıda kesildi — commit/push hiç tamamlanamadı) ana oturum devraldı: kalan test dönüşümünü bitirdi, doğrulamayı tekrarladı, mypy + regresyon bulgularını bulup düzeltti, commit/push/CI-izleme döngüsünü tamamladı.
 
-## DALGA 6 — 🟡 YEREL DOĞRULAMA TAMAM (2026-07-15), push/CI bekliyor
+## DALGA 6 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-15)
+
+**Push geçmişi (3 commit):**
+1. `53a97a8` — ana taşıma (80 dosya). CI'nin "Backend unit tests" adımında kırmızı çıktı: `app/tests/unit/test_ml_train_user_audit.py` grep taramasını kaçırmış tek bir test dosyasıydı (dosya adı "ml_train"e odaklıydı, yalnız 2. testte silinen `app.api.v1.endpoints.admin_users`'a patch atıyordu) — `ImportError`.
+2. `7673486` — import + patch-target `v2.modules.auth_rbac.api.admin_user_routes` + free-function `user_service.create_user`'a çevrildi, `docker cp` ile container'a canlı uygulanıp doğrulandı (2/2 pass). Bu turda "Backend unit tests" yeşile döndü ama **"OpenAPI schema drift check"** kırmızı çıktı.
+3. `e9a0328` — kök neden: `auth_routes.py`'deki login/logout endpoint docstring'leri taşıma sırasında class-referanslı metinden (`"Login using AuthService."`) free-function-referanslı metne (`"Login using auth_service.authenticate."`) güncellenmiş ama committed `frontend/openapi.json` yeniden üretilmemişti. Container commit HEAD'ten `docker compose up -d --build` ile tamamen temiz yeniden build edildi (37 saatlik ad-hoc `docker cp` birikintisinden arındırmak için), geçici bir `alpine/socat` tüneliyle backend host'a açılıp gerçek `node scripts/dump-openapi.mjs` ile (CI'nın kullandığı BİREBİR yöntem) regenerate edildi. Bu turda hard-gates'in geri kalanı yeşildi ama **"Frontend E2E tests"** 1 testte (`route-lab.spec.ts` — auth_rbac'la ilgisiz, route-simülasyon özet render'ı, 10s timeout) flake verdi; 256/257 test (login gerektiren tüm senaryolar dahil) geçmişti — `gh run rerun --failed` ile rerun edildi, **hard-gates TAM YEŞİL** oldu (35dk1sn). Commit `e9a0328` main'in HEAD'i.
 
 **Kapsam:** auth_rbac modülü (21 dosya, 2.340 LOC) — `kullanicilar`/`roller`/`kullanici_oturumlari`/`kullanici_ayarlari` tablolarının tek sahibi, 25 route (auth+users+admin_users+admin_roles+preferences+ws_ticket). Detaylar `TASKS/modules/auth-rbac.md` + `v2/modules/auth_rbac/CLAUDE.md`.
 
@@ -241,7 +246,7 @@ Yalnız ad-hoc `docker compose exec backend pytest` ile lokal koşumda görülü
 - Grep ile dangling-import taraması (ana oturum, bağımsız): eski 12 modül yoluna (`app.core.security`, `app.core.services.{auth,user,license,preference,security}_service`, `app.infrastructure.security.{jwt_handler,permission_checker,token_blacklist}`, `app.database.repositories.{kullanici,rol,session}_repo`) hiçbir kalan referans yok.
 - Gerçek bug bulunmadı — mekanik taşıma + B.1 dönüşümü, davranış değişikliği içermiyor.
 
-**Bilinen açık:** Tam `app/tests` suite'inin uçtan uca execute edilmiş hali (yalnız collect değil) lokal olarak teyit edilmedi — CI'nın kendi "Backend unit tests" koşumu bunu netleştirecek (driver dalga 5 emsaliyle aynı strateji).
+**CI doğrulama (final, gerçek kaynak):** `gh run view 29372477800` → commit `e9a0328` için hard-gates job `success` (35dk1sn, tüm gate'ler dahil — Backend unit tests, entegrasyon paketleri, Combined coverage gate, OpenAPI schema drift check, Frontend build/lint/typecheck, Playwright E2E). Push sonrası 3 tur kırmızı çıktı (stale test import, OpenAPI docstring drift, 1 alakasız flaky E2E) — hepsi bulunup düzeltildi/rerun edildi.
 
 ## Son güncelleme
-2026-07-15 — **FAZ1 dalga 6 (auth-rbac) yerel doğrulama TAMAM**, henüz push edilmedi. Sıradaki adım: commit + main'e push + CI Hard Gates izleme. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-15 — **FAZ1 dalga 6 (auth-rbac) TAMAMLANDI ve main'de yeşil** (commit `e9a0328`, CI Hard Gates `success`, 35dk1sn). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 8 (anomaly — 7 numarası zaten route-simulation'a taşınmıştı, sırada anomaly var) yeni oturumda `TASKS/modules/anomaly.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

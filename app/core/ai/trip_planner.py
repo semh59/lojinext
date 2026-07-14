@@ -470,7 +470,7 @@ class TripPlannerEngine:
                     trip_count = int(profile_for_type.get("trip_count", 0))
 
                 route_perf = _route_type_perf(deviation_pct, trip_count)
-                # SoforService.get_score_breakdown.total → 0..100 (toplam manuel+auto)
+                # get_score_breakdown_sofor().total → 0..100 (toplam manuel+auto)
                 overall_hybrid = max(
                     0.0, min(1.0, float(score_breakdown.get("total") or 50.0) / 100.0)
                 )

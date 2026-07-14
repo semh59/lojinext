@@ -47,7 +47,9 @@ app/workers/tasks/driver_tasks.py
 8. Shim'ler + CLAUDE.md.
 
 ## 6. Kabul kriterleri
-- [ ] 14 dosya taşındı
-- [ ] SOFOR_* event payload'ları DTO doğrulaması geçti
-- [ ] Celery isim-uzayı testi 3 task için (`coaching.weekly_digest`, `coaching.evaluate_pending`, `driver.calculate_performance_score`) yeşil
-- [ ] sefer_repo'daki 6 driver-sorgusu taşıma NOTU trip görev dosyasına çapraz-referanslı
+- [x] 14 dosya taşındı — commit `f2321a1`, dedektif denetimde (2026-07-14) 14/14 doğrulandı, eski path'lerin hiçbiri kalmadı (shim yok)
+- [x] SOFOR_* event payload'ları DTO doğrulaması geçti — `test_sofor_service_delete_event.py`, `test_rag_sync_service_coverage.py`, `test_cache_invalidation_coverage.py` yeşil (`event_bus.publish()` çağrısı yok, decorator ölü kod olarak dokümante — bkz. CLAUDE.md)
+- [x] Celery isim-uzayı testi 3 task için (`coaching.weekly_digest`, `coaching.evaluate_pending`, `driver.calculate_performance_score`) yeşil — `test_coaching_tasks.py`, `test_driver_tasks.py`, `test_coaching_flow.py`, `test_coaching_endpoints.py` doğrulandı
+- [x] sefer_repo'daki 6 driver-sorgusu taşıma NOTU trip görev dosyasına çapraz-referanslı — `TASKS/modules/trip.md:22,67`'de doğrulandı
+
+**Dedektif denetim notu (2026-07-14, bağımsız 5 paralel ajan + ana oturum doğrulaması):** kod-tarafı taşıma tam ve temiz; commit `9206e3f`'te bulunup düzeltilen gerçek regresyonun (session'sız singleton repo) İKİZİ bir pre-existing bug `domain/evaluation.py::_add_guzergah_performansi`'de bulundu (taşımadan ÖNCE de vardı, dalga 5 regresyonu DEĞİL — bkz. CLAUDE.md). `import_service.py`'nin `soforler`/`sofor_ad_soyad_trigram`'a ham SQL ile yazması da pre-existing bir tablo-sahipliği istisnası (CLAUDE.md'de dokümante edildi). "Çıkış kriteri: import-linter kontratı yeşil" fiilen ölçülemez — `.importlinter` `v2.modules.driver`'ı kapsamıyor, CI adımı `continue-on-error: true` (FAZ0'ın rapor-modu kısıtı, dalga 5'e özgü değil).

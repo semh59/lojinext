@@ -128,6 +128,17 @@ aynı sınıf, taşımadan önce de böyleydi, regresyon değil).
 PII şifreli, arama trigram tablosu üzerinden yapılır), `sofor_adaptasyon`,
 `coaching_deliveries` (Feature A.5 — koçluk etki ölçümü).
 
+**Bilinen istisna (pre-existing, dalga 5'ten ÖNCE de vardı, taşımayla
+değişmedi):** `app/core/services/import_service.py` (import-excel modülü,
+henüz taşınmadı) `soforler`/`sofor_ad_soyad_trigram`'a `infrastructure/
+repository.py`'yi bypass eden HAM SQL `INSERT`/`DELETE` yazıyor (bulk Excel
+import performansı için — satır ~401-408/424-427/582, `git show
+f2321a1^:app/core/services/import_service.py`'de de aynı desen doğrulandı).
+Dedektif denetiminde (2026-07-14) bulundu, gerçek bir tablo-sahipliği
+istisnası ama davranış değişikliği gerektirmediği için bu dalgada
+dokunulmadı — import-excel dalga 9'da ele alınacak (driver repository'sinin
+bulk-insert path'ini kullanacak şekilde refactor edilebilir).
+
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
 - **trip (senkron, henüz taşınmadı)**: `get_route_profile_sofor`
@@ -211,6 +222,34 @@ asla kaydolmaz. Sonuç: bu task prod'da **hiç çalıştırılamaz** durumdaydı
 orphan). Regresyon değil, dalga 5 taşımasıyla keşfedildi; davranış
 değişikliği gerektirdiği için kapsam dışı bırakıldı (import eklemek =
 önceden hiç çalışmayan bir cron'u aktifleştirmek, ayrı bir karar).
+
+## 🔴 Bulgu (dedektif denetim, 2026-07-14): `evaluation.py::_add_guzergah_performansi` — 9206e3f'in aynı sınıf ikizi bug'ı, PRE-EXISTING
+
+`domain/evaluation.py`'deki `_add_guzergah_performansi` (satır ~279-314)
+`get_sofor_repo()`'yu (modül-seviyeli, session'sız singleton) DOĞRUDAN
+çağırıyor — `evaluate_driver`'ın aldığı `uow` parametresini bu alt-fonksiyona
+geçirmiyor. `get_guzergah_performansi` raw-SQL bir metot, session gerektirir
+→ prod'da `Database session not initialized in SoforRepository` ile patlar,
+geniş bir `except Exception: logger.warning(...)` bunu yutar. Sonuç:
+`guzergah_performansi`/`en_iyi_guzergah`/`en_kotu_guzergah` şoför
+değerlendirme karnesinde **hiçbir zaman doldurulmuyor** (sessiz özellik
+kaybı, hata değil).
+
+`9206e3f`'in düzelttiği score-breakdown/route-profile 500 bug'ıyla TAM
+AYNI kök sebep sınıfı — ama bu FARKLI: eski `app/core/entities/
+sofor_degerlendirme.py` (satır 364-371, `git show f2321a1^:...`) içinde
+BİREBİR AYNI kod zaten vardı (`SoforDegerlendirmeService.__init__`'in
+constructor-injected `self.sofor_repo`'sunu KULLANMIYOR, doğrudan
+`get_sofor_repo()` singleton'ı çağırıyordu). Yani bu **taşımadan önce de
+bozuktu** — dalga 5 regresyonu değil, olduğu gibi taşındı. Aynı nedenle
+`domain/driver_stats.py::get_route_performance` de etkilenmiş olabilir
+(hiçbir endpoint çağırmıyor, yalnız `uow` verilerek unit test'te
+kullanılıyor — prod etkisi doğrulanmadı).
+
+Kapsam dışı bırakıldı (davranış değişikliği + ayrı bug-fix kapsamı
+gerektiriyor, dalga sırasını bozmasın); ilerleyen bir oturumda
+`TASKS/bug-connection-pool-leak-under-load.md` örneğindeki gibi bağımsız
+bir bug görevi açılabilir.
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

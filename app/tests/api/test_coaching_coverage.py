@@ -1,4 +1,4 @@
-"""Coverage tests for app/api/v1/endpoints/coaching.py.
+"""Coverage tests for v2/modules/driver/api/coaching_routes.py.
 
 Targets:
 - _ensure_enabled()
@@ -7,6 +7,14 @@ Targets:
 - get_coaching_insights  (cache hit, cache miss, 404, ValueError, Exception)
 - send_coaching  (disabled, 404 sofor, no telegram_id, no bot token, success, httpx error)
 - get_coaching_effectiveness  (disabled, clamp logic, improve_rate calculation)
+
+NOT: dalga-1-6+8 dedektif denetiminde bulunan B.1 düzeltmesiyle (2026-07-15)
+route handler'lar artık `db: SessionDep` almıyor — `get_by_id` (driver
+application katmanı) ve `get_coaching_effectiveness_stats` üzerinden
+çağırıyor. Patch hedefi TÜKETEN modül (`coaching_routes.<fn>`); istisna
+`record_coaching_delivery` içindeki `get_score_breakdown_sofor` çağrısı —
+o artık `v2.modules.driver.application.record_coaching_delivery` modülünde
+yaşıyor.
 """
 
 from __future__ import annotations
@@ -17,6 +25,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 pytestmark = pytest.mark.unit
+
+ROUTES = "v2.modules.driver.api.coaching_routes"
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -40,11 +50,8 @@ def _make_insights_response(**kwargs):
     return CoachingInsightsResponse(**defaults)
 
 
-def _make_sofor(sofor_id=1, telegram_id=None):
-    sofor = MagicMock()
-    sofor.id = sofor_id
-    sofor.telegram_id = telegram_id
-    return sofor
+def _make_sofor_dict(sofor_id=1, telegram_id=None):
+    return {"id": sofor_id, "telegram_id": telegram_id}
 
 
 def _make_admin(admin_id=10):
@@ -154,11 +161,10 @@ class TestGetCoachingInsights:
         from v2.modules.driver.api.coaching_routes import get_coaching_insights
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
-        mock_db = AsyncMock()
         mock_user = MagicMock()
 
         with pytest.raises(HTTPException) as exc:
-            await get_coaching_insights(sofor_id=1, db=mock_db, current_user=mock_user)
+            await get_coaching_insights(sofor_id=1, current_user=mock_user)
         assert exc.value.status_code == 503
 
     async def test_returns_cached_result(self, monkeypatch):
@@ -173,7 +179,6 @@ class TestGetCoachingInsights:
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value=cached_json)
 
-        mock_db = AsyncMock()
         mock_user = MagicMock()
 
         import v2.modules.driver.api.coaching_routes as coaching_mod
@@ -181,9 +186,7 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
         try:
-            result = await get_coaching_insights(
-                sofor_id=1, db=mock_db, current_user=mock_user
-            )
+            result = await get_coaching_insights(sofor_id=1, current_user=mock_user)
             assert result.sofor_id == 1
         finally:
             coaching_mod._coaching_redis = original
@@ -201,17 +204,14 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
         try:
-            mock_db = AsyncMock()
-            mock_db.get = AsyncMock(return_value=None)
             mock_user = MagicMock()
 
-            with patch(
-                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
+            with (
+                patch(f"{ROUTES}._get_redis", return_value=None),
+                patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)),
             ):
                 with pytest.raises(HTTPException) as exc:
-                    await get_coaching_insights(
-                        sofor_id=99999, db=mock_db, current_user=mock_user
-                    )
+                    await get_coaching_insights(sofor_id=99999, current_user=mock_user)
                 assert exc.value.status_code == 404
         finally:
             coaching_mod._coaching_redis = original
@@ -224,9 +224,7 @@ class TestGetCoachingInsights:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_sofor = _make_sofor(sofor_id=5)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=5)
         mock_user = MagicMock()
 
         mock_engine = AsyncMock()
@@ -237,18 +235,17 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
         try:
-            with patch(
-                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
-            ):
-                with patch(
-                    "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
+            with (
+                patch(f"{ROUTES}._get_redis", return_value=None),
+                patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
+                patch(
+                    f"{ROUTES}.get_driver_coaching_engine",
                     return_value=mock_engine,
-                ):
-                    with pytest.raises(HTTPException) as exc:
-                        await get_coaching_insights(
-                            sofor_id=5, db=mock_db, current_user=mock_user
-                        )
-                    assert exc.value.status_code == 404
+                ),
+            ):
+                with pytest.raises(HTTPException) as exc:
+                    await get_coaching_insights(sofor_id=5, current_user=mock_user)
+                assert exc.value.status_code == 404
         finally:
             coaching_mod._coaching_redis = original
 
@@ -260,9 +257,7 @@ class TestGetCoachingInsights:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_sofor = _make_sofor(sofor_id=5)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=5)
         mock_user = MagicMock()
 
         mock_engine = AsyncMock()
@@ -273,18 +268,17 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = None
         try:
-            with patch(
-                "v2.modules.driver.api.coaching_routes._get_redis", return_value=None
-            ):
-                with patch(
-                    "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
+            with (
+                patch(f"{ROUTES}._get_redis", return_value=None),
+                patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
+                patch(
+                    f"{ROUTES}.get_driver_coaching_engine",
                     return_value=mock_engine,
-                ):
-                    with pytest.raises(HTTPException) as exc:
-                        await get_coaching_insights(
-                            sofor_id=5, db=mock_db, current_user=mock_user
-                        )
-                    assert exc.value.status_code == 500
+                ),
+            ):
+                with pytest.raises(HTTPException) as exc:
+                    await get_coaching_insights(sofor_id=5, current_user=mock_user)
+                assert exc.value.status_code == 500
         finally:
             coaching_mod._coaching_redis = original
 
@@ -295,9 +289,7 @@ class TestGetCoachingInsights:
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
         insights_obj = _make_insights_response(sofor_id=7)
-        mock_sofor = _make_sofor(sofor_id=7)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=7)
         mock_user = MagicMock()
 
         mock_engine = AsyncMock()
@@ -312,13 +304,14 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
         try:
-            with patch(
-                "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
-                return_value=mock_engine,
+            with (
+                patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
+                patch(
+                    f"{ROUTES}.get_driver_coaching_engine",
+                    return_value=mock_engine,
+                ),
             ):
-                result = await get_coaching_insights(
-                    sofor_id=7, db=mock_db, current_user=mock_user
-                )
+                result = await get_coaching_insights(sofor_id=7, current_user=mock_user)
             assert result.sofor_id == 7
             mock_redis.setex.assert_called_once()
         finally:
@@ -332,9 +325,7 @@ class TestGetCoachingInsights:
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
         insights_obj = _make_insights_response(sofor_id=8)
-        mock_sofor = _make_sofor(sofor_id=8)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=8)
         mock_user = MagicMock()
 
         mock_engine = AsyncMock()
@@ -349,13 +340,14 @@ class TestGetCoachingInsights:
         original = coaching_mod._coaching_redis
         coaching_mod._coaching_redis = mock_redis
         try:
-            with patch(
-                "v2.modules.driver.api.coaching_routes.get_driver_coaching_engine",
-                return_value=mock_engine,
+            with (
+                patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
+                patch(
+                    f"{ROUTES}.get_driver_coaching_engine",
+                    return_value=mock_engine,
+                ),
             ):
-                result = await get_coaching_insights(
-                    sofor_id=8, db=mock_db, current_user=mock_user
-                )
+                result = await get_coaching_insights(sofor_id=8, current_user=mock_user)
             assert result.sofor_id == 8
         finally:
             coaching_mod._coaching_redis = original
@@ -378,7 +370,7 @@ class TestSendCoaching:
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
         with pytest.raises(HTTPException) as exc:
             await send_coaching(
-                sofor_id=1, payload=payload, db=AsyncMock(), current_admin=_make_admin()
+                sofor_id=1, payload=payload, current_admin=_make_admin()
             )
         assert exc.value.status_code == 503
 
@@ -390,15 +382,14 @@ class TestSendCoaching:
         from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=None)
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
 
-        with pytest.raises(HTTPException) as exc:
-            await send_coaching(
-                sofor_id=99, payload=payload, db=mock_db, current_admin=_make_admin()
-            )
-        assert exc.value.status_code == 404
+        with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
+            with pytest.raises(HTTPException) as exc:
+                await send_coaching(
+                    sofor_id=99, payload=payload, current_admin=_make_admin()
+                )
+            assert exc.value.status_code == 404
 
     async def test_returns_409_when_telegram_id_missing(self, monkeypatch):
         from fastapi import HTTPException
@@ -408,16 +399,15 @@ class TestSendCoaching:
         from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
-        mock_sofor = _make_sofor(sofor_id=1, telegram_id=None)
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=1, telegram_id=None)
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
 
-        with pytest.raises(HTTPException) as exc:
-            await send_coaching(
-                sofor_id=1, payload=payload, db=mock_db, current_admin=_make_admin()
-            )
-        assert exc.value.status_code == 409
+        with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)):
+            with pytest.raises(HTTPException) as exc:
+                await send_coaching(
+                    sofor_id=1, payload=payload, current_admin=_make_admin()
+                )
+            assert exc.value.status_code == 409
 
     async def test_returns_503_when_bot_token_missing(self, monkeypatch):
         from fastapi import HTTPException
@@ -428,16 +418,15 @@ class TestSendCoaching:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "")
-        mock_sofor = _make_sofor(sofor_id=1, telegram_id="123456789")
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=1, telegram_id="123456789")
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
 
-        with pytest.raises(HTTPException) as exc:
-            await send_coaching(
-                sofor_id=1, payload=payload, db=mock_db, current_admin=_make_admin()
-            )
-        assert exc.value.status_code == 503
+        with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)):
+            with pytest.raises(HTTPException) as exc:
+                await send_coaching(
+                    sofor_id=1, payload=payload, current_admin=_make_admin()
+                )
+            assert exc.value.status_code == 503
 
     async def test_returns_502_on_telegram_http_error(self, monkeypatch):
         import httpx
@@ -449,9 +438,7 @@ class TestSendCoaching:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
-        mock_sofor = _make_sofor(sofor_id=2, telegram_id="987654321")
-        mock_db = AsyncMock()
-        mock_db.get = AsyncMock(return_value=mock_sofor)
+        mock_sofor = _make_sofor_dict(sofor_id=2, telegram_id="987654321")
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
         admin = _make_admin(admin_id=1)
 
@@ -462,7 +449,10 @@ class TestSendCoaching:
             )
         )
 
-        with patch("httpx.AsyncClient") as mock_client_cls:
+        with (
+            patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
+            patch("httpx.AsyncClient") as mock_client_cls,
+        ):
             mock_client_ctx = AsyncMock()
             mock_client_cls.return_value.__aenter__ = AsyncMock(
                 return_value=mock_client_ctx
@@ -470,12 +460,10 @@ class TestSendCoaching:
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
             mock_client_ctx.post = AsyncMock(return_value=mock_response)
 
-            with patch(
-                "v2.modules.driver.api.coaching_routes.log_audit_event", new=AsyncMock()
-            ):
+            with patch(f"{ROUTES}.log_audit_event", new=AsyncMock()):
                 with pytest.raises(HTTPException) as exc:
                     await send_coaching(
-                        sofor_id=2, payload=payload, db=mock_db, current_admin=admin
+                        sofor_id=2, payload=payload, current_admin=admin
                     )
         assert exc.value.status_code == 502
 
@@ -503,11 +491,10 @@ class TestSendCoaching:
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
             mock_client_ctx.post = AsyncMock(return_value=mock_response)
 
-            with patch(
-                "v2.modules.driver.api.coaching_routes.log_audit_event", new=AsyncMock()
-            ):
+            with patch(f"{ROUTES}.log_audit_event", new=AsyncMock()):
                 with patch(
-                    "v2.modules.driver.api.coaching_routes.get_score_breakdown_sofor",
+                    "v2.modules.driver.application.record_coaching_delivery"
+                    ".get_score_breakdown_sofor",
                     new=AsyncMock(return_value={"total": 75.0}),
                 ):
                     resp = await async_client.post(
@@ -537,9 +524,7 @@ class TestGetCoachingEffectiveness:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", False)
         with pytest.raises(HTTPException) as exc:
-            await get_coaching_effectiveness(
-                db=AsyncMock(), current_user=MagicMock(), days=30
-            )
+            await get_coaching_effectiveness(current_user=MagicMock(), days=30)
         assert exc.value.status_code == 503
 
     async def test_clamps_days_below_7(self, monkeypatch):
@@ -548,24 +533,22 @@ class TestGetCoachingEffectiveness:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_row = {
+        mock_stats = {
+            "window_days": 7,
             "total_sent": 5,
             "total_evaluated": 2,
             "improved": 1,
             "worsened": 1,
             "avg_delta": None,
         }
-        mock_result = MagicMock()
-        mock_result.mappings.return_value.one.return_value = mock_row
-
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        result = await get_coaching_effectiveness(
-            db=mock_db,
-            current_user=MagicMock(),
-            days=3,  # Below 7, should clamp to 7
-        )
+        with patch(
+            f"{ROUTES}.get_coaching_effectiveness_stats",
+            AsyncMock(return_value=mock_stats),
+        ):
+            result = await get_coaching_effectiveness(
+                current_user=MagicMock(),
+                days=3,  # Below 7, should clamp to 7 (clamping happens in the use-case)
+            )
         assert result.window_days == 7
 
     async def test_clamps_days_above_180(self, monkeypatch):
@@ -574,22 +557,21 @@ class TestGetCoachingEffectiveness:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_row = {
+        mock_stats = {
+            "window_days": 180,
             "total_sent": 0,
             "total_evaluated": 0,
             "improved": 0,
             "worsened": 0,
             "avg_delta": None,
         }
-        mock_result = MagicMock()
-        mock_result.mappings.return_value.one.return_value = mock_row
-
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        result = await get_coaching_effectiveness(
-            db=mock_db, current_user=MagicMock(), days=999
-        )
+        with patch(
+            f"{ROUTES}.get_coaching_effectiveness_stats",
+            AsyncMock(return_value=mock_stats),
+        ):
+            result = await get_coaching_effectiveness(
+                current_user=MagicMock(), days=999
+            )
         assert result.window_days == 180
 
     async def test_improve_rate_none_when_no_evaluated(self, monkeypatch):
@@ -598,22 +580,19 @@ class TestGetCoachingEffectiveness:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_row = {
+        mock_stats = {
+            "window_days": 30,
             "total_sent": 10,
             "total_evaluated": 0,
             "improved": 0,
             "worsened": 0,
             "avg_delta": None,
         }
-        mock_result = MagicMock()
-        mock_result.mappings.return_value.one.return_value = mock_row
-
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        result = await get_coaching_effectiveness(
-            db=mock_db, current_user=MagicMock(), days=30
-        )
+        with patch(
+            f"{ROUTES}.get_coaching_effectiveness_stats",
+            AsyncMock(return_value=mock_stats),
+        ):
+            result = await get_coaching_effectiveness(current_user=MagicMock(), days=30)
         assert result.improve_rate is None
         assert result.avg_score_delta_pct is None
 
@@ -623,22 +602,19 @@ class TestGetCoachingEffectiveness:
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
 
-        mock_row = {
+        mock_stats = {
+            "window_days": 30,
             "total_sent": 10,
             "total_evaluated": 4,
             "improved": 3,
             "worsened": 1,
             "avg_delta": 5.5,
         }
-        mock_result = MagicMock()
-        mock_result.mappings.return_value.one.return_value = mock_row
-
-        mock_db = AsyncMock()
-        mock_db.execute = AsyncMock(return_value=mock_result)
-
-        result = await get_coaching_effectiveness(
-            db=mock_db, current_user=MagicMock(), days=30
-        )
+        with patch(
+            f"{ROUTES}.get_coaching_effectiveness_stats",
+            AsyncMock(return_value=mock_stats),
+        ):
+            result = await get_coaching_effectiveness(current_user=MagicMock(), days=30)
         assert result.improve_rate == pytest.approx(3 / 4)
         assert result.avg_score_delta_pct == pytest.approx(5.5)
         assert result.caveat != ""

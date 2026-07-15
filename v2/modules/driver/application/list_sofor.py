@@ -40,7 +40,40 @@ async def get_all_paged(
     return {"items": items, "total": total}
 
 
-async def get_by_id(sofor_id: int) -> Optional[Dict[str, Any]]:
-    """Retrieves a driver by ID."""
+async def get_by_id(
+    sofor_id: int, include_inactive: bool = False
+) -> Optional[Dict[str, Any]]:
+    """Retrieves a driver by ID.
+
+    ``include_inactive=True``: pasif/soft-deleted şoförleri de döner — ham
+    PK lookup semantiğini koruyan çağıranlar (dalga-1-6+8 dedektif
+    denetiminde ``application/`` katmanına taşınan `read_sofor`/
+    performans-tekil-GET endpoint'leri/`delete_sofor`) bunu kullanır;
+    varsayılan ``False`` diğer mevcut çağıranlarla (create/update sonrası
+    refetch) tutarlıdır.
+    """
     async with UnitOfWork() as uow:
-        return await uow.sofor_repo.get_by_id(sofor_id)
+        return await uow.sofor_repo.get_by_id(
+            sofor_id, include_inactive=include_inactive
+        )
+
+
+async def get_driver_fleet_stats() -> Dict[str, int]:
+    """Sürücü filosu özeti — toplam + aktif sayısı (tek sorgu)."""
+    from sqlalchemy import text
+
+    async with UnitOfWork() as uow:
+        row = (
+            (
+                await uow.session.execute(
+                    text(
+                        "SELECT COUNT(*) AS total, "
+                        "COUNT(*) FILTER (WHERE aktif = true) AS active "
+                        "FROM soforler"
+                    )
+                )
+            )
+            .mappings()
+            .one()
+        )
+    return {"total": row["total"], "active": row["active"]}

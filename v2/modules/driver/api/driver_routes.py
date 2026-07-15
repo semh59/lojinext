@@ -24,7 +24,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
 from app.core.exceptions import DomainError
 from app.core.services.excel_service import ExcelService
-from app.database.models import Kullanici, Sofor
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import (
@@ -41,6 +41,9 @@ from v2.modules.driver.application.get_performance import get_performance_detail
 from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
 from v2.modules.driver.application.get_score import get_score_breakdown_sofor
 from v2.modules.driver.application.list_sofor import get_all_paged, get_by_id
+from v2.modules.driver.application.list_sofor import (
+    get_driver_fleet_stats as get_driver_fleet_stats_usecase,
+)
 from v2.modules.driver.application.update_sofor import update_score
 from v2.modules.driver.application.update_sofor import (
     update_sofor as update_sofor_usecase,
@@ -103,25 +106,9 @@ async def read_soforler(
 @router.get("/fleet-stats", response_model=DriverFleetStatsResponse)
 async def get_driver_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
 ):
     """Sürücü filosu özeti — tek sorgu, total + active."""
-    from sqlalchemy import text
-
-    row = (
-        (
-            await db.execute(
-                text(
-                    "SELECT COUNT(*) AS total, "
-                    "COUNT(*) FILTER (WHERE aktif = true) AS active "
-                    "FROM soforler"
-                )
-            )
-        )
-        .mappings()
-        .one()
-    )
-    return {"total": row["total"], "active": row["active"]}
+    return await get_driver_fleet_stats_usecase()
 
 
 @router.post("/", response_model=SoforResponse, status_code=201)
@@ -302,10 +289,11 @@ async def upload_drivers(
 @router.get("/{sofor_id}", response_model=SoforResponse)
 async def read_sofor(
     sofor_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
-    sofor = await db.get(Sofor, sofor_id)
+    # include_inactive=True: eski `db.get(Sofor, sofor_id)` ham PK lookup'ı
+    # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     return sofor
@@ -314,13 +302,12 @@ async def read_sofor(
 @router.get("/{sofor_id}/performance", response_model=DriverPerformanceSchema)
 async def get_driver_performance(
     sofor_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """
     Sürücü performans karnesini getir (AI Analizli)
     """
-    sofor = await db.get(Sofor, sofor_id)
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
@@ -342,7 +329,6 @@ async def get_driver_performance(
 )
 async def get_driver_score_breakdown(
     sofor_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Hibrit skorun ağırlık kırılımını (XAI) döner.
@@ -351,7 +337,7 @@ async def get_driver_score_breakdown(
     `total` ile ağırlıkları aynı response içinde gönderir. Frontend
     bunları görsel formül olarak gösterir.
     """
-    sofor = await db.get(Sofor, sofor_id)
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     try:
@@ -373,7 +359,6 @@ async def get_driver_score_breakdown(
 )
 async def get_driver_route_profile(
     sofor_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Şoförün güzergah tipi bazlı performans profilini döner.
@@ -382,7 +367,7 @@ async def get_driver_route_profile(
     gerçek/tahmini tüketim ve sapma % verilir. ``best_route_type`` en iyi
     performans gösterilen tip — yeterli veri (>=5 sefer) yoksa None.
     """
-    sofor = await db.get(Sofor, sofor_id)
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     try:
@@ -481,7 +466,6 @@ async def bulk_delete_soforler(
 @router.delete("/{sofor_id}", response_model=Dict)
 async def delete_sofor(
     sofor_id: int,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Şoför sil (Akıllı Silme / Smart Delete).
@@ -492,11 +476,11 @@ async def delete_sofor(
 
     Yetki: ADMIN
     """
-    sofor = await db.get(Sofor, sofor_id)
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
-    was_active = sofor.aktif
+    was_active = sofor.get("aktif")
 
     try:
         success = await delete_sofor_usecase(sofor_id)

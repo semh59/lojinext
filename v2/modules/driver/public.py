@@ -18,13 +18,23 @@ from v2.modules.driver.application.generate_coaching import (
     DriverCoachingEngine,
     get_driver_coaching_engine,
 )
+from v2.modules.driver.application.get_coaching_effectiveness import (
+    get_coaching_effectiveness_stats,
+)
 from v2.modules.driver.application.get_performance import get_performance_details
 from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
 from v2.modules.driver.application.get_score import (
     calculate_hybrid_score,
     get_score_breakdown_sofor,
 )
-from v2.modules.driver.application.list_sofor import get_all_paged, get_by_id
+from v2.modules.driver.application.list_sofor import (
+    get_all_paged,
+    get_by_id,
+    get_driver_fleet_stats,
+)
+from v2.modules.driver.application.record_coaching_delivery import (
+    record_coaching_delivery,
+)
 from v2.modules.driver.application.update_sofor import update_score, update_sofor
 from v2.modules.driver.domain.driver_stats import (
     calculate_elite_performance_score,
@@ -83,11 +93,15 @@ __all__ = [
     "bulk_delete",
     "get_by_id",
     "get_all_paged",
+    "get_driver_fleet_stats",
     "get_performance_details",
     # score / route profile
     "calculate_hybrid_score",
     "get_score_breakdown_sofor",
     "get_route_profile_sofor",
+    # coaching delivery / effectiveness
+    "record_coaching_delivery",
+    "get_coaching_effectiveness_stats",
     # analytics / ranking
     "get_driver_stats",
     "compare_drivers",

@@ -26,14 +26,19 @@ update_sofor(sofor_id: int, **kwargs) -> bool
 update_score(sofor_id: int, score: float) -> bool
 delete_sofor(sofor_id: int) -> bool                 # soft delete
 bulk_delete(ids: list[int]) -> dict
-get_by_id(sofor_id: int) -> dict | None
+get_by_id(sofor_id: int, include_inactive=False) -> dict | None
 get_all_paged(skip=0, limit=100, aktif_only=True, **filters) -> dict
+get_driver_fleet_stats() -> dict                    # {total, active}
 get_performance_details(sofor_id: int) -> dict      # safety/eco/compliance/total
 
 # Score / route profile
 calculate_hybrid_score(sofor_id, manual_score, uow=None) -> float          # 0.1-2.0 ML correction factor
 get_score_breakdown_sofor(sofor_id, uow=None) -> dict                      # XAI kırılımı
 get_route_profile_sofor(sofor_id, min_trips_for_best=5, uow=None) -> dict  # 4 güzergah tipi profili
+
+# Coaching delivery / etki ölçümü (Feature A.5)
+record_coaching_delivery(sofor_id, *, channel, insight_category, message, sent_by_user_id) -> int | None
+get_coaching_effectiveness_stats(days: int) -> dict
 
 # Analytics / ranking (domain/driver_stats.py)
 get_driver_stats(sofor_id=None, baslangic=None, bitis=None,
@@ -176,6 +181,25 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md` sınıfı, aynı
+  gün ikinci tur)** — `api/driver_routes.py`'nin `get_driver_fleet_stats`
+  (ham SQL COUNT), `read_sofor`/`get_driver_performance`/
+  `get_driver_score_breakdown`/`get_driver_route_profile`/`delete_sofor`
+  (`db.get(Sofor,...)` doğrudan ORM) handler'ları ve
+  `api/coaching_routes.py`'nin `get_coaching_insights`/`send_coaching`
+  (`db.get(Sofor,...)`) + `send_coaching`'in **route içinde inline
+  `UnitOfWork()` açıp `CoachingDelivery` INSERT'i yapması** (gerçek bir
+  yazma işlemi route'ta yaşıyordu) + `get_coaching_effectiveness`'in ham
+  SQL agregasyonu — hepsi `application/`'ı atlıyordu. Düzeltme:
+  `list_sofor.py::get_driver_fleet_stats`/`get_by_id(include_inactive=...)`,
+  yeni `record_coaching_delivery.py`, yeni `get_coaching_effectiveness.py`.
+  `get_by_id`'ye `include_inactive` parametresi eklendi (varsayılan
+  `False` mevcut çağıranları etkilemez); tekil-GET/PUT/DELETE handler'ları
+  `include_inactive=True` ile çağırıyor (eski `db.get()` ham PK lookup
+  davranışını koruyarak — fleet dalgasındaki `AracEntity` regresyonundan
+  ders alınarak, `SoforResponse`'a dict doğrudan geçiriliyor, ekstra
+  entity-dönüşüm katmanı YOK). Mekanik taşıma, davranış değişikliği yok.
 - **PII şifreleme + trigram arama** (`infrastructure/repository.py`):
   `ad_soyad`/`telefon` DB'de şifreli (`EncryptedPII`); `get_all`/`count_all`
   bu yüzden DB-seviyeli `ILIKE`/`ORDER BY` YAPAMAZ — filtrelenmiş küçük

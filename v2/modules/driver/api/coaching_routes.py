@@ -17,13 +17,19 @@ from typing import Annotated, Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import SessionDep, get_current_active_user, require_permissions
+from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
-from app.database.models import CoachingDelivery, Kullanici, Sofor
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.driver.application.generate_coaching import get_driver_coaching_engine
-from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+from v2.modules.driver.application.get_coaching_effectiveness import (
+    get_coaching_effectiveness_stats,
+)
+from v2.modules.driver.application.list_sofor import get_by_id
+from v2.modules.driver.application.record_coaching_delivery import (
+    record_coaching_delivery,
+)
 from v2.modules.driver.schemas import (
     CoachingEffectivenessResponse,
     CoachingInsightsResponse,
@@ -79,7 +85,6 @@ async def _get_redis():
 @router.get("/{sofor_id}/insights", response_model=CoachingInsightsResponse)
 async def get_coaching_insights(
     sofor_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """30 dk Redis cache'li koçluk önerileri."""
@@ -96,7 +101,9 @@ async def get_coaching_insights(
         except Exception as exc:
             logger.warning("Coaching cache read failed: %s", exc)
 
-    sofor = await db.get(Sofor, sofor_id)
+    # include_inactive=True: eski `db.get(Sofor, sofor_id)` ham PK lookup'ı
+    # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
@@ -144,16 +151,17 @@ def _build_telegram_text(message: str) -> str:
 async def send_coaching(
     sofor_id: int,
     payload: SendCoachingRequest,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sofor:write"))],
 ):
     """Telegram üzerinden manuel koçluk mesajı gönder."""
     _ensure_enabled()
 
-    sofor = await db.get(Sofor, sofor_id)
+    # include_inactive=True: eski `db.get(Sofor, sofor_id)` ham PK lookup'ı
+    # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
+    sofor = await get_by_id(sofor_id, include_inactive=True)
     if not sofor:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
-    if not sofor.telegram_id:
+    if not sofor.get("telegram_id"):
         raise HTTPException(
             status_code=409,
             detail="Bu şoför Telegram'a kayıtlı değil; mesaj gönderilemez",
@@ -173,7 +181,7 @@ async def send_coaching(
             resp = await client.post(
                 f"{settings.TELEGRAM_API_BASE_URL}/bot{bot_token}/sendMessage",
                 json={
-                    "chat_id": sofor.telegram_id,
+                    "chat_id": sofor.get("telegram_id"),
                     "text": text,
                     "parse_mode": "HTML",
                 },
@@ -200,34 +208,15 @@ async def send_coaching(
 
     # A.5 — CoachingDelivery kaydı (etki ölçümü için score_before snapshot'ı).
     # Engine zaten score_breakdown'u önbellekte tutmuş olabilir, ama mesaj
-    # gönderildiği tam an'daki skoru almak istiyoruz → inline UoW + free func.
-    delivery_id: int | None = None
-    try:
-        from app.database.unit_of_work import UnitOfWork
-
-        async with UnitOfWork() as uow:
-            score_snapshot = await get_score_breakdown_sofor(sofor_id, uow=uow)
-            # Virtual super-admin id=0 → DB'de kayıt yok; FK ihlali yaşamamak
-            # için yalnız gerçek user id'yi yaz.
-            sent_by = getattr(current_admin, "id", None)
-            if sent_by is not None and sent_by <= 0:
-                sent_by = None
-            delivery = CoachingDelivery(
-                sofor_id=sofor_id,
-                score_before=float(score_snapshot.get("total") or 1.0),
-                channel=payload.channel,
-                insight_category=payload.insight_category,
-                message_excerpt=payload.message[:500],
-                sent_by_user_id=sent_by,
-            )
-            uow.session.add(delivery)
-            await uow.session.flush()
-            await uow.session.refresh(delivery)
-            delivery_id = int(delivery.id)
-            await uow.commit()
-    except Exception as exc:
-        # Audit kalır ama etki ölçümü kaybedilir — kullanıcı akışı bozulmasın.
-        logger.warning("CoachingDelivery INSERT failed: %s", exc)
+    # gönderildiği tam an'daki skoru almak istiyoruz.
+    sent_by = getattr(current_admin, "id", None)
+    delivery_id = await record_coaching_delivery(
+        sofor_id,
+        channel=payload.channel,
+        insight_category=payload.insight_category,
+        message=payload.message,
+        sent_by_user_id=sent_by,
+    )
 
     await log_audit_event(
         action="coaching_sent",
@@ -252,7 +241,6 @@ async def send_coaching(
 
 @router.get("/effectiveness", response_model=CoachingEffectivenessResponse)
 async def get_coaching_effectiveness(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     days: int = 30,
 ):
@@ -262,38 +250,18 @@ async def get_coaching_effectiveness(
     güzergah değişimi, self-selection bias). UI bunu açıkça gösterir.
     """
     _ensure_enabled()
-    from datetime import timedelta
 
-    from sqlalchemy import text
-
-    days = max(7, min(180, int(days)))
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-
-    stmt = text(
-        """
-        SELECT
-            COUNT(*)                                                       AS total_sent,
-            COUNT(*) FILTER (WHERE evaluated_at IS NOT NULL)                AS total_evaluated,
-            COUNT(*) FILTER (WHERE score_delta_pct IS NOT NULL
-                                 AND score_delta_pct > 0)                   AS improved,
-            COUNT(*) FILTER (WHERE score_delta_pct IS NOT NULL
-                                 AND score_delta_pct < 0)                   AS worsened,
-            AVG(score_delta_pct) FILTER (WHERE evaluated_at IS NOT NULL)    AS avg_delta
-        FROM coaching_deliveries
-        WHERE sent_at >= :cutoff
-        """
-    )
-    row = (await db.execute(stmt, {"cutoff": cutoff})).mappings().one()
-    total_evaluated = int(row["total_evaluated"] or 0)
-    improved = int(row["improved"] or 0)
-    avg_delta = row["avg_delta"]
+    stats = await get_coaching_effectiveness_stats(days)
+    total_evaluated = stats["total_evaluated"]
+    improved = stats["improved"]
+    avg_delta = stats["avg_delta"]
 
     return CoachingEffectivenessResponse(
-        window_days=days,
-        total_sent=int(row["total_sent"] or 0),
+        window_days=stats["window_days"],
+        total_sent=stats["total_sent"],
         total_evaluated=total_evaluated,
         improved=improved,
-        worsened=int(row["worsened"] or 0),
+        worsened=stats["worsened"],
         improve_rate=(improved / total_evaluated) if total_evaluated > 0 else None,
         avg_score_delta_pct=(float(avg_delta) if avg_delta is not None else None),
         caveat=(

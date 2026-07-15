@@ -22,7 +22,7 @@ location/fleet/fuel gotcha'sı.
 """
 
 from contextlib import contextmanager
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -37,22 +37,6 @@ ROUTES = "v2.modules.driver.api.driver_routes"
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_sofor_orm(**kwargs):
-    obj = MagicMock()
-    obj.id = kwargs.get("id", 1)
-    obj.ad_soyad = kwargs.get("ad_soyad", "Ahmet Yilmaz")
-    obj.telefon = kwargs.get("telefon", "05321234567")
-    obj.ehliyet_sinifi = kwargs.get("ehliyet_sinifi", "E")
-    obj.ise_baslama = kwargs.get("ise_baslama", date(2020, 1, 1))
-    obj.score = kwargs.get("score", 1.0)
-    obj.manual_score = kwargs.get("manual_score", 1.0)
-    obj.aktif = kwargs.get("aktif", True)
-    obj.notlar = kwargs.get("notlar", None)
-    obj.telegram_id = kwargs.get("telegram_id", None)
-    obj.created_at = kwargs.get("created_at", datetime(2020, 1, 1, tzinfo=timezone.utc))
-    return obj
 
 
 @contextmanager
@@ -189,12 +173,10 @@ async def test_update_driver_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_driver_service_returns_false(async_client, admin_auth_headers):
     """DELETE /{id} when sofor exists but delete_sofor_usecase returns False → 404."""
-    sofor = _make_sofor_orm(id=5, aktif=True)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 5, "aktif": True}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(f"{ROUTES}.delete_sofor_usecase", AsyncMock(return_value=False)),
     ):
         resp = await async_client.delete(
@@ -207,12 +189,10 @@ async def test_delete_driver_service_returns_false(async_client, admin_auth_head
 @pytest.mark.asyncio
 async def test_delete_driver_sefer_conflict(async_client, admin_auth_headers):
     """DELETE /{id} exception message contains 'sefer kayıtları' → 409."""
-    sofor = _make_sofor_orm(id=7, aktif=True)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 7, "aktif": True}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.delete_sofor_usecase",
             AsyncMock(side_effect=Exception("aktif sefer kayıtları mevcut")),
@@ -228,12 +208,10 @@ async def test_delete_driver_sefer_conflict(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_driver_generic_exception(async_client, admin_auth_headers):
     """DELETE /{id} generic Exception (no 'sefer' keyword) → 500."""
-    sofor = _make_sofor_orm(id=8, aktif=True)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 8, "aktif": True}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.delete_sofor_usecase",
             AsyncMock(side_effect=RuntimeError("db gone")),
@@ -306,12 +284,10 @@ async def test_update_score_generic_exception(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_performance_generic_exception(async_client, admin_auth_headers):
     """GET /{id}/performance generic Exception → 500."""
-    sofor = _make_sofor_orm(id=10)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 10}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_performance_details",
             AsyncMock(side_effect=RuntimeError("ml fail")),
@@ -333,12 +309,10 @@ async def test_performance_generic_exception(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_score_breakdown_value_error(async_client, admin_auth_headers):
     """GET /{id}/score-breakdown use-case raises ValueError → 404."""
-    sofor = _make_sofor_orm(id=11)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 11}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_score_breakdown_sofor",
             AsyncMock(side_effect=ValueError("skor verisi yok")),
@@ -355,12 +329,10 @@ async def test_score_breakdown_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_score_breakdown_generic_exception(async_client, admin_auth_headers):
     """GET /{id}/score-breakdown generic Exception → 500."""
-    sofor = _make_sofor_orm(id=12)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 12}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_score_breakdown_sofor",
             AsyncMock(side_effect=RuntimeError("crash")),
@@ -382,12 +354,10 @@ async def test_score_breakdown_generic_exception(async_client, admin_auth_header
 @pytest.mark.asyncio
 async def test_route_profile_value_error(async_client, admin_auth_headers):
     """GET /{id}/route-profile use-case raises ValueError → 404."""
-    sofor = _make_sofor_orm(id=13)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 13}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_route_profile_sofor",
             AsyncMock(side_effect=ValueError("profil verisi yok")),
@@ -404,12 +374,10 @@ async def test_route_profile_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_route_profile_generic_exception(async_client, admin_auth_headers):
     """GET /{id}/route-profile generic Exception → 500."""
-    sofor = _make_sofor_orm(id=14)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = {"id": 14}
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_route_profile_sofor",
             AsyncMock(side_effect=RuntimeError("crash")),

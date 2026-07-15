@@ -47,6 +47,25 @@ def _make_sofor_orm(**kwargs):
     return obj
 
 
+def _make_sofor_dict(**kwargs):
+    """Return a dict compatible with `get_by_id`'s return shape (SoforResponse)."""
+    return {
+        "id": kwargs.get("id", 1),
+        "ad_soyad": kwargs.get("ad_soyad", "Ahmet Yilmaz"),
+        "telefon": kwargs.get("telefon", "05321234567"),
+        "ehliyet_sinifi": kwargs.get("ehliyet_sinifi", "E"),
+        "ise_baslama": kwargs.get("ise_baslama", date(2020, 1, 1)),
+        "score": kwargs.get("score", 1.0),
+        "manual_score": kwargs.get("manual_score", 1.0),
+        "aktif": kwargs.get("aktif", True),
+        "notlar": kwargs.get("notlar", None),
+        "telegram_id": kwargs.get("telegram_id", None),
+        "created_at": kwargs.get(
+            "created_at", datetime(2020, 1, 1, tzinfo=timezone.utc)
+        ),
+    }
+
+
 def _make_paged_result(items=None):
     """Return get_all_paged() return value."""
     if items is None:
@@ -150,17 +169,11 @@ async def test_fleet_stats_no_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_fleet_stats_success(async_client, admin_auth_headers):
-    """GET /fleet-stats with mocked DB session → 200."""
-    mock_row = {"total": 20, "active": 15}
-    mock_mapping = MagicMock()
-    mock_mapping.one.return_value = mock_row
-    mock_result = MagicMock()
-    mock_result.mappings.return_value = mock_mapping
-
-    mock_session = AsyncMock()
-    mock_session.execute = AsyncMock(return_value=mock_result)
-
-    with _override_get_db(mock_session):
+    """GET /fleet-stats with mocked use-case → 200."""
+    with patch(
+        f"{ROUTES}.get_driver_fleet_stats_usecase",
+        AsyncMock(return_value={"total": 20, "active": 15}),
+    ):
         resp = await async_client.get(
             "/api/v1/drivers/fleet-stats", headers=admin_auth_headers
         )
@@ -186,10 +199,7 @@ async def test_get_driver_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_get_driver_not_found(async_client, admin_auth_headers):
     """GET /{id} for non-existent driver → 404."""
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=None)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
         resp = await async_client.get(
             "/api/v1/drivers/9999", headers=admin_auth_headers
         )
@@ -200,12 +210,9 @@ async def test_get_driver_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_get_driver_success(async_client, admin_auth_headers):
     """GET /{id} → 200 with driver data."""
-    sofor = _make_sofor_orm(id=42)
+    sofor = _make_sofor_dict(id=42)
 
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)):
         resp = await async_client.get("/api/v1/drivers/42", headers=admin_auth_headers)
 
     assert resp.status_code == 200
@@ -359,10 +366,7 @@ async def test_delete_driver_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_delete_driver_not_found(async_client, admin_auth_headers):
     """DELETE /{id} driver doesn't exist → 404."""
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=None)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
         resp = await async_client.delete(
             "/api/v1/drivers/9999", headers=admin_auth_headers
         )
@@ -373,12 +377,10 @@ async def test_delete_driver_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_active_driver_success(async_client, admin_auth_headers):
     """DELETE /{id} active driver → soft-delete → 200 'pasife çekildi'."""
-    sofor = _make_sofor_orm(id=5, aktif=True)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = _make_sofor_dict(id=5, aktif=True)
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(f"{ROUTES}.delete_sofor_usecase", AsyncMock(return_value=True)),
     ):
         resp = await async_client.delete(
@@ -394,12 +396,10 @@ async def test_delete_active_driver_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_inactive_driver_success(async_client, admin_auth_headers):
     """DELETE /{id} inactive driver → hard-delete → 200 'tamamen silindi'."""
-    sofor = _make_sofor_orm(id=6, aktif=False)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = _make_sofor_dict(id=6, aktif=False)
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(f"{ROUTES}.delete_sofor_usecase", AsyncMock(return_value=True)),
     ):
         resp = await async_client.delete(
@@ -558,10 +558,7 @@ async def test_performance_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_performance_not_found(async_client, admin_auth_headers):
     """GET /{id}/performance for non-existent driver → 404."""
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=None)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
         resp = await async_client.get(
             "/api/v1/drivers/9999/performance",
             headers=admin_auth_headers,
@@ -573,12 +570,10 @@ async def test_performance_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_performance_success(async_client, admin_auth_headers):
     """GET /{id}/performance → 200 with performance data."""
-    sofor = _make_sofor_orm(id=7)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = _make_sofor_dict(id=7)
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_performance_details",
             AsyncMock(
@@ -617,10 +612,7 @@ async def test_score_breakdown_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_score_breakdown_not_found(async_client, admin_auth_headers):
     """GET /{id}/score-breakdown for non-existent driver → 404."""
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=None)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
         resp = await async_client.get(
             "/api/v1/drivers/9999/score-breakdown",
             headers=admin_auth_headers,
@@ -632,12 +624,10 @@ async def test_score_breakdown_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_score_breakdown_success(async_client, admin_auth_headers):
     """GET /{id}/score-breakdown → 200 with XAI breakdown."""
-    sofor = _make_sofor_orm(id=8)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = _make_sofor_dict(id=8)
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_score_breakdown_sofor",
             AsyncMock(
@@ -683,10 +673,7 @@ async def test_route_profile_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_route_profile_not_found(async_client, admin_auth_headers):
     """GET /{id}/route-profile for non-existent driver → 404."""
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=None)
-
-    with _override_get_db(mock_session):
+    with patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=None)):
         resp = await async_client.get(
             "/api/v1/drivers/9999/route-profile",
             headers=admin_auth_headers,
@@ -698,12 +685,10 @@ async def test_route_profile_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_route_profile_success(async_client, admin_auth_headers):
     """GET /{id}/route-profile → 200 with profile data."""
-    sofor = _make_sofor_orm(id=9)
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(return_value=sofor)
+    sofor = _make_sofor_dict(id=9)
 
     with (
-        _override_get_db(mock_session),
+        patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=sofor)),
         patch(
             f"{ROUTES}.get_route_profile_sofor",
             AsyncMock(

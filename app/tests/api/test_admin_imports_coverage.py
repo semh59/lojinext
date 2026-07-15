@@ -1,60 +1,22 @@
-"""Coverage tests for app/api/v1/endpoints/admin_imports.py (43% → ≥75%).
+"""Coverage tests for v2/modules/import_excel/api/import_routes.py (43% → ≥75%).
 
 Covers: preview, commit, rollback, history endpoints including
 error paths and edge cases not in the existing test_admin_imports.py.
+
+B.1 free-function geçişi (dalga 9): route artık DI-injected bir servis
+almıyor, ``parse_and_preview``/``execute_import``/``rollback_import``
+free function'larını modül seviyesinde import edip doğrudan çağırıyor —
+bu yüzden ``app.dependency_overrides`` yerine ``unittest.mock.patch``
+hedefi tüketen modül (``v2.modules.import_excel.api.import_routes.<fn>``).
 """
 
 import json
 from io import BytesIO
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 pytestmark = pytest.mark.unit
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _excel_upload(content: bytes = b"fake", filename: str = "test.xlsx"):
-    return {
-        "file": (
-            filename,
-            BytesIO(content),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-    }
-
-
-def _mock_import_service(
-    preview_return=None,
-    execute_return=None,
-    rollback_return=True,
-):
-    # Tier E madde 33: shapes match ImportService.parse_and_preview /
-    # execute_import's real return dicts (app/core/services/import_service.py)
-    # — the endpoints now have response_model=ImportPreviewResponse /
-    # ImportCommitResponse, so a mismatched mock 422s instead of silently
-    # passing through untyped.
-    svc = AsyncMock()
-    svc.parse_and_preview = AsyncMock(
-        return_value=preview_return
-        or {
-            "filename": "test.xlsx",
-            "aktarim_tipi": "arac",
-            "headers": ["Plaka", "Mesafe"],
-            "total_rows": 0,
-            "preview": [],
-        }
-    )
-    svc.execute_import = AsyncMock(
-        return_value=execute_return
-        or {"job_id": 1, "basarili": 5, "hatali": 0, "errors": {}}
-    )
-    svc.rollback_import = AsyncMock(return_value=rollback_return)
-    return svc
 
 
 # ---------------------------------------------------------------------------
@@ -64,16 +26,17 @@ def _mock_import_service(
 
 class TestPreviewImport:
     async def test_preview_success(self, async_client, admin_auth_headers):
-        mock_svc = _mock_import_service()
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes.parse_and_preview",
+            new_callable=AsyncMock,
+        ) as mock_preview:
+            mock_preview.return_value = {
+                "filename": "test.xlsx",
+                "aktarim_tipi": "arac",
+                "headers": ["Plaka", "Mesafe"],
+                "total_rows": 0,
+                "preview": [],
+            }
             response = await async_client.post(
                 "/api/v1/admin/imports/preview",
                 headers=admin_auth_headers,
@@ -86,26 +49,18 @@ class TestPreviewImport:
                     )
                 },
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 200
-        mock_svc.parse_and_preview.assert_called_once()
+        mock_preview.assert_called_once()
 
     async def test_preview_generic_exception_returns_400(
         self, async_client, admin_auth_headers
     ):
-        mock_svc = _mock_import_service()
-        mock_svc.parse_and_preview = AsyncMock(side_effect=Exception("parse error"))
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes.parse_and_preview",
+            new_callable=AsyncMock,
+        ) as mock_preview:
+            mock_preview.side_effect = Exception("parse error")
             response = await async_client.post(
                 "/api/v1/admin/imports/preview",
                 headers=admin_auth_headers,
@@ -114,8 +69,6 @@ class TestPreviewImport:
                     "file": ("test.xlsx", BytesIO(b"x"), "application/octet-stream")
                 },
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 400
 
@@ -144,16 +97,16 @@ class TestPreviewImport:
 
 class TestCommitImport:
     async def test_commit_success(self, async_client, admin_auth_headers):
-        mock_svc = _mock_import_service()
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes.execute_import",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = {
+                "job_id": 1,
+                "basarili": 5,
+                "hatali": 0,
+                "errors": {},
+            }
             mapping = json.dumps({"Plaka": "plaka", "Mesafe": "mesafe_km"})
             response = await async_client.post(
                 "/api/v1/admin/imports/commit",
@@ -163,33 +116,17 @@ class TestCommitImport:
                     "file": ("test.xlsx", BytesIO(b"data"), "application/octet-stream")
                 },
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 200
-        mock_svc.execute_import.assert_called_once()
+        mock_execute.assert_called_once()
 
     async def test_commit_invalid_json_mapping(self, async_client, admin_auth_headers):
-        mock_svc = _mock_import_service()
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
-            response = await async_client.post(
-                "/api/v1/admin/imports/commit",
-                headers=admin_auth_headers,
-                data={"aktarim_tipi": "arac", "mapping_str": "not-valid-json"},
-                files={
-                    "file": ("test.xlsx", BytesIO(b"data"), "application/octet-stream")
-                },
-            )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
+        response = await async_client.post(
+            "/api/v1/admin/imports/commit",
+            headers=admin_auth_headers,
+            data={"aktarim_tipi": "arac", "mapping_str": "not-valid-json"},
+            files={"file": ("test.xlsx", BytesIO(b"data"), "application/octet-stream")},
+        )
 
         assert response.status_code == 400
         body = response.json()
@@ -200,17 +137,11 @@ class TestCommitImport:
     async def test_commit_generic_exception_returns_400(
         self, async_client, admin_auth_headers
     ):
-        mock_svc = _mock_import_service()
-        mock_svc.execute_import = AsyncMock(side_effect=Exception("db error"))
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes.execute_import",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.side_effect = Exception("db error")
             mapping = json.dumps({"Plaka": "plaka"})
             response = await async_client.post(
                 "/api/v1/admin/imports/commit",
@@ -220,8 +151,6 @@ class TestCommitImport:
                     "file": ("test.xlsx", BytesIO(b"data"), "application/octet-stream")
                 },
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 400
 
@@ -242,22 +171,15 @@ class TestCommitImport:
 
 class TestRollbackImport:
     async def test_rollback_success(self, async_client, admin_auth_headers):
-        mock_svc = _mock_import_service(rollback_return=True)
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes._rollback_import",
+            new_callable=AsyncMock,
+        ) as mock_rollback:
+            mock_rollback.return_value = True
             response = await async_client.post(
                 "/api/v1/admin/imports/42/rollback",
                 headers=admin_auth_headers,
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 200
         data = response.json()
@@ -266,23 +188,15 @@ class TestRollbackImport:
     async def test_rollback_generic_exception_returns_400(
         self, async_client, admin_auth_headers
     ):
-        mock_svc = _mock_import_service()
-        mock_svc.rollback_import = AsyncMock(side_effect=Exception("rollback failed"))
-
-        from app.core.services.import_service import get_import_service
-        from app.main import app
-
-        async def _fake_svc():
-            return mock_svc
-
-        app.dependency_overrides[get_import_service] = _fake_svc
-        try:
+        with patch(
+            "v2.modules.import_excel.api.import_routes._rollback_import",
+            new_callable=AsyncMock,
+        ) as mock_rollback:
+            mock_rollback.side_effect = Exception("rollback failed")
             response = await async_client.post(
                 "/api/v1/admin/imports/42/rollback",
                 headers=admin_auth_headers,
             )
-        finally:
-            app.dependency_overrides.pop(get_import_service, None)
 
         assert response.status_code == 400
 

@@ -378,9 +378,9 @@ async def get_excel_template(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Download the location import template."""
-    from app.core.services.excel_service import ExcelService
+    from v2.modules.import_excel.public import generate_template
 
-    content = await ExcelService.generate_template("guzergah")
+    content = await generate_template("guzergah")
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -401,10 +401,10 @@ async def export_locations(
     uow: UOWDep,
 ):
     """Export locations as Excel."""
-    from app.core.services.excel_service import ExcelService
+    from v2.modules.import_excel.public import export_data
 
     data = await uow.lokasyon_repo.get_all()
-    content = await ExcelService.export_data(data, type="lokasyon_listesi")
+    content = await export_data(data, type="lokasyon_listesi")
 
     return Response(
         content=content,
@@ -445,16 +445,15 @@ async def upload_guzergahlar(
 ):
     """Upload routes from an Excel file."""
     _validate_excel_upload(file)
-    from app.core.services.import_service import get_import_service
+    from v2.modules.import_excel.public import import_routes
 
-    service = get_import_service()
     content = await file.read()
     if len(content) > _MAX_UPLOAD_BYTES:
         raise HTTPException(
             status_code=413,
             detail=f"Dosya boyutu sınırı aşıldı (maks {_MAX_UPLOAD_BYTES // 1024 // 1024} MB).",
         )
-    count, errors = await service.import_routes(content)
+    count, errors = await import_routes(content)
     return {"count": count, "errors": errors}
 
 

@@ -61,27 +61,27 @@ def _uow_ctx(uow_inst):
 
 class TestOcrTaskRegistration:
     def test_task_is_importable(self):
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         assert process_belge_ocr is not None
 
     def test_task_name(self):
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         assert process_belge_ocr.name == "ocr.process_belge"
 
     def test_task_max_retries(self):
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         assert process_belge_ocr.max_retries == 3
 
     def test_task_acks_late(self):
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         assert process_belge_ocr.acks_late is True
 
     def test_task_default_retry_delay(self):
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         assert process_belge_ocr.default_retry_delay == 30
 
@@ -94,7 +94,7 @@ class TestOcrTaskRegistration:
 class TestOcrTaskBelgeNotFound:
     def test_returns_not_found_when_belge_missing(self):
         """When SeferBelge is not in DB, task returns {ok: False, error: not_found}."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         uow_inst = _make_uow_inst(belge=None)
         enter_p, exit_p = _uow_ctx(uow_inst)
@@ -108,7 +108,7 @@ class TestOcrTaskBelgeNotFound:
 class TestOcrTaskFileReadError:
     def test_retries_on_os_error(self):
         """OSError when opening the file triggers a retry."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -126,7 +126,7 @@ class TestOcrTaskFileReadError:
 class TestOcrTaskOcrServiceError:
     def test_sets_hata_status_on_network_error(self):
         """HTTP error from OCR service sets ocr_durumu='hata' and triggers retry."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -152,7 +152,7 @@ class TestOcrTaskOcrServiceError:
                 ),
             ):
                 with patch(
-                    "app.workers.tasks.ocr_tasks.get_monitored_client",
+                    "v2.modules.import_excel.infrastructure.tasks.get_monitored_client",
                     return_value=fake_client,
                 ):
                     with pytest.raises(Exception):
@@ -164,7 +164,7 @@ class TestOcrTaskOcrServiceError:
 class TestOcrTaskSuccess:
     def test_successful_ocr_sets_fields(self):
         """Happy path: belge fields are populated after successful OCR."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -197,7 +197,7 @@ class TestOcrTaskSuccess:
                 ),
             ):
                 with patch(
-                    "app.workers.tasks.ocr_tasks.get_monitored_client",
+                    "v2.modules.import_excel.infrastructure.tasks.get_monitored_client",
                     return_value=fake_client,
                 ):
                     result = process_belge_ocr.apply(args=[1]).get()
@@ -209,7 +209,7 @@ class TestOcrTaskSuccess:
 
     def test_successful_ocr_increments_metric(self):
         """On success the Prometheus counter label 'islendi' is incremented."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -242,11 +242,11 @@ class TestOcrTaskSuccess:
                 ),
             ):
                 with patch(
-                    "app.workers.tasks.ocr_tasks.get_monitored_client",
+                    "v2.modules.import_excel.infrastructure.tasks.get_monitored_client",
                     return_value=fake_client,
                 ):
                     with patch(
-                        "app.workers.tasks.ocr_tasks.telegram_belge_ocr_total",
+                        "v2.modules.import_excel.infrastructure.tasks.telegram_belge_ocr_total",
                         mock_metric,
                     ):
                         process_belge_ocr.apply(args=[1]).get()
@@ -255,7 +255,7 @@ class TestOcrTaskSuccess:
 
     def test_ocr_result_missing_fields_handled_gracefully(self):
         """If OCR response lacks fields, belge gets None values (no crash)."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -283,7 +283,7 @@ class TestOcrTaskSuccess:
                 ),
             ):
                 with patch(
-                    "app.workers.tasks.ocr_tasks.get_monitored_client",
+                    "v2.modules.import_excel.infrastructure.tasks.get_monitored_client",
                     return_value=fake_client,
                 ):
                     result = process_belge_ocr.apply(args=[1]).get()
@@ -296,7 +296,7 @@ class TestOcrTaskSuccess:
 class TestOcrTaskMetricOnError:
     def test_error_metric_incremented_on_http_failure(self):
         """On OCR service error, counter label 'hata' is incremented."""
-        from app.workers.tasks.ocr_tasks import process_belge_ocr
+        from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
         belge = _make_belge()
         uow_inst = _make_uow_inst(belge=belge)
@@ -323,11 +323,11 @@ class TestOcrTaskMetricOnError:
                 ),
             ):
                 with patch(
-                    "app.workers.tasks.ocr_tasks.get_monitored_client",
+                    "v2.modules.import_excel.infrastructure.tasks.get_monitored_client",
                     return_value=fake_client,
                 ):
                     with patch(
-                        "app.workers.tasks.ocr_tasks.telegram_belge_ocr_total",
+                        "v2.modules.import_excel.infrastructure.tasks.telegram_belge_ocr_total",
                         mock_metric,
                     ):
                         with pytest.raises(Exception):

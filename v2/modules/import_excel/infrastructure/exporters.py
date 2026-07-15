@@ -316,9 +316,9 @@ def _export_data_sync(data: List[Dict[str, Any]], type: str = "generic") -> byte
                     cell_value = _json.dumps(
                         cell_value,
                         ensure_ascii=False,
-                        default=lambda o: float(o)
-                        if isinstance(o, Decimal)
-                        else str(o),
+                        default=lambda o: (
+                            float(o) if isinstance(o, Decimal) else str(o)
+                        ),
                     )
                     fmt = cell_format
 

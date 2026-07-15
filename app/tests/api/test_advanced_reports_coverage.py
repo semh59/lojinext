@@ -348,7 +348,7 @@ async def test_excel_export_fleet_summary(async_client, admin_auth_headers):
             new=AsyncMock(return_value={"total": 5, "vehicles": []}),
         ),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "app.api.v1.endpoints.advanced_reports.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -377,7 +377,7 @@ async def test_excel_export_driver_comparison(async_client, admin_auth_headers):
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "app.api.v1.endpoints.advanced_reports.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -400,7 +400,7 @@ async def test_excel_export_cost_trend(async_client, admin_auth_headers):
     with (
         patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "app.api.v1.endpoints.advanced_reports.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -660,7 +660,7 @@ async def test_excel_export_vehicle_comparison(async_client, admin_auth_headers)
     with (
         patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "app.api.v1.endpoints.advanced_reports.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):

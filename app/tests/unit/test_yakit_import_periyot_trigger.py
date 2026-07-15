@@ -4,8 +4,9 @@
 parse_yakit_excel / yakit_service / period_service kullanıyordu ve **iç çağrıları**
 doğruluyordu (`recalc_calls == {1,2}`, `isinstance(x, YakitCreate)`). Artık gerçek
 bir `.xlsx` inşa edilir, gerçek `Arac` kayıtları DB'ye seed'lenir ve gerçek
-`container.import_service` çalıştırılıp **DB sonucu** (yakit_alimlari / yakit_periyotlari)
-doğrulanır — in-process mock yok.
+``process_yakit_import`` (v2.modules.import_excel, free function — dalga 9'da
+``ImportService`` sınıfı kaldırıldı) çalıştırılıp **DB sonucu** (yakit_alimlari /
+yakit_periyotlari) doğrulanır — in-process mock yok.
 
 Üretim akışı: Excel → parse_yakit_excel → plaka→arac eşleme → bulk_add_yakit
 (YakitCreate listesi) → etkilenen her araç için recalculate_vehicle_periods.
@@ -27,6 +28,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.database.models import Arac, YakitAlimi, YakitPeriyot
+from v2.modules.import_excel.application.yakit_importer import process_yakit_import
 
 pytestmark = pytest.mark.integration
 
@@ -68,14 +70,6 @@ async def _seed_arac(db_session, plaka: str) -> int:
     return arac.id
 
 
-def _import_service():
-    """Gerçek, wired ImportService (container) — UoW conftest tarafından test DB'ye patch'li."""
-    from app.core.container import get_container, reset_container
-
-    reset_container()
-    return get_container().import_service
-
-
 @pytest.mark.integration
 async def test_yakit_import_persists_to_db(db_session):
     """Geçerli satır → gerçek import → yakit_alimlari'na YakitAlimi kaydı yazılır."""
@@ -93,7 +87,7 @@ async def test_yakit_import_persists_to_db(db_session):
         ]
     )
 
-    count, errors = await _import_service().process_yakit_import(xlsx)
+    count, errors = await process_yakit_import(xlsx)
 
     assert count == 1, f"errors={errors}"
     assert errors == []
@@ -142,7 +136,7 @@ async def test_yakit_import_multi_arac_persists_and_recalcs(db_session):
         ]
     )
 
-    count, errors = await _import_service().process_yakit_import(xlsx)
+    count, errors = await process_yakit_import(xlsx)
 
     assert count == 3, f"errors={errors}"
     assert errors == []
@@ -158,10 +152,10 @@ async def test_yakit_import_multi_arac_persists_and_recalcs(db_session):
         ).scalar_one()
         assert n == expected, f"arac={aid} beklenen={expected} oldu={n}"
 
-    # NOT (0-mock bulgusu): gerçek `recalculate_vehicle_periods`, import_service'ten
+    # NOT (0-mock bulgusu): gerçek `recalculate_vehicle_periods`, process_yakit_import'tan
     # çağrılınca "Database session not initialized in YakitRepository" ile düşüyor
     # (session-less singleton repo — CLAUDE.md "Singleton repos need UoW" gotcha'sı).
-    # Hata import_service'te yutuluyor (warning), yani yakıt import sonrası periyot
+    # Hata process_yakit_import'ta yutuluyor (warning), yani yakıt import sonrası periyot
     # SESSİZCE hesaplanmıyor — muhtemel gerçek prod bug'ı. Eski mock testi period
     # service'i mock'ladığı için bunu gizliyordu. Periyot satırı assertion'ı bu yüzden
     # yapılamıyor; bug ayrı ele alınacak. Burada doğrulanabilir olanı (yakıt fişlerinin
@@ -197,7 +191,7 @@ async def test_yakit_import_unknown_plaka_row_error(db_session):
         ]
     )
 
-    count, errors = await _import_service().process_yakit_import(xlsx)
+    count, errors = await process_yakit_import(xlsx)
 
     assert count == 1, f"errors={errors}"
     assert len(errors) == 1
@@ -226,7 +220,7 @@ async def test_yakit_import_missing_tarih_skipped_by_parser(db_session):
         ]
     )
 
-    count, errors = await _import_service().process_yakit_import(xlsx)
+    count, errors = await process_yakit_import(xlsx)
 
     # Tek satır da tarih-eksikti → parser onu atladı → geriye veri kalmadı →
     # process "Excel dosyasında veri bulunamadı." raporlar (process_yakit_import'un

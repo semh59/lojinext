@@ -9,8 +9,11 @@ from typing import Any, Dict, List
 import pandas as pd
 
 from app.core.exceptions import ExcelExportError
-from app.core.services.excel_column_map import SafeColumnMapper, _parse_date_flexible
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.import_excel.domain.field_validators import (
+    parse_date_flexible as _parse_date_flexible,
+)
+from v2.modules.import_excel.infrastructure.column_mapper import SafeColumnMapper
 
 logger = get_logger(__name__)
 

@@ -183,8 +183,9 @@ class TestContainerInitialization:
 
         assert container.sefer_service is not None
         assert container.analiz_service is not None
-        assert container.import_service is not None
         assert container.report_service is not None
+        # container.import_service removed — ImportService class deleted in
+        # dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
 
     def test_event_bus_initialized(self):
         """EventBus initialize edilmeli."""
@@ -245,22 +246,11 @@ class TestDependencyInjection:
         assert container.analiz_service.sefer_repo is container.sefer_repo
         assert container.analiz_service.yakit_repo is container.yakit_repo
 
-    def test_import_service_has_services_and_repos(self):
-        """ImportService hem servis hem repo almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        # Repos
-        assert container.import_service.arac_repo is container.arac_repo
-        assert container.import_service.sofor_repo is container.sofor_repo
-        assert container.import_service.lokasyon_repo is container.lokasyon_repo
-        # Services
-        assert container.import_service.sefer_service is container.sefer_service
-        # container.import_service.yakit_service removed — ImportService no
-        # longer takes a yakit_service constructor kwarg (dalga 4, B.1
-        # free-function refactor); it imports bulk_add_yakit/
-        # recalculate_vehicle_periods from v2.modules.fuel.application inline.
+    # test_import_service_has_services_and_repos removed — ImportService
+    # class + container.import_service property both deleted in dalga 9
+    # (B.1 free-function refactor, v2.modules.import_excel); each use-case
+    # opens its own UnitOfWork() or reaches container.sefer_service inline
+    # (bkz. v2/modules/import_excel/CLAUDE.md).
 
     def test_report_service_has_all_repos(self):
         """ReportService tüm repository'leri almalı."""
@@ -339,26 +329,10 @@ class TestMockInjection:
         assert service.sefer_repo is mock_sefer_repo
         assert service.yakit_repo is mock_yakit_repo
 
-    def test_import_service_accepts_mocks(
-        self, mock_arac_repo, mock_sofor_repo, mock_event_bus
-    ):
-        """ImportService mock bağımlılıklar kabul etmeli."""
-        from app.core.services.import_service import ImportService
-        from app.core.services.sefer_service import SeferService
-
-        mock_sefer_service = Mock(spec=SeferService)
-
-        service = ImportService(
-            arac_repo=mock_arac_repo,
-            sofor_repo=mock_sofor_repo,
-            sefer_service=mock_sefer_service,
-        )
-
-        assert service.arac_repo is mock_arac_repo
-        assert service.sofor_repo is mock_sofor_repo
-        assert service.sefer_service is mock_sefer_service
-        # service.yakit_service removed — ImportService no longer takes a
-        # yakit_service constructor kwarg (dalga 4, B.1 free-function refactor).
+    # test_import_service_accepts_mocks removed — ImportService class
+    # deleted in dalga 9 (B.1 free-function refactor, v2.modules.import_excel);
+    # its use-cases (execute_import/process_*_import) take no constructor,
+    # they open their own UnitOfWork() or reach container.sefer_service inline.
 
 
 # =============================================================================
@@ -391,15 +365,9 @@ class TestFactoryFunctions:
     # class + container.sofor_service property + get_sofor_service() factory
     # all deleted in dalga 5 (B.1 free-function refactor, v2.modules.driver).
 
-    def test_get_import_service_returns_container_instance(self):
-        """get_import_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
-        from app.core.services.import_service import get_import_service
-
-        container = get_container()
-        service = get_import_service()
-
-        assert service is container.import_service
+    # test_get_import_service_returns_container_instance removed —
+    # get_import_service() factory + container.import_service property both
+    # deleted in dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
 
     def test_get_report_service_returns_container_instance(self):
         """get_report_service() Container'daki instance'ı döndürmeli."""
@@ -588,15 +556,14 @@ class TestContainerIntegration:
 
         container = get_container()
 
-        # ImportService -> SeferService -> SeferRepo
-        # ImportService'in sefer_service'i, container'ın sefer_service'i olmalı
-        # ve o da container'ın sefer_repo'sunu kullanmalı
-        assert container.import_service.sefer_service.repo is container.sefer_repo
+        # SeferService -> SeferRepo
+        assert container.sefer_service.repo is container.sefer_repo
 
-        # ImportService no longer holds a YakitService (dalga 4, B.1
-        # free-function refactor) — its fuel calls import
-        # bulk_add_yakit/recalculate_vehicle_periods from
-        # v2.modules.fuel.application inline instead.
+        # NOT: eskiden burada ImportService -> SeferService -> SeferRepo
+        # zinciri doğrulanıyordu — ImportService sınıfı dalga 9'da kaldırıldı
+        # (B.1 free-function refactor, v2.modules.import_excel); import_excel
+        # artık container.sefer_service'e her çağrıda inline erişiyor,
+        # kalıcı bir constructor-injection zinciri yok.
 
     def test_event_bus_consistency(self):
         """Tüm event-publishing servisler aynı bus'ı kullanmalı."""

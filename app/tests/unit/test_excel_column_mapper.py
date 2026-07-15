@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.services.excel_column_map import SafeColumnMapper
+from v2.modules.import_excel.infrastructure.column_mapper import SafeColumnMapper
 
 
 def _map(cols):

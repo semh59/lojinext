@@ -22,7 +22,7 @@ pytestmark = pytest.mark.unit
 
 class TestSanitizeFilenameExtra:
     def _svc(self):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         return ExportService.__new__(ExportService)
 
@@ -57,15 +57,21 @@ class TestSanitizeFilenameExtra:
 
 class TestExportToExcelSync:
     def test_returns_none_when_openpyxl_not_available(self):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
-        with patch("app.core.services.export_service.OPENPYXL_AVAILABLE", False):
+        with patch(
+            "v2.modules.import_excel.infrastructure.report_export.OPENPYXL_AVAILABLE",
+            False,
+        ):
             result = svc._export_to_excel_sync({}, "test.xlsx", "Test")
         assert result is None
 
     def test_handles_exception_gracefully(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -79,7 +85,10 @@ class TestExportToExcelSync:
         assert result is None or isinstance(result, str)
 
     def test_creates_xlsx_file_with_list_data(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -99,7 +108,10 @@ class TestExportToExcelSync:
         assert Path(result).exists()
 
     def test_creates_xlsx_file_with_dict_data(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -124,7 +136,10 @@ class TestExportToExcelSync:
         """
         from openpyxl import load_workbook
 
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -149,7 +164,10 @@ class TestExportToExcelSync:
         )
 
     def test_appends_xlsx_extension_if_missing(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -161,7 +179,10 @@ class TestExportToExcelSync:
         assert result is None or result.endswith(".xlsx")
 
     def test_skips_empty_sections(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -181,7 +202,7 @@ class TestExportToExcelSync:
 
 class TestExportToExcel:
     async def test_sanitizes_before_calling_sync(self):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
 
@@ -212,7 +233,10 @@ class TestExportToExcel:
 
 class TestGenerateTemplateSync:
     def test_all_known_entity_types(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -228,7 +252,10 @@ class TestGenerateTemplateSync:
             assert Path(result).exists()
 
     def test_returns_none_for_unknown_type(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -240,12 +267,15 @@ class TestGenerateTemplateSync:
         assert result is None
 
     def test_returns_none_when_openpyxl_not_available(self, tmp_path):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         svc.EXPORT_DIR = tmp_path
 
-        with patch("app.core.services.export_service.OPENPYXL_AVAILABLE", False):
+        with patch(
+            "v2.modules.import_excel.infrastructure.report_export.OPENPYXL_AVAILABLE",
+            False,
+        ):
             result = svc._generate_template_sync("yakit")
         assert result is None
 
@@ -257,7 +287,10 @@ class TestGenerateTemplateSync:
 
 class TestGenerateTemplate:
     async def test_returns_path_for_valid_type(self, tmp_path):
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         if not OPENPYXL_AVAILABLE:
             pytest.skip("openpyxl not installed")
@@ -281,7 +314,7 @@ class TestGenerateTemplate:
 
 class TestExportFleetSummaryPdf:
     async def test_writes_file_on_success(self, tmp_path):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         svc.EXPORT_DIR = tmp_path
@@ -292,7 +325,7 @@ class TestExportFleetSummaryPdf:
         mock_gen.async_generate_fleet_summary = AsyncMock(return_value=pdf_bytes)
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             with patch(
@@ -310,7 +343,7 @@ class TestExportFleetSummaryPdf:
         assert result.endswith(".pdf")
 
     async def test_appends_pdf_extension(self, tmp_path):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         svc.EXPORT_DIR = tmp_path
@@ -321,7 +354,7 @@ class TestExportFleetSummaryPdf:
         mock_gen.async_generate_fleet_summary = AsyncMock(return_value=pdf_bytes)
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             with patch(
@@ -345,7 +378,7 @@ class TestExportFleetSummaryPdf:
 
 class TestExportVehicleReportPdf:
     async def test_writes_vehicle_pdf(self, tmp_path):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         svc.EXPORT_DIR = tmp_path
@@ -356,7 +389,7 @@ class TestExportVehicleReportPdf:
         mock_gen.async_generate_vehicle_report = AsyncMock(return_value=pdf_bytes)
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             with patch(
@@ -374,7 +407,7 @@ class TestExportVehicleReportPdf:
         assert result is not None
 
     async def test_returns_none_on_exception(self):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
 
@@ -384,7 +417,7 @@ class TestExportVehicleReportPdf:
         )
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             result = await svc.export_vehicle_report_pdf(
@@ -401,7 +434,7 @@ class TestExportVehicleReportPdf:
 
 class TestGetExportDir:
     def test_returns_path_object(self):
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         result = ExportService._get_export_dir()
         assert isinstance(result, Path)

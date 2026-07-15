@@ -53,7 +53,7 @@ class TestParseSeferExcel:
     """Tests for the async wrapper and the sync core."""
 
     async def test_happy_path_returns_list(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "mesafe_km", "net_kg"],
@@ -64,7 +64,7 @@ class TestParseSeferExcel:
         assert len(result) == 1
 
     async def test_plaka_normalised_to_uppercase(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka"],
@@ -74,7 +74,7 @@ class TestParseSeferExcel:
         assert result[0]["plaka"] == "34ABC123"
 
     async def test_row_without_plaka_is_excluded(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka"],
@@ -89,7 +89,7 @@ class TestParseSeferExcel:
         assert result[0]["plaka"] == "06XY999"
 
     async def test_row_without_tarih_is_excluded(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka"],
@@ -101,7 +101,7 @@ class TestParseSeferExcel:
         assert len(result) == 0
 
     async def test_mesafe_km_cast_to_float(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "mesafe_km"],
@@ -112,7 +112,7 @@ class TestParseSeferExcel:
         assert isinstance(result[0]["mesafe_km"], float)
 
     async def test_mesafe_km_invalid_string_becomes_zero(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "mesafe"],
@@ -125,7 +125,7 @@ class TestParseSeferExcel:
                 assert mesafe == 0.0
 
     async def test_net_kg_cast_to_float(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "net_kg"],
@@ -135,7 +135,7 @@ class TestParseSeferExcel:
         assert result[0]["net_kg"] == 18500.75
 
     async def test_net_kg_invalid_becomes_zero(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "net_kg"],
@@ -146,7 +146,7 @@ class TestParseSeferExcel:
             assert result[0]["net_kg"] == 0.0
 
     async def test_empty_xlsx_returns_empty_list(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(["tarih", "plaka"], [])
         result = await parse_sefer_excel(content)
@@ -158,13 +158,13 @@ class TestParseSeferExcel:
         OSError/ValueError). Document the actual behaviour."""
         import zipfile
 
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_sefer_excel(b"not a valid excel file at all!!!!")
 
     async def test_tarih_column_parsed_via_flexible_parser(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         # pandas will store this as a datetime object in the cell
         content = _make_xlsx(
@@ -176,7 +176,7 @@ class TestParseSeferExcel:
         assert len(result) == 1
 
     async def test_multiple_rows_all_valid(self):
-        from app.core.services.excel_parser import parse_sefer_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "mesafe_km"],
@@ -197,7 +197,7 @@ class TestParseSeferExcel:
 
 class TestParseYakitExcel:
     async def test_happy_path_returns_list(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "litre", "fiyat_tl", "toplam_tutar", "km_sayac"],
@@ -208,7 +208,7 @@ class TestParseYakitExcel:
         assert len(result) == 1
 
     async def test_litre_rounded_to_two_decimals(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "litre"],
@@ -218,7 +218,7 @@ class TestParseYakitExcel:
         assert result[0]["litre"] == 43.46
 
     async def test_fiyat_tl_rounded(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         # SafeColumnMapper alias for fiyat_tl is "fiyat" (not "fiyat_tl")
         content = _make_xlsx(
@@ -229,7 +229,7 @@ class TestParseYakitExcel:
         assert result[0]["fiyat_tl"] == 45.12
 
     async def test_toplam_tutar_rounded(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         # SafeColumnMapper alias for toplam_tutar is "tutar"
         content = _make_xlsx(
@@ -240,7 +240,7 @@ class TestParseYakitExcel:
         assert result[0]["toplam_tutar"] == 1234.57
 
     async def test_km_sayac_cast_to_int(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         # SafeColumnMapper alias for km_sayac is "km"
         content = _make_xlsx(
@@ -252,7 +252,7 @@ class TestParseYakitExcel:
         assert isinstance(result[0]["km_sayac"], int)
 
     async def test_invalid_numeric_field_becomes_zero(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         content = _make_xlsx(
             ["tarih", "plaka", "litre"],
@@ -264,7 +264,7 @@ class TestParseYakitExcel:
             assert result[0]["litre"] == 0
 
     async def test_row_without_plaka_excluded(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         content = _make_xlsx(
             ["tarih", "plaka"],
@@ -274,7 +274,7 @@ class TestParseYakitExcel:
         assert len(result) == 0
 
     async def test_empty_file_returns_empty_list(self):
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         content = _make_xlsx(["tarih", "plaka", "litre"], [])
         result = await parse_yakit_excel(content)
@@ -283,7 +283,7 @@ class TestParseYakitExcel:
     async def test_corrupted_bytes_raises_error(self):
         import zipfile
 
-        from app.core.services.excel_parser import parse_yakit_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_yakit_excel(b"\x00\x01\x02corrupted")
@@ -296,7 +296,7 @@ class TestParseYakitExcel:
 
 class TestParseRouteExcel:
     async def test_happy_path(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri", "mesafe_km"],
@@ -308,7 +308,7 @@ class TestParseRouteExcel:
         assert result[0]["cikis_yeri"] == "Ankara"
 
     async def test_row_without_cikis_excluded(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri"],
@@ -318,7 +318,7 @@ class TestParseRouteExcel:
         assert len(result) == 0
 
     async def test_row_without_varis_excluded(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri"],
@@ -328,7 +328,7 @@ class TestParseRouteExcel:
         assert len(result) == 0
 
     async def test_mesafe_km_cast_to_float(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri", "mesafe_km"],
@@ -338,7 +338,7 @@ class TestParseRouteExcel:
         assert result[0]["mesafe_km"] == 550.0
 
     async def test_mesafe_invalid_becomes_zero(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri", "mesafe_km"],
@@ -349,7 +349,7 @@ class TestParseRouteExcel:
             assert result[0]["mesafe_km"] == 0.0
 
     async def test_none_val_becomes_none(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri", "mesafe_km"],
@@ -360,7 +360,7 @@ class TestParseRouteExcel:
         assert result[0]["mesafe_km"] is None
 
     async def test_empty_file_returns_empty(self):
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         content = _make_xlsx(["cikis_yeri", "varis_yeri"], [])
         result = await parse_route_excel(content)
@@ -369,7 +369,7 @@ class TestParseRouteExcel:
     async def test_corrupted_bytes_raises_error(self):
         import zipfile
 
-        from app.core.services.excel_parser import parse_route_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_route_excel(b"totally not xlsx")
@@ -382,7 +382,7 @@ class TestParseRouteExcel:
 
 class TestParseVehicleExcel:
     async def test_happy_path(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "model", "yil", "tank_kapasitesi", "bos_agirlik_kg"],
@@ -393,7 +393,7 @@ class TestParseVehicleExcel:
         assert len(result) == 1
 
     async def test_plaka_normalised(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -403,7 +403,7 @@ class TestParseVehicleExcel:
         assert result[0]["plaka"] == "34ABC001"
 
     async def test_row_with_blank_plaka_treated_as_nan(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         # Empty cells become NaN in pandas. NaN is truthy in Python, so
         # str(NaN).upper() = 'NAN' — the row is included with plaka='NAN'.
@@ -418,7 +418,7 @@ class TestParseVehicleExcel:
         assert result[0]["plaka"] == "NAN"
 
     async def test_row_with_valid_plaka_and_empty_marka_excluded(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         # marka=None in openpyxl → NaN → str(NaN)="nan" which is truthy
         # So the row IS included with marka='nan'
@@ -431,7 +431,7 @@ class TestParseVehicleExcel:
         assert len(result) == 1
 
     async def test_yil_cast_to_int(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "yil"],
@@ -442,7 +442,7 @@ class TestParseVehicleExcel:
         assert isinstance(result[0]["yil"], int)
 
     async def test_tank_kapasitesi_default_when_invalid(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "tank_kapasitesi"],
@@ -453,7 +453,7 @@ class TestParseVehicleExcel:
         assert result[0]["tank_kapasitesi"] == 600
 
     async def test_bos_agirlik_kg_invalid_becomes_none(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "bos_agirlik_kg"],
@@ -465,7 +465,7 @@ class TestParseVehicleExcel:
         assert result[0]["bos_agirlik_kg"] is None
 
     async def test_motor_verimliligi_invalid_becomes_none(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "motor_verimliligi"],
@@ -476,7 +476,7 @@ class TestParseVehicleExcel:
         assert result[0]["motor_verimliligi"] is None
 
     async def test_notlar_field_as_string(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "notlar"],
@@ -486,7 +486,7 @@ class TestParseVehicleExcel:
         assert result[0]["notlar"] == "Some notes here"
 
     async def test_multiple_rows_all_with_plaka(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -500,7 +500,7 @@ class TestParseVehicleExcel:
         assert len(result) == 3
 
     async def test_empty_file_returns_empty(self):
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         content = _make_xlsx(["plaka", "marka"], [])
         result = await parse_vehicle_excel(content)
@@ -509,7 +509,7 @@ class TestParseVehicleExcel:
     async def test_corrupted_bytes_raises_error(self):
         import zipfile
 
-        from app.core.services.excel_parser import parse_vehicle_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_vehicle_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_vehicle_excel(b"corrupt content xyz")
@@ -522,7 +522,7 @@ class TestParseVehicleExcel:
 
 class TestParseDriverExcel:
     async def test_happy_path(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad", "telefon", "ehliyet_sinifi", "ise_baslama"],
@@ -533,7 +533,7 @@ class TestParseDriverExcel:
         assert len(result) == 1
 
     async def test_ad_soyad_title_cased(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad"],
@@ -543,7 +543,7 @@ class TestParseDriverExcel:
         assert result[0]["ad_soyad"] == "Ahmet Yilmaz"
 
     async def test_row_without_ad_soyad_excluded(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         # Driver parser: val = str(val).strip().title() if val else None
         # NaN is truthy so str(NaN).strip().title() = 'Nan' → row included.
@@ -560,7 +560,7 @@ class TestParseDriverExcel:
         assert result[0]["ad_soyad"] == "Nan"
 
     async def test_ise_baslama_parsed_as_date(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad", "ise_baslama"],
@@ -570,7 +570,7 @@ class TestParseDriverExcel:
         assert result[0]["ise_baslama"] is not None
 
     async def test_telefon_as_string(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         # openpyxl reads numeric-looking phone strings as integers,
         # dropping the leading zero. Store as explicit text cell.
@@ -591,7 +591,7 @@ class TestParseDriverExcel:
         assert "329876543" in result[0]["telefon"]
 
     async def test_ehliyet_sinifi_as_string(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad", "ehliyet_sinifi"],
@@ -601,7 +601,7 @@ class TestParseDriverExcel:
         assert result[0]["ehliyet_sinifi"] == "CE"
 
     async def test_notlar_as_string(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad", "notlar"],
@@ -611,7 +611,7 @@ class TestParseDriverExcel:
         assert result[0]["notlar"] == "Experienced driver"
 
     async def test_multiple_valid_rows(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(
             ["ad_soyad", "telefon"],
@@ -625,7 +625,7 @@ class TestParseDriverExcel:
         assert len(result) == 3
 
     async def test_empty_file_returns_empty(self):
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         content = _make_xlsx(["ad_soyad"], [])
         result = await parse_driver_excel(content)
@@ -634,7 +634,7 @@ class TestParseDriverExcel:
     async def test_corrupted_bytes_raises_error(self):
         import zipfile
 
-        from app.core.services.excel_parser import parse_driver_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_driver_excel(b"bad bytes!!!")
@@ -647,7 +647,7 @@ class TestParseDriverExcel:
 
 class TestParseDorseExcel:
     async def test_happy_path(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "model", "dorse_tipi", "yil"],
@@ -658,7 +658,7 @@ class TestParseDorseExcel:
         assert len(result) == 1
 
     async def test_plaka_normalised(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -668,7 +668,7 @@ class TestParseDorseExcel:
         assert result[0]["plaka"] == "34DRS001"
 
     async def test_row_with_blank_plaka_included_as_nan(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         # Empty cell → NaN → str(NaN).upper() = 'NAN' which is truthy
         # So the row IS included with plaka='NAN' — documents actual behaviour
@@ -681,7 +681,7 @@ class TestParseDorseExcel:
         assert result[0]["plaka"] == "NAN"
 
     async def test_yil_cast_to_int(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "yil"],
@@ -691,7 +691,7 @@ class TestParseDorseExcel:
         assert result[0]["yil"] == 2017
 
     async def test_lastik_sayisi_cast_to_int(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "lastik_sayisi"],
@@ -701,7 +701,7 @@ class TestParseDorseExcel:
         assert result[0]["lastik_sayisi"] == 12
 
     async def test_bos_agirlik_kg_as_float(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "bos_agirlik_kg"],
@@ -712,7 +712,7 @@ class TestParseDorseExcel:
 
     async def test_lastik_direnc_as_float(self):
         """rolling_resistance alias in SafeColumnMapper maps to lastik_direnc_katsayisi."""
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         # "lastik_direnc_katsayisi" exact alias in SafeColumnMapper
         content = _make_xlsx(
@@ -725,7 +725,7 @@ class TestParseDorseExcel:
 
     async def test_hava_direnc_as_float(self):
         """drag_coefficient alias in SafeColumnMapper maps to hava_direnc_katsayisi."""
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "hava_direnc_katsayisi"],
@@ -735,7 +735,7 @@ class TestParseDorseExcel:
         assert "hava_direnc_katsayisi" in result[0]
 
     async def test_string_fields_stored_as_str(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "marka", "model", "dorse_tipi", "notlar"],
@@ -747,7 +747,7 @@ class TestParseDorseExcel:
         assert result[0]["notlar"] == "Some note"
 
     async def test_invalid_numeric_defaults_to_zero(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "bos_agirlik_kg"],
@@ -758,7 +758,7 @@ class TestParseDorseExcel:
         assert result[0]["bos_agirlik_kg"] == 0.0
 
     async def test_multiple_rows_all_with_plaka(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -772,7 +772,7 @@ class TestParseDorseExcel:
         assert len(result) == 3
 
     async def test_empty_file_returns_empty(self):
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(["plaka", "marka"], [])
         result = await parse_dorse_excel(content)
@@ -780,7 +780,7 @@ class TestParseDorseExcel:
 
     async def test_yil_invalid_string_uses_default(self):
         """safe_int ValueError branch: non-numeric yil → safe_int returns None."""
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "yil"],
@@ -792,7 +792,7 @@ class TestParseDorseExcel:
 
     async def test_lastik_sayisi_invalid_string_uses_default(self):
         """safe_int ValueError branch: non-numeric lastik_sayisi → default."""
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         content = _make_xlsx(
             ["plaka", "lastik_sayisi"],
@@ -805,7 +805,7 @@ class TestParseDorseExcel:
     async def test_corrupted_bytes_raises_error(self):
         import zipfile
 
-        from app.core.services.excel_parser import parse_dorse_excel
+        from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             await parse_dorse_excel(b"this is not xlsx")
@@ -820,7 +820,9 @@ class TestSyncFunctionsDirectly:
     """Call _sync variants directly to ensure they are covered (no asyncio overhead)."""
 
     def test_sefer_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_sefer_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_sefer_excel_sync,
+        )
 
         content = _make_xlsx(
             ["tarih", "plaka", "mesafe_km"],
@@ -832,13 +834,17 @@ class TestSyncFunctionsDirectly:
     def test_sefer_sync_invalid_bytes(self):
         import zipfile
 
-        from app.core.services.excel_parser import _parse_sefer_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_sefer_excel_sync,
+        )
 
         with pytest.raises((zipfile.BadZipFile, Exception)):
             _parse_sefer_excel_sync(b"bad")
 
     def test_yakit_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_yakit_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_yakit_excel_sync,
+        )
 
         content = _make_xlsx(
             ["tarih", "plaka", "litre"],
@@ -848,7 +854,9 @@ class TestSyncFunctionsDirectly:
         assert len(result) == 1
 
     def test_route_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_route_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_route_excel_sync,
+        )
 
         content = _make_xlsx(
             ["cikis_yeri", "varis_yeri"],
@@ -858,7 +866,9 @@ class TestSyncFunctionsDirectly:
         assert len(result) == 1
 
     def test_vehicle_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_vehicle_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_vehicle_excel_sync,
+        )
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -868,7 +878,9 @@ class TestSyncFunctionsDirectly:
         assert len(result) == 1
 
     def test_driver_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_driver_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_driver_excel_sync,
+        )
 
         content = _make_xlsx(
             ["ad_soyad"],
@@ -878,7 +890,9 @@ class TestSyncFunctionsDirectly:
         assert len(result) == 1
 
     def test_dorse_sync_happy_path(self):
-        from app.core.services.excel_parser import _parse_dorse_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_dorse_excel_sync,
+        )
 
         content = _make_xlsx(
             ["plaka", "marka"],
@@ -899,28 +913,36 @@ class TestExcelFormulaInjectionSanitization:
     of the same data cannot execute it when reopened in Excel."""
 
     def test_sanitize_formula_prefix_neutralizes_leading_equals(self):
-        from app.core.services.excel_parser import _sanitize_formula_prefix
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _sanitize_formula_prefix,
+        )
 
         assert _sanitize_formula_prefix('=HYPERLINK("http://evil")') == (
             '\'=HYPERLINK("http://evil")'
         )
 
     def test_sanitize_formula_prefix_neutralizes_all_dangerous_prefixes(self):
-        from app.core.services.excel_parser import _sanitize_formula_prefix
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _sanitize_formula_prefix,
+        )
 
         for prefix in ("=", "+", "-", "@"):
             raw = f"{prefix}cmd|'/c calc'!A1"
             assert _sanitize_formula_prefix(raw) == f"'{raw}"
 
     def test_sanitize_formula_prefix_leaves_normal_text_untouched(self):
-        from app.core.services.excel_parser import _sanitize_formula_prefix
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _sanitize_formula_prefix,
+        )
 
         assert _sanitize_formula_prefix("Mercedes") == "Mercedes"
         assert _sanitize_formula_prefix(None) is None
         assert _sanitize_formula_prefix("") == ""
 
     def test_vehicle_notlar_formula_injection_neutralized(self):
-        from app.core.services.excel_parser import _parse_vehicle_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_vehicle_excel_sync,
+        )
 
         # Note: a raw "=..." cell would be interpreted as a LIVE formula by
         # openpyxl itself when the test fixture is written (ws.append), which
@@ -938,7 +960,9 @@ class TestExcelFormulaInjectionSanitization:
         assert result[0]["notlar"].startswith("'@")
 
     def test_driver_ad_soyad_formula_injection_neutralized(self):
-        from app.core.services.excel_parser import _parse_driver_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_driver_excel_sync,
+        )
 
         content = _make_xlsx(
             ["ad_soyad"],
@@ -949,7 +973,9 @@ class TestExcelFormulaInjectionSanitization:
         assert result[0]["ad_soyad"].startswith("'+")
 
     def test_dorse_notlar_formula_injection_neutralized(self):
-        from app.core.services.excel_parser import _parse_dorse_excel_sync
+        from v2.modules.import_excel.infrastructure.parsers import (
+            _parse_dorse_excel_sync,
+        )
 
         content = _make_xlsx(
             ["plaka", "marka", "notlar"],
@@ -974,13 +1000,13 @@ class TestRowLimitGuard:
     """
 
     def test_max_excel_rows_constant_is_reasonable(self):
-        from app.core.services.excel_parser import MAX_EXCEL_ROWS
+        from v2.modules.import_excel.infrastructure.parsers import MAX_EXCEL_ROWS
 
         assert MAX_EXCEL_ROWS == 20_000
 
     def test_sefer_parser_rejects_over_limit(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 2)
         content = _make_xlsx(
@@ -996,7 +1022,7 @@ class TestRowLimitGuard:
 
     def test_yakit_parser_rejects_over_limit(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
         content = _make_xlsx(
@@ -1011,7 +1037,7 @@ class TestRowLimitGuard:
 
     def test_vehicle_parser_rejects_over_limit(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
         content = _make_xlsx(
@@ -1023,7 +1049,7 @@ class TestRowLimitGuard:
 
     def test_within_limit_still_succeeds(self, monkeypatch):
         """Limit sınırın içindeyken parser normal davranmaya devam eder."""
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 5)
         content = _make_xlsx(
@@ -1044,7 +1070,7 @@ class TestExceptionHandlingBranches:
 
     def test_sefer_sync_raises_excel_export_error_on_value_error(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1056,7 +1082,7 @@ class TestExceptionHandlingBranches:
 
     def test_yakit_sync_raises_excel_export_error_on_os_error(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1068,7 +1094,7 @@ class TestExceptionHandlingBranches:
 
     def test_route_sync_raises_excel_export_error_on_key_error(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1082,7 +1108,7 @@ class TestExceptionHandlingBranches:
         self, monkeypatch
     ):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1094,7 +1120,7 @@ class TestExceptionHandlingBranches:
 
     def test_driver_sync_raises_excel_export_error_on_value_error(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1106,7 +1132,7 @@ class TestExceptionHandlingBranches:
 
     def test_dorse_sync_raises_excel_export_error_on_os_error(self, monkeypatch):
         from app.core.exceptions import ExcelExportError
-        from app.core.services import excel_parser
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1118,8 +1144,10 @@ class TestExceptionHandlingBranches:
 
     def test_vehicle_row_exception_skips_row(self, monkeypatch):
         """Per-row except in vehicle parser: bad column mapping causes KeyError → row skipped."""
-        from app.core.services import excel_parser
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         # Make map_columns return a key that doesn't exist in the DF
         monkeypatch.setattr(
@@ -1134,8 +1162,10 @@ class TestExceptionHandlingBranches:
 
     def test_driver_row_exception_skips_row(self, monkeypatch):
         """Per-row except in driver parser: bad column mapping causes KeyError → row skipped."""
-        from app.core.services import excel_parser
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         monkeypatch.setattr(
             SafeColumnMapper,
@@ -1148,8 +1178,10 @@ class TestExceptionHandlingBranches:
 
     def test_dorse_row_exception_skips_row(self, monkeypatch):
         """Per-row except in dorse parser: bad column mapping causes KeyError → row skipped."""
-        from app.core.services import excel_parser
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         monkeypatch.setattr(
             SafeColumnMapper,

@@ -1,12 +1,14 @@
-"""
-Excel sütun eşleştirme yardımcıları.
+"""Excel sütun eşleştirme yardımcıları.
+
+``SafeColumnMapper`` — B.1 sınıf istisnası (``RouteSimulator``/
+``LokasyonHydrator``/``DriverPerformanceML`` ile aynı gerekçe): tek
+cohesive fuzzy-match algoritması (exact-match + skorlu substring/
+SequenceMatcher iki-geçişli strateji), constructor state'i yok, tüm
+alan-alias sözlüğüyle birlikte tek bir birim oluşturuyor.
 """
 
 import difflib
-from datetime import date, datetime
-from typing import Any, Dict, List, Optional
-
-import pandas as pd
+from typing import Dict, List
 
 
 class SafeColumnMapper:
@@ -369,37 +371,3 @@ class SafeColumnMapper:
                 claimed.add(best_match)
 
         return mapping
-
-
-# Desteklenen tarih formatları (multi-locale support)
-DATE_FORMATS = [
-    "%Y-%m-%d",
-    "%d.%m.%Y",
-    "%d/%m/%Y",
-    "%m/%d/%Y",
-    "%d-%m-%Y",
-    "%Y-%m-%dT%H:%M:%S",
-]
-
-
-def _parse_date_flexible(val: Any) -> Optional[date]:
-    """Farklı tarih formatlarını dene ve date'e çevir"""
-    if not val or pd.isna(val):
-        return None
-
-    if isinstance(val, (datetime, date)):
-        return val if isinstance(val, date) else val.date()
-
-    if isinstance(val, pd.Timestamp):
-        return val.date()
-
-    if isinstance(val, str):
-        val = val.strip()
-        for fmt in DATE_FORMATS:
-            try:
-                if "T" in val and "T" not in fmt:
-                    continue  # Skip simple formats for ISO strings
-                return datetime.strptime(val, fmt).date()
-            except ValueError:
-                continue
-    return None

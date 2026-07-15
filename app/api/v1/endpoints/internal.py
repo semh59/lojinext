@@ -183,7 +183,7 @@ async def sefer_belge_yukle(
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
 
-    from app.workers.tasks.ocr_tasks import process_belge_ocr
+    from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
     process_belge_ocr.delay(result["belge_id"])
     telegram_belge_upload_total.labels(belge_tipi=belge_tipi).inc()

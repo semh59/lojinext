@@ -350,13 +350,10 @@ async def test_upload_import_service_raises_generic(async_client, admin_auth_hea
     (raise_server_exceptions=True) this surfaces as a raised exception rather
     than a 500 response — documenting the missing error handling.
     """
-    with patch("app.core.services.import_service.get_import_service") as mock_factory:
-        mock_svc = AsyncMock()
-        mock_svc.process_vehicle_import = AsyncMock(
-            side_effect=RuntimeError("import crash")
-        )
-        mock_factory.return_value = mock_svc
-
+    with patch(
+        "v2.modules.fleet.api.vehicle_routes.process_vehicle_import",
+        AsyncMock(side_effect=RuntimeError("import crash")),
+    ):
         with pytest.raises(RuntimeError, match="import crash"):
             await async_client.post(
                 f"{BASE}/upload",
@@ -373,13 +370,10 @@ async def test_upload_import_service_raises_generic(async_client, admin_auth_hea
 
 async def test_upload_vehicles_with_errors_in_result(async_client, admin_auth_headers):
     """Import returns errors list → response includes errors."""
-    with patch("app.core.services.import_service.get_import_service") as mock_factory:
-        mock_svc = AsyncMock()
-        mock_svc.process_vehicle_import = AsyncMock(
-            return_value=(2, ["Row 3: missing plaka", "Row 5: invalid yil"])
-        )
-        mock_factory.return_value = mock_svc
-
+    with patch(
+        "v2.modules.fleet.api.vehicle_routes.process_vehicle_import",
+        AsyncMock(return_value=(2, ["Row 3: missing plaka", "Row 5: invalid yil"])),
+    ):
         resp = await async_client.post(
             f"{BASE}/upload",
             files={

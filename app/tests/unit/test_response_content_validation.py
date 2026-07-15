@@ -143,10 +143,12 @@ class TestFileDownloadContent:
 
     async def test_excel_export_content_type_and_bytes(self):
         """Excel export: XLSX magic bytes ve gerçek bytes."""
-        from app.core.services.excel_service import ExcelService
+        from v2.modules.import_excel.infrastructure.exporters import (
+            export_data,
+        )
 
         data = [{"test": "veri", "deger": 42}]
-        result = await ExcelService.export_data(data, type="generic")
+        result = await export_data(data, type="generic")
 
         assert isinstance(result, bytes)
         assert len(result) > 100, "coroutine değil gerçek bytes döndürülmeli"
@@ -167,9 +169,11 @@ class TestFileDownloadContent:
 
     async def test_excel_template_is_valid_xlsx(self):
         """Excel şablonu geçerli XLSX formatında olmalı."""
-        from app.core.services.excel_service import ExcelService
+        from v2.modules.import_excel.infrastructure.exporters import (
+            generate_template,
+        )
 
-        result = await ExcelService.generate_template("arac")
+        result = await generate_template("arac")
 
         assert isinstance(result, bytes)
         assert len(result) > 100, "Şablon boş olamaz"

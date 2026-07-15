@@ -23,7 +23,7 @@ location/fleet/fuel gotcha'sı.
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -423,12 +423,9 @@ async def test_excel_upload_success(async_client, admin_auth_headers):
 
     small_xlsx = b"PK\x03\x04" + b"\x00" * 100  # minimal fake xlsx header
 
-    mock_import_svc = MagicMock()
-    mock_import_svc.process_driver_import = AsyncMock(return_value=(3, []))
-
     with patch(
-        "app.core.services.import_service.get_import_service",
-        return_value=mock_import_svc,
+        "v2.modules.import_excel.public.process_driver_import",
+        AsyncMock(return_value=(3, [])),
     ):
         resp = await async_client.post(
             "/api/v1/drivers/excel/upload",
@@ -509,7 +506,7 @@ async def test_excel_export_with_list_items(async_client, admin_auth_headers):
             AsyncMock(return_value={"items": [driver_item], "total": 1}),
         ),
         patch(
-            f"{ROUTES}.ExcelService.export_data",
+            f"{ROUTES}.export_data",
             new=AsyncMock(return_value=b"PK fakexlsx"),
         ),
     ):

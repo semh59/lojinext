@@ -3,25 +3,25 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import UploadFile
 
-from app.core.services.import_service import ImportService
+from v2.modules.import_excel.application.execute_import import execute_import
+from v2.modules.import_excel.application.preview_import import parse_and_preview
+from v2.modules.import_excel.application.rollback_import import rollback_import
 
 
 @pytest.mark.asyncio
 async def test_import_preview():
     """Verify CSV parsing and mapping logic."""
-    service = ImportService()
     mock_file = MagicMock(spec=UploadFile)
     mock_file.filename = "test.csv"
     mock_file.read = AsyncMock(return_value=b"plaka,kapasite\n34ABC123,25.5")
 
-    result = await service.parse_and_preview(mock_file, "arac")
+    result = await parse_and_preview(mock_file, "arac")
     assert result["total_rows"] == 1
 
 
 @pytest.mark.asyncio
 async def test_import_execution_and_rollback():
     """Verify bulk import and subsequent rollback."""
-    service = ImportService()
     mock_file = MagicMock(spec=UploadFile)
     mock_file.filename = "test.csv"
     mock_file.read = AsyncMock(return_value=b"plaka,kapasite\n34ABC123,25.5")
@@ -29,7 +29,14 @@ async def test_import_execution_and_rollback():
     mock_job = MagicMock()
     mock_job.id = 1
 
-    with patch("app.core.services.import_service.UnitOfWork") as mock_uow_cls:
+    with (
+        patch(
+            "v2.modules.import_excel.application.execute_import.UnitOfWork"
+        ) as mock_uow_cls,
+        patch(
+            "v2.modules.import_excel.application.rollback_import.UnitOfWork"
+        ) as mock_rollback_uow_cls,
+    ):
         mock_uow = MagicMock()
         mock_uow.__aenter__.return_value = mock_uow
         mock_uow_cls.return_value = mock_uow
@@ -48,7 +55,20 @@ async def test_import_execution_and_rollback():
         # Use AsyncMock for all awaited methods
         mock_uow.import_repo.create_import_job = AsyncMock(return_value=mock_job)
         mock_uow.import_repo.update_job_status = AsyncMock()
-        mock_uow.import_repo.get_by_id = AsyncMock(
+
+        # 1. Execute
+        result = await execute_import(
+            mock_file, "arac", 1, {"plaka": "plaka", "kapasite": "kapasite"}
+        )
+        assert result["job_id"] == 1
+
+        # 2. Rollback (separate UnitOfWork instance, rollback_import.py's own)
+        mock_rollback_uow = MagicMock()
+        mock_rollback_uow.__aenter__.return_value = mock_rollback_uow
+        mock_rollback_uow_cls.return_value = mock_rollback_uow
+        mock_rollback_uow.session.execute = AsyncMock()
+        mock_rollback_uow.commit = AsyncMock()
+        mock_rollback_uow.import_repo.get_by_id = AsyncMock(
             return_value=MagicMock(
                 id=1,
                 durum="COMPLETED",
@@ -56,13 +76,7 @@ async def test_import_execution_and_rollback():
                 islem_haritasi={"inserted_ids": [100]},
             )
         )
+        mock_rollback_uow.import_repo.update_job_status = AsyncMock()
 
-        # 1. Execute
-        result = await service.execute_import(
-            mock_file, "arac", 1, {"plaka": "plaka", "kapasite": "kapasite"}
-        )
-        assert result["job_id"] == 1
-
-        # 2. Rollback
-        success = await service.rollback_import(1, 1)
+        success = await rollback_import(1, 1)
         assert success is True

@@ -24,7 +24,6 @@ from app.api.deps import (
     require_permissions,
 )
 from app.core.exceptions import DomainError
-from app.core.services.excel_service import ExcelService
 from app.core.services.idempotency_service import (
     IdempotencyKeyConflictError,
     IdempotencyKeyInProgressError,
@@ -66,6 +65,7 @@ from app.schemas.trip_planner import (
     PlanWizardResponse,
     VehicleSuggestion,
 )
+from v2.modules.import_excel.public import export_data, generate_template
 
 logger = get_logger(__name__)
 
@@ -197,7 +197,7 @@ async def export_seferler(
             data.append(d)
 
         # Excel oluştur
-        content = await ExcelService.export_data(data, type="sefer_listesi")
+        content = await export_data(data, type="sefer_listesi")
         filename = (
             f"sefer_listesi_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.xlsx"
         )
@@ -522,9 +522,7 @@ async def get_excel_template(
 ):
     """Sefer yükleme için örnek Excel şablonu indir."""
     try:
-        from app.core.services.excel_service import ExcelService
-
-        content = await ExcelService.generate_template(type="sefer")
+        content = await generate_template(type="sefer")
         filename = "sefer_yukleme_sablonu.xlsx"
 
         return Response(
@@ -721,14 +719,13 @@ async def upload_sefer_excel(
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(status_code=413, detail="Dosya boyutu 10MB'i gecemez.")
 
-    from app.services.api.sefer_import_service import get_sefer_import_service
+    from v2.modules.import_excel.public import import_sefer_excel_upload
 
-    import_service = get_sefer_import_service()
     raw_bytes = bytes(content)
     user_id = current_admin.id
 
     async def _do_import() -> Dict[str, Any]:
-        count, errors = await import_service.process_excel_import(raw_bytes, user_id)
+        count, errors = await import_sefer_excel_upload(raw_bytes, user_id)
         failed_count = len(errors)
         return {
             "success": count > 0,

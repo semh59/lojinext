@@ -4,7 +4,7 @@ import sys
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from app.core.services.excel_service import ExcelService
+from v2.modules.import_excel.infrastructure.exporters import export_data
 
 
 def test_excel():
@@ -18,7 +18,7 @@ def test_excel():
             }
         ]
         print("Testing Excel export...")
-        content = ExcelService.export_data(data, type="yakit_listesi")
+        content = export_data(data, type="yakit_listesi")
         print(f"Success! Generated {len(content)} bytes.")
 
         with open("test_export.xlsx", "wb") as f:

@@ -154,7 +154,7 @@ async def test_export_sefer_with_tarih_attribute(async_client, admin_auth_header
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.ExcelService.export_data",
+            "app.api.v1.endpoints.trips.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -180,7 +180,7 @@ async def test_export_sefer_item_without_tarih(async_client, admin_auth_headers)
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.ExcelService.export_data",
+            "app.api.v1.endpoints.trips.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),

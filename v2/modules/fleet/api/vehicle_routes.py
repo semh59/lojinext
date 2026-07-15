@@ -12,7 +12,6 @@ from app.api.deps import (
 )
 from app.core.entities.models import VehicleStats
 from app.core.exceptions import DomainError
-from app.core.services.excel_service import ExcelService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
@@ -48,6 +47,11 @@ from v2.modules.fleet.application.list_vehicles import (
 )
 from v2.modules.fleet.application.update_vehicle import update_vehicle
 from v2.modules.fleet.schemas import AracCreate, AracResponse, AracUpdate
+from v2.modules.import_excel.public import (
+    export_data,
+    generate_template,
+    process_vehicle_import,
+)
 
 logger = get_logger(__name__)
 
@@ -133,7 +137,7 @@ async def export_araclar(
         data = [v.model_dump() if hasattr(v, "model_dump") else dict(v) for v in items]
 
         # Excel oluştur
-        content = await ExcelService.export_data(data, type="arac_listesi")
+        content = await export_data(data, type="arac_listesi")
 
         filename = (
             f"arac_listesi_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.xlsx"
@@ -221,7 +225,7 @@ async def get_vehicle_template(
     """Araç yükleme Excel şablonunu indir."""
     from fastapi.responses import Response
 
-    content = await ExcelService.generate_template("arac")
+    content = await generate_template("arac")
     return Response(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -379,8 +383,6 @@ async def upload_vehicles(
     file: UploadFile = File(...),
 ):
     # ... existing implementation ...
-    from app.core.services.import_service import get_import_service
-
     # MIME Type Validation
     ALLOWED_MIME_TYPES = {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",  # xlsx
@@ -418,9 +420,7 @@ async def upload_vehicles(
         if len(content) > MAX_FILE_SIZE:
             raise HTTPException(status_code=413, detail="Dosya boyutu 10MB'ı geçemez.")
 
-    import_service = get_import_service()
-
-    created_count, errors = await import_service.process_vehicle_import(bytes(content))
+    created_count, errors = await process_vehicle_import(bytes(content))
 
     return {
         "success": True,

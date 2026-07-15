@@ -4,7 +4,8 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from app.core.services.excel_service import ExcelService, SafeColumnMapper
+from v2.modules.import_excel.infrastructure.column_mapper import SafeColumnMapper
+from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 
 
 @pytest.mark.asyncio
@@ -48,7 +49,7 @@ async def test_excel_parse_sefer_anomalies():
         df.to_excel(writer, index=False)
     content = output.getvalue()
 
-    result = await ExcelService.parse_sefer_excel(content)
+    result = await parse_sefer_excel(content)
 
     assert len(result) == 3
     assert result[0]["plaka"] == "34ABC123"

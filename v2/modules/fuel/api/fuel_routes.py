@@ -386,9 +386,9 @@ async def export_yakit_alimlari(
         ]
 
         # Excel oluştur
-        from app.core.services.excel_service import ExcelService
+        from v2.modules.import_excel.public import export_data
 
-        content = await ExcelService.export_data(clean_data, type="yakit_listesi")
+        content = await export_data(clean_data, type="yakit_listesi")
 
         filename = f"yakit_raporu_{date.today().isoformat()}.xlsx"
         return Response(
@@ -415,10 +415,10 @@ async def get_fuel_excel_template(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Yakıt yükleme şablonu indir."""
-    from app.core.services.excel_service import ExcelService
+    from v2.modules.import_excel.public import generate_template
 
     try:
-        content = await ExcelService.generate_template("yakit")
+        content = await generate_template("yakit")
         return Response(
             content=content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -501,10 +501,9 @@ async def upload_yakit_excel(
     raw_bytes = bytes(content)
 
     async def _do_import() -> dict:
-        from app.core.services.import_service import get_import_service
+        from v2.modules.import_excel.public import process_yakit_import
 
-        service = get_import_service()
-        count, errors = await service.process_yakit_import(raw_bytes)
+        count, errors = await process_yakit_import(raw_bytes)
         return {
             "status": "success" if not errors else "partial_success",
             "processed": count + len(errors),

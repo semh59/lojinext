@@ -418,7 +418,7 @@ async def test_vehicle_template_happy_path(async_client, admin_auth_headers):
     fake_xlsx = b"PK\x03\x04" + b"\x00" * 50
 
     with patch(
-        "app.core.services.excel_service.ExcelService.generate_template",
+        "v2.modules.fleet.api.vehicle_routes.generate_template",
         new=AsyncMock(return_value=fake_xlsx),
     ):
         resp = await async_client.get(f"{BASE}/template", headers=admin_auth_headers)
@@ -470,11 +470,10 @@ async def test_upload_vehicles_wrong_extension(async_client, admin_auth_headers)
 
 async def test_upload_vehicles_happy_path(async_client, admin_auth_headers):
     """Returns success dict when import succeeds."""
-    with patch("app.core.services.import_service.get_import_service") as mock_factory:
-        mock_svc = AsyncMock()
-        mock_svc.process_vehicle_import = AsyncMock(return_value=(3, []))
-        mock_factory.return_value = mock_svc
-
+    with patch(
+        "v2.modules.fleet.api.vehicle_routes.process_vehicle_import",
+        AsyncMock(return_value=(3, [])),
+    ):
         resp = await async_client.post(
             f"{BASE}/upload",
             files={
@@ -513,7 +512,7 @@ async def test_export_vehicles_happy_path(async_client, admin_auth_headers):
         AsyncMock(return_value={"items": [], "total": 0}),
     ):
         with patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "v2.modules.fleet.api.vehicle_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ):
             resp = await async_client.get(f"{BASE}/export", headers=admin_auth_headers)

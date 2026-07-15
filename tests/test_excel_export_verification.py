@@ -3,7 +3,7 @@ import io
 import pandas as pd
 import pytest
 
-from app.core.services.excel_service import ExcelService
+from v2.modules.import_excel.infrastructure.exporters import export_data
 
 
 class TestExcelExportEngine:
@@ -13,7 +13,7 @@ class TestExcelExportEngine:
     async def test_export_data_generates_bytes(self):
         """Test that export_data returns bytes"""
         data = [{"col1": "val1", "col2": 123}]
-        result = await ExcelService.export_data(data, type="test")
+        result = await export_data(data, type="test")
         assert isinstance(result, bytes)
         assert len(result) > 0
 
@@ -25,7 +25,7 @@ class TestExcelExportEngine:
             {"ad_soyad": "Mehmet Demir", "puan": 0.8, "tarih": "2024-01-02"},
         ]
 
-        excel_bytes = await ExcelService.export_data(input_data, type="integrity_check")
+        excel_bytes = await export_data(input_data, type="integrity_check")
 
         df = pd.read_excel(io.BytesIO(excel_bytes), header=1)
 
@@ -40,7 +40,7 @@ class TestExcelExportEngine:
     @pytest.mark.asyncio
     async def test_empty_data_handling(self):
         """Test export with empty list"""
-        result = await ExcelService.export_data([], type="empty")
+        result = await export_data([], type="empty")
         assert isinstance(result, bytes)
         df = pd.read_excel(io.BytesIO(result))
         assert df.empty
@@ -49,7 +49,7 @@ class TestExcelExportEngine:
     async def test_styling_header_exists(self):
         """Test that the title row is present"""
         data = [{"a": 1}]
-        excel_bytes = await ExcelService.export_data(data, type="styling_test")
+        excel_bytes = await export_data(data, type="styling_test")
 
         df = pd.read_excel(io.BytesIO(excel_bytes), header=None)
         title_cell = df.iloc[0, 0]

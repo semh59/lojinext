@@ -232,7 +232,7 @@ async def test_export_seferler_success(async_client, admin_auth_headers):
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.ExcelService.export_data",
+            "app.api.v1.endpoints.trips.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -558,7 +558,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
     """GET /excel/template → 200 with file content (lines 429-439)."""
     fake_bytes = b"PK\x03\x04fake-template"
     with patch(
-        "app.api.v1.endpoints.trips.ExcelService.generate_template",
+        "app.api.v1.endpoints.trips.generate_template",
         new_callable=AsyncMock,
         return_value=fake_bytes,
     ):
@@ -573,7 +573,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
 async def test_get_excel_template_error(async_client, admin_auth_headers):
     """GET /excel/template ExcelService raises → 500 (lines 444-446)."""
     with patch(
-        "app.api.v1.endpoints.trips.ExcelService.generate_template",
+        "app.api.v1.endpoints.trips.generate_template",
         new_callable=AsyncMock,
         side_effect=RuntimeError("template generation failed"),
     ):
@@ -773,17 +773,14 @@ async def test_delete_sefer_unexpected_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_upload_sefer_excel_success(async_client, admin_auth_headers):
     """POST /upload with valid Excel → 200 (lines 617-637)."""
-    mock_import_svc = AsyncMock()
-    mock_import_svc.process_excel_import = AsyncMock(return_value=(5, []))
-
     mock_jm = MagicMock()
     mock_jm.submit = AsyncMock(return_value="job-uuid-upload")
 
     with (
         _override_job_manager(mock_jm),
         patch(
-            "app.services.api.sefer_import_service.get_sefer_import_service",
-            return_value=mock_import_svc,
+            "v2.modules.import_excel.public.import_sefer_excel_upload",
+            AsyncMock(return_value=(5, [])),
         ),
     ):
         resp = await async_client.post(
@@ -805,17 +802,14 @@ async def test_upload_sefer_excel_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_upload_sefer_excel_async_mode(async_client, admin_auth_headers):
     """POST /upload?async_mode=true → 200 with task_id (lines 629-635)."""
-    mock_import_svc = AsyncMock()
-    mock_import_svc.process_excel_import = AsyncMock(return_value=(2, []))
-
     mock_jm = MagicMock()
     mock_jm.submit = AsyncMock(return_value="job-uuid-async")
 
     with (
         _override_job_manager(mock_jm),
         patch(
-            "app.services.api.sefer_import_service.get_sefer_import_service",
-            return_value=mock_import_svc,
+            "v2.modules.import_excel.public.import_sefer_excel_upload",
+            AsyncMock(return_value=(2, [])),
         ),
     ):
         resp = await async_client.post(

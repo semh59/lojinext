@@ -17,14 +17,16 @@ class TestNoModuleLevelContainerImport:
         import importlib
         import inspect
 
-        mod = importlib.import_module("app.services.api.sefer_import_service")
+        mod = importlib.import_module(
+            "v2.modules.import_excel.application.sefer_upload_importer"
+        )
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
-                        f"sefer_import_service.py satır {node.lineno}'de "
+                        f"sefer_upload_importer.py satır {node.lineno}'de "
                         "modül seviyesinde container import bulundu"
                     )
 
@@ -63,14 +65,16 @@ class TestContainerLazyLoading:
         import inspect
 
         # Bilinen kritik servis — diğerleri deferred kullanıyor
-        mod = importlib.import_module("app.services.api.sefer_import_service")
+        mod = importlib.import_module(
+            "v2.modules.import_excel.application.sefer_upload_importer"
+        )
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
-                        f"sefer_import_service.py satır {node.lineno}'de "
+                        f"sefer_upload_importer.py satır {node.lineno}'de "
                         "modül seviyesinde container import var"
                     )
 
@@ -91,8 +95,10 @@ class TestContainer(unittest.TestCase):
         # Check Services
         self.assertIsNotNone(container.sefer_service)
         self.assertIsNotNone(container.analiz_service)
-        self.assertIsNotNone(container.import_service)
         self.assertIsNotNone(container.report_service)
+        # NOT: container.import_service YOK — ImportService sınıfı B.1
+        # free-function geçişinde kaldırıldı (dalga 9), import_excel modülü
+        # artık container'a değil v2.modules.import_excel.public'e bağlı.
 
         # Check Injection (White-box testing)
         self.assertEqual(container.sefer_service.repo, container.sefer_repo)
@@ -100,12 +106,6 @@ class TestContainer(unittest.TestCase):
         # Analiz Service Injection
         self.assertEqual(container.analiz_service.yakit_repo, container.yakit_repo)
         self.assertEqual(container.analiz_service.sefer_repo, container.sefer_repo)
-
-        # Import Service Injection
-        self.assertEqual(container.import_service.arac_repo, container.arac_repo)
-        self.assertEqual(
-            container.import_service.sefer_service, container.sefer_service
-        )
 
 
 if __name__ == "__main__":

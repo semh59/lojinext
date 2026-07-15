@@ -3,13 +3,16 @@ from decimal import Decimal
 
 import pytest
 
-from app.core.services.excel_service import ExcelService
+from v2.modules.import_excel.infrastructure.exporters import (
+    export_data,
+    generate_template,
+)
 
 
 @pytest.mark.asyncio
 async def test_export_data_returns_bytes_not_coroutine():
     data = [{"plaka": "06ABC123", "marka": "Mercedes"}]
-    result = await ExcelService.export_data(data, type="arac_listesi")
+    result = await export_data(data, type="arac_listesi")
     assert isinstance(result, bytes), f"bytes beklendi, geldi: {type(result)}"
     assert len(result) > 100, "coroutine değil gerçek bytes olmalı"
     assert result[:4] == b"PK\x03\x04", "geçerli XLSX magic bytes olmalı"
@@ -17,7 +20,7 @@ async def test_export_data_returns_bytes_not_coroutine():
 
 @pytest.mark.asyncio
 async def test_generate_template_returns_bytes_not_coroutine():
-    result = await ExcelService.generate_template("arac")
+    result = await generate_template("arac")
     assert isinstance(result, bytes), f"bytes beklendi, geldi: {type(result)}"
     assert len(result) > 100
     assert result[:4] == b"PK\x03\x04"
@@ -26,7 +29,7 @@ async def test_generate_template_returns_bytes_not_coroutine():
 def test_export_data_without_await_returns_coroutine():
     """Documents the bug — calling without await returns coroutine."""
     data = [{"plaka": "06ABC123"}]
-    result = ExcelService.export_data(data, type="arac_listesi")
+    result = export_data(data, type="arac_listesi")
     assert inspect.iscoroutine(result), "await olmadan coroutine dönmeli (bug kanıtı)"
     result.close()
 
@@ -41,7 +44,7 @@ async def test_export_data_handles_decimal_values():
             "verimlilik": Decimal("28.750"),
         }
     ]
-    result = await ExcelService.export_data(data, type="generic")
+    result = await export_data(data, type="generic")
     assert isinstance(result, bytes)
     assert result[:4] == b"PK\x03\x04"
 
@@ -55,7 +58,7 @@ async def test_export_data_handles_dict_values():
             "meta": {"filo": "A", "grup": 3},
         }
     ]
-    result = await ExcelService.export_data(data, type="generic")
+    result = await export_data(data, type="generic")
     assert isinstance(result, bytes)
     assert result[:4] == b"PK\x03\x04"
 
@@ -72,7 +75,7 @@ async def test_export_data_handles_mixed_special_types():
             "bilgi": {"kaynak": "gps"},
         }
     ]
-    result = await ExcelService.export_data(data, type="generic")
+    result = await export_data(data, type="generic")
     assert isinstance(result, bytes)
     assert result[:4] == b"PK\x03\x04"
 

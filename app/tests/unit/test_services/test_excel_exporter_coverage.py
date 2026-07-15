@@ -40,7 +40,7 @@ def _run(coro):
 
 
 async def test_export_data_empty_returns_bytes():
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     result = await export_data([], type="generic")
     assert isinstance(result, bytes)
@@ -49,7 +49,7 @@ async def test_export_data_empty_returns_bytes():
 
 async def test_export_data_generic_title_case():
     """Generic type → column names title-cased."""
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [{"hello_world": "val", "foo_bar": 1.5}]
     result = await export_data(data, type="generic")
@@ -68,7 +68,7 @@ async def test_export_data_neutralizes_formula_injection():
 
     import openpyxl
 
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -92,7 +92,7 @@ async def test_export_data_neutralizes_formula_injection():
 
 
 async def test_export_data_arac_listesi_renames_columns():
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -112,7 +112,7 @@ async def test_export_data_arac_listesi_renames_columns():
 
 async def test_export_data_dorse_listesi_durum_mapping():
     """dorse_listesi should map True/False to Aktif/Pasif."""
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -142,7 +142,7 @@ async def test_export_data_dorse_listesi_durum_mapping():
 
 
 async def test_export_data_sefer_listesi():
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -164,7 +164,7 @@ async def test_export_data_sefer_listesi():
 
 
 async def test_export_data_yakit_listesi():
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -186,7 +186,7 @@ async def test_export_data_yakit_listesi():
 
 async def test_export_data_lokasyon_listesi_durum_mapping():
     """lokasyon_listesi maps True/False Durum and filters columns."""
-    from app.core.services.excel_exporter import export_data
+    from v2.modules.import_excel.infrastructure.exporters import export_data
 
     data = [
         {
@@ -226,7 +226,7 @@ async def test_export_data_lokasyon_listesi_durum_mapping():
 
 def test_clean_value_decimal_to_float():
     """Decimal should be converted to float."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"amount": Decimal("1234.56")}]
     result = _export_data_sync(data, type="generic")
@@ -235,7 +235,7 @@ def test_clean_value_decimal_to_float():
 
 def test_clean_value_dict_to_str():
     """dict values should be converted to string."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"meta": {"key": "value"}}]
     result = _export_data_sync(data, type="generic")
@@ -244,7 +244,7 @@ def test_clean_value_dict_to_str():
 
 def test_clean_value_tz_aware_datetime_stripped():
     """Timezone-aware datetime should be stripped before export."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     dt = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
     data = [{"created_at": dt}]
@@ -254,7 +254,7 @@ def test_clean_value_tz_aware_datetime_stripped():
 
 def test_clean_value_nan_float_becomes_none():
     """NaN float in data should not crash export."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"ratio": float("nan"), "val": float("inf")}]
     result = _export_data_sync(data, type="generic")
@@ -268,7 +268,7 @@ def test_clean_value_nan_float_becomes_none():
 
 def test_cell_value_float_nan_in_rows_handled():
     """NaN float in rows sets fmt=cell_format and value=None."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"fuel": float("nan")}, {"fuel": 42.5}, {"fuel": float("inf")}]
     result = _export_data_sync(data, type="generic")
@@ -277,7 +277,7 @@ def test_cell_value_float_nan_in_rows_handled():
 
 def test_cell_value_int_uses_number_format():
     """Integer cell values should use number_format."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"count": 100, "score": 99}]
     result = _export_data_sync(data, type="generic")
@@ -286,7 +286,7 @@ def test_cell_value_int_uses_number_format():
 
 def test_cell_value_dict_list_serialized_to_json():
     """Dict and list cell values should be JSON-serialized."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [
         {"metadata": {"nested": 1, "amount": Decimal("5.5")}},
@@ -300,7 +300,7 @@ def test_cell_value_tz_aware_timestamp_stripped():
     """pandas Timestamp with tz should be localized to None."""
     import pandas as pd
 
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     ts = pd.Timestamp("2026-01-15", tz="UTC")
     data = [{"ts_col": ts}]
@@ -312,7 +312,7 @@ def test_cell_value_naive_date_uses_date_format():
     """date object should use date_format."""
     from datetime import date
 
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     data = [{"trip_date": date(2026, 3, 15)}]
     result = _export_data_sync(data, type="generic")
@@ -321,7 +321,7 @@ def test_cell_value_naive_date_uses_date_format():
 
 def test_column_width_capped_at_50():
     """Columns with very long values are capped at 50 chars width."""
-    from app.core.services.excel_exporter import _export_data_sync
+    from v2.modules.import_excel.infrastructure.exporters import _export_data_sync
 
     long_val = "x" * 200
     data = [{"description": long_val}]
@@ -335,7 +335,7 @@ def test_column_width_capped_at_50():
 
 
 async def test_generate_template_sefer():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("sefer")
     assert isinstance(result, bytes)
@@ -343,7 +343,7 @@ async def test_generate_template_sefer():
 
 
 async def test_generate_template_yakit():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("yakit")
     assert isinstance(result, bytes)
@@ -351,7 +351,7 @@ async def test_generate_template_yakit():
 
 
 async def test_generate_template_arac():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("arac")
     assert isinstance(result, bytes)
@@ -359,7 +359,7 @@ async def test_generate_template_arac():
 
 
 async def test_generate_template_sofor():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("sofor")
     assert isinstance(result, bytes)
@@ -367,7 +367,7 @@ async def test_generate_template_sofor():
 
 
 async def test_generate_template_guzergah():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("guzergah")
     assert isinstance(result, bytes)
@@ -375,7 +375,7 @@ async def test_generate_template_guzergah():
 
 
 async def test_generate_template_dorse():
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("dorse")
     assert isinstance(result, bytes)
@@ -384,7 +384,7 @@ async def test_generate_template_dorse():
 
 async def test_generate_template_unknown_returns_empty():
     """Unknown template type returns empty bytes."""
-    from app.core.services.excel_exporter import generate_template
+    from v2.modules.import_excel.infrastructure.exporters import generate_template
 
     result = await generate_template("unknown_type_xyz")
     assert result == b""
@@ -397,7 +397,7 @@ async def test_generate_template_unknown_returns_empty():
 
 def test_generate_template_sync_sefer_columns_set():
     """Sync path sets column widths on the worksheet."""
-    from app.core.services.excel_exporter import _generate_template_sync
+    from v2.modules.import_excel.infrastructure.exporters import _generate_template_sync
 
     result = _generate_template_sync("sefer")
     assert isinstance(result, bytes)

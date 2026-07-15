@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from app.core.services.analiz_service import AnalizService
     from app.core.services.health_service import HealthService
-    from app.core.services.import_service import ImportService
     from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
     from app.database.repositories.analiz_repo import AnalizRepository
@@ -50,7 +49,7 @@ class Container:
     1. Infrastructure : event_bus
     2. Repositories   : arac, sefer, sofor, yakit, lokasyon, dorse, analiz
     3. Domain Services: arac, sofor, sefer, yakit, lokasyon, dorse, analiz
-    4. Composite      : import_service, report_service (birden fazla servise bağımlı)
+    4. Composite      : report_service (birden fazla servise bağımlı)
     5. ML/AI          : prediction, anomaly_detector, time_series (ağır)
     6. External/Infra : license, health, route, smart_ai, weather (ağ bağımlı)
 
@@ -93,7 +92,6 @@ class Container:
         self._analiz_service: Optional["AnalizService"] = None
 
         # ── 4. Composite Services (birden fazla servise/repo'ya bağımlı) ────
-        self._import_service: Optional["ImportService"] = None
         self._report_service: Optional["ReportService"] = None
 
         # ── 5. ML/AI Subsystem (singleton — ağır model yüklemesi) ───────────
@@ -236,22 +234,6 @@ class Container:
         return self._analiz_service
 
     @property
-    def import_service(self) -> "ImportService":
-        if self._import_service is None:
-            with self._lock:
-                if self._import_service is None:
-                    from app.core.services.import_service import ImportService
-
-                    self._import_service = ImportService(
-                        sefer_service=self.sefer_service,
-                        arac_repo=self.arac_repo,
-                        sofor_repo=self.sofor_repo,
-                        dorse_repo=self.dorse_repo,
-                        lokasyon_repo=self.lokasyon_repo,
-                    )
-        return self._import_service
-
-    @property
     def report_service(self) -> "ReportService":
         if self._report_service is None:
             with self._lock:
@@ -355,7 +337,9 @@ class Container:
         if self._export_service is None:
             with self._lock:
                 if self._export_service is None:
-                    from app.core.services.export_service import ExportService
+                    from v2.modules.import_excel.infrastructure.report_export import (
+                        ExportService,
+                    )
 
                     self._export_service = ExportService()
         return self._export_service
@@ -395,7 +379,6 @@ class Container:
             self._anomaly_detector = None
             self._prediction_service = None
             self._report_service = None
-            self._import_service = None
             self._analiz_service = None
             self._sefer_service = None
 

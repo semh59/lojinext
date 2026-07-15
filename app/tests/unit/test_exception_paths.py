@@ -32,80 +32,93 @@ class TestImportValidationError:
 
 
 class TestImportServiceValidation:
-    """ImportService._validate_* metodları doğru hata fırlatmalı."""
+    """domain/field_validators.py::validate_plaka doğru hata fırlatmalı."""
 
-    @pytest.fixture
-    def service(self):
-        from app.core.services.import_service import ImportService
-
-        return ImportService.__new__(ImportService)
-
-    def test_validate_plaka_empty_raises(self, service):
+    def test_validate_plaka_empty_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_plaka
 
         with pytest.raises(ImportValidationError, match="[Pp]laka"):
-            service._validate_plaka(None)
+            validate_plaka(None)
 
-    def test_validate_plaka_too_short_raises(self, service):
+    def test_validate_plaka_too_short_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_plaka
 
         with pytest.raises(ImportValidationError):
-            service._validate_plaka("AB")
+            validate_plaka("AB")
 
-    def test_validate_plaka_invalid_format_raises(self, service):
+    def test_validate_plaka_invalid_format_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_plaka
 
         with pytest.raises(ImportValidationError, match="[Ff]ormat"):
-            service._validate_plaka("INVALID###")
+            validate_plaka("INVALID###")
 
-    def test_validate_plaka_valid_returns_normalized(self, service):
-        result = service._validate_plaka("34 abc 123")
+    def test_validate_plaka_valid_returns_normalized(self):
+        from v2.modules.import_excel.domain.field_validators import validate_plaka
+
+        result = validate_plaka("34 abc 123")
         assert result == "34ABC123"
 
-    def test_validate_name_too_short_raises(self, service):
+    def test_validate_name_too_short_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_name
 
         with pytest.raises(ImportValidationError):
-            service._validate_name("A")
+            validate_name("A")
 
-    def test_validate_name_empty_raises(self, service):
+    def test_validate_name_empty_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_name
 
         with pytest.raises(ImportValidationError):
-            service._validate_name("")
+            validate_name("")
 
-    def test_validate_name_valid_returns_titled(self, service):
-        result = service._validate_name("ahmet çelik")
+    def test_validate_name_valid_returns_titled(self):
+        from v2.modules.import_excel.domain.field_validators import validate_name
+
+        result = validate_name("ahmet çelik")
         assert result == "Ahmet Çelik"
 
-    def test_validate_numeric_invalid_raises(self, service):
+    def test_validate_numeric_invalid_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.field_validators import validate_numeric
 
         with pytest.raises(ImportValidationError):
-            service._validate_numeric("abc", "mesafe")
+            validate_numeric("abc", "mesafe")
 
-    def test_validate_numeric_valid_returns_float(self, service):
-        result = service._validate_numeric("42.5", "mesafe")
+    def test_validate_numeric_valid_returns_float(self):
+        from v2.modules.import_excel.domain.field_validators import validate_numeric
+
+        result = validate_numeric("42.5", "mesafe")
         assert result == 42.5
 
-    def test_resolve_arac_id_not_found_raises(self, service):
+    def test_resolve_arac_id_not_found_raises(self):
         from app.core.exceptions import ImportValidationError
+        from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
 
         vehicles = [{"plaka": "34ABC123", "id": 1}]
         with pytest.raises(ImportValidationError):
-            service._resolve_arac_id("99XYZ999", vehicles)
+            resolve_arac_id("99XYZ999", vehicles)
 
-    def test_resolve_arac_id_none_returns_none(self, service):
-        result = service._resolve_arac_id(None, [])
+    def test_resolve_arac_id_none_returns_none(self):
+        from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
+
+        result = resolve_arac_id(None, [])
         assert result is None
 
-    def test_resolve_arac_id_found_returns_id(self, service):
+    def test_resolve_arac_id_found_returns_id(self):
+        from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
+
         vehicles = [{"plaka": "34ABC123", "id": 42}]
-        result = service._resolve_arac_id("34 abc 123", vehicles)
+        result = resolve_arac_id("34 abc 123", vehicles)
         assert result == 42
 
-    def test_normalize_text_handles_turkish_i(self, service):
-        result = service._normalize_text("İSTANBUL")
+    def test_normalize_text_handles_turkish_i(self):
+        from v2.modules.import_excel.domain.field_validators import normalize_text
+
+        result = normalize_text("İSTANBUL")
         assert result == "ISTANBUL"
 
 

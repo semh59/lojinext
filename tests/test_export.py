@@ -3,7 +3,7 @@ import io
 import pandas as pd
 import pytest
 
-from app.core.services.excel_service import ExcelService
+from v2.modules.import_excel.infrastructure.exporters import export_data
 
 
 @pytest.mark.asyncio
@@ -23,7 +23,7 @@ async def test_excel_export():
         }
     ]
 
-    content = await ExcelService.export_data(data, type="sefer_listesi")
+    content = await export_data(data, type="sefer_listesi")
 
     assert content
     df = pd.read_excel(io.BytesIO(content), header=1)

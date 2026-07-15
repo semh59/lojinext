@@ -23,7 +23,6 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
 from app.core.exceptions import DomainError
-from app.core.services.excel_service import ExcelService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
@@ -56,6 +55,7 @@ from v2.modules.driver.schemas import (
     SoforResponse,
     SoforUpdate,
 )
+from v2.modules.import_excel.public import export_data, generate_template
 
 logger = get_logger(__name__)
 
@@ -182,7 +182,7 @@ async def download_template(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Şoför yükleme için Excel şablonu indir"""
-    template_data = await ExcelService.generate_template("sofor")
+    template_data = await generate_template("sofor")
     return StreamingResponse(
         io.BytesIO(template_data),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -234,7 +234,7 @@ async def export_drivers(
             }
             clean_data.append(clean_item)
 
-        content = await ExcelService.export_data(clean_data, type="sofor_listesi")
+        content = await export_data(clean_data, type="sofor_listesi")
 
         filename = (
             f"sofor_listesi_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.xlsx"
@@ -260,7 +260,7 @@ async def upload_drivers(
     file: UploadFile = File(...),
 ):
     """Excel'den toplu şoför yükle"""
-    from app.core.services.import_service import get_import_service
+    from v2.modules.import_excel.public import process_driver_import
 
     ALLOWED_MIME_TYPES = {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -276,8 +276,7 @@ async def upload_drivers(
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="Dosya boyutu 10MB'ı geçemez.")
 
-    import_service = get_import_service()
-    created_count, errors = await import_service.process_driver_import(content)
+    created_count, errors = await process_driver_import(content)
 
     return {
         "success": True,

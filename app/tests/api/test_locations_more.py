@@ -362,12 +362,9 @@ async def test_get_segments_success_empty(async_client, admin_auth_headers, db_s
 @pytest.mark.asyncio
 async def test_upload_locations_success(async_client, admin_auth_headers):
     """POST /upload → 200 with count."""
-    mock_import_svc = AsyncMock()
-    mock_import_svc.import_routes = AsyncMock(return_value=(3, []))
-
     with patch(
-        "app.core.services.import_service.get_import_service",
-        return_value=mock_import_svc,
+        "v2.modules.import_excel.public.import_routes",
+        AsyncMock(return_value=(3, [])),
     ):
         resp = await async_client.post(
             "/api/v1/locations/upload",

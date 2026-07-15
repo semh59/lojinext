@@ -48,8 +48,6 @@ async def test_vehicle_upload_returns_success_true():
 
     from v2.modules.fleet.api import vehicle_routes as v_mod
 
-    mock_import_service = AsyncMock()
-    mock_import_service.process_vehicle_import = AsyncMock(return_value=(3, []))
     mock_user = MagicMock()
 
     mock_file = MagicMock()
@@ -61,9 +59,8 @@ async def test_vehicle_upload_returns_success_true():
     # Simulate chunked read: first call returns data, second returns empty bytes
     mock_file.read = AsyncMock(side_effect=[b"fakecontent", b""])
 
-    with stdlib_patch(
-        "app.core.services.import_service.get_import_service",
-        return_value=mock_import_service,
+    with stdlib_patch.object(
+        v_mod, "process_vehicle_import", AsyncMock(return_value=(3, []))
     ):
         result = await v_mod.upload_vehicles(
             current_admin=mock_user,
@@ -82,8 +79,6 @@ async def test_driver_upload_returns_success_true():
 
     from v2.modules.driver.api import driver_routes as d_mod
 
-    mock_import_service = AsyncMock()
-    mock_import_service.process_driver_import = AsyncMock(return_value=(2, []))
     mock_user = MagicMock()
 
     mock_file = MagicMock()
@@ -93,8 +88,8 @@ async def test_driver_upload_returns_success_true():
     mock_file.read = AsyncMock(return_value=b"fakecontent")
 
     with stdlib_patch(
-        "app.core.services.import_service.get_import_service",
-        return_value=mock_import_service,
+        "v2.modules.import_excel.public.process_driver_import",
+        AsyncMock(return_value=(2, [])),
     ):
         result = await d_mod.upload_drivers(
             current_admin=mock_user,

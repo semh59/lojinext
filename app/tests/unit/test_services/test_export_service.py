@@ -10,13 +10,13 @@ pytestmark = pytest.mark.unit
 class TestExportService:
     def test_service_exists(self):
         """ExportService class is importable."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         assert ExportService is not None
 
     def test_sanitize_filename_strips_path_traversal(self):
         """_sanitize_filename uses os.path.basename to prevent path traversal."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         result = svc._sanitize_filename("../../etc/passwd")
@@ -28,7 +28,7 @@ class TestExportService:
 
     def test_sanitize_filename_allows_safe_chars(self):
         """Alphanumeric, dot, dash, underscore should survive sanitization."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         result = svc._sanitize_filename("report_2024-01.xlsx")
@@ -36,7 +36,7 @@ class TestExportService:
 
     def test_sanitize_filename_replaces_spaces(self):
         """Spaces are not in the safe set and get replaced with underscore."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService.__new__(ExportService)
         result = svc._sanitize_filename("my report file.xlsx")
@@ -44,7 +44,7 @@ class TestExportService:
 
     async def test_basic_initialization(self):
         """ExportService can be instantiated without arguments."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
         assert svc is not None
@@ -52,7 +52,7 @@ class TestExportService:
 
     async def test_export_to_excel_returns_path_when_openpyxl_available(self):
         """export_to_excel returns a filepath string when openpyxl is present."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
         fake_path = "/tmp/test_report.xlsx"
@@ -69,7 +69,7 @@ class TestExportService:
 
     async def test_generate_template_unknown_type_returns_none(self):
         """generate_template returns None for an unsupported entity type."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
         with patch("asyncio.to_thread", new=AsyncMock(return_value=None)):
@@ -79,7 +79,10 @@ class TestExportService:
 
     async def test_generate_template_sync_returns_none_for_invalid_type(self):
         """_generate_template_sync returns None for invalid entity_type."""
-        from app.core.services.export_service import OPENPYXL_AVAILABLE, ExportService
+        from v2.modules.import_excel.infrastructure.report_export import (
+            OPENPYXL_AVAILABLE,
+            ExportService,
+        )
 
         svc = ExportService()
         if OPENPYXL_AVAILABLE:
@@ -88,7 +91,7 @@ class TestExportService:
 
     def test_export_to_excel_sync_sanitizes_filename(self):
         """_export_to_excel_sync is called with the sanitized filename."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
         # The actual sanitization: slashes are removed, basename applied
@@ -103,7 +106,7 @@ class TestExportService:
         """export_fleet_summary_pdf returns None when generator raises."""
         from datetime import date
 
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
 
@@ -113,7 +116,7 @@ class TestExportService:
         )
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             result = await svc.export_fleet_summary_pdf(
@@ -127,7 +130,7 @@ class TestExportService:
 
     async def test_export_vehicle_report_pdf_returns_none_on_error(self):
         """export_vehicle_report_pdf returns None when generator raises."""
-        from app.core.services.export_service import ExportService
+        from v2.modules.import_excel.infrastructure.report_export import ExportService
 
         svc = ExportService()
 
@@ -137,7 +140,7 @@ class TestExportService:
         )
 
         with patch(
-            "app.core.services.export_service.get_report_generator",
+            "v2.modules.import_excel.infrastructure.report_export.get_report_generator",
             return_value=mock_gen,
         ):
             result = await svc.export_vehicle_report_pdf(

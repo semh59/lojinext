@@ -135,7 +135,7 @@ async def test_excel_export_returns_xlsx(async_client, admin_auth_headers):
             new=AsyncMock(return_value={"total": 0, "trips": []}),
         ),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "app.api.v1.endpoints.advanced_reports.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):

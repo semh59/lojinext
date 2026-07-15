@@ -368,7 +368,7 @@ async def test_delete_yakit_no_auth(async_client):
 async def test_get_fuel_excel_template_success(async_client, admin_auth_headers):
     """GET /fuel/excel/template → 200 xlsx."""
     with patch(
-        "app.core.services.excel_service.ExcelService.generate_template",
+        "v2.modules.import_excel.public.generate_template",
         new=AsyncMock(return_value=b"PK\x03\x04fake_xlsx_content"),
     ):
         resp = await async_client.get(
@@ -392,7 +392,7 @@ async def test_get_fuel_excel_template_no_auth(async_client):
 async def test_get_fuel_excel_template_error(async_client, admin_auth_headers):
     """GET /fuel/excel/template service error → 500."""
     with patch(
-        "app.core.services.excel_service.ExcelService.generate_template",
+        "v2.modules.import_excel.public.generate_template",
         new=AsyncMock(side_effect=RuntimeError("template error")),
     ):
         resp = await async_client.get(
@@ -415,7 +415,7 @@ async def test_export_yakit_alimlari_success(async_client, admin_auth_headers):
             AsyncMock(return_value={"items": [], "total": 0}),
         ),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "v2.modules.import_excel.public.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04fake_xlsx"),
         ),
     ):
@@ -496,10 +496,10 @@ async def test_upload_yakit_excel_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_upload_yakit_excel_sync_success(async_client, admin_auth_headers):
     """POST /fuel/excel/upload (sync) → 200 with import result."""
-    with patch("app.core.services.import_service.get_import_service") as mock_get_svc:
-        mock_import_svc = AsyncMock()
-        mock_import_svc.process_yakit_import = AsyncMock(return_value=(10, []))
-        mock_get_svc.return_value = mock_import_svc
+    with patch(
+        "v2.modules.import_excel.public.process_yakit_import",
+        AsyncMock(return_value=(10, [])),
+    ):
         resp = await async_client.post(
             f"{BASE_URL}/excel/upload",
             files={

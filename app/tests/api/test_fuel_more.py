@@ -250,7 +250,7 @@ async def test_export_yakit_alimlari_with_filters(async_client, admin_auth_heade
             AsyncMock(return_value={"items": [_make_yakit_response_obj()], "total": 1}),
         ),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "v2.modules.import_excel.public.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04xlsx"),
         ),
     ):
@@ -286,7 +286,7 @@ async def test_export_returns_list_items_not_dict(async_client, admin_auth_heade
     with (
         patch(f"{ROUTES}.get_all_paged", AsyncMock(return_value=items)),
         patch(
-            "app.core.services.excel_service.ExcelService.export_data",
+            "v2.modules.import_excel.public.export_data",
             new=AsyncMock(return_value=b"PK\x03\x04"),
         ),
     ):
@@ -307,7 +307,7 @@ async def test_get_fuel_excel_template_domain_error(async_client, admin_auth_hea
     from app.core.exceptions import ExcelExportError
 
     with patch(
-        "app.core.services.excel_service.ExcelService.generate_template",
+        "v2.modules.import_excel.public.generate_template",
         new=AsyncMock(side_effect=ExcelExportError("template error")),
     ):
         resp = await async_client.get(
@@ -324,13 +324,12 @@ async def test_get_fuel_excel_template_domain_error(async_client, admin_auth_hea
 @pytest.mark.asyncio
 async def test_upload_yakit_excel_partial_success(async_client, admin_auth_headers):
     """POST /fuel/excel/upload with some errors → partial_success status."""
-    with patch("app.core.services.import_service.get_import_service") as mock_get_svc:
-        mock_import_svc = AsyncMock()
-        # 5 saved, 3 errors
-        mock_import_svc.process_yakit_import = AsyncMock(
+    with patch(
+        "v2.modules.import_excel.public.process_yakit_import",
+        AsyncMock(
             return_value=(5, ["row 2: bad plaka", "row 4: missing km", "row 7: dup"])
-        )
-        mock_get_svc.return_value = mock_import_svc
+        ),
+    ):
         resp = await async_client.post(
             f"{BASE_URL}/excel/upload",
             files={

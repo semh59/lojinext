@@ -16,8 +16,6 @@ from app.api.deps import SessionDep, get_current_active_admin
 from app.api.v1.utils import parse_date_param
 from app.core.exceptions import DomainError
 from app.core.services.cost_analyzer import get_cost_analyzer
-from app.core.services.excel_service import ExcelService
-from app.core.services.export_service import get_export_service
 from app.core.services.report_generator import get_report_generator
 from app.core.services.report_service import ReportService
 from app.database.models import Kullanici
@@ -28,6 +26,7 @@ from app.schemas.api_responses import (
     CostTrendPoint,
     VehicleCostComparisonItem,
 )
+from v2.modules.import_excel.public import export_data, get_export_service
 
 logger = get_logger(__name__)
 
@@ -467,7 +466,7 @@ async def export_analytical_report_excel(
             raise HTTPException(status_code=404, detail="Rapor verisi bulunamadı")
 
         # Excel oluştur
-        content = await ExcelService.export_data(data, type=f"{report_type}_analiz")
+        content = await export_data(data, type=f"{report_type}_analiz")
 
         import urllib.parse
 

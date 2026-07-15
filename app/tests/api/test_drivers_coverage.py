@@ -738,7 +738,7 @@ async def test_excel_template_no_auth(async_client):
 async def test_excel_template_success(async_client, admin_auth_headers):
     """GET /excel/template → 200 with spreadsheet content."""
     with patch(
-        f"{ROUTES}.ExcelService.generate_template",
+        f"{ROUTES}.generate_template",
         new=AsyncMock(return_value=b"PK fakexlsx"),
     ):
         resp = await async_client.get(
@@ -769,7 +769,7 @@ async def test_excel_export_success(async_client, admin_auth_headers):
             AsyncMock(return_value={"items": [], "total": 0}),
         ),
         patch(
-            f"{ROUTES}.ExcelService.export_data",
+            f"{ROUTES}.export_data",
             new=AsyncMock(return_value=b"PK fakexlsx"),
         ),
     ):

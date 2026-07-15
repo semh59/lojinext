@@ -16,7 +16,6 @@ from pydantic import BaseModel
 from app.api.deps import get_current_active_user
 from app.api.middleware.rate_limiter import limiter
 from app.core.exceptions import DomainError
-from app.core.services.import_service import ImportService, get_import_service
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -27,9 +26,13 @@ from app.schemas.api_responses import (
     SuccessCountResponse,
 )
 from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.import_excel.application.execute_import import execute_import
+from v2.modules.import_excel.application.preview_import import parse_and_preview
+from v2.modules.import_excel.application.rollback_import import (
+    rollback_import as _rollback_import,
+)
 
 router = APIRouter()
-# Removed global instantiation to support proper DI
 
 
 class MappingData(BaseModel):
@@ -46,11 +49,10 @@ async def preview_import(
     file: UploadFile = File(...),
     aktarim_tipi: str = Form(...),
     current_user: Kullanici = Depends(get_current_active_user),
-    import_service: ImportService = Depends(get_import_service),
 ):
     """Excel veya CSV dosyasının başlıklarını okur ve 5 satırlık önizleme sunar."""
     try:
-        return await import_service.parse_and_preview(file, aktarim_tipi)
+        return await parse_and_preview(file, aktarim_tipi)
     except DomainError:
         raise
     except HTTPException:
@@ -70,7 +72,6 @@ async def commit_import(
     aktarim_tipi: str = Form(...),
     mapping_str: str = Form(...),  # JSON string
     current_user: Kullanici = Depends(get_current_active_user),
-    import_service: ImportService = Depends(get_import_service),
 ):
     """
     Eşleştirilen alanlara göre veri tabanına bulk insert yapar.
@@ -78,9 +79,7 @@ async def commit_import(
     """
     try:
         mapping = json.loads(mapping_str)
-        result = await import_service.execute_import(
-            file, aktarim_tipi, current_user.id, mapping
-        )
+        result = await execute_import(file, aktarim_tipi, current_user.id, mapping)
         await log_audit_event(
             module="import",
             action="commit",
@@ -110,13 +109,12 @@ async def rollback_import(
     job_id: int,
     request: Request,
     current_user: Kullanici = Depends(get_current_active_user),
-    import_service: ImportService = Depends(get_import_service),
 ):
     """
     Geçmiş bir işlemi transaction içerisinde geri alır.
     """
     try:
-        success = await import_service.rollback_import(job_id, current_user.id)
+        success = await _rollback_import(job_id, current_user.id)
         await log_audit_event(
             module="import",
             action="rollback",

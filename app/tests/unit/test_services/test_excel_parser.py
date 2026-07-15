@@ -8,14 +8,18 @@ pytestmark = pytest.mark.unit
 class TestExcelParser:
     def test_service_exists(self):
         """SafeColumnMapper class is importable."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         assert SafeColumnMapper is not None
         assert hasattr(SafeColumnMapper, "map_columns")
 
     def test_basic_initialization(self):
         """SafeColumnMapper.COLS has entries for key domain columns."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         assert "plaka" in SafeColumnMapper.COLS
         assert "tarih" in SafeColumnMapper.COLS
@@ -23,7 +27,9 @@ class TestExcelParser:
 
     def test_happy_path_exact_match(self):
         """Exact-match aliases are resolved in the first pass."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["tarih", "plaka", "litre", "tutar"]
         mapping = SafeColumnMapper.map_columns(df_cols)
@@ -34,7 +40,9 @@ class TestExcelParser:
 
     def test_exact_match_precedence_over_fuzzy(self):
         """'Plaka' exact-match must NOT be re-mapped to dorse_plakasi by fuzzy."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         # Both 'Plaka' and 'Dorse Plaka' are present — exact wins.
         df_cols = ["Plaka", "Dorse Plaka"]
@@ -46,7 +54,9 @@ class TestExcelParser:
 
     def test_fuzzy_match_km(self):
         """'km sayacı' should fuzzy-map to km_sayac."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["km sayacı"]
         mapping = SafeColumnMapper.map_columns(df_cols)
@@ -54,14 +64,18 @@ class TestExcelParser:
 
     def test_error_handling_empty_columns(self):
         """Empty column list returns empty mapping without raising."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         result = SafeColumnMapper.map_columns([])
         assert result == {}
 
     def test_edge_case_unknown_columns_not_mapped(self):
         """Columns with no good match are not added to the mapping."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["completely_unknown_xyz_column_999"]
         mapping = SafeColumnMapper.map_columns(df_cols)
@@ -70,7 +84,9 @@ class TestExcelParser:
 
     def test_edge_case_none_like_columns(self):
         """Numeric column names are coerced to strings and processed."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         # Pandas sometimes yields integer column names for headerless files
         df_cols = [0, 1, 2]
@@ -79,14 +95,18 @@ class TestExcelParser:
 
     def test_return_type_validation(self):
         """map_columns always returns a dict."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         result = SafeColumnMapper.map_columns(["tarih", "plaka"])
         assert isinstance(result, dict)
 
     def test_case_insensitive_exact_match(self):
         """Matching is case-insensitive (lowercased before compare)."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["PLAKA", "LITRE", "TARIH"]
         mapping = SafeColumnMapper.map_columns(df_cols)
@@ -94,7 +114,9 @@ class TestExcelParser:
 
     def test_two_pass_no_double_claim(self):
         """A column claimed by exact-match is not also claimed by fuzzy."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["plaka", "dorse plaka"]
         mapping = SafeColumnMapper.map_columns(df_cols)
@@ -105,7 +127,9 @@ class TestExcelParser:
 
     async def test_integration_with_mock(self):
         """map_columns works correctly for a typical sefer upload scenario."""
-        from app.core.services.excel_column_map import SafeColumnMapper
+        from v2.modules.import_excel.infrastructure.column_mapper import (
+            SafeColumnMapper,
+        )
 
         df_cols = ["tarih", "sofor adi", "plaka", "cikis yeri", "varis yeri", "km"]
         mapping = SafeColumnMapper.map_columns(df_cols)

@@ -6,7 +6,7 @@ All service/DB calls are mocked — no real DB needed.
 """
 
 from contextlib import contextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -505,7 +505,7 @@ async def test_excel_template_no_auth(async_client):
 async def test_excel_template_success(async_client, admin_auth_headers):
     """GET /excel/template → 200 with Excel mime type."""
     with patch(
-        "app.core.services.excel_service.ExcelService.generate_template",
+        "v2.modules.import_excel.public.generate_template",
         new=AsyncMock(return_value=b"PK fakexlsx"),
     ):
         resp = await async_client.get(
@@ -532,7 +532,7 @@ async def test_excel_export_success(async_client, admin_auth_headers, db_session
     """GET /excel/export → 200 (gerçek servis/repo/DB, sadece ExcelService'in
     binary export'u mock'lu — Excel domain ayrı, bu turun kapsamı dışı)."""
     with patch(
-        "app.core.services.excel_service.ExcelService.export_data",
+        "v2.modules.import_excel.public.export_data",
         new=AsyncMock(return_value=b"PK fakexlsx"),
     ):
         resp = await async_client.get(
@@ -803,12 +803,9 @@ async def test_upload_success(async_client, admin_auth_headers):
     """POST /upload with valid Excel file and mocked import service → 200."""
     import io
 
-    mock_import_svc = MagicMock()
-    mock_import_svc.import_routes = AsyncMock(return_value=(3, []))
-
     with patch(
-        "app.core.services.import_service.get_import_service",
-        return_value=mock_import_svc,
+        "v2.modules.import_excel.public.import_routes",
+        AsyncMock(return_value=(3, [])),
     ):
         resp = await async_client.post(
             "/api/v1/locations/upload",

@@ -4,7 +4,6 @@ from app.api.v1.endpoints import (
     admin_calibration,
     admin_config,
     admin_health,
-    admin_imports,
     admin_integrations,
     admin_ml,
     admin_pilot,
@@ -50,6 +49,7 @@ from v2.modules.fleet.api.trailer_routes import router as trailer_router
 from v2.modules.fleet.api.vehicle_routes import router as vehicle_router
 from v2.modules.fuel.api.fuel_routes import admin_router as admin_fuel_accuracy
 from v2.modules.fuel.api.fuel_routes import router as fuel_router
+from v2.modules.import_excel.api.import_routes import router as import_router
 from v2.modules.location.api.location_routes import router as location_router
 from v2.modules.notification.api.live_ws_routes import (
     router as notification_live_ws_router,
@@ -112,7 +112,7 @@ api_router.include_router(
     notification_live_ws_router, prefix="/admin/ws", tags=["notifications"]
 )
 api_router.include_router(
-    admin_imports.router, prefix="/admin/imports", tags=["admin-imports"]
+    import_router, prefix="/admin/imports", tags=["admin-imports"]
 )
 api_router.include_router(admin_ml.router, prefix="/admin/ml", tags=["admin-ml"])
 api_router.include_router(

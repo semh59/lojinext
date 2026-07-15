@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 7/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; sıradaki: dalga 9 (import-excel), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 8/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; sıradaki: dalga 10 (reports), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -42,7 +42,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 6 | auth-rbac | `modules/auth-rbac.md` | ✅ main'de yeşil (commit `e9a0328`) |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
-| 9 | import-excel | `modules/import-excel.md` | 🔲 |
+| 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
 | 10 | reports | `modules/reports.md` | 🔲 |
 | 11 | analytics-executive | `modules/analytics-executive.md` | 🔲 |
 | 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
@@ -388,10 +388,103 @@ hem katman disiplini (`api → application → repo`) artık gerçekten tutarlı
 2 ayrı bağımsız dedektif denetim turu (dalga-6-sonrası + dalga-8-sonrası,
 toplam 13 sıfırdan-context ajan) hiçbir açık bulgu bırakmadı.
 
+## DALGA 9 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-15)
+
+**Kapsam:** import_excel modülü (11 dosya, 3.495 LOC envanteri) — Excel
+bulk import/export/rollback orkestrasyonu (arac/surucu/sefer/yakit/guzergah),
+admin generic import + job/rollback takibi, OCR belge Celery task'ı.
+`iceri_aktarim_gecmisi` tablosunun tek sahibi. Detaylar
+`TASKS/modules/import-excel.md` + `v2/modules/import_excel/CLAUDE.md`.
+
+**Push geçmişi (2 commit):**
+1. `bffa2d4` — ana taşıma (80 dosya). CI'nin "Backend type check (mypy)"
+   adımında kırmızı çıktı (8 hata / 7 baseline).
+2. `5d1a0fb` — mypy düzeltmesi: `sefer_importer.py::process_sefer_import`
+   `sefer_list`'i dict listesi olarak inşa ediyor ama
+   `SeferService.bulk_add_sefer` `List[SeferCreate]` bekliyor — bu latent
+   uyuşmazlık taşımadan ÖNCE de vardı (`self.sefer_service` untyped
+   constructor param olduğu için mypy görmüyordu, dalga 4'ün
+   `yakit_importer.py`'deki aynı sınıf gotcha'sı), free-function geçişinde
+   `get_container().sefer_service` düzgün tipli hale gelince ortaya çıktı.
+   `cast()` ile dokümante edildi (`process_sefer_import` zaten prod'da
+   çağrılmıyor, test-covered legacy yol — davranış değişmedi). **CI Hard
+   Gates TAM YEŞİL** (`gh run view 29438098479` → `hard-gates` `success`,
+   33dk53sn, 47 adımın tamamı — mypy/Backend unit tests/Combined coverage
+   gate/OpenAPI schema drift check/Frontend E2E dahil) — commit `5d1a0fb`
+   main'in HEAD'i.
+
+**Öne çıkan kararlar/bulgular:**
+- `ImportService`/`SeferImportService` sınıfları kaldırıldı (B.1, önceki 8
+  dalgadaki kararla aynı gerekçe) — her use-case bağımsız fonksiyon.
+  `SafeColumnMapper` (fuzzy column-matcher, `RouteSimulator`/
+  `LokasyonHydrator` ile aynı gerekçe) ve `ExportService` (disk'e PDF/Excel
+  export + `EXPORT_DIR`/`cleanup_old_exports` yaşam döngüsü olan stateful
+  orkestratör — bytes döndüren `infrastructure/exporters.py`'den FARKLI bir
+  API yüzeyi) 2 sınıf istisnası olarak kaldı.
+- İki AYRI, KASITLI import akışı (ARCH-002) taşındı: `execute_import`
+  (admin generic bulk import, job/rollback zorunlu, TEK UoW bloğu —
+  create_import_job+raw INSERT+inserted_ids — BÖLÜNMEDEN taşındı) vs
+  `process_*_import`/`import_sefer_excel_upload` (domain `bulk_add_*` yolu,
+  job/rollback yok). `import_sefer_excel_upload` (trip'in
+  `POST /trips/upload`'ı, B.2 kararı: senkron, yalnız `public.py` üzerinden)
+  eski `services/api/sefer_import_service.py`'den taşındı.
+- `_validate_import_rows` (görev dosyası "5'e dallanıyor" diyordu — gerçek
+  kod 4 dal: arac/surucu/sefer/yakit, task dosyası bu noktada yanlıştı)
+  `domain/row_validators.py`'de 4 fonksiyona bölündü; prefetch edilen
+  master listeler (vehicles/drivers/trailers/routes) `execute_import`
+  tarafından TEK seferde çekilip parametre olarak paylaşılıyor (N+1
+  önleme, görev dosyasının açık uyarısı).
+- `SeferImportService._resolve_master_id` dead code olarak DÜŞÜRÜLDÜ (B.1
+  free-function geçişinde) — hiçbir prod çağıran kullanmıyordu (yalnız
+  kendi unit testi egzersiz ediyordu), test dosyası buna göre güncellendi.
+- Tüketen modüller (fuel/fleet/driver/location route'ları, `trips.py`,
+  `advanced_reports.py`) `v2.modules.import_excel.public`'e güncellendi;
+  patch hedefi inline-import'larda (fuel/location, driver'ın `process_driver_import`'ı)
+  KAYNAK modül (`public.py`), module-level import'larda (fleet/driver'ın
+  export fonksiyonları, trips.py) TÜKETEN modül — location/fleet/fuel'deki
+  aynı gotcha. `container.py`'den `import_service` property'si tamamen
+  kaldırıldı; `export_service` yeni konuma (`infrastructure/report_export.py`)
+  işaret ediyor.
+- 🔴 **Ghost-file gotcha'sı (yeni sınıf, bu dalgada keşfedildi):** bu
+  dev container aylardır `docker cp` ile güncellenip hiç temiz
+  yeniden build edilmediği için `app/core/services/anomaly_detector.py` ve
+  `app/api/v1/endpoints/investigations.py` gibi **git'e hiç commitlenmemiş,
+  çok önceki bir dalgada (anomaly, dalga 8) silinmesi gereken ama container'da
+  kalıntı olarak yaşayan dosyalar** birikmişti — bunlar lokal `mypy`
+  koşumunda 22 sahte hata üretip gerçek baseline'ı (7) gizliyordu (29
+  görünüyordu). `git ls-files` ile dosyaların gerçekten takip edilip
+  edilmediği doğrulanarak bulundu, container'dan silindi. **Ders:** bu
+  container'da lokal mypy/test sonucu şüpheliyse önce `git ls-files
+  <path>` ile dosyanın gerçekten repoda olup olmadığı kontrol edilmeli —
+  `docker cp` hem eski dosyaları SİLMİYOR hem de commit edilmemiş kalıntı
+  bırakabiliyor (dalga 9'un kendi "docker cp silmez" bulgusuyla aynı kökten,
+  ama bu kez YENİ dosya değil TAMAMEN İLGİSİZ eski dosyalar için).
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB):**
+- `ruff check app v2 tests --select E,F,W,I` → temiz.
+- `mypy app/ --ignore-missing-imports --no-strict-optional` → ghost-file
+  kontaminasyonu ayıklandıktan sonra 5 hata (baseline 7, regresyon yok;
+  fix öncesi 8/7 idi, CI'nın kendi ortamı zaten temizdi).
+- Hedefli test dosyaları (import_excel'in kendi + 4 tüketici modülün
+  dokunulan API testleri, ~35 dosya): 783+ test, gerçek DB'ye karşı 100%
+  pass.
+- Kök `tests/` (tam suite): 263 passed + 1 fail
+  (`test_idempotency.py::test_idempotency_guard_duplicate_request` — bilinen
+  Redis "Event loop is closed" pollution flake'i, dalga 8 baseline'ıyla
+  birebir aynı, import_excel taşımasıyla ilgisiz).
+- OpenAPI schema drift: CI'da doğrulandı, YOK.
+
+**Ders (genel):** free-function geçişi sırasında bir constructor'daki
+untyped parametrenin (`self.sefer_service`, `self.yakit_service` vb.)
+gerçek çağrı sitesindeki tip uyuşmazlıklarını GİZLEDİĞİ artık 3. kez
+doğrulandı (dalga 4 yakit, dalga 5 driver 500 bug'ı, dalga 9 sefer) — bu
+geçiş deseni sistematik olarak gizli tip hatalarını ortaya çıkarıyor,
+her dalgada beklenmeli.
+
 ## Son güncelleme
-2026-07-15 — **"8 dalga tam temiz" hedefi TAMAMLANDI, main tam yeşil** (son
-commit `c7666a1`, CI Hard Gates `success`, 34dk40sn). OTURUM HİJYENİ: bu
-oturum kapatılıyor, dalga 9 (import-excel) yeni oturumda
-`TASKS/modules/import-excel.md` okunarak, kullanıcı onayı istenerek başlar.
+2026-07-15 — **Dalga 9 (import-excel) TAMAMLANDI, main tam yeşil** (son
+commit `5d1a0fb`, CI Hard Gates `success`, 33dk53sn). OTURUM HİJYENİ: bu
+oturum kapatılıyor, dalga 10 (reports) yeni oturumda
+`TASKS/modules/reports.md` okunarak, kullanıcı onayı istenerek başlar.
 Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici;
 iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

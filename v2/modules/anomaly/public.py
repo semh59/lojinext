@@ -31,6 +31,17 @@ from v2.modules.anomaly.application.detect_statistical_anomaly import (
     AnomalyDetectionService,
     get_anomaly_detection_service,
 )
+from v2.modules.anomaly.application.get_fleet_insights import get_fleet_insights
+from v2.modules.anomaly.application.manage_investigations import (
+    create_investigation,
+    get_investigation_detail,
+    get_patterns,
+    list_investigations,
+    reclassify_investigation,
+    resolve_alarm_context,
+    soft_delete_investigation,
+    update_investigation,
+)
 from v2.modules.anomaly.domain.clustering import cluster_anomalies
 from v2.modules.anomaly.schemas import (
     AttributionOverrideRequest,
@@ -60,8 +71,17 @@ __all__ = [
     "TheftClassification",
     "bulk_override_attribution",
     "cluster_anomalies",
+    "create_investigation",
     "get_anomaly_detection_service",
     "get_anomaly_detector",
+    "get_fleet_insights",
     "get_fuel_theft_classifier",
+    "get_investigation_detail",
+    "get_patterns",
+    "list_investigations",
     "override_attribution",
+    "reclassify_investigation",
+    "resolve_alarm_context",
+    "soft_delete_investigation",
+    "update_investigation",
 ]

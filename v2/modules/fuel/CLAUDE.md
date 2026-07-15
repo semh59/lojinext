@@ -28,6 +28,8 @@ get_all(limit=100, vehicle_id=None) -> list[YakitAlimi]
 get_all_paged(skip=0, limit=100, aktif_only=True, **filters) -> dict
 get_stats(baslangic_tarih=None, bitis_tarih=None) -> dict
 get_monthly_summary() -> list[dict]
+list_fuel_documents(db, limit: int) -> list[dict]         # yakıt fişi belge arşivi
+get_fuel_accuracy_stats(db, days, arac_id=None, sofor_id=None) -> dict  # MAPE/RMSE admin ops
 
 # Periods
 create_fuel_periods(fuel_records: list[YakitAlimi]) -> list[YakitPeriyodu]
@@ -155,6 +157,13 @@ period, `depo_durumu`=tank status (`Dolu`/`Doldu`/`Kısmi`/`Bilinmiyor`),
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md` sınıfı)** —
+  `api/fuel_routes.py`'nin `list_fuel_documents`/`get_fuel_accuracy`
+  endpoint'leri `application/`'ı atlayıp doğrudan `db.execute(text(...))`
+  çalıştırıyordu — yeni `application/list_fuel_documents.py` +
+  `application/get_fuel_accuracy.py`'ye taşındı. Mekanik, davranış
+  değişikliği yok.
 - **Rolling outlier check** (`application/add_yakit.py::_check_rolling_outlier`):
   tekil kayıt yerine son 5 dolumun ortalamasına bakar (partial-fill senaryoları
   için); 18-55 L/100km dışına çıkarsa `ANOMALY_DETECTED` event'i publish eder

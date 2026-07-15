@@ -6,12 +6,14 @@ from pydantic import BaseModel, Field
 from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
 from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.anomaly.application.detect_anomaly import (
     SeverityEnum,
     get_anomaly_detector,
+)
+from v2.modules.anomaly.application.get_fleet_insights import (
+    get_fleet_insights as get_fleet_insights_usecase,
 )
 from v2.modules.anomaly.domain.clustering import cluster_anomalies
 
@@ -64,14 +66,7 @@ async def get_fleet_insights(
     Filo analiz dashboard verilerini getirir.
     Maliyet kaçağı ve bakım adaylarını içerir.
     """
-    async with UnitOfWork() as uow:
-        leakage = await uow.sefer_repo.get_cost_leakage_stats(days=days)
-        maintenance = await uow.arac_repo.get_maintenance_candidates()
-
-        return {
-            "status": "success",
-            "data": {"leakage": leakage, "maintenance": maintenance},
-        }
+    return await get_fleet_insights_usecase(days)
 
 
 @router.get("/", response_model=Dict[str, Any])

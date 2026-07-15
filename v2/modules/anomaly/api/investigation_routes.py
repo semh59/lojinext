@@ -18,21 +18,34 @@ from __future__ import annotations
 
 import html
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any, Dict, List, Optional
+from typing import Annotated, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, require_permissions
 from app.config import settings
 from app.database.models import Anomaly, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
-from v2.modules.anomaly.application.classify_theft import get_fuel_theft_classifier
-from v2.modules.anomaly.infrastructure.anomaly_repository import get_anomaly_repo
-from v2.modules.anomaly.infrastructure.investigation_repository import (
-    get_investigation_repo,
+from v2.modules.anomaly.application.manage_investigations import (
+    create_investigation as create_investigation_uc,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    get_investigation_detail,
+    get_patterns,
+    resolve_alarm_context,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    list_investigations as list_investigations_uc,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    reclassify_investigation as reclassify_investigation_uc,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    soft_delete_investigation as soft_delete_investigation_uc,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    update_investigation as update_investigation_uc,
 )
 from v2.modules.anomaly.schemas import (
     InvestigationCreate,
@@ -55,8 +68,8 @@ def _ensure_enabled() -> None:
         )
 
 
-@router.get("/patterns", response_model=List[PatternMatch])
-async def get_patterns(
+@router.get("/patterns", response_model=list[PatternMatch])
+async def get_patterns_route(
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
     days: int = Query(30, ge=7, le=180),
@@ -65,16 +78,14 @@ async def get_patterns(
 ):
     """Aynı (sofor, arac) için son N gün ≥min_count soruşturma → pattern."""
     _ensure_enabled()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    inv_repo = get_investigation_repo(db)
-    result_rows = await inv_repo.get_investigation_patterns(cutoff, min_count, limit)
+    result_rows = await get_patterns(db, days, min_count, limit)
     return [PatternMatch(**d) for d in result_rows]
 
 
 # ── Liste ───────────────────────────────────────────────────────────────
 
 
-@router.get("", response_model=List[InvestigationResponse])
+@router.get("", response_model=list[InvestigationResponse])
 async def list_investigations(
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
@@ -87,10 +98,9 @@ async def list_investigations(
     limit: int = Query(100, ge=1, le=500),
 ):
     _ensure_enabled()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    inv_repo = get_investigation_repo(db)
-    result_rows = await inv_repo.list_investigations(
-        cutoff,
+    result_rows = await list_investigations_uc(
+        db,
+        days,
         limit,
         status=status,
         suspicion_level=suspicion_level,
@@ -109,8 +119,7 @@ async def get_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
 ):
     _ensure_enabled()
-    inv_repo = get_investigation_repo(db)
-    row = await inv_repo.get_investigation_detail(inv_id)
+    row = await get_investigation_detail(db, inv_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
@@ -151,8 +160,7 @@ async def _resolve_alarm_context(
     db, anomaly: Anomaly
 ) -> "tuple[Optional[str], Optional[str]]":
     """Anomaly → (plaka, sofor_adi). Yoksa (None, None)."""
-    inv_repo = get_investigation_repo(db)
-    return await inv_repo.get_anomaly_alarm_context(int(anomaly.id))
+    return await resolve_alarm_context(db, anomaly)
 
 
 async def _maybe_broadcast_alarm(
@@ -230,56 +238,18 @@ async def create_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    anomaly_repo = get_anomaly_repo(session=db)
-    inv_repo = get_investigation_repo(db)
-    # 1. Anomaly var mı?
-    anomaly = await anomaly_repo.get_anomaly_by_id(payload.anomaly_id)
-    if not anomaly:
-        raise HTTPException(status_code=404, detail="Anomali bulunamadı")
-    # 2. Mevcut investigation var mı? (unique constraint da yakalar)
-    existing = await inv_repo.get_investigation_by_anomaly_id(payload.anomaly_id)
-    if existing:
-        raise HTTPException(
-            status_code=409,
-            detail="Bu anomali için zaten bir soruşturma var",
-        )
-
-    # 3. Classifier
-    classification = await get_fuel_theft_classifier().classify(
-        {
-            "id": anomaly.id,
-            "tip": anomaly.tip,
-            "kaynak_id": anomaly.kaynak_id,
-            "kaynak_tip": anomaly.kaynak_tip,
-            "sapma_yuzde": anomaly.sapma_yuzde,
-            "severity": anomaly.severity,
-        }
-    )
-
-    # 4. INSERT (creator_id virtual super-admin=0 ise NULL)
     creator_id = current_admin.id if current_admin.id and current_admin.id > 0 else None
-    try:
-        inv = await inv_repo.create_investigation_row(
-            anomaly_id=payload.anomaly_id,
-            status="open",
-            suspicion_score=classification.suspicion_score,
-            suspicion_level=classification.suspicion_level,
-            notes=payload.initial_notes,
-            creator_id=creator_id,
-        )
-        await db.commit()
-    except IntegrityError as exc:
-        await db.rollback()
-        # unique constraint çakışması (race)
-        raise HTTPException(
-            status_code=409,
-            detail="Bu anomali için zaten bir soruşturma var",
-        ) from exc
+    row, classification, anomaly = await create_investigation_uc(
+        db,
+        anomaly_id=payload.anomaly_id,
+        initial_notes=payload.initial_notes,
+        creator_id=creator_id,
+    )
 
     await log_audit_event(
         module="theft",
         action="investigation_created",
-        entity_id=str(inv.id),
+        entity_id=str(row["id"]),
         new_value={
             "anomaly_id": payload.anomaly_id,
             "suspicion_level": classification.suspicion_level,
@@ -288,23 +258,13 @@ async def create_investigation(
         user_id=current_admin.id,
     )
 
-    # 5. High suspicion → OPS Telegram broadcast (B.5)
-    await _maybe_broadcast_alarm(inv.id, classification, anomaly, db)
+    # High suspicion → OPS Telegram broadcast (B.5)
+    await _maybe_broadcast_alarm(row["id"], classification, anomaly, db)
 
-    # JOIN'li response
-    row = await inv_repo.get_investigation_detail(int(inv.id))
-    if row is None:
-        # Beklenmedik durum
-        raise HTTPException(
-            status_code=500, detail="Soruşturma oluşturuldu ama okunamadı"
-        )
     return InvestigationResponse(**row)
 
 
 # ── PATCH: güncelle ─────────────────────────────────────────────────────
-
-
-_TERMINAL_STATUSES = {"closed"}
 
 
 @router.patch("/{inv_id}", response_model=InvestigationResponse)
@@ -315,76 +275,18 @@ async def update_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv_repo = get_investigation_repo(db)
-    # 2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 18): SELECT ... FOR
-    # UPDATE ile satır kilitlenir — eskiden kilitsiz okunuyordu (TOCTOU),
-    # eşzamanlı iki PATCH'te geç kalan istek ilkinin commit'inden ÖNCE
-    # okunan stale bir status'a göre karar verip diğerinin sonucunu sessizce
-    # eziyordu.
-    inv = await inv_repo.lock_investigation_for_update(inv_id)
-    if not inv:
-        raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-    if inv.status in _TERMINAL_STATUSES:
-        raise HTTPException(
-            status_code=409,
-            detail="Kapatılmış soruşturma değiştirilemez",
+    row, old_value, values = await update_investigation_uc(db, inv_id, payload)
+
+    if values:
+        await log_audit_event(
+            module="theft",
+            action="investigation_updated",
+            entity_id=str(inv_id),
+            old_value=old_value,
+            new_value=values,
+            user_id=current_admin.id,
         )
 
-    old_value: Dict[str, Any] = {
-        "status": inv.status,
-        "assigned_to_user_id": inv.assigned_to_user_id,
-        "resolution_type": inv.resolution_type,
-    }
-    values: Dict[str, Any] = {}
-
-    if payload.status is not None:
-        values["status"] = payload.status
-        if payload.status == "resolved" and inv.closed_at is None:
-            values["closed_at"] = datetime.now(timezone.utc)
-        elif payload.status == "closed":
-            values["closed_at"] = datetime.now(timezone.utc)
-
-    if payload.assigned_to_user_id is not None:
-        values["assigned_to_user_id"] = payload.assigned_to_user_id
-        # Atama yapılıyor + status hala open ise otomatik 'assigned'
-        if inv.status == "open" and "status" not in values:
-            values["status"] = "assigned"
-
-    if payload.notes is not None:
-        values["notes"] = payload.notes
-
-    if payload.resolution_type is not None:
-        values["resolution_type"] = payload.resolution_type
-        # resolution set olunca status auto='resolved' + closed_at
-        if "status" not in values:
-            values["status"] = "resolved"
-            values["closed_at"] = datetime.now(timezone.utc)
-
-    if payload.evidence_files is not None:
-        values["evidence_files"] = payload.evidence_files
-
-    if not values:
-        # No-op update — mevcut kaydı dön
-        row = await inv_repo.get_investigation_detail(inv_id)
-        if row is None:
-            raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-        return InvestigationResponse(**row)
-
-    await inv_repo.update_investigation_fields(inv_id, values)
-    await db.commit()
-
-    await log_audit_event(
-        module="theft",
-        action="investigation_updated",
-        entity_id=str(inv_id),
-        old_value=old_value,
-        new_value=values,
-        user_id=current_admin.id,
-    )
-
-    row = await inv_repo.get_investigation_detail(inv_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
 
 
@@ -398,15 +300,9 @@ async def soft_delete_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv_repo = get_investigation_repo(db)
-    inv = await inv_repo.get_investigation_by_id(inv_id)
-    if not inv:
-        raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-    if inv.status == "closed":
+    was_already_closed = await soft_delete_investigation_uc(db, inv_id)
+    if was_already_closed:
         return  # idempotent
-
-    await inv_repo.close_investigation(inv_id, datetime.now(timezone.utc))
-    await db.commit()
     await log_audit_event(
         module="theft",
         action="investigation_closed",
@@ -425,31 +321,7 @@ async def reclassify_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    inv_repo = get_investigation_repo(db)
-    anomaly_repo = get_anomaly_repo(session=db)
-    inv = await inv_repo.get_investigation_by_id(inv_id)
-    if not inv:
-        raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-    anomaly = await anomaly_repo.get_anomaly_by_id(inv.anomaly_id)
-    if not anomaly:
-        raise HTTPException(status_code=404, detail="İlişkili anomali bulunamadı")
-
-    classification = await get_fuel_theft_classifier().classify(
-        {
-            "id": anomaly.id,
-            "tip": anomaly.tip,
-            "kaynak_id": anomaly.kaynak_id,
-            "kaynak_tip": anomaly.kaynak_tip,
-            "sapma_yuzde": anomaly.sapma_yuzde,
-            "severity": anomaly.severity,
-        }
-    )
-    await inv_repo.update_investigation_classification(
-        inv_id,
-        classification.suspicion_score,
-        classification.suspicion_level,
-    )
-    await db.commit()
+    classification = await reclassify_investigation_uc(db, inv_id)
 
     await log_audit_event(
         module="theft",

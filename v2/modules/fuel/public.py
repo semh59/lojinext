@@ -21,7 +21,9 @@ from v2.modules.fuel.application.distribute_fuel_to_trips import (
     distribute_fuel_to_trips,
     match_periods_with_trips,
 )
+from v2.modules.fuel.application.get_fuel_accuracy import get_fuel_accuracy_stats
 from v2.modules.fuel.application.get_yakit import get_by_vehicle, get_yakit_by_id
+from v2.modules.fuel.application.list_fuel_documents import list_fuel_documents
 from v2.modules.fuel.application.list_yakit import (
     get_all,
     get_all_paged,
@@ -75,6 +77,8 @@ __all__ = [
     "get_all_paged",
     "get_stats",
     "get_monthly_summary",
+    "list_fuel_documents",
+    "get_fuel_accuracy_stats",
     # periods
     "create_fuel_periods",
     "distribute_fuel_to_trips",

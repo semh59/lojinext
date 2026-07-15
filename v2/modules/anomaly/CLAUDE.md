@@ -59,6 +59,19 @@ PatternMatch, SuspicionLevel, AttributionOverrideRequest, AttributionOverrideRes
 # Repository (uow.anomaly_repo / uow.investigation_repo)
 AnomalyRepository        # infrastructure/anomaly_repository.py — anomalies CRUD
 InvestigationRepository  # infrastructure/investigation_repository.py — fuel_investigations + FOR-UPDATE akışı
+
+# Investigation orkestrasyonu (application/manage_investigations.py — db: AsyncSession alır, kendi UoW açmaz, bkz. FOR-UPDATE notu)
+get_patterns(db, days, min_count, limit) -> list[dict]
+list_investigations(db, days, limit, status=None, suspicion_level=None, assigned_to_user_id=None) -> list[dict]
+get_investigation_detail(db, inv_id) -> dict | None
+create_investigation(db, *, anomaly_id, initial_notes, creator_id) -> (dict, TheftClassification, Anomaly)
+update_investigation(db, inv_id, payload) -> (dict, old_value_dict, new_value_dict)
+soft_delete_investigation(db, inv_id) -> bool   # True = zaten kapalıydı (idempotent)
+reclassify_investigation(db, inv_id) -> TheftClassification
+resolve_alarm_context(db, anomaly) -> (plaka, sofor_adi)
+
+# Filo analiz dashboard (application/get_fleet_insights.py — trip/fleet repo okur, bkz. aşağıdaki not)
+get_fleet_insights(days: int) -> dict
 ```
 
 **B.1 sınıf istisnaları** (`AttributionService` KALDIRILDI, önceki 6 dalgadaki
@@ -127,6 +140,28 @@ bkz. dalga 8 doğrulama notu STATUS.md'de).
   KALDI** — bunlar `anomalies` tablosuna insight-alert yazan/okuyan AYRI bir
   yol (task dosyasının 15 metodluk taşıma listesinde yok), analytics_executive'in
   kendi sorumluluğu.
+- 🔴 **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu — dalga 8 taşımasının kendisinde, `TASKS/bug-route-layer-bypasses-application.md`
+  sınıfının belgelenmeden yaşayan bir tekrarı)**: `api/investigation_routes.py`'nin
+  TÜM 7 endpoint'i (`get_patterns`/`list_investigations`/`get_investigation`/
+  `create_investigation`/`update_investigation`/`soft_delete_investigation`/
+  `reclassify_investigation`) `application/`'ı hiç kullanmıyor, doğrudan
+  `get_investigation_repo(db)`/`get_anomaly_repo(session=db)` çağırıyordu —
+  yeni `application/manage_investigations.py`'ye taşındı. FOR-UPDATE
+  invaryantı korunuyor: bu dosyadaki fonksiyonlar kendi `UnitOfWork`'ünü
+  AÇMAZ, çağıranın (route'un) `SessionDep` session'ını parametre alır —
+  `lock_investigation_for_update` + `update_investigation_fields` +
+  `db.commit()` aynı transaction'da kalır (aksi halde kilit anlamsızlaşır).
+  Ayrıca `api/anomaly_routes.py::get_fleet_insights` de aynı ihlali
+  taşıyordu (`UnitOfWork()` doğrudan route'ta) — `application/get_fleet_insights.py`'ye
+  taşındı; bu endpoint `sefer_repo`/`arac_repo` (trip/fleet) okuyor,
+  `anomalies`/`fuel_investigations` ile ilgisi yok — muhtemelen tarihsel
+  yanlış-yerleştirme, taşıma kapsamına alınmadı (ayrı bir modül-sahipliği
+  kararı gerektirir), sadece B.1 katman ihlali düzeltildi. `attribution_routes.py`'nin
+  `UnitOfWork(db)` inşası İSTİSNA — connection-pool-leak fix'inin
+  (`TASKS/bug-connection-pool-leak-under-load.md`) gerektirdiği bilinçli
+  desen, `override_attribution` zaten application katmanı fonksiyonu,
+  dokunulmadı. Mekanik taşıma, davranış değişikliği yok.
 
 ## Bilinen açık notlar
 

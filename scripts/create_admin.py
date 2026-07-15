@@ -68,6 +68,15 @@ async def create_admin():
                     "rol_yaz": True,
                     "sistem_saglik_goruntule": True,
                     "yonetim_rapor": True,
+                    # 2026-07-15 dedektif denetiminde bulundu — bu 5 anahtar
+                    # hiçbir OR-alternatifi/fallback'i olmayan veya "all"/"*"
+                    # fallback'ine dict'te karşılık gelmeyen endpoint'ler
+                    # yüzünden admin rolüne hiç erişemiyordu:
+                    "import_goruntule": True,  # admin_imports.py — tek yetki, fallback yok
+                    "import_rollback": True,  # admin_imports.py — OR: all/* (ikisi de yoktu)
+                    "notification_rule_duzenle": True,  # notification_routes.py — OR: all/*
+                    "notification_rule_sil": True,  # notification_routes.py — OR: all/*
+                    "admin": True,  # 3 endpoint literal "admin" anahtarı arıyor (rol adı değil)
                 },
             )
             session.add(admin_role)

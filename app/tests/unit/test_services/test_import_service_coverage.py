@@ -860,6 +860,110 @@ class TestExecuteImportSeferPath:
         assert sefer.arac_id == real_master.arac.id
         assert sefer.guzergah_id == real_master.lok.id
 
+    async def test_sefer_execute_import_avoids_n_plus_one(
+        self, real_master, monkeypatch
+    ):
+        """execute_import'un sefer yolu: master listeler (arac/sofor/dorse/
+        lokasyon) satır sayısından BAĞIMSIZ olarak TEK seferde prefetch
+        edilmeli — her split-fonksiyonun (validate_sefer_row) kendi sorgusunu
+        atması N+1 regresyonu olurdu (görev dosyasının uyarısı,
+        row_validators.py'nin docstring'i). 3 satırlı bir Excel ile
+        get_all'ların tam olarak 1 kez çağrıldığını sayarak kanıtlar."""
+        from v2.modules.driver.infrastructure.repository import SoforRepository
+        from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+        from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
+        from v2.modules.location.infrastructure.repository import LokasyonRepository
+
+        calls = {"arac": 0, "sofor": 0, "dorse": 0, "lokasyon": 0}
+
+        original_arac = AracRepository.get_all
+        original_sofor = SoforRepository.get_all
+        original_dorse = DorseRepository.get_all
+        original_lok = LokasyonRepository.get_all
+
+        async def counted_arac(self, *a, **kw):
+            calls["arac"] += 1
+            return await original_arac(self, *a, **kw)
+
+        async def counted_sofor(self, *a, **kw):
+            calls["sofor"] += 1
+            return await original_sofor(self, *a, **kw)
+
+        async def counted_dorse(self, *a, **kw):
+            calls["dorse"] += 1
+            return await original_dorse(self, *a, **kw)
+
+        async def counted_lok(self, *a, **kw):
+            calls["lokasyon"] += 1
+            return await original_lok(self, *a, **kw)
+
+        monkeypatch.setattr(AracRepository, "get_all", counted_arac)
+        monkeypatch.setattr(SoforRepository, "get_all", counted_sofor)
+        monkeypatch.setattr(DorseRepository, "get_all", counted_dorse)
+        monkeypatch.setattr(LokasyonRepository, "get_all", counted_lok)
+
+        df = pd.DataFrame(
+            [
+                {
+                    "plaka": "34ABC123",
+                    "sofor_ad": "Ahmet Yilmaz",
+                    "cikis_yeri": "Ankara",
+                    "varis_yeri": "Istanbul",
+                    "tarih": str(date.today()),
+                    "mesafe_km": 450.0,
+                    "ton": 20000.0,
+                },
+                {
+                    "plaka": "34ABC123",
+                    "sofor_ad": "Ahmet Yilmaz",
+                    "cikis_yeri": "Ankara",
+                    "varis_yeri": "Istanbul",
+                    "tarih": str(date.today()),
+                    "mesafe_km": 100.0,
+                    "ton": 5000.0,
+                },
+                {
+                    "plaka": "34ABC123",
+                    "sofor_ad": "Ahmet Yilmaz",
+                    "cikis_yeri": "Ankara",
+                    "varis_yeri": "Istanbul",
+                    "tarih": str(date.today()),
+                    "mesafe_km": 200.0,
+                    "ton": 8000.0,
+                },
+            ]
+        )
+        upload = self._upload(df)
+        mapping = {
+            "plaka": "plaka",
+            "sofor_ad": "sofor_ad",
+            "cikis_yeri": "cikis_yeri",
+            "varis_yeri": "varis_yeri",
+            "tarih": "tarih",
+            "mesafe_km": "mesafe_km",
+            "ton": "ton",
+        }
+
+        with patch(
+            "app.infrastructure.events.event_bus.get_event_bus",
+            return_value=SimpleNamespace(publish_async=AsyncMock()),
+        ):
+            result = await execute_import(upload, "sefer", real_master.user.id, mapping)
+
+        assert result["basarili"] == 3, f"errors={result['errors']}"
+        assert calls["arac"] == 1, (
+            "arac_repo.get_all satır sayısından bağımsız TEK kez çağrılmalı"
+        )
+        assert calls["sofor"] == 1, (
+            "sofor_repo.get_all satır sayısından bağımsız TEK kez çağrılmalı"
+        )
+        assert calls["dorse"] == 1, (
+            "dorse_repo.get_all satır sayısından bağımsız TEK kez çağrılmalı"
+        )
+        assert calls["lokasyon"] == 1, (
+            "lokasyon_repo.get_all satır sayısından bağımsız TEK kez çağrılmalı"
+        )
+
     async def test_rollback_db_error_raises_500(self):
         """DB error during rollback → HTTPException 500."""
         from fastapi import HTTPException

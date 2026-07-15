@@ -5,7 +5,13 @@ Eskiden tek bir ``_validate_import_rows`` metodu 4 ``aktarim_tipi``'ne
 bölündü (B.1), AMA prefetch edilen master listeler (``vehicles``/``drivers``/
 ``trailers``/``routes``) **tek seferde çekilip parametre olarak paylaşılıyor**
 — her split'in kendi SELECT'ini atması N+1 regresyonu olurdu (görev
-dosyasının açık uyarısı, ``test_row_validators_no_n_plus_one.py`` ile kanıtlı).
+dosyasının açık uyarısı). Kanıt:
+``app/tests/unit/test_services/test_import_service_coverage.py::
+TestExecuteImportSeferPath::test_sefer_execute_import_avoids_n_plus_one`` —
+3 satırlı bir sefer Excel'i ile `arac_repo`/`sofor_repo`/`dorse_repo`/
+`lokasyon_repo.get_all`'ların satır sayısından bağımsız TAM 1 kez
+çağrıldığını sorgu-sayımıyla kanıtlar (`import_routes`/güzergah yolu için
+ayrıca `test_import_routes_avoids_n_plus_one` var).
 """
 
 from typing import Any, Dict, List, Tuple

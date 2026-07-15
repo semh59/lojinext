@@ -107,13 +107,13 @@ auth_rbac.kullanicilar; `arac_bakimlari.arac_id`/`.dorse_id` modül-içi.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **import_excel** (senkron, geçici doğrudan import):
-  `app/core/services/import_service.py` toplu araç/dorse import'unda
-  `bulk_add_vehicles`/`create_trailer`'ı doğrudan çağırır (location'ın
-  `create_location` tüketimiyle aynı desen). import_excel henüz
-  `public.py`'sini yayınlamadı; fleet bu bağımlılığın YÖNÜ (tüketen taraf
-  import_excel) olduğu için kendi CLAUDE.md'sinde not düşülmüş bir borç
-  değil.
+- **import_excel** (senkron, taşındı — dalga 9): toplu araç/dorse
+  import'unda `bulk_add_vehicles`/`create_trailer`'ı doğrudan çağırır
+  (location'ın `create_location` tüketimiyle aynı desen). import_excel
+  artık `v2/modules/import_excel/public.py`'yi yayınlıyor; fleet'in kendi
+  export/template ihtiyaçları (`vehicle_routes.py`, `export_trailers.py`)
+  da bu `public.py` üzerinden import_excel'i tüketiyor (ÇİFT yönlü
+  bağımlılık — fleet hem import_excel'e sağlıyor hem ondan tüketiyor).
 - **prediction_ml** (senkron, geçici, ai_assistant/reports/analytics_executive
   üzerinden dolaylı): `ensemble_service.py`, `ai_service.py`,
   `recommendation_engine.py`, `cost_analyzer.py`, `cashflow_projector.py`,

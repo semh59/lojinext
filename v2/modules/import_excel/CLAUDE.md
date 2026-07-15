@@ -50,19 +50,36 @@ ImportHistoryRepository  # infrastructure/repository.py
 process_belge_ocr(belge_id: int) -> dict   # task adı: "ocr.process_belge"
 ```
 
-**B.1 sınıf istisnaları (2 adet):**
+**B.1 sınıf istisnaları — DÜRÜST NOT (2026-07-15 dedektif denetimi
+bulgusu):** aşağıdaki 2 sınıf ilk yazımda `RouteSimulator`/`LokasyonHydrator`
+ile "aynı gerekçe" diye tanımlanmıştı — bağımsız denetim bu iddianın
+YANLIŞ olduğunu gösterdi (o emsallerin gerçek istisna sebebi
+constructor-injected client bağımlılığı/mutable eğitilmiş-model state'i;
+aşağıdaki 2 sınıfta bu YOK). İkisi de dalga 9'da MEKANİK taşındı (davranış
+değişikliği yapılmadı) — B.1'in "gerçek gerekçesiz sınıf" kısıtına göre
+teknik borç olarak burada dürüstçe işaretleniyor, free-function'a
+çevrilmeleri ayrı bir refactor kapsamı (bu dalganın taşıma-only sınırını
+aşar):
 
-- **`SafeColumnMapper`** (`infrastructure/column_mapper.py`) —
-  `RouteSimulator`/`LokasyonHydrator`/`DriverPerformanceML` ile aynı
-  gerekçe: tek cohesive fuzzy-match algoritması (exact-match + skorlu
-  substring/`SequenceMatcher` iki-geçişli strateji), constructor state'i
-  yok.
-- **`ExportService`** (`infrastructure/report_export.py`) — disk'e
-  PDF/Excel yazan, `EXPORT_DIR` çözümü + `cleanup_old_exports` yaşam
-  döngüsü olan stateful orkestratör (Excel export'un bytes-döndüren
-  `infrastructure/exporters.py::export_data`/`generate_template`'inden
-  FARKLI bir API yüzeyi — biri dosya yoluna yazar, diğeri bytes döner,
-  aynı isimli metotlar (`generate_template`) karıştırılmamalı).
+- **`SafeColumnMapper`** (`infrastructure/column_mapper.py`) — hiç
+  `__init__` yok, hiç instantiate edilmiyor (her çağrı
+  `SafeColumnMapper.map_columns(...)` classmethod'u), `COLS` class-level
+  sabit dict. Gerçekte constructor-state'i olmadığı için `map_columns`
+  trivially bir free function'a, `COLS` bir modül sabitine çevrilebilirdi
+  — bu B.1'in tam olarak önlemeye çalıştığı "gereksiz sınıf" örüntüsü.
+  Taşımadan ÖNCE de (eski `excel_column_map.py`'de) sınıftı, dalga 9
+  yalnız yerini değiştirdi.
+- **`ExportService`** (`infrastructure/report_export.py`) — `EXPORT_DIR`
+  class-level bir sabit (instance-özel mutable state değil), constructor
+  yok, ve sınıf gerçekte 5 BİRBİRİNDEN BAĞIMSIZ use-case barındırıyor
+  (`export_to_excel`, `export_fleet_summary_pdf`, `export_vehicle_report_pdf`,
+  `generate_template`, `cleanup_old_exports`) — `RouteSimulator`'ın "tek
+  cohesive pipeline" gerekçesindeki gibi TEK bir iş akışı değil. Excel
+  export'un bytes-döndüren `infrastructure/exporters.py::export_data`/
+  `generate_template`'inden FARKLI bir API yüzeyi (biri dosya yoluna
+  yazar, diğeri bytes döner, aynı isimli metotlar karıştırılmamalı).
+  Taşımadan ÖNCE de (eski `export_service.py`'de) sınıftı, dalga 9 yalnız
+  yerini değiştirdi.
 
 ## İMPORT MİMARİSİ (ARCH-002, execute_import.py docstring'inde de var)
 
@@ -136,6 +153,33 @@ import ihtiyaçları için bu modülün `public.py`'sini çağırır (`export_da
   gevşek ilişkili** — orijinal dosya envanterinde vardı (`app/workers/
   tasks/ocr_tasks.py`), OCR belge-işleme akışı Excel'le ilgisiz ama görev
   dosyasının 11 dosyalık listesinde açıkça yer alıyordu, taşındı.
+- ✅ **DÜZELTİLDİ (2026-07-15, dedektif denetiminde bulundu)** —
+  `api/import_routes.py`'nin `GET /history` endpoint'i `application/`'ı
+  atlayıp doğrudan `UnitOfWork`+`ImportHistoryRepository` çağırıyordu
+  (`bug-route-layer-bypasses-application.md` sınıfının bu dalgadaki
+  taşıma sırasında üretilen YENİ bir tekrarı — eski `admin_imports.py`'den
+  mekanik kopyalanmış, hiç application katmanına taşınmamıştı). Yeni
+  `application/get_import_history.py` eklendi, route artık yalnız onu
+  çağırıyor.
+- **`infrastructure/parsers.py`/`infrastructure/exporters.py` — 6+ bağımsız
+  entity-tipi (sefer/yakit/route/vehicle/driver/dorse) parse/export
+  mantığı tek dosyada** (dedektif denetiminde işaretlendi). Eski
+  `excel_parser.py`/`excel_exporter.py`'den DEĞİŞTİRİLMEDEN taşındı — bu
+  yapı taşımadan önce de böyleydi, dalga 9'un ürettiği bir regresyon değil.
+  Application katmanındaki importer dosyalarının (`driver_importer.py` vb.)
+  tersine burada entity-başına ayrı dosyaya bölünmedi; ileride ele
+  alınabilecek bir B.1 temizlik kalemi olarak işaretli, bu dalgada
+  kapsam dışı bırakıldı (mekanik taşıma kararına sadık kalmak için).
+- **`execute_import`'un `surucu` dalı (`ad_soyad`/`telefon` PII şifreleme +
+  trigram) driver modülünün repository'sini bypass edip ham SQL
+  INSERT/DELETE yazıyor** — `v2/modules/driver/CLAUDE.md`'nin kendi notu
+  bunun "import-excel dalga 9'da ele alınacak (driver repository'sinin
+  bulk-insert path'ini kullanacak şekilde refactor edilebilir)" olduğunu
+  söylüyor ama bu, `TASKS/modules/import-excel.md`'nin kabul kriterlerinde
+  YOKTU — davranış değişikliği + driver'ın bulk-insert path'ine yeni bir
+  yetenek eklenmesi gerektirdiği için bu dalgada kapsam dışı bırakıldı
+  (taşımadan önce de aynı ham-SQL deseni vardı, regresyon değil). Ayrı bir
+  bug-fix görevi olarak açılabilir.
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

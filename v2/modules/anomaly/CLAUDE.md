@@ -67,7 +67,18 @@ karar aynı gerekçeyle — free function'a çevrildi; kalan 3 sınıf `RouteSim
 
 - **`AnomalyDetector`** — sklearn `IsolationForest` + LightGBM `LGBMClassifier`
   + `lgb_trained` bayrağı gerçek mutable eğitilmiş-model state'i taşır,
-  istatistiksel+ML tek-cohesive-pipeline'dır.
+  istatistiksel+ML tek-cohesive-pipeline'dır. **Dürüst not (2026-07-15
+  dalga-8-sonrası dedektif denetimi):** bu gerekçe yalnız tespit
+  metodlarını (`detect_consumption_anomalies`/`train_lgb_classifier`/
+  `save_model`/`load_model` vb.) kapsar — `acknowledge`/`resolve` (satır
+  ~560-610) ML/istatistik pipeline'ıyla İLGİSİZ, basit UoW CRUD-güncelleme
+  metodları ve B.1'in "tek sorumluluk" ilkesini teknik olarak ihlal eder.
+  Bu karışım taşımadan ÖNCE de vardı (`app/core/services/anomaly_detector.py`
+  içinde aynı şekildeydi, `git show 1a8d77a:...` ile doğrulandı) — dalga 8'in
+  ürettiği YENİ bir ihlal değil, taşınan mimari borç. Ayrı bir dosyaya
+  (`application/acknowledge_anomaly.py` gibi) bölünmesi bu dalganın
+  kapsamı dışında bırakıldı (saf mekanik taşıma kararına sadık kalmak için);
+  ileride ele alınacak bir B.1 temizlik kalemi olarak burada işaretlendi.
 - **`AnomalyDetectionService`** — constructor-injected cache handle
   (`get_cache_manager()`) + iki alt-metodun (detect/analyze) birlikte
   tutarlı bir hesap hattı oluşturması. `AnomalyDetector`'dan FARKLI, bilinçli

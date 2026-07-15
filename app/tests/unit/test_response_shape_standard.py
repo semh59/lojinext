@@ -113,18 +113,20 @@ async def test_driver_delete_returns_success_true():
 
     mock_user = MagicMock()
 
-    mock_sofor = MagicMock()
-    mock_sofor.aktif = True
-    mock_db = AsyncMock()
-    mock_db.get = AsyncMock(return_value=mock_sofor)
+    mock_sofor = {"id": 1, "aktif": True}
 
     # NOT: eski DI-injected `service=` kwarg'ı kaldırıldı — SoforService
     # sınıfı silindi (dalga 5, B.1 free-function refactor); route artık
     # module-level import edilen delete_sofor_usecase'i doğrudan çağırıyor.
-    with patch.object(d_mod, "delete_sofor_usecase", AsyncMock(return_value=True)):
+    # `db=` kwarg'ı da kaldırıldı (dalga-1-6+8 B.1 dedektif denetimi,
+    # 2026-07-15) — route artık `get_by_id` üzerinden okuyor, doğrudan
+    # `db.get(Sofor,...)` çağırmıyor.
+    with (
+        patch.object(d_mod, "get_by_id", AsyncMock(return_value=mock_sofor)),
+        patch.object(d_mod, "delete_sofor_usecase", AsyncMock(return_value=True)),
+    ):
         result = await d_mod.delete_sofor(
             sofor_id=1,
-            db=mock_db,
             current_admin=mock_user,
         )
 

@@ -75,10 +75,10 @@ doğrudan çağrılan bir yol — `/push/test`, digest task, insight_engine vb.)
 
 - **auth_rbac** (senkron, in-edge): `auth.py`'nin `/password-reset-request`
   endpoint'i `send_password_reset`'i public.py üzerinden çağırır.
-- **admin_platform / preference sahibi modül** (senkron, geçici out-edge):
-  `domain/quiet_hours.py`'nin `is_user_quiet_now`'ı
-  `app.core.services.preference_service.PreferenceService`'i doğrudan import
-  eder — henüz v2'ye taşınmamış.
+- **auth_rbac** (senkron, out-edge): `domain/quiet_hours.py`'nin
+  `is_user_quiet_now`'ı `v2.modules.auth_rbac.application.preference_service`'i
+  doğrudan import eder (dalga 6'da güncellendi — eski `app.core.services.
+  preference_service.PreferenceService` yolu artık yok).
 - **analytics_executive** (senkron, in-edge): `insight_engine.py`'nin
   `_notify_serious_alerts` fonksiyonu `send_push_broadcast`'i fonksiyon-içi
   (inline) import eder.

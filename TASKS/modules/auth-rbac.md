@@ -53,7 +53,7 @@ app/scripts/create_admin.py
 7. Shim'ler + CLAUDE.md — bu modülün CLAUDE.md'sinde "Şema & tablo sahipliği" bölümü 28 inbound FK'yı özellikle vurgular (FAZ2 rol tasarımı için kritik referans).
 
 ## 6. Kabul kriterleri
-- [ ] 21 dosya taşındı
-- [ ] `out=1` kontratı korunuyor (yeni cross-module import eklenmedi)
-- [ ] 28 inbound FK, fk_registry.yml taslağına (FAZ2 için) not düşüldü
-- [ ] Multi-worker güvenlik state'i BURADA çözülmedi, açıkça FAZ2'ye ertelendi (TODO işaretli)
+- [x] 21 dosya taşındı — main'de yeşil, commit `e9a0328` (3 bağımsız denetim ajanıyla 2026-07-15'te doğrulandı: 21/21 eski dosya diskte/git'te yok, v2/modules/auth_rbac/'e taşınmış).
+- [x] `out=1` kontratı korunuyor (yeni cross-module import eklenmedi) — doğrulandı: `v2/modules/auth_rbac/` içindeki tek `v2.modules.*` importu `notification.infrastructure.email_client` (auth_routes.py:231).
+- [x] 28 inbound FK, `v2/modules/auth_rbac/CLAUDE.md`'de not düşüldü — `grep -c 'ForeignKey("kullanicilar' app/database/models.py` → 28, iddiayla birebir örtüşüyor. (`fk_registry.yml` dosyasının kendisi henüz yok — bu FAZ2 artefaktı, dalga 6'nın kapsamında değil, yalnız CLAUDE.md'de metinsel not olarak bekleniyordu.)
+- [x] Multi-worker güvenlik state'i BURADA çözülmedi, açıkça FAZ2'ye ertelendi (TODO işaretli) — `security_probe.py` dalga 6 commit aralığında (`008eaf9..25a63f5`) hiç dokunulmadı, `v2/modules/auth_rbac/CLAUDE.md`'de TODO olarak dokümante edildi.

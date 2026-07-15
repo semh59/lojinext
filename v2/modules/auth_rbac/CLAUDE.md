@@ -156,7 +156,7 @@ dokunulmadı, davranış değişikliği yok.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **admin_platform (senkron, henüz taşınmadı)**: en yoğun tüketici — 7 import
+- **admin_platform (senkron, henüz taşınmadı)**: en yoğun tüketici — 8 import
   (`admin_attribution.py`/`admin_config.py`/`admin_health.py`/
   `admin_integrations.py`/`admin_ml.py`/`admin_imports.py`/
   `fleet_insights.py`/`error_stream.py` — `require_yetki`/`get_current_user`/

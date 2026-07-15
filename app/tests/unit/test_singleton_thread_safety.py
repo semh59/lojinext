@@ -27,7 +27,7 @@ def test_driver_coaching_engine_singleton_has_lock():
 
 def test_fuel_theft_classifier_singleton_has_lock():
     """Module-level _classifier_lock var."""
-    from app.core.ai import fuel_theft_classifier as mod
+    from v2.modules.anomaly.application import classify_theft as mod
 
     assert hasattr(mod, "_classifier_lock"), "Lock attribute eksik"
     assert isinstance(mod._classifier_lock, type(threading.Lock()))
@@ -52,7 +52,7 @@ def test_driver_coaching_engine_concurrent_calls_return_same_instance():
 
 def test_fuel_theft_classifier_concurrent_calls_return_same_instance():
     """20 paralel thread aynı classifier instance'ı almalı."""
-    from app.core.ai import fuel_theft_classifier as mod
+    from v2.modules.anomaly.application import classify_theft as mod
 
     mod._classifier_singleton = None
 

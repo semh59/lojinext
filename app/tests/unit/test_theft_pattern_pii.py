@@ -54,7 +54,7 @@ class _FakeUoW:
 @pytest.mark.asyncio
 async def test_theft_pattern_scan_logs_ids_not_pii(caplog):
     """logger.warning'de ad_soyad/plaka YOK, sofor_id/arac_id VAR."""
-    from app.workers.tasks import theft_tasks
+    from v2.modules.anomaly.infrastructure import theft_tasks
 
     fake_rows = [
         {

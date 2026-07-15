@@ -459,6 +459,97 @@ class AracRepository(BaseRepository[Arac]):
             logger.error(f"Bulk delete error for vehicles: {e}")
             raise e
 
+    async def get_fleet_stats(self) -> Dict[str, Any]:
+        """Araç filosu genel istatistikleri (toplam, aktif, muayene uyarısı)."""
+        query = """
+            SELECT
+                COUNT(*)                                                                              AS total,
+                COUNT(*) FILTER (WHERE aktif = true)                                                  AS active,
+                COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
+                                    AND muayene_tarihi >= CURRENT_DATE
+                                    AND muayene_tarihi <= CURRENT_DATE + INTERVAL '30 days')          AS inspection_expiring,
+                COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
+                                    AND muayene_tarihi < CURRENT_DATE)                                AS inspection_overdue
+            FROM araclar
+        """  # noqa: E501
+        rows = await self.execute_query(query)
+        return dict(rows[0]) if rows else {}
+
+    async def get_inspection_alerts(
+        self, within_days: int
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Muayenesi yaklaşan (``expiring``) veya geçmiş (``overdue``) araçlar."""
+        query = """
+            SELECT
+                id,
+                plaka,
+                marka,
+                model,
+                yil,
+                muayene_tarihi,
+                CASE
+                    WHEN muayene_tarihi < CURRENT_DATE THEN 'overdue'
+                    ELSE 'expiring'
+                END AS bucket,
+                (muayene_tarihi - CURRENT_DATE) AS days_remaining
+            FROM araclar
+            WHERE aktif = TRUE
+              AND is_deleted = FALSE
+              AND muayene_tarihi IS NOT NULL
+              AND (
+                  muayene_tarihi < CURRENT_DATE
+                  OR muayene_tarihi <= CURRENT_DATE + (:within_days || ' days')::interval
+              )
+            ORDER BY muayene_tarihi ASC
+        """
+        rows = await self.execute_query(query, {"within_days": str(within_days)})
+
+        expiring: List[Dict[str, Any]] = []
+        overdue: List[Dict[str, Any]] = []
+        for row in rows:
+            item = {
+                "id": row["id"],
+                "plaka": row["plaka"],
+                "marka": row["marka"],
+                "model": row["model"],
+                "yil": row["yil"],
+                "muayene_tarihi": row["muayene_tarihi"].isoformat()
+                if row["muayene_tarihi"]
+                else None,
+                "days_remaining": int(row["days_remaining"])
+                if row["days_remaining"] is not None
+                else None,
+            }
+            (overdue if row["bucket"] == "overdue" else expiring).append(item)
+        return {"expiring": expiring, "overdue": overdue}
+
+    async def get_vehicle_events(
+        self, arac_id: int, limit: int = 20
+    ) -> List[Dict[str, Any]]:
+        """Araç olay geçmişini getir (son N kayıt), `vehicle_event_log`'dan."""
+        query = """
+            SELECT id, arac_id, event_type, old_status, new_status, triggered_by, details, created_at
+            FROM vehicle_event_log
+            WHERE arac_id = :arac_id
+            ORDER BY created_at DESC
+            LIMIT :limit
+        """  # noqa: E501
+        rows = await self.execute_query(query, {"arac_id": arac_id, "limit": limit})
+        return [
+            {
+                "id": row["id"],
+                "event_type": row["event_type"],
+                "old_status": row["old_status"],
+                "new_status": row["new_status"],
+                "triggered_by": row["triggered_by"],
+                "details": row["details"],
+                "created_at": row["created_at"].isoformat()
+                if row["created_at"]
+                else None,
+            }
+            for row in rows
+        ]
+
     async def get_by_ids(self, ids: List[int]) -> Dict[int, Arac]:
         """Fetch multiple vehicles by IDs in a single query (N+1 optimization)."""
         if not ids:

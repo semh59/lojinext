@@ -31,6 +31,12 @@ from v2.modules.fleet.application.export_trailers import (
 from v2.modules.fleet.application.export_trailers import (
     import_trailers as import_trailers_usecase,
 )
+from v2.modules.fleet.application.get_fleet_stats import (
+    get_trailer_fleet_stats as get_trailer_fleet_stats_usecase,
+)
+from v2.modules.fleet.application.get_inspection_alerts import (
+    get_trailer_inspection_alerts as get_trailer_inspection_alerts_usecase,
+)
 from v2.modules.fleet.application.list_trailers import get_all_trailers_paged
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
 from v2.modules.fleet.schemas import DorseCreate, DorseResponse, DorseUpdate
@@ -82,35 +88,16 @@ async def read_dorseler(
 @router.get("/fleet-stats", response_model=FleetStatsResponse)
 async def get_dorse_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
+    uow: UOWDep,
 ):
     """Dorse filosu genel istatistikleri (toplam, aktif, muayene uyarısı)."""
-    from sqlalchemy import text
-
-    query = text("""
-        SELECT
-            COUNT(*)                                                                              AS total,
-            COUNT(*) FILTER (WHERE aktif = true)                                                  AS active,
-            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
-                                AND muayene_tarihi >= CURRENT_DATE
-                                AND muayene_tarihi <= CURRENT_DATE + INTERVAL '30 days')          AS inspection_expiring,
-            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
-                                AND muayene_tarihi < CURRENT_DATE)                                AS inspection_overdue
-        FROM dorseler
-    """)  # noqa: E501
-    row = (await db.execute(query)).mappings().one()
-    return {
-        "total": row["total"],
-        "active": row["active"],
-        "inspection_expiring": row["inspection_expiring"],
-        "inspection_overdue": row["inspection_overdue"],
-    }
+    return await get_trailer_fleet_stats_usecase(uow.dorse_repo)
 
 
 @router.get("/inspection-alerts", response_model=DorseInspectionAlertsResponse)
 async def get_dorse_inspection_alerts(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
+    uow: UOWDep,
     within_days: int = Query(30, ge=1, le=180),
 ):
     """Muayenesi yaklaşan veya geçmiş dorselerin listesi.
@@ -119,58 +106,8 @@ async def get_dorse_inspection_alerts(
     ``inspection-alerts`` ile aynı sözleşme (dorse'de model yok, tipi var).
     Aktif + soft-delete edilmemiş dorselerle sınırlı.
     """
-    from sqlalchemy import text
-
-    query = text(
-        """
-        SELECT
-            id,
-            plaka,
-            marka,
-            tipi,
-            yil,
-            muayene_tarihi,
-            CASE
-                WHEN muayene_tarihi < CURRENT_DATE THEN 'overdue'
-                ELSE 'expiring'
-            END AS bucket,
-            (muayene_tarihi - CURRENT_DATE) AS days_remaining
-        FROM dorseler
-        WHERE aktif = TRUE
-          AND is_deleted = FALSE
-          AND muayene_tarihi IS NOT NULL
-          AND (
-              muayene_tarihi < CURRENT_DATE
-              OR muayene_tarihi <= CURRENT_DATE + (:within_days || ' days')::interval
-          )
-        ORDER BY muayene_tarihi ASC
-        """
-    )
-    result = await db.execute(query, {"within_days": str(within_days)})
-    rows = result.mappings().all()
-
-    expiring: list[dict] = []
-    overdue: list[dict] = []
-    for row in rows:
-        item = {
-            "id": row["id"],
-            "plaka": row["plaka"],
-            "marka": row["marka"],
-            "tipi": row["tipi"],
-            "yil": row["yil"],
-            "muayene_tarihi": row["muayene_tarihi"].isoformat()
-            if row["muayene_tarihi"]
-            else None,
-            "days_remaining": int(row["days_remaining"])
-            if row["days_remaining"] is not None
-            else None,
-        }
-        if row["bucket"] == "overdue":
-            overdue.append(item)
-        else:
-            expiring.append(item)
-
-    return {"expiring": expiring, "overdue": overdue, "within_days": within_days}
+    alerts = await get_trailer_inspection_alerts_usecase(uow.dorse_repo, within_days)
+    return {**alerts, "within_days": within_days}
 
 
 @router.post("/", response_model=StandardResponse[DorseResponse], status_code=201)

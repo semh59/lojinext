@@ -34,6 +34,15 @@ from v2.modules.fleet.application.export_trailers import (
     get_trailer_template,
     import_trailers,
 )
+from v2.modules.fleet.application.get_fleet_stats import (
+    get_trailer_fleet_stats,
+    get_vehicle_fleet_stats,
+)
+from v2.modules.fleet.application.get_inspection_alerts import (
+    get_trailer_inspection_alerts,
+    get_vehicle_inspection_alerts,
+)
+from v2.modules.fleet.application.get_vehicle_events import get_vehicle_events
 from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     get_upcoming_maintenance_alerts,
     get_vehicle_maintenance_history,
@@ -95,6 +104,9 @@ __all__ = [
     "get_all_vehicles_paged",
     "get_vehicle_by_id",
     "get_vehicle_stats",
+    "get_vehicle_fleet_stats",
+    "get_vehicle_inspection_alerts",
+    "get_vehicle_events",
     # trailer
     "create_trailer",
     "update_trailer",
@@ -105,6 +117,8 @@ __all__ = [
     "export_all_trailers",
     "get_trailer_template",
     "import_trailers",
+    "get_trailer_fleet_stats",
+    "get_trailer_inspection_alerts",
     # maintenance
     "create_maintenance_record",
     "create_breakdown",

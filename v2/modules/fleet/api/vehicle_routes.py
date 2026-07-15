@@ -31,6 +31,15 @@ from v2.modules.fleet.application.delete_vehicle import (
     delete_all_vehicles,
     delete_vehicle,
 )
+from v2.modules.fleet.application.get_fleet_stats import (
+    get_vehicle_fleet_stats as get_vehicle_fleet_stats_usecase,
+)
+from v2.modules.fleet.application.get_inspection_alerts import (
+    get_vehicle_inspection_alerts as get_vehicle_inspection_alerts_usecase,
+)
+from v2.modules.fleet.application.get_vehicle_events import (
+    get_vehicle_events as get_vehicle_events_usecase,
+)
 from v2.modules.fleet.application.list_vehicles import (
     get_all_vehicles_paged,
 )
@@ -225,36 +234,14 @@ async def get_vehicle_template(
 @router.get("/fleet-stats", response_model=FleetStatsResponse)
 async def get_fleet_stats(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
 ):
     """Araç filosu genel istatistikleri (toplam, aktif, muayene uyarısı)."""
-    from sqlalchemy import text
-
-    query = text("""
-        SELECT
-            COUNT(*)                                                                              AS total,
-            COUNT(*) FILTER (WHERE aktif = true)                                                  AS active,
-            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
-                                AND muayene_tarihi >= CURRENT_DATE
-                                AND muayene_tarihi <= CURRENT_DATE + INTERVAL '30 days')          AS inspection_expiring,
-            COUNT(*) FILTER (WHERE muayene_tarihi IS NOT NULL
-                                AND muayene_tarihi < CURRENT_DATE)                                AS inspection_overdue
-        FROM araclar
-    """)  # noqa: E501
-    result = await db.execute(query)
-    row = result.mappings().one()
-    return {
-        "total": row["total"],
-        "active": row["active"],
-        "inspection_expiring": row["inspection_expiring"],
-        "inspection_overdue": row["inspection_overdue"],
-    }
+    return await get_vehicle_fleet_stats_usecase()
 
 
 @router.get("/inspection-alerts", response_model=InspectionAlertsResponse)
 async def get_inspection_alerts(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
     within_days: int = Query(30, ge=1, le=180),
 ):
     """Muayenesi yaklaşan veya geçmiş araçların listesi.
@@ -263,62 +250,8 @@ async def get_inspection_alerts(
     araçta plaka, marka/model/yıl ve muayene tarihi döner. Aktif
     araçlarla sınırlandırılmıştır.
     """
-    from sqlalchemy import text
-
-    query = text(
-        """
-        SELECT
-            id,
-            plaka,
-            marka,
-            model,
-            yil,
-            muayene_tarihi,
-            CASE
-                WHEN muayene_tarihi < CURRENT_DATE THEN 'overdue'
-                ELSE 'expiring'
-            END AS bucket,
-            (muayene_tarihi - CURRENT_DATE) AS days_remaining
-        FROM araclar
-        WHERE aktif = TRUE
-          AND is_deleted = FALSE
-          AND muayene_tarihi IS NOT NULL
-          AND (
-              muayene_tarihi < CURRENT_DATE
-              OR muayene_tarihi <= CURRENT_DATE + (:within_days || ' days')::interval
-          )
-        ORDER BY muayene_tarihi ASC
-        """
-    )
-    result = await db.execute(query, {"within_days": str(within_days)})
-    rows = result.mappings().all()
-
-    expiring: list[dict] = []
-    overdue: list[dict] = []
-    for row in rows:
-        item = {
-            "id": row["id"],
-            "plaka": row["plaka"],
-            "marka": row["marka"],
-            "model": row["model"],
-            "yil": row["yil"],
-            "muayene_tarihi": row["muayene_tarihi"].isoformat()
-            if row["muayene_tarihi"]
-            else None,
-            "days_remaining": int(row["days_remaining"])
-            if row["days_remaining"] is not None
-            else None,
-        }
-        if row["bucket"] == "overdue":
-            overdue.append(item)
-        else:
-            expiring.append(item)
-
-    return {
-        "expiring": expiring,
-        "overdue": overdue,
-        "within_days": within_days,
-    }
+    alerts = await get_vehicle_inspection_alerts_usecase(within_days)
+    return {**alerts, "within_days": within_days}
 
 
 @router.delete("/clear-all", response_model=SuccessCountResponse)
@@ -435,32 +368,10 @@ async def get_vehicle_stats(
 async def get_vehicle_events(
     arac_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    db: SessionDep,
     limit: int = Query(20, ge=1, le=50),
 ):
     """Araç olay geçmişini getir (son N kayıt)."""
-    from sqlalchemy import text
-
-    query = text("""
-        SELECT id, arac_id, event_type, old_status, new_status, triggered_by, details, created_at
-        FROM vehicle_event_log
-        WHERE arac_id = :arac_id
-        ORDER BY created_at DESC
-        LIMIT :limit
-    """)
-    rows = await db.execute(query, {"arac_id": arac_id, "limit": limit})
-    return [
-        {
-            "id": row["id"],
-            "event_type": row["event_type"],
-            "old_status": row["old_status"],
-            "new_status": row["new_status"],
-            "triggered_by": row["triggered_by"],
-            "details": row["details"],
-            "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-        }
-        for row in rows.mappings()
-    ]
+    return await get_vehicle_events_usecase(arac_id, limit)
 
 
 @router.post("/upload", response_model=UploadResultResponse)

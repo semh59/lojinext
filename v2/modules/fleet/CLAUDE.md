@@ -25,6 +25,9 @@ get_all_vehicles(only_active=True) -> list[AracEntity]
 get_all_vehicles_paged(skip=0, limit=100, aktif_only=True, search=None, marka=None, model=None, min_yil=None, max_yil=None) -> dict
 get_vehicle_by_id(arac_id: int) -> AracEntity | None
 get_vehicle_stats(arac_id: int) -> VehicleStats | None
+get_vehicle_fleet_stats() -> dict            # {total, active, inspection_expiring, inspection_overdue}
+get_vehicle_inspection_alerts(within_days: int) -> dict   # {expiring: [...], overdue: [...]}
+get_vehicle_events(arac_id: int, limit=20) -> list[dict]  # vehicle_event_log, son N kayıt
 
 # Trailer — repo parametresi caller'ın UoW'undan geçirilir (uow.dorse_repo)
 create_trailer(repo, **data) -> int
@@ -36,6 +39,8 @@ get_all_trailers_paged(repo, skip=0, limit=100, ...) -> list[dict]
 export_all_trailers(repo) -> bytes
 get_trailer_template() -> bytes
 import_trailers(repo, content: bytes) -> dict
+get_trailer_fleet_stats(repo) -> dict
+get_trailer_inspection_alerts(repo, within_days: int) -> dict
 
 # Maintenance
 create_maintenance_record(arac_id, bakim_tipi, km_bilgisi, bakim_tarihi, maliyet=0.0, detaylar="") -> AracBakim
@@ -135,6 +140,17 @@ geçici borç olarak kalıyor, dokümante edildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15, dedektif denetiminde bulundu)** —
+  `api/vehicle_routes.py`/`api/trailer_routes.py`'deki `fleet-stats`/
+  `inspection-alerts`/`{arac_id}/events` handler'ları raw SQL'i doğrudan
+  route içinde çalıştırıyordu (application katmanına delege etmiyordu,
+  API-only-orkestrasyon ilkesini ihlal ediyordu, hiçbir yerde dokümante
+  edilmemişti). Raw SQL `infrastructure/{vehicle,trailer}_repository.py`'ye
+  (`get_fleet_stats`/`get_inspection_alerts`/`get_vehicle_events` metotları),
+  orkestrasyon `application/get_fleet_stats.py` /
+  `application/get_inspection_alerts.py` / `application/get_vehicle_events.py`
+  use-case'lerine taşındı. Davranış değişikliği yok (aynı SQL, aynı yanıt
+  şekli), gerçek Docker container + `lojinext_test` DB'ye karşı doğrulandı.
 - **Smart delete state machine** (`delete_vehicle.py`): aktif araç →
   soft-delete (aktif=False); zaten pasif araç → hard-delete (FK ihlali
   varsa `ValueError`'a çevrilir). Aynı desen `Dorse`'ta repo katmanında.

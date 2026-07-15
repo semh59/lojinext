@@ -11,7 +11,7 @@ so `y` lives as an attribute on the router's own namespace (documented
 gotcha, see v2/modules/location/CLAUDE.md's final paragraph).
 """
 
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -647,10 +647,7 @@ async def test_get_vehicle_events_no_auth(async_client):
 
 async def test_get_vehicle_events_happy_path(async_client, admin_auth_headers):
     """Returns list of vehicle events."""
-    from app.database.connection import get_db
-    from app.main import app
-
-    fake_rows = [
+    fake_events = [
         {
             "id": 1,
             "event_type": "STATUS_CHANGE",
@@ -658,28 +655,22 @@ async def test_get_vehicle_events_happy_path(async_client, admin_auth_headers):
             "new_status": "maintenance",
             "triggered_by": "admin",
             "details": None,
-            "created_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+            "created_at": "2026-01-01T00:00:00+00:00",
         }
     ]
 
-    async def _fake_get_db():
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.mappings = MagicMock(return_value=iter(fake_rows))
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_get_db
-    try:
+    with patch(
+        f"{ROUTES}.get_vehicle_events_usecase",
+        AsyncMock(return_value=fake_events),
+    ):
         resp = await async_client.get(
             f"{BASE}/1/events", params={"limit": 5}, headers=admin_auth_headers
         )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
 
     assert resp.status_code == 200
     data = resp.json()
     assert isinstance(data, list)
+    assert data == fake_events
 
 
 # ---------------------------------------------------------------------------
@@ -688,31 +679,19 @@ async def test_get_vehicle_events_happy_path(async_client, admin_auth_headers):
 
 
 async def test_fleet_stats_happy_path(async_client, admin_auth_headers):
-    """Returns fleet statistics using raw SQL."""
-    from app.database.connection import get_db
-    from app.main import app
-
-    mock_row = {
+    """Returns fleet statistics from the get_fleet_stats use-case."""
+    mock_stats = {
         "total": 10,
         "active": 8,
         "inspection_expiring": 2,
         "inspection_overdue": 1,
     }
 
-    async def _fake_get_db():
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_mappings = MagicMock()
-        mock_mappings.one = MagicMock(return_value=mock_row)
-        mock_result.mappings = MagicMock(return_value=mock_mappings)
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_get_db
-    try:
+    with patch(
+        f"{ROUTES}.get_vehicle_fleet_stats_usecase",
+        AsyncMock(return_value=mock_stats),
+    ):
         resp = await async_client.get(f"{BASE}/fleet-stats", headers=admin_auth_headers)
-    finally:
-        app.dependency_overrides.pop(get_db, None)
 
     assert resp.status_code == 200
     data = resp.json()
@@ -726,56 +705,46 @@ async def test_fleet_stats_happy_path(async_client, admin_auth_headers):
 
 
 async def test_inspection_alerts_happy_path(async_client, admin_auth_headers):
-    """Returns expiring and overdue vehicle lists."""
-    from app.database.connection import get_db
-    from app.main import app
+    """Returns expiring and overdue vehicle lists from the use-case."""
+    mock_alerts = {
+        "expiring": [
+            {
+                "id": 1,
+                "plaka": "34ABC001",
+                "marka": "Mercedes",
+                "model": "Actros",
+                "yil": 2020,
+                "muayene_tarihi": "2026-06-15",
+                "days_remaining": 12,
+            }
+        ],
+        "overdue": [
+            {
+                "id": 2,
+                "plaka": "34ABC002",
+                "marka": "Volvo",
+                "model": "FH",
+                "yil": 2018,
+                "muayene_tarihi": "2026-05-01",
+                "days_remaining": -32,
+            }
+        ],
+    }
 
-    fake_rows = [
-        {
-            "id": 1,
-            "plaka": "34ABC001",
-            "marka": "Mercedes",
-            "model": "Actros",
-            "yil": 2020,
-            "muayene_tarihi": date(2026, 6, 15),
-            "bucket": "expiring",
-            "days_remaining": 12,
-        },
-        {
-            "id": 2,
-            "plaka": "34ABC002",
-            "marka": "Volvo",
-            "model": "FH",
-            "yil": 2018,
-            "muayene_tarihi": date(2026, 5, 1),
-            "bucket": "overdue",
-            "days_remaining": -32,
-        },
-    ]
-
-    async def _fake_get_db():
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.mappings = MagicMock(
-            return_value=MagicMock(all=MagicMock(return_value=fake_rows))
-        )
-        mock_session.execute = AsyncMock(return_value=mock_result)
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_get_db
-    try:
+    with patch(
+        f"{ROUTES}.get_vehicle_inspection_alerts_usecase",
+        AsyncMock(return_value=mock_alerts),
+    ):
         resp = await async_client.get(
             f"{BASE}/inspection-alerts",
             params={"within_days": 30},
             headers=admin_auth_headers,
         )
-    finally:
-        app.dependency_overrides.pop(get_db, None)
 
     assert resp.status_code == 200
     data = resp.json()
-    assert "expiring" in data
-    assert "overdue" in data
+    assert data["expiring"] == mock_alerts["expiring"]
+    assert data["overdue"] == mock_alerts["overdue"]
     assert data["within_days"] == 30
 
 

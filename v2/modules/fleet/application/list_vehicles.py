@@ -70,10 +70,19 @@ async def get_vehicle_stats(arac_id: int) -> Optional[VehicleStats]:
     return VehicleStats.model_validate(dict(row))
 
 
-async def get_vehicle_by_id(arac_id: int) -> Optional[AracEntity]:
-    """Retrieves a vehicle by ID."""
+async def get_vehicle_by_id(
+    arac_id: int, include_inactive: bool = False
+) -> Optional[AracEntity]:
+    """Retrieves a vehicle by ID.
+
+    ``include_inactive=True``: pasif/soft-deleted araçları da döner — ham
+    PK lookup semantiğini koruyan çağıranlar (ör. tekil GET/PUT endpoint'leri,
+    dalga-1-6+8 dedektif denetiminde ``application/`` katmanına taşınan
+    ``read_arac``/``update_arac``) bunu kullanır; varsayılan ``False``
+    ``get_all``/``count`` ile tutarlıdır.
+    """
     async with UnitOfWork() as uow:
-        row = await uow.arac_repo.get_by_id(arac_id)
+        row = await uow.arac_repo.get_by_id(arac_id, include_inactive=include_inactive)
     if not row:
         return None
     return AracEntity.model_validate(dict(row))

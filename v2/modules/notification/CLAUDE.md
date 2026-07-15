@@ -23,6 +23,14 @@ get_user_notifications(user_id: int) -> list[BildirimGecmisi]
 mark_as_read(notification_id: int, user_id: int) -> bool     # IDOR-guard'lı
 mark_all_as_read(user_id: int) -> int
 
+list_rules() -> list[BildirimKurali]
+create_rule(data: dict) -> BildirimKurali
+update_rule(rule_id: int, changes: dict) -> BildirimKurali | None
+delete_rule(rule_id: int) -> bool
+
+subscribe_push(user_id: int, *, endpoint, p256dh, auth, user_agent) -> PushSubscription
+unsubscribe_push(user_id: int, endpoint: str) -> None
+
 send_push_to_user(user_id, *, title, body, url=None, uow=None, respect_quiet_hours=False) -> PushSendResult
 send_push_broadcast(*, title, body, url=None, uow=None) -> PushSendResult
 vapid_configured() -> bool
@@ -141,6 +149,31 @@ notla aynı durum).
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- 🔴 **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md`) — GERÇEK BUG,
+  B.1'in ötesinde:** `api/notification_routes.py`'nin rule CRUD handler'ları
+  (`list_rules`/`create_rule`/`update_rule`/`delete_rule`) ve
+  `api/push_routes.py`'nin `subscribe`/`unsubscribe`'ı `application/`
+  katmanını atlayıp doğrudan `uow.notification_repo`/ORM'e erişiyordu —
+  `application/manage_notification_rules.py` +
+  `application/manage_push_subscription.py`'ye taşındı (mekanik, davranış
+  değişikliği yok). AMA taşıma sırasında GERÇEK bir bug bulundu: eski
+  `subscribe`/`unsubscribe` hiçbir zaman `uow.commit()` çağırmıyordu.
+  `UnitOfWork.__aexit__`'in ghost-transaction guard'ı yalnız ORM
+  identity-map'i (`session.new`/`dirty`/`deleted`) kontrol eder;
+  `unsubscribe`'ın Core-tarzı `session.execute(delete(...))`'u bu
+  koleksiyonlara dokunmadığı için guard hiç tetiklenmiyor ve "temiz çıkış,
+  sadece kapat" dalına düşüp DELETE'i sessizce **rollback ediyordu**;
+  `subscribe`'daki ORM `add`/attribute-mutasyonu ise `session.new`/`dirty`'yi
+  dolduruyor, guard tetikleniyor, yine rollback oluyordu. Sonuç: her iki
+  endpoint de 200/201/204 dönüyordu ama veritabanında HİÇBİR ŞEY kalıcı
+  olmuyordu — push aboneliği/aboneliği-kaldırma taşımadan önce de (bug
+  taşımadan ÖNCE vardı, `git show 78fd145:...push_routes.py` ile
+  doğrulandı) çalışmıyordu. Testler bunu yakalamamıştı çünkü hiçbiri
+  kalıcılığı ayrı bir sorgu ile doğrulamıyor, sadece status code kontrol
+  ediyor (`test_push_coverage.py`). Düzeltme: her iki fonksiyona
+  `await uow.commit()` eklendi — tek satırlık, davranış-genişletici değil,
+  sadece dokümante edilen bug'ı kapatıyor.
 - **`notification_prioritizer.py` tamamen ölü kod**: saf `score_priority`
   fonksiyonu `domain/prioritizer.py`'ye, DB-sorgulu `NotificationPrioritizer`
   sınıfı `infrastructure/prioritizer.py`'ye ayrıştırıldı (B.1 + domain'in

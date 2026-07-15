@@ -19,6 +19,16 @@ from v2.modules.notification.application.handle_trip_events import (
     handle_event,
     register_handlers,
 )
+from v2.modules.notification.application.manage_notification_rules import (
+    create_rule,
+    delete_rule,
+    list_rules,
+    update_rule,
+)
+from v2.modules.notification.application.manage_push_subscription import (
+    subscribe_push,
+    unsubscribe_push,
+)
 from v2.modules.notification.application.mark_all_notifications_read import (
     mark_all_as_read,
 )
@@ -56,8 +66,14 @@ __all__ = [
     "register_handlers",
     "handle_event",
     "get_user_notifications",
+    "list_rules",
+    "create_rule",
+    "update_rule",
+    "delete_rule",
     "mark_as_read",
     "mark_all_as_read",
+    "subscribe_push",
+    "unsubscribe_push",
     "send_push_to_user",
     "send_push_broadcast",
     "vapid_configured",

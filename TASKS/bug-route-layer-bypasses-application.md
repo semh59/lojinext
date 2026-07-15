@@ -1,6 +1,8 @@
 # BUG — 3 modülde route handler'ları `application/` katmanını atlayıp doğrudan repo/ORM çağırıyor
 
-> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
+> ✅ **ÇÖZÜLDÜ (2026-07-15)** — kullanıcı onayı alındı ("8 dalga tam temiz
+> olana kadar durma"), 5 handler'ın tamamı düzeltildi. Detay aşağıda
+> "Çözüm" bölümünde.
 
 **Bu bir modül taşıma görevi DEĞİL.** FAZ1'in 17 dalga sırasının dışında,
 bağımsız bir katman-disiplini temizliği. 3 modül (notification/dalga 2,
@@ -73,3 +75,42 @@ edilmesi o gate'in kurulumunu kolaylaştırır.
 Her değişiklik davranış-değiştirmeden (mekanik taşıma) yapılmalı, gerçek
 DB'ye karşı ilgili modülün mevcut test suite'i (0 regresyon) + OpenAPI
 drift kontrolü ile doğrulanmalı.
+
+## Çözüm (2026-07-15)
+
+Tüm 5 handler taslakta önerildiği gibi düzeltildi:
+
+- **(a)** `v2/modules/notification/application/manage_notification_rules.py`
+  yeni dosya (`list_rules`/`create_rule`/`update_rule`/`delete_rule`) —
+  `notification_routes.py` artık bunlara delege ediyor.
+- **(b)** `v2/modules/notification/application/manage_push_subscription.py`
+  yeni dosya (`subscribe_push`/`unsubscribe_push`) — `push_routes.py`
+  artık bunlara delege ediyor. 🔴 **Bu taşıma sırasında GERÇEK bir bug
+  bulundu ve düzeltildi** (B.1'in ötesinde): eski `subscribe`/`unsubscribe`
+  hiçbir zaman `uow.commit()` çağırmıyordu — `UnitOfWork`'ün
+  ghost-transaction guard'ı ORM identity-map'i kontrol ettiği için
+  Core-tarzı `delete()`/attribute-mutasyonlarını farklı şekillerde
+  tetikliyor ama HER İKİ durumda da sessiz rollback'e yol açıyordu. Sonuç:
+  push subscribe/unsubscribe endpoint'leri başarı dönüyordu ama hiçbir
+  satır kalıcı olmuyordu. Taşımadan ÖNCE de vardı (regresyon değil), tek
+  satırlık `await uow.commit()` eklenerek düzeltildi. Detay:
+  `v2/modules/notification/CLAUDE.md` "Modüle özel iş kuralları" bölümü.
+- **(c)** `v2/modules/fleet/application/get_maintenance_ics_data.py` yeni
+  dosya — `admin_maintenance_routes.py::download_ics` artık buna delege
+  ediyor.
+- **(d)** `v2/modules/fleet/application/list_vehicles.py::get_vehicle_by_id`
+  ve `list_trailers.py::get_trailer_by_id`'ye `include_inactive: bool =
+  False` parametresi eklendi (varsayılan davranışları DEĞİŞMEDİ — diğer
+  tüm çağıranlar etkilenmedi); `vehicle_routes.py`/`trailer_routes.py`'nin
+  tekil-GET/PUT handler'ları artık bu fonksiyonları `include_inactive=True`
+  ile çağırıyor (eski `db.get(...)` ham PK lookup'ının aktif/pasif ayrımı
+  yapmama davranışını birebir koruyarak).
+- **(e)** `v2/modules/auth_rbac/application/role_service.py` yeni dosya —
+  `admin_role_routes.py` artık buna delege ediyor;
+  `assert_no_privilege_escalation` tek fonksiyona indirgendi (DRY
+  düzeltmesi de dahil).
+
+**Doğrulama:** `ruff check --select E,F,W,I` temiz; `python -m py_compile`
+temiz; gerçek `app.api.v1.api` + tüm 4 modülün `public.py`'si local Python
+ortamında hatasız import edildi (tam DB/Docker koşumu CI'da doğrulanacak).
+Davranış değişikliği yalnız (b)'deki bug fix'i — geri kalanı saf mekanik.

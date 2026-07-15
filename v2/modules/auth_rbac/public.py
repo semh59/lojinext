@@ -20,7 +20,7 @@ karar: `app/api/deps.py` hiçbir zaman v2/modules/*'e taşınmadı, yalnızca
 import kaynakları güncellendi).
 """
 
-from v2.modules.auth_rbac.application import auth_service
+from v2.modules.auth_rbac.application import auth_service, role_service
 from v2.modules.auth_rbac.application.license_service import (
     LicenseEngine,
     get_license_engine,
@@ -71,6 +71,8 @@ from v2.modules.auth_rbac.schemas import (
 __all__ = [
     # auth (login/refresh/session/password-reset — free functions, module import)
     "auth_service",
+    # roles (RBAC role CRUD — free functions, module import)
+    "role_service",
     # user CRUD
     "list_users",
     "get_user",

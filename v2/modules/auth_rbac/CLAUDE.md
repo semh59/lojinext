@@ -41,6 +41,14 @@ save_preference(user_id, modul, ayar_tipi, deger, ad=None, is_default=False, uow
 delete_preference(user_id, pref_id, uow=None) -> bool
 set_default(user_id, pref_id, uow=None) -> bool
 
+# Roles (RBAC role CRUD — module import, `role_service.<fn>`)
+role_service.list_roles() -> list[Rol]
+role_service.get_role(role_id) -> Rol
+role_service.create_role(ad, yetkiler, current_user) -> Rol
+role_service.update_role(role_id, ad, yetkiler, current_user) -> Rol
+role_service.delete_role(role_id) -> str            # döner: silinen rolün adı
+role_service.assert_no_privilege_escalation(current_user, yetkiler) -> None
+
 # RBAC
 Permission(IntFlag)                                # NONE/READ/WRITE/DELETE/ADMIN/SUPERADMIN
 SecurityService.has_permission(user, required) -> bool
@@ -214,9 +222,20 @@ dokunulmadı, davranış değişikliği yok.
   taşımayla KORUNDU.
 - **Fail-secure token blacklist** (`domain/token_blacklist.py::is_blacklisted`) —
   Redis erişilemezse token'ı REVOKED say (SEC-004), taşımayla değişmedi.
-- **Privilege-escalation guard'ı** (`api/admin_role_routes.py`) — çağıran,
-  kendisinde olmayan bir yetkiyi başka role veremez (super_admin/wildcard `*`
-  hariç) — hem `create_role` hem `update_role`'da uygulanır.
+- **Privilege-escalation guard'ı** (`application/role_service.py::assert_no_privilege_escalation`)
+  — çağıran, kendisinde olmayan bir yetkiyi başka role veremez
+  (super_admin/wildcard `*` hariç) — hem `create_role` hem `update_role`'da
+  uygulanır.
+- ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md`)** —
+  `api/admin_role_routes.py` diğer 5 auth_rbac route dosyasının aksine
+  `application/`'a delege etmiyordu, `RolRepository`'yi doğrudan
+  örnekliyordu; privilege-escalation guard'ı da `create_role` içinde
+  (bağımsız inline kod) ve `_assert_no_privilege_escalation` fonksiyonunda
+  (`update_role` için) iki kez neredeyse birebir tekrarlanmıştı.
+  `application/role_service.py`'ye taşındı, guard tek fonksiyona
+  (`assert_no_privilege_escalation`) indirgendi. Mekanik, davranış
+  değişikliği yok.
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

@@ -23,7 +23,7 @@ delete_all_vehicles() -> int
 bulk_add_vehicles(data_list: list[AracCreate]) -> int
 get_all_vehicles(only_active=True) -> list[AracEntity]
 get_all_vehicles_paged(skip=0, limit=100, aktif_only=True, search=None, marka=None, model=None, min_yil=None, max_yil=None) -> dict
-get_vehicle_by_id(arac_id: int) -> AracEntity | None
+get_vehicle_by_id(arac_id: int, include_inactive=False) -> AracEntity | None
 get_vehicle_stats(arac_id: int) -> VehicleStats | None
 get_vehicle_fleet_stats() -> dict            # {total, active, inspection_expiring, inspection_overdue}
 get_vehicle_inspection_alerts(within_days: int) -> dict   # {expiring: [...], overdue: [...]}
@@ -33,7 +33,7 @@ get_vehicle_events(arac_id: int, limit=20) -> list[dict]  # vehicle_event_log, s
 create_trailer(repo, **data) -> int
 update_trailer(repo, dorse_id: int, **data) -> bool
 delete_trailer(repo, dorse_id: int) -> bool
-get_trailer_by_id(repo, dorse_id: int) -> dict | None
+get_trailer_by_id(repo, dorse_id: int, include_inactive=False) -> dict | None
 get_all_trailers(repo, **kwargs) -> list[dict]
 get_all_trailers_paged(repo, skip=0, limit=100, ...) -> list[dict]
 export_all_trailers(repo) -> bytes
@@ -49,6 +49,7 @@ get_vehicle_maintenance_history(arac_id) -> list[AracBakim]
 mark_maintenance_completed(bakim_id) -> bool
 get_upcoming_maintenance_alerts() -> list[dict]
 generate_ics_for_maintenance(bakim, arac) -> str
+get_maintenance_ics_data(bakim_id: int) -> tuple[AracBakim, Arac | None] | None
 MaintenancePredictor, Prediction, PredictionInput      # domain/maintenance_prediction.py
 
 # Repositories
@@ -151,6 +152,18 @@ geçici borç olarak kalıyor, dokümante edildi.
   `application/get_inspection_alerts.py` / `application/get_vehicle_events.py`
   use-case'lerine taşındı. Davranış değişikliği yok (aynı SQL, aynı yanıt
   şekli), gerçek Docker container + `lojinext_test` DB'ye karşı doğrulandı.
+- ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md`)** — aynı
+  ailenin 2 kalıntısı daha bulundu: `api/admin_maintenance_routes.py`'nin
+  `download_ics` handler'ı `UnitOfWork` açıp `select(AracBakim)`/
+  `select(Arac)`'ı route içinde çalıştırıyordu (→
+  `application/get_maintenance_ics_data.py`); `api/vehicle_routes.py`/
+  `api/trailer_routes.py`'nin tekil-GET/PUT handler'ları (`read_arac`/
+  `update_arac`/`read_dorse`/`update_dorse`) `db.get(...)`/`select(...)`
+  ile doğrudan ORM erişiyordu — artık `get_vehicle_by_id`/`get_trailer_by_id`
+  kullanıyor (`include_inactive=True` ile — ham PK lookup'ın aktif/pasif
+  ayrımı yapmama davranışı korunuyor, `list`/`count` varsayılanından
+  FARKLI, bilerek). Davranış değişikliği yok.
 - **Smart delete state machine** (`delete_vehicle.py`): aktif araç →
   soft-delete (aktif=False); zaten pasif araç → hard-delete (FK ihlali
   varsa `ValueError`'a çevrilir). Aynı desen `Dorse`'ta repo katmanında.

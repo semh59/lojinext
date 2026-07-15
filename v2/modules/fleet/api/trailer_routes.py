@@ -1,7 +1,6 @@
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import (
@@ -11,7 +10,7 @@ from app.api.deps import (
     get_current_active_user,
 )
 from app.core.exceptions import DomainError
-from app.database.models import Dorse, Kullanici
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import (
@@ -37,7 +36,10 @@ from v2.modules.fleet.application.get_fleet_stats import (
 from v2.modules.fleet.application.get_inspection_alerts import (
     get_trailer_inspection_alerts as get_trailer_inspection_alerts_usecase,
 )
-from v2.modules.fleet.application.list_trailers import get_all_trailers_paged
+from v2.modules.fleet.application.list_trailers import (
+    get_all_trailers_paged,
+    get_trailer_by_id,
+)
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
 from v2.modules.fleet.schemas import DorseCreate, DorseResponse, DorseUpdate
 
@@ -242,11 +244,13 @@ async def import_trailers(
 @router.get("/{dorse_id}", response_model=StandardResponse[DorseResponse])
 async def read_dorse(
     dorse_id: int,
-    db: SessionDep,
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Dorse detayını getir."""
-    dorse = await db.get(Dorse, dorse_id)
+    # include_inactive=True: eski `db.get(Dorse, dorse_id)` ham PK lookup'ı
+    # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
+    dorse = await get_trailer_by_id(uow.dorse_repo, dorse_id, include_inactive=True)
     if not dorse:
         raise HTTPException(status_code=404, detail="Dorse bulunamadı")
     return StandardResponse(data=dorse)
@@ -256,7 +260,6 @@ async def read_dorse(
 async def update_dorse(
     dorse_id: int,
     dorse_update: DorseUpdate,
-    db: SessionDep,
     uow: UOWDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
@@ -268,8 +271,10 @@ async def update_dorse(
         if not success:
             raise HTTPException(status_code=404, detail="Dorse bulunamadı")
 
-        result = await db.execute(select(Dorse).where(Dorse.id == dorse_id))
-        updated = result.scalar_one_or_none()
+        # include_inactive=True: see read_dorse.
+        updated = await get_trailer_by_id(
+            uow.dorse_repo, dorse_id, include_inactive=True
+        )
         await log_audit_event(
             module="dorse",
             action="update",

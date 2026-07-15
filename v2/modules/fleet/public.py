@@ -42,6 +42,9 @@ from v2.modules.fleet.application.get_inspection_alerts import (
     get_trailer_inspection_alerts,
     get_vehicle_inspection_alerts,
 )
+from v2.modules.fleet.application.get_maintenance_ics_data import (
+    get_maintenance_ics_data,
+)
 from v2.modules.fleet.application.get_vehicle_events import get_vehicle_events
 from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     get_upcoming_maintenance_alerts,
@@ -126,6 +129,7 @@ __all__ = [
     "mark_maintenance_completed",
     "get_upcoming_maintenance_alerts",
     "generate_ics_for_maintenance",
+    "get_maintenance_ics_data",
     "PREDICTIONS_CACHE_ALL",
     "invalidate_predictions_cache",
     "MaintenancePredictor",

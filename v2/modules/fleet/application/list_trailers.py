@@ -6,10 +6,17 @@ from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
 
 
 async def get_trailer_by_id(
-    repo: DorseRepository, dorse_id: int
+    repo: DorseRepository, dorse_id: int, include_inactive: bool = False
 ) -> Optional[Dict[str, Any]]:
-    """Get trailer by ID."""
-    return await repo.get_by_id(dorse_id)
+    """Get trailer by ID.
+
+    ``include_inactive=True``: pasif/soft-deleted dorseleri de döner — ham
+    PK lookup semantiğini koruyan çağıranlar (dalga-1-6+8 dedektif
+    denetiminde ``application/`` katmanına taşınan ``read_dorse``/
+    ``update_dorse``) bunu kullanır; varsayılan ``False`` ``get_all``/
+    ``count`` ile tutarlıdır.
+    """
+    return await repo.get_by_id(dorse_id, include_inactive=include_inactive)
 
 
 async def get_all_trailers(repo: DorseRepository, **kwargs) -> List[Dict[str, Any]]:

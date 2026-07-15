@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
-from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.api.deps import (
@@ -14,7 +13,7 @@ from app.api.deps import (
 from app.core.entities.models import VehicleStats
 from app.core.exceptions import DomainError
 from app.core.services.excel_service import ExcelService
-from app.database.models import Arac, Kullanici
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import (
@@ -42,6 +41,7 @@ from v2.modules.fleet.application.get_vehicle_events import (
 )
 from v2.modules.fleet.application.list_vehicles import (
     get_all_vehicles_paged,
+    get_vehicle_by_id,
 )
 from v2.modules.fleet.application.list_vehicles import (
     get_vehicle_stats as get_vehicle_stats_usecase,
@@ -312,11 +312,12 @@ async def delete_arac(
 @router.get("/{arac_id}", response_model=AracResponse)
 async def read_arac(
     arac_id: int,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Araç detayını getir."""
-    arac = await db.get(Arac, arac_id)
+    # include_inactive=True: eski `db.get(Arac, arac_id)` ham PK lookup'ı
+    # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
+    arac = await get_vehicle_by_id(arac_id, include_inactive=True)
     if not arac:
         raise HTTPException(status_code=404, detail="Araç bulunamadı")
     return arac
@@ -326,7 +327,6 @@ async def read_arac(
 async def update_arac(
     arac_id: int,
     arac_update: AracUpdate,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Araç güncelle."""
@@ -335,9 +335,8 @@ async def update_arac(
         if not success:
             raise HTTPException(status_code=404, detail="Araç bulunamadı")
 
-        # Refresh from DB to return updated state
-        result = await db.execute(select(Arac).where(Arac.id == arac_id))
-        existing = result.scalar_one_or_none()
+        # Refresh from DB to return updated state (include_inactive=True: see read_arac)
+        existing = await get_vehicle_by_id(arac_id, include_inactive=True)
         await log_audit_event(
             module="arac",
             action="update",

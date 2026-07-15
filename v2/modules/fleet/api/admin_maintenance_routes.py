@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from app.api.deps import get_current_active_user
 from app.config import settings
 from app.database.models import BakimTipi, Kullanici
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import (
@@ -24,6 +23,9 @@ from v2.modules.fleet.application.create_maintenance_record import (
 )
 from v2.modules.fleet.application.export_maintenance_calendar import (
     generate_ics_for_maintenance,
+)
+from v2.modules.fleet.application.get_maintenance_ics_data import (
+    get_maintenance_ics_data,
 )
 from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     get_upcoming_maintenance_alerts,
@@ -211,23 +213,10 @@ async def download_ics(
 
     UTF-8 charset, line folding dahil; Türkçe karakterler korunur.
     """
-    async with UnitOfWork() as uow:
-        from sqlalchemy import select
-
-        from app.database.models import Arac, AracBakim
-
-        bakim_row = (
-            await uow.session.execute(select(AracBakim).where(AracBakim.id == bakim_id))
-        ).scalar_one_or_none()
-        if bakim_row is None:
-            raise HTTPException(status_code=404, detail="Bakım bulunamadı")
-        arac_row: Optional[Arac] = None
-        if bakim_row.arac_id is not None:
-            arac_row = (
-                await uow.session.execute(
-                    select(Arac).where(Arac.id == bakim_row.arac_id)
-                )
-            ).scalar_one_or_none()
+    result = await get_maintenance_ics_data(bakim_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Bakım bulunamadı")
+    bakim_row, arac_row = result
 
     ics_body = generate_ics_for_maintenance(bakim_row, arac_row)
     return Response(

@@ -10,16 +10,17 @@ Plan §7.2:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import delete, select
 
 from app.api.deps import get_current_active_admin, get_current_active_user
 from app.config import settings
-from app.database.models import Kullanici, PushSubscription
-from app.database.unit_of_work import UnitOfWork
+from app.database.models import Kullanici
+from v2.modules.notification.application.manage_push_subscription import (
+    subscribe_push,
+    unsubscribe_push,
+)
 from v2.modules.notification.application.send_push_to_user import send_push_to_user
 from v2.modules.notification.schemas import (
     PushSendResult,
@@ -77,33 +78,14 @@ async def subscribe(
             status_code=403, detail="Sistem kullanıcısı push aboneliği oluşturamaz"
         )
 
-    async with UnitOfWork() as uow:
-        existing = await uow.session.execute(
-            select(PushSubscription).where(
-                PushSubscription.endpoint == payload.endpoint
-            )
-        )
-        sub = existing.scalar_one_or_none()
-        now = datetime.now(timezone.utc)
-        if sub is not None:
-            sub.user_id = current_user.id
-            sub.p256dh = payload.keys.p256dh
-            sub.auth = payload.keys.auth
-            sub.user_agent = payload.user_agent
-            sub.last_used_at = now
-        else:
-            sub = PushSubscription(
-                user_id=current_user.id,
-                endpoint=payload.endpoint,
-                p256dh=payload.keys.p256dh,
-                auth=payload.keys.auth,
-                user_agent=payload.user_agent,
-                last_used_at=now,
-            )
-            uow.session.add(sub)
-        await uow.session.flush()
-        await uow.session.refresh(sub)
-        return PushSubscriptionResponse.model_validate(sub)
+    sub = await subscribe_push(
+        current_user.id,
+        endpoint=payload.endpoint,
+        p256dh=payload.keys.p256dh,
+        auth=payload.keys.auth,
+        user_agent=payload.user_agent,
+    )
+    return PushSubscriptionResponse.model_validate(sub)
 
 
 @router.delete("/subscribe", status_code=204)
@@ -112,13 +94,7 @@ async def unsubscribe(
     endpoint: str = Query(..., min_length=10),
 ) -> None:
     """Bir endpoint için subscription sil — yalnız kendi kayıtları."""
-    async with UnitOfWork() as uow:
-        await uow.session.execute(
-            delete(PushSubscription).where(
-                PushSubscription.endpoint == endpoint,
-                PushSubscription.user_id == current_user.id,
-            )
-        )
+    await unsubscribe_push(current_user.id, endpoint)
 
 
 @router.post("/test", response_model=PushSendResult)

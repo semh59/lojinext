@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import (
@@ -17,6 +16,18 @@ from app.schemas.api_responses import (
 from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 from v2.modules.notification.application.get_user_notifications import (
     get_user_notifications,
+)
+from v2.modules.notification.application.manage_notification_rules import (
+    create_rule as create_rule_usecase,
+)
+from v2.modules.notification.application.manage_notification_rules import (
+    delete_rule as delete_rule_usecase,
+)
+from v2.modules.notification.application.manage_notification_rules import (
+    list_rules as list_rules_usecase,
+)
+from v2.modules.notification.application.manage_notification_rules import (
+    update_rule as update_rule_usecase,
 )
 from v2.modules.notification.application.mark_all_notifications_read import (
     mark_all_as_read,
@@ -49,9 +60,8 @@ class NotificationRuleUpdate(BaseModel):
 )
 async def list_rules() -> List[NotificationRuleResponse]:
     """Admin: list every notification rule."""
-    async with UnitOfWork() as uow:
-        rules = await uow.notification_repo.get_all_rules()
-        return [NotificationRuleResponse.model_validate(rule) for rule in rules]
+    rules = await list_rules_usecase()
+    return [NotificationRuleResponse.model_validate(rule) for rule in rules]
 
 
 @router.post(
@@ -65,9 +75,7 @@ async def create_rule(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> NotificationRuleResponse:
     """Admin: create a new notification rule."""
-    async with UnitOfWork() as uow:
-        rule = await uow.notification_repo.create_rule(data.model_dump())
-        await uow.commit()
+    rule = await create_rule_usecase(data.model_dump())
     user_id = current_user.id if current_user.id and current_user.id > 0 else None
     try:
         await log_audit_event(
@@ -94,11 +102,9 @@ async def update_rule(
 ) -> NotificationRuleResponse:
     """Admin: partially update a notification rule (e.g. toggle aktif)."""
     changes = data.model_dump(exclude_unset=True)
-    async with UnitOfWork() as uow:
-        rule = await uow.notification_repo.update_rule(rule_id, changes)
-        if rule is None:
-            raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
-        await uow.commit()
+    rule = await update_rule_usecase(rule_id, changes)
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
     user_id = current_user.id if current_user.id and current_user.id > 0 else None
     try:
         await log_audit_event(
@@ -123,11 +129,9 @@ async def delete_rule(
     current_user: Kullanici = Depends(get_current_active_user),
 ) -> None:
     """Admin: delete a notification rule."""
-    async with UnitOfWork() as uow:
-        deleted = await uow.notification_repo.delete_rule(rule_id)
-        if not deleted:
-            raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
-        await uow.commit()
+    deleted = await delete_rule_usecase(rule_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Bildirim kuralı bulunamadı.")
     user_id = current_user.id if current_user.id and current_user.id > 0 else None
     try:
         await log_audit_event(

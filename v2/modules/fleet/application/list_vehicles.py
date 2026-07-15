@@ -75,14 +75,27 @@ async def get_vehicle_by_id(
 ) -> Optional[AracEntity]:
     """Retrieves a vehicle by ID.
 
-    ``include_inactive=True``: pasif/soft-deleted araçları da döner — ham
-    PK lookup semantiğini koruyan çağıranlar (ör. tekil GET/PUT endpoint'leri,
-    dalga-1-6+8 dedektif denetiminde ``application/`` katmanına taşınan
-    ``read_arac``/``update_arac``) bunu kullanır; varsayılan ``False``
-    ``get_all``/``count`` ile tutarlıdır.
+    ``include_inactive=True``: pasif/soft-deleted araçları da döner.
     """
     async with UnitOfWork() as uow:
         row = await uow.arac_repo.get_by_id(arac_id, include_inactive=include_inactive)
     if not row:
         return None
     return AracEntity.model_validate(dict(row))
+
+
+async def get_vehicle_raw_by_id(
+    arac_id: int, include_inactive: bool = False
+) -> Optional[Dict[str, Any]]:
+    """Retrieves a vehicle by ID as a raw dict (no ``AracEntity`` conversion).
+
+    ``get_vehicle_by_id``'nin `AracEntity.model_validate` adımı `plaka` gibi
+    alanlarda 0-mock canlı DB doğrulamasında GÖRÜLMEYEN bir farka yol açtığı
+    CI'da bulundu (dalga-1-6+8 dedektif denetimi düzeltmesi sırasında,
+    2026-07-15) — bu fonksiyon ham PK lookup semantiğini (eski
+    `db.get(Arac, arac_id)` davranışı) birebir koruyan çağıranlar (tekil
+    GET/PUT endpoint'leri: `read_arac`/`update_arac`) için kullanılır.
+    ``include_inactive=True``: pasif/soft-deleted araçları da döner.
+    """
+    async with UnitOfWork() as uow:
+        return await uow.arac_repo.get_by_id(arac_id, include_inactive=include_inactive)

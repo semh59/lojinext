@@ -41,7 +41,7 @@ from v2.modules.fleet.application.get_vehicle_events import (
 )
 from v2.modules.fleet.application.list_vehicles import (
     get_all_vehicles_paged,
-    get_vehicle_by_id,
+    get_vehicle_raw_by_id,
 )
 from v2.modules.fleet.application.list_vehicles import (
     get_vehicle_stats as get_vehicle_stats_usecase,
@@ -317,7 +317,7 @@ async def read_arac(
     """Araç detayını getir."""
     # include_inactive=True: eski `db.get(Arac, arac_id)` ham PK lookup'ı
     # aktif/pasif ayrımı yapmıyordu — davranış birebir korunuyor.
-    arac = await get_vehicle_by_id(arac_id, include_inactive=True)
+    arac = await get_vehicle_raw_by_id(arac_id, include_inactive=True)
     if not arac:
         raise HTTPException(status_code=404, detail="Araç bulunamadı")
     return arac
@@ -336,7 +336,7 @@ async def update_arac(
             raise HTTPException(status_code=404, detail="Araç bulunamadı")
 
         # Refresh from DB to return updated state (include_inactive=True: see read_arac)
-        existing = await get_vehicle_by_id(arac_id, include_inactive=True)
+        existing = await get_vehicle_raw_by_id(arac_id, include_inactive=True)
         await log_audit_event(
             module="arac",
             action="update",

@@ -60,6 +60,7 @@ from v2.modules.fleet.application.list_vehicles import (
     get_all_vehicles,
     get_all_vehicles_paged,
     get_vehicle_by_id,
+    get_vehicle_raw_by_id,
     get_vehicle_stats,
 )
 from v2.modules.fleet.application.maintenance_cache import (
@@ -106,6 +107,7 @@ __all__ = [
     "get_all_vehicles",
     "get_all_vehicles_paged",
     "get_vehicle_by_id",
+    "get_vehicle_raw_by_id",
     "get_vehicle_stats",
     "get_vehicle_fleet_stats",
     "get_vehicle_inspection_alerts",

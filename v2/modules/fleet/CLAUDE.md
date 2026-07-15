@@ -24,6 +24,7 @@ bulk_add_vehicles(data_list: list[AracCreate]) -> int
 get_all_vehicles(only_active=True) -> list[AracEntity]
 get_all_vehicles_paged(skip=0, limit=100, aktif_only=True, search=None, marka=None, model=None, min_yil=None, max_yil=None) -> dict
 get_vehicle_by_id(arac_id: int, include_inactive=False) -> AracEntity | None
+get_vehicle_raw_by_id(arac_id: int, include_inactive=False) -> dict | None  # AracEntity dönüşümü YOK, bkz. aşağı
 get_vehicle_stats(arac_id: int) -> VehicleStats | None
 get_vehicle_fleet_stats() -> dict            # {total, active, inspection_expiring, inspection_overdue}
 get_vehicle_inspection_alerts(within_days: int) -> dict   # {expiring: [...], overdue: [...]}
@@ -160,10 +161,22 @@ geçici borç olarak kalıyor, dokümante edildi.
   `application/get_maintenance_ics_data.py`); `api/vehicle_routes.py`/
   `api/trailer_routes.py`'nin tekil-GET/PUT handler'ları (`read_arac`/
   `update_arac`/`read_dorse`/`update_dorse`) `db.get(...)`/`select(...)`
-  ile doğrudan ORM erişiyordu — artık `get_vehicle_by_id`/`get_trailer_by_id`
+  ile doğrudan ORM erişiyordu — artık `get_vehicle_raw_by_id`/`get_trailer_by_id`
   kullanıyor (`include_inactive=True` ile — ham PK lookup'ın aktif/pasif
   ayrımı yapmama davranışı korunuyor, `list`/`count` varsayılanından
-  FARKLI, bilerek). Davranış değişikliği yok.
+  FARKLI, bilerek).
+  🔴 **CI'da yakalanan gerçek regresyon (ilk düzeltme turunda)**: `read_arac`/
+  `update_arac` başta mevcut `get_vehicle_by_id` (→ `AracEntity.model_validate`)
+  kullanıyordu — bu, `AracEntity` dönüşüm zincirinde `plaka` alanının
+  değerini değiştiriyordu (gerçek entegrasyon testinde `"34TEST01"` →
+  `"34 TEST 01"` farkı yakalandı, kök neden tam izole edilemedi ama
+  `AracEntity` katmanına atfedildi). Düzeltme: `get_vehicle_raw_by_id`
+  (yeni fonksiyon, `AracEntity` dönüşümü YOK, ham repo dict'i döner) eklendi,
+  yalnız tekil-GET/PUT endpoint'leri bunu kullanıyor. 2 MagicMock-tabanlı
+  test de (`test_update_vehicle_success`/`test_read_arac_found`) eski
+  `get_db`-override deseninden `get_vehicle_raw_by_id` patch'lemeye
+  çevrildi (route artık `db`/`SessionDep` üzerinden değil kendi UoW'undan
+  okuyor, eski mock hedefi artık hiçbir şeyi kesişmiyordu).
 - **Smart delete state machine** (`delete_vehicle.py`): aktif araç →
   soft-delete (aktif=False); zaten pasif araç → hard-delete (FK ihlali
   varsa `ValueError`'a çevrilir). Aynı desen `Dorse`'ta repo katmanında.

@@ -585,51 +585,44 @@ async def test_update_vehicle_value_error(async_client, admin_auth_headers):
 
 async def test_update_vehicle_success(async_client, admin_auth_headers):
     """Returns updated vehicle on success."""
-    mock_vehicle = MagicMock()
-    mock_vehicle.id = 1
-    mock_vehicle.plaka = "34 ABC 123"
-    mock_vehicle.marka = "Volvo"
-    mock_vehicle.model = "FH"
-    mock_vehicle.yil = 2023
-    mock_vehicle.tank_kapasitesi = 600
-    mock_vehicle.hedef_tuketim = 30.0
-    mock_vehicle.bos_agirlik_kg = 8000.0
-    mock_vehicle.hava_direnc_katsayisi = 0.7
-    mock_vehicle.on_kesit_alani_m2 = 8.5
-    mock_vehicle.motor_verimliligi = 0.38
-    mock_vehicle.lastik_direnc_katsayisi = 0.007
-    mock_vehicle.maks_yuk_kapasitesi_kg = 26000
-    mock_vehicle.dingil_sayisi = 2
-    mock_vehicle.yakit_tipi = "DIZEL"
-    mock_vehicle.aktif = True
-    mock_vehicle.muayene_tarihi = None
-    mock_vehicle.sigorta_tarihi = None
-    mock_vehicle.motor_no = None
-    mock_vehicle.sasi_no = None
-    mock_vehicle.notlar = None
-    mock_vehicle.toplam_km = 0.0
-    mock_vehicle.toplam_sefer = 0
-    mock_vehicle.ort_tuketim = 0.0
-    mock_vehicle.created_at = datetime(2022, 1, 1, tzinfo=timezone.utc)
+    mock_vehicle = {
+        "id": 1,
+        "plaka": "34 ABC 123",
+        "marka": "Volvo",
+        "model": "FH",
+        "yil": 2023,
+        "tank_kapasitesi": 600,
+        "hedef_tuketim": 30.0,
+        "bos_agirlik_kg": 8000.0,
+        "hava_direnc_katsayisi": 0.7,
+        "on_kesit_alani_m2": 8.5,
+        "motor_verimliligi": 0.38,
+        "lastik_direnc_katsayisi": 0.007,
+        "maks_yuk_kapasitesi_kg": 26000,
+        "dingil_sayisi": 2,
+        "yakit_tipi": "DIZEL",
+        "aktif": True,
+        "muayene_tarihi": None,
+        "sigorta_tarihi": None,
+        "motor_no": None,
+        "sasi_no": None,
+        "notlar": None,
+        "toplam_km": 0.0,
+        "toplam_sefer": 0,
+        "ort_tuketim": 0.0,
+        "created_at": datetime(2022, 1, 1, tzinfo=timezone.utc),
+    }
 
-    with patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=True)):
-        from app.database.connection import get_db
-        from app.main import app
-
-        async def _fake_get_db():
-            mock_session = AsyncMock()
-            mock_result = MagicMock()
-            mock_result.scalar_one_or_none = MagicMock(return_value=mock_vehicle)
-            mock_session.execute = AsyncMock(return_value=mock_result)
-            yield mock_session
-
-        app.dependency_overrides[get_db] = _fake_get_db
-        try:
-            resp = await async_client.put(
-                f"{BASE}/1", json={"marka": "Volvo"}, headers=admin_auth_headers
-            )
-        finally:
-            app.dependency_overrides.pop(get_db, None)
+    with (
+        patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=True)),
+        patch(
+            f"{ROUTES}.get_vehicle_raw_by_id",
+            AsyncMock(return_value=mock_vehicle),
+        ),
+    ):
+        resp = await async_client.put(
+            f"{BASE}/1", json={"marka": "Volvo"}, headers=admin_auth_headers
+        )
 
     assert resp.status_code == 200
 
@@ -790,46 +783,35 @@ async def test_clear_all_vehicles_generic_exception(async_client, admin_auth_hea
 
 async def test_read_arac_found(async_client, admin_auth_headers):
     """Returns vehicle when found."""
-    from app.database.connection import get_db
-    from app.database.models import Arac
-    from app.main import app
+    mock_vehicle = {
+        "id": 1,
+        "plaka": "34 ABC 123",
+        "marka": "Mercedes",
+        "model": "Actros",
+        "yil": 2022,
+        "tank_kapasitesi": 600,
+        "hedef_tuketim": 32.0,
+        "bos_agirlik_kg": 8000.0,
+        "hava_direnc_katsayisi": 0.7,
+        "on_kesit_alani_m2": 8.5,
+        "motor_verimliligi": 0.38,
+        "lastik_direnc_katsayisi": 0.007,
+        "maks_yuk_kapasitesi_kg": 26000,
+        "dingil_sayisi": 2,
+        "yakit_tipi": "DIZEL",
+        "aktif": True,
+        "muayene_tarihi": None,
+        "sigorta_tarihi": None,
+        "motor_no": None,
+        "sasi_no": None,
+        "notlar": None,
+        "toplam_km": 0.0,
+        "toplam_sefer": 0,
+        "ort_tuketim": 0.0,
+        "created_at": datetime(2022, 1, 1, tzinfo=timezone.utc),
+    }
 
-    mock_vehicle = MagicMock(spec=Arac)
-    mock_vehicle.id = 1
-    mock_vehicle.plaka = "34 ABC 123"
-    mock_vehicle.marka = "Mercedes"
-    mock_vehicle.model = "Actros"
-    mock_vehicle.yil = 2022
-    mock_vehicle.tank_kapasitesi = 600
-    mock_vehicle.hedef_tuketim = 32.0
-    mock_vehicle.bos_agirlik_kg = 8000.0
-    mock_vehicle.hava_direnc_katsayisi = 0.7
-    mock_vehicle.on_kesit_alani_m2 = 8.5
-    mock_vehicle.motor_verimliligi = 0.38
-    mock_vehicle.lastik_direnc_katsayisi = 0.007
-    mock_vehicle.maks_yuk_kapasitesi_kg = 26000
-    mock_vehicle.dingil_sayisi = 2
-    mock_vehicle.yakit_tipi = "DIZEL"
-    mock_vehicle.aktif = True
-    mock_vehicle.muayene_tarihi = None
-    mock_vehicle.sigorta_tarihi = None
-    mock_vehicle.motor_no = None
-    mock_vehicle.sasi_no = None
-    mock_vehicle.notlar = None
-    mock_vehicle.toplam_km = 0.0
-    mock_vehicle.toplam_sefer = 0
-    mock_vehicle.ort_tuketim = 0.0
-    mock_vehicle.created_at = datetime(2022, 1, 1, tzinfo=timezone.utc)
-
-    async def _fake_get_db():
-        mock_session = AsyncMock()
-        mock_session.get = AsyncMock(return_value=mock_vehicle)
-        yield mock_session
-
-    app.dependency_overrides[get_db] = _fake_get_db
-    try:
+    with patch(f"{ROUTES}.get_vehicle_raw_by_id", AsyncMock(return_value=mock_vehicle)):
         resp = await async_client.get(f"{BASE}/1", headers=admin_auth_headers)
-    finally:
-        app.dependency_overrides.pop(get_db, None)
 
     assert resp.status_code == 200

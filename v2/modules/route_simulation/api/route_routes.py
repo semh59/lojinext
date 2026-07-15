@@ -1,16 +1,17 @@
-from datetime import date, datetime
+from datetime import datetime
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.api.deps import SessionDep, get_current_active_user
-from app.core.ml.physics_fuel_predictor import VehicleSpecs
-from app.database.models import Arac, Kullanici, Lokasyon, RouteSegment, RouteSimulation
+from app.database.models import Kullanici, RouteSegment, RouteSimulation
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import RouteAnalysisResponse
+from v2.modules.route_simulation.application.create_route_simulation import (
+    create_route_simulation,
+    get_route_simulation_by_id,
+)
 from v2.modules.route_simulation.application.get_route_details import (
     get_route_details,
 )
@@ -216,146 +217,20 @@ async def simulate_route(
     2. lokasyon_id YOKSA: ad-hoc koordinatlarla Mapbox Directions →
        500m resample → Open-Meteo SRTM → simulate_route.
     """
-    # Phase 3.5 — lokasyon_id verildiyse SADECE koordinatlar lokasyondan
-    # alınır; simülasyon HER ZAMAN simulate() üzerinden gider. Mapbox 24h
-    # cache + Open-Meteo 30 gün cache zaten ucuz; her sefer GÜNCEL trafik.
-    if request.lokasyon_id is not None:
-        lokasyon = (
-            await db.execute(select(Lokasyon).where(Lokasyon.id == request.lokasyon_id))
-        ).scalar_one_or_none()
-        if lokasyon is None:
-            raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
-        if (
-            lokasyon.cikis_lat is None
-            or lokasyon.cikis_lon is None
-            or lokasyon.varis_lat is None
-            or lokasyon.varis_lon is None
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail="Güzergah koordinatları eksik (cikis/varis lat-lon)",
-            )
-        used_cikis_lon = lokasyon.cikis_lon
-        used_cikis_lat = lokasyon.cikis_lat
-        used_varis_lon = lokasyon.varis_lon
-        used_varis_lat = lokasyon.varis_lat
-    else:
-        if (
-            request.cikis_lon is None
-            or request.cikis_lat is None
-            or request.varis_lon is None
-            or request.varis_lat is None
-        ):
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    "cikis_lon/lat ve varis_lon/lat zorunlu (lokasyon_id verilmediyse)."
-                ),
-            )
-        used_cikis_lon = request.cikis_lon
-        used_cikis_lat = request.cikis_lat
-        used_varis_lon = request.varis_lon
-        used_varis_lat = request.varis_lat
-
-    # Araç seçildiyse VehicleSpecs + arac_yasi araçtan türet
-    vehicle: Optional[VehicleSpecs] = None
-    used_arac_yasi = request.arac_yasi
-    if request.arac_id is not None:
-        arac = await db.get(Arac, request.arac_id)
-        if arac is None:
-            raise HTTPException(status_code=404, detail="Araç bulunamadı")
-        vehicle = VehicleSpecs(
-            empty_weight_kg=arac.bos_agirlik_kg,
-            drag_coefficient=arac.hava_direnc_katsayisi,
-            frontal_area_m2=arac.on_kesit_alani_m2,
-            rolling_resistance=arac.lastik_direnc_katsayisi,
-            engine_efficiency=arac.motor_verimliligi,
-        )
-        if arac.yil is not None:
-            used_arac_yasi = date.today().year - arac.yil
-
-    used_target_km = request.segment_length_m / 1000.0
-    result = await simulator.simulate(
-        cikis_lon=used_cikis_lon,
-        cikis_lat=used_cikis_lat,
-        varis_lon=used_varis_lon,
-        varis_lat=used_varis_lat,
-        ton=request.ton,
-        arac_yasi=used_arac_yasi,
-        target_length_km=used_target_km,
-        vehicle=vehicle,
-    )
-
-    if result is None:
-        raise HTTPException(
-            status_code=502, detail="Routing provider (Mapbox) unavailable"
-        )
-
-    summary = result.summary
-
-    # Persist
-    sim = RouteSimulation(
-        kullanici_id=getattr(current_user, "id", None) or None,
+    sim = await create_route_simulation(
+        db,
+        simulator,
         lokasyon_id=request.lokasyon_id,
         arac_id=request.arac_id,
-        cikis_lon=used_cikis_lon,
-        cikis_lat=used_cikis_lat,
-        varis_lon=used_varis_lon,
-        varis_lat=used_varis_lat,
+        cikis_lon=request.cikis_lon,
+        cikis_lat=request.cikis_lat,
+        varis_lon=request.varis_lon,
+        varis_lat=request.varis_lat,
         ton=request.ton,
-        arac_yasi=used_arac_yasi,
-        target_length_km=used_target_km,
-        raw_segment_count=result.raw_segment_count,
-        resampled_segment_count=result.resampled_segment_count,
-        elevation_coverage_pct=result.elevation_coverage_pct,
-        total_km=summary.total_km,
-        total_l=summary.total_l,
-        avg_l_per_100km=summary.avg_l_per_100km,
-        total_eta_sec=summary.total_eta_sec,
-        total_ascent_m=summary.total_ascent_m,
-        total_descent_m=summary.total_descent_m,
+        arac_yasi=request.arac_yasi,
+        segment_length_m=request.segment_length_m,
+        current_user_id=getattr(current_user, "id", None) or None,
     )
-    boundary = result.boundary_coords
-    for i, s in enumerate(summary.segments):
-        # bucket midpoint: boundary[i] ile boundary[i+1] ortası
-        mid_lon: Optional[float] = None
-        mid_lat: Optional[float] = None
-        if i + 1 < len(boundary):
-            mid_lon = (boundary[i][0] + boundary[i + 1][0]) / 2.0
-            mid_lat = (boundary[i][1] + boundary[i + 1][1]) / 2.0
-        sim.segments.append(
-            RouteSegment(
-                seq=i,
-                length_km=s.length_km,
-                grade_pct=s.grade_pct,
-                road_class=s.road_class or None,
-                maxspeed_kmh=s.maxspeed_kmh,
-                traffic_speed_kmh=s.traffic_speed_kmh,
-                congestion=s.congestion,
-                sim_speed_kmh=s.sim_speed_kmh,
-                sim_l_per_100km=s.sim_l_per_100km,
-                sim_l_total=s.sim_l_total,
-                eta_sec=s.eta_sec,
-                mid_lon=mid_lon,
-                mid_lat=mid_lat,
-            )
-        )
-    # maxspeed/traffic/congestion artık SegmentOutput'tan persist ediliyor
-    # (2026-06-14 Task 6; eski "kayboluyor" durumu giderildi).
-
-    db.add(sim)
-    await db.commit()
-    await db.refresh(sim)
-    # Re-load with segments EAGERLY (selectinload): a lazy relationship access
-    # like `sim.segments` raises sqlalchemy MissingGreenlet under the async
-    # engine (IO outside the greenlet) → was 500 on every simulation.
-    sim = (
-        await db.execute(
-            select(RouteSimulation)
-            .where(RouteSimulation.id == sim.id)
-            .options(selectinload(RouteSimulation.segments))
-        )
-    ).scalar_one()
     return _serialize_simulation(sim, list(sim.segments))
 
 
@@ -369,13 +244,5 @@ async def get_route_simulation(
 
     Cached simulation result — yeni Mapbox/Open-Meteo çağrısı yok.
     """
-    sim = (
-        await db.execute(
-            select(RouteSimulation)
-            .where(RouteSimulation.id == simulation_id)
-            .options(selectinload(RouteSimulation.segments))
-        )
-    ).scalar_one_or_none()
-    if sim is None:
-        raise HTTPException(status_code=404, detail="Simulation not found")
+    sim = await get_route_simulation_by_id(db, simulation_id)
     return _serialize_simulation(sim, list(sim.segments))

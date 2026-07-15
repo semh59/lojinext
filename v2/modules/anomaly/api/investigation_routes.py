@@ -32,8 +32,10 @@ from v2.modules.anomaly.application.manage_investigations import (
 )
 from v2.modules.anomaly.application.manage_investigations import (
     get_investigation_detail,
-    get_patterns,
     resolve_alarm_context,
+)
+from v2.modules.anomaly.application.manage_investigations import (
+    get_patterns as get_patterns_uc,
 )
 from v2.modules.anomaly.application.manage_investigations import (
     list_investigations as list_investigations_uc,
@@ -69,7 +71,7 @@ def _ensure_enabled() -> None:
 
 
 @router.get("/patterns", response_model=list[PatternMatch])
-async def get_patterns_route(
+async def get_patterns(
     db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
     days: int = Query(30, ge=7, le=180),
@@ -78,7 +80,7 @@ async def get_patterns_route(
 ):
     """Aynı (sofor, arac) için son N gün ≥min_count soruşturma → pattern."""
     _ensure_enabled()
-    result_rows = await get_patterns(db, days, min_count, limit)
+    result_rows = await get_patterns_uc(db, days, min_count, limit)
     return [PatternMatch(**d) for d in result_rows]
 
 

@@ -39,6 +39,12 @@ RouteSimulator, get_route_simulator()
 # (Sınıf olarak kaldı — TEK use-case/tek pipeline, LokasyonHydrator ile aynı
 # gerekçe: constructor yalnız mapbox_client/elevation_client DI'sini tutuyor.)
 
+# application/create_route_simulation.py (dalga-1-6+8 B.1 dedektif denetiminde eklendi, 2026-07-15)
+create_route_simulation(db, simulator, *, lokasyon_id, arac_id, cikis_lon, cikis_lat,
+                         varis_lon, varis_lat, ton, arac_yasi, segment_length_m,
+                         current_user_id) -> RouteSimulation  # segments eager-loaded
+get_route_simulation_by_id(db, simulation_id) -> RouteSimulation  # raises 404
+
 # domain/route_geometry.py — RouteService'ten ayrıştırılmış, hiçbir prod kod
 # çağırmıyor (yalnız kendi testleri); route_analyzer.py'nin kendi haversine'i
 # asıl canlı yolda kullanılan.
@@ -57,7 +63,8 @@ resample_segments(segments, coords, target_length_km=0.5)
 MapboxClient, get_mapbox_client()
 OpenRouteClient, get_route_client()
 OpenMeteoElevationClient, get_elevation_client()
-RouteRepository, get_route_repo(session=None)
+RouteRepository, get_route_repo(session=None)          # route_paths (ORS cache)
+SimulationRepository(session=db)                        # route_simulations + route_segments
 
 # api/route_routes.py
 router  # POST /analyze, POST /simulate, GET /simulate/{id}
@@ -97,6 +104,18 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
+  bulundu, `TASKS/bug-route-layer-bypasses-application.md` sınıfının en
+  büyük tekrarı)** — `api/route_routes.py::simulate_route`/
+  `get_route_simulation` ~90 satırlık ORM persist/query mantığını
+  (lokasyon/araç çözümü, `RouteSimulation`/`RouteSegment` INSERT,
+  `selectinload` eager-reload) route içinde doğrudan çalıştırıyordu —
+  `route_simulations`/`route_segments` o zamana kadar hiçbir repository'ye
+  sahip değildi. Yeni `infrastructure/simulation_repository.py`
+  (`SimulationRepository`) + `application/create_route_simulation.py`.
+  Eager-reload deseni (MissingGreenlet gotcha'sı — commit-sonrası lazy
+  `sim.segments` erişimi async engine altında patlıyordu) BİREBİR
+  korundu. Mekanik taşıma, davranış değişikliği yok.
 - **Mapbox `road_class` annotation YOK**: Directions API'de `road_class`
   parametre olarak istenirse 422 döner. Bunun yerine
   `step.intersections[*].mapbox_streets_v8.class`'tan

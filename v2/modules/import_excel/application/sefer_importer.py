@@ -7,9 +7,12 @@ route'u) üzerinden yapılır. İkisi de durum için canonical
 ``SEFER_STATUS_PLANLANDI`` sabitini kullanır (drift = BUG-002).
 """
 
-from typing import List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, cast
 
 from app.core.exceptions import ImportValidationError
+
+if TYPE_CHECKING:
+    from app.schemas.sefer import SeferCreate
 from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
@@ -129,7 +132,16 @@ async def process_sefer_import(content: bytes) -> Tuple[int, list]:
             # henüz taşınmadı — container üzerinden geçici erişim).
             from app.core.container import get_container
 
-            count = await get_container().sefer_service.bulk_add_sefer(sefer_list)
+            # SeferService.bulk_add_sefer'in tipi List[SeferCreate] bekliyor;
+            # bu fonksiyon dict listesi üretiyor (üretim yolu değil, prod'da
+            # çağrılmıyor — bkz. modül docstring'i). Bu latent uyuşmazlık
+            # taşımadan ÖNCE de vardı (self.sefer_service untyped constructor
+            # param olduğu için mypy görmüyordu); free-function geçişinde
+            # container.sefer_service düzgün tipli hale gelince ortaya çıktı
+            # (dalga 4'ün yakit_importer.py'deki aynı sınıf gotcha'sı).
+            count = await get_container().sefer_service.bulk_add_sefer(
+                cast("List[SeferCreate]", sefer_list)
+            )
 
         return count, errors
 

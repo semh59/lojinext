@@ -20,7 +20,10 @@ from sqlalchemy import insert
 from app.database.models import Anomaly, FuelInvestigation
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
-from app.workers.tasks.theft_tasks import _run_pattern_scan, daily_pattern_scan
+from v2.modules.anomaly.infrastructure.theft_tasks import (
+    _run_pattern_scan,
+    daily_pattern_scan,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -96,7 +99,9 @@ async def test_run_pattern_scan_with_patterns(db_session, caplog):
     import logging
 
     await _seed_theft_pattern(db_session, n=3)
-    with caplog.at_level(logging.WARNING, logger="app.workers.tasks.theft_tasks"):
+    with caplog.at_level(
+        logging.WARNING, logger="v2.modules.anomaly.infrastructure.theft_tasks"
+    ):
         result = await _run_pattern_scan(days=30, min_count=3)
 
     assert result["patterns_found"] == 1

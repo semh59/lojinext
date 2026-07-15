@@ -21,9 +21,9 @@ from app.core.entities import (
     YakitAlimi,
     YakitPeriyodu,
 )
-from app.core.services.anomaly_detection_service import get_anomaly_detection_service
 from app.infrastructure.cache.cache_manager import get_cache_manager
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.anomaly.public import get_anomaly_detection_service
 from v2.modules.fuel.application.calculate_period import create_fuel_periods
 from v2.modules.fuel.application.distribute_fuel_to_trips import (
     distribute_fuel_to_trips,

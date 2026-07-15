@@ -162,9 +162,10 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
   çağırır (bulk driver metrics, filo ortalaması — analytics_executive henüz
   `public.py` yayınlamadığı için doğrudan repo importu).
 - **ai_assistant (senkron, henüz taşınmadı)**: `DriverCoachingEngine`
-  `app.core.ai.groq_service.get_groq_service()` çağırır (LLM inference);
-  `app.core.services.anomaly_detector.get_anomaly_detector()` de henüz
-  taşınmamış (anomaly modülü, dalga 8).
+  `app.core.ai.groq_service.get_groq_service()` çağırır (LLM inference).
+- **anomaly (taşındı, dalga 8)**: `DriverCoachingEngine`
+  `v2.modules.anomaly.public.get_anomaly_detector()` kullanır (public.py
+  üzerinden — driver→anomaly bağımlılığı artık modül sınırını doğru geçiyor).
 - **reports (senkron, henüz taşınmadı)**: `SoforSeferPDFService`
   `app.core.services.report_generator.PDFReportGenerator`'dan miras alır.
   `report_service.py` (reports) `calculate_performance_score`'u driver
@@ -201,7 +202,7 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
   KULLANILMAZ).
 - **Coaching PII politikası** (`application/generate_coaching.py::_build_prompt`):
   Groq LLM'e giden prompt'ta isim/plaka/telegram_id/sofor_id KESİNLİKLE
-  yok — sadece anonim sayısal/kategorik özet. `anomaly_detector.get_recent_anomalies(...,
+  yok — sadece anonim sayısal/kategorik özet. `get_anomaly_detector().get_recent_anomalies(...,
   sofor_id=sofor_id)` filtresi başka şoförün anomali örüntülerinin prompt'a
   sızmasını önler (geçmişte bulunan HATA 5 — LOJINEXT_v7 raporu).
 - **Weekly digest — özel Celery limitleri** (`infrastructure/coaching_tasks.py`):

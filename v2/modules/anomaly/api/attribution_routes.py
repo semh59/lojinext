@@ -5,10 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.core.exceptions import DomainError
-from app.core.services.attribution_service import AttributionService
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.attribution import (
+from v2.modules.anomaly.application.attribute_loss import (
+    override_attribution,
+)
+from v2.modules.anomaly.schemas import (
     AttributionOverrideRequest,
     AttributionOverrideResponse,
 )
@@ -32,18 +34,18 @@ async def override_trip_attribution(
     """
     try:
         # NOT: UnitOfWork(db) burada ÖNCEDEN `async with` ile açılmıyor —
-        # override_attribution()'ın kendi `async with self.uow:` bloğu tek
+        # override_attribution()'ın kendi `async with uow:` bloğu tek
         # giriş noktası olmalı. Önceden burada da açılıyordu, bu da aynı
         # instance'ı iki kez `__aenter__` etmek anlamına geliyordu — connection-
         # pool leak'ine yol açan kök neden (bkz.
         # TASKS/bug-connection-pool-leak-under-load.md, AuthService/MLService'te
         # aynı desen bulunup düzeltildi).
-        attribution_service = AttributionService(UnitOfWork(db))
-        success = await attribution_service.override_attribution(
+        success = await override_attribution(
             sefer_id=request.sefer_id,
             arac_id=request.new_arac_id,
             sofor_id=request.new_sofor_id,
             reason=request.reason,
+            uow=UnitOfWork(db),
         )
 
         return AttributionOverrideResponse(
@@ -85,12 +87,12 @@ async def bulk_override_trip_attribution(
             # Fresh UoW per item so each gets its own commit cycle.
             # Sharing a single UoW caused a _committed=True latch that
             # silently skipped commits for all items after the first.
-            service = AttributionService(UnitOfWork())
-            success = await service.override_attribution(
+            success = await override_attribution(
                 sefer_id=req.sefer_id,
                 arac_id=req.new_arac_id,
                 sofor_id=req.new_sofor_id,
                 reason=req.reason,
+                uow=UnitOfWork(),
             )
             results.append(
                 AttributionOverrideResponse(

@@ -3,6 +3,11 @@ TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: Anomali tespiti — Isolation Forest + LGBM modelleri başlangıçta yüklenir.
 CREATED_BY: app/core/container.py (lazy property)
+
+``AnomalyDetector`` sınıf istisnası (B.1): ``RouteSimulator``/``LokasyonHydrator``/
+``DriverPerformanceML`` ile aynı gerekçe — sklearn ``IsolationForest`` +
+LightGBM ``LGBMClassifier`` + ``lgb_trained`` bayrağı gerçek mutable eğitilmiş-model
+state'i taşır, tek-cohesive-pipeline'dır (istatistiksel + ML hibrit tespit).
 """
 
 from dataclasses import dataclass
@@ -284,7 +289,7 @@ class AnomalyDetector:
                 for a in anomalies
             ]
 
-            await uow.analiz_repo.bulk_create_anomalies(params_list)
+            await uow.anomaly_repo.bulk_create_anomalies(params_list)
             await uow.commit()
 
         logger.info(f"Saved {len(anomalies)} anomalies to PostgreSQL (bulk)")
@@ -312,7 +317,7 @@ class AnomalyDetector:
         days_val = max(1, min(int(days), 365))
 
         async with UnitOfWork() as uow:
-            return await uow.analiz_repo.get_anomalies_filtered(
+            return await uow.anomaly_repo.get_anomalies_filtered(
                 days=days_val,
                 severity=severity.value if severity else None,
                 status=status,
@@ -556,14 +561,14 @@ class AnomalyDetector:
         """Anomaliyi onaylanmış olarak işaretle."""
         now = datetime.now(timezone.utc)
         async with UnitOfWork() as uow:
-            row = await uow.analiz_repo.get_anomaly_by_id(anomaly_id)
+            row = await uow.anomaly_repo.get_anomaly_by_id(anomaly_id)
             if not row:
                 raise ValueError("Anomali bulunamadı")
             if row.resolved_at is not None:
                 raise ValueError("Çözülmüş anomali tekrar onaylanamaz")
             # Virtual superadmin (id=0) has no kullanicilar row — use NULL to avoid FK violation
             safe_user_id = user_id if user_id and user_id > 0 else None
-            await uow.analiz_repo.update_anomaly(
+            await uow.anomaly_repo.update_anomaly(
                 anomaly_id, acknowledged_at=now, acknowledged_by=safe_user_id
             )
             await uow.commit()
@@ -580,7 +585,7 @@ class AnomalyDetector:
         """Anomaliyi çözülmüş olarak işaretle. Notlar opsiyonel ama önerilir."""
         now = datetime.now(timezone.utc)
         async with UnitOfWork() as uow:
-            row = await uow.analiz_repo.get_anomaly_by_id(anomaly_id)
+            row = await uow.anomaly_repo.get_anomaly_by_id(anomaly_id)
             if not row:
                 raise ValueError("Anomali bulunamadı")
             # Henüz onaylanmamışsa, resolve aynı zamanda acknowledge anlamına gelir.
@@ -594,7 +599,7 @@ class AnomalyDetector:
             if row.acknowledged_at is None:
                 values["acknowledged_at"] = now
                 values["acknowledged_by"] = safe_user_id
-            await uow.analiz_repo.update_anomaly(anomaly_id, **values)
+            await uow.anomaly_repo.update_anomaly(anomaly_id, **values)
             await uow.commit()
         return {
             "id": anomaly_id,

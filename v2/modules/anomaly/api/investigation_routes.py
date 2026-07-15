@@ -27,11 +27,14 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import SessionDep, require_permissions
 from app.config import settings
-from app.core.ai.fuel_theft_classifier import get_fuel_theft_classifier
 from app.database.models import Anomaly, Kullanici
-from app.database.repositories.analiz_repo import get_analiz_repo
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.schemas.investigation import (
+from v2.modules.anomaly.application.classify_theft import get_fuel_theft_classifier
+from v2.modules.anomaly.infrastructure.anomaly_repository import get_anomaly_repo
+from v2.modules.anomaly.infrastructure.investigation_repository import (
+    get_investigation_repo,
+)
+from v2.modules.anomaly.schemas import (
     InvestigationCreate,
     InvestigationResponse,
     InvestigationUpdate,
@@ -63,8 +66,8 @@ async def get_patterns(
     """Aynı (sofor, arac) için son N gün ≥min_count soruşturma → pattern."""
     _ensure_enabled()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    repo = get_analiz_repo(session=db)
-    result_rows = await repo.get_investigation_patterns(cutoff, min_count, limit)
+    inv_repo = get_investigation_repo(db)
+    result_rows = await inv_repo.get_investigation_patterns(cutoff, min_count, limit)
     return [PatternMatch(**d) for d in result_rows]
 
 
@@ -85,8 +88,8 @@ async def list_investigations(
 ):
     _ensure_enabled()
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    repo = get_analiz_repo(session=db)
-    result_rows = await repo.list_investigations(
+    inv_repo = get_investigation_repo(db)
+    result_rows = await inv_repo.list_investigations(
         cutoff,
         limit,
         status=status,
@@ -106,8 +109,8 @@ async def get_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
 ):
     _ensure_enabled()
-    repo = get_analiz_repo(session=db)
-    row = await repo.get_investigation_detail(inv_id)
+    inv_repo = get_investigation_repo(db)
+    row = await inv_repo.get_investigation_detail(inv_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
@@ -148,8 +151,8 @@ async def _resolve_alarm_context(
     db, anomaly: Anomaly
 ) -> "tuple[Optional[str], Optional[str]]":
     """Anomaly → (plaka, sofor_adi). Yoksa (None, None)."""
-    repo = get_analiz_repo(session=db)
-    return await repo.get_anomaly_alarm_context(int(anomaly.id))
+    inv_repo = get_investigation_repo(db)
+    return await inv_repo.get_anomaly_alarm_context(int(anomaly.id))
 
 
 async def _maybe_broadcast_alarm(
@@ -227,13 +230,14 @@ async def create_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    repo = get_analiz_repo(session=db)
+    anomaly_repo = get_anomaly_repo(session=db)
+    inv_repo = get_investigation_repo(db)
     # 1. Anomaly var mı?
-    anomaly = await repo.get_anomaly_by_id(payload.anomaly_id)
+    anomaly = await anomaly_repo.get_anomaly_by_id(payload.anomaly_id)
     if not anomaly:
         raise HTTPException(status_code=404, detail="Anomali bulunamadı")
     # 2. Mevcut investigation var mı? (unique constraint da yakalar)
-    existing = await repo.get_investigation_by_anomaly_id(payload.anomaly_id)
+    existing = await inv_repo.get_investigation_by_anomaly_id(payload.anomaly_id)
     if existing:
         raise HTTPException(
             status_code=409,
@@ -255,7 +259,7 @@ async def create_investigation(
     # 4. INSERT (creator_id virtual super-admin=0 ise NULL)
     creator_id = current_admin.id if current_admin.id and current_admin.id > 0 else None
     try:
-        inv = await repo.create_investigation_row(
+        inv = await inv_repo.create_investigation_row(
             anomaly_id=payload.anomaly_id,
             status="open",
             suspicion_score=classification.suspicion_score,
@@ -288,7 +292,7 @@ async def create_investigation(
     await _maybe_broadcast_alarm(inv.id, classification, anomaly, db)
 
     # JOIN'li response
-    row = await repo.get_investigation_detail(int(inv.id))
+    row = await inv_repo.get_investigation_detail(int(inv.id))
     if row is None:
         # Beklenmedik durum
         raise HTTPException(
@@ -311,13 +315,13 @@ async def update_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    repo = get_analiz_repo(session=db)
+    inv_repo = get_investigation_repo(db)
     # 2026-07-01 prod-grade denetimi P1 (Dalga 4 madde 18): SELECT ... FOR
     # UPDATE ile satır kilitlenir — eskiden kilitsiz okunuyordu (TOCTOU),
     # eşzamanlı iki PATCH'te geç kalan istek ilkinin commit'inden ÖNCE
     # okunan stale bir status'a göre karar verip diğerinin sonucunu sessizce
     # eziyordu.
-    inv = await repo.lock_investigation_for_update(inv_id)
+    inv = await inv_repo.lock_investigation_for_update(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     if inv.status in _TERMINAL_STATUSES:
@@ -361,12 +365,12 @@ async def update_investigation(
 
     if not values:
         # No-op update — mevcut kaydı dön
-        row = await repo.get_investigation_detail(inv_id)
+        row = await inv_repo.get_investigation_detail(inv_id)
         if row is None:
             raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
         return InvestigationResponse(**row)
 
-    await repo.update_investigation_fields(inv_id, values)
+    await inv_repo.update_investigation_fields(inv_id, values)
     await db.commit()
 
     await log_audit_event(
@@ -378,7 +382,7 @@ async def update_investigation(
         user_id=current_admin.id,
     )
 
-    row = await repo.get_investigation_detail(inv_id)
+    row = await inv_repo.get_investigation_detail(inv_id)
     if row is None:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     return InvestigationResponse(**row)
@@ -394,14 +398,14 @@ async def soft_delete_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    repo = get_analiz_repo(session=db)
-    inv = await repo.get_investigation_by_id(inv_id)
+    inv_repo = get_investigation_repo(db)
+    inv = await inv_repo.get_investigation_by_id(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
     if inv.status == "closed":
         return  # idempotent
 
-    await repo.close_investigation(inv_id, datetime.now(timezone.utc))
+    await inv_repo.close_investigation(inv_id, datetime.now(timezone.utc))
     await db.commit()
     await log_audit_event(
         module="theft",
@@ -421,11 +425,12 @@ async def reclassify_investigation(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
 ):
     _ensure_enabled()
-    repo = get_analiz_repo(session=db)
-    inv = await repo.get_investigation_by_id(inv_id)
+    inv_repo = get_investigation_repo(db)
+    anomaly_repo = get_anomaly_repo(session=db)
+    inv = await inv_repo.get_investigation_by_id(inv_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Soruşturma bulunamadı")
-    anomaly = await repo.get_anomaly_by_id(inv.anomaly_id)
+    anomaly = await anomaly_repo.get_anomaly_by_id(inv.anomaly_id)
     if not anomaly:
         raise HTTPException(status_code=404, detail="İlişkili anomali bulunamadı")
 
@@ -439,7 +444,7 @@ async def reclassify_investigation(
             "severity": anomaly.severity,
         }
     )
-    await repo.update_investigation_classification(
+    await inv_repo.update_investigation_classification(
         inv_id,
         classification.suspicion_score,
         classification.suspicion_level,

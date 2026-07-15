@@ -17,14 +17,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.core.services.anomaly_detector import (
+from app.database.models import Anomaly, Kullanici, Rol
+from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyDetector,
     AnomalyResult,
     AnomalyType,
     SeverityEnum,
 )
-from app.database.models import Anomaly, Kullanici, Rol
-from app.infrastructure.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
@@ -364,7 +364,7 @@ class TestDetectTripAnomalyUnit:
             }
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -395,7 +395,7 @@ class TestDetectTripAnomalyUnit:
             }
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -426,7 +426,7 @@ class TestDetectAnomalyHybrid:
             return_value={"tahmini_tuketim": 30.0, "model_used": "physics"}
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -442,7 +442,7 @@ class TestDetectAnomalyHybrid:
             return_value={"tahmini_tuketim": 20.0, "model_used": "ensemble"}
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -463,7 +463,7 @@ class TestDetectAnomalyHybrid:
             return_value={"tahmini_tuketim": 20.0, "model_used": "ensemble"}
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -771,12 +771,16 @@ class TestModelPersistence:
             self.d.save_model("/tmp/test_model.pkl")
 
     def test_load_model_raises_if_lgbm_unavailable(self):
-        with patch("app.core.services.anomaly_detector.LIGHTGBM_AVAILABLE", False):
+        with patch(
+            "v2.modules.anomaly.application.detect_anomaly.LIGHTGBM_AVAILABLE", False
+        ):
             with pytest.raises(RuntimeError, match="not available"):
                 self.d.load_model("/tmp/test_model.pkl")
 
     def test_load_model_raises_if_files_missing(self):
-        with patch("app.core.services.anomaly_detector.LIGHTGBM_AVAILABLE", True):
+        with patch(
+            "v2.modules.anomaly.application.detect_anomaly.LIGHTGBM_AVAILABLE", True
+        ):
             with pytest.raises(FileNotFoundError):
                 self.d.load_model("/tmp/nonexistent_model.pkl")
 
@@ -789,7 +793,9 @@ class TestModelPersistence:
 class TestTrainLgbClassifier:
     async def test_not_available_returns_error_dict(self):
         d = make_detector()
-        with patch("app.core.services.anomaly_detector.LIGHTGBM_AVAILABLE", False):
+        with patch(
+            "v2.modules.anomaly.application.detect_anomaly.LIGHTGBM_AVAILABLE", False
+        ):
             d.lgb_classifier = None
             result = await d.train_lgb_classifier()
         assert result["success"] is False

@@ -5,6 +5,12 @@ fuel_investigations tablosundan son 30 gün ≥3 occurrence olan
 (sofor_id, arac_id) ikilisini logger'a basar. Frontend için
 gerçek-zamanlı endpoint `GET /admin/investigations/patterns`
 B.2'de mevcut; bu task sadece audit-trail için loglar.
+
+theft_tasks 5-modül raw-SQL erişimi notu (FAZ1 dalga 8 taşıma görevi
+TASKS/modules/anomaly.md madde 4/6): bu SQL fuel_investigations+anomalies
+(bu modül) + seferler+soforler+araclar (trip/driver/fleet) tablolarına
+doğrudan erişir — taşıma sonrası bu erişimler FAZ2'de trip/driver/fleet
+şemalarına SELECT-only grant gerektirecek (STATUS.md'de not düşüldü).
 """
 
 from __future__ import annotations
@@ -21,7 +27,7 @@ from app.infrastructure.background.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
-# Endpoint ile aynı SQL — DRY için investigations.py'dan import etmek
+# Endpoint ile aynı SQL — DRY için investigation_routes.py'dan import etmek
 # circular yapacak; offline iş kritik değil, sorgu burada tekrarlanır.
 _PATTERN_SCAN_SQL = """
     WITH inv_data AS (

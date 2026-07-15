@@ -9,6 +9,12 @@ Eşikler:
   >= 0.7 → high   → auto-investigation create + Telegram OPS alarm
   >= 0.4 → medium → manuel inceleme tavsiyesi
   <  0.4 → low    → rutin loglama
+
+B.1 sınıf istisnası: ``FuelTheftClassifier`` docstring'inde de belirtildiği
+gibi stateless — tek-cohesive-pipeline (skor bileşenlerini birlikte
+hesaplayan tek akış), ``FuelTheftClassifier`` ile aynı gerekçe kategorisi
+(``SecurityService`` gibi salt classmethod isim alanı değil ama instance
+state taşımaz).
 """
 
 from __future__ import annotations
@@ -22,10 +28,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import text
 
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.investigation import (
-    SuspicionLevel,
-    TheftClassification,
-)
+from v2.modules.anomaly.schemas import SuspicionLevel, TheftClassification
 
 logger = logging.getLogger(__name__)
 

@@ -26,9 +26,16 @@ class AnomalyDetectionService:
 
     ARCHITECTURE NOTE — two anomaly subsystems exist intentionally:
     - This class (AnomalyDetectionService): pure Z-score + IQR, no ML,
-      no DB writes. Used by analiz_service for in-memory fleet analytics.
-    - AnomalyDetector (anomaly_detector.py): ML-augmented (LightGBM), persists
-      Anomaly rows to DB, used by /anomalies endpoints and coaching engine.
+      no DB writes. Used by analiz_service (analytics_executive'in henüz
+      taşınmamış app/core/services/analiz_service.py'si) for in-memory fleet
+      analytics.
+    - AnomalyDetector (application/detect_anomaly.py): ML-augmented
+      (LightGBM), persists Anomaly rows to DB, used by /anomalies endpoints
+      and coaching engine.
+
+    B.1 sınıf istisnası: constructor-injected cache handle + iki alt-metodun
+    (detect/analyze) birlikte tek tutarlı bir hesap hattı oluşturması —
+    ``DriverPerformanceML`` ile aynı gerekçe kategorisi.
 
     Threshold: resolved through runtime config (sistem_konfig row
     ANOMALY_Z_THRESHOLD, admin UI'dan ayarlanabilir; satır yoksa

@@ -28,17 +28,17 @@ pytestmark = pytest.mark.unit
 
 
 def _make_detector():
-    from app.core.services.anomaly_detector import AnomalyDetector
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
     return AnomalyDetector()
 
 
 def _make_anomaly(tip=None, sapma=30.0):
-    from app.core.services.anomaly_detector import (
+    from v2.modules.anomaly.application.detect_anomaly import (
         AnomalyResult,
         SeverityEnum,
     )
-    from app.core.services.anomaly_detector import AnomalyType as AT
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyType as AT
 
     return AnomalyResult(
         tip=tip or AT.TUKETIM,
@@ -59,13 +59,17 @@ def _make_anomaly(tip=None, sapma=30.0):
 
 class TestAnomalyDetectorInit:
     def test_sklearn_unavailable_isolation_forest_none(self):
-        with patch("app.core.services.anomaly_detector.SKLEARN_AVAILABLE", False):
+        with patch(
+            "v2.modules.anomaly.application.detect_anomaly.SKLEARN_AVAILABLE", False
+        ):
             d = _make_detector()
             assert d.isolation_forest is None
 
     def test_lgbm_unavailable_classifier_none(self):
-        with patch("app.core.services.anomaly_detector.LIGHTGBM_AVAILABLE", False):
-            with patch("app.core.services.anomaly_detector.lgb", None):
+        with patch(
+            "v2.modules.anomaly.application.detect_anomaly.LIGHTGBM_AVAILABLE", False
+        ):
+            with patch("v2.modules.anomaly.application.detect_anomaly.lgb", None):
                 d = _make_detector()
                 assert d.lgb_classifier is None
                 assert d.lgb_trained is False
@@ -84,7 +88,7 @@ class TestGenerateHeuristicRcaMore:
         return _make_anomaly(sapma=sapma)
 
     def test_consumption_between_0_and_15_returns_unknown(self):
-        from app.core.services.anomaly_detector import AnomalyType
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyType
 
         result = _make_anomaly(tip=AnomalyType.TUKETIM, sapma=5.0)
         rca, action = self.d._generate_heuristic_rca(result)
@@ -93,28 +97,28 @@ class TestGenerateHeuristicRcaMore:
         assert isinstance(action, str)
 
     def test_consumption_negative_less_than_minus_20_calibration(self):
-        from app.core.services.anomaly_detector import AnomalyType
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyType
 
         result = _make_anomaly(tip=AnomalyType.TUKETIM, sapma=-25.0)
         rca, action = self.d._generate_heuristic_rca(result)
         assert "Kalibrasyon" in rca
 
     def test_sefer_type_sapma_above_50(self):
-        from app.core.services.anomaly_detector import AnomalyType
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyType
 
         result = _make_anomaly(tip=AnomalyType.SEFER, sapma=55.0)
         rca, action = self.d._generate_heuristic_rca(result)
         assert "Hırsızlığı" in rca or "Sensör" in rca
 
     def test_sefer_type_sapma_between_25_50(self):
-        from app.core.services.anomaly_detector import AnomalyType
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyType
 
         result = _make_anomaly(tip=AnomalyType.SEFER, sapma=30.0)
         rca, action = self.d._generate_heuristic_rca(result)
         assert "Agresif" in rca or "Rota" in rca
 
     def test_sefer_type_sapma_between_15_25(self):
-        from app.core.services.anomaly_detector import AnomalyType
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyType
 
         result = _make_anomaly(tip=AnomalyType.SEFER, sapma=18.0)
         rca, action = self.d._generate_heuristic_rca(result)
@@ -167,7 +171,7 @@ class TestDetectTripAnomalyExtended:
             return_value={"tahmini_tuketim": 0.0, "model_used": "physics"}
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -184,7 +188,7 @@ class TestDetectTripAnomalyExtended:
             return_value={"tahmini_tuketim": 20.0, "model_used": "physics"}
         )
         with patch(
-            "app.core.services.anomaly_detector.get_prediction_service"
+            "v2.modules.anomaly.application.detect_anomaly.get_prediction_service"
         ) as mock_svc:
             instance = MagicMock()
             instance.predict_consumption = mock_pred
@@ -271,7 +275,7 @@ async def _async_raise(fn, exc, *args, **kwargs):
 
 class TestPredictSeverityLgbMore:
     def test_lgb_returns_high(self):
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         d = _make_detector()
         mock_clf = MagicMock()
@@ -283,7 +287,7 @@ class TestPredictSeverityLgbMore:
         assert sev == SeverityEnum.HIGH
 
     def test_lgb_returns_critical(self):
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         d = _make_detector()
         mock_clf = MagicMock()
@@ -296,7 +300,7 @@ class TestPredictSeverityLgbMore:
 
     def test_unknown_reverse_map_key_falls_back(self):
         """When REVERSE_SEVERITY_MAP returns unknown key, SeverityEnum(unknown) would fail → exception fallback."""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         d = _make_detector()
         mock_clf = MagicMock()
@@ -339,7 +343,7 @@ class TestSaveModelMore:
 
 class TestGetAnomalyDetector:
     def test_returns_anomaly_detector_instance(self):
-        from app.core.services.anomaly_detector import AnomalyDetector
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         # get_container is imported inside the function; patch it at the source
         with patch("app.core.container.get_container") as mock_gc:
@@ -347,7 +351,9 @@ class TestGetAnomalyDetector:
             mock_container.anomaly_detector = AnomalyDetector()
             mock_gc.return_value = mock_container
 
-            from app.core.services.anomaly_detector import get_anomaly_detector
+            from v2.modules.anomaly.application.detect_anomaly import (
+                get_anomaly_detector,
+            )
 
             result = get_anomaly_detector()
             assert isinstance(result, AnomalyDetector)
@@ -360,7 +366,10 @@ class TestGetAnomalyDetector:
 
 class TestSeverityMaps:
     def test_severity_map_has_all_levels(self):
-        from app.core.services.anomaly_detector import AnomalyDetector, SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import (
+            AnomalyDetector,
+            SeverityEnum,
+        )
 
         d = AnomalyDetector()
         assert d.SEVERITY_MAP["normal"] == 0
@@ -370,7 +379,7 @@ class TestSeverityMaps:
         assert d.SEVERITY_MAP[SeverityEnum.CRITICAL.value] == 4
 
     def test_reverse_severity_map_inverts_correctly(self):
-        from app.core.services.anomaly_detector import AnomalyDetector
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         d = AnomalyDetector()
         assert d.REVERSE_SEVERITY_MAP[0] == "normal"

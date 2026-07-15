@@ -17,9 +17,9 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import insert
 
-from app.core.ai.fuel_theft_classifier import FuelTheftClassifier
 from app.database.models import Anomaly
-from app.schemas.investigation import TheftClassification
+from v2.modules.anomaly.application.classify_theft import FuelTheftClassifier
+from v2.modules.anomaly.schemas import TheftClassification
 
 pytestmark = pytest.mark.integration
 
@@ -136,7 +136,7 @@ async def test_classify_exception_falls_back_to_unknown():
             return False
 
     with patch(
-        "app.core.ai.fuel_theft_classifier.UnitOfWork",
+        "v2.modules.anomaly.application.classify_theft.UnitOfWork",
         return_value=_CM(),
     ):
         engine = FuelTheftClassifier()

@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.core.services.analiz_service import AnalizService
-    from app.core.services.anomaly_detector import AnomalyDetector
     from app.core.services.health_service import HealthService
     from app.core.services.import_service import ImportService
     from app.core.services.report_service import ReportService
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
     from v2.modules.auth_rbac.application.license_service import LicenseEngine
     from v2.modules.driver.infrastructure.repository import SoforRepository
     from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
@@ -281,7 +281,9 @@ class Container:
         if self._anomaly_detector is None:
             with self._lock:
                 if self._anomaly_detector is None:
-                    from app.core.services.anomaly_detector import AnomalyDetector
+                    from v2.modules.anomaly.application.detect_anomaly import (
+                        AnomalyDetector,
+                    )
 
                     self._anomaly_detector = AnomalyDetector()
         return self._anomaly_detector

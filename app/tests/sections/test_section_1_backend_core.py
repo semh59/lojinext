@@ -102,7 +102,7 @@ class TestAnomalyDetector:
     @pytest.fixture
     def detector(self):
         """AnomalyDetector instance"""
-        from app.core.services.anomaly_detector import AnomalyDetector
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         return AnomalyDetector()
 
@@ -110,7 +110,7 @@ class TestAnomalyDetector:
 
     def test_severity_critical_threshold(self, detector):
         """50%+ sapma -> CRITICAL"""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         severity = detector._calculate_severity(50.0)
         assert severity == SeverityEnum.CRITICAL
@@ -120,7 +120,7 @@ class TestAnomalyDetector:
 
     def test_severity_high_threshold(self, detector):
         """30-50% sapma -> HIGH"""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         severity = detector._calculate_severity(30.0)
         assert severity == SeverityEnum.HIGH
@@ -130,7 +130,7 @@ class TestAnomalyDetector:
 
     def test_severity_medium_threshold(self, detector):
         """15-30% sapma -> MEDIUM"""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         severity = detector._calculate_severity(15.0)
         assert severity == SeverityEnum.MEDIUM
@@ -140,7 +140,7 @@ class TestAnomalyDetector:
 
     def test_severity_low_threshold(self, detector):
         """<15% sapma -> LOW"""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         severity = detector._calculate_severity(14.9)
         assert severity == SeverityEnum.LOW
@@ -213,7 +213,7 @@ class TestAnomalyDetector:
 
     def test_predict_severity_lgb_fallback_when_not_trained(self, detector):
         """LightGBM eğitilmemişse rule-based fallback"""
-        from app.core.services.anomaly_detector import SeverityEnum
+        from v2.modules.anomaly.application.detect_anomaly import SeverityEnum
 
         # Classifier eğitilmemiş durumda
         detector.lgb_trained = False
@@ -1145,7 +1145,7 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_anomaly_detection_performance(self):
         """Anomali tespiti performansı - büyük veri seti"""
-        from app.core.services.anomaly_detector import AnomalyDetector
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         detector = AnomalyDetector()
 
@@ -1208,7 +1208,7 @@ class TestEdgeCases:
 
     def test_negative_values_handling(self):
         """Negatif değer handling"""
-        from app.core.services.anomaly_detector import AnomalyDetector
+        from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         detector = AnomalyDetector()
 

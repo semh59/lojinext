@@ -157,7 +157,7 @@ def _override_db(mock_db):
 @pytest.mark.asyncio
 async def test_list_investigations_disabled(async_client, admin_auth_headers):
     """When THEFT_INVESTIGATION_ENABLED=False all endpoints return 503."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.get(BASE_URL, headers=admin_auth_headers)
     assert resp.status_code == 503
@@ -166,7 +166,7 @@ async def test_list_investigations_disabled(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_get_patterns_disabled(async_client, admin_auth_headers):
     """GET /patterns 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.get(
             f"{BASE_URL}/patterns", headers=admin_auth_headers
@@ -302,7 +302,7 @@ async def test_get_investigation_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_get_investigation_disabled(async_client, admin_auth_headers):
     """GET /admin/investigations/1 → 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.get(f"{BASE_URL}/1", headers=admin_auth_headers)
     assert resp.status_code == 503
@@ -334,7 +334,7 @@ async def test_create_investigation_anomaly_not_found(async_client, admin_auth_h
 @pytest.mark.asyncio
 async def test_create_investigation_disabled(async_client, admin_auth_headers):
     """POST /admin/investigations → 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.post(
             BASE_URL, json={"anomaly_id": 10}, headers=admin_auth_headers
@@ -384,7 +384,7 @@ async def test_create_investigation_already_exists(async_client, admin_auth_head
 async def test_create_investigation_success(async_client, admin_auth_headers):
     """POST /admin/investigations → 201 with valid anomaly and no existing inv."""
     from app.database.models import Anomaly
-    from app.schemas.investigation import TheftClassification
+    from v2.modules.anomaly.schemas import TheftClassification
 
     fake_anomaly = MagicMock(spec=Anomaly)
     fake_anomaly.id = 10
@@ -447,7 +447,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
     db.rollback = AsyncMock()
 
     with patch(
-        "app.core.ai.fuel_theft_classifier.get_fuel_theft_classifier"
+        "v2.modules.anomaly.application.classify_theft.get_fuel_theft_classifier"
     ) as mock_clf_factory:
         mock_clf = AsyncMock()
         mock_clf.classify = AsyncMock(return_value=fake_classification)
@@ -458,11 +458,11 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
             new=AsyncMock(),
         ):
             with patch(
-                "app.api.v1.endpoints.investigations._maybe_broadcast_alarm",
+                "v2.modules.anomaly.api.investigation_routes._maybe_broadcast_alarm",
                 new=AsyncMock(),
             ):
                 with patch(
-                    "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+                    "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
                     new=AsyncMock(return_value=inv_row),
                 ):
                     with _override_db(db):
@@ -501,7 +501,7 @@ async def test_update_investigation_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_investigation_disabled(async_client, admin_auth_headers):
     """PATCH /admin/investigations/1 → 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.patch(
             f"{BASE_URL}/1", json={"status": "assigned"}, headers=admin_auth_headers
@@ -592,7 +592,7 @@ async def test_delete_investigation_success(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_investigation_disabled(async_client, admin_auth_headers):
     """DELETE /admin/investigations/1 → 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.delete(f"{BASE_URL}/1", headers=admin_auth_headers)
     assert resp.status_code == 503
@@ -624,7 +624,7 @@ async def test_reclassify_investigation_not_found(async_client, admin_auth_heade
 @pytest.mark.asyncio
 async def test_reclassify_disabled(async_client, admin_auth_headers):
     """POST /admin/investigations/1/classify → 503 when feature disabled."""
-    with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+    with patch("v2.modules.anomaly.api.investigation_routes.settings") as mock_settings:
         mock_settings.THEFT_INVESTIGATION_ENABLED = False
         resp = await async_client.post(
             f"{BASE_URL}/1/classify", headers=admin_auth_headers
@@ -716,7 +716,7 @@ async def test_update_investigation_status_change(async_client, admin_auth_heade
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -741,7 +741,7 @@ async def test_update_investigation_notes_only(async_client, admin_auth_headers)
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -766,7 +766,7 @@ async def test_update_investigation_assign_user(async_client, admin_auth_headers
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -791,7 +791,7 @@ async def test_update_investigation_resolve_with_type(async_client, admin_auth_h
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -816,7 +816,7 @@ async def test_update_investigation_noop(async_client, admin_auth_headers):
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with _override_db(db):
@@ -837,7 +837,7 @@ async def test_update_investigation_evidence_files(async_client, admin_auth_head
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -862,7 +862,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
     db = _make_update_db(fake_inv, inv_row)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -887,7 +887,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
 async def test_reclassify_success(async_client, admin_auth_headers):
     """POST /admin/investigations/1/classify with valid inv + anomaly → 200."""
     from app.database.models import Anomaly, FuelInvestigation
-    from app.schemas.investigation import TheftClassification
+    from v2.modules.anomaly.schemas import TheftClassification
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -924,7 +924,7 @@ async def test_reclassify_success(async_client, admin_auth_headers):
     db.commit = AsyncMock()
 
     with patch(
-        "app.core.ai.fuel_theft_classifier.get_fuel_theft_classifier"
+        "v2.modules.anomaly.application.classify_theft.get_fuel_theft_classifier"
     ) as mock_clf_factory:
         mock_clf = AsyncMock()
         mock_clf.classify = AsyncMock(return_value=fake_classification)

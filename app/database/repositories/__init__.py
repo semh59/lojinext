@@ -19,6 +19,10 @@ from app.database.repositories.ml_training_repo import MLTrainingRepository
 from app.database.repositories.model_versiyon_repo import ModelVersiyonRepository
 from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.setting_repository import SettingRepository
+from v2.modules.anomaly.infrastructure.anomaly_repository import AnomalyRepository
+from v2.modules.anomaly.infrastructure.investigation_repository import (
+    InvestigationRepository,
+)
 from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
 )
@@ -41,11 +45,13 @@ from v2.modules.route_simulation.infrastructure.repository import RouteRepositor
 __all__ = [
     "AdminConfigRepository",
     "AnalizRepository",
+    "AnomalyRepository",
     "AracRepository",
     "AuditRepository",
     "ConfigRepository",
     "DorseRepository",
     "ImportHistoryRepository",
+    "InvestigationRepository",
     "KullaniciRepository",
     "LokasyonRepository",
     "MLTrainingRepository",

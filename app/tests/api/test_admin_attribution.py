@@ -8,12 +8,11 @@ async def test_override_trip_attribution_single_success(
     async_client, admin_auth_headers, monkeypatch
 ):
     """Test single attribution override happy path."""
-    mock_service = AsyncMock()
-    mock_service.override_attribution = AsyncMock(return_value=True)
+    mock_override = AsyncMock(return_value=True)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_attribution.AttributionService",
-        lambda uow: mock_service,
+        "v2.modules.anomaly.api.attribution_routes.override_attribution",
+        mock_override,
     )
 
     response = await async_client.post(
@@ -38,12 +37,11 @@ async def test_override_trip_attribution_bulk_success(
     async_client, admin_auth_headers, monkeypatch
 ):
     """Test bulk attribution override happy path."""
-    mock_service = AsyncMock()
-    mock_service.override_attribution = AsyncMock(return_value=True)
+    mock_override = AsyncMock(return_value=True)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_attribution.AttributionService",
-        lambda uow: mock_service,
+        "v2.modules.anomaly.api.attribution_routes.override_attribution",
+        mock_override,
     )
 
     response = await async_client.post(
@@ -85,12 +83,11 @@ async def test_override_trip_attribution_failure_returns_false(
     async_client, admin_auth_headers, monkeypatch
 ):
     """Test attribution override returns false when service can't update."""
-    mock_service = AsyncMock()
-    mock_service.override_attribution = AsyncMock(return_value=False)
+    mock_override = AsyncMock(return_value=False)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_attribution.AttributionService",
-        lambda uow: mock_service,
+        "v2.modules.anomaly.api.attribution_routes.override_attribution",
+        mock_override,
     )
 
     response = await async_client.post(
@@ -114,14 +111,11 @@ async def test_override_trip_attribution_service_error(
     async_client, admin_auth_headers, monkeypatch
 ):
     """Test attribution override with service exception → 500."""
-    mock_service = AsyncMock()
-    mock_service.override_attribution = AsyncMock(
-        side_effect=Exception("Database error")
-    )
+    mock_override = AsyncMock(side_effect=Exception("Database error"))
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_attribution.AttributionService",
-        lambda uow: mock_service,
+        "v2.modules.anomaly.api.attribution_routes.override_attribution",
+        mock_override,
     )
 
     response = await async_client.post(

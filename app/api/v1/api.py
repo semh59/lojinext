@@ -1,7 +1,6 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
-    admin_attribution,
     admin_calibration,
     admin_config,
     admin_health,
@@ -14,14 +13,12 @@ from app.api.v1.endpoints import (
     advanced_reports,
     ai,
     analytics,
-    anomalies,
     error_stream,
     executive,
     feedback,
     fleet_insights,
     health,
     internal,
-    investigations,
     predictions,
     reports,
     reports_studio,
@@ -29,6 +26,13 @@ from app.api.v1.endpoints import (
     today_triage,
     trips,
     weather,
+)
+from v2.modules.anomaly.api.anomaly_routes import router as anomalies_router
+from v2.modules.anomaly.api.attribution_routes import (
+    router as admin_attribution_router,
+)
+from v2.modules.anomaly.api.investigation_routes import (
+    router as investigations_router,
 )
 from v2.modules.auth_rbac.api.admin_role_routes import router as admin_roles_router
 from v2.modules.auth_rbac.api.admin_user_routes import router as admin_users_router
@@ -90,10 +94,10 @@ api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"]
 api_router.include_router(
     executive.router, prefix="/reports/executive", tags=["executive"]
 )
-api_router.include_router(anomalies.router, prefix="/anomalies", tags=["anomalies"])
+api_router.include_router(anomalies_router, prefix="/anomalies", tags=["anomalies"])
 api_router.include_router(coaching_router, prefix="/coaching", tags=["coaching"])
 api_router.include_router(
-    investigations.router,
+    investigations_router,
     prefix="/admin/investigations",
     tags=["investigations"],
 )
@@ -112,7 +116,7 @@ api_router.include_router(
 )
 api_router.include_router(admin_ml.router, prefix="/admin/ml", tags=["admin-ml"])
 api_router.include_router(
-    admin_attribution.router, prefix="/admin/attribution", tags=["admin-attribution"]
+    admin_attribution_router, prefix="/admin/attribution", tags=["admin-attribution"]
 )
 api_router.include_router(
     admin_calibration.router, prefix="/admin/calibration", tags=["admin-calibration"]

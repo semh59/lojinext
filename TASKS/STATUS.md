@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 6/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; sıradaki: dalga 8 (anomaly, 7 numarası route-simulation'a taşınmıştı), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 7/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; sıradaki: dalga 9 (import-excel), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -41,7 +41,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 5 | driver | `modules/driver.md` | ✅ main'de yeşil (commit `9206e3f`) |
 | 6 | auth-rbac | `modules/auth-rbac.md` | ✅ main'de yeşil (commit `e9a0328`) |
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
-| 8 | anomaly | `modules/anomaly.md` | 🔲 |
+| 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
 | 9 | import-excel | `modules/import-excel.md` | 🔲 |
 | 10 | reports | `modules/reports.md` | 🔲 |
 | 11 | analytics-executive | `modules/analytics-executive.md` | 🔲 |
@@ -263,5 +263,74 @@ Diğer 2 bilinen bulgu (OpenRouteClient mimari sızıntısı, sistemik ölü-eve
 
 **CI doğrulama (final):** commit `82044b2` için `gh run view 29395179041` → hard-gates `success` (32dk53sn). 3 ayrı takip-push'unun her biri en az 1 tur kırmızı çıkardı (stale get_db mock, 1 alakasız flaky frontend real-backend testi) — hepsi bulunup düzeltildi/rerun edildi, hiçbiri gerçek regresyon değildi.
 
+## DALGA 8 — ✅ TAMAMLANDI (2026-07-15, push/CI izleme sürüyor)
+
+**Kapsam:** anomaly modülü (12 dosya, 2.210 LOC envanteri) — `anomalies`,
+`fuel_investigations` tablolarının tek sahibi, 11 route (anomalies+
+investigations+admin_attribution). Detaylar `TASKS/modules/anomaly.md` +
+`v2/modules/anomaly/CLAUDE.md`.
+
+**Öne çıkan kararlar/bulgular:**
+- `AttributionService` sınıfı kaldırıldı (B.1, önceki 6 dalgadaki kararla
+  aynı gerekçe) — `override_attribution(sefer_id, arac_id=None, sofor_id=None,
+  reason="", uow=None)` + `bulk_override_attribution(overrides: list)` free
+  function'larına bölündü. `AnomalyDetector`/`AnomalyDetectionService`/
+  `FuelTheftClassifier` 3 sınıf istisnası olarak kaldı (gerekçeler
+  CLAUDE.md'de — sklearn/LightGBM eğitilmiş model state'i, cache-injected
+  istatistiksel alt-sistem, stateless tek-pipeline).
+- `analiz_repo.py`'den 15 metod (11 investigation + 4 anomaly CRUD) +
+  `_INVESTIGATION_JOIN_SQL` iki yeni repository dosyasına taşındı
+  (`infrastructure/anomaly_repository.py`, `infrastructure/investigation_repository.py`)
+  — **FOR-UPDATE invaryantı** (`lock_investigation_for_update`+
+  `update_investigation_fields`+`close_investigation` aynı dosyada, aynı
+  sırada) korundu; `bulk_create_alerts`/`get_recent_unread_alerts` (analiz_repo'nun
+  `anomalies` tablosuna AYRI bir insight-alert yolu) taşınmadı, görev dosyasının
+  15 metodluk listesinde yoktu.
+- driver→anomaly bağımlılığı düzeltildi (`generate_coaching.py`
+  `app.core.services.anomaly_detector` yerine `v2.modules.anomaly.public`
+  kullanıyor); analytics_executive'in henüz taşınmamış `analiz_service.py`'si
+  de aynı şekilde `v2.modules.anomaly.public.get_anomaly_detection_service()`'e
+  geçirildi.
+- theft_tasks'ın 5-modül raw-SQL erişimi (fuel_investigations+anomalies+
+  seferler+soforler+araclar) FAZ2 notu olarak CLAUDE.md'de dokümante edildi
+  (taşımadan önce de böyleydi, regresyon değil).
+- Gerçek bug bulunmadı — mekanik taşıma + B.1 dönüşümü (AttributionService→
+  free function), davranış değişikliği içermiyor.
+
+**Doğrulama (gerçek Docker container + `lojinext_test` DB):**
+- `ruff check app v2 tests --select E,F,W,I` → temiz (7 isort-sıralama hatası
+  `--fix` ile otomatik düzeltildi, 1 gerçek F401 — `attribution_routes.py`'de
+  kullanılmayan `bulk_override_attribution` import'u — kaldırıldı).
+- `mypy app/ --ignore-missing-imports --no-strict-optional` → main ile birebir
+  aynı 7 hata (dalga 6 baseline'ı), regresyon yok.
+- `pytest --collect-only app/tests` → 6738 test, 0 collect hatası (ilk
+  denemede `docker cp` dizin-içine-dizin kopyalama hatası 125 sahte collect
+  hatasına yol açmıştı — `docker cp app/tests/. .../app/tests/` ile düzeltildi,
+  klasik dalga1 "nested tests/" gotcha'sının bir varyasyonu).
+- Anomaly-özgü + dokunulan tüketici test dosyaları (21 dosya, gerçek DB'ye
+  karşı): **351/351 pass** — `test_investigations_patch_race.py` (FOR-UPDATE
+  eşzamanlılık testi) dahil, taşıma öncesi/sonrası davranış birebir.
+- driver/coaching + analiz_service testleri: **139/139 pass**.
+- Kök `tests/` (tam suite, gerçek DB'ye karşı): 263 passed + 1 fail
+  (`test_idempotency.py::test_idempotency_guard_duplicate_request` —
+  izole çalıştırıldığında 3/3 pass, Redis "Event loop is closed" sıra/pollution
+  kaynaklı flake, anomaly taşımasıyla ilgisiz).
+- OpenAPI schema drift: **YOK** — container'dan canlı `app.openapi()` çekilip
+  `frontend/openapi.json` ile 234 path × operationId birebir karşılaştırıldı,
+  fark 0 (route handler fonksiyon adları taşımada korundu).
+- `AttributionService`'in class-mock testleri (`test_attribution_service.py`,
+  `test_admin_attribution.py`, kök `tests/test_attribution.py`) free-function
+  çağrılarına çevrildi — event_bus stub'ı artık `attribute_loss.get_event_bus`
+  üzerinden patch'leniyor.
+
+**CI:** push + `gh run watch` bu oturumda devam ediyor, sonuç bir sonraki
+güncellemede eklenecek.
+
 ## Son güncelleme
-2026-07-15 — **FAZ1 dalga 6 (auth-rbac) + dalga-6-sonrası 6-dalga dedektif denetimi + 3 gerçek düzeltme TAMAMLANDI, main tam yeşil** (son commit `82044b2`, CI Hard Gates `success`). OTURUM HİJYENİ: bu oturum kapatılıyor, dalga 8 (anomaly — 7 numarası zaten route-simulation'a taşınmıştı, sırada anomaly var) yeni oturumda `TASKS/modules/anomaly.md` okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-15 — **FAZ1 dalga 8 (anomaly) kod+test+doğrulama TAMAMLANDI** (yerel
+Docker + gerçek DB doğrulaması yeşil, OpenAPI drift yok, mypy/ruff temiz).
+Push/CI izleme sürüyor. OTURUM HİJYENİ: CI yeşil onaylanınca bu oturum
+kapatılacak, dalga 9 (import-excel) yeni oturumda `TASKS/modules/import-excel.md`
+okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı
+kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private
+yapılması gerekiyor — bkz. görev dışı hatırlatma).

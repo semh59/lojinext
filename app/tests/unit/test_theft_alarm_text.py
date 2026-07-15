@@ -17,7 +17,7 @@ def _mk_anomaly(*, id: int = 1, sapma: float = 35.0):
 
 
 def _mk_classification(score: float = 0.82, level: str = "high", anomaly_id: int = 1):
-    from app.schemas.investigation import TheftClassification
+    from v2.modules.anomaly.schemas import TheftClassification
 
     return TheftClassification(
         anomaly_id=anomaly_id,
@@ -29,7 +29,7 @@ def _mk_classification(score: float = 0.82, level: str = "high", anomaly_id: int
 
 
 def test_build_alarm_text_includes_all_fields():
-    from app.api.v1.endpoints.investigations import _build_theft_alarm_text
+    from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
 
     txt = _build_theft_alarm_text(
         inv_id=42,
@@ -51,7 +51,7 @@ def test_build_alarm_text_includes_all_fields():
 
 
 def test_build_alarm_text_html_escapes_evil_input():
-    from app.api.v1.endpoints.investigations import _build_theft_alarm_text
+    from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
 
     txt = _build_theft_alarm_text(
         inv_id=1,
@@ -69,7 +69,7 @@ def test_build_alarm_text_html_escapes_evil_input():
 
 
 def test_build_alarm_text_handles_nulls():
-    from app.api.v1.endpoints.investigations import _build_theft_alarm_text
+    from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
 
     a = _mk_anomaly()
     a.sapma_yuzde = None  # type: ignore[assignment]

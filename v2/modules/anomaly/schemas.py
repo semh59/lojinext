@@ -1,4 +1,4 @@
-"""Feature B — Yakıt Hırsızlığı Tespit + Soruşturma Pydantic şemaları.
+"""Feature B — Yakıt Hırsızlığı Tespit + Soruşturma + Attribution Pydantic şemaları.
 
 Tasarım kararları (v3 plan):
 - Tüm enum'lar Literal — DB string column ile birebir
@@ -75,3 +75,16 @@ class PatternMatch(BaseModel):
     occurrence_count: int = Field(..., ge=1)
     avg_suspicion_score: float = Field(..., ge=0, le=1)
     last_seen: datetime
+
+
+class AttributionOverrideRequest(BaseModel):
+    sefer_id: int
+    new_arac_id: Optional[int] = None
+    new_sofor_id: Optional[int] = None
+    reason: str = Field(..., min_length=5, max_length=255)
+
+
+class AttributionOverrideResponse(BaseModel):
+    sefer_id: int
+    success: bool
+    message: str

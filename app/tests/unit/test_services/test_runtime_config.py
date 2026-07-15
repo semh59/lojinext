@@ -10,11 +10,13 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
-from app.core.services.anomaly_detection_service import AnomalyDetectionService
-from app.core.services.anomaly_detector import AnomalyDetector
 from app.core.services.runtime_config import get_runtime_float
 from app.infrastructure.cache.redis_cache import get_redis_cache
 from app.services.prediction_service import PredictionService
+from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
+from v2.modules.anomaly.application.detect_statistical_anomaly import (
+    AnomalyDetectionService,
+)
 
 pytestmark = pytest.mark.unit
 

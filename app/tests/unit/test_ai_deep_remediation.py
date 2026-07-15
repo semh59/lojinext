@@ -2,13 +2,13 @@ import pytest
 from sqlalchemy import select
 
 from app.core.ai.rag_engine import get_rag_engine
-from app.core.services.anomaly_detector import (
+from app.database.models import Anomaly
+from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyDetector,
     AnomalyResult,
     AnomalyType,
     SeverityEnum,
 )
-from app.database.models import Anomaly
 
 pytestmark = pytest.mark.integration
 

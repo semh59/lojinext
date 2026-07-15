@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.core.ml.anomaly_clustering import cluster_anomalies
+from v2.modules.anomaly.domain.clustering import cluster_anomalies
 
 pytestmark = pytest.mark.unit
 

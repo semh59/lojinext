@@ -44,10 +44,12 @@ class _FakeSession:
 
 class _FakeUoW:
     def __init__(self, rows: List[Dict[str, Any]]):
-        from app.database.repositories.analiz_repo import AnalizRepository
+        from v2.modules.anomaly.infrastructure.anomaly_repository import (
+            AnomalyRepository,
+        )
 
         self.session = _FakeSession(rows)
-        self.analiz_repo = AnalizRepository(self.session)
+        self.anomaly_repo = AnomalyRepository(self.session)
 
     async def __aenter__(self):
         return self
@@ -58,7 +60,7 @@ class _FakeUoW:
 
 def test_get_recent_anomalies_signature_has_sofor_id():
     """API signature regression — sofor_id parametresi olmalı."""
-    from app.core.services.anomaly_detector import AnomalyDetector
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
     sig = inspect.signature(AnomalyDetector.get_recent_anomalies)
     assert "sofor_id" in sig.parameters, (
@@ -72,7 +74,7 @@ def test_get_recent_anomalies_signature_has_sofor_id():
 @pytest.mark.asyncio
 async def test_get_recent_anomalies_applies_sofor_filter():
     """sofor_id verildiğinde SQL'e WHERE sf.sofor_id = :sofor_id eklenmeli."""
-    from app.core.services import anomaly_detector as mod
+    from v2.modules.anomaly.application import detect_anomaly as mod
 
     fake_uow = _FakeUoW(rows=[])
     with (
@@ -91,7 +93,7 @@ async def test_get_recent_anomalies_applies_sofor_filter():
 @pytest.mark.asyncio
 async def test_get_recent_anomalies_no_filter_when_sofor_id_none():
     """sofor_id=None ise filtre eklenmemeli (tüm filo davranışı korunur)."""
-    from app.core.services import anomaly_detector as mod
+    from v2.modules.anomaly.application import detect_anomaly as mod
 
     fake_uow = _FakeUoW(rows=[])
     with (

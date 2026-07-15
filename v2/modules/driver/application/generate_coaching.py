@@ -23,8 +23,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from app.core.ai.groq_service import get_groq_service
-from app.core.services.anomaly_detector import get_anomaly_detector
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.anomaly.public import get_anomaly_detector
 from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
 from v2.modules.driver.application.get_score import get_score_breakdown_sofor
 from v2.modules.driver.schemas import (

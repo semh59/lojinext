@@ -20,10 +20,10 @@ def test_cluster_scan_returns_cluster_count():
         for i in range(3)
     ]
     with patch(
-        "app.workers.tasks.anomaly_cluster_tasks.get_anomaly_detector"
+        "v2.modules.anomaly.infrastructure.cluster_tasks.get_anomaly_detector"
     ) as mock_det:
         mock_det.return_value.get_recent_anomalies = AsyncMock(return_value=rows)
-        from app.workers.tasks.anomaly_cluster_tasks import cluster_scan
+        from v2.modules.anomaly.infrastructure.cluster_tasks import cluster_scan
 
         result = cluster_scan.run()
 

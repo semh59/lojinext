@@ -114,8 +114,8 @@ def _make_db_mock(*, get_anomaly=None, get_investigation=None, execute_result=No
 
 class TestBuildTheftAlarmText:
     def test_with_plaka_and_sofor(self):
-        from app.api.v1.endpoints.investigations import _build_theft_alarm_text
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -136,8 +136,8 @@ class TestBuildTheftAlarmText:
         assert "0.85" in text
 
     def test_with_no_plaka_and_no_sofor(self):
-        from app.api.v1.endpoints.investigations import _build_theft_alarm_text
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=2,
@@ -156,8 +156,8 @@ class TestBuildTheftAlarmText:
 
     def test_with_html_special_chars_escaped(self):
         """Plaka/sofor with HTML chars are escaped."""
-        from app.api.v1.endpoints.investigations import _build_theft_alarm_text
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _build_theft_alarm_text
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=3,
@@ -185,7 +185,7 @@ class TestBuildTheftAlarmText:
 
 class TestResolveAlarmContext:
     async def test_row_none_returns_none_tuple(self):
-        from app.api.v1.endpoints.investigations import _resolve_alarm_context
+        from v2.modules.anomaly.api.investigation_routes import _resolve_alarm_context
 
         anomaly = MagicMock()
         anomaly.id = 99
@@ -202,7 +202,7 @@ class TestResolveAlarmContext:
         assert sofor_adi is None
 
     async def test_row_present_returns_values(self):
-        from app.api.v1.endpoints.investigations import _resolve_alarm_context
+        from v2.modules.anomaly.api.investigation_routes import _resolve_alarm_context
 
         anomaly = MagicMock()
         anomaly.id = 5
@@ -229,8 +229,8 @@ class TestResolveAlarmContext:
 class TestMaybeBroadcastAlarm:
     async def test_non_high_level_noop(self):
         """When suspicion_level != 'high', function returns immediately."""
-        from app.api.v1.endpoints.investigations import _maybe_broadcast_alarm
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -248,8 +248,8 @@ class TestMaybeBroadcastAlarm:
 
     async def test_alarm_disabled_noop(self):
         """When THEFT_ALARM_ENABLED=False, returns immediately."""
-        from app.api.v1.endpoints.investigations import _maybe_broadcast_alarm
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -261,7 +261,9 @@ class TestMaybeBroadcastAlarm:
         anomaly = MagicMock()
         db = AsyncMock()
 
-        with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+        with patch(
+            "v2.modules.anomaly.api.investigation_routes.settings"
+        ) as mock_settings:
             mock_settings.THEFT_ALARM_ENABLED = False
             mock_settings.THEFT_INVESTIGATION_ENABLED = True
             await _maybe_broadcast_alarm(1, clf, anomaly, db)
@@ -270,8 +272,8 @@ class TestMaybeBroadcastAlarm:
 
     async def test_no_bot_token_logs_warning(self):
         """Missing bot token logs warning and returns early."""
-        from app.api.v1.endpoints.investigations import _maybe_broadcast_alarm
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -283,7 +285,9 @@ class TestMaybeBroadcastAlarm:
         anomaly = MagicMock()
         db = AsyncMock()
 
-        with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+        with patch(
+            "v2.modules.anomaly.api.investigation_routes.settings"
+        ) as mock_settings:
             mock_settings.THEFT_ALARM_ENABLED = True
             mock_settings.THEFT_INVESTIGATION_ENABLED = True
             mock_settings.TELEGRAM_OPS_BOT_TOKEN = None
@@ -295,8 +299,8 @@ class TestMaybeBroadcastAlarm:
 
     async def test_no_chat_id_logs_warning(self):
         """Missing chat_id logs warning and returns early."""
-        from app.api.v1.endpoints.investigations import _maybe_broadcast_alarm
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -308,7 +312,9 @@ class TestMaybeBroadcastAlarm:
         anomaly = MagicMock()
         db = AsyncMock()
 
-        with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+        with patch(
+            "v2.modules.anomaly.api.investigation_routes.settings"
+        ) as mock_settings:
             mock_settings.THEFT_ALARM_ENABLED = True
             mock_settings.THEFT_INVESTIGATION_ENABLED = True
             mock_settings.TELEGRAM_OPS_BOT_TOKEN = "bot:token"
@@ -322,8 +328,8 @@ class TestMaybeBroadcastAlarm:
         """When Telegram HTTP fails, error is logged and audit attempted."""
         import httpx
 
-        from app.api.v1.endpoints.investigations import _maybe_broadcast_alarm
-        from app.schemas.investigation import TheftClassification
+        from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
+        from v2.modules.anomaly.schemas import TheftClassification
 
         clf = TheftClassification(
             anomaly_id=1,
@@ -352,7 +358,9 @@ class TestMaybeBroadcastAlarm:
             response=MagicMock(),
         )
 
-        with patch("app.api.v1.endpoints.investigations.settings") as mock_settings:
+        with patch(
+            "v2.modules.anomaly.api.investigation_routes.settings"
+        ) as mock_settings:
             mock_settings.THEFT_ALARM_ENABLED = True
             mock_settings.THEFT_INVESTIGATION_ENABLED = True
             mock_settings.TELEGRAM_OPS_BOT_TOKEN = "bot:token"
@@ -478,7 +486,7 @@ async def test_update_investigation_status_closed(async_client, admin_auth_heade
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -529,7 +537,7 @@ async def test_update_investigation_assign_non_open(async_client, admin_auth_hea
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
@@ -583,7 +591,7 @@ async def test_update_investigation_noop_fetch_returns_none(
     db.execute = AsyncMock(return_value=exec_result)
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         new=AsyncMock(return_value=None),  # simulate missing record
     ):
         with _override_db(db):
@@ -637,7 +645,7 @@ async def test_update_investigation_post_fetch_none(async_client, admin_auth_hea
         return None
 
     with patch(
-        "app.database.repositories.analiz_repo.AnalizRepository.get_investigation_detail",
+        "v2.modules.anomaly.infrastructure.investigation_repository.InvestigationRepository.get_investigation_detail",
         side_effect=_fetch_side_effect,
     ):
         with patch(
@@ -664,7 +672,7 @@ async def test_create_investigation_integrity_error(async_client, admin_auth_hea
     from sqlalchemy.exc import IntegrityError
 
     from app.database.models import Anomaly
-    from app.schemas.investigation import TheftClassification
+    from v2.modules.anomaly.schemas import TheftClassification
 
     fake_anomaly = MagicMock(spec=Anomaly)
     fake_anomaly.id = 10
@@ -704,7 +712,7 @@ async def test_create_investigation_integrity_error(async_client, admin_auth_hea
     db.commit = AsyncMock()
 
     with patch(
-        "app.core.ai.fuel_theft_classifier.get_fuel_theft_classifier"
+        "v2.modules.anomaly.application.classify_theft.get_fuel_theft_classifier"
     ) as mock_clf_factory:
         mock_clf = AsyncMock()
         mock_clf.classify = AsyncMock(return_value=fake_classification)

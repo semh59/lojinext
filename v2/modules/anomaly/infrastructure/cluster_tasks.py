@@ -6,9 +6,9 @@ import asyncio
 import logging
 from typing import Any
 
-from app.core.ml.anomaly_clustering import cluster_anomalies
-from app.core.services.anomaly_detector import get_anomaly_detector
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.anomaly.application.detect_anomaly import get_anomaly_detector
+from v2.modules.anomaly.domain.clustering import cluster_anomalies
 
 logger = logging.getLogger(__name__)
 

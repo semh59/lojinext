@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.services.anomaly_detection_service import (
+from v2.modules.anomaly.application.detect_statistical_anomaly import (
     AnomalyDetectionService,
     get_anomaly_detection_service,
 )
@@ -21,7 +21,7 @@ def mock_cache():
 @pytest.fixture
 def service(mock_cache):
     with patch(
-        "app.core.services.anomaly_detection_service.get_cache_manager",
+        "v2.modules.anomaly.application.detect_statistical_anomaly.get_cache_manager",
         return_value=mock_cache,
     ):
         return AnomalyDetectionService()

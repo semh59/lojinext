@@ -11,7 +11,7 @@ async def test_pattern_task_runs_with_empty_table(db_session):
     db_session fixture'ı AsyncSessionLocal'ı test DB'ye monkeypatch eder
     → UoW içeride doğru session'a bağlanır.
     """
-    from app.workers.tasks.theft_tasks import _run_pattern_scan
+    from v2.modules.anomaly.infrastructure.theft_tasks import _run_pattern_scan
 
     result = await _run_pattern_scan(days=30, min_count=3, limit=50)
     assert "patterns_found" in result

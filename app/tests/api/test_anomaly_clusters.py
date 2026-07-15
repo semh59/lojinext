@@ -35,7 +35,9 @@ _ROWS = [
 
 
 async def test_clusters_returns_patterns(async_client, normal_auth_headers):
-    with patch("app.api.v1.endpoints.anomalies.get_anomaly_detector") as mock_det:
+    with patch(
+        "v2.modules.anomaly.api.anomaly_routes.get_anomaly_detector"
+    ) as mock_det:
         mock_det.return_value.get_recent_anomalies = AsyncMock(return_value=_ROWS)
         resp = await async_client.get(
             "/api/v1/anomalies/clusters?days=30", headers=normal_auth_headers
@@ -56,9 +58,9 @@ async def test_clusters_llm_failure_does_not_block(
 ):
     monkeypatch.setattr("app.config.settings.ANOMALY_CLUSTER_LLM_ENABLED", True)
     with (
-        patch("app.api.v1.endpoints.anomalies.get_anomaly_detector") as mock_det,
+        patch("v2.modules.anomaly.api.anomaly_routes.get_anomaly_detector") as mock_det,
         patch(
-            "app.api.v1.endpoints.anomalies._cluster_insight",
+            "v2.modules.anomaly.api.anomaly_routes._cluster_insight",
             new=AsyncMock(side_effect=RuntimeError("groq down")),
         ),
     ):

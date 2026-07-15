@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.attribution_service import AttributionService
 from app.infrastructure.events.event_bus import Event, EventType
+from v2.modules.anomaly.application.attribute_loss import override_attribution
 
 
 @pytest.mark.asyncio
@@ -18,13 +18,14 @@ async def test_attribution_override_publishes_event():
     uow.sefer_repo.update = AsyncMock(return_value=True)
     uow.commit = AsyncMock()
 
-    with patch("app.core.services.attribution_service.get_event_bus") as mock_get_eb:
+    with patch(
+        "v2.modules.anomaly.application.attribute_loss.get_event_bus"
+    ) as mock_get_eb:
         mock_eb = MagicMock()
         mock_eb.publish_async = AsyncMock()
         mock_get_eb.return_value = mock_eb
 
-        service = AttributionService(uow)
-        success = await service.override_attribution(123, 2, 2, "Reason")
+        success = await override_attribution(123, 2, 2, "Reason", uow=uow)
 
     assert success is True
     uow.sefer_repo.update.assert_awaited_once_with(

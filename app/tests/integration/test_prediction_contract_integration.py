@@ -112,7 +112,7 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
     We inject a trip with a deliberately extreme consumption (3× the predicted)
     so the test is independent of the exact physics estimate.
     """
-    from app.core.services.anomaly_detector import AnomalyDetector
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
@@ -154,8 +154,8 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
 
 async def test_anomaly_detector_hybrid_reads_tahmini_tuketim_key(db_session):
     """Same contract check for detect_anomaly_hybrid (the ML-assisted path)."""
-    from app.core.services.anomaly_detector import AnomalyDetector
     from app.services.prediction_service import get_prediction_service
+    from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)

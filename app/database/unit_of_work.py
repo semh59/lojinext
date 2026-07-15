@@ -42,11 +42,13 @@ from app.database.db_session import _session_ctx
 from app.database.repositories import (
     AdminConfigRepository,
     AnalizRepository,
+    AnomalyRepository,
     AracRepository,
     AuditRepository,
     ConfigRepository,
     DorseRepository,
     ImportHistoryRepository,
+    InvestigationRepository,
     KullaniciRepository,
     LokasyonRepository,
     MaintenanceRepository,
@@ -260,6 +262,10 @@ class UnitOfWork:
         "model_versiyon_repo", lambda u: ModelVersiyonRepository(u.session)
     )
     analiz_repo = _Lazy("analiz_repo", lambda u: AnalizRepository(u.session))
+    anomaly_repo = _Lazy("anomaly_repo", lambda u: AnomalyRepository(u.session))
+    investigation_repo = _Lazy(
+        "investigation_repo", lambda u: InvestigationRepository(u.session)
+    )
     admin_config_repo = _Lazy(
         "admin_config_repo", lambda u: AdminConfigRepository(u.session)
     )

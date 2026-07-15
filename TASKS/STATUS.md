@@ -346,10 +346,52 @@ investigations+admin_attribution). Detaylar `TASKS/modules/anomaly.md` +
 deseni de aranmalı, aksi halde CI'da yalnız o test dosyaları çalışırken
 ortaya çıkıyor.
 
+### Dalga-8-sonrası dedektif denetim — "8 dalga tam temiz" (2026-07-15)
+
+Kullanıcı talebiyle ("ilk 8 dalgayı detaylı ve derin kontrol edelim... SIFIR
+AJANLARA VER BU GÖREVİ. DEDEKTİF GİBİ DENETLESİNLER NOKTA ATLAMASINLAR",
+ardından "8 DALGA TAM TEMİZ OLANA KADAR DURMA") ilk 8 dalganın tamamı 7
+bağımsız sıfırdan-context ajanla ikinci kez, bu sefer özellikle
+`api → application → repo` katman disiplini (B.1'in bir alt-kuralı: route
+handler'ları asla doğrudan repo/ORM/raw-SQL çağırmamalı) odağıyla denetlendi.
+Detaylı bulgu/çözüm dökümü: `TASKS/bug-route-layer-bypasses-application.md`
+(şimdi "TAMAMEN ÇÖZÜLDÜ").
+
+**Bulunan ve düzeltilen modüller (8):** notification, fleet, auth_rbac
+(ilk tur — commit `72769a0`), driver (commit `f818446`→`c62b6fc`), anomaly
++ fuel (commit `fc2c1bf`), anomaly OpenAPI-drift düzeltmesi + route_simulation
+(commit `c7666a1`). Her push, bir sonraki push'tan önce CI Hard Gates'in
+tam yeşile dönmesi beklenerek yapıldı (kırmızı-CI disiplini).
+
+**Gerçek pre-existing prod bug (1):** notification'ın push
+subscribe/unsubscribe'ı hiçbir zaman `uow.commit()` çağırmıyordu — UoW'nin
+ghost-transaction guard'ı yalnız ORM identity-map'i kontrol ettiği için bu
+sessizce rollback oluyordu (taşımadan ÖNCE de vardı, taşıma sırasında
+bulunup düzeltildi).
+
+**Süreç-içi regresyonlar, aynı turda bulunup düzeltildi (2):** fleet'te
+`AracEntity.model_validate` round-trip'inin `plaka` alanını
+`"34TEST01"`→`"34 TEST 01"` şeklinde bozması (`get_vehicle_raw_by_id` ile
+çözüldü); anomaly'de `/patterns` route handler'ının isim çakışmasını önlemek
+için yeniden adlandırılmasının FastAPI'nin ürettiği OpenAPI `operationId`'yi
+kaydırıp CI'nin schema-drift gate'ini kırması (handler adı geri alınıp import
+alias'landı).
+
+**Son CI doğrulaması:** commit `c7666a1` → `gh run view 29422460816` →
+`hard-gates` `success` (34dk40sn) — tüm 34+ backend/integration/deep-audit
+adımı, combined coverage gate, frontend build/lint/type-check, OpenAPI
+schema drift check, Playwright E2E dahil.
+
+**Sonuç:** İlk 8 dalganın (location+route-simulation, notification, fleet,
+fuel, driver, auth-rbac, anomaly) tamamında hem B.1 (dosya-başına-tek-iş)
+hem katman disiplini (`api → application → repo`) artık gerçekten tutarlı —
+2 ayrı bağımsız dedektif denetim turu (dalga-6-sonrası + dalga-8-sonrası,
+toplam 13 sıfırdan-context ajan) hiçbir açık bulgu bırakmadı.
+
 ## Son güncelleme
-2026-07-15 — **FAZ1 dalga 8 (anomaly) TAMAMLANDI, main tam yeşil** (son
-commit `7e2a364`, CI Hard Gates `success`). OTURUM HİJYENİ: bu oturum
-kapatılıyor, dalga 9 (import-excel) yeni oturumda `TASKS/modules/import-excel.md`
-okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı
-kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private
-yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-15 — **"8 dalga tam temiz" hedefi TAMAMLANDI, main tam yeşil** (son
+commit `c7666a1`, CI Hard Gates `success`, 34dk40sn). OTURUM HİJYENİ: bu
+oturum kapatılıyor, dalga 9 (import-excel) yeni oturumda
+`TASKS/modules/import-excel.md` okunarak, kullanıcı onayı istenerek başlar.
+Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici;
+iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

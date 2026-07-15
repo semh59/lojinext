@@ -40,6 +40,7 @@ app/scripts/create_admin.py
 ## 4. Bağlaşıklık karnesi
 - **out (yalnız 1!):** auth_rbac→notification 1
 - **in (17):** admin_platform→auth_rbac 7 (en yoğun — `admin_attribution.py`/`admin_config.py`/`admin_health.py`→`permission_checker.py`), notification→auth_rbac 2, analytics_executive→auth_rbac 2, anomaly→auth_rbac 1, route_simulation→auth_rbac 1, import_excel→auth_rbac 1, fleet→auth_rbac 1, prediction_ml→auth_rbac 1, trip→auth_rbac 1
+  **NOT (2026-07-15, dedektif denetim sonrası eklendi):** bu 17 sayısı FAZ1 sonu için **hedef mimari** grafiğidir — henüz taşınmamış 15 modülün (`admin_platform`, `trip`, `fuel`, vb.) hâlâ eski `app/` yolunda yaşadığı, dalga 6 tamamlandığında **bugünkü fiili** v2↔v2 bağımlılık sayısı değildir. Dalga 6 push edildiğinde fiilen yalnız 2 zaten-taşınmış v2 modülü (`fleet`, `notification`) auth_rbac'a gerçek `v2.modules.auth_rbac` importuyla bağlıydı; kalan "in" kenarları o modüller taşınana kadar hâlâ `app/`'deki eski dosyalardan `v2.modules.auth_rbac`'a (yeni konuma) işaret ediyor — bu da bir "in" sayılır ama grafikteki 17 rakamı taşıma-sırası planlamasının parçasıdır, gerçek zamanlı bir metrik değildir.
 - **B.2 pairwise kararı:** `*→auth_rbac` HER ZAMAN senkron (kimlik/permission çözümü anlık olmalı); audit-actor id'leri (created_by_id vb.) DEĞER olarak taşınır, join gerektirmez — bu yüzden 28 FK kenarına rağmen runtime çağrı sayısı düşük kalır.
 - **Multi-worker güvenlik state'i** (MEMORY §4.1) bu modülün SINIRLARI İÇİNDE ama ÇÖZÜMÜ FAZ2'de ayrı görev (`faz2-guvenlik-state-redis.md`): `BruteForceDetector`/`RBACViolationTracker` bugün `security_probe.py`'de (platform-infra), auth_rbac'a taşınmaz — cross-cutting infra olarak kalır, yalnız Redis-backed hale gelir.
 
@@ -47,7 +48,7 @@ app/scripts/create_admin.py
 1. İskelet + `kullanici_repo.py`/`rol_repo.py`/`session_repo.py` → `infrastructure/repository.py` (3 ayrı dosya).
 2. `auth_service.py`, `security.py`, `jwt_handler.py`, `token_blacklist.py`, `permission_checker.py` → `domain/` (token/permission mantığı I/O-hafif).
 3. `user_service.py`, `preference_service.py` → `application/` CRUD use-case'leri.
-4. `license_service.py` → `application/check_license.py` (admin_platform ile ilişkisi var, ama kod içeriği auth kontrolü — burada kalır).
+4. `license_service.py` → `application/check_license.py` (admin_platform ile ilişkisi var, ama kod içeriği auth kontrolü — burada kalır). **Sapma (2026-07-15 dedektif denetiminde bulundu):** gerçek uygulamada dosya adı `application/license_service.py` olarak kaldı (yeniden adlandırılmadı) — davranış/konum doğru, yalnız dosya adı bu plandaki öneriyle örtüşmüyor; `v2/modules/auth_rbac/CLAUDE.md` gerçek adı doğru yansıtıyor.
 5. `ws_ticket.py` → `api/ws_ticket_routes.py` (WebSocket kimlik doğrulama bileti).
 6. `create_admin.py` script'i → `scripts/` içinde kalır (dış yazar, A.4/§5'te "16 DB-script"in biri), yalnız import yolu güncellenir.
 7. Shim'ler + CLAUDE.md — bu modülün CLAUDE.md'sinde "Şema & tablo sahipliği" bölümü 28 inbound FK'yı özellikle vurgular (FAZ2 rol tasarımı için kritik referans).

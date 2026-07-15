@@ -1,10 +1,14 @@
 """Excel sütun eşleştirme yardımcıları.
 
-``SafeColumnMapper`` — B.1 sınıf istisnası (``RouteSimulator``/
-``LokasyonHydrator``/``DriverPerformanceML`` ile aynı gerekçe): tek
-cohesive fuzzy-match algoritması (exact-match + skorlu substring/
-SequenceMatcher iki-geçişli strateji), constructor state'i yok, tüm
-alan-alias sözlüğüyle birlikte tek bir birim oluşturuyor.
+``SafeColumnMapper`` — DÜRÜST NOT (2026-07-15 dedektif denetimi): bu sınıf
+``RouteSimulator``/``LokasyonHydrator``/``DriverPerformanceML`` ile "aynı
+gerekçe" DEĞİL — hiç `__init__`'i yok, hiç instantiate edilmiyor (her çağrı
+`SafeColumnMapper.map_columns(...)` classmethod'u), `COLS` class-level sabit
+dict. Gerçek bir B.1 borcu: `map_columns` trivially bir free function'a,
+`COLS` bir modül sabitine çevrilebilirdi. Taşımadan ÖNCE de (eski
+`excel_column_map.py`'de) sınıftı, dalga 9 yalnız yerini değiştirdi —
+free-function'a çevrilmesi ayrı bir refactor kapsamı (bkz.
+`v2/modules/import_excel/CLAUDE.md`).
 """
 
 import difflib

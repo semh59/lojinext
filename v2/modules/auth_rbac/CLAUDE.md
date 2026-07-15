@@ -207,6 +207,21 @@ dokunulmadı, davranış değişikliği yok.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
+  denetiminde bulundu)** — 2 çapraz-modül/katman bulgusu:
+  (1) `LicenseEngine.check_car_limit()` (`application/license_service.py`)
+  `Arac` tablosuna doğrudan (ORM) erişiyordu — fleet zaten tam taşınmış
+  olduğu için `v2.modules.fleet.public.count_active_vehicles()` (fleet'in
+  zaten var olan `AracRepository.count_active()`'ini saran yeni ince
+  wrapper) üzerinden çağrılacak şekilde düzeltildi. `check_monthly_trip_limit()`'in
+  `Sefer` erişimi trip modülü henüz taşınmadığı için (delege edilecek
+  `public.py` yok) BİLİNÇLİ, dokümante geçici borç olarak bırakıldı
+  (fonksiyonun kendi docstring'inde not var). (2) `api/ws_ticket_routes.py`
+  `application/`'ı tamamen atlayıp Redis'e (`set_redis_val`) doğrudan
+  yazıyordu — yeni `application/create_ws_ticket.py`'ye taşındı (route
+  handler'ıyla aynı isim çakışması burada da vardı, `as
+  create_ws_ticket_usecase` alias'ıyla düzeltildi). Mekanik, davranış
+  değişikliği yok.
 - **`app/api/deps.py` taşınmadı** — FastAPI-wiring katmanı (driver/fleet
   dalgalarındaki kararla aynı), yalnızca import kaynakları
   `v2.modules.auth_rbac.domain.security_service`/`v2.modules.auth_rbac.domain.token_blacklist`

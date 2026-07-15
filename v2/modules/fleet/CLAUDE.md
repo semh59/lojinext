@@ -17,6 +17,7 @@ bulgusu), sefer planlama (trip), Excel import orkestrasyonu (import_excel
 ```python
 # Vehicle
 create_vehicle(data: AracCreate, uow=None) -> int
+count_active_vehicles() -> int                # LicenseEngine (auth_rbac) araç limit kontrolü için
 update_vehicle(arac_id: int, data: AracUpdate, uow=None) -> bool
 delete_vehicle(arac_id: int) -> bool          # smart delete: aktif→pasif→hard
 delete_all_vehicles() -> int
@@ -142,6 +143,19 @@ geçici borç olarak kalıyor, dokümante edildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
+  denetiminde bulundu)** — `vehicle_routes.py::create_arac` ve
+  `trailer_routes.py::create_dorse` oluşturulan kaydı aynı transaction
+  içinde `uow.arac_repo.get_by_id(...)`/`uow.dorse_repo.get_by_id(...)` ile
+  doğrudan okuyordu (create-then-read-back, application katmanını
+  atlıyordu). Vehicle: `get_vehicle_raw_by_id`'ye opsiyonel `uow` parametresi
+  eklendi (verilmezse eskisi gibi kendi `UnitOfWork()`'ünü açar — mevcut
+  `read_arac`/`update_arac` çağıranları etkilenmedi); route artık
+  `get_vehicle_raw_by_id(arac_id, include_inactive=True, uow=uow)`
+  çağırıyor. Trailer: zaten `uow` parametresi kabul eden
+  `get_trailer_by_id(repo, ...)` (`read_dorse`/`update_dorse`'un da
+  kullandığı) kullanılacak şekilde yönlendirildi. Mekanik, davranış
+  değişikliği yok.
 - ✅ **DÜZELTİLDİ (2026-07-15, dedektif denetiminde bulundu)** —
   `api/vehicle_routes.py`/`api/trailer_routes.py`'deki `fleet-stats`/
   `inspection-alerts`/`{arac_id}/events` handler'ları raw SQL'i doğrudan

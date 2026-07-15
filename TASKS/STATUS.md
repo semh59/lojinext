@@ -481,10 +481,93 @@ doğrulandı (dalga 4 yakit, dalga 5 driver 500 bug'ı, dalga 9 sefer) — bu
 geçiş deseni sistematik olarak gizli tip hatalarını ortaya çıkarıyor,
 her dalgada beklenmeli.
 
+## İLK 9 DALGA — DEDEKTİF DENETİM DÜZELTMELERİ (2026-07-15/16)
+
+**Kapsam:** kullanıcı isteğiyle 9 paralel, sıfır-context ajanla ilk 9
+dalganın (location/route_simulation/notification/fleet/fuel/driver/
+auth_rbac/anomaly/import_excel) tamamı yeniden, bağımsız denetlendi (B.1 +
+katman disiplini). 4 modülde gerçek, yeni bulgu çıktı; hepsi bu oturumda
+düzeltildi.
+
+**location — 11 katman ihlali (`api/location_routes.py`):** `get_location_stats`/
+`get_stale_locations`/`get_location_by_id`/`search_locations_by_route`/
+`get_unique_location_names`/`get_all_locations`/`hydrate_location`/
+`get_location_segments` handler'ları repo/UoW'a doğrudan erişiyordu —
+8 yeni `application/` use-case dosyasına taşındı. Taşıma sırasında route
+handler'larıyla AYNI İSİMLİ 2 yeni import (`get_location_stats`,
+`get_stale_locations`) modül-seviyesi isim gölgelemesine yol açacaktı —
+test çalıştırılmadan, kod incelemesinde kendi kendine yakalandı, `as
+get_location_stats_usecase`/`as get_stale_locations_usecase` alias'ıyla
+düzeltildi. Doğrulama: `ruff` temiz, `mypy` baseline'da regresyon yok,
+hedefli testler (`test_locations_*`, `test_lokasyon_hydrator`) 102 pass / 2
+fail (ikisi de önceden bilinen ORS/Nominatim api-stub ağ flake'i,
+`geocode_location`'a hiç dokunulmadı, regresyon değil).
+
+**fuel — `delete_yakit` route ihlali + GERÇEK BUG (`api/fuel_routes.py`):**
+`db.get(YakitAlimi, yakit_id)` (2 çağrı) zaten import edilmiş
+`get_yakit_by_id()`'ye taşındı. İlk turda 2 gerçek regresyon çıktı ve
+düzeltildi: (1) `get_yakit_by_id`'nin döndürdüğü `app.core.entities.models.YakitAlimi`
+Pydantic entity'sinde `aktif` alanı YOKTU (`current.aktif` çağrısı
+`AttributeError` verirdi) — entity'ye `aktif: bool = True` alanı eklendi;
+(2) `repo.get_by_id()` varsayılan olarak pasif kayıtları filtreliyor, ama
+smart-delete'in "zaten pasif kaydı hard-delete et" akışı pasif kaydı da
+görebilmeli — `get_yakit_by_id(yakit_id, include_inactive=...)` parametresi
+eklendi, route'un 2 çağrısı da `include_inactive=True` geçiyor. Bu ikisi
+`unittest.mock`'lu mevcut testlerde YAKALANMADI (MagicMock her attribute'a
+"sahip" görünür) — `mypy v2/` taramasıyla (`"YakitAlimi" has no attribute
+"aktif"`) yakalandı, ardından gerçek DB + gerçek HTTP client ile yeni bir
+regresyon testi eklendi (`test_yakit_service_soft_delete.py::test_delete_route_hard_deletes_passive_record_via_http`).
+Doğrulama: `ruff`/`mypy` temiz, `test_fuel_coverage.py`+`test_fuel_more.py`
+50/50 pass, yeni test dahil 4/4 pass.
+
+**auth_rbac — 2 bulgu:** (1) `LicenseEngine.check_car_limit()`
+(`application/license_service.py`) `Arac` tablosuna doğrudan erişiyordu —
+fleet'in zaten var olan `AracRepository.count_active()`'ini saran yeni
+`fleet.public.count_active_vehicles()` üzerinden çağrılacak şekilde
+düzeltildi (fleet zaten tam taşınmış olduğu için gerçek düzeltme mümkündü).
+`check_monthly_trip_limit()`'in `Sefer` erişimi ise trip modülü henüz
+taşınmadığı için (delege edilecek `public.py` yok) BİLİNÇLİ, dokümante
+geçici borç olarak bırakıldı (docstring'e not düşüldü). (2)
+`api/ws_ticket_routes.py` application katmanını tamamen atlayıp Redis'e
+doğrudan yazıyordu — yeni `application/create_ws_ticket.py`'ye taşındı
+(route handler'ıyla aynı isim çakışması burada da vardı, `as
+create_ws_ticket_usecase` alias'ıyla düzeltildi). Doğrulama: `ruff`/`mypy`
+temiz, `test_license_service.py` 12/12 pass (gerçek DB, `seed_arac` ile),
+auth_rbac servis testleri 62/62 pass.
+
+**fleet — 2 route'ta create-then-read-back katman ihlali:** `vehicle_routes.py::create_arac`
+ve `trailer_routes.py::create_dorse` oluşturulan kaydı aynı transaction
+içinde `uow.arac_repo.get_by_id(...)`/`uow.dorse_repo.get_by_id(...)` ile
+doğrudan okuyordu. Vehicle tarafı: `get_vehicle_raw_by_id`'ye opsiyonel
+`uow` parametresi eklendi (verilmezse eskisi gibi kendi `UnitOfWork()`'ünü
+açar — mevcut `read_arac`/`update_arac` çağıranları etkilenmedi), route
+artık `get_vehicle_raw_by_id(arac_id, include_inactive=True, uow=uow)`
+çağırıyor. Trailer tarafı zaten `uow` parametresi kabul eden
+`get_trailer_by_id(repo, ...)`'i başka yerlerde kullanıyordu — route
+sadece ona yönlendirildi. Doğrulama: `ruff`/`mypy` temiz,
+`test_vehicles_coverage.py`+`test_vehicles_more.py`+`test_trailers_coverage.py`+`test_trailers.py`
+91/91 pass.
+
+**import_excel — kaçırılmış commit:** önceki dalga 9 denetiminde
+`column_mapper.py`'nin `SafeColumnMapper` docstring düzeltmesi (yanlış
+"RouteSimulator ile aynı gerekçe" iddiasını düzelten dürüst not) yerel
+diskte hazırlanmış ama hiçbir commit'e girmemiş kalmıştı (muhtemelen
+sadece container'a `docker cp` edilip yerel dosyayla commit senkron
+edilmemiş) — bu oturumda fark edilip dahil edildi.
+
+**Konsolide doğrulama:** 4 modülün tüm hedefli test dosyaları tek koşumda
+(`pytest app/tests/api/test_locations_* app/tests/integration/test_locations_api.py
+app/tests/unit/test_lokasyon_hydrator.py app/tests/api/test_fuel_*
+app/tests/unit/test_services/test_yakit_service_soft_delete.py
+app/tests/unit/test_services/test_license_service.py
+app/tests/api/test_vehicles_* app/tests/api/test_trailers*`) → 259 passed,
+2 failed (aynı önceden bilinen geocode ağ flake'i) — regresyon yok.
+`ruff check --select E,F,W,I` ve `mypy app/ v2/ --ignore-missing-imports
+--no-strict-optional` (v2/ dahil, CI kapsamının ötesinde ekstra) her ikisi
+de temiz/baseline'da.
+
 ## Son güncelleme
-2026-07-15 — **Dalga 9 (import-excel) TAMAMLANDI, main tam yeşil** (son
-commit `5d1a0fb`, CI Hard Gates `success`, 33dk53sn). OTURUM HİJYENİ: bu
-oturum kapatılıyor, dalga 10 (reports) yeni oturumda
-`TASKS/modules/reports.md` okunarak, kullanıcı onayı istenerek başlar.
-Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici;
-iş bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri tamamlandı (yukarı
+bakınız). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu
+için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev
+dışı hatırlatma).

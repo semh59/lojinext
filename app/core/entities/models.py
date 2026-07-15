@@ -342,6 +342,7 @@ class YakitAlimi(BaseEntity):
     km_sayac: int = Field(..., gt=0)
     fis_no: Optional[str] = Field(default=None, max_length=50)
     depo_durumu: str = Field(default="Bilinmiyor", max_length=20)
+    aktif: bool = True
     # DB CHECK + request şeması Türkçe ('Bekliyor'/'Onaylandi'); DurumEnum
     # (İngilizce 'Pending'...) buraya UYMAZ — DB'den okunan Türkçe değeri
     # reddedip fuel list/create response'unu 400'e düşürüyordu. Şema katmanı

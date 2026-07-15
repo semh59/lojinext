@@ -41,7 +41,7 @@ from app.core.services.idempotency_service import (
     release_reservation,
     reserve_or_get_cached,
 )
-from app.database.models import Kullanici, YakitAlimi
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
@@ -316,12 +316,11 @@ async def update_yakit(
 async def delete_yakit(
     yakit_id: int,
     response: Response,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Yakıt alımı sil (Smart Delete)."""
 
-    current = await db.get(YakitAlimi, yakit_id)
+    current = await get_yakit_by_id(yakit_id, include_inactive=True)
     if not current:
         raise HTTPException(status_code=404, detail="Yakıt alımı bulunamadı")
 
@@ -340,7 +339,7 @@ async def delete_yakit(
             user_id=current_admin.id,
         )
         if was_active:
-            updated = await db.get(YakitAlimi, yakit_id)
+            updated = await get_yakit_by_id(yakit_id, include_inactive=True)
             return updated if updated is not None else current
         else:
             response.headers["X-Delete-Type"] = "Hard Delete"

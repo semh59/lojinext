@@ -35,7 +35,27 @@ from v2.modules.location.application.delete_location import delete_location
 from v2.modules.location.application.geocode_location import (
     geocode_location as geocode_location_usecase,
 )
+from v2.modules.location.application.get_all_locations import get_all_locations
+from v2.modules.location.application.get_location_by_id import get_location_by_id
+from v2.modules.location.application.get_location_segments import (
+    get_location_segments as get_location_segments_usecase,
+)
+from v2.modules.location.application.get_location_stats import (
+    get_location_stats as get_location_stats_usecase,
+)
+from v2.modules.location.application.get_stale_locations import (
+    get_stale_locations as get_stale_locations_usecase,
+)
+from v2.modules.location.application.get_unique_location_names import (
+    get_unique_location_names,
+)
+from v2.modules.location.application.hydrate_location import (
+    hydrate_location as hydrate_location_usecase,
+)
 from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.application.search_locations_by_route import (
+    search_locations_by_route,
+)
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.domain.hydration import LokasyonHydrator, get_lokasyon_hydrator
 from v2.modules.location.infrastructure.repository import get_lokasyon_repo
@@ -66,7 +86,7 @@ async def get_location_stats(
     uow: UOWDep,
 ):
     """Fleet-wide location statistics for KPI cards."""
-    data = await uow.lokasyon_repo.get_location_stats()
+    data = await get_location_stats_usecase(uow.lokasyon_repo)
     return {"status": "success", "data": data}
 
 
@@ -77,7 +97,7 @@ async def get_stale_locations(
     days: int = Query(90, ge=1, le=365),
 ):
     """Locations not analyzed in the last N days (or never analyzed)."""
-    rows = await uow.lokasyon_repo.get_stale_locations(days)
+    rows = await get_stale_locations_usecase(uow.lokasyon_repo, days)
     return {
         "status": "success",
         "data": rows,
@@ -174,7 +194,7 @@ async def create_lokasyon(
     try:
         lokasyon_id = await create_location(uow.lokasyon_repo, lokasyon)
         await uow.commit()
-        created = await uow.lokasyon_repo.get_by_id(lokasyon_id)
+        created = await get_location_by_id(uow.lokasyon_repo, lokasyon_id)
 
         await log_audit_event(
             module="location",
@@ -203,7 +223,7 @@ async def get_lokasyon(
     uow: UOWDep,
 ):
     """Return location details."""
-    location = await uow.lokasyon_repo.get_by_id(lokasyon_id)
+    location = await get_location_by_id(uow.lokasyon_repo, lokasyon_id)
     if not location:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
     return LokasyonResponse.model_validate(dict(location))
@@ -222,8 +242,8 @@ async def update_lokasyon(
         # etmeden, örn. sadece notlar) bu fetch'lerin None dönüp aşağıdaki
         # `dict(updated_loc)`'u çökertmemesi gerekiyor.
         # Audit Snapshot: Pre
-        current_loc = await uow.lokasyon_repo.get_by_id(
-            lokasyon_id, include_inactive=True
+        current_loc = await get_location_by_id(
+            uow.lokasyon_repo, lokasyon_id, include_inactive=True
         )
         pre_snapshot = dict(current_loc) if current_loc else {}
 
@@ -233,8 +253,8 @@ async def update_lokasyon(
         await uow.commit()
 
         # Audit Snapshot: Post
-        updated_loc = await uow.lokasyon_repo.get_by_id(
-            lokasyon_id, include_inactive=True
+        updated_loc = await get_location_by_id(
+            uow.lokasyon_repo, lokasyon_id, include_inactive=True
         )
         post_snapshot = dict(updated_loc) if updated_loc else {}
 
@@ -266,7 +286,9 @@ async def delete_lokasyon(
     """Delete a location."""
     # include_inactive=True: bu endpoint pasif (soft-deleted) kayıtları da
     # görmesi gerekiyor — `was_active` hesabı ve hard-delete yolu buna dayanır.
-    current = await uow.lokasyon_repo.get_by_id(lokasyon_id, include_inactive=True)
+    current = await get_location_by_id(
+        uow.lokasyon_repo, lokasyon_id, include_inactive=True
+    )
     if not current:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 
@@ -305,7 +327,7 @@ async def search_by_route(
     varis: str = Query(..., description="Varış yeri"),
 ):
     """Search locations by start and destination names."""
-    routes = await uow.lokasyon_repo.search_by_route_names(cikis, varis)
+    routes = await search_locations_by_route(uow.lokasyon_repo, cikis, varis)
 
     return {
         "found": len(routes) > 0,
@@ -321,7 +343,7 @@ async def get_unique_names(
     uow: UOWDep,
 ):
     """Return unique location names for autocomplete."""
-    return await uow.lokasyon_repo.get_benzersiz_lokasyonlar()
+    return await get_unique_location_names(uow.lokasyon_repo)
 
 
 @router.post("/{lokasyon_id:int}/analyze", response_model=RouteAnalyzeResponse)
@@ -403,7 +425,7 @@ async def export_locations(
     """Export locations as Excel."""
     from v2.modules.import_excel.public import export_data
 
-    data = await uow.lokasyon_repo.get_all()
+    data = await get_all_locations(uow.lokasyon_repo)
     content = await export_data(data, type="lokasyon_listesi")
 
     return Response(
@@ -505,38 +527,23 @@ async def hydrate_lokasyon(
     # caller committing the SAME session afterward (see its docstring). A
     # separate UoW session here would silently lose the hydration write.
     repo = get_lokasyon_repo(session=db)
-    sim = await repo.get_with_segments(lokasyon_id)
-    if sim is None:
-        raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
-
-    if (
-        sim.cikis_lat is None
-        or sim.cikis_lon is None
-        or sim.varis_lat is None
-        or sim.varis_lon is None
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="Lokasyon koordinatları eksik (cikis/varis lat-lon)",
-        )
-
-    result = await hydrator.hydrate(sim)
-    if result is None:
+    try:
+        stats = await hydrate_location_usecase(repo, hydrator, lokasyon_id)
+    except ValueError as exc:
+        reason = str(exc)
+        if reason == "not_found":
+            raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
+        if reason == "missing_coords":
+            raise HTTPException(
+                status_code=422,
+                detail="Lokasyon koordinatları eksik (cikis/varis lat-lon)",
+            )
         raise HTTPException(
             status_code=502, detail="Routing provider (Mapbox) unavailable"
         )
 
     await db.commit()
-    return HydrationStats(
-        lokasyon_id=result.lokasyon_id,
-        raw_segment_count=result.raw_segment_count,
-        resampled_segment_count=result.resampled_segment_count,
-        elevation_coverage_pct=result.elevation_coverage_pct,
-        total_km=result.total_km,
-        total_ascent_m=result.total_ascent_m,
-        total_descent_m=result.total_descent_m,
-        hydrated_at=sim.hydrated_at,
-    )
+    return HydrationStats(**stats)
 
 
 @router.get("/{lokasyon_id:int}/segments", response_model=LokasyonSegmentsResponse)
@@ -552,30 +559,16 @@ async def get_lokasyon_segments(
     edilmemiş güzergah) — UI uyarı gösterip /hydrate butonu önerebilir.
     """
     repo = get_lokasyon_repo(session=db)
-    lok = await repo.get_with_segments(lokasyon_id)
-    if lok is None:
+    data = await get_location_segments_usecase(repo, lokasyon_id)
+    if data is None:
         raise HTTPException(status_code=404, detail="Güzergah bulunamadı")
 
     return LokasyonSegmentsResponse(
-        lokasyon_id=lok.id,
-        ad=lok.ad,
-        hydrated_at=lok.hydrated_at,
-        raw_segment_count=lok.raw_segment_count,
-        resampled_segment_count=lok.resampled_segment_count,
-        elevation_coverage_pct=lok.elevation_coverage_pct,
-        segments=cast(
-            "Any",
-            [
-                {
-                    "seq": s.seq,
-                    "length_km": round(s.length_km, 3),
-                    "grade_pct": round(s.grade_pct, 2),
-                    "road_class": s.road_class,
-                    "maxspeed_kmh": s.maxspeed_kmh,
-                    "mid_lon": s.mid_lon,
-                    "mid_lat": s.mid_lat,
-                }
-                for s in lok.segments
-            ],
-        ),
+        lokasyon_id=data["lokasyon_id"],
+        ad=data["ad"],
+        hydrated_at=data["hydrated_at"],
+        raw_segment_count=data["raw_segment_count"],
+        resampled_segment_count=data["resampled_segment_count"],
+        elevation_coverage_pct=data["elevation_coverage_pct"],
+        segments=cast("Any", data["segments"]),
     )

@@ -173,7 +173,7 @@ async def create_arac(
         # passive vehicle and return its id — by the time we read it back
         # here it has already been flipped to aktif=True in the same
         # transaction, but we read defensively regardless of that ordering.
-        created = await uow.arac_repo.get_by_id(arac_id, include_inactive=True)
+        created = await get_vehicle_raw_by_id(arac_id, include_inactive=True, uow=uow)
         if not created:
             raise HTTPException(
                 status_code=500, detail="Araç oluşturuldu ancak okunamadı."

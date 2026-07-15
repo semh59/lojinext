@@ -1,4 +1,3 @@
-import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -6,10 +5,9 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
-from app.infrastructure.cache.redis_pubsub import set_redis_val
-from app.infrastructure.logging.logger import get_logger
-
-logger = get_logger(__name__)
+from v2.modules.auth_rbac.application.create_ws_ticket import (
+    create_ws_ticket as create_ws_ticket_usecase,
+)
 
 router = APIRouter()
 
@@ -27,19 +25,12 @@ async def create_ws_ticket(
     WebSocket bağlantısı için tek kullanımlık bilet oluşturur.
     Bilet 60 saniye geçerlidir.
     """
-    ticket_id = str(uuid.uuid4())
+    ticket_id = await create_ws_ticket_usecase(current_user.email)
 
-    # Bileti Redis'te sakla (Key: ws_ticket:ID, Value: Kullanıcı Adı)
-    success = await set_redis_val(
-        f"ws_ticket:{ticket_id}", current_user.email, expire=60
-    )
-
-    if not success:
-        logger.error(f"Failed to create WS ticket for {current_user.email}")
+    if ticket_id is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Bilet oluşturulamadı (Redis hatası)",
         )
 
-    logger.info(f"WS Ticket created for {current_user.email}: {ticket_id}")
     return TicketResponse(ticket=ticket_id)

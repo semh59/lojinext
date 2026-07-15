@@ -85,7 +85,9 @@ async def get_vehicle_by_id(
 
 
 async def get_vehicle_raw_by_id(
-    arac_id: int, include_inactive: bool = False
+    arac_id: int,
+    include_inactive: bool = False,
+    uow: Optional[UnitOfWork] = None,
 ) -> Optional[Dict[str, Any]]:
     """Retrieves a vehicle by ID as a raw dict (no ``AracEntity`` conversion).
 
@@ -96,6 +98,15 @@ async def get_vehicle_raw_by_id(
     `db.get(Arac, arac_id)` davranışı) birebir koruyan çağıranlar (tekil
     GET/PUT endpoint'leri: `read_arac`/`update_arac`) için kullanılır.
     ``include_inactive=True``: pasif/soft-deleted araçları da döner.
+
+    ``uow`` verilirse (create-then-read-back akışı, `create_arac` route'u)
+    ÇAĞIRANIN transaction'ı doğrudan kullanılır; verilmezse kendi
+    ``UnitOfWork()``'ünü açar (varsayılan davranış, mevcut çağıranlar
+    korunur).
     """
-    async with UnitOfWork() as uow:
+    if uow is not None:
         return await uow.arac_repo.get_by_id(arac_id, include_inactive=include_inactive)
+    async with UnitOfWork() as new_uow:
+        return await new_uow.arac_repo.get_by_id(
+            arac_id, include_inactive=include_inactive
+        )

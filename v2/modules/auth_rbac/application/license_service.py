@@ -5,10 +5,11 @@ from typing import Dict, Optional
 
 from sqlalchemy import func, select
 
-from app.database.models import Arac, Sefer
+from app.database.models import Sefer
 from app.database.models import SistemKonfig as Ayarlar
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.fleet.public import count_active_vehicles
 
 logger = get_logger(__name__)
 
@@ -93,22 +94,22 @@ class LicenseEngine:
         tier = await self.get_current_tier()
         limit = self.LIMITS[tier]["max_cars"]
 
-        async with UnitOfWork() as uow:
-            count = await uow.session.scalar(
-                select(func.count(Arac.id)).where(
-                    Arac.aktif.is_(True),
-                    Arac.is_deleted.is_(False),
-                )
+        count = await count_active_vehicles()
+        if count >= limit:
+            logger.warning(
+                f"Lisans Limiti: Araç sınırına ulaşıldı ({count}/{limit}). Seviye: {tier}"
             )
-            if count >= limit:
-                logger.warning(
-                    f"Lisans Limiti: Araç sınırına ulaşıldı ({count}/{limit}). Seviye: {tier}"
-                )
-                return False
+            return False
         return True
 
     async def check_monthly_trip_limit(self) -> bool:
-        """Aylık sefer limiti kontrolü"""
+        """Aylık sefer limiti kontrolü.
+
+        ``Sefer`` doğrudan ORM erişimi bilinçli geçici borç: trip modülü
+        henüz v2'ye taşınmadı, dolayısıyla delege edilecek bir
+        ``public.py`` yok. trip taşındığında bu sorgu onun public
+        API'sine yönlendirilmeli.
+        """
         tier = await self.get_current_tier()
         limit = self.LIMITS[tier]["max_trips_monthly"]
 

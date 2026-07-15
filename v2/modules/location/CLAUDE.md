@@ -70,6 +70,16 @@ diğer modüller yalnız `v2.modules.location.public`/`.events`'i import eder;
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
+  denetiminde bulundu)** — `api/location_routes.py`'nin 8 handler'ı
+  (`get_location_stats`/`get_stale_locations`/`get_location_by_id`/
+  `search_locations_by_route`/`get_unique_location_names`/`get_all_locations`/
+  `hydrate_location`/`get_location_segments`) `application/`'ı atlayıp
+  repo/UoW'a doğrudan erişiyordu — 8 yeni `application/` use-case dosyasına
+  taşındı. `get_location_stats`/`get_stale_locations` isimli 2 yeni import
+  route handler'larıyla AYNI İSİM taşıyordu (modül-seviyesi gölgeleme riski)
+  — `as get_location_stats_usecase`/`as get_stale_locations_usecase`
+  alias'ıyla düzeltildi. Mekanik, davranış değişikliği yok.
 - **İ/ı normalizasyon bug-fix'i** (`route_key.py`): Python'un `str.lower()`'ı
   'İ' (U+0130) karakterini 'i' + birleşik nokta (U+0307) olarak ayrıştırır.
   `normalize_turkish_title`/`route_key` önce İ→i, ı→i çevirip SONRA

@@ -94,3 +94,26 @@ class TestYakitServiceSoftDeleteGuard:
 
         assert success is True
         assert await _get_yakit(db_session, yakit_id) is None
+
+    async def test_delete_route_hard_deletes_passive_record_via_http(
+        self, db_session, async_client, admin_auth_headers
+    ):
+        """DELETE /fuel/{id} route (gerçek HTTP, mocksuz) zaten-pasif bir
+        kaydı da kalıcı silebilmeli.
+
+        Regresyon testi: route'un `db.get(YakitAlimi, ...)` çağrılarını
+        `get_yakit_by_id()`'ye taşıyan katman-disiplini düzeltmesi ilk
+        turda `include_inactive=True` geçmiyordu — `get_by_id` varsayılan
+        olarak pasif kayıtları filtrelediği için route zaten-pasif bir
+        kaydı 404 sanıyordu (hard-delete akışı hiç tetiklenemiyordu).
+        """
+        arac_id = await _seed_arac(db_session, "34 YKT 004")
+        yakit_id = await _seed_yakit(db_session, arac_id, aktif=False)
+
+        resp = await async_client.delete(
+            f"/api/v1/fuel/{yakit_id}", headers=admin_auth_headers
+        )
+
+        assert resp.status_code == 200
+        assert resp.headers.get("x-delete-type") == "Hard Delete"
+        assert await _get_yakit(db_session, yakit_id) is None

@@ -6,10 +6,14 @@ from app.core.entities.models import YakitAlimi
 from app.database.unit_of_work import UnitOfWork
 
 
-async def get_yakit_by_id(yakit_id: int) -> Optional[YakitAlimi]:
+async def get_yakit_by_id(
+    yakit_id: int, include_inactive: bool = False
+) -> Optional[YakitAlimi]:
     """Retrieves fuel transaction details."""
     async with UnitOfWork() as uow:
-        record = await uow.yakit_repo.get_by_id(yakit_id)
+        record = await uow.yakit_repo.get_by_id(
+            yakit_id, include_inactive=include_inactive
+        )
         if not record:
             return None
         return YakitAlimi.model_validate(dict(record))

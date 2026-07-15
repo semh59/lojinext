@@ -164,28 +164,16 @@ async def test_update_yakit_domain_error_reraised(async_client, admin_auth_heade
 async def test_delete_yakit_service_returns_false_after_db_get(
     async_client, admin_auth_headers
 ):
-    """DELETE /fuel/{id} when db.get finds record but service.delete returns False → 404."""
-    from app.api.deps import get_db
-    from app.database.models import YakitAlimi
-    from app.main import app
-
-    fake_record = MagicMock(spec=YakitAlimi)
+    """DELETE /fuel/{id} when lookup finds record but service.delete returns False → 404."""
+    fake_record = MagicMock()
     fake_record.id = 1
     fake_record.aktif = True
 
-    async def _fake_db():
-        db = AsyncMock()
-        db.get = AsyncMock(return_value=fake_record)
-        return db
-
-    with patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=False)):
-        app.dependency_overrides[get_db] = _fake_db
-        try:
-            resp = await async_client.delete(
-                f"{BASE_URL}/1", headers=admin_auth_headers
-            )
-        finally:
-            app.dependency_overrides.pop(get_db, None)
+    with (
+        patch(f"{ROUTES}.get_yakit_by_id", AsyncMock(return_value=fake_record)),
+        patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=False)),
+    ):
+        resp = await async_client.delete(f"{BASE_URL}/1", headers=admin_auth_headers)
 
     # Service returned False → 404 "Silinemedi"
     assert resp.status_code in (404, 200)  # 404 is the target
@@ -200,35 +188,25 @@ async def test_delete_yakit_inactive_record_returns_header(
     The endpoint returns the record directly, so we return a valid YakitResponse-like
     object to avoid serialisation errors.
     """
-    from app.api.deps import get_db
-    from app.main import app
     from v2.modules.fuel.schemas import YakitResponse
 
     # Build a valid YakitResponse-compatible record
     fake_yakit = _make_yakit_response_obj(id=1)
 
-    # Simulate an ORM-like object with aktif=False (already inactive)
+    # Simulate a record with aktif=False (already inactive) — triggers hard delete path
     fake_record = MagicMock()
     fake_record.id = fake_yakit.id
-    fake_record.aktif = False  # already inactive — triggers hard delete path
+    fake_record.aktif = False
 
     # Give the mock all fields YakitResponse expects (for serialisation)
     for field in YakitResponse.model_fields:
         setattr(fake_record, field, getattr(fake_yakit, field, None))
 
-    async def _fake_db():
-        db = AsyncMock()
-        db.get = AsyncMock(return_value=fake_record)
-        return db
-
-    with patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=True)):
-        app.dependency_overrides[get_db] = _fake_db
-        try:
-            resp = await async_client.delete(
-                f"{BASE_URL}/1", headers=admin_auth_headers
-            )
-        finally:
-            app.dependency_overrides.pop(get_db, None)
+    with (
+        patch(f"{ROUTES}.get_yakit_by_id", AsyncMock(return_value=fake_record)),
+        patch(f"{ROUTES}.delete_yakit_usecase", AsyncMock(return_value=True)),
+    ):
+        resp = await async_client.delete(f"{BASE_URL}/1", headers=admin_auth_headers)
 
     # Hard delete → header set (or 422 if response serialisation still fails — that's ok)
     assert resp.status_code in (200, 422, 500)

@@ -123,7 +123,9 @@ async def create_dorse(
         dorse_id = await create_trailer(uow.dorse_repo, **dorse.model_dump())
         # include_inactive=True: az önce oluşturulan kaydı aynı transaction
         # içinde geri okuyoruz (bkz. vehicle_routes.py:create_arac için aynı desen).
-        created = await uow.dorse_repo.get_by_id(dorse_id, include_inactive=True)
+        created = await get_trailer_by_id(
+            uow.dorse_repo, dorse_id, include_inactive=True
+        )
         if not created:
             raise HTTPException(
                 status_code=500, detail="Dorse oluşturuldu ancak okunamadı."

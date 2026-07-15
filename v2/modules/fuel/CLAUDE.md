@@ -157,6 +157,21 @@ period, `depo_durumu`=tank status (`Dolu`/`Doldu`/`Kısmi`/`Bilinmiyor`),
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
+  denetiminde bulundu)** — `api/fuel_routes.py::delete_yakit` iki yerde
+  `db.get(YakitAlimi, yakit_id)` (ORM) çağırıyordu — zaten import edilmiş
+  `get_yakit_by_id()`'ye taşındı. Taşıma sırasında 2 GERÇEK regresyon
+  yakalanıp düzeltildi: (1) `get_yakit_by_id`'nin döndürdüğü
+  `app.core.entities.models.YakitAlimi` Pydantic entity'sinde `aktif` alanı
+  yoktu (`current.aktif` → `AttributeError`) — entity'ye `aktif: bool =
+  True` eklendi; (2) `repo.get_by_id()` varsayılan olarak pasif kayıtları
+  filtreler, ama smart-delete'in "zaten pasif kaydı hard-delete et" akışı
+  pasif kaydı da görebilmeli — `get_yakit_by_id(yakit_id,
+  include_inactive=...)` parametresi eklendi. Mevcut `unittest.mock`'lu
+  testler bunu YAKALAMADI (MagicMock her attribute'a "sahip" görünür) —
+  `mypy v2/` taramasıyla bulundu, gerçek DB + gerçek HTTP client ile yeni
+  bir regresyon testi eklendi
+  (`test_yakit_service_soft_delete.py::test_delete_route_hard_deletes_passive_record_via_http`).
 - ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde
   bulundu, `TASKS/bug-route-layer-bypasses-application.md` sınıfı)** —
   `api/fuel_routes.py`'nin `list_fuel_documents`/`get_fuel_accuracy`

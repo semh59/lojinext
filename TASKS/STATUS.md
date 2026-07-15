@@ -263,7 +263,7 @@ Diğer 2 bilinen bulgu (OpenRouteClient mimari sızıntısı, sistemik ölü-eve
 
 **CI doğrulama (final):** commit `82044b2` için `gh run view 29395179041` → hard-gates `success` (32dk53sn). 3 ayrı takip-push'unun her biri en az 1 tur kırmızı çıkardı (stale get_db mock, 1 alakasız flaky frontend real-backend testi) — hepsi bulunup düzeltildi/rerun edildi, hiçbiri gerçek regresyon değildi.
 
-## DALGA 8 — ✅ TAMAMLANDI (2026-07-15, push/CI izleme sürüyor)
+## DALGA 8 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-15)
 
 **Kapsam:** anomaly modülü (12 dosya, 2.210 LOC envanteri) — `anomalies`,
 `fuel_investigations` tablolarının tek sahibi, 11 route (anomalies+
@@ -323,14 +323,31 @@ investigations+admin_attribution). Detaylar `TASKS/modules/anomaly.md` +
   çağrılarına çevrildi — event_bus stub'ı artık `attribute_loss.get_event_bus`
   üzerinden patch'leniyor.
 
-**CI:** push + `gh run watch` bu oturumda devam ediyor, sonuç bir sonraki
-güncellemede eklenecek.
+**Push geçmişi (2 commit):**
+1. `f507b75` — ana taşıma. CI'nin "Backend unit tests" adımında kırmızı
+   çıktı: 2 test dosyası (`test_singleton_thread_safety.py`,
+   `test_theft_pattern_pii.py`) `from app.core.ai import fuel_theft_classifier`
+   / `from app.workers.tasks import theft_tasks` şeklinde modül-referanslı
+   import kullanıyordu — taşıma sırasındaki grep taraması `from x.y.z import
+   name` kalıbına odaklandığı için bu "from package import module" desenini
+   kaçırmıştı (dalga 1/3/4'teki "kök `tests/` klasörü"/"nested path" gotcha'sıyla
+   aynı sınıf: tarama kapsamı dar kalınca kaçan dosyalar).
+2. `7e2a364` — iki dosya `v2.modules.anomaly.application.classify_theft` /
+   `v2.modules.anomaly.infrastructure.theft_tasks` modül-referanslarına
+   çevrildi. **CI Hard Gates TAM YEŞİL** (`gh run view 29404636839` →
+   hard-gates 29dk34sn + GHCR build/push 29dk25sn + Production deploy 6sn,
+   tümü `success`) — commit `7e2a364` main'in HEAD'i.
+
+**Ders:** bir modülü taşırken stale-import taraması yalnız
+`from <eski.modül.yolu> import <isim>` deseniyle sınırlı kalmamalı —
+`from <eski.paket> import <alt_modül>` (paket-seviyesi modül referansı)
+deseni de aranmalı, aksi halde CI'da yalnız o test dosyaları çalışırken
+ortaya çıkıyor.
 
 ## Son güncelleme
-2026-07-15 — **FAZ1 dalga 8 (anomaly) kod+test+doğrulama TAMAMLANDI** (yerel
-Docker + gerçek DB doğrulaması yeşil, OpenAPI drift yok, mypy/ruff temiz).
-Push/CI izleme sürüyor. OTURUM HİJYENİ: CI yeşil onaylanınca bu oturum
-kapatılacak, dalga 9 (import-excel) yeni oturumda `TASKS/modules/import-excel.md`
+2026-07-15 — **FAZ1 dalga 8 (anomaly) TAMAMLANDI, main tam yeşil** (son
+commit `7e2a364`, CI Hard Gates `success`). OTURUM HİJYENİ: bu oturum
+kapatılıyor, dalga 9 (import-excel) yeni oturumda `TASKS/modules/import-excel.md`
 okunarak, kullanıcı onayı istenerek başlar. Depo şu an **PUBLIC** (kullanıcı
 kararı, GHCR faturalama sorunu için geçici; iş bitince tekrar private
 yapılması gerekiyor — bkz. görev dışı hatırlatma).

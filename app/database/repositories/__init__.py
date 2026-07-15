@@ -19,11 +19,11 @@ from app.database.repositories.ml_training_repo import MLTrainingRepository
 from app.database.repositories.model_versiyon_repo import ModelVersiyonRepository
 from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.setting_repository import SettingRepository
-from v2.modules.auth_rbac.infrastructure.repository import (
+from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
-    RolRepository,
-    SessionRepository,
 )
+from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
 from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,

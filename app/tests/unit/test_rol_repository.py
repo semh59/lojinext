@@ -10,7 +10,7 @@ pytestmark = pytest.mark.asyncio
 async def test_rol_repo_inherits_from_base_repository():
     """RolRepository must be a subclass of BaseRepository."""
     from app.database.base_repository import BaseRepository
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     assert issubclass(RolRepository, BaseRepository)
 
@@ -29,7 +29,7 @@ async def test_uow_has_rol_repo():
 
 async def test_rol_repo_create_uses_flush_not_commit():
     """create() must call flush, not commit."""
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     mock_session = MagicMock()
     mock_session.execute = AsyncMock()
@@ -53,7 +53,7 @@ async def test_rol_repo_create_uses_flush_not_commit():
 async def test_rol_repo_create_raises_on_duplicate():
     """create() raises ValueError when role name already exists."""
     from app.database.models import Rol
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     mock_session = MagicMock()
     mock_session.execute = AsyncMock()
@@ -72,7 +72,7 @@ async def test_rol_repo_create_raises_on_duplicate():
 async def test_rol_repo_update_uses_flush_not_commit():
     """update() değişiklikleri uygular, flush eder, commit ETMEZ."""
     from app.database.models import Rol
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     role = MagicMock(spec=Rol)
     role.id = 5
@@ -100,7 +100,7 @@ async def test_rol_repo_update_uses_flush_not_commit():
 
 async def test_rol_repo_update_returns_none_when_missing():
     """update() rol yoksa None döner."""
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     mock_session = MagicMock()
     mock_session.get = AsyncMock(return_value=None)
@@ -111,7 +111,7 @@ async def test_rol_repo_update_returns_none_when_missing():
 async def test_rol_repo_update_raises_on_name_clash():
     """update() farklı bir role ait ada çekilirse ValueError fırlatır."""
     from app.database.models import Rol
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     role = MagicMock(spec=Rol)
     role.id = 5
@@ -136,7 +136,7 @@ async def test_rol_repo_update_raises_on_name_clash():
 async def test_rol_repo_delete_calls_session_delete():
     """delete() session.delete + flush çağırır, commit ETMEZ."""
     from app.database.models import Rol
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     role = MagicMock(spec=Rol)
     role.id = 7
@@ -158,7 +158,7 @@ async def test_rol_repo_delete_calls_session_delete():
 
 async def test_rol_repo_delete_returns_false_when_missing():
     """delete() rol yoksa False döner."""
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     mock_session = MagicMock()
     mock_session.get = AsyncMock(return_value=None)
@@ -171,7 +171,7 @@ async def test_rol_repo_delete_returns_false_when_missing():
 
 async def test_rol_repo_count_users_with_role():
     """count_users_with_role() scalar sayıyı int döndürür."""
-    from v2.modules.auth_rbac.infrastructure.repository import RolRepository
+    from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 
     mock_session = MagicMock()
     mock_result = MagicMock()

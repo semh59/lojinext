@@ -52,11 +52,11 @@ from v2.modules.auth_rbac.domain.security import get_password_hash as hash_passw
 from v2.modules.auth_rbac.domain.security import verify_password as verify_password_core
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
 from v2.modules.auth_rbac.domain.token_blacklist import TokenBlacklist, blacklist
-from v2.modules.auth_rbac.infrastructure.repository import (
+from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
-    RolRepository,
-    SessionRepository,
 )
+from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
 from v2.modules.auth_rbac.schemas import (
     KullaniciCreate,
     KullaniciRead,

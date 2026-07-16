@@ -12,7 +12,7 @@ free-function'a çevrilmesi ayrı bir refactor kapsamı (bkz.
 """
 
 import difflib
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class SafeColumnMapper:
@@ -23,7 +23,6 @@ class SafeColumnMapper:
             "tarih",
             "sefer tarihi",
             "alış tarihi",
-            "tür",
             "gün",
             "date",
             "trip date",
@@ -318,7 +317,9 @@ class SafeColumnMapper:
     }
 
     @classmethod
-    def map_columns(cls, df_columns: List[str]) -> Dict[str, str]:
+    def map_columns(
+        cls, df_columns: List[str], prefer: Optional[List[str]] = None
+    ) -> Dict[str, str]:
         """Excel başlıklarını internal key'lere eşle.
 
         İki geçişli:
@@ -330,13 +331,30 @@ class SafeColumnMapper:
 
         Fuzzy skor `min/max` ratio (Jaccard benzeri) — kısa-uzun substring'de
         skoru 1'in üstüne çıkarmaz.
+
+        ``prefer``: bazı alias'lar iki internal_key arasında meşru şekilde
+        çakışır (örn. "şoför adı" — sefer Excel'inde `sofor_adi` bir sürücü
+        arama/lookup alanıdır, sürücü Excel'inde ise `ad_soyad` sürücünün
+        kendi isim alanıdır — ikisi de aynı doğal başlığı bekler). Dict
+        sırasında önce gelen `internal_key` normalde exact-match'i kazanır;
+        `prefer` verilen entity-tipine özgü çağrı bu sırayı yalnız KENDİ
+        çağrısı için değiştirir (varsayılan `None` = eski davranış, diğer
+        tüm çağıranlar etkilenmez). 2026-07-16 dedektif denetiminde bulundu:
+        `ad_soyad`'ın "şoför adı" alias'ı hiçbir zaman kazanamıyordu, bu da
+        "Şoför Adı" başlıklı sürücü Excel'lerinin TÜM satırlarının sessizce
+        atlanmasına yol açıyordu (bkz. `_parse_driver_excel_sync`).
         """
         mapping: Dict[str, str] = {}
         claimed: set = set()  # exact-match ile bağlanan Excel kolonları
         df_columns_clean = [str(c).strip().lower() for c in df_columns]
 
+        ordered_keys = list(cls.COLS.keys())
+        if prefer:
+            ordered_keys = list(prefer) + [k for k in ordered_keys if k not in prefer]
+
         # ── 1) Exact-match pass ──────────────────────────────────────────────
-        for internal_key, aliases in cls.COLS.items():
+        for internal_key in ordered_keys:
+            aliases = cls.COLS[internal_key]
             if internal_key in mapping.values():
                 continue  # bu internal_key başka bir Excel kolonuna zaten bağlı
             for alias in aliases:
@@ -349,7 +367,8 @@ class SafeColumnMapper:
                     break
 
         # ── 2) Fuzzy pass — sadece exact'te claim edilmeyenler ──────────────
-        for internal_key, aliases in cls.COLS.items():
+        for internal_key in ordered_keys:
+            aliases = cls.COLS[internal_key]
             if internal_key in mapping.values():
                 continue  # internal_key zaten bir kolona bağlı
             best_match = None

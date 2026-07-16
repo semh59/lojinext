@@ -433,7 +433,13 @@ async def export_analytical_report_excel(
         elif report_type == "driver_comparison":
             from v2.modules.driver.domain.driver_stats import get_driver_stats
 
-            drivers = await get_driver_stats()
+            # get_driver_stats()'in uow'suz singleton fallback'i raw-SQL
+            # metotlarında session-less crash veriyordu (aynı dosyadaki
+            # get_driver_comparison_pdf zaten uow ile doğru çağırıyordu —
+            # 2026-07-16 dedektif denetiminde bulunan pre-existing bug,
+            # taşımadan önce de vardı).
+            async with UnitOfWork() as uow:
+                drivers = await get_driver_stats(uow=uow)
             data = [
                 {
                     "Şoför": d.ad_soyad,

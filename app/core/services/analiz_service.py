@@ -23,7 +23,6 @@ from app.core.entities import (
 )
 from app.infrastructure.cache.cache_manager import get_cache_manager
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.anomaly.public import get_anomaly_detection_service
 from v2.modules.fuel.application.calculate_period import create_fuel_periods
 from v2.modules.fuel.application.distribute_fuel_to_trips import (
     distribute_fuel_to_trips,
@@ -74,6 +73,17 @@ class AnalizService:
 
         self.arac_repo = arac_repo
         self.cache = get_cache_manager()
+
+        # Fonksiyon-içi (module-level DEĞİL): app.services.prediction_service
+        # -> app.core.services (bu paket) -> v2.modules.anomaly.public ->
+        # v2.modules.anomaly.application.detect_anomaly -> tekrar
+        # app.services.prediction_service şeklinde gerçek bir dairesel import
+        # zinciri var (2026-07-16 dedektif denetiminde bulundu, canlı
+        # reprodüklendi). Modül-seviyesi import bu zinciri tetikliyordu;
+        # constructor-içi (lazy) import diğer iki repo importuyla aynı
+        # desende zinciri kırıyor.
+        from v2.modules.anomaly.public import get_anomaly_detection_service
+
         self.anomaly_service = get_anomaly_detection_service()
 
     # ============== DELEGATED METHODS ==============

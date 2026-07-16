@@ -314,7 +314,13 @@ def _parse_driver_excel_sync(content: bytes) -> List[Dict[str, Any]]:
     try:
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
         _enforce_row_limit(df, "Driver Excel")
-        column_map = SafeColumnMapper.map_columns(df.columns.tolist())
+        # prefer=["ad_soyad"]: "şoför adı"/"sofor adi" alias'ı sofor_adi ile
+        # de çakışıyor (sefer Excel'inin sürücü-arama alanı) — sürücü
+        # Excel'inde bu başlık her zaman ad_soyad'a gitmeli, aksi halde tüm
+        # satırlar "ad_soyad eksik" ile sessizce atlanır (2026-07-16 bulgusu).
+        column_map = SafeColumnMapper.map_columns(
+            df.columns.tolist(), prefer=["ad_soyad"]
+        )
         logger.info(f"Driver Excel Map: {column_map}")
 
         result = []

@@ -1170,7 +1170,10 @@ class TestExceptionHandlingBranches:
         monkeypatch.setattr(
             SafeColumnMapper,
             "map_columns",
-            lambda cols: {"ad_soyad": "ad_soyad", "nonexistent_col_xyz": "telefon"},
+            lambda cols, prefer=None: {
+                "ad_soyad": "ad_soyad",
+                "nonexistent_col_xyz": "telefon",
+            },
         )
         content = _make_xlsx(["ad_soyad"], [["Ahmet Yilmaz"]])
         result = excel_parser._parse_driver_excel_sync(content)

@@ -22,6 +22,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.database.unit_of_work import UnitOfWork
+from app.tests._helpers.seed import seed_arac, seed_yakit
 from v2.modules.fuel.application.recalculate_vehicle_periods import (
     recalculate_vehicle_periods,
 )
@@ -70,33 +71,39 @@ def _make_period(toplam_yakit=1000.0, arac_id=1):
 # ---------------------------------------------------------------------------
 
 
-async def test_recalculate_uses_default_repos_when_none_passed():
-    """When no repos are passed, they are imported from their default locations."""
-    mock_yakit_repo = MagicMock()
-    mock_yakit_repo.get_all = AsyncMock(return_value=[])
-    mock_sefer_repo = MagicMock()
-    mock_sefer_repo.get_all = AsyncMock(return_value=[])
+@pytest.mark.integration
+async def test_recalculate_uses_default_repos_when_none_passed(db_session):
+    """When no repos are passed, a real DB-backed UnitOfWork is opened internally.
+
+    2026-07-16 dedektif denetimi: bu test eskiden `get_yakit_repo()`/
+    `get_sefer_repo()`'yu tam MagicMock ile taklit ediyordu — bu, gerçek
+    session-less-singleton crash'ini (bkz. recalculate_vehicle_periods.py
+    docstring'i) hiç yakalamıyordu (MagicMock her attribute'a "sahip"
+    görünür). Artık gerçek DB'ye karşı, hiç repo geçirmeden çağrılıyor —
+    tam olarak önceden çöken senaryo.
+    """
+    arac = await seed_arac(db_session, plaka="34REC001")
+    await seed_yakit(
+        db_session,
+        arac_id=arac.id,
+        km_sayac=100000,
+        litre=200.0,
+        depo_durumu="Dolu",
+    )
+    await db_session.commit()
+
     mock_cache = MagicMock()
     mock_cache.delete_pattern = MagicMock()
 
-    with (
-        patch(
-            "v2.modules.fuel.application.recalculate_vehicle_periods.get_cache_manager",
-            return_value=mock_cache,
-        ),
-        patch(
-            "v2.modules.fuel.infrastructure.repository.get_yakit_repo",
-            return_value=mock_yakit_repo,
-        ),
-        patch(
-            "app.database.repositories.sefer_repo.get_sefer_repo",
-            return_value=mock_sefer_repo,
-        ),
+    with patch(
+        "v2.modules.fuel.application.recalculate_vehicle_periods.get_cache_manager",
+        return_value=mock_cache,
     ):
-        await recalculate_vehicle_periods(arac_id=1)
+        # Repos deliberately omitted — exercises the previously-crashing
+        # default (no-DI) code path against the real test database.
+        await recalculate_vehicle_periods(arac_id=arac.id)
 
-    mock_yakit_repo.get_all.assert_awaited_once()
-    mock_sefer_repo.get_all.assert_awaited_once()
+    mock_cache.delete_pattern.assert_any_call(f"arac:{arac.id}:*")
 
 
 # ---------------------------------------------------------------------------

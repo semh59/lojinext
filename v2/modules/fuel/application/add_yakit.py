@@ -11,6 +11,7 @@ from app.infrastructure.events.event_bus import (
     get_event_bus,
     publishes,
 )
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 
@@ -130,6 +131,11 @@ async def add_yakit(data: YakitAlimiCreate) -> int:
                 toplam_tutar=getattr(data, "toplam_tutar", None),
             )
 
+            await save_outbox_event(
+                uow.session,
+                EventType.YAKIT_ADDED,
+                {"result": int(yakit_id), "arac_id": data.arac_id},
+            )
             await uow.commit()
             logger.info(f"Fuel entry added: ID {yakit_id}, Vehicle {data.arac_id}")
             return int(yakit_id)

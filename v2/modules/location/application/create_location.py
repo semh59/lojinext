@@ -3,6 +3,7 @@
 from typing import Optional
 
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.application.analyze_location_route import (
     analyze_location_route,
@@ -55,12 +56,18 @@ async def create_location(
         )
         if existing_index is not None:
             existing_index[key]["aktif"] = True
+        await save_outbox_event(
+            repo.session, EventType.LOKASYON_ADDED, {"result": existing["id"]}
+        )
         return existing["id"]
 
     lokasyon_id = await repo.add(**data.model_dump(exclude=_REPO_EXCLUDE))
     logger.info(f"Yeni güzergah eklendi: ID {lokasyon_id}")
     if existing_index is not None:
         existing_index[key] = {"id": lokasyon_id, "aktif": True}
+    await save_outbox_event(
+        repo.session, EventType.LOKASYON_ADDED, {"result": lokasyon_id}
+    )
 
     # Rota analizi yap (opsiyonel — yalnız koordinatlar varsa tetiklenir).
     payload = data.model_dump()

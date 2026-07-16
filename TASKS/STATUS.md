@@ -625,8 +625,87 @@ değiştirilmedi (dosyanın kendi tarihçesi: "sayım ortama duyarlı... Gate
 CI'nin gördüğü değere göre ayarlanır" — önce gerçek CI koşumunda 0
 doğrulanmalı, sonra ayrı bir PR'da sıkılaştırılmalı).
 
+## Event-bus wiring — TAMAMLANDI (2026-07-16, kullanıcı kararıyla: "gerçekten bağla")
+
+**Kapsam:** ilk 9 dalganın tam envanteri çıkarıldı (`v2/modules/*/CLAUDE.md`'lerin
+tamamı tarandı). Bulgular iki kategoriye ayrıldı: (a) unmigrated modüllere
+bağımlı ~25+ kalem — trip/prediction_ml/analytics_executive/admin_platform/
+reports/ai_assistant henüz taşınmadığı için delege edilecek `public.py` yok,
+bunlara DOKUNULMADI (o modüllerin kendi dalgası); (b) modül-bağımsız,
+gerçekten şimdi kapatılabilecek TEK kalem: repo-genelinde event-bus wiring
+boşluğu. Kullanıcı "gerçekten bağla" dedi (davranış değişikliği kabul
+edildi, geniş test yapıldı).
+
+**Kök bulgu:** `@publishes(EventType.X)` decorator'ı (location/fleet/fuel/
+driver) yalnızca metadata ekliyordu, hiçbir yerde gerçek
+`event_bus.publish(...)`/outbox yazımı yoktu. Daha da kritik: repo-genelinde
+5 subscriber-kurulum fonksiyonu (`setup_cache_invalidation()`,
+`get_rag_sync_service().initialize()`, `get_model_training_handler().setup()`,
+`get_physics_handler().register()`, notification'ın `register_handlers()`)
+**hiçbiri app başlangıcında (veya başka hiçbir yerde) çağrılmıyordu** —
+bildirimler/RAG-sync/cache-invalidation/ML-retrain prod'da baştan beri hiç
+çalışmıyordu.
+
+**Yapılan değişiklikler:**
+1. `app/main.py` lifespan'ına 5 kurulum çağrısı eklendi (her biri kendi
+   `try/except`'i içinde — biri başarısız olursa diğerlerini/app startup'ı
+   engellemez).
+2. `app/infrastructure/events/outbox_service.py`'ye paylaşılan
+   `save_outbox_event(session, event_type, payload)` helper'ı eklendi
+   (`OutboxService.save_event` buna delege eder — DRY); location'ın
+   `repo`-only (uow'suz) use-case'leri için de kullanılabiliyor.
+3. location/fleet/fuel/driver'ın create/update/delete use-case'lerine
+   (12 fonksiyon, toplam 15 commit-noktası) `save_outbox_event(...)` çağrısı
+   eklendi — sefer_write_service.py'nin zaten kanıtlanmış "Phase 7: Atomic
+   Outbox Persistence" desenini birebir taklit eder (aynı transaction,
+   commit'ten önce). Payload sözleşmesi: `{"result": <id>}` (+ fuel için
+   `"arac_id"` flat key, `model_training_handler`'ın okuduğu).
+
+**Taşıma sırasında bulunan 2 GERÇEK BUG (event wiring'in doğal sonucu, önceden
+hiç tetiklenmedikleri için hiç yakalanmamışlardı):**
+- `rag_sync_service.py::initial_sync()` — `get_arac_repo()`/`get_sofor_repo()`/
+  `get_sefer_repo()` session'sız singleton döndürüyordu, raw-SQL `get_all()`
+  "Database session not initialized" ile patlıyordu. `UnitOfWork()` + `uow.<repo>`
+  kullanacak şekilde düzeltildi — gerçek Docker restart ile doğrulandı
+  (`Initial RAG sync complete. Vehicles: 4, Drivers: 3, Trips: 5`).
+- `app/core/entities/models.py::YakitUpdate.toplam_tutar` (computed_field) —
+  `fiyat_tl`/`litre`'den YALNIZ BİRİ verilen (veya ikisi de verilmeyen) her
+  PARTIAL fuel update'i `decimal.InvalidOperation`/`TypeError` ile 500'e
+  düşürüyordu (repo katmanı `toplam_tutar`'ı zaten kendi DB'den okuyup doğru
+  hesaplıyor — schema'nın computed_field'ı repo tarafından hiç kullanılmıyor,
+  salt önizleme). İkisi de yoksa `None` dönecek şekilde düzeltildi. Mevcut
+  testler bunu YAKALAMAMIŞTI çünkü tek kullanılan payload (`_UPDATE_PAYLOAD`)
+  tesadüfen her zaman ikisini birden içeriyordu.
+- `rag_sync_service.py::_on_sofor_changed` — `_on_arac_changed`'ın zaten
+  sahip olduğu int-id fallback'i (yalnız id geldiğinde repodan çekme)
+  eksikti; eklendi (simetri, `arac_sync`'in aynı deseniyle).
+
+**Test kırılımı (event-wiring'in doğal sonucu, düzeltildi):** yeni outbox
+yazımı, `UnitOfWork`'ü mock'layıp `.session`'ı yapılandırmayan eski testleri
+kırdı (`test_sofor_service_delete_event.py`) — `session.flush()` artık
+awaitable olmalı. `rag_sync_service_coverage.py`'nin `initial_sync`/
+`_on_sofor_changed` testleri de yeni `UnitOfWork`/int-fallback deseniyle
+güncellendi (2 yeni test eklendi, mevcut "non_dict_skips" testi artık geçerli
+olmayan bir varsayıma dayandığı için int-fallback testleriyle değiştirildi).
+
+**Yeni regresyon testi:** `app/tests/integration/test_event_wiring_outbox.py`
+(13 test) — location/fleet/fuel/driver'ın 12 create/update/delete
+fonksiyonunun HER BİRİNİN gerçek DB'ye karşı doğru `OutboxEvent` satırı
+yazdığını + relay'in gerçek subscriber'larla (cache invalidation) crash
+etmeden işlediğini doğrular.
+
+**Doğrulama:** `mypy app/` (CI tam kapsamı) → 0 hata. `mypy app/ v2/` → 0
+hata. `ruff check app v2` → temiz. Gerçek Docker restart ile startup log'ları
+doğrulandı (5/5 kurulum mesajı + RAG initial sync başarı). Tam suite
+(`pytest app/tests`, 6700+ test) → 2 yeni kırılan test bulunup düzeltildi,
+kalan ~37 başarısızlık tamamı önceden var olan/ortam-bağımlı (api-stub bu
+oturumda başlatılmamıştı, ORS/Redis/CORS-cwd flake'leri) — HEAD'e karşı
+`git stash` ile birebir aynı şekilde başarısız olduğu doğrulandı (regresyon
+değil).
+
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
-baseline hatalarının (7→0) tamamı temizlendi (yukarı bakınız). Depo şu an
-**PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş
-bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+baseline hatalarının (7→0) temizliği + event-bus wiring (yukarı bakınız)
+tamamlandı. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu
+için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev
+dışı hatırlatma).

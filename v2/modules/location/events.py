@@ -1,13 +1,15 @@
 """Events published by the location module.
 
 STATUS: the ``@publishes(EventType.X)`` decorator applied in
-``application/{create,update,delete}_location.py`` is REPO-WIDE DEAD CODE
-today — nothing reads the ``_publishes`` attribute it sets, and no
-``event_bus.publish(...)`` call happens inside those functions either.
-This was discovered while mapping the whole codebase's coupling (see
-MEMORY/PROGRESS.md §3) and is NOT something this module migration fixes —
-it's a pre-existing behavioral gap, documented here rather than silently
-carried forward as if it worked.
+``application/{create,update,delete}_location.py`` is still repo-wide
+metadata-only (nothing reads the ``_publishes`` attribute it sets) — but as
+of 2026-07-16 (dedektif denetimi: "ilk 9 dalgada teknik borç bırakma") the
+functions themselves genuinely write to the transactional outbox
+(``save_outbox_event(repo.session, EventType.LOKASYON_X, {"result": id})``,
+same UnitOfWork/session as the caller) rather than doing nothing. No
+subscriber currently listens for ``LOKASYON_*`` (unlike ARAC_*/YAKIT_*/
+SOFOR_*), so these rows are relayed but land nowhere — harmless, and ready
+for a future subscriber without another migration.
 """
 
 from app.infrastructure.events.event_bus import EventType

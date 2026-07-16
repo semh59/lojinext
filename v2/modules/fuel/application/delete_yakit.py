@@ -4,6 +4,7 @@ from typing import Optional
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 
@@ -27,6 +28,11 @@ async def delete_yakit(yakit_id: int, deleted_by_id: Optional[int] = None) -> bo
 
             success = await uow.yakit_repo.hard_delete(yakit_id)
             if success:
+                await save_outbox_event(
+                    uow.session,
+                    EventType.YAKIT_DELETED,
+                    {"result": yakit_id, "arac_id": current.get("arac_id")},
+                )
                 await uow.commit()
                 logger.info(
                     f"Fuel record permanently deleted (Hard Delete): ID {yakit_id}"

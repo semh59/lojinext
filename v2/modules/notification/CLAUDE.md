@@ -63,21 +63,26 @@ attribution_service, sefer_analiz_service, sefer_write_service) birbirinden
 hafif farklı payload şekilleri gönderiyor; `handle_trip_events.py` yalnız
 `sefer_id`/`trigger`/`delay_min` okuyor, DTO da yalnız bunları tipler.
 
-## 🔴 Kritik keşif (taşıma sırasında bulundu, regresyon DEĞİL): event-subscriber HİÇ ÇALIŞMIYOR
+## ✅ DÜZELTİLDİ (2026-07-16, kullanıcı kararıyla) — event-subscriber artık ÇALIŞIYOR
 
-`register_handlers()` (eski `NotificationService.register_handlers`) app
-başlangıcında (main.py `lifespan`) veya başka hiçbir yerde **çağrılmıyor**.
-Yani `bildirim_kurallari` tablosundaki kurallar hiçbir zaman tetiklenmiyor —
-admin CRUD (`/admin/notifications/rules`) çalışıyor, kural oluşturulabiliyor,
-ama SEFER_UPDATED/SLA_DELAY event'leri geldiğinde `handle_event` hiç
-çağrılmadığı için `bildirim_gecmisi`'ne hiçbir satır düşmüyor. Aynı desen
-`app/core/handlers/physics_handler.py`'nin `.register()` metodu için de
-geçerli (o da hiç çağrılmıyor) — bu, notification'a özel değil, muhtemelen
-event-bus tüketicilerinin genel bir başlangıç-kablolama boşluğu. Bu taşımanın
-kapsamı dışında bırakıldı (davranış değişikliği + downstream test/etki analizi
-gerektirir, kullanıcı kararı gerekiyor) — sessizce atlanmadı, burada
-dokümante edildi. `PushSendResult`/push akışı bundan ETKİLENMEZ (ayrı,
-doğrudan çağrılan bir yol — `/push/test`, digest task, insight_engine vb.).
+Önceki bulgu (taşıma sırasında keşfedildi, o dalganın regresyonu DEĞİLDİ):
+`register_handlers()` app başlangıcında hiçbir yerde çağrılmıyordu, aynı
+şekilde `physics_handler.py`'nin `.register()` metodu ve
+`setup_cache_invalidation()`/`get_model_training_handler().setup()`/
+`get_rag_sync_service().initialize()` de. Bu, tüm event-bus tüketicilerini
+etkileyen repo-genelinde bir başlangıç-kablolama boşluğuydu — o zaman
+davranış değişikliği + downstream etki analizi gerektirdiği için kullanıcı
+kararına bırakılmıştı.
+
+Kullanıcı "gerçekten bağla" kararını verince (`TASKS/STATUS.md` "Event-bus
+wiring" bölümü) hepsi `app/main.py`'nin `lifespan`'ına eklendi — her biri
+kendi `try/except`'i içinde, biri başarısız olursa diğerlerini veya app
+startup'ı engellemez. Artık `bildirim_kurallari` tablosundaki kurallar
+SEFER_UPDATED/SLA_DELAY geldiğinde gerçekten tetikleniyor (bu event'ler
+zaten doğrudan `event_bus.publish_async()` ile in-process yayınlanıyordu —
+`physics_handler.py`/`sefer_write_service.py`; eksik olan yalnız subscriber
+tarafıydı). `PushSendResult`/push akışı bundan hiç etkilenmedi (ayrı,
+doğrudan çağrılan bir yol).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 

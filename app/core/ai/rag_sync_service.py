@@ -47,26 +47,27 @@ class RAGSyncService:
             try:
                 logger.info("Starting initial RAG synchronization...")
 
-                from app.database.repositories.sefer_repo import get_sefer_repo
-                from v2.modules.driver.infrastructure.repository import get_sofor_repo
-                from v2.modules.fleet.infrastructure.vehicle_repository import (
-                    get_arac_repo,
-                )
+                from app.database.unit_of_work import UnitOfWork
 
-                # 1. Araçlar
-                araclar = await get_arac_repo().get_all(sadece_aktif=True)
-                for arac in araclar:
-                    await self.rag.index_vehicle(arac)
+                # get_arac_repo()/get_sofor_repo()/get_sefer_repo() return
+                # session-less singletons — raw-SQL-backed get_all() crashes
+                # with "Database session not initialized" outside a UnitOfWork
+                # (root CLAUDE.md gotcha). Use uow.<repo> instead.
+                async with UnitOfWork() as uow:
+                    # 1. Araçlar
+                    araclar = await uow.arac_repo.get_all(sadece_aktif=True)
+                    for arac in araclar:
+                        await self.rag.index_vehicle(arac)
 
-                # 2. Şoförler
-                soforler = await get_sofor_repo().get_all(sadece_aktif=True)
-                for sofor in soforler:
-                    await self.rag.index_driver(sofor)
+                    # 2. Şoförler
+                    soforler = await uow.sofor_repo.get_all(sadece_aktif=True)
+                    for sofor in soforler:
+                        await self.rag.index_driver(sofor)
 
-                # 3. Seferler (Zaman serisi olduğu için son 1000 kayıt)
-                seferler = await get_sefer_repo().get_all(limit=1000)
-                for sefer in seferler:
-                    await self.rag.index_trip(sefer)
+                    # 3. Seferler (Zaman serisi olduğu için son 1000 kayıt)
+                    seferler = await uow.sefer_repo.get_all(limit=1000)
+                    for sefer in seferler:
+                        await self.rag.index_trip(sefer)
 
                 logger.info(
                     f"Initial RAG sync complete. Vehicles: {len(araclar)}, Drivers: {len(soforler)}, Trips: {len(seferler)}"  # noqa: E501
@@ -100,6 +101,12 @@ class RAGSyncService:
         data = event.data.get("result")
         if data and isinstance(data, dict):
             await self.rag.index_driver(data)
+        elif isinstance(data, int):  # Sadece ID geldiyse repodan çek
+            from v2.modules.driver.infrastructure.repository import get_sofor_repo
+
+            sofor = await get_sofor_repo().get_by_id(data)
+            if sofor:
+                await self.rag.index_driver(sofor)
 
     async def _on_sefer_changed(self, event: Event):
         """Sefer değiştiğinde tetiklenir."""

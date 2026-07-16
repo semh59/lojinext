@@ -1,24 +1,21 @@
 """Events published by the driver module.
 
-STATUS: the ``@publishes(EventType.X)`` decorator applied in
-``application/{add,update,delete}_sofor.py`` mirrors the same repo-wide
-finding documented in ``v2/modules/fuel/events.py`` /
-``v2/modules/fleet/events.py`` / ``v2/modules/notification/events.py`` /
-``v2/modules/location/events.py`` — ``publishes()``
-(``app/infrastructure/events/event_bus.py``) only sets a ``_publishes``
-attribute on the function; nothing reads that attribute and none of
-``add_sofor``/``update_sofor``/``delete_sofor`` call
-``event_bus.publish(...)`` internally either (confirmed again here during
-dalga 5, same as fleet/fuel/notification/location). This is NOT a
-regression introduced by this migration — the original
-``app/core/services/sofor_service.py`` had the exact same decorator-only
-wiring.
-
-REAL subscriber exists: ``app/core/ai/rag_sync_service.py`` subscribes to
-``SOFOR_ADDED``/``SOFOR_UPDATED`` to keep the driver RAG index in sync
-(``rag.index_driver``) — but since nothing ever calls
-``event_bus.publish(...)`` for these types, this subscriber is dead in
-practice too, same class of pre-existing gap as fuel's YAKIT_* finding.
+STATUS (FIXED 2026-07-16, dedektif denetimi: "ilk 9 dalgada teknik borç
+bırakma"): the ``@publishes(EventType.X)`` decorator on
+``add_sofor``/``update_sofor``/``delete_sofor`` is still metadata-only, but
+each function now genuinely writes to the transactional outbox
+(``save_outbox_event(uow.session, EventType.SOFOR_X, {"result": sofor_id})``,
+same transaction, before ``uow.commit()``).
+``app/core/ai/rag_sync_service.py``'s ``SOFOR_ADDED``/``SOFOR_UPDATED``
+subscriber (``rag.index_driver``) now actually fires once Celery's
+``relay-outbox-events-every-60s`` task relays the row — its
+``_on_sofor_changed`` handler was extended with the same int-id fallback
+``_on_arac_changed`` already had (``event.data["result"]`` is a bare id,
+not a full dict; the handler fetches the record itself via
+``get_sofor_repo().get_by_id``). ``RAGSyncService.initialize()`` is also
+now actually called at app startup (``app/main.py`` lifespan) — previously
+nothing anywhere invoked it, so this subscription never existed at
+runtime.
 """
 
 from app.infrastructure.events.event_bus import EventType

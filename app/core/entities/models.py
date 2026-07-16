@@ -411,8 +411,17 @@ class YakitUpdate(BaseModel):
 
     @computed_field
     @property
-    def toplam_tutar(self) -> Decimal:
-        """Toplam tutarı hesapla"""
+    def toplam_tutar(self) -> Optional[Decimal]:
+        """Toplam tutarı hesapla (yalnız fiyat_tl VE litre'nin ikisi de
+        verilmişse — kısmi güncellemede (yalnız istasyon/fis_no/vb. gibi
+        alanlar) ikisi de None kalabilir; `YakitRepository.update_yakit`
+        zaten bu alanı DB'den okuyup kendi yeniden hesaplıyor (bkz.
+        infrastructure/repository.py) — bu computed_field yalnız hem
+        fiyat_tl hem litre AYNI istekte verildiğinde anlamlı bir önizleme
+        sunar, aksi halde crash etmemesi için None döner.
+        """
+        if self.fiyat_tl is None or self.litre is None:
+            return None
         return round(self.fiyat_tl * Decimal(str(self.litre)), 2)
 
 

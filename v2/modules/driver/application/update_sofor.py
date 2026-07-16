@@ -4,6 +4,7 @@ from typing import Any
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.application._locks import SOFOR_WRITE_LOCK
 from v2.modules.driver.application.get_score import calculate_hybrid_score
@@ -48,6 +49,9 @@ async def update_sofor(sofor_id: int, **kwargs: Any) -> bool:
         success = await uow.sofor_repo.update(sofor_id, **kwargs)
         if success:
             logger.info(f"Driver updated: ID {sofor_id}")
+            await save_outbox_event(
+                uow.session, EventType.SOFOR_UPDATED, {"result": sofor_id}
+            )
             await uow.commit()
         return bool(success)
 

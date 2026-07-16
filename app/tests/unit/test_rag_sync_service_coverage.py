@@ -106,32 +106,25 @@ async def test_initial_sync_skips_if_already_syncing():
 
 
 async def test_initial_sync_indexes_all_entities():
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
 
     vehicles = [{"id": 1, "plaka": "06A1"}, {"id": 2, "plaka": "34B2"}]
     drivers = [{"id": 10, "ad": "Ali"}]
     trips = [{"id": 100, "mesafe_km": 300}]
 
-    mock_arac_repo = MagicMock()
-    mock_arac_repo.get_all = AsyncMock(return_value=vehicles)
-    mock_sofor_repo = MagicMock()
-    mock_sofor_repo.get_all = AsyncMock(return_value=drivers)
-    mock_sefer_repo = MagicMock()
-    mock_sefer_repo.get_all = AsyncMock(return_value=trips)
+    mock_uow = MagicMock()
+    mock_uow.arac_repo = MagicMock()
+    mock_uow.arac_repo.get_all = AsyncMock(return_value=vehicles)
+    mock_uow.sofor_repo = MagicMock()
+    mock_uow.sofor_repo.get_all = AsyncMock(return_value=drivers)
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_all = AsyncMock(return_value=trips)
 
     with (
-        patch(
-            "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
-            return_value=mock_arac_repo,
-        ),
-        patch(
-            "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-            return_value=mock_sofor_repo,
-        ),
-        patch(
-            "app.database.repositories.sefer_repo.get_sefer_repo",
-            return_value=mock_sefer_repo,
-        ),
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         await svc.initial_sync()
 
@@ -148,11 +141,12 @@ async def test_initial_sync_indexes_all_entities():
 
 
 async def test_initial_sync_exception_resets_syncing_flag():
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
 
-    with patch(
-        "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
-        side_effect=RuntimeError("DB exploded"),
+    with patch.object(
+        UnitOfWork, "__aenter__", AsyncMock(side_effect=RuntimeError("DB exploded"))
     ):
         await svc.initial_sync()
 
@@ -230,10 +224,36 @@ async def test_on_sofor_changed_dict_data():
     svc.rag.index_driver.assert_called_once_with({"id": 5, "ad": "Mehmet"})
 
 
-async def test_on_sofor_changed_non_dict_skips():
+async def test_on_sofor_changed_int_id_fetches_from_repo():
     svc = _make_service()
     event = _make_event({"result": 5})
-    await svc._on_sofor_changed(event)
+
+    mock_sofor_repo = MagicMock()
+    sofor_data = {"id": 5, "ad_soyad": "Mehmet"}
+    mock_sofor_repo.get_by_id = AsyncMock(return_value=sofor_data)
+
+    with patch(
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
+        return_value=mock_sofor_repo,
+    ):
+        await svc._on_sofor_changed(event)
+
+    svc.rag.index_driver.assert_called_once_with(sofor_data)
+
+
+async def test_on_sofor_changed_int_id_not_found_skips():
+    svc = _make_service()
+    event = _make_event({"result": 99})
+
+    mock_sofor_repo = MagicMock()
+    mock_sofor_repo.get_by_id = AsyncMock(return_value=None)
+
+    with patch(
+        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
+        return_value=mock_sofor_repo,
+    ):
+        await svc._on_sofor_changed(event)
+
     svc.rag.index_driver.assert_not_called()
 
 

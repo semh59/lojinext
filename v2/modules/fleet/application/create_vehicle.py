@@ -7,6 +7,7 @@ from typing import Optional
 from app.database.models import VehicleEventLog, VehicleSpecTimeline
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
@@ -73,6 +74,9 @@ async def _create_vehicle_impl(data: AracCreate, uow: UnitOfWork) -> int:
                     details=f"Passive vehicle reactivated: {data.plaka}",
                     uow=uow,
                 )
+                await save_outbox_event(
+                    uow.session, EventType.ARAC_ADDED, {"result": existing["id"]}
+                )
                 # Persist the reactivation. Without this the UnitOfWork's
                 # ghost-transaction guard rolls back the aktif=True update and
                 # the event log on __aexit__, so the vehicle silently stays
@@ -121,5 +125,8 @@ async def _create_vehicle_impl(data: AracCreate, uow: UnitOfWork) -> int:
         )
         uow.session.add(timeline)
 
+        await save_outbox_event(
+            uow.session, EventType.ARAC_ADDED, {"result": int(new_arac.id)}
+        )
         await uow.commit()
         return int(new_arac.id)

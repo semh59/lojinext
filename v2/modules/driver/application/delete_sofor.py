@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -15,6 +16,9 @@ async def delete_sofor(sofor_id: int) -> bool:
     async with UnitOfWork() as uow:
         success = await _delete_sofor_uow(uow, sofor_id)
         if success:
+            await save_outbox_event(
+                uow.session, EventType.SOFOR_DELETED, {"result": sofor_id}
+            )
             await uow.commit()
         return success
 

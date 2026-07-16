@@ -298,6 +298,50 @@ async def lifespan(app: FastAPI):
 
     activate_all_probes(engine, _celery)
 
+    # Domain event-bus subscribers — these were previously defined but never
+    # registered anywhere (dedektif denetimi, 2026-07-16): bildirim kuralları,
+    # RAG auto-sync, ML auto-retrain trigger, ve cache invalidation hiçbiri
+    # prod'da tetiklenmiyordu. Her biri kendi try/except'i içinde — biri
+    # başarısız olursa diğerlerini veya app startup'ı engellemez.
+    try:
+        from app.infrastructure.cache.cache_invalidation import (
+            setup_cache_invalidation,
+        )
+
+        setup_cache_invalidation()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Cache invalidation listener setup failed: %s", exc)
+
+    try:
+        from app.core.handlers.model_training_handler import (
+            get_model_training_handler,
+        )
+
+        get_model_training_handler().setup()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("ModelTrainingHandler setup failed: %s", exc)
+
+    try:
+        from app.core.handlers.physics_handler import get_physics_handler
+
+        get_physics_handler().register()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("PhysicsRecalculationHandler registration failed: %s", exc)
+
+    try:
+        from v2.modules.notification.public import register_handlers
+
+        register_handlers()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Notification event handlers registration failed: %s", exc)
+
+    try:
+        from app.core.ai.rag_sync_service import get_rag_sync_service
+
+        await get_rag_sync_service().initialize()
+    except Exception as exc:  # pragma: no cover
+        logger.warning("RAGSyncService initialization failed: %s", exc)
+
     # ML predictor warm-up — aktif tüm araç modellerini önceden initialize et
     # ki ilk POST /trips ML cold-start için 4-10sn beklemesin (LRU cache miss).
     # Vehicle 0 (general fallback) her zaman dahil; aktif araç id'leri DB'den.

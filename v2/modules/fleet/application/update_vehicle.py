@@ -5,6 +5,7 @@ from typing import Optional
 from app.database.models import VehicleSpecTimeline
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 from v2.modules.fleet.application.create_vehicle import plaka_lock
@@ -97,5 +98,8 @@ async def _update_vehicle_impl(arac_id: int, data: AracUpdate, uow: UnitOfWork) 
             )
             uow.session.add(timeline)
 
+        await save_outbox_event(
+            uow.session, EventType.ARAC_UPDATED, {"result": arac_id}
+        )
         await uow.commit()
     return success

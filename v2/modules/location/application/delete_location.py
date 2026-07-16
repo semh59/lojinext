@@ -1,6 +1,7 @@
 """Use-case: delete a location/route record (smart delete: active->inactive, inactive->hard)."""
 
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 
@@ -23,6 +24,9 @@ async def delete_location(repo: LokasyonRepository, lokasyon_id: int) -> bool:
             success = await repo.update(lokasyon_id, aktif=False)
             if success:
                 logger.info(f"Güzergah pasife alındı (Soft Deleted): ID {lokasyon_id}")
+                await save_outbox_event(
+                    repo.session, EventType.LOKASYON_DELETED, {"result": lokasyon_id}
+                )
             return success
         else:
             # Hard Delete
@@ -31,6 +35,11 @@ async def delete_location(repo: LokasyonRepository, lokasyon_id: int) -> bool:
                 if success:
                     logger.info(
                         f"Güzergah tamamen silindi (Hard Deleted): ID {lokasyon_id}"
+                    )
+                    await save_outbox_event(
+                        repo.session,
+                        EventType.LOKASYON_DELETED,
+                        {"result": lokasyon_id},
                     )
                 return success
             except Exception as e:

@@ -2,6 +2,7 @@
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
@@ -33,6 +34,9 @@ async def delete_vehicle(arac_id: int) -> bool:
                     details="Soft deleted via delete_vehicle",
                     uow=uow,
                 )
+                await save_outbox_event(
+                    uow.session, EventType.ARAC_DELETED, {"result": arac_id}
+                )
                 await uow.commit()
             return success
         else:
@@ -41,6 +45,9 @@ async def delete_vehicle(arac_id: int) -> bool:
                 if success:
                     logger.info(
                         f"Vehicle permanently deleted (Hard Deleted): ID {arac_id}"
+                    )
+                    await save_outbox_event(
+                        uow.session, EventType.ARAC_DELETED, {"result": arac_id}
                     )
                     await uow.commit()
                 return success

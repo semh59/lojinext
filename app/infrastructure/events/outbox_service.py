@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import OutboxEvent
 from app.database.unit_of_work import UnitOfWork
@@ -16,6 +17,33 @@ from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.shutdown import is_stopping
 
 logger = get_logger(__name__)
+
+
+async def save_outbox_event(
+    session: AsyncSession, event_type: str, payload: Dict[str, Any]
+) -> int:
+    """Writes an OutboxEvent row via a raw session (same transaction as caller).
+
+    Shared by ``OutboxService.save_event`` (``uow``-based callers) and
+    modules whose use-cases only receive a bare repository (``repo.session``)
+    rather than a full ``UnitOfWork`` — e.g. ``v2/modules/location``'s
+    caller-owns-the-session convention.
+    """
+    correlation_id = get_correlation_id()
+
+    db_event = OutboxEvent(
+        event_type=event_type,
+        payload=payload,
+        correlation_id=correlation_id,
+        created_at=datetime.now(timezone.utc),
+        processed=False,
+    )
+
+    session.add(db_event)
+    await session.flush()  # Ensure ID is generated
+
+    logger.debug(f"Event saved to outbox: {event_type} [ID: {db_event.id}]")
+    return db_event.id
 
 
 class OutboxService:
@@ -34,21 +62,7 @@ class OutboxService:
         if not active_uow:
             raise RuntimeError("OutboxService requires a UnitOfWork to save events.")
 
-        correlation_id = get_correlation_id()
-
-        db_event = OutboxEvent(
-            event_type=event_type,
-            payload=payload,
-            correlation_id=correlation_id,
-            created_at=datetime.now(timezone.utc),
-            processed=False,
-        )
-
-        active_uow.session.add(db_event)
-        await active_uow.session.flush()  # Ensure ID is generated
-
-        logger.debug(f"Event saved to outbox: {event_type} [ID: {db_event.id}]")
-        return db_event.id
+        return await save_outbox_event(active_uow.session, event_type, payload)
 
     async def relay_pending_events(self, limit: int = 50):
         """

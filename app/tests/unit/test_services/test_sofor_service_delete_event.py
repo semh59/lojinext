@@ -9,12 +9,17 @@ Beklenen: Commit fail → event NOT published.
 
 NOT: eski ``SoforService`` sınıfı silindi (B.1 free-function split, bkz.
 v2/modules/driver/CLAUDE.md). ``delete_sofor`` artık
-``v2.modules.driver.application.delete_sofor``'daki free function; ayrıca
-``@publishes(EventType.SOFOR_DELETED)`` decorator'ı repo-genelinde ölü kod
-(sadece fonksiyona ``_publishes`` attribute'u ekler, hiçbir yerde
-event_bus.publish() çağrılmaz) — bu test artık trivially geçer (publish
-zaten hiç çağrılmıyor), ama UnitOfWork'ü mock'layıp commit-failure'ın
-exception'ı doğru fırlattığını doğrulamaya devam eder.
+``v2.modules.driver.application.delete_sofor``'daki free function.
+
+GÜNCELLEME (2026-07-16, event-bus wiring): ``@publishes(EventType.SOFOR_DELETED)``
+decorator'ı hâlâ süs (`_publishes` attribute'u okunmuyor) ama artık
+`delete_sofor` gerçekten `save_outbox_event(uow.session, ...)` ile bir
+`OutboxEvent` satırı YAZIYOR — commit'ten ÖNCE, aynı transaction içinde.
+Yani commit başarısız olursa outbox satırı da rollback olur (in-process
+`event_bus.publish` hiçbir zaman çağrılmıyor, bu hâlâ doğru — dispatch
+yalnız celery'nin outbox-relay task'ı üzerinden, ayrı bir process'te
+olur), bu test'in asıl iddiası (commit fail → hiçbir kalıcı event yok)
+DEĞİŞMEDEN doğru kalıyor.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -43,6 +48,10 @@ async def test_delete_sofor_no_event_on_commit_failure(mock_event_bus):
     mock_uow.sofor_repo = MagicMock()
     mock_uow.sofor_repo.get_by_id = AsyncMock(return_value=mock_sofor)
     mock_uow.sofor_repo.update = AsyncMock(return_value=True)
+    # save_outbox_event(uow.session, ...) commit'ten önce çağrılıyor —
+    # session.flush() awaitable olmalı.
+    mock_uow.session = MagicMock()
+    mock_uow.session.flush = AsyncMock()
     # UoW.commit() başarısız olması mock et
     mock_uow.commit = AsyncMock(side_effect=Exception("Database connection lost"))
 

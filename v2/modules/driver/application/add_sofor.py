@@ -5,6 +5,7 @@ from typing import Any, List, Optional
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.application._locks import SOFOR_WRITE_LOCK
 
@@ -39,6 +40,9 @@ async def add_sofor(
                     )
                 logger.info(f"Re-activating passive driver (ID: {existing['id']})")
                 await uow.sofor_repo.update(existing["id"], aktif=True)
+                await save_outbox_event(
+                    uow.session, EventType.SOFOR_ADDED, {"result": existing["id"]}
+                )
                 await uow.commit()
                 return existing["id"]
 
@@ -54,6 +58,9 @@ async def add_sofor(
             )
 
             logger.info(f"New driver added: {ad_soyad_clean} (ID: {sofor_id})")
+            await save_outbox_event(
+                uow.session, EventType.SOFOR_ADDED, {"result": int(sofor_id)}
+            )
             await uow.commit()
             return int(sofor_id)
 

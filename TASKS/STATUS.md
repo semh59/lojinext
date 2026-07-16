@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 10/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) kod tamam + lokal/Docker/gerçek-DB doğrulandı, PUSH BEKLİYOR (bkz. DALGA 11 bölümü); sıradaki: dalga 12 (ai-assistant), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 11/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); sıradaki: dalga 12 (ai-assistant), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -44,7 +44,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
-| 11 | analytics-executive | `modules/analytics-executive.md` | 🟡 kod tamam, main'e push bekliyor (bkz. DALGA 11 bölümü) |
+| 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
 | 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
@@ -901,7 +901,7 @@ mypy + hedefli pytest + çoğu için canlı before/after repro) doğrulandı;
 2 push kırmızı çıktı (`.gitignore` bug'ı ve bir mock'un gerçekçi olmayan
 davranışı), ikisi de gerçek kök nedenle (varsayımla değil) düzeltildi.
 
-## DALGA 11 — 🟡 KOD TAMAM, PUSH BEKLİYOR (2026-07-16)
+## DALGA 11 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-16)
 
 **Kapsam:** analytics-executive modülü (Feature-E Strategic Cockpit: FVI,
 what-if, karbon raporu, compliance heatmap, cashflow projeksiyonu,
@@ -963,8 +963,44 @@ kapsıyordu).
   metrics_queries_mod, "get_bulk_driver_metrics", AsyncMock(...))` deseniyle
   düzeltildi (10 test fonksiyonu).
 
-**main'e PUSH EDİLMEDİ — kullanıcı onayı bekleniyor.** Push sonrası bu
-bölüm CI Hard Gates sonucuyla güncellenecek.
+**main'e push edildi (commit `a01c679`), kullanıcı onayıyla.** İlk push
+CI'da kırmızı çıktı (`gh run 29529523625`, "Backend unit tests" adımı) —
+kök neden: 2 test dosyası eski `app/` yoluna FONKSİYON GÖVDESİ içinde
+(deferred import / pathlib parça-parça birleştirme) erişiyordu, bu yüzden
+`--collect-only` ve önceki hedefli Docker koşumlarım yakalayamamıştı:
+- `test_endpoint_redis_singleton.py`: `from app.api.v1.endpoints import
+  executive` fonksiyon içinde → `v2.modules.analytics_executive.api.
+  executive_routes`'a güncellendi.
+- `test_production_foundation_guards.py`: `ROOT/"app"/"database"/
+  "repositories"/"analiz_repo.py"` pathlib join'i → `v2/modules/
+  analytics_executive/infrastructure/executive_read_models.py`'ye
+  güncellendi.
+
+**Bağımsız dedektif denetimi (kullanıcı talebiyle, "en ufak detayı
+atlama"):** 5 sıfır-context ajan paralel çalıştırıldı — (1) `analiz_repo.py`
+metod envanteri (20 metod + factory, %100 kayıpsız doğrulandı), (2) ölü
+referans taraması (repo genelinde sıfır gerçek kırık referans), (3) B.1
+mimari uyumu (analytics_executive'in kendisi tam uyumlu; driver/fuel/
+anomaly/fleet CLAUDE.md'lerinde bayat referans bulundu), (4) API/route
+sözleşmesi (path/method/response_model/yetki/cache-key/audit-payload
+birebir korunmuş, `get_vehicle_cost_comparison` isim çakışması doğru
+alias'lanmış), (5) test dönüşüm kalitesi (zayıflatılmış assertion yok,
+`monkeypatch` deseni gerçekten etkili). 4/5 ajan sıfır bulguyla döndü; B.1
+ajanının bulduğu doc-drift (driver/fuel/anomaly/fleet CLAUDE.md'lerinin
+"analytics_executive henüz taşınmadı" demesi + fuel/anomaly'ninkilerin
+silinen `AnalizService`'in davranışını anlatması) düzeltildi.
+
+**CI-fix commit `48e8e21`** (2 test dosyası + 4 CLAUDE.md) push edildi.
+Push öncesi CI'nin birebir komutu (`pytest -m "unit or not integration"
+--ignore=tests/integration --ignore=app/tests/integration`) gerçek Docker
+container'da tam suite üzerinde tekrar koşturuldu: 5405 passed, 7 failed —
+7'si STATUS.md'de zaten belgelenmiş ortam-kaynaklı hatalar (gerçek Redis
+Sentinel + `USE_SEFER_FUEL_ESTIMATOR=true` prod-tarzı env, bu ad-hoc
+container'a özgü, CI'nın temiz ortamında görülmez).
+
+**CI Hard Gates TAM YEŞİL** (`gh run view 29531899079` → `success`,
+hard-gates 33dk25sn + GHCR build/push 18dk32sn + Deploy→Production dahil) —
+commit `48e8e21` main'in HEAD'i. https://github.com/semh59/lojinext/actions/runs/29531899079
 
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
@@ -972,7 +1008,8 @@ baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports
 + ilk 10 dalganın tam dedektif denetimi (4 HIGH bug + 4 MEDIUM + 9 LOW
 bulgu düzeltildi, bkz. yukarıdaki bölüm) main'de yeşil, CI Hard Gates ile
 doğrulandı (`gh run view 29515827692`, commit `95b2b99`). Dalga 11
-(analytics-executive) kod tamam + lokal/Docker/gerçek-DB doğrulandı, push
-bekliyor (bkz. DALGA 11 bölümü). Depo şu an **PUBLIC** (kullanıcı kararı,
-GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması
-gerekiyor — bkz. görev dışı hatırlatma).
+(analytics-executive) main'de yeşil (5 bağımsız ajanla dedektif denetimi
++ CI-fix turu dahil, bkz. DALGA 11 bölümü, commit `48e8e21`, `gh run view
+29531899079`). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama
+sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz.
+görev dışı hatırlatma).

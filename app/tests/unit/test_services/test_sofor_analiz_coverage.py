@@ -23,6 +23,9 @@ from v2.modules.driver.domain.driver_stats import (
     get_driver_trend,
     get_route_performance,
 )
+from v2.modules.driver.infrastructure import (
+    driver_metrics_queries as driver_metrics_queries_mod,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -59,7 +62,6 @@ def mock_uow():
     uow.commit = AsyncMock()
 
     uow.analiz_repo = MagicMock()
-    uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
     uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
     uow.sofor_repo = MagicMock()
@@ -155,14 +157,22 @@ class TestCalculatePerformanceScore:
 
 
 class TestGetDriverStats:
-    async def test_empty_sefer_stats_returns_empty_list(self, mock_uow):
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+    async def test_empty_sefer_stats_returns_empty_list(self, mock_uow, monkeypatch):
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=[]),
+        )
         result = await get_driver_stats(uow=mock_uow)
         assert result == []
 
-    async def test_single_driver_no_elite_score(self, mock_uow):
+    async def test_single_driver_no_elite_score(self, mock_uow, monkeypatch):
         stats = [_make_stats()]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         result = await get_driver_stats(include_elite_score=False, uow=mock_uow)
@@ -173,17 +183,29 @@ class TestGetDriverStats:
         assert ds.ort_tuketim == 32.0
         assert ds.performans_puani is None
 
-    async def test_filo_karsilastirma_positive_when_below_avg(self, mock_uow):
+    async def test_filo_karsilastirma_positive_when_below_avg(
+        self, mock_uow, monkeypatch
+    ):
         stats = [_make_stats(ort_tuketim=28.0)]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         result = await get_driver_stats(include_elite_score=False, uow=mock_uow)
         assert result[0].filo_karsilastirma > 0
 
-    async def test_filo_karsilastirma_zero_when_fleet_avg_zero(self, mock_uow):
+    async def test_filo_karsilastirma_zero_when_fleet_avg_zero(
+        self, mock_uow, monkeypatch
+    ):
         stats = [_make_stats()]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=0.0)
 
         result = await get_driver_stats(include_elite_score=False, uow=mock_uow)
@@ -199,9 +221,13 @@ class TestGetDriverStats:
         )
         assert len(result) == 1
 
-    async def test_elite_score_exception_becomes_none(self, mock_uow):
+    async def test_elite_score_exception_becomes_none(self, mock_uow, monkeypatch):
         stats = [_make_stats()]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
         mock_uow.sefer_repo.get_recent_trips_batch = AsyncMock(
             return_value={1: [{"tuketim": 30.0}]}
@@ -217,9 +243,13 @@ class TestGetDriverStats:
 
         assert result[0].performans_puani is None
 
-    async def test_none_ort_tuketim_becomes_zero(self, mock_uow):
+    async def test_none_ort_tuketim_becomes_zero(self, mock_uow, monkeypatch):
         stats = [_make_stats(ort_tuketim=None)]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         result = await get_driver_stats(include_elite_score=False, uow=mock_uow)
@@ -232,15 +262,23 @@ class TestGetDriverStats:
 
 
 class TestCompareDrivers:
-    async def test_empty_returns_empty_structure(self, mock_uow):
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+    async def test_empty_returns_empty_structure(self, mock_uow, monkeypatch):
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=[]),
+        )
         result = await compare_drivers(uow=mock_uow)
         assert result["en_verimli"] is None
         assert result["ranking"] == []
 
-    async def test_filters_drivers_fewer_than_5_seferler(self, mock_uow):
+    async def test_filters_drivers_fewer_than_5_seferler(self, mock_uow, monkeypatch):
         stats = [_make_stats(toplam_sefer=3)]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         # compare_drivers internally calls get_driver_stats(); patch elite score calc
@@ -253,9 +291,13 @@ class TestCompareDrivers:
             result = await compare_drivers(uow=mock_uow)
         assert result["ranking"] == []
 
-    async def test_valid_driver_appears_in_ranking(self, mock_uow):
+    async def test_valid_driver_appears_in_ranking(self, mock_uow, monkeypatch):
         stats = [_make_stats(toplam_sefer=10, performans_puani=80.0)]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         with patch.object(
@@ -269,9 +311,13 @@ class TestCompareDrivers:
         assert len(result["ranking"]) == 1
         assert result["en_verimli"].sofor_id == 1
 
-    async def test_compare_filters_by_sofor_ids(self, mock_uow):
+    async def test_compare_filters_by_sofor_ids(self, mock_uow, monkeypatch):
         stats = [_make_stats(sofor_id=1), _make_stats(sofor_id=2, ad_soyad="Ali")]
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=stats)
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=stats),
+        )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
 
         with patch.object(
@@ -582,7 +628,7 @@ class TestReposFallback:
     def test_repos_falls_back_without_uow(self):
         with (
             patch(
-                "app.database.repositories.analiz_repo.get_analiz_repo",
+                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
                 return_value=MagicMock(),
             ) as mock_analiz,
             patch(

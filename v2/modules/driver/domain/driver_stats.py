@@ -24,11 +24,21 @@ def _repos(uow: Optional[UnitOfWork]):
     if uow is not None:
         return uow.analiz_repo, uow.sofor_repo, uow.sefer_repo
 
-    from app.database.repositories.analiz_repo import get_analiz_repo
     from app.database.repositories.sefer_repo import get_sefer_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
     return get_analiz_repo(), get_sofor_repo(), get_sefer_repo()
+
+
+async def _bulk_driver_metrics(uow: Optional[UnitOfWork]):
+    from v2.modules.driver.infrastructure.driver_metrics_queries import (
+        get_bulk_driver_metrics,
+    )
+
+    return await get_bulk_driver_metrics(uow)
 
 
 async def get_driver_stats(
@@ -45,7 +55,7 @@ async def get_driver_stats(
     analiz_repo, sofor_repo, sefer_repo = _repos(uow)
 
     if sofor_id is None:
-        sefer_stats = await analiz_repo.get_bulk_driver_metrics()
+        sefer_stats = await _bulk_driver_metrics(uow)
     else:
         sefer_stats = await sofor_repo.get_sefer_stats(sofor_id, baslangic, bitis)
 

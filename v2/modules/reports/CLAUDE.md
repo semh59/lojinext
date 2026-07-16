@@ -8,12 +8,13 @@ period-karşılaştırma, Reports Studio 6 statik şablon listesi). Salt-okunur
 — hiçbir varlığı yaratmaz/değiştirmez, yalnız diğer modüllerin repo'larını
 okuyup rapor şekline sokar.
 
-NE YAPMAZ: maliyet analizi (`cost_analyzer.py` — analytics_executive'in
-işi, henüz taşınmadı, bu modülün geçici bağımlılığı), sayfa-görüntüleme
-analitiği (`page_view_repo.py`/`GET /analytics/*` — ayrıntı için aşağıdaki
-"page_views tablo-sahipliği tutarsızlığı" notuna bakın), Excel
-parse/import (import_excel'in işi — bu modül yalnız onun `export_data`/
-`get_export_service`'ini tüketir).
+NE YAPMAZ: maliyet analizi (`analyze_costs.py` — analytics_executive'in
+işi, dalga 11'de taşındı), Excel parse/import (import_excel'in işi — bu
+modül yalnız onun `export_data`/`get_export_service`'ini tüketir).
+
+Sayfa-görüntüleme analitiği (`page_view_repo.py`/`GET /analytics/*`)
+**BU modülün işi** — dalga 11'de analytics_executive'ten buraya taşındı
+(aşağıdaki "page_views tablo-sahipliği" notuna bakın, artık ÇÖZÜLDÜ).
 
 ## Public API (public.py imzaları)
 
@@ -37,6 +38,14 @@ FleetComparison, PeriodMetrics, PeriodType
 
 PDFReportGenerator, get_report_generator() -> PDFReportGenerator
 ```
+
+Ayrıca sayfa-görüntüleme analitiği (dalga 11'de analytics_executive'ten
+taşındı, public.py'de YOK — `api/page_view_routes.py` doğrudan
+`infrastructure/page_view_repo.py::PageViewRepository`'yi kullanır, diğer
+route dosyalarıyla aynı desen):
+`PageViewRepository`, `PageViewCreate`/`RouteCount`/`PageViewStats`
+(`schemas.py`), `analytics.prune_page_views` Celery task'ı
+(`infrastructure/analytics_tasks.py`).
 
 Ayrıca yalnız `dashboard_routes.py`'nin kendi kullandığı 2 use-case (public.py'de
 YOK, tek tüketicisi kendi route dosyası — bkz. "Modüle özel iş kuralları"):
@@ -97,12 +106,15 @@ sonuç verdi, taşıma bunu değiştirmedi).
 - **fleet (taşındı, geçici)**: `aggregate_today_triage`
   `v2.modules.fleet.domain.maintenance_prediction.MaintenancePredictor`'ı
   çağırır.
-- **analytics_executive (henüz taşınmadı, geçici)**: `ReportRepos.analiz_repo`
-  = `app.database.repositories.analiz_repo` (bulk fleet/vehicle/driver
-  istatistikleri) ve `advanced_reports_routes.py`'nin maliyet endpoint'leri
-  `app.core.services.cost_analyzer.get_cost_analyzer()` çağırır — ikisi de
-  analytics_executive dalgasına (11) taşınınca `public.py` üzerinden
-  geçilecek.
+- **analytics_executive (taşındı, geçici)**: `ReportRepos.analiz_repo`
+  = `v2.modules.analytics_executive.infrastructure.executive_read_models`
+  (bulk fleet/vehicle/driver istatistikleri, `ReportRepos`'a artık `session`
+  alanı da eklendi) ve `advanced_reports_routes.py`'nin maliyet endpoint'leri
+  `v2.modules.analytics_executive.application.analyze_costs`'un free
+  function'larını (`calculate_period_cost`/`get_monthly_trend`/
+  `get_vehicle_cost_comparison` as `analyze_vehicle_cost_comparison`/
+  `calculate_savings_potential`/`calculate_roi`) doğrudan çağırır —
+  `public.py` üzerinden değil, henüz mimari borç.
 - **trip (henüz taşınmadı, geçici)**: `ReportRepos.sefer_repo` yok
   (`generate_fleet_summary`'nin kendisi sefer_repo'ya ihtiyaç duymuyor) —
   `application/get_dashboard_counters.py::get_dashboard_counters(uow, ...)`
@@ -113,31 +125,27 @@ sonuç verdi, taşıma bunu değiştirmedi).
   `SoforSeferPDFService` (`infrastructure/pdf_export.py`)
   `PDFReportGenerator`'dan miras alır; import_excel'in `ExportService`
   (`infrastructure/report_export.py`) `get_report_generator()`'ı çağırır;
-  `executive_pdf_generator.py` (analytics_executive henüz taşınmadı) font
-  kaydı reuse için `PDFReportGenerator()` instantiate eder.
+  analytics_executive'in `infrastructure/pdf_export.py::generate_executive_pdf`
+  font kaydı reuse için `PDFReportGenerator()` instantiate eder.
 
 ## Şema & tablo sahipliği
 
-Bu modül hiçbir tabloya YAZMAZ (salt-okunur). `page_views` tablosunun
-kavramsal sahibi olarak dokümante edilmişti (FAZ2 şema-per-module planı
-için) — ama **bu tutarsız çıktı, aşağıya bakın.**
+Bu modül hiçbir tabloya YAZMAZ (salt-okunur), `page_views` istisna —
+bkz. aşağı.
 
-### 🔴 Bulgu: page_views tablo-sahipliği notu ile gerçek kod-sahipliği uyuşmuyor
+### ✅ ÇÖZÜLDÜ (2026-07-16, dalga 11) — page_views tablo-sahipliği tutarsızlığı
 
 `TASKS/modules/reports.md` madde 3 "page_views — analytics_executive'te
-DEĞİL, reports'ta" diyordu, ama bu modülün 12 dosyalık envanterinde
-`page_view_repo.py` YOKTU ve gerçek tüketicileri (`app/api/v1/endpoints/
-analytics.py::GET /analytics/*`, `app/workers/tasks/analytics_tasks.py`
-prune task'ı) analytics_executive'in (dalga 11, henüz taşınmadı) alanında
-yaşıyor — reports'un bu dalgada dokunmadığı dosyalar. Yani: `page_views`
-tablosu kavramsal olarak reports'a atanmış ama onu okuyan/yazan TÜM kod
-bugün analytics_executive'in dosya sınırında. Bu dalgada `page_view_repo.py`
-taşınmadı (görev dosyasının 12 dosyalık envanterinin dışında, mekanik
-taşıma kararına sadık kalmak için) — analytics_executive (dalga 11)
-taşınırken bu çelişki çözülmeli: ya `page_views` gerçekten reports'a
-taşınır (o zaman `page_view_repo.py` + `analytics.py`'nin page-view
-endpoint'leri + prune task'ı buraya gelir), ya da FAZ2 planı
-analytics_executive'in sahipliğini onaylayacak şekilde düzeltilir.
+DEĞİL, reports'ta" diyordu ama bu modülün (dalga 10) 12 dosyalık
+envanterinde `page_view_repo.py` YOKTU — gerçek tüketicileri
+(`app/api/v1/endpoints/analytics.py::GET /analytics/*`, `app/workers/
+tasks/analytics_tasks.py` prune task'ı) analytics_executive'in dosya
+sınırında yaşıyordu. Kullanıcı kararıyla (tablo-sahipliği ilkesi) dalga
+11'de hepsi buraya taşındı: `infrastructure/page_view_repo.py`,
+`infrastructure/analytics_tasks.py` (prune task), `api/page_view_routes.py`
+(eski `app/api/v1/endpoints/analytics.py`), `schemas.py`'ye eklenen
+`PageViewCreate`/`RouteCount`/`PageViewStats`. `app/api/v1/api.py`
+router include'ları güncellendi (`page_view_router`/`page_view_admin_router`).
 
 ## İzin verilen / yasak import'lar
 
@@ -165,13 +173,12 @@ diğer modüller yalnız `v2.modules.reports.public`/`.events`'i import eder;
   (yalnız `test_business_flows.py`/`test_report_service_coverage.py`
   tarafından egzersiz ediliyor) — taşımadan önce de böyleydi, dead-ish
   kod olarak korundu (test edilen davranış silinmedi).
-- **`dashboard_service.py`/`context_builder.py` (app/core/, bu dalganın
-  dosya envanterinin dışı) `_ReportsFacade` adaptörü** kullanıyor —
-  `self.report_service.get_dashboard_summary()` çağrı şeklini koruyan
-  küçük bir köprü sınıfı (testlerin `AsyncMock` override'ı bunu
-  bekliyor). Reports'un kendi `ReportService` sınıfı yok, ama bu
-  TÜKETİCİ modüllerin (dashboard/AI context) eski instance-method
-  çağrı şeklini bu dalgada değiştirmek kapsam dışı bırakıldı.
+- ✅ **DÜZELTİLDİ (dalga 11, 2026-07-16)** — `app/core/services/
+  dashboard_service.py` (`DashboardService`, `_ReportsFacade` adaptörü
+  dahil) tamamen silindi: dedektif denetiminde hiçbir prod endpoint/
+  servisten çağrılmadığı doğrulandı (dead code, kullanıcı kararı) —
+  `context_builder.py` bu sınıfı hiç kullanmıyordu (grep sıfır sonuç),
+  önceki bulgu yanlış varsayımdı.
 - **PDF font kaydı** (`infrastructure/pdf_export.py::_register_fonts`):
   repo kökü artık `dirname()` 4 kez uygulanarak hesaplanıyor (eskiden
   `app/core/services/`den 2 kez yeterliydi) — `app/assets/fonts/DocFont*.ttf`

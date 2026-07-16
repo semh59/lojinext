@@ -26,6 +26,9 @@ from v2.modules.driver.domain.evaluation import (
     get_all_evaluations,
     get_rankings,
 )
+from v2.modules.driver.infrastructure import (
+    driver_metrics_queries as driver_metrics_queries_mod,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -301,9 +304,15 @@ async def test_evaluate_driver_include_routes_true(mock_uow):
 # ---------------------------------------------------------------------------
 
 
-async def test_get_all_evaluations_empty_metrics_returns_empty_list(mock_uow):
+async def test_get_all_evaluations_empty_metrics_returns_empty_list(
+    mock_uow, monkeypatch
+):
     """When bulk_metrics is empty, result is []."""
-    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+    monkeypatch.setattr(
+        driver_metrics_queries_mod,
+        "get_bulk_driver_metrics",
+        AsyncMock(return_value=[]),
+    )
     mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     results = await get_all_evaluations(include_routes=False, uow=mock_uow)
@@ -316,7 +325,7 @@ async def test_get_all_evaluations_empty_metrics_returns_empty_list(mock_uow):
 # ---------------------------------------------------------------------------
 
 
-async def test_get_rankings_returns_structured_dict(mock_uow):
+async def test_get_rankings_returns_structured_dict(mock_uow, monkeypatch):
     """get_rankings builds genel/verimlilik/tutarlilik lists."""
     bulk_metrics = [
         {
@@ -333,7 +342,11 @@ async def test_get_rankings_returns_structured_dict(mock_uow):
             "en_kotu_tuketim": 30.0,
         },
     ]
-    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=bulk_metrics)
+    monkeypatch.setattr(
+        driver_metrics_queries_mod,
+        "get_bulk_driver_metrics",
+        AsyncMock(return_value=bulk_metrics),
+    )
     mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     rankings = await get_rankings(uow=mock_uow)

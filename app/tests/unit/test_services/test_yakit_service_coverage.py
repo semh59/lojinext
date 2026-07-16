@@ -201,7 +201,7 @@ class TestGetByVehicle:
 class TestGetStats:
     async def test_stats_fallback_when_dashboard_fails(self, db_session):
         """When get_dashboard_stats raises, falls back to yakit_repo.get_stats."""
-        import app.database.repositories.analiz_repo as analiz_repo_mod
+        import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_repo_mod
 
         with patch.object(
             analiz_repo_mod.AnalizRepository,

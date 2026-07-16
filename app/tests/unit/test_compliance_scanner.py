@@ -23,9 +23,9 @@ import pytest
     ],
 )
 def test_risk_for_days_boundaries(days, expected):
-    from app.core.services.compliance_scanner import _risk_for_days
+    from v2.modules.analytics_executive.domain.compliance_risk import risk_for_days
 
-    assert _risk_for_days(days) == expected
+    assert risk_for_days(days) == expected
 
 
 # ── Fake DB session (paylaşılan stub pattern) ──────────────────────────
@@ -80,7 +80,9 @@ class _FakeUoW:
 @pytest.mark.asyncio
 async def test_scan_compliance_2_arac_1_dorse():
     """Plan §7.3 zorunlu test: 2 araç + 1 dorse → 3 item, days_until ASC sıralı."""
-    from app.core.services.compliance_scanner import scan_compliance
+    from v2.modules.analytics_executive.application.scan_compliance import (
+        scan_compliance,
+    )
 
     today = date.today()
     arac_rows = [
@@ -121,7 +123,9 @@ async def test_scan_compliance_2_arac_1_dorse():
 @pytest.mark.asyncio
 async def test_scan_compliance_empty_fleet():
     """Hiç araç yok → boş liste."""
-    from app.core.services.compliance_scanner import scan_compliance
+    from v2.modules.analytics_executive.application.scan_compliance import (
+        scan_compliance,
+    )
 
     uow = _FakeUoW([], [])
     items = await scan_compliance(uow, days_horizon=90)
@@ -131,7 +135,9 @@ async def test_scan_compliance_empty_fleet():
 @pytest.mark.asyncio
 async def test_scan_compliance_arac_only_no_dorse():
     """Sadece araç verisi → dorse hiç eklenmez."""
-    from app.core.services.compliance_scanner import scan_compliance
+    from v2.modules.analytics_executive.application.scan_compliance import (
+        scan_compliance,
+    )
 
     today = date.today()
     arac_rows = [
@@ -146,7 +152,9 @@ async def test_scan_compliance_arac_only_no_dorse():
 @pytest.mark.asyncio
 async def test_scan_compliance_days_until_calculation():
     """expiry_date korunmalı; days_until = (expiry - today).days."""
-    from app.core.services.compliance_scanner import scan_compliance
+    from v2.modules.analytics_executive.application.scan_compliance import (
+        scan_compliance,
+    )
 
     today = date.today()
     expiry = today + timedelta(days=45)
@@ -163,7 +171,9 @@ async def test_scan_compliance_days_until_calculation():
 @pytest.mark.asyncio
 async def test_scan_compliance_field_value():
     """v1'de field her zaman 'muayene' (plan §7.2)."""
-    from app.core.services.compliance_scanner import scan_compliance
+    from v2.modules.analytics_executive.application.scan_compliance import (
+        scan_compliance,
+    )
 
     today = date.today()
     arac = [{"id": 1, "plaka": "X", "muayene_tarihi": today}]

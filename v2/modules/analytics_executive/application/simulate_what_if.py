@@ -54,7 +54,9 @@ async def simulate_fleet_renewal(
     """
     from sqlalchemy import text
 
-    from app.core.ml.carbon_footprint import euro_class_for_year
+    from v2.modules.analytics_executive.domain.carbon_footprint import (
+        euro_class_for_year,
+    )
 
     sql = """
         SELECT a.id, a.plaka, a.yil,

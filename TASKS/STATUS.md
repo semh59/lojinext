@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 9/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil (bkz. DALGA 10 bölümü); sıradaki: dalga 11 (analytics-executive), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 10/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) kod tamam + lokal/Docker/gerçek-DB doğrulandı, PUSH BEKLİYOR (bkz. DALGA 11 bölümü); sıradaki: dalga 12 (ai-assistant), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -44,7 +44,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
-| 11 | analytics-executive | `modules/analytics-executive.md` | 🔲 |
+| 11 | analytics-executive | `modules/analytics-executive.md` | 🟡 kod tamam, main'e push bekliyor (bkz. DALGA 11 bölümü) |
 | 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
@@ -901,11 +901,78 @@ mypy + hedefli pytest + çoğu için canlı before/after repro) doğrulandı;
 2 push kırmızı çıktı (`.gitignore` bug'ı ve bir mock'un gerçekçi olmayan
 davranışı), ikisi de gerçek kök nedenle (varsayımla değil) düzeltildi.
 
+## DALGA 11 — 🟡 KOD TAMAM, PUSH BEKLİYOR (2026-07-16)
+
+**Kapsam:** analytics-executive modülü (Feature-E Strategic Cockpit: FVI,
+what-if, karbon raporu, compliance heatmap, cashflow projeksiyonu,
+cross-feature etki, bus-factor, CEO PDF + maliyet analizi + insight
+üretimi) — 18 kaynak dosya + `analiz_repo.py`'nin kalan 14 metodu
+`v2/modules/analytics_executive/` altına taşındı (application/domain/
+infrastructure/api/schemas/events/public.py/CLAUDE.md).
+
+**Task dosyasının 2 yanlış varsayımı düzeltildi (recon sırasında bulundu, kullanıcı onayıyla karar verildi):**
+1. `get_bulk_driver_metrics`/`get_driver_comparison`'ın "driver dalgasında
+   [5] zaten taşınmış olması gerekiyordu" — kontrol edildi, TAŞINMAMIŞTI
+   (driver'ın kendi CLAUDE.md'si bunu doğru şekilde "geçici bağımlılık"
+   olarak zaten işaretlemişti, task dosyasının varsayımı yanlıştı). Bu
+   dalgada düzeltildi: yeni `v2/modules/driver/infrastructure/
+   driver_metrics_queries.py` (free function, B.1), `driver_stats.py`/
+   `evaluation.py` güncellendi.
+2. `analytics.py` endpoint dosyası (+ `schemas/analytics.py` +
+   `page_view_repo.py` + `workers/tasks/analytics_tasks.py`) task
+   dosyasının envanterinde duruyordu ama içeriği tamamen `page_views`
+   (Faz 3 kullanım analitiği) — Feature-E ile ilgisi yok. reports'un
+   CLAUDE.md'si bu tutarsızlığı zaten dokümante etmişti (dalga 10'da
+   bulunmuş, dalga 11'e bırakılmış). Kullanıcı kararıyla (tablo-sahipliği
+   ilkesi): hepsi `v2/modules/reports/`'a taşındı, gerçek analytics_executive
+   route sayısı task dosyasının iddia ettiği 10 değil **8**.
+
+**Dead-code bulgusu + kullanıcı kararı:** `AnalizService`
+(`container.analiz_service`) ve `DashboardService` sınıfları hiçbir prod
+endpoint/servisten çağrılmıyordu (yalnız kendi ~20 test dosyası) —
+kullanıcı kararıyla (dalga 1'in dead-property kaldırma emsaliyle aynı
+gerekçe, bu kez 2 tam sınıf) TAMAMEN SİLİNDİ (`container.py`'nin
+`analiz_service` property'si + state'i dahil). `InsightEngine`/
+`CostAnalyzer` de aynı şekilde free function'lara bölündü (B.1) ama
+silinmedi (gerçek/test edilmiş mantık, `InsightEngine`'in kendisi de
+ölü kod ama kapsam dışı — kullanıcının kararı yalnız ilk ikisini
+kapsıyordu).
+
+**Doğrulama (gerçek Docker container, `lojinext-backend-1` + `lojinext_test` DB):**
+- `ruff check` (tüm dokunulan dosyalar + `app v2 scripts` global) → temiz.
+- `mypy app --ignore-missing-imports --no-strict-optional` → 0 hata (684 dosya).
+- `pytest --collect-only`: `app/tests` 6733 test, kök `tests/` 266 test — 0 collection hatası.
+- Hedefli gerçek-DB koşumları: analytics_executive'in kendi testleri (167),
+  driver/sofor/evaluation testleri (460 + 43 + 60), container/core/business_flows/
+  section1 (150), executive+advanced_reports API testleri (106), ML/ai_service/
+  yakit servis testleri (78 + 136) — hepsi PASS.
+- **Geniş doğrulama turu** (`app/tests/api` + `app/tests/unit/test_repositories`
+  + `app/tests/integration`, 1764 test): **1749 passed, 7 failed** — 7 hata
+  TAMAMEN dalga 1'de zaten belgelenmiş ortam-kaynaklı api-stub network
+  topoloji sorunu (`test_mapbox_client.py`, `test_route_api.py` x2,
+  `test_route_service_hybrid.py` x2, `test_locations_coverage.py`,
+  `test_locations_api.py`) — analytics_executive/reports/driver ile hiçbir
+  ilgisi yok, migration'dan kaynaklanmıyor.
+- **Gerçek bulgu (mekanik dönüşüm sırasında bulundu, düzeltildi):** 5 test
+  dosyası (`test_sofor_analiz_coverage.py`, `test_sofor_analiz.py`,
+  `test_sofor_degerlendirme_coverage.py`, `test_sofor_degerlendirme_more.py`)
+  `mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(...)` deseniyle
+  mock'luyordu — taşıma sonrası bu metod `analiz_repo`'da yok, gerçek çağrı
+  `uow.session.execute()`'a düşüp `TypeError: object MagicMock can't be
+  used in 'await' expression` ile patlıyordu. `monkeypatch.setattr(driver_
+  metrics_queries_mod, "get_bulk_driver_metrics", AsyncMock(...))` deseniyle
+  düzeltildi (10 test fonksiyonu).
+
+**main'e PUSH EDİLMEDİ — kullanıcı onayı bekleniyor.** Push sonrası bu
+bölüm CI Hard Gates sonucuyla güncellenecek.
+
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
 baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports)
 + ilk 10 dalganın tam dedektif denetimi (4 HIGH bug + 4 MEDIUM + 9 LOW
 bulgu düzeltildi, bkz. yukarıdaki bölüm) main'de yeşil, CI Hard Gates ile
-doğrulandı (`gh run view 29515827692`, commit `95b2b99`). Depo şu an
-**PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş
-bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+doğrulandı (`gh run view 29515827692`, commit `95b2b99`). Dalga 11
+(analytics-executive) kod tamam + lokal/Docker/gerçek-DB doğrulandı, push
+bekliyor (bkz. DALGA 11 bölümü). Depo şu an **PUBLIC** (kullanıcı kararı,
+GHCR faturalama sorunu için geçici; iş bitince tekrar private yapılması
+gerekiyor — bkz. görev dışı hatırlatma).

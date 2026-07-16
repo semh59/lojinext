@@ -155,21 +155,21 @@ from celery.signals import worker_process_init  # noqa: E402
 
 # Phase 4.0 — ML weekly retrain Celery task
 import app.core.ml.training.scheduler_task  # noqa: E402,F401
-import app.workers.tasks.analytics_tasks  # noqa: E402,F401
 
 # OPS-002 — Nightly DB backup task
 import app.workers.tasks.backup_tasks  # noqa: E402,F401
-import app.workers.tasks.compliance_tasks  # noqa: E402,F401
 import app.workers.tasks.dlq_tasks  # noqa: E402,F401
 import app.workers.tasks.error_digest  # noqa: E402,F401
 import app.workers.tasks.outbox_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_backfill_tasks  # noqa: E402,F401
 import app.workers.tasks.prediction_tasks  # noqa: E402,F401
+import v2.modules.analytics_executive.infrastructure.compliance_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.cluster_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.theft_tasks  # noqa: E402,F401
 import v2.modules.driver.infrastructure.coaching_tasks  # noqa: E402,F401
 import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
+import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
 
 # NOT: v2.modules.driver.infrastructure.driver_tasks (driver.calculate_performance_score)
 # taşımadan ÖNCE de burada import edilmiyordu — Celery worker'a hiç

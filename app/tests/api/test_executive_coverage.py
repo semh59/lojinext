@@ -199,7 +199,9 @@ async def test_pdf_requires_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_kpi_503_when_disabled(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = False
         resp = await async_client.get(f"{BASE}/kpi", headers=admin_auth_headers)
     assert resp.status_code == 503
@@ -209,7 +211,9 @@ async def test_kpi_503_when_disabled(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_what_if_503_when_disabled(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = False
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
         resp = await async_client.post(
@@ -230,7 +234,9 @@ async def test_what_if_503_when_disabled(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_what_if_503_when_what_if_disabled(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = False
         resp = await async_client.post(
@@ -257,7 +263,9 @@ async def test_what_if_503_when_what_if_disabled(async_client, admin_auth_header
 
 @pytest.mark.asyncio
 async def test_carbon_days_too_low(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/carbon?days=3", headers=admin_auth_headers
@@ -268,7 +276,9 @@ async def test_carbon_days_too_low(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_carbon_days_too_high(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/carbon?days=400", headers=admin_auth_headers
@@ -278,7 +288,9 @@ async def test_carbon_days_too_high(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_compliance_days_horizon_too_low(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/compliance?days_horizon=3", headers=admin_auth_headers
@@ -288,7 +300,9 @@ async def test_compliance_days_horizon_too_low(async_client, admin_auth_headers)
 
 @pytest.mark.asyncio
 async def test_cashflow_days_too_low(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/cashflow?days=5", headers=admin_auth_headers
@@ -298,7 +312,9 @@ async def test_cashflow_days_too_low(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_cross_feature_days_too_low(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/cross-feature?days=5", headers=admin_auth_headers
@@ -308,7 +324,9 @@ async def test_cross_feature_days_too_low(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_bus_factor_n_too_high(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/bus-factor?n=20", headers=admin_auth_headers
@@ -318,7 +336,9 @@ async def test_bus_factor_n_too_high(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_bus_factor_n_zero(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = True
         resp = await async_client.get(
             f"{BASE}/bus-factor?n=0", headers=admin_auth_headers
@@ -335,9 +355,12 @@ async def test_bus_factor_n_zero(async_client, admin_auth_headers):
 async def test_what_if_fleet_renewal_missing_inputs(async_client, admin_auth_headers):
     """fleet_renewal scenario without fleet_renewal payload → 400."""
     with (
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
@@ -359,9 +382,12 @@ async def test_what_if_fleet_renewal_missing_inputs(async_client, admin_auth_hea
 @pytest.mark.asyncio
 async def test_what_if_training_missing_inputs(async_client, admin_auth_headers):
     with (
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
@@ -381,9 +407,12 @@ async def test_what_if_training_missing_inputs(async_client, admin_auth_headers)
 @pytest.mark.asyncio
 async def test_what_if_route_portfolio_missing_inputs(async_client, admin_auth_headers):
     with (
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
@@ -413,18 +442,24 @@ async def test_kpi_200_no_cache(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.gather_fvi_inputs",
+            "v2.modules.analytics_executive.api.executive_routes.gather_fvi_inputs",
             new_callable=AsyncMock,
         ) as mock_gather,
-        patch("app.api.v1.endpoints.executive.compute_fvi", return_value=breakdown),
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fvi",
+            return_value=breakdown,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -466,9 +501,12 @@ async def test_kpi_200_cache_hit(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
 
@@ -488,17 +526,20 @@ async def test_carbon_200_no_cache(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_fleet_carbon",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fleet_carbon",
             new_callable=AsyncMock,
         ) as mock_carbon,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -527,17 +568,20 @@ async def test_compliance_200_with_items(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.scan_compliance",
+            "v2.modules.analytics_executive.api.executive_routes.scan_compliance",
             new_callable=AsyncMock,
         ) as mock_scan,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -566,17 +610,20 @@ async def test_cashflow_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.project_cashflow",
+            "v2.modules.analytics_executive.api.executive_routes.project_cashflow",
             new_callable=AsyncMock,
         ) as mock_project,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -606,17 +653,20 @@ async def test_cross_feature_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.aggregate_cross_feature",
+            "v2.modules.analytics_executive.api.executive_routes.aggregate_cross_feature",
             new_callable=AsyncMock,
         ) as mock_agg,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -645,17 +695,20 @@ async def test_bus_factor_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_bus_factor",
+            "v2.modules.analytics_executive.api.executive_routes.compute_bus_factor",
             new_callable=AsyncMock,
         ) as mock_bus,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -685,14 +738,16 @@ async def test_what_if_fleet_renewal_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive.simulate_fleet_renewal",
+            "v2.modules.analytics_executive.api.executive_routes.simulate_fleet_renewal",
             new_callable=AsyncMock,
         ) as mock_sim,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
@@ -726,14 +781,16 @@ async def test_what_if_training_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive.simulate_training_program",
+            "v2.modules.analytics_executive.api.executive_routes.simulate_training_program",
             new_callable=AsyncMock,
         ) as mock_sim,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
@@ -763,14 +820,16 @@ async def test_what_if_route_portfolio_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive.simulate_route_portfolio",
+            "v2.modules.analytics_executive.api.executive_routes.simulate_route_portfolio",
             new_callable=AsyncMock,
         ) as mock_sim,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_WHAT_IF_ENABLED = True
@@ -804,27 +863,32 @@ async def test_pdf_200(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive.gather_fvi_inputs",
+            "v2.modules.analytics_executive.api.executive_routes.gather_fvi_inputs",
             new_callable=AsyncMock,
         ) as mock_gather,
-        patch("app.api.v1.endpoints.executive.compute_fvi", return_value=breakdown),
         patch(
-            "app.api.v1.endpoints.executive.project_cashflow",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fvi",
+            return_value=breakdown,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.project_cashflow",
             new_callable=AsyncMock,
         ) as mock_cashflow,
         patch(
-            "app.api.v1.endpoints.executive.aggregate_cross_feature",
+            "v2.modules.analytics_executive.api.executive_routes.aggregate_cross_feature",
             new_callable=AsyncMock,
         ) as mock_agg,
         patch(
-            "app.api.v1.endpoints.executive.generate_executive_pdf",
+            "v2.modules.analytics_executive.api.executive_routes.generate_executive_pdf",
             return_value=fake_pdf,
         ),
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.LITRE_DIESEL_TL = 50.0
@@ -843,7 +907,9 @@ async def test_pdf_200(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_pdf_503_when_disabled(async_client, admin_auth_headers):
-    with patch("app.api.v1.endpoints.executive.settings") as mock_settings:
+    with patch(
+        "v2.modules.analytics_executive.api.executive_routes.settings"
+    ) as mock_settings:
         mock_settings.EXECUTIVE_ENABLED = False
         resp = await async_client.get(f"{BASE}/pdf", headers=admin_auth_headers)
     assert resp.status_code == 503
@@ -861,17 +927,20 @@ async def test_carbon_redis_none(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_fleet_carbon",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fleet_carbon",
             new_callable=AsyncMock,
         ) as mock_carbon,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -893,17 +962,20 @@ async def test_compliance_redis_none(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.scan_compliance",
+            "v2.modules.analytics_executive.api.executive_routes.scan_compliance",
             new_callable=AsyncMock,
         ) as mock_scan,
         patch(
-            "app.api.v1.endpoints.executive.log_audit_event",
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
             new_callable=AsyncMock,
         ),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -937,9 +1009,12 @@ async def test_compliance_cache_hit(async_client, admin_auth_headers):
     }
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
 
@@ -971,9 +1046,12 @@ async def test_cashflow_cache_hit(async_client, admin_auth_headers):
     }
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
 

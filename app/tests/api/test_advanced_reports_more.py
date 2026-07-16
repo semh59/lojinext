@@ -200,7 +200,7 @@ async def test_cost_period_domain_error(async_client, admin_auth_headers):
         side_effect=DomainError("domain error")
     )
 
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{MOD}.calculate_period_cost", mock_analyzer.calculate_period_cost):
         resp = await async_client.get(
             f"{BASE}/cost/period",
             params={"start_date": "2026-01-01", "end_date": "2026-01-31"},
@@ -218,7 +218,7 @@ async def test_cost_period_generic_exception(async_client, admin_auth_headers):
     # The endpoint has no generic exception handler — the exception propagates
     # through to the test client. Use raise_server_exceptions=False to get the
     # response instead of the exception.
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{MOD}.calculate_period_cost", mock_analyzer.calculate_period_cost):
         with pytest.raises(RuntimeError, match="crash"):
             await async_client.get(
                 f"{BASE}/cost/period",
@@ -257,7 +257,7 @@ async def test_excel_export_cost_trend_dict_result(async_client, admin_auth_head
     )
 
     with (
-        patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(f"{MOD}.get_monthly_trend", mock_analyzer.get_monthly_trend),
         patch(
             "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
@@ -335,7 +335,7 @@ async def test_cost_trend_generic_exception(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.get_monthly_trend = AsyncMock(side_effect=RuntimeError("crash"))
 
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{MOD}.get_monthly_trend", mock_analyzer.get_monthly_trend):
         with pytest.raises(RuntimeError, match="crash"):
             await async_client.get(
                 f"{BASE}/cost/trend",
@@ -357,7 +357,10 @@ async def test_vehicle_cost_comparison_generic_exception(
         side_effect=RuntimeError("crash")
     )
 
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{MOD}.analyze_vehicle_cost_comparison",
+        mock_analyzer.get_vehicle_cost_comparison,
+    ):
         with pytest.raises(RuntimeError, match="crash"):
             await async_client.get(
                 f"{BASE}/cost/vehicle-comparison",
@@ -379,7 +382,9 @@ async def test_savings_potential_domain_error(async_client, admin_auth_headers):
         side_effect=DomainError("domain error")
     )
 
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{MOD}.calculate_savings_potential", mock_analyzer.calculate_savings_potential
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/savings-potential",
             headers=admin_auth_headers,
@@ -400,7 +405,7 @@ async def test_roi_domain_error(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_roi = AsyncMock(side_effect=DomainError("domain error"))
 
-    with patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{MOD}.calculate_roi", mock_analyzer.calculate_roi):
         resp = await async_client.get(
             f"{BASE}/cost/roi",
             headers=admin_auth_headers,

@@ -142,3 +142,23 @@ class FleetComparisonResponse(BaseModel):
     current_end: date
     previous_start: date
     previous_end: date
+
+
+# ── Faz 3 — kullanım analitiği (page_views, dalga 11'de analytics_executive'ten
+# taşındı — tablo-sahipliği ilkesi) ────────────────────────────────────
+
+
+class PageViewCreate(BaseModel):
+    route: str = Field(..., min_length=1, max_length=255)
+
+
+class RouteCount(BaseModel):
+    route: str
+    count: int
+
+
+class PageViewStats(BaseModel):
+    period_days: int
+    total_views: int
+    top_routes: List[RouteCount]
+    bottom_routes: List[RouteCount]

@@ -131,7 +131,7 @@ def _make_bus_factor_report():
 
 async def test_get_redis_returns_singleton():
     """_get_redis returns the same instance on subsequent calls."""
-    import app.api.v1.endpoints.executive as mod
+    import v2.modules.analytics_executive.api.executive_routes as mod
 
     original = mod._exec_redis
     mod._exec_redis = None
@@ -140,7 +140,7 @@ async def test_get_redis_returns_singleton():
 
     try:
         with patch("redis.asyncio.from_url", return_value=mock_redis_client):
-            from app.api.v1.endpoints.executive import _get_redis
+            from v2.modules.analytics_executive.api.executive_routes import _get_redis
 
             r1 = await _get_redis()
             r2 = await _get_redis()
@@ -151,7 +151,7 @@ async def test_get_redis_returns_singleton():
 
 async def test_get_redis_returns_none_on_import_error():
     """When redis.asyncio not available → returns None."""
-    import app.api.v1.endpoints.executive as mod
+    import v2.modules.analytics_executive.api.executive_routes as mod
 
     original = mod._exec_redis
     mod._exec_redis = None
@@ -162,7 +162,7 @@ async def test_get_redis_returns_none_on_import_error():
         orig_redis = sys.modules.get("redis.asyncio")
         sys.modules["redis.asyncio"] = None  # type: ignore[assignment]
         try:
-            from app.api.v1.endpoints.executive import _get_redis
+            from v2.modules.analytics_executive.api.executive_routes import _get_redis
 
             result = await _get_redis()
             assert result is None
@@ -177,14 +177,14 @@ async def test_get_redis_returns_none_on_import_error():
 
 async def test_get_redis_returns_none_on_connection_error():
     """When redis.from_url raises → returns None."""
-    import app.api.v1.endpoints.executive as mod
+    import v2.modules.analytics_executive.api.executive_routes as mod
 
     original = mod._exec_redis
     mod._exec_redis = None
 
     try:
         with patch("redis.asyncio.from_url", side_effect=Exception("conn refused")):
-            from app.api.v1.endpoints.executive import _get_redis
+            from v2.modules.analytics_executive.api.executive_routes import _get_redis
 
             result = await _get_redis()
         assert result is None
@@ -208,14 +208,24 @@ async def test_kpi_redis_cache_read_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.gather_fvi_inputs", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.gather_fvi_inputs",
+            new_callable=AsyncMock,
         ) as mock_gather,
-        patch("app.api.v1.endpoints.executive.compute_fvi", return_value=breakdown),
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.compute_fvi",
+            return_value=breakdown,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -241,14 +251,24 @@ async def test_kpi_redis_setex_exception_swallowed(async_client, admin_auth_head
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.gather_fvi_inputs", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.gather_fvi_inputs",
+            new_callable=AsyncMock,
         ) as mock_gather,
-        patch("app.api.v1.endpoints.executive.compute_fvi", return_value=breakdown),
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.compute_fvi",
+            return_value=breakdown,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -277,14 +297,20 @@ async def test_carbon_redis_read_exception_swallowed(async_client, admin_auth_he
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_fleet_carbon",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fleet_carbon",
             new_callable=AsyncMock,
         ) as mock_carbon,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -310,14 +336,20 @@ async def test_carbon_redis_setex_exception_swallowed(async_client, admin_auth_h
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_fleet_carbon",
+            "v2.modules.analytics_executive.api.executive_routes.compute_fleet_carbon",
             new_callable=AsyncMock,
         ) as mock_carbon,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -349,13 +381,20 @@ async def test_compliance_redis_read_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.scan_compliance", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.scan_compliance",
+            new_callable=AsyncMock,
         ) as mock_scan,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -382,13 +421,20 @@ async def test_compliance_redis_setex_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.scan_compliance", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.scan_compliance",
+            new_callable=AsyncMock,
         ) as mock_scan,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -420,13 +466,20 @@ async def test_cashflow_redis_read_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.project_cashflow", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.project_cashflow",
+            new_callable=AsyncMock,
         ) as mock_project,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -455,13 +508,20 @@ async def test_cashflow_redis_setex_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.project_cashflow", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.project_cashflow",
+            new_callable=AsyncMock,
         ) as mock_project,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -495,14 +555,20 @@ async def test_cross_feature_redis_read_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.aggregate_cross_feature",
+            "v2.modules.analytics_executive.api.executive_routes.aggregate_cross_feature",
             new_callable=AsyncMock,
         ) as mock_agg,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -530,14 +596,20 @@ async def test_cross_feature_redis_setex_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.aggregate_cross_feature",
+            "v2.modules.analytics_executive.api.executive_routes.aggregate_cross_feature",
             new_callable=AsyncMock,
         ) as mock_agg,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -570,13 +642,20 @@ async def test_bus_factor_redis_read_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_bus_factor", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.compute_bus_factor",
+            new_callable=AsyncMock,
         ) as mock_bus,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800
@@ -604,13 +683,20 @@ async def test_bus_factor_redis_setex_exception_swallowed(
 
     with (
         patch(
-            "app.api.v1.endpoints.executive._get_redis", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes._get_redis",
+            new_callable=AsyncMock,
         ) as mock_redis,
         patch(
-            "app.api.v1.endpoints.executive.compute_bus_factor", new_callable=AsyncMock
+            "v2.modules.analytics_executive.api.executive_routes.compute_bus_factor",
+            new_callable=AsyncMock,
         ) as mock_bus,
-        patch("app.api.v1.endpoints.executive.log_audit_event", new_callable=AsyncMock),
-        patch("app.api.v1.endpoints.executive.settings") as mock_settings,
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.log_audit_event",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "v2.modules.analytics_executive.api.executive_routes.settings"
+        ) as mock_settings,
     ):
         mock_settings.EXECUTIVE_ENABLED = True
         mock_settings.EXECUTIVE_CACHE_TTL_S = 1800

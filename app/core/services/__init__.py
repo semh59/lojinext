@@ -9,7 +9,3 @@ Yeni servis nereye gider?
   ML/AI orkestrasyonu       → app/services/
   Dış API entegrasyonu      → app/services/
 """
-
-from .analiz_service import AnalizService
-
-__all__ = ["AnalizService"]

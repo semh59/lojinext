@@ -109,7 +109,9 @@ async def test_cost_period_happy_path(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_period_cost = AsyncMock(return_value=breakdown)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{ENDPOINT_MOD}.calculate_period_cost", mock_analyzer.calculate_period_cost
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/period",
             params={"start_date": "2026-01-01", "end_date": "2026-01-31"},
@@ -138,7 +140,9 @@ async def test_cost_period_with_arac_id(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_period_cost = AsyncMock(return_value=breakdown)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{ENDPOINT_MOD}.calculate_period_cost", mock_analyzer.calculate_period_cost
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/period",
             params={
@@ -179,7 +183,7 @@ async def test_cost_trend_happy_path(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.get_monthly_trend = AsyncMock(return_value=fake_trend)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{ENDPOINT_MOD}.get_monthly_trend", mock_analyzer.get_monthly_trend):
         resp = await async_client.get(
             f"{BASE}/cost/trend",
             params={"months": 6},
@@ -196,7 +200,7 @@ async def test_cost_trend_months_default(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.get_monthly_trend = AsyncMock(return_value=[])
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{ENDPOINT_MOD}.get_monthly_trend", mock_analyzer.get_monthly_trend):
         resp = await async_client.get(
             f"{BASE}/cost/trend",
             headers=admin_auth_headers,
@@ -230,7 +234,10 @@ async def test_vehicle_cost_comparison_happy_path(async_client, admin_auth_heade
     mock_analyzer = MagicMock()
     mock_analyzer.get_vehicle_cost_comparison = AsyncMock(return_value=fake_data)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{ENDPOINT_MOD}.analyze_vehicle_cost_comparison",
+        mock_analyzer.get_vehicle_cost_comparison,
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/vehicle-comparison",
             params={"months": 3},
@@ -259,7 +266,10 @@ async def test_savings_potential_happy_path(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_savings_potential = AsyncMock(return_value=fake_result)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{ENDPOINT_MOD}.calculate_savings_potential",
+        mock_analyzer.calculate_savings_potential,
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/savings-potential",
             params={"target_consumption": 30.0},
@@ -278,7 +288,10 @@ async def test_savings_potential_with_error_key(async_client, admin_auth_headers
         return_value={"error": "Veri yetersiz"}
     )
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(
+        f"{ENDPOINT_MOD}.calculate_savings_potential",
+        mock_analyzer.calculate_savings_potential,
+    ):
         resp = await async_client.get(
             f"{BASE}/cost/savings-potential",
             headers=admin_auth_headers,
@@ -305,7 +318,7 @@ async def test_roi_happy_path(async_client, admin_auth_headers):
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_roi = AsyncMock(return_value=fake_result)
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{ENDPOINT_MOD}.calculate_roi", mock_analyzer.calculate_roi):
         resp = await async_client.get(
             f"{BASE}/cost/roi",
             params={"investment": 50000, "months": 12, "target_consumption": 30.0},
@@ -324,7 +337,7 @@ async def test_roi_with_error_key(async_client, admin_auth_headers):
         return_value={"error": "Sefer verisi bulunamadı"}
     )
 
-    with patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer):
+    with patch(f"{ENDPOINT_MOD}.calculate_roi", mock_analyzer.calculate_roi):
         resp = await async_client.get(
             f"{BASE}/cost/roi",
             headers=admin_auth_headers,
@@ -398,7 +411,7 @@ async def test_excel_export_cost_trend(async_client, admin_auth_headers):
     mock_analyzer.get_monthly_trend = AsyncMock(return_value=fake_trend)
 
     with (
-        patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(f"{ENDPOINT_MOD}.get_monthly_trend", mock_analyzer.get_monthly_trend),
         patch(
             "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
@@ -630,7 +643,10 @@ async def test_vehicle_comparison_pdf_happy_path(async_client, admin_auth_header
     mock_gen.generate_vehicle_comparison.return_value = fake_pdf
 
     with (
-        patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(
+            f"{ENDPOINT_MOD}.analyze_vehicle_cost_comparison",
+            mock_analyzer.get_vehicle_cost_comparison,
+        ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
     ):
         resp = await async_client.get(
@@ -658,7 +674,10 @@ async def test_excel_export_vehicle_comparison(async_client, admin_auth_headers)
     mock_analyzer.get_vehicle_cost_comparison = AsyncMock(return_value=[fake_vehicle])
 
     with (
-        patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
+        patch(
+            f"{ENDPOINT_MOD}.analyze_vehicle_cost_comparison",
+            mock_analyzer.get_vehicle_cost_comparison,
+        ),
         patch(
             "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),

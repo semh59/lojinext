@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import app.database.repositories.analiz_repo as analiz_repo_mod
+import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_repo_mod
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_repo_mod
 import v2.modules.fuel.infrastructure.repository as yakit_repo_mod
 

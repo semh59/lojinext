@@ -276,7 +276,7 @@ async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        "app.database.repositories.analiz_repo.get_analiz_repo",
+        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
         lambda: SimpleNamespace(save_model_params=AsyncMock(return_value=None)),
     )
 

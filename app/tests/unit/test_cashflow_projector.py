@@ -90,7 +90,9 @@ class _PredItem:
 @pytest.mark.asyncio
 async def test_project_cashflow_empty_fleet():
     """Hiç planlı sefer + hiç bakım tahmini → 0 tüm kalemler."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     uow = _FakeUoW(fuel_rows=[], avg_cost=None)
     projection = await project_cashflow(
@@ -111,7 +113,9 @@ async def test_project_cashflow_empty_fleet():
 @pytest.mark.asyncio
 async def test_project_cashflow_fuel_only():
     """Sadece yakıt verisi → maintenance + penalty 0."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     fuel_rows = [
@@ -136,7 +140,9 @@ async def test_project_cashflow_fuel_only():
 @pytest.mark.asyncio
 async def test_project_cashflow_maintenance_uses_avg_cost():
     """avg_cost varsa onu kullan; fallback değil."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     preds = [
@@ -159,7 +165,9 @@ async def test_project_cashflow_maintenance_uses_avg_cost():
 @pytest.mark.asyncio
 async def test_project_cashflow_avg_cost_fallback():
     """avg_cost None → fallback değer kullanılır."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     preds = [_PredItem(predicted_date=today + timedelta(days=5))]
@@ -177,7 +185,9 @@ async def test_project_cashflow_avg_cost_fallback():
 @pytest.mark.asyncio
 async def test_project_cashflow_filters_out_of_horizon_bakim():
     """horizon_days dışına düşen bakım tahmini dahil edilmemeli."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     preds = [
@@ -199,7 +209,9 @@ async def test_project_cashflow_filters_out_of_horizon_bakim():
 @pytest.mark.asyncio
 async def test_project_cashflow_unpredictable_excluded():
     """predictable=False bakım çağrısı sayılmamalı."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     preds = [
@@ -218,7 +230,9 @@ async def test_project_cashflow_unpredictable_excluded():
 @pytest.mark.asyncio
 async def test_project_cashflow_horizon_clamp():
     """horizon_days < 7 → 7'ye yükseltilir; > 365 → 365'e indirilir."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     uow = _FakeUoW([], None)
     p_low = await project_cashflow(uow, horizon_days=3, predictor=_Pred([]))
@@ -230,7 +244,9 @@ async def test_project_cashflow_horizon_clamp():
 @pytest.mark.asyncio
 async def test_project_cashflow_grand_total_consistent():
     """grand_total = fuel + maintenance + penalty (cent sapması olmamalı)."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     today = date.today()
     uow = _FakeUoW(
@@ -255,7 +271,9 @@ async def test_project_cashflow_grand_total_consistent():
 @pytest.mark.asyncio
 async def test_project_cashflow_predictor_failure_graceful():
     """Predictor exception fırlatırsa maintenance=0, fuel hesabı çalışır."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     class _BrokenPredictor:
         async def predict_all(self):
@@ -279,7 +297,9 @@ async def test_project_cashflow_predictor_failure_graceful():
 @pytest.mark.asyncio
 async def test_project_cashflow_weeks_count_matches_horizon():
     """AUDIT-026: weeks tüm horizon'u kapsar (ceil), artık kalan günler düşmez."""
-    from app.core.services.cashflow_projector import project_cashflow
+    from v2.modules.analytics_executive.application.project_cashflow import (
+        project_cashflow,
+    )
 
     uow = _FakeUoW([], None)
     p30 = await project_cashflow(uow, horizon_days=30, predictor=_Pred([]))

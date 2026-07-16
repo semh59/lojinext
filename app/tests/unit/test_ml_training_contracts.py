@@ -9,8 +9,10 @@ from app.core.ml.ensemble_predictor import (
     PredictionResult,
 )
 from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
-from app.database.repositories.analiz_repo import AnalizRepository
 from app.database.repositories.sefer_repo import SeferRepository
+from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+    AnalizRepository,
+)
 
 LEGACY_REAL_FLAG = "is" + "_real"
 
@@ -348,7 +350,7 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
         ),
     )
     monkeypatch.setattr(
-        "app.database.repositories.analiz_repo.get_analiz_repo",
+        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
         lambda: SimpleNamespace(
             execute_query=AsyncMock(
                 side_effect=AssertionError(

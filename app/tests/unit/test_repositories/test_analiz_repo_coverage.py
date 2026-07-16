@@ -5,7 +5,6 @@ Covers:
 - get_training_seferler (lines 36-79): limit/offset clamping, execute_query delegation
 - save_model_params (lines 81-103): upsert path, rollback on error, standalone commit
 - get_model_params (lines 105-124): found/not-found, str katsayilar JSON parse
-- get_bulk_driver_metrics (lines 130-162): normal result, empty result
 - get_filo_ortalama_tuketim (lines 164-200): with/without date filters, exception fallback
 - get_dashboard_stats (lines 202-243): _mapping path, SimpleNamespace path, exception fallback
 - get_month_over_month_trends (lines 245-345): normal compute, exception path, no-row path
@@ -17,7 +16,6 @@ Covers:
 - get_top_routes_by_vehicle (lines 479-500): limit clamping, result mapping
 - get_daily_summary_for_ml (lines 506-553): with/without arac_id
 - get_heatmap_data (lines 555-572): days clamping, result mapping
-- get_driver_comparison (lines 574-596): limit clamping, row iteration
 - get_daily_consumption_series (lines 598-624): isoformat date, value cast
 - get_top_performing_vehicles (lines 626-654): limit clamping, row mapping
 - get_bulk_cost_stats (lines 656-693): months int cast, result mapping
@@ -39,7 +37,9 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return an AnalizRepository with a mocked async session."""
-    from app.database.repositories.analiz_repo import AnalizRepository
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        AnalizRepository,
+    )
 
     repo = AnalizRepository.__new__(AnalizRepository)
     mock_session = session if session is not None else AsyncMock()
@@ -288,30 +288,6 @@ class TestGetModelParams:
 
         result = await repo.get_model_params(arac_id=3)
         assert result["coefficients"] == [0.1, 0.2]
-
-
-# ---------------------------------------------------------------------------
-# get_bulk_driver_metrics
-# ---------------------------------------------------------------------------
-
-
-class TestGetBulkDriverMetrics:
-    async def test_returns_list_of_dicts(self):
-        repo = _make_repo()
-        row = _mapping_row(sofor_id=1, ad_soyad="Ali Veli", toplam_sefer=10)
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([row]))
-
-        result = await repo.get_bulk_driver_metrics()
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["sofor_id"] == 1
-
-    async def test_empty_returns_empty_list(self):
-        repo = _make_repo()
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([]))
-
-        result = await repo.get_bulk_driver_metrics()
-        assert result == []
 
 
 # ---------------------------------------------------------------------------
@@ -734,52 +710,6 @@ class TestGetHeatmapData:
 
 
 # ---------------------------------------------------------------------------
-# get_driver_comparison
-# ---------------------------------------------------------------------------
-
-
-class TestGetDriverComparison:
-    async def test_returns_categories_and_values(self):
-        repo = _make_repo()
-        row = MagicMock()
-        row.ad_soyad = "Ali Veli"
-        row.avg_consumption = 32.456
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([row]))
-
-        result = await repo.get_driver_comparison(limit=10)
-        assert "categories" in result
-        assert "values" in result
-        assert result["categories"] == ["Ali Veli"]
-        assert result["values"] == [32.46]
-
-    async def test_empty_returns_empty_lists(self):
-        repo = _make_repo()
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([]))
-
-        result = await repo.get_driver_comparison()
-        assert result["categories"] == []
-        assert result["values"] == []
-
-    async def test_limit_clamped_to_100(self):
-        repo = _make_repo()
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([]))
-
-        await repo.get_driver_comparison(limit=9999)
-        params = repo._session.execute.call_args[0][1]
-        assert params["limit"] == 100
-
-    async def test_limit_falsy_uses_default(self):
-        """limit=0 is falsy → uses default 10 before clamping."""
-        repo = _make_repo()
-        repo._session.execute = AsyncMock(return_value=_fetchall_result([]))
-
-        await repo.get_driver_comparison(limit=0)
-        params = repo._session.execute.call_args[0][1]
-        # 0 is falsy → `int(limit or 10)` = 10
-        assert params["limit"] == 10
-
-
-# ---------------------------------------------------------------------------
 # get_daily_consumption_series
 # ---------------------------------------------------------------------------
 
@@ -901,7 +831,7 @@ class TestGetBulkCostStats:
 
 class TestGetAnalizRepoFactory:
     def test_returns_analiz_repo_instance(self):
-        from app.database.repositories.analiz_repo import (
+        from v2.modules.analytics_executive.infrastructure.executive_read_models import (
             AnalizRepository,
             get_analiz_repo,
         )
@@ -910,14 +840,16 @@ class TestGetAnalizRepoFactory:
         assert isinstance(repo, AnalizRepository)
 
     def test_singleton_returns_same_instance(self):
-        from app.database.repositories.analiz_repo import get_analiz_repo
+        from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+            get_analiz_repo,
+        )
 
         repo1 = get_analiz_repo()
         repo2 = get_analiz_repo()
         assert repo1 is repo2
 
     def test_with_session_arg_returns_new_instance(self):
-        from app.database.repositories.analiz_repo import (
+        from v2.modules.analytics_executive.infrastructure.executive_read_models import (
             AnalizRepository,
             get_analiz_repo,
         )

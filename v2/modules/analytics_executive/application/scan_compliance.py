@@ -1,50 +1,14 @@
-"""Feature E.4 — Compliance heatmap v1.
-
-v1 scope: yalnız muayene tarihi takibi (araç + dorse).
-v2 (deferred — backlog/2026-05-26-feature-m-takograf...):
-    SRC belgesi, K1/K2/K3, tachograph AETR ihlalleri.
-
-Plan kaynağı: docs/superpowers/plans/2026-05-26-feature-e-strategic-cockpit-v3.md §7
-"""
+"""Use-case: muayene compliance heatmap taraması (E.4)."""
 
 from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import List, Literal
+from typing import List
 
-logger = logging.getLogger(__name__)
-
-EntityType = Literal["arac", "dorse"]
-RiskLevel = Literal["overdue", "soon", "normal", "low"]
-
-
-@dataclass
-class ComplianceItem:
-    entity_type: EntityType
-    entity_id: int
-    plaka: str
-    field: str  # "muayene" (v1'de sadece bu)
-    expiry_date: date
-    days_until: int  # negatif = geçmiş; pozitif = gelecek
-    risk_level: RiskLevel
-
-
-def _risk_for_days(days: int) -> RiskLevel:
-    """Plan §7.2 sınırları:
-    < 0  → overdue
-    0-14 → soon
-    15-60→ normal
-    60+  → low
-    """
-    if days < 0:
-        return "overdue"
-    if days <= 14:
-        return "soon"
-    if days <= 60:
-        return "normal"
-    return "low"
+from v2.modules.analytics_executive.domain.compliance_risk import (
+    ComplianceItem,
+    risk_for_days,
+)
 
 
 async def scan_compliance(uow, *, days_horizon: int = 90) -> List[ComplianceItem]:
@@ -92,7 +56,7 @@ async def scan_compliance(uow, *, days_horizon: int = 90) -> List[ComplianceItem
                 field="muayene",
                 expiry_date=r["muayene_tarihi"],
                 days_until=days,
-                risk_level=_risk_for_days(days),
+                risk_level=risk_for_days(days),
             )
         )
 
@@ -126,7 +90,7 @@ async def scan_compliance(uow, *, days_horizon: int = 90) -> List[ComplianceItem
                 field="muayene",
                 expiry_date=r["muayene_tarihi"],
                 days_until=days,
-                risk_level=_risk_for_days(days),
+                risk_level=risk_for_days(days),
             )
         )
 

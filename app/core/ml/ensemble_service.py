@@ -378,7 +378,9 @@ class EnsemblePredictorService:
 
             # 2. AnalizRepo ile Legacy Kayıt (YakitFormul)
             try:
-                from app.database.repositories.analiz_repo import get_analiz_repo
+                from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+                    get_analiz_repo,
+                )
 
                 analiz_repo = get_analiz_repo()
                 await analiz_repo.save_model_params(arac_id, result)
@@ -407,7 +409,9 @@ class EnsemblePredictorService:
         """
         logger.info("Training General Fallback Model (Vehicle ID: 0).")
         try:
-            from app.database.repositories.analiz_repo import get_analiz_repo
+            from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+                get_analiz_repo,
+            )
 
             analiz_repo = get_analiz_repo()
 

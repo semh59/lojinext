@@ -38,8 +38,8 @@ os.environ["MAPBOX_API_KEY"] = ""
 
 import app.core.container as container_mod  # noqa: E402
 import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
-import app.database.repositories.analiz_repo as analiz_mod  # noqa: E402
 import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
+import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
 import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
@@ -474,7 +474,9 @@ def sofor_repo(db_session):
 
 @pytest.fixture
 def analiz_repo(db_session):
-    from app.database.repositories.analiz_repo import AnalizRepository
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        AnalizRepository,
+    )
 
     return AnalizRepository(session=db_session)
 
@@ -513,7 +515,9 @@ def mock_event_bus():
 def report_repos(db_session):
     """ReportRepos bundle bound to the test session (dalga 10 — B.1: reports
     has no ``ReportService`` class anymore, use-cases take this bundle)."""
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
     from v2.modules.driver.infrastructure.repository import SoforRepository
     from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
     from v2.modules.fuel.infrastructure.repository import YakitRepository
@@ -524,21 +528,8 @@ def report_repos(db_session):
         arac_repo=AracRepository(session=db_session),
         sofor_repo=SoforRepository(session=db_session),
         yakit_repo=YakitRepository(session=db_session),
+        session=db_session,
     )
-
-
-@pytest.fixture
-def analiz_service(db_session):
-    from app.core.services.analiz_service import get_analiz_service
-
-    return get_analiz_service()
-
-
-@pytest.fixture
-def dashboard_service(db_session):
-    from app.core.services.dashboard_service import get_dashboard_service
-
-    return get_dashboard_service()
 
 
 # --- Sample data fixtures ---

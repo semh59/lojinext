@@ -94,7 +94,9 @@ class TestContainer(unittest.TestCase):
 
         # Check Services
         self.assertIsNotNone(container.sefer_service)
-        self.assertIsNotNone(container.analiz_service)
+        # NOT: container.analiz_service YOK — AnalizService sınıfı B.1
+        # dead-code temizliğinde kaldırıldı (dalga 11, hiçbir prod kod
+        # çağırmıyordu), container.analiz_repo hâlâ var (read-model repo).
         # NOT: container.import_service YOK — ImportService sınıfı B.1
         # free-function geçişinde kaldırıldı (dalga 9), import_excel modülü
         # artık container'a değil v2.modules.import_excel.public'e bağlı.
@@ -104,10 +106,6 @@ class TestContainer(unittest.TestCase):
 
         # Check Injection (White-box testing)
         self.assertEqual(container.sefer_service.repo, container.sefer_repo)
-
-        # Analiz Service Injection
-        self.assertEqual(container.analiz_service.yakit_repo, container.yakit_repo)
-        self.assertEqual(container.analiz_service.sefer_repo, container.sefer_repo)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.services.insight_engine import _notify_serious_alerts
+from v2.modules.analytics_executive.application.generate_insights import (
+    _notify_serious_alerts,
+)
 
 pytestmark = pytest.mark.unit
 

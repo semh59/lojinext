@@ -182,7 +182,9 @@ class TestContainerInitialization:
         container = get_container()
 
         assert container.sefer_service is not None
-        assert container.analiz_service is not None
+        # container.analiz_service removed — AnalizService class deleted in
+        # dalga 11 (dead-code temizliği, hiçbir prod kod çağırmıyordu);
+        # container.analiz_repo hâlâ var (read-model repo, asserted above).
         # container.import_service removed — ImportService class deleted in
         # dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
         # container.report_service removed — ReportService class deleted in
@@ -237,15 +239,10 @@ class TestDependencyInjection:
     # constructor-injected repo (container.sofor_repo still exists, used by
     # other services e.g. import_service/report_service, asserted below).
 
-    def test_analiz_service_has_all_repos(self):
-        """AnalizService tüm gerekli repository'leri almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        assert container.analiz_service.arac_repo is container.arac_repo
-        assert container.analiz_service.sefer_repo is container.sefer_repo
-        assert container.analiz_service.yakit_repo is container.yakit_repo
+    # test_analiz_service_has_all_repos removed — AnalizService class +
+    # container.analiz_service property both deleted in dalga 11 (dead-code
+    # temizliği, hiçbir prod kod çağırmıyordu); container.{arac,sefer,yakit}_repo
+    # still exist, used by other services e.g. report use-cases, asserted above.
 
     # test_import_service_has_services_and_repos removed — ImportService
     # class + container.import_service property both deleted in dalga 9
@@ -309,21 +306,9 @@ class TestMockInjection:
     # deleted in dalga 5 (B.1 free-function refactor, v2.modules.driver);
     # driver use-cases no longer take a constructor-injected repo.
 
-    def test_analiz_service_accepts_mock_repos(
-        self, mock_arac_repo, mock_sefer_repo, mock_yakit_repo
-    ):
-        """AnalizService mock repo'lar kabul etmeli."""
-        from app.core.services.analiz_service import AnalizService
-
-        service = AnalizService(
-            arac_repo=mock_arac_repo,
-            sefer_repo=mock_sefer_repo,
-            yakit_repo=mock_yakit_repo,
-        )
-
-        assert service.arac_repo is mock_arac_repo
-        assert service.sefer_repo is mock_sefer_repo
-        assert service.yakit_repo is mock_yakit_repo
+    # test_analiz_service_accepts_mock_repos removed — AnalizService class
+    # deleted in dalga 11 (dead-code temizliği, hiçbir prod kod
+    # çağırmıyordu, container.analiz_service property'siyle birlikte).
 
     # test_import_service_accepts_mocks removed — ImportService class
     # deleted in dalga 9 (B.1 free-function refactor, v2.modules.import_excel);
@@ -416,7 +401,7 @@ class TestThreadSafety:
                     _ = container.sefer_service
                     _ = container.yakit_repo
                     _ = container.arac_repo
-                    _ = container.analiz_service
+                    _ = container.analiz_repo
             except Exception as e:
                 errors.append(str(e))
 

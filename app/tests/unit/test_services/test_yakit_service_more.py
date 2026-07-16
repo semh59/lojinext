@@ -346,7 +346,7 @@ class TestGetAllPagedValidationSkip:
 class TestGetStatsDashboardNone:
     async def test_stats_dashboard_none_falls_back_to_repo(self, db_session):
         """When get_dashboard_stats returns None/falsy, fallback to yakit_repo.get_stats."""
-        import app.database.repositories.analiz_repo as analiz_repo_mod
+        import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_repo_mod
 
         with patch.object(
             analiz_repo_mod.AnalizRepository,

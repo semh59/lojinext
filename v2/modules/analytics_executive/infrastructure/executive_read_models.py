@@ -1,6 +1,14 @@
 """
-TIR Yakıt Takip - Analiz Repository
+TIR Yakıt Takip - Analiz Repository (analytics_executive)
 ML eğitim verileri, dashboard istatistikleri, raporlama sorguları
+
+dalga 11: eski `app/database/repositories/analiz_repo.py`'den taşındı.
+`get_bulk_driver_metrics`/`get_driver_comparison` `v2/modules/driver/
+infrastructure/driver_metrics_queries.py`'ye gitti (driver dalgasının
+[5] atladığı bir taşıma — bu dalgada tamamlandı). ML-parametre metodları
+(`get_training_seferler`/`save_model_params`/`get_model_params`/
+`get_daily_summary_for_ml`) prediction_ml (dalga 13) taşınana kadar
+burada kalıyor (görev dosyasının kararı).
 """
 
 import json
@@ -30,7 +38,8 @@ class AnalizRepository(BaseRepository[Sefer]):
     model = Sefer
 
     # =========================================================================
-    # ML VERİLERİ
+    # ML VERİLERİ (prediction_ml dalgası [13] taşıyana kadar burada — task
+    # dosyasının kararı)
     # =========================================================================
 
     async def get_training_seferler(
@@ -126,45 +135,9 @@ class AnalizRepository(BaseRepository[Sefer]):
     # =========================================================================
     # BULK ANALYTICS (N+1 SOLVER)
     # =========================================================================
-
-    async def get_bulk_driver_metrics(self) -> List[Dict]:
-        """
-        Tüm şoförler için puanlama metriklerini TEK BİR sorgu ile getirir (PostgreSQL).
-        """
-        today = date.today()
-        son_15_gun = today - timedelta(days=15)
-        son_30_gun = today - timedelta(days=30)
-
-        query = text("""
-            SELECT
-                s.sofor_id,
-                sf.ad_soyad,
-                COUNT(s.id) as toplam_sefer,
-                COALESCE(SUM(s.mesafe_km), 0) as toplam_km,
-                COALESCE(SUM(s.net_kg), 0) / 1000.0 as toplam_ton,
-                COALESCE(AVG(s.tuketim), 0) as ort_tuketim,
-                COALESCE(MIN(NULLIF(s.tuketim, 0)), 0) as en_iyi_tuketim,
-                COALESCE(MAX(NULLIF(s.tuketim, 0)), 0) as en_kotu_tuketim,
-                COALESCE(STDDEV(s.tuketim), 0) as std_sapma,
-                COUNT(DISTINCT (s.cikis_yeri || ' -> ' || s.varis_yeri)) as guzergah_sayisi,
-                AVG(s.tuketim) FILTER (WHERE s.tarih >= :son_15_gun AND s.tuketim > 0) as recent_avg,
-                AVG(s.tuketim) FILTER (WHERE s.tarih < :son_15_gun AND s.tarih >= :son_30_gun AND s.tuketim > 0) as older_avg
-            FROM seferler s
-            JOIN soforler sf ON s.sofor_id = sf.id
-            WHERE s.is_deleted = False
-            GROUP BY s.sofor_id, sf.ad_soyad
-        """)  # noqa: E501
-
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-        session = self.session
-        result = await session.execute(
-            query, {"son_15_gun": son_15_gun, "son_30_gun": son_30_gun}
-        )
-        rows = [dict(row._mapping) for row in result.fetchall()]
-        for row in rows:
-            row["ad_soyad"] = decrypt_pii_or(row.get("ad_soyad"))
-        return rows
+    # NOT: get_bulk_driver_metrics/get_driver_comparison dalga 11'de
+    # v2/modules/driver/infrastructure/driver_metrics_queries.py'ye taşındı
+    # (driver dalgasının [5] atladığı bir taşıma, bu dalgada tamamlandı).
 
     async def get_filo_ortalama_tuketim(
         self,
@@ -624,32 +597,6 @@ class AnalizRepository(BaseRepository[Sefer]):
         result = await session.execute(query, {"start_date": start_date})
         return [dict(row._mapping) for row in result.fetchall()]
 
-    async def get_driver_comparison(self, limit: int = 10) -> Dict:
-        """
-        Şoför karşılaştırma chart verisi (ReportService için).
-        """
-        limit = max(1, min(int(limit or 10), 100))
-        query = text("""
-            SELECT sf.ad_soyad, AVG(s.tuketim) as avg_consumption
-            FROM seferler s
-            JOIN soforler sf ON s.sofor_id = sf.id
-            WHERE s.tuketim IS NOT NULL AND s.tuketim > 0 AND s.is_deleted = False
-            GROUP BY sf.id
-            ORDER BY avg_consumption ASC
-            LIMIT :limit
-        """)
-
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
-
-        session = self.session
-        result = await session.execute(query, {"limit": limit})
-        rows = result.fetchall()
-
-        return {
-            "categories": [decrypt_pii_or(r.ad_soyad) for r in rows],
-            "values": [round(r.avg_consumption, 2) for r in rows],
-        }
-
     async def get_daily_consumption_series(self, days: int = 30) -> List[Dict]:
         """
         Son X günün günlük toplam yakıt tüketim serisi.
@@ -711,6 +658,10 @@ class AnalizRepository(BaseRepository[Sefer]):
     async def get_bulk_cost_stats(self, months: int = 12) -> List[Dict]:
         """
         Aylık maliyet istatistiklerini getir (PostgreSQL optimized).
+
+        BİLEREK burada kalır (task dosyasının kararı): çok-CTE cross-domain
+        JOIN (yakit_alimlari + seferler), servis-çağrısına çevirmek N+1
+        üretir.
         """
         months_int = int(months or 12)
         query = text("""

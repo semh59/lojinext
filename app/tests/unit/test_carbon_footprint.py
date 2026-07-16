@@ -47,7 +47,9 @@ class _FakeUoW:
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_empty():
     """Hiç araç yok → total_co2=0, vehicle_count=0."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     uow = _FakeUoW([])
     report = await compute_fleet_carbon(uow, period_days=30)
@@ -61,7 +63,9 @@ async def test_compute_fleet_carbon_empty():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_single_euro_vi_vehicle():
     """1 araç Euro VI, 10K L tüketim, 30K km → CO2 = 26,300, kg/km ≈ 0.877."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     rows = [
         {
@@ -87,7 +91,9 @@ async def test_compute_fleet_carbon_single_euro_vi_vehicle():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_mixed_classes():
     """3 araç, 3 farklı Euro sınıfı → by_euro_class doğru kırılım."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     rows = [
         {
@@ -123,9 +129,11 @@ async def test_compute_fleet_carbon_mixed_classes():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_delta_pct_above_benchmark():
     """Filo benchmark üstü → delta_pct > 0."""
-    from app.core.ml.carbon_footprint import (
-        SECTOR_BENCHMARK_CO2_PER_KM,
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
         compute_fleet_carbon,
+    )
+    from v2.modules.analytics_executive.domain.carbon_footprint import (
+        SECTOR_BENCHMARK_CO2_PER_KM,
     )
 
     rows = [
@@ -147,7 +155,9 @@ async def test_compute_fleet_carbon_delta_pct_above_benchmark():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_top_emitters_limit_10():
     """15 araç → top_emitters sadece 10 dönmeli."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     rows = [
         {
@@ -171,7 +181,9 @@ async def test_compute_fleet_carbon_top_emitters_limit_10():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_skip_zero_co2_emitters():
     """Sıfır tüketim olan araç top_emitters'e girmemeli (gürültü)."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     rows = [
         {
@@ -194,7 +206,9 @@ async def test_compute_fleet_carbon_skip_zero_co2_emitters():
 @pytest.mark.asyncio
 async def test_compute_fleet_carbon_zero_km_no_division_error():
     """total_km=0 → co2_per_km=0 (division by zero patlamamalı)."""
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     rows = [
         {
@@ -216,7 +230,9 @@ async def test_compute_fleet_carbon_period_dates():
     """period_start ve period_end doğru hesaplanmalı."""
     from datetime import date, timedelta
 
-    from app.core.ml.carbon_footprint import compute_fleet_carbon
+    from v2.modules.analytics_executive.application.get_fleet_carbon import (
+        compute_fleet_carbon,
+    )
 
     uow = _FakeUoW([])
     report = await compute_fleet_carbon(uow, period_days=60)

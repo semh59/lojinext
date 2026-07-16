@@ -13,7 +13,6 @@ Bu modül, audit kapsamında tespit edilen eksik test senaryolarını içerir:
 
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
@@ -43,10 +42,9 @@ class TestNoneEmptyValues:
     @pytest.mark.asyncio
     async def test_empty_list_fuel_periods(self):
         """Boş liste ile periyot oluşturma boş dönmeli."""
-        from app.core.services.analiz_service import AnalizService
+        from v2.modules.fuel.application.calculate_period import create_fuel_periods
 
-        service = AnalizService(yakit_repo=MagicMock(), sefer_repo=MagicMock())
-        result = await service.create_fuel_periods([])
+        result = await create_fuel_periods([])
         assert result == []
 
     def test_none_in_numeric_field(self):
@@ -237,9 +235,9 @@ class TestNaNInfinity:
     @pytest.mark.asyncio
     async def test_nan_consumption_detected(self):
         """NaN tüketim değeri anomali olarak tespit edilmeli."""
-        from app.core.services.analiz_service import AnalizService
+        from v2.modules.anomaly.public import get_anomaly_detection_service
 
-        service = AnalizService(yakit_repo=MagicMock(), sefer_repo=MagicMock())
+        service = get_anomaly_detection_service()
 
         # NaN içeren veri
         consumptions = [30, 31, float("nan"), 32, 33, 34, 35, 36, 37, 38]

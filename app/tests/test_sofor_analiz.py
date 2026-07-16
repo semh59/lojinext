@@ -20,6 +20,9 @@ from v2.modules.driver.domain.driver_stats import (
     compare_drivers,
     get_driver_stats,
 )
+from v2.modules.driver.infrastructure import (
+    driver_metrics_queries as driver_metrics_queries_mod,
+)
 
 
 class TestDriverStatsEntity:
@@ -101,11 +104,15 @@ class TestDriverStatsFreeFunctions:
         assert trend == "improving"
 
     @pytest.mark.asyncio
-    async def test_get_driver_stats_empty(self, mock_uow):
+    async def test_get_driver_stats_empty(self, mock_uow, monkeypatch):
         """Şoför istatistikleri - boş veri"""
         mock_uow.sofor_repo.get_sefer_stats.return_value = []
         # Bulk query used for None id
-        mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+        monkeypatch.setattr(
+            driver_metrics_queries_mod,
+            "get_bulk_driver_metrics",
+            AsyncMock(return_value=[]),
+        )
         result = await get_driver_stats(uow=mock_uow)
         assert result == []
 

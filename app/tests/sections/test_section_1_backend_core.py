@@ -784,82 +784,6 @@ class TestRAGEngine:
 
 
 # =============================================================================
-# 7. ANALIZ SERVICE TESTS
-# =============================================================================
-
-
-class TestAnalizService:
-    """Analiz servisi testleri"""
-
-    @pytest.fixture
-    def analiz_service(self, db_session):
-        """AnalizService instance"""
-        from app.core.services.analiz_service import get_analiz_service
-
-        return get_analiz_service()
-
-    @pytest.mark.asyncio
-    async def test_detect_anomalies_z_score(self, analiz_service):
-        """Z-Score anomali tespiti"""
-        consumptions = [32.0, 33.0, 31.5, 32.5, 31.8, 55.0, 32.2, 33.1]  # 55.0 outlier
-
-        anomalies = await analiz_service.detect_anomalies(
-            consumptions, z_threshold=2.0, use_iqr=False
-        )
-
-        assert len(anomalies) >= 1
-
-    @pytest.mark.asyncio
-    async def test_detect_anomalies_iqr(self, analiz_service):
-        """IQR anomali tespiti"""
-        consumptions = [32.0, 33.0, 31.5, 32.5, 31.8, 55.0, 32.2, 33.1]
-
-        anomalies = await analiz_service.detect_anomalies(consumptions, use_iqr=True)
-
-        assert isinstance(anomalies, list)
-
-    @pytest.mark.asyncio
-    async def test_calculate_moving_average(self, analiz_service):
-        """Hareketli ortalama hesaplama"""
-        values = [30.0, 32.0, 31.0, 33.0, 32.5, 31.5, 34.0, 32.0, 33.5, 31.0]
-
-        result = analiz_service.calculate_moving_average(values, window=3)
-
-        assert len(result) == len(values)
-        assert all(v is None or isinstance(v, float) for v in result)
-
-    @pytest.mark.asyncio
-    async def test_calculate_trend_increasing(self, analiz_service):
-        """Trend analizi - artan"""
-        values = [30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0]
-
-        result = analiz_service.calculate_trend(values)
-
-        assert result["direction"] == "increasing"
-        assert result["slope"] > 0
-
-    @pytest.mark.asyncio
-    async def test_calculate_trend_decreasing(self, analiz_service):
-        """Trend analizi - azalan"""
-        values = [37.0, 36.0, 35.0, 34.0, 33.0, 32.0, 31.0, 30.0]
-
-        result = analiz_service.calculate_trend(values)
-
-        assert result["direction"] == "decreasing"
-        assert result["slope"] < 0
-
-    @pytest.mark.asyncio
-    async def test_calculate_trend_stable(self, analiz_service):
-        """Trend analizi - sabit"""
-        values = [32.0, 32.1, 31.9, 32.0, 32.05, 31.95, 32.02, 31.98]
-
-        result = analiz_service.calculate_trend(values)
-
-        # Düşük slope = sabit
-        assert abs(result["slope"]) < 0.5
-
-
-# =============================================================================
 # 8. WEATHER SERVICE TESTS
 # =============================================================================
 
@@ -943,37 +867,42 @@ class TestWeatherService:
 
 
 class TestInsightEngine:
-    """Insight (içgörü) motoru testleri"""
-
-    @pytest.fixture
-    def insight_engine(self, db_session):
-        from app.core.services.insight_engine import InsightEngine
-
-        return InsightEngine()
+    """Insight (içgörü) motoru testleri (dalga 11 — free function, eski
+    InsightEngine sınıfı kaldırıldı)."""
 
     @pytest.mark.asyncio
-    async def test_generate_insights_empty_data(self, insight_engine):
+    async def test_generate_insights_empty_data(self):
         """Boş veri ile insight üretimi"""
         from app.database.unit_of_work import UnitOfWork
+        from v2.modules.analytics_executive.application.generate_insights import (
+            generate_vehicle_insights_bulk,
+        )
 
-        with patch("app.core.services.insight_engine.get_uow") as mock_uow_func:
+        with patch(
+            "v2.modules.analytics_executive.application.generate_insights.get_uow"
+        ) as mock_uow_func:
             mock_uow = MagicMock(spec=UnitOfWork)
             mock_uow.__aenter__.return_value = mock_uow
             mock_uow.analiz_repo = AsyncMock()
             mock_uow.analiz_repo.get_all_vehicles_consumption_stats.return_value = []
             mock_uow_func.return_value = mock_uow
 
-            insights = await insight_engine.generate_vehicle_insights_bulk()
+            insights = await generate_vehicle_insights_bulk()
 
             assert isinstance(insights, list)
             assert len(insights) == 0
 
     @pytest.mark.asyncio
-    async def test_insight_structure(self, insight_engine):
+    async def test_insight_structure(self):
         """Insight yapısı kontrolü"""
         from app.database.unit_of_work import UnitOfWork
+        from v2.modules.analytics_executive.application.generate_insights import (
+            generate_vehicle_insights_bulk,
+        )
 
-        with patch("app.core.services.insight_engine.get_uow") as mock_uow_func:
+        with patch(
+            "v2.modules.analytics_executive.application.generate_insights.get_uow"
+        ) as mock_uow_func:
             mock_uow = MagicMock(spec=UnitOfWork)
             mock_uow.__aenter__.return_value = mock_uow
             mock_uow.analiz_repo = AsyncMock()
@@ -987,7 +916,7 @@ class TestInsightEngine:
             ]
             mock_uow_func.return_value = mock_uow
 
-            insights = await insight_engine.generate_vehicle_insights_bulk()
+            insights = await generate_vehicle_insights_bulk()
 
             if insights:
                 insight = insights[0]
@@ -1001,13 +930,14 @@ class TestInsightEngine:
 
 
 class TestCostAnalyzer:
-    """Maliyet analiz servisi testleri"""
+    """Maliyet analiz use-case testleri (dalga 11 — free function, eski
+    CostAnalyzer sınıfı kaldırıldı)."""
 
     @pytest.fixture
     def cost_analyzer(self):
-        from app.core.services.cost_analyzer import CostAnalyzer
+        import v2.modules.analytics_executive.application.analyze_costs as mod
 
-        return CostAnalyzer()
+        return mod
 
     def test_calculate_fuel_cost(self, cost_analyzer):
         """Yakıt maliyeti hesaplama"""

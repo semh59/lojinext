@@ -22,15 +22,16 @@ import threading
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from app.core.services.analiz_service import AnalizService
     from app.core.services.health_service import HealthService
     from app.core.services.sefer_service import SeferService
-    from app.database.repositories.analiz_repo import AnalizRepository
     from app.database.repositories.sefer_repo import SeferRepository
     from app.infrastructure.events.event_bus import EventBus
     from app.services.prediction_service import PredictionService
     from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        AnalizRepository,
+    )
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
     from v2.modules.auth_rbac.application.license_service import LicenseEngine
     from v2.modules.driver.infrastructure.repository import SoforRepository
@@ -87,7 +88,6 @@ class Container:
         # per-request UoW ile yapılır. Bu instance'lar yalnızca diğer singleton
         # servislerin ihtiyaç duyduğu durumlarda devreye girer.
         self._sefer_service: Optional["SeferService"] = None
-        self._analiz_service: Optional["AnalizService"] = None
 
         # ── 4. ML/AI Subsystem (singleton — ağır model yüklemesi) ───────────
         # Model dosyaları ilk erişimde bir kez yüklenir.
@@ -209,24 +209,12 @@ class Container:
         if self._analiz_repo is None:
             with self._lock:
                 if self._analiz_repo is None:
-                    from app.database.repositories.analiz_repo import AnalizRepository
+                    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+                        AnalizRepository,
+                    )
 
                     self._analiz_repo = AnalizRepository()
         return self._analiz_repo
-
-    @property
-    def analiz_service(self) -> "AnalizService":
-        if self._analiz_service is None:
-            with self._lock:
-                if self._analiz_service is None:
-                    from app.core.services.analiz_service import AnalizService
-
-                    self._analiz_service = AnalizService(
-                        arac_repo=self.arac_repo,
-                        sefer_repo=self.sefer_repo,
-                        yakit_repo=self.yakit_repo,
-                    )
-        return self._analiz_service
 
     @property
     def prediction_service(self) -> "PredictionService":
@@ -358,7 +346,6 @@ class Container:
             self._time_series_service = None
             self._anomaly_detector = None
             self._prediction_service = None
-            self._analiz_service = None
             self._sefer_service = None
 
             # External / infra singletons

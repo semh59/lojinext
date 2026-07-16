@@ -27,6 +27,9 @@ from v2.modules.driver.domain.evaluation import (
     generate_suggestions,
     get_all_evaluations,
 )
+from v2.modules.driver.infrastructure import (
+    driver_metrics_queries as driver_metrics_queries_mod,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -382,8 +385,12 @@ async def test_evaluate_driver_with_pre_metrics(mock_uow):
     assert result.trend == TrendEnum.IMPROVING
 
 
-async def test_evaluate_driver_no_metrics_returns_none(mock_uow):
-    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=[])
+async def test_evaluate_driver_no_metrics_returns_none(mock_uow, monkeypatch):
+    monkeypatch.setattr(
+        driver_metrics_queries_mod,
+        "get_bulk_driver_metrics",
+        AsyncMock(return_value=[]),
+    )
 
     result = await evaluate_driver(sofor_id=99, uow=mock_uow)
     assert result is None
@@ -453,7 +460,7 @@ def test_guzergah_performans_optional_fields_none():
 # ---------------------------------------------------------------------------
 
 
-async def test_get_all_evaluations_sorted_by_puan(mock_uow):
+async def test_get_all_evaluations_sorted_by_puan(mock_uow, monkeypatch):
     bulk_metrics = [
         {
             "sofor_id": 1,
@@ -483,7 +490,11 @@ async def test_get_all_evaluations_sorted_by_puan(mock_uow):
         },
     ]
 
-    mock_uow.analiz_repo.get_bulk_driver_metrics = AsyncMock(return_value=bulk_metrics)
+    monkeypatch.setattr(
+        driver_metrics_queries_mod,
+        "get_bulk_driver_metrics",
+        AsyncMock(return_value=bulk_metrics),
+    )
     mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=32.0)
 
     results = await get_all_evaluations(include_routes=False, uow=mock_uow)

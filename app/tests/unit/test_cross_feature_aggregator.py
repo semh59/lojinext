@@ -91,7 +91,7 @@ def _utc_days_ago(days: int) -> datetime:
 @pytest.mark.asyncio
 async def test_aggregate_empty_data():
     """Hiç araç, koçluk, hırsızlık verisi yok → 3 kalem 0."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 
@@ -116,7 +116,7 @@ async def test_aggregate_empty_data():
 @pytest.mark.asyncio
 async def test_aggregate_d4_maintenance_loss_calculation():
     """D.4 factor 1.07 araç → period_l × 0.07 × diesel_price = ekstra TL."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 
@@ -145,7 +145,7 @@ async def test_aggregate_d4_maintenance_loss_calculation():
 @pytest.mark.asyncio
 async def test_aggregate_d4_skips_factor_at_or_below_one():
     """factor ≤ 1.0 araç sayılmamalı (bonus/nötr factor)."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 
@@ -187,7 +187,7 @@ async def test_aggregate_a5_coaching_with_positive_delta():
     period_km yıllık km'nin period_days/365 oranıdır; eski formül sürücü sayısını
     (evaluated) ve period ölçeğini yok sayıyordu.
     """
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         COACHING_IMPACT_RATIO,
         COACHING_KM_PER_DRIVER_AVG,
         aggregate_cross_feature,
@@ -213,7 +213,7 @@ async def test_aggregate_a5_coaching_with_positive_delta():
 @pytest.mark.asyncio
 async def test_aggregate_a5_zero_delta_no_savings():
     """avg_delta = 0 (veya negatif) → coaching_savings = 0."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 
@@ -230,7 +230,7 @@ async def test_aggregate_a5_zero_delta_no_savings():
 @pytest.mark.asyncio
 async def test_aggregate_b_theft_loss_calculation():
     """resolved real_theft × avg_sapma × THEFT_AVG_TRIP_L × diesel = TL."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         THEFT_AVG_TRIP_L,
         aggregate_cross_feature,
     )
@@ -254,7 +254,7 @@ async def test_aggregate_b_theft_loss_calculation():
 @pytest.mark.asyncio
 async def test_aggregate_b_zero_thefts():
     """Hiç real_theft yok → theft_loss = 0."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 
@@ -271,7 +271,7 @@ async def test_aggregate_b_zero_thefts():
 @pytest.mark.asyncio
 async def test_aggregate_all_three_motors_together():
     """3 motor da veriye sahip → 3 kalem dolu, confidence sabit 0.55."""
-    from app.core.services.cross_feature_aggregator import (
+    from v2.modules.analytics_executive.application.aggregate_cross_feature import (
         aggregate_cross_feature,
     )
 

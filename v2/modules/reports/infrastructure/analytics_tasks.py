@@ -1,4 +1,8 @@
-"""Faz 3 — kullanım analitiği retention task'i (gece prune)."""
+"""Faz 3 — kullanım analitiği retention task'i (gece prune).
+
+dalga 11 (analytics_executive) sırasında reports'a taşındı (page_views
+tablo-sahipliği ilkesi, bkz. page_view_repo.py).
+"""
 
 from __future__ import annotations
 
@@ -8,8 +12,8 @@ from typing import Any
 
 from app.config import settings
 from app.database.connection import session_scope
-from app.database.repositories.page_view_repo import PageViewRepository
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.reports.infrastructure.page_view_repo import PageViewRepository
 
 logger = logging.getLogger(__name__)
 

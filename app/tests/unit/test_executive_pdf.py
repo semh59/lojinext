@@ -50,7 +50,7 @@ def _is_pdf_bytes(b: bytes) -> bool:
 
 # ── _safe + _format_tl ─────────────────────────────────────────────────
 def test_safe_handles_none_and_empty():
-    from app.core.services.executive_pdf_generator import _safe
+    from v2.modules.analytics_executive.infrastructure.pdf_export import _safe
 
     assert _safe(None) == "—"
     assert _safe("") == "—"
@@ -59,7 +59,7 @@ def test_safe_handles_none_and_empty():
 
 
 def test_format_tl_basic():
-    from app.core.services.executive_pdf_generator import _format_tl
+    from v2.modules.analytics_executive.infrastructure.pdf_export import _format_tl
 
     assert _format_tl(1_000_000) == "₺1.000.000"
     assert _format_tl(0) == "₺0"
@@ -70,7 +70,9 @@ def test_format_tl_basic():
 # ── generate_executive_pdf ─────────────────────────────────────────────
 def test_generate_pdf_with_full_data():
     """Tüm 4 bölüm dolu → geçerli PDF döner."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf = generate_executive_pdf(
         fvi=_sample_fvi(),
@@ -85,7 +87,9 @@ def test_generate_pdf_with_full_data():
 
 def test_generate_pdf_with_all_none_graceful():
     """Tüm input None → graceful '—' gösterimi, yine geçerli PDF döner."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf = generate_executive_pdf()
     assert _is_pdf_bytes(pdf)
@@ -93,14 +97,18 @@ def test_generate_pdf_with_all_none_graceful():
 
 def test_generate_pdf_with_only_fvi():
     """Sadece FVI var → diğer bölümler '—' veya 'veri yok' gösterilir."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf = generate_executive_pdf(fvi=_sample_fvi())
     assert _is_pdf_bytes(pdf)
 
 
 def test_generate_pdf_with_only_cashflow():
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf = generate_executive_pdf(cashflow=_sample_cashflow())
     assert _is_pdf_bytes(pdf)
@@ -108,7 +116,9 @@ def test_generate_pdf_with_only_cashflow():
 
 def test_generate_pdf_contains_turkish_characters_safely():
     """Türkçe karakter güvenli üretim — exception fırlamaz."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     fvi_turkish = {
         **_sample_fvi(),
@@ -121,7 +131,9 @@ def test_generate_pdf_contains_turkish_characters_safely():
 
 def test_generate_pdf_what_if_unknown_scenario_type():
     """what_if_top içinde bilinmeyen scenario_type → label fallback."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf = generate_executive_pdf(
         what_if_top={
@@ -136,7 +148,9 @@ def test_generate_pdf_what_if_unknown_scenario_type():
 
 def test_generate_pdf_generated_date_injectable():
     """Test determinizmi için generated_date geçirilebilir."""
-    from app.core.services.executive_pdf_generator import generate_executive_pdf
+    from v2.modules.analytics_executive.infrastructure.pdf_export import (
+        generate_executive_pdf,
+    )
 
     pdf1 = generate_executive_pdf(generated_date=date(2026, 1, 1))
     pdf2 = generate_executive_pdf(generated_date=date(2026, 6, 30))

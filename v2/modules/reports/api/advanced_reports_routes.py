@@ -15,7 +15,6 @@ from pydantic import BaseModel
 from app.api.deps import SessionDep, get_current_active_admin
 from app.api.v1.utils import parse_date_param
 from app.core.exceptions import DomainError
-from app.core.services.cost_analyzer import get_cost_analyzer
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
@@ -24,6 +23,15 @@ from app.schemas.api_responses import (
     PDF_RESPONSES,
     CostTrendPoint,
     VehicleCostComparisonItem,
+)
+from v2.modules.analytics_executive.application.analyze_costs import (
+    calculate_period_cost,
+    calculate_roi,
+    calculate_savings_potential,
+    get_monthly_trend,
+)
+from v2.modules.analytics_executive.application.analyze_costs import (
+    get_vehicle_cost_comparison as analyze_vehicle_cost_comparison,
 )
 from v2.modules.import_excel.public import export_data, get_export_service
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
@@ -240,8 +248,7 @@ async def get_vehicle_comparison_pdf(
 ):
     """Araç maliyet karşılaştırma raporu PDF"""
     try:
-        analyzer = get_cost_analyzer()
-        vehicles = await analyzer.get_vehicle_cost_comparison(months)
+        vehicles = await analyze_vehicle_cost_comparison(months)
 
         generator = get_report_generator()
         pdf_bytes = await asyncio.to_thread(
@@ -282,8 +289,7 @@ async def get_period_cost(
             status_code=400, detail="Geçersiz tarih formatı. YYYY-MM-DD kullanın."
         )
 
-    analyzer = get_cost_analyzer()
-    breakdown = await analyzer.calculate_period_cost(start, end, arac_id)
+    breakdown = await calculate_period_cost(start, end, arac_id)
 
     return CostBreakdownResponse(
         fuel_cost=float(breakdown.fuel_cost),
@@ -305,8 +311,7 @@ async def get_cost_trend(
     """
     Aylık maliyet trendi
     """
-    analyzer = get_cost_analyzer()
-    return await analyzer.get_monthly_trend(months)
+    return await get_monthly_trend(months)
 
 
 @router.get("/cost/vehicle-comparison", response_model=List[VehicleCostComparisonItem])
@@ -317,8 +322,7 @@ async def get_vehicle_cost_comparison(
     """
     Araç bazlı maliyet karşılaştırması
     """
-    analyzer = get_cost_analyzer()
-    return await analyzer.get_vehicle_cost_comparison(months)
+    return await analyze_vehicle_cost_comparison(months)
 
 
 @router.get("/cost/savings-potential", response_model=SavingsPotentialResponse)
@@ -329,8 +333,7 @@ async def get_savings_potential(
     """
     Tasarruf potansiyeli hesaplama
     """
-    analyzer = get_cost_analyzer()
-    result = await analyzer.calculate_savings_potential(target_consumption)
+    result = await calculate_savings_potential(target_consumption)
     if "error" in result:
         raise HTTPException(status_code=409, detail=result["error"])
 
@@ -347,8 +350,7 @@ async def get_roi_analysis(
     """
     Sistem ROI analizi
     """
-    analyzer = get_cost_analyzer()
-    result = await analyzer.calculate_roi(investment, months, target_consumption)
+    result = await calculate_roi(investment, months, target_consumption)
 
     if "error" in result:
         raise HTTPException(status_code=409, detail=result["error"])
@@ -445,13 +447,11 @@ async def export_analytical_report_excel(
             ]
 
         elif report_type == "cost_trend":
-            analyzer = get_cost_analyzer()
-            trend = await analyzer.get_monthly_trend(months)
+            trend = await get_monthly_trend(months)
             data = trend if isinstance(trend, list) else [trend]
 
         elif report_type == "vehicle_comparison":
-            analyzer = get_cost_analyzer()
-            vehicles = await analyzer.get_vehicle_cost_comparison(months)
+            vehicles = await analyze_vehicle_cost_comparison(months)
             data = [
                 {
                     "Plaka": v.get("plaka"),

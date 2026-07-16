@@ -565,7 +565,7 @@ class TestTrainForVehicle:
                 return_value=mock_manager,
             ),
             patch(
-                "app.database.repositories.analiz_repo.get_analiz_repo",
+                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -594,7 +594,7 @@ class TestTrainGeneralModel:
 
         mock_analiz_repo = MagicMock()
         with patch(
-            "app.database.repositories.analiz_repo.get_analiz_repo",
+            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()
@@ -638,7 +638,7 @@ class TestTrainGeneralModel:
                 return_value=mock_manager,
             ),
             patch(
-                "app.database.repositories.analiz_repo.get_analiz_repo",
+                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -654,7 +654,7 @@ class TestTrainGeneralModel:
         )
         mock_analiz_repo = MagicMock()
         with patch(
-            "app.database.repositories.analiz_repo.get_analiz_repo",
+            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()

@@ -1,5 +1,9 @@
 """
-Unit Tests — CostAnalyzer service
+Unit Tests — analytics_executive cost analysis use-cases (analyze_costs.py)
+
+dalga 11: `CostAnalyzer` sınıfı kaldırıldı (B.1, constructor `pass` idi) —
+free function'lara çevrildi, testler class-mock'tan free-function-mock'a
+dönüştürüldü (patch hedefi: kaynak repo modülleri, aynı önceki desende).
 
 0-mock (Dilim 27): all patch(UnitOfWork) removed.
 - Empty-result tests → real DB via db_session (clean slate from conftest)
@@ -14,14 +18,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import app.database.repositories.analiz_repo as analiz_repo_mod
 import app.database.repositories.sefer_repo as sefer_repo_mod
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_repo_mod
 import v2.modules.fuel.infrastructure.repository as yakit_repo_mod
-from app.core.services.cost_analyzer import (
-    CostAnalyzer,
+from v2.modules.analytics_executive.application.analyze_costs import (
     CostBreakdown,
-    get_cost_analyzer,
+    calculate_period_cost,
+    calculate_roi,
+    calculate_savings_potential,
+    get_monthly_trend,
+    get_vehicle_cost_comparison,
+)
+from v2.modules.analytics_executive.infrastructure import (
+    executive_read_models as analiz_repo_mod,
 )
 
 pytestmark = pytest.mark.integration
@@ -56,7 +65,6 @@ class TestCalculatePeriodCost:
         ]
         trips = [{"mesafe_km": 1000}, {"mesafe_km": 500}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 yakit_repo_mod.YakitRepository,
@@ -69,9 +77,7 @@ class TestCalculatePeriodCost:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.calculate_period_cost(
-                date(2025, 1, 1), date(2025, 1, 31)
-            )
+            result = await calculate_period_cost(date(2025, 1, 1), date(2025, 1, 31))
 
         assert result.fuel_cost == Decimal("1250.00")
         assert result.fuel_liters == 250.0
@@ -82,10 +88,7 @@ class TestCalculatePeriodCost:
 
     async def test_empty_fuel_and_trips(self, db_session):
         """Empty DB → all zeros returned."""
-        analyzer = CostAnalyzer()
-        result = await analyzer.calculate_period_cost(
-            date(2020, 1, 1), date(2020, 1, 31)
-        )
+        result = await calculate_period_cost(date(2020, 1, 1), date(2020, 1, 31))
 
         assert result.fuel_cost == Decimal("0")
         assert result.trip_count == 0
@@ -93,11 +96,10 @@ class TestCalculatePeriodCost:
         assert result.avg_price_per_liter == Decimal("0")
 
     async def test_with_arac_id_filter(self):
-        """Service must pass arac_id to yakit_repo.get_by_date_range."""
+        """Use-case must pass arac_id to yakit_repo.get_by_date_range."""
         fuel = [{"toplam_tutar": 200.0, "litre": 40.0}]
         trips = [{"mesafe_km": 400}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 yakit_repo_mod.YakitRepository,
@@ -110,7 +112,7 @@ class TestCalculatePeriodCost:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.calculate_period_cost(
+            result = await calculate_period_cost(
                 date(2025, 1, 1), date(2025, 1, 31), arac_id=7
             )
 
@@ -122,7 +124,6 @@ class TestCalculatePeriodCost:
         fuel = [{"toplam_tutar": None, "litre": None}]
         trips = [{"mesafe_km": None}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 yakit_repo_mod.YakitRepository,
@@ -135,9 +136,7 @@ class TestCalculatePeriodCost:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.calculate_period_cost(
-                date(2025, 1, 1), date(2025, 1, 31)
-            )
+            result = await calculate_period_cost(date(2025, 1, 1), date(2025, 1, 31))
 
         assert result.fuel_cost == Decimal("0")
 
@@ -165,13 +164,12 @@ class TestGetMonthlyTrend:
             },
         ]
 
-        analyzer = CostAnalyzer()
         with patch.object(
             analiz_repo_mod.AnalizRepository,
             "get_bulk_cost_stats",
             AsyncMock(return_value=bulk_stats),
         ):
-            trends = await analyzer.get_monthly_trend(months=2)
+            trends = await get_monthly_trend(months=2)
 
         assert len(trends) == 2
         jan = trends[0]
@@ -185,8 +183,7 @@ class TestGetMonthlyTrend:
 
     async def test_empty_stats(self, db_session):
         """Empty DB → get_bulk_cost_stats returns [] → trend is []."""
-        analyzer = CostAnalyzer()
-        result = await analyzer.get_monthly_trend()
+        result = await get_monthly_trend()
         assert result == []
 
 
@@ -196,8 +193,7 @@ class TestGetMonthlyTrend:
 class TestGetVehicleCostComparison:
     async def test_no_vehicles(self, db_session):
         """Empty DB → no active vehicles → result is []."""
-        analyzer = CostAnalyzer()
-        result = await analyzer.get_vehicle_cost_comparison()
+        result = await get_vehicle_cost_comparison()
         assert result == []
 
     async def test_single_vehicle_with_data(self):
@@ -206,7 +202,6 @@ class TestGetVehicleCostComparison:
         fuel = [{"toplam_tutar": 300.0, "litre": 60.0}]
         trips = [{"mesafe_km": 600.0}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 arac_repo_mod.AracRepository,
@@ -224,7 +219,7 @@ class TestGetVehicleCostComparison:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.get_vehicle_cost_comparison(months=1)
+            result = await get_vehicle_cost_comparison(months=1)
 
         assert len(result) == 1
         assert result[0]["arac_id"] == 1
@@ -234,20 +229,18 @@ class TestGetVehicleCostComparison:
         """When calculate_period_cost raises, vehicle entry shows unavailable."""
         vehicles = [{"id": 5, "plaka": "06XYZ789"}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 arac_repo_mod.AracRepository,
                 "get_all",
                 AsyncMock(return_value=vehicles),
             ),
-            patch.object(
-                analyzer,
-                "calculate_period_cost",
+            patch(
+                "v2.modules.analytics_executive.application.analyze_costs.calculate_period_cost",
                 side_effect=Exception("DB down"),
             ),
         ):
-            result = await analyzer.get_vehicle_cost_comparison(months=1)
+            result = await get_vehicle_cost_comparison(months=1)
 
         assert len(result) == 1
         assert result[0]["unavailable"] is True
@@ -259,14 +252,12 @@ class TestGetVehicleCostComparison:
 
 class TestCalculateSavingsPotential:
     async def test_invalid_target(self):
-        analyzer = CostAnalyzer()
-        result = await analyzer.calculate_savings_potential(target_consumption=0)
+        result = await calculate_savings_potential(target_consumption=0)
         assert "error" in result
 
     async def test_no_source_data(self, db_session):
         """Empty DB → no distance/fuel → error returned."""
-        analyzer = CostAnalyzer()
-        result = await analyzer.calculate_savings_potential(target_consumption=30.0)
+        result = await calculate_savings_potential(target_consumption=30.0)
         assert "error" in result
 
     async def test_with_real_data(self):
@@ -274,7 +265,6 @@ class TestCalculateSavingsPotential:
         fuel = [{"toplam_tutar": 1500.0, "litre": 300.0}]
         trips = [{"mesafe_km": 1000.0}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 yakit_repo_mod.YakitRepository,
@@ -287,7 +277,7 @@ class TestCalculateSavingsPotential:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.calculate_savings_potential(target_consumption=25.0)
+            result = await calculate_savings_potential(target_consumption=25.0)
 
         assert "current_consumption" in result
         assert "potential_savings" in result
@@ -299,14 +289,12 @@ class TestCalculateSavingsPotential:
 
 class TestCalculateROI:
     async def test_invalid_investment(self):
-        analyzer = CostAnalyzer()
-        result = await analyzer.calculate_roi(investment=0)
+        result = await calculate_roi(investment=0)
         assert "error" in result
 
     async def test_no_source_data_propagates_error(self, db_session):
         """Empty DB → savings_potential has error → roi propagates it."""
-        analyzer = CostAnalyzer()
-        result = await analyzer.calculate_roi(investment=50000.0)
+        result = await calculate_roi(investment=50000.0)
         assert "error" in result
 
     async def test_with_positive_savings(self):
@@ -314,7 +302,6 @@ class TestCalculateROI:
         fuel = [{"toplam_tutar": 5000.0, "litre": 1000.0}]
         trips = [{"mesafe_km": 3000.0}]
 
-        analyzer = CostAnalyzer()
         with (
             patch.object(
                 yakit_repo_mod.YakitRepository,
@@ -327,23 +314,10 @@ class TestCalculateROI:
                 AsyncMock(return_value=trips),
             ),
         ):
-            result = await analyzer.calculate_roi(
+            result = await calculate_roi(
                 investment=10000.0, months=12, target_consumption=25.0
             )
 
         if "error" not in result:
             assert "payback_months" in result
             assert "annual_roi_percentage" in result
-
-
-# ── singleton ─────────────────────────────────────────────────────────────────
-
-
-class TestGetCostAnalyzer:
-    def test_returns_same_instance(self):
-        a = get_cost_analyzer()
-        b = get_cost_analyzer()
-        assert a is b
-
-    def test_is_cost_analyzer(self):
-        assert isinstance(get_cost_analyzer(), CostAnalyzer)

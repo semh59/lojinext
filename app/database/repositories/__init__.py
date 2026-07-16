@@ -11,13 +11,15 @@ from app.database.repositories.admin_config_repo import (
     AdminConfigRepository,
     get_admin_config_repo,
 )
-from app.database.repositories.analiz_repo import AnalizRepository
 from app.database.repositories.audit_repo import AuditRepository
 from app.database.repositories.config_repo import ConfigRepository
 from app.database.repositories.ml_training_repo import MLTrainingRepository
 from app.database.repositories.model_versiyon_repo import ModelVersiyonRepository
 from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.setting_repository import SettingRepository
+from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+    AnalizRepository,
+)
 from v2.modules.anomaly.infrastructure.anomaly_repository import AnomalyRepository
 from v2.modules.anomaly.infrastructure.investigation_repository import (
     InvestigationRepository,

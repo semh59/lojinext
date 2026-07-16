@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.repositories.analiz_repo import (
+from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     DEFAULT_FILO_ORTALAMA,
     AnalizRepository,
 )

@@ -162,9 +162,19 @@ class SoforDegerlendirme(BaseModel):
 def _analiz_repo(uow: Optional["_HasAnalizRepo"]):
     if uow is not None:
         return uow.analiz_repo
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
 
     return get_analiz_repo()
+
+
+async def _bulk_driver_metrics(uow: Optional["_HasAnalizRepo"]):
+    from v2.modules.driver.infrastructure.driver_metrics_queries import (
+        get_bulk_driver_metrics,
+    )
+
+    return await get_bulk_driver_metrics(uow)
 
 
 def calculate_verimlilik_puan(ort_tuketim: float, filo_ortalama: float) -> float:
@@ -329,7 +339,7 @@ async def evaluate_driver(
     if pre_metrics:
         metrics = pre_metrics
     else:
-        bulk_data = await analiz_repo.get_bulk_driver_metrics()
+        bulk_data = await _bulk_driver_metrics(uow)
         metrics = next((d for d in bulk_data if d["sofor_id"] == sofor_id), None)
         if not metrics:
             return None
@@ -399,7 +409,7 @@ async def get_all_evaluations(
 
     analiz_repo = _analiz_repo(uow)
 
-    metrics_task = analiz_repo.get_bulk_driver_metrics()
+    metrics_task = _bulk_driver_metrics(uow)
     filo_task = analiz_repo.get_filo_ortalama_tuketim()
 
     bulk_metrics, filo_ort = await asyncio.gather(metrics_task, filo_task)

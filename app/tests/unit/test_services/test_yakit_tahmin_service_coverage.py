@@ -7,7 +7,7 @@ train_model/predict/retrain_all_models are free functions in
 v2/modules/fuel/domain/consumption_prediction.py, each fetching its repo
 fresh via an inline `from ... import get_x_repo` call (no cached instance
 attribute left to inject a mock into) — patch target is the SOURCE module
-(app.database.repositories.analiz_repo.get_analiz_repo /
+(v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo /
 v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo), same
 inline-import gotcha documented in location/CLAUDE.md.
 """
@@ -63,7 +63,7 @@ def _make_valid_params():
 
 def _patch_analiz_repo(mock_repo):
     return patch(
-        "app.database.repositories.analiz_repo.get_analiz_repo",
+        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
         return_value=mock_repo,
     )
 

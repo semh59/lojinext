@@ -21,15 +21,17 @@ def test_inspection_push_broadcasts_when_due():
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=MagicMock())),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
-            "app.workers.tasks.compliance_tasks.scan_compliance",
+            "v2.modules.analytics_executive.infrastructure.compliance_tasks.scan_compliance",
             new=AsyncMock(return_value=[_item("overdue"), _item("soon")]),
         ),
         patch(
-            "app.workers.tasks.compliance_tasks.send_push_broadcast",
+            "v2.modules.analytics_executive.infrastructure.compliance_tasks.send_push_broadcast",
             new=AsyncMock(),
         ) as mock_bc,
     ):
-        from app.workers.tasks.compliance_tasks import inspection_push
+        from v2.modules.analytics_executive.infrastructure.compliance_tasks import (
+            inspection_push,
+        )
 
         result = inspection_push.run()
 
@@ -45,15 +47,17 @@ def test_inspection_push_skips_when_none_due():
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=MagicMock())),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
-            "app.workers.tasks.compliance_tasks.scan_compliance",
+            "v2.modules.analytics_executive.infrastructure.compliance_tasks.scan_compliance",
             new=AsyncMock(return_value=[]),
         ),
         patch(
-            "app.workers.tasks.compliance_tasks.send_push_broadcast",
+            "v2.modules.analytics_executive.infrastructure.compliance_tasks.send_push_broadcast",
             new=AsyncMock(),
         ) as mock_bc,
     ):
-        from app.workers.tasks.compliance_tasks import inspection_push
+        from v2.modules.analytics_executive.infrastructure.compliance_tasks import (
+            inspection_push,
+        )
 
         result = inspection_push.run()
 

@@ -18,10 +18,14 @@ from v2.modules.fuel.application.add_yakit import add_yakit
 @pytest.mark.asyncio
 async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
     """End-to-end operational flow with explicit dependency injection."""
-    from app.core.services.analiz_service import AnalizService
     from app.core.services.sefer_service import SeferService
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
+    from v2.modules.fuel.application.recalculate_vehicle_periods import (
+        recalculate_vehicle_periods,
+    )
     from v2.modules.reports.infrastructure.repo_access import ReportRepos
 
     sofor_repo_local = get_sofor_repo(session=db_session)
@@ -36,9 +40,7 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
         arac_repo=arac_repo,
         sofor_repo=sofor_repo_local,
         yakit_repo=yakit_repo,
-    )
-    analiz_service = AnalizService(
-        yakit_repo=yakit_repo, sefer_repo=sefer_repo, arac_repo=arac_repo
+        session=db_session,
     )
 
     arac_id = await arac_repo.create(
@@ -128,7 +130,9 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
         )
     )
 
-    await analiz_service.recalculate_vehicle_periods(arac2_id)
+    await recalculate_vehicle_periods(
+        arac2_id, yakit_repo=yakit_repo, sefer_repo=sefer_repo
+    )
 
     periods_db = await yakit_repo.get_fuel_periods(arac2_id)
     if periods_db:

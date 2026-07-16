@@ -56,58 +56,68 @@ class _FakeUoW:
     ],
 )
 def test_risk_level_for_loss_boundaries(loss, expected):
-    from app.core.ml.bus_factor import _risk_level_for_loss
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import (
+        risk_level_for_loss,
+    )
 
-    assert _risk_level_for_loss(loss) == expected
+    assert risk_level_for_loss(loss) == expected
 
 
 # ── _median_score ──────────────────────────────────────────────────────
 def test_median_score_empty_rest_uses_fallback():
-    from app.core.ml.bus_factor import MEDIAN_FALLBACK, _median_score
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import (
+        MEDIAN_FALLBACK,
+        median_score,
+    )
 
-    assert _median_score([]) == MEDIAN_FALLBACK
+    assert median_score([]) == MEDIAN_FALLBACK
 
 
 def test_median_score_odd_count():
-    from app.core.ml.bus_factor import _median_score
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import median_score
 
     rows = [{"score": 0.8}, {"score": 1.2}, {"score": 1.5}]
-    assert _median_score(rows) == 1.2
+    assert median_score(rows) == 1.2
 
 
 def test_median_score_even_count():
     """Median = sorted'in mid (len//2) eleman; plan §10.1 sorted_scores[len//2]."""
-    from app.core.ml.bus_factor import _median_score
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import median_score
 
     rows = [{"score": 0.5}, {"score": 1.0}, {"score": 1.5}, {"score": 2.0}]
     # len=4, mid=2 → sorted[2] = 1.5 (upper of mid)
-    assert _median_score(rows) == 1.5
+    assert median_score(rows) == 1.5
 
 
 # ── _compute_loss_tl ──────────────────────────────────────────────────
 def test_compute_loss_tl_no_gap_returns_zero():
     """Top-N skoru medyandan düşük/eşit → loss=0 (max(0, gap))."""
-    from app.core.ml.bus_factor import _compute_loss_tl
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import compute_loss_tl
 
     top = [{"score": 1.0, "yearly_km": 50_000}]
-    assert _compute_loss_tl(top, 1.5, 50.0) == 0.0
+    assert compute_loss_tl(top, 1.5, 50.0) == 0.0
 
 
 def test_compute_loss_tl_positive_gap():
     """Top-N skoru medyandan yüksek → loss > 0."""
-    from app.core.ml.bus_factor import LOSS_L_PER_KM, _compute_loss_tl
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import (
+        LOSS_L_PER_KM,
+        compute_loss_tl,
+    )
 
     top = [{"score": 1.5, "yearly_km": 100_000}]
     # gap = 1.5 - 1.0 = 0.5; loss_l = 100k × 0.5 × 0.5/100 = 250; ×50 = 12500
     expected = 100_000 * 0.5 * LOSS_L_PER_KM / 100.0 * 50.0
-    assert _compute_loss_tl(top, 1.0, 50.0) == expected
+    assert compute_loss_tl(top, 1.0, 50.0) == expected
 
 
 # ── compute_bus_factor e2e ────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_compute_bus_factor_empty_fleet():
     """Hiç şoför yok → 0 kayıp, risk_level=low."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     uow = _FakeUoW([])
     report = await compute_bus_factor(uow, n=3, diesel_price_tl=50.0)
@@ -121,7 +131,9 @@ async def test_compute_bus_factor_empty_fleet():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_returns_pii_safe_top_n():
     """Plan §15: top_n_drivers'da yalnız score + yearly_km; ad/id yok."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     rows = [
         {"id": 1, "score": 1.8, "yearly_km": 100_000},
@@ -140,7 +152,9 @@ async def test_compute_bus_factor_returns_pii_safe_top_n():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_high_risk_triggers_threshold():
     """Çok yüksek kayıp → risk_level='high'."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     # gap=0.5 × yearly_km=10_000_000 × 0.005 × 50 = 1_250_000 TL → high
     rows = [
@@ -157,7 +171,9 @@ async def test_compute_bus_factor_high_risk_triggers_threshold():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_medium_risk():
     """Orta seviye kayıp → risk_level='medium'."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     # gap=0.5 × yearly_km=1_000_000 × 0.005 × 50 = 125_000 TL → medium
     rows = [
@@ -174,7 +190,9 @@ async def test_compute_bus_factor_medium_risk():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_no_rest_uses_fallback_median():
     """n >= rows sayısı → rest boş → median fallback 1.0."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     rows = [
         {"id": 1, "score": 1.3, "yearly_km": 100_000},
@@ -191,7 +209,9 @@ async def test_compute_bus_factor_no_rest_uses_fallback_median():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_all_same_score_no_loss():
     """Tüm şoförlerin skoru eşit → gap=0 → loss=0."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     rows = [{"id": i, "score": 1.0, "yearly_km": 100_000} for i in range(5)]
     uow = _FakeUoW(rows)
@@ -203,7 +223,12 @@ async def test_compute_bus_factor_all_same_score_no_loss():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_top_n_loss_value_correct():
     """Plan §10.1 formül doğrulama (sayısal)."""
-    from app.core.ml.bus_factor import LOSS_L_PER_KM, compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
+    from v2.modules.analytics_executive.domain.bus_factor_scoring import (
+        LOSS_L_PER_KM,
+    )
 
     rows = [
         # Top 1: gap=0.5, yearly_km=200k → loss_l = 500 → 25k TL
@@ -224,7 +249,9 @@ async def test_compute_bus_factor_top_n_loss_value_correct():
 @pytest.mark.asyncio
 async def test_compute_bus_factor_bottlenecked_routes_empty_v1():
     """v1'de bottlenecked_routes her zaman boş liste (plan §10.1)."""
-    from app.core.ml.bus_factor import compute_bus_factor
+    from v2.modules.analytics_executive.application.get_bus_factor import (
+        compute_bus_factor,
+    )
 
     rows = [
         {"id": 1, "score": 1.2, "yearly_km": 50_000},

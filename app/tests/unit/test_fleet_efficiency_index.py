@@ -7,7 +7,7 @@ import pytest
 
 # ── _fuel_score ─────────────────────────────────────────────────────────
 def test_fuel_score_cold_start_with_none_avg():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _fuel_score,
     )
@@ -18,7 +18,7 @@ def test_fuel_score_cold_start_with_none_avg():
 
 
 def test_fuel_score_cold_start_with_none_target():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _fuel_score,
     )
@@ -28,7 +28,7 @@ def test_fuel_score_cold_start_with_none_target():
 
 
 def test_fuel_score_cold_start_zero_target():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _fuel_score,
     )
@@ -39,7 +39,7 @@ def test_fuel_score_cold_start_zero_target():
 
 def test_fuel_score_exactly_at_target_is_50():
     """avg == target → dev=0 → score 50 (orta)."""
-    from app.core.ml.fleet_efficiency_index import _fuel_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _fuel_score
 
     score, _ = _fuel_score(32.0, 32.0)
     assert score == pytest.approx(50.0, abs=0.1)
@@ -47,7 +47,7 @@ def test_fuel_score_exactly_at_target_is_50():
 
 def test_fuel_score_below_target_is_high():
     """avg=27.2, target=32 → dev=-15% → daha iyi skor."""
-    from app.core.ml.fleet_efficiency_index import _fuel_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _fuel_score
 
     score, _ = _fuel_score(27.2, 32.0)
     # dev = -0.15 → normalized to (0.15 / 0.6) = 0.25 → score 75
@@ -56,7 +56,7 @@ def test_fuel_score_below_target_is_high():
 
 def test_fuel_score_above_target_clamp_30pct():
     """avg=50, target=32 → dev=+56% → cap +30% → score 0."""
-    from app.core.ml.fleet_efficiency_index import _fuel_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _fuel_score
 
     score, _ = _fuel_score(50.0, 32.0)
     assert score == 0.0
@@ -64,7 +64,7 @@ def test_fuel_score_above_target_clamp_30pct():
 
 # ── _maintenance_score ────────────────────────────────────────────────
 def test_maintenance_score_no_active_vehicles():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _maintenance_score,
     )
@@ -75,21 +75,27 @@ def test_maintenance_score_no_active_vehicles():
 
 
 def test_maintenance_score_all_overdue():
-    from app.core.ml.fleet_efficiency_index import _maintenance_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _maintenance_score,
+    )
 
     score, _ = _maintenance_score(10, 10)
     assert score == 0.0
 
 
 def test_maintenance_score_none_overdue():
-    from app.core.ml.fleet_efficiency_index import _maintenance_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _maintenance_score,
+    )
 
     score, _ = _maintenance_score(0, 10)
     assert score == 100.0
 
 
 def test_maintenance_score_half_overdue():
-    from app.core.ml.fleet_efficiency_index import _maintenance_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _maintenance_score,
+    )
 
     score, _ = _maintenance_score(5, 10)
     assert score == 50.0
@@ -97,7 +103,7 @@ def test_maintenance_score_half_overdue():
 
 # ── _driver_score ──────────────────────────────────────────────────────
 def test_driver_score_none_is_cold_start():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _driver_score,
     )
@@ -107,7 +113,7 @@ def test_driver_score_none_is_cold_start():
 
 
 def test_driver_score_min_floor():
-    from app.core.ml.fleet_efficiency_index import _driver_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _driver_score
 
     # 0.5 altı clamp 0
     score, _ = _driver_score(0.1)
@@ -116,7 +122,7 @@ def test_driver_score_min_floor():
 
 def test_driver_score_neutral():
     """1.0 → (1.0-0.5) * 100 / 1.5 ≈ 33.3."""
-    from app.core.ml.fleet_efficiency_index import _driver_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _driver_score
 
     score, _ = _driver_score(1.0)
     assert score == pytest.approx(33.3, abs=0.5)
@@ -124,7 +130,7 @@ def test_driver_score_neutral():
 
 def test_driver_score_max():
     """2.0 → 100."""
-    from app.core.ml.fleet_efficiency_index import _driver_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import _driver_score
 
     score, _ = _driver_score(2.0)
     assert score == 100.0
@@ -132,7 +138,7 @@ def test_driver_score_max():
 
 # ── _anomaly_quality_score ────────────────────────────────────────────
 def test_anomaly_quality_no_anomalies_is_cold_start():
-    from app.core.ml.fleet_efficiency_index import (
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
         COLD_START_DEFAULT,
         _anomaly_quality_score,
     )
@@ -142,21 +148,27 @@ def test_anomaly_quality_no_anomalies_is_cold_start():
 
 
 def test_anomaly_quality_all_resolved():
-    from app.core.ml.fleet_efficiency_index import _anomaly_quality_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _anomaly_quality_score,
+    )
 
     score, _ = _anomaly_quality_score(10, 0, 10)
     assert score == 100.0
 
 
 def test_anomaly_quality_all_pending():
-    from app.core.ml.fleet_efficiency_index import _anomaly_quality_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _anomaly_quality_score,
+    )
 
     score, _ = _anomaly_quality_score(0, 0, 10)
     assert score == 0.0
 
 
 def test_anomaly_quality_mixed():
-    from app.core.ml.fleet_efficiency_index import _anomaly_quality_score
+    from v2.modules.analytics_executive.domain.fleet_efficiency import (
+        _anomaly_quality_score,
+    )
 
     # 3 resolved + 2 acked = 5/10 → 50
     score, _ = _anomaly_quality_score(3, 2, 10)
@@ -166,7 +178,7 @@ def test_anomaly_quality_mixed():
 # ── compute_fvi e2e ────────────────────────────────────────────────────
 def test_compute_fvi_all_cold_start():
     """Hiç veri yok → fvi=75, confidence=0."""
-    from app.core.ml.fleet_efficiency_index import compute_fvi
+    from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
 
     result = compute_fvi(
         fuel_avg=None,
@@ -185,7 +197,7 @@ def test_compute_fvi_all_cold_start():
 
 def test_compute_fvi_full_signals():
     """Tüm sinyaller var → confidence=1.0."""
-    from app.core.ml.fleet_efficiency_index import compute_fvi
+    from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
 
     result = compute_fvi(
         fuel_avg=30.0,
@@ -211,7 +223,7 @@ def test_compute_fvi_full_signals():
 
 def test_compute_fvi_partial_signals():
     """Sadece yakıt + bakım var → confidence=0.5."""
-    from app.core.ml.fleet_efficiency_index import compute_fvi
+    from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
 
     result = compute_fvi(
         fuel_avg=30.0,
@@ -227,7 +239,7 @@ def test_compute_fvi_partial_signals():
 
 
 def test_compute_fvi_with_trend():
-    from app.core.ml.fleet_efficiency_index import compute_fvi
+    from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
 
     result = compute_fvi(
         fuel_avg=30.0,
@@ -245,7 +257,7 @@ def test_compute_fvi_with_trend():
 
 def test_compute_fvi_reasons_all_present():
     """Her alt-skor için bir sebep döner — toplam 4."""
-    from app.core.ml.fleet_efficiency_index import compute_fvi
+    from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
 
     result = compute_fvi(
         fuel_avg=30.0,
@@ -264,6 +276,6 @@ def test_compute_fvi_reasons_all_present():
 
 def test_weights_sum_to_one():
     """Alt-skor ağırlıkları toplamı 1.0 olmalı."""
-    from app.core.ml.fleet_efficiency_index import SUBSCORE_WEIGHTS
+    from v2.modules.analytics_executive.domain.fleet_efficiency import SUBSCORE_WEIGHTS
 
     assert sum(SUBSCORE_WEIGHTS.values()) == pytest.approx(1.0, abs=1e-9)

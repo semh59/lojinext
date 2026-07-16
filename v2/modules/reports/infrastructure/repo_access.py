@@ -25,6 +25,7 @@ class ReportRepos:
     arac_repo: Any
     sofor_repo: Any
     yakit_repo: Any
+    session: Any = None
 
 
 def resolve_repos(uow: Optional[UnitOfWork] = None) -> ReportRepos:
@@ -34,9 +35,12 @@ def resolve_repos(uow: Optional[UnitOfWork] = None) -> ReportRepos:
             arac_repo=uow.arac_repo,
             sofor_repo=uow.sofor_repo,
             yakit_repo=uow.yakit_repo,
+            session=uow.session,
         )
 
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
     from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
     from v2.modules.fuel.infrastructure.repository import get_yakit_repo

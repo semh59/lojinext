@@ -10,7 +10,7 @@ bu helper üzerinden çağırırsa testlerde monkeypatch ile sabitlenebilir:
     )
 
 Audit (AUDIT_REPORT_FINAL) "Fake items: date.today()" olarak işaretlediği
-3 servis (dashboard_service, cost_analyzer, report_service) bu helper'ı
+servisler (analytics_executive'in cost analizi, reports) bu helper'ı
 kullanır.
 """
 

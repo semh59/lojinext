@@ -1,4 +1,10 @@
-"""Faz 3 — sayfa görüntüleme (page_views) repository."""
+"""Faz 3 — sayfa görüntüleme (page_views) repository.
+
+dalga 11 (analytics_executive) sırasında reports'a taşındı — dosya
+`app/database/repositories/page_view_repo.py` olarak analytics_executive'in
+dosya envanterinde duruyordu ama `page_views` tablosu zaten reports'a ait
+(tablo-sahipliği ilkesi, kullanıcı kararı 2026-07-16).
+"""
 
 from __future__ import annotations
 

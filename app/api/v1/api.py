@@ -10,9 +10,7 @@ from app.api.v1.endpoints import (
     admin_predictions,
     admin_ws,
     ai,
-    analytics,
     error_stream,
-    executive,
     feedback,
     health,
     internal,
@@ -20,6 +18,9 @@ from app.api.v1.endpoints import (
     system,
     trips,
     weather,
+)
+from v2.modules.analytics_executive.api.executive_routes import (
+    router as executive_router,
 )
 from v2.modules.anomaly.api.anomaly_routes import router as anomalies_router
 from v2.modules.anomaly.api.attribution_routes import (
@@ -60,6 +61,10 @@ from v2.modules.reports.api.dashboard_routes import router as reports_router
 from v2.modules.reports.api.fleet_insights_routes import (
     router as fleet_insights_router,
 )
+from v2.modules.reports.api.page_view_routes import (
+    admin_router as page_view_admin_router,
+)
+from v2.modules.reports.api.page_view_routes import router as page_view_router
 from v2.modules.reports.api.studio_routes import router as reports_studio_router
 from v2.modules.reports.api.triage_routes import router as today_triage_router
 from v2.modules.route_simulation.api.route_routes import router as route_router
@@ -96,7 +101,7 @@ api_router.include_router(
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(
-    executive.router, prefix="/reports/executive", tags=["executive"]
+    executive_router, prefix="/reports/executive", tags=["executive"]
 )
 api_router.include_router(anomalies_router, prefix="/anomalies", tags=["anomalies"])
 api_router.include_router(coaching_router, prefix="/coaching", tags=["coaching"])
@@ -132,9 +137,9 @@ api_router.include_router(admin_pilot.router, prefix="/admin", tags=["admin-pilo
 api_router.include_router(
     admin_predictions.router, prefix="/admin", tags=["admin-predictions"]
 )
-api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(page_view_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(
-    analytics.admin_router, prefix="/admin", tags=["admin-analytics"]
+    page_view_admin_router, prefix="/admin", tags=["admin-analytics"]
 )
 api_router.include_router(
     admin_maintenance_router, prefix="/admin/maintenance", tags=["admin-maintenance"]

@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.database.repositories.page_view_repo import PageViewRepository
 from app.tests._helpers.seed import seed_kullanici
+from v2.modules.reports.infrastructure.page_view_repo import PageViewRepository
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 

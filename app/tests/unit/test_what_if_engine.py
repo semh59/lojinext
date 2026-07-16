@@ -56,7 +56,9 @@ class _FakeUoW:
 # ── fleet_renewal ─────────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_fleet_renewal_no_eligible_vehicles():
-    from app.core.services.what_if_engine import simulate_fleet_renewal
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_fleet_renewal,
+    )
 
     uow = _FakeUoW(_FakeSession({"a.yil < EXTRACT": []}))
     result = await simulate_fleet_renewal(
@@ -73,7 +75,9 @@ async def test_fleet_renewal_no_eligible_vehicles():
 
 @pytest.mark.asyncio
 async def test_fleet_renewal_with_3_vehicles_payback():
-    from app.core.services.what_if_engine import simulate_fleet_renewal
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_fleet_renewal,
+    )
 
     rows = [
         {
@@ -119,7 +123,9 @@ async def test_fleet_renewal_with_3_vehicles_payback():
 
 @pytest.mark.asyncio
 async def test_fleet_renewal_confidence_with_5_plus_vehicles():
-    from app.core.services.what_if_engine import simulate_fleet_renewal
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_fleet_renewal,
+    )
 
     rows = [
         {
@@ -143,7 +149,9 @@ async def test_fleet_renewal_confidence_with_5_plus_vehicles():
 # ── training ──────────────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_training_no_drivers():
-    from app.core.services.what_if_engine import simulate_training_program
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_training_program,
+    )
 
     uow = _FakeUoW(
         _FakeSession(
@@ -165,7 +173,9 @@ async def test_training_no_drivers():
 
 @pytest.mark.asyncio
 async def test_training_with_drivers_and_data():
-    from app.core.services.what_if_engine import simulate_training_program
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_training_program,
+    )
 
     uow = _FakeUoW(
         _FakeSession(
@@ -193,7 +203,9 @@ async def test_training_with_drivers_and_data():
 # ── route_portfolio ───────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_route_portfolio_no_data():
-    from app.core.services.what_if_engine import simulate_route_portfolio
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_route_portfolio,
+    )
 
     uow = _FakeUoW(_FakeSession({"FROM lokasyonlar": []}))
     result = await simulate_route_portfolio(
@@ -209,7 +221,9 @@ async def test_route_portfolio_no_data():
 @pytest.mark.asyncio
 async def test_route_portfolio_monte_carlo_band_present():
     """3 worst route → P10/P50/P90 dolu olmalı."""
-    from app.core.services.what_if_engine import simulate_route_portfolio
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_route_portfolio,
+    )
 
     rows = [
         # avg_consum > avg_predicted → pozitif deviation → tasarruf var
@@ -260,7 +274,9 @@ async def test_route_portfolio_monte_carlo_band_present():
 @pytest.mark.asyncio
 async def test_route_portfolio_deterministic_with_seed():
     """Aynı seed → aynı sonuç (regression için)."""
-    from app.core.services.what_if_engine import simulate_route_portfolio
+    from v2.modules.analytics_executive.application.simulate_what_if import (
+        simulate_route_portfolio,
+    )
 
     rows = [
         {
@@ -292,7 +308,9 @@ async def test_route_portfolio_deterministic_with_seed():
 
 # ── euro_class_for_year (E.3 foundation) ──────────────────────────────
 def test_euro_class_for_year_boundaries():
-    from app.core.ml.carbon_footprint import euro_class_for_year
+    from v2.modules.analytics_executive.domain.carbon_footprint import (
+        euro_class_for_year,
+    )
 
     assert euro_class_for_year(2020).name == "VI"
     assert euro_class_for_year(2014).name == "VI"
@@ -309,7 +327,9 @@ def test_euro_class_for_year_boundaries():
 
 def test_euro_class_co2_monotonic():
     """Yeni sınıflar düşük CO2/L, eski yüksek olmalı."""
-    from app.core.ml.carbon_footprint import euro_class_for_year
+    from v2.modules.analytics_executive.domain.carbon_footprint import (
+        euro_class_for_year,
+    )
 
     factors = [
         euro_class_for_year(yil).co2_factor_kg_per_l

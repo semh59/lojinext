@@ -65,7 +65,9 @@ class ContextBuilder:
 
     @property
     def analiz_repo(self):
-        from app.database.repositories.analiz_repo import get_analiz_repo
+        from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+            get_analiz_repo,
+        )
 
         return get_analiz_repo()
 

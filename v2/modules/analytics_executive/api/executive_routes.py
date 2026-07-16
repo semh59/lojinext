@@ -10,29 +10,35 @@ from typing import Annotated, Any, cast
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.config import settings
-from app.core.ml.bus_factor import compute_bus_factor
-from app.core.ml.carbon_footprint import compute_fleet_carbon
-from app.core.ml.fleet_efficiency_index import (
-    compute_fvi,
-    gather_fvi_inputs,
-)
-from app.core.services.cashflow_projector import project_cashflow
-from app.core.services.compliance_scanner import scan_compliance
-from app.core.services.cross_feature_aggregator import (
+from app.database.models import Kullanici
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.audit.audit_logger import log_audit_event
+from v2.modules.analytics_executive.application.aggregate_cross_feature import (
     aggregate_cross_feature,
 )
-from app.core.services.executive_pdf_generator import (
-    generate_executive_pdf,
+from v2.modules.analytics_executive.application.get_bus_factor import (
+    compute_bus_factor,
 )
-from app.core.services.what_if_engine import (
+from v2.modules.analytics_executive.application.get_fleet_carbon import (
+    compute_fleet_carbon,
+)
+from v2.modules.analytics_executive.application.get_fleet_efficiency import (
+    gather_fvi_inputs,
+)
+from v2.modules.analytics_executive.application.project_cashflow import (
+    project_cashflow,
+)
+from v2.modules.analytics_executive.application.scan_compliance import scan_compliance
+from v2.modules.analytics_executive.application.simulate_what_if import (
     simulate_fleet_renewal,
     simulate_route_portfolio,
     simulate_training_program,
 )
-from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.audit.audit_logger import log_audit_event
-from app.schemas.executive import (
+from v2.modules.analytics_executive.domain.fleet_efficiency import compute_fvi
+from v2.modules.analytics_executive.infrastructure.pdf_export import (
+    generate_executive_pdf,
+)
+from v2.modules.analytics_executive.schemas import (
     BusFactorResponse,
     CashflowProjectionResponse,
     CashflowWeekResponse,

@@ -22,7 +22,9 @@ _ZORLUK_MAP = {"Normal": 0, "Orta": 1, "Zor": 2}
 
 async def train_model(arac_id: int) -> Dict:
     """Belirtilen araç için modeli eğitir (Async)"""
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
 
     analiz_repo = get_analiz_repo()
     seferler = await analiz_repo.get_training_seferler(arac_id, limit=200)
@@ -80,7 +82,9 @@ async def predict(
     sofor_id: int = None,
 ) -> Dict:
     """Yeni bir sefer için yakıt tahmini yapar (Async)"""
-    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+        get_analiz_repo,
+    )
 
     analiz_repo = get_analiz_repo()
     params = await analiz_repo.get_model_params(arac_id)

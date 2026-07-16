@@ -10,7 +10,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.core.entities import Arac, Sefer, YakitAlimi, YakitPeriyodu
-from app.core.services.analiz_service import AnalizService
 from app.infrastructure.cache.cache_manager import CacheManager, _sign
 from app.infrastructure.events.event_bus import Event, EventBus, EventType
 
@@ -66,15 +65,15 @@ class TestSeferEntity:
 
 
 class TestAnalizService:
-    """Analiz servisi testleri"""
-
-    @pytest.fixture
-    def service(self):
-        return AnalizService()
+    """dalga 11 — eski AnalizService sınıfı kaldırıldı (dead code, hiçbir
+    prod kod çağırmıyordu); bu delegasyon metotları zaten fuel/anomaly
+    modüllerinin serbest fonksiyonlarıydı, testler doğrudan onlara döndü."""
 
     @pytest.mark.asyncio
-    async def test_create_fuel_periods(self, service):
+    async def test_create_fuel_periods(self):
         """Periyot oluşturma testi"""
+        from v2.modules.fuel.application.calculate_period import create_fuel_periods
+
         fuel_records = [
             YakitAlimi(
                 id=1,
@@ -105,15 +104,19 @@ class TestAnalizService:
             ),
         ]
 
-        periods = await service.create_fuel_periods(fuel_records)
+        periods = await create_fuel_periods(fuel_records)
 
         assert len(periods) == 2
         assert periods[0].ara_mesafe == 600
         assert periods[1].ara_mesafe == 800
 
     @pytest.mark.asyncio
-    async def test_distribute_fuel_to_trips(self, service):
+    async def test_distribute_fuel_to_trips(self):
         """Yakıt dağıtımı testi"""
+        from v2.modules.fuel.application.distribute_fuel_to_trips import (
+            distribute_fuel_to_trips,
+        )
+
         period = YakitPeriyodu(
             id=1,
             arac_id=1,
@@ -151,7 +154,7 @@ class TestAnalizService:
             ),
         ]
 
-        distributed = await service.distribute_fuel_to_trips(period, trips)
+        distributed = await distribute_fuel_to_trips(period, trips)
 
         assert distributed[0].dagitilan_yakit > 90.0
         assert distributed[1].dagitilan_yakit < 90.0
@@ -161,10 +164,13 @@ class TestAnalizService:
         )
 
     @pytest.mark.asyncio
-    async def test_detect_anomalies(self, service):
+    async def test_detect_anomalies(self):
         """Anomali tespiti testi"""
+        from v2.modules.anomaly.public import get_anomaly_detection_service
+
         consumptions = [30, 31, 32, 29, 30, 31, 33, 30, 55, 32]
-        anomalies = await service.detect_anomalies(consumptions)
+        anomaly_service = get_anomaly_detection_service()
+        anomalies = await anomaly_service.detect_anomalies(consumptions)
         assert len(anomalies) > 0
         assert any(a.value == 55 for a in anomalies)
 

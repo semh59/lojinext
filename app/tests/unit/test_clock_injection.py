@@ -1,9 +1,10 @@
 """Clock injection regression — date.today() kullanımının
 app.core.utils.clock üzerinden gittiğini doğrular.
 
-Audit (AUDIT_REPORT_FINAL) "Fake items: date.today()" işaretlediği 3
-servis: dashboard_service, cost_analyzer, report_service. Bu test
-monkeypatch ile sabit tarih enjekte edilebildiğini garanti eder.
+Audit (AUDIT_REPORT_FINAL) "Fake items: date.today()" işaretlediği
+servisler: analytics_executive'in cost analizi (analyze_costs.py),
+report_service. Bu test monkeypatch ile sabit tarih enjekte
+edilebildiğini garanti eder.
 """
 
 from __future__ import annotations
@@ -32,17 +33,8 @@ def test_clock_helper_monkeypatchable(monkeypatch):
     assert current_date() == fixed
 
 
-def test_dashboard_service_uses_clock_helper():
-    """dashboard_service.py modül seviyesinde clock import etmeli."""
-    import app.core.services.dashboard_service as mod
-
-    assert hasattr(mod, "current_date"), (
-        "dashboard_service date.today() yerine current_date() kullanmalı"
-    )
-
-
 def test_cost_analyzer_uses_clock_helper():
-    import app.core.services.cost_analyzer as mod
+    import v2.modules.analytics_executive.application.analyze_costs as mod
 
     assert hasattr(mod, "current_date")
 
@@ -60,13 +52,12 @@ def test_no_direct_date_today_in_three_services():
     generate_vehicle_report.py + generate_monthly_trend.py'ye bölündü (B.1
     free-function refactor) — üçü de current_date() kullanıyor.
     """
-    import app.core.services.cost_analyzer as cost_mod
-    import app.core.services.dashboard_service as dash_mod
+    import v2.modules.analytics_executive.application.analyze_costs as cost_mod
     import v2.modules.reports.application.generate_fleet_summary as fleet_mod
     import v2.modules.reports.application.generate_monthly_trend as trend_mod
     import v2.modules.reports.application.generate_vehicle_report as vehicle_mod
 
-    for mod in (dash_mod, cost_mod, fleet_mod, vehicle_mod, trend_mod):
+    for mod in (cost_mod, fleet_mod, vehicle_mod, trend_mod):
         src = inspect.getsource(mod)
         assert "date.today()" not in src, (
             f"{mod.__name__} hala date.today() kullanıyor (clock injection bozuk)"

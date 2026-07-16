@@ -14,11 +14,18 @@ def test_prune_task_invokes_repo_and_returns_count():
         yield MagicMock()
 
     with (
-        patch("app.workers.tasks.analytics_tasks.session_scope", fake_scope),
-        patch("app.workers.tasks.analytics_tasks.PageViewRepository") as repo_cls,
+        patch(
+            "v2.modules.reports.infrastructure.analytics_tasks.session_scope",
+            fake_scope,
+        ),
+        patch(
+            "v2.modules.reports.infrastructure.analytics_tasks.PageViewRepository"
+        ) as repo_cls,
     ):
         repo_cls.return_value.prune_older_than = AsyncMock(return_value=7)
-        from app.workers.tasks.analytics_tasks import prune_page_views
+        from v2.modules.reports.infrastructure.analytics_tasks import (
+            prune_page_views,
+        )
 
         result = prune_page_views.run()
 

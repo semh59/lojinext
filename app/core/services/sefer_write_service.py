@@ -60,8 +60,13 @@ def _safe_durum(value: object) -> str:
     CHECK constraint (Sentry LOJINEXT-19G/19H on bulk Excel import).
     """
     try:
+        # `value` gelebilecek Excel/legacy içeriği yansıtmak için `object`
+        # (int/enum/None de olabilir) — ensure_canonical_sefer_status'un
+        # kendisi `str(value)` ile normalize ettiği için runtime'da güvenli,
+        # yalnız imzası `Optional[str]` bekliyor (aşağıdaki utils fonksiyonu
+        # daha geniş bir sözleşmeye taşınmadan cast ile dokümante edildi).
         return (
-            ensure_canonical_sefer_status(value, allow_none=False)
+            ensure_canonical_sefer_status(cast(Optional[str], value), allow_none=False)
             or SEFER_STATUS_PLANLANDI
         )
     except ValueError:

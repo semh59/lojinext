@@ -13,7 +13,18 @@ import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import (
+    Any,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    cast,
+)
 
 import redis
 
@@ -23,6 +34,18 @@ from app.infrastructure.events.event_types import EventType
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _log_task_exception(handler_name: str) -> Callable[["asyncio.Task[None]"], None]:
+    """Fire-and-forget task done-callback: logs unhandled exceptions from async handlers."""
+
+    def _on_done(t: "asyncio.Task[None]") -> None:
+        if not t.cancelled() and t.exception():
+            logger.error(
+                "Async event handler %s raised: %s", handler_name, t.exception()
+            )
+
+    return _on_done
 
 
 def publishes(event_type):
@@ -68,7 +91,7 @@ class EventBus:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         if getattr(self, "_initialized", False):
             return
 
@@ -247,18 +270,12 @@ class EventBus:
                             event.type.value,
                         )
                         continue
-                    task = loop.create_task(cb(event))
+                    task: "asyncio.Task[None]" = loop.create_task(
+                        cast(Coroutine[Any, Any, None], cb(event))
+                    )
                     self._bg_tasks.add(task)
                     task.add_done_callback(self._bg_tasks.discard)
-                    task.add_done_callback(
-                        lambda t, name=cb.__name__: (
-                            logger.error(
-                                "Async event handler %s raised: %s", name, t.exception()
-                            )
-                            if not t.cancelled() and t.exception()
-                            else None
-                        )
-                    )
+                    task.add_done_callback(_log_task_exception(cb.__name__))
                 else:
                     cb(event)
             except Exception as exc:

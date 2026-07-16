@@ -566,8 +566,67 @@ app/tests/api/test_vehicles_* app/tests/api/test_trailers*`) → 259 passed,
 --no-strict-optional` (v2/ dahil, CI kapsamının ötesinde ekstra) her ikisi
 de temiz/baseline'da.
 
+## Bilinen mypy baseline hataları — TAMAMEN TEMİZLENDİ (2026-07-16)
+
+Yukarıdaki dedektif denetimi sırasında `mypy app/ v2/` taramasında bulunan
+(CI'nin resmi `mypy app/` kapsamının 7'lik baseline'ına dahil olan) 6 kalıcı
+hata, kullanıcı isteğiyle ayrıca temizlendi — hepsi gerçek, mekanik
+düzeltmeler (yeni davranış yok), 1 tanesi GERÇEK BUG:
+
+- `v2/modules/auth_rbac/infrastructure/rol_repository.py::update` —
+  `BaseRepository`'den farklı imza için eksik `# type: ignore[override]`
+  eklendi (sınıftaki diğer 4 override zaten bu yorumu taşıyordu).
+- `app/infrastructure/events/event_bus.py` — 🔴 **kök neden gerçek bug**:
+  `EventBus.__init__`'in dönüş tipi (`-> None`) eksikti, bu da mypy'nin
+  metodu "untyped" sayıp İÇİNDEKİ `self._subscribers`/`self._bg_tasks` tip
+  bildirimlerini SESSİZCE ATLAMASINA yol açıyordu (`annotation-unchecked`
+  notları) — eklendi. Ayrıca `publish()`'teki fire-and-forget task
+  done-callback'i (`Need type annotation for "task"` + `Cannot infer type
+  of lambda`) küçük adlandırılmış bir yardımcıya (`_log_task_exception`)
+  çıkarılıp doğru tiplendirildi.
+- `v2/modules/fuel/application/delete_yakit.py` + `app/core/services/sefer_service.py` —
+  `log_audit_event(entity_id=...)` int geçiyordu, imza `str` bekliyor —
+  `str(...)` eklendi (fuel_routes.py'nin zaten yaptığı gibi).
+- `app/core/services/sefer_write_service.py::_safe_durum` — `value: object`
+  parametresi `ensure_canonical_sefer_status`'a (gerçek adı
+  `ensure_canonical_trip_status`, `Optional[str]` bekliyor) doğrudan
+  geçiyordu; fonksiyon zaten `str(value)` ile normalize ettiği için
+  runtime'da güvenli — `cast(Optional[str], value)` ile dokümante edildi.
+- 🔴 **`app/core/services/health_service.py::check_ai_readiness` — GERÇEK
+  BUG**: `get_container().ensemble_service` diye bir attribute HİÇ YOK
+  (`Container`'da `ensemble_service` yok, `PredictionService.ensemble_service`
+  var — `PredictionService.__init__`'te `self.ensemble_service =
+  get_ensemble_service()`). Bu satır HER ÇAĞRIDA `AttributeError` fırlatıyor
+  ve etraftaki geniş `except Exception` tarafından sessizce yutulup statik
+  `["physics","lightgbm","xgboost","gb","rf"]` listesine düşülüyordu —
+  `/admin/health` endpoint'inin AI-readiness bölümü gerçek yüklü model
+  durumunu HİÇ yansıtmıyordu. `get_container().prediction_service.ensemble_service`
+  olarak düzeltildi. Not: `EnsemblePredictorService`'in kendisinde de
+  `_models` attribute'u yok (araç-bazlı `predictors: OrderedDict` +
+  her `EnsembleFuelPredictor`'ın kendi `self.weights` dict'i var, global bir
+  "yüklü model listesi" kavramı yok) — bu yüzden `getattr(ensemble,
+  "_models", {})` düzeltmeden SONRA da `{}` dönüp aynı statik listeye
+  düşüyor; CLAUDE.md'nin "5-model ensemble" açıklamasıyla tutarlı olduğu
+  için ÇIKTI DEĞİŞMEDİ, ama artık doğru (documented) bir fallback — kör bir
+  `AttributeError` swallow değil.
+
+**Doğrulama:** `mypy app/ --ignore-missing-imports --no-strict-optional`
+(CI'nin TAM kapsamı) → **0 hata** (baseline 7'den). `mypy app/ v2/` (v2
+dahil, ekstra) → **0 hata**. `ruff check app v2 --select E,F,W,I` → temiz.
+Hedefli testler (health_service ×2, event_bus ×4, sefer/trips ×6,
+rol_repository) → sadece 2 TAMAMEN İLGİSİZ, önceden var olan flake ortaya
+çıktı (her ikisi de HEAD'e karşı da aynı şekilde başarısız olduğu
+doğrulandı — regresyon değil): `test_check_redis_unhealthy` (gerçek Redis
+Sentinel bu ortamda 6390'da erişilebilir çıkıyor, mock hedefini bypass
+ediyor) ve `test_use_sefer_fuel_estimator_opt_in_default_false` (bu
+container'ın `.env`'i `USE_SEFER_FUEL_ESTIMATOR=true`, testin varsaydığı
+`false` değil). CI'nin BASELINE=7 sabiti bu commit'te BİLEREK
+değiştirilmedi (dosyanın kendi tarihçesi: "sayım ortama duyarlı... Gate
+CI'nin gördüğü değere göre ayarlanır" — önce gerçek CI koşumunda 0
+doğrulanmalı, sonra ayrı bir PR'da sıkılaştırılmalı).
+
 ## Son güncelleme
-2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri tamamlandı (yukarı
-bakınız). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu
-için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev
-dışı hatırlatma).
+2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
+baseline hatalarının (7→0) tamamı temizlendi (yukarı bakınız). Depo şu an
+**PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş
+bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

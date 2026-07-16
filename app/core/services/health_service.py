@@ -83,7 +83,7 @@ class HealthService:
             rag_stats = rag.get_stats()
 
             try:
-                ensemble = get_container().ensemble_service
+                ensemble = get_container().prediction_service.ensemble_service
                 loaded_models = list(getattr(ensemble, "_models", {}).keys()) or [
                     "physics",
                     "lightgbm",

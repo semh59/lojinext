@@ -37,7 +37,7 @@ class RolRepository(BaseRepository[Rol]):
         await self.session.flush()
         return role
 
-    async def update(
+    async def update(  # type: ignore[override]
         self,
         role_id: int,
         ad: Optional[str] = None,

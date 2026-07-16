@@ -34,7 +34,7 @@ async def delete_yakit(yakit_id: int, deleted_by_id: Optional[int] = None) -> bo
                 await log_audit_event(
                     action="yakit_hard_delete",
                     module="yakit",
-                    entity_id=yakit_id,
+                    entity_id=str(yakit_id),
                     user_id=deleted_by_id,
                     details={
                         "arac_id": current.get("arac_id"),

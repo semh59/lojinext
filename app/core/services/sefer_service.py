@@ -217,7 +217,7 @@ class SeferService:
         await log_audit_event(
             action="sefer_onay_guncelle",
             module="sefer",
-            entity_id=sefer_id,
+            entity_id=str(sefer_id),
             user_id=onaylayan_id,
             details={"eski": eski_durum, "yeni": yeni_durum, "not": onay_notu},
         )

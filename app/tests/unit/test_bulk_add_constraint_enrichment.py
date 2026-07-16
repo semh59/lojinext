@@ -32,6 +32,11 @@ class _BaseUoW:
 
     def __init__(self):
         self.session = MagicMock()
+        # save_outbox_event() awaits session.flush() (real AsyncSession.add()
+        # is sync, .flush() is async) — needed since bulk_add_yakit now
+        # writes an outbox event per created row (2026-07-16 dedektif
+        # denetimi fix'i).
+        self.session.flush = AsyncMock()
         self.commit = AsyncMock()
         self.rollback = AsyncMock()
 
@@ -62,6 +67,10 @@ async def test_bulk_add_yakit_emits_fiyat_tl_and_toplam_tutar(monkeypatch):
 
             async def _bulk_create(items):
                 captured.append(items)
+                # Gerçek BaseRepository.bulk_create id listesi döner —
+                # bulk_add_yakit artık bunu satır-başına outbox event
+                # yazmak için kullanıyor (2026-07-16 fix'i).
+                return list(range(1, len(items) + 1))
 
             self.yakit_repo.bulk_create = _bulk_create
 

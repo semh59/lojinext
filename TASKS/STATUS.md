@@ -827,10 +827,85 @@ onayıyla başlanacak (DURMA NOKTASI kuralı). Not: analytics-executive'in
 görev dosyası, dalga 10'da bulunan page_views tablo-sahipliği
 tutarsızlığını (bkz. yukarı) çözecek şekilde gözden geçirilmeli.
 
+## İlk 10 dalga — tam dedektif denetimi + düzeltme turu (2026-07-16)
+
+**Kapsam:** kullanıcı talebiyle ("detaylı ve derin kontrol edelim, dedektif
+gibi denetlesinler nokta atlamasınlar") ilk 10 dalganın TAMAMI (location,
+route_simulation, notification, fleet, fuel, driver, auth_rbac, anomaly,
+import_excel, reports — ~230 dosya) 10 bağımsız sıfır-context ajanla
+dosya-dosya yeniden denetlendi (B.1 uyumu, route→application katman
+disiplini, CLAUDE.md iddialarının gerçek kodla örtüşmesi). Ardından
+kullanıcı talebiyle ("kalan en küçük hatayı bile düzeltmeden bırakma")
+bulunan TÜM gerçek bulgular düzeltildi.
+
+**Push geçmişi (5 commit):**
+1. `8a5e9de`/`0aa3a49`... — bkz. DALGA 10 bölümü (bu turun ilk parçası).
+2. `0aa3a49` — **4 HIGH bug** (üretimde sessiz veri kaybına/hataya yol
+   açan, hepsi gerçek Docker koşumuyla önce-çöküyor/sonra-çalışıyor
+   doğrulandı):
+   - `import_excel/column_mapper.py`: "Şoför Adı" başlıklı Excel'lerde
+     sürücü import satırları sessizce atlanıyordu (`sofor_adi`/`ad_soyad`
+     alias çakışması, dict sırası `sofor_adi`'yi önce claim ediyordu).
+     `map_columns`'a opsiyonel `prefer` parametresi eklendi.
+   - `reports/advanced_reports_routes.py`: Excel "driver_comparison"
+     export'u her zaman 500 veriyordu (`get_driver_stats()` uow'suz
+     singleton'a düşüyordu) — taşımadan ÖNCE de vardı, dalga 10
+     regresyonu değil.
+   - `app/core/services/analiz_service.py`: gerçek dairesel import
+     (`public.py` ↔ `detect_anomaly.py` ↔ `analiz_service.py` ↔
+     `prediction_service.py`), yalnızca `api.py`'nin tesadüfi import
+     sırasıyla maskeleniyordu — canlı reprodüklendi (izole import +
+     tam app boot + tam test suite ile doğrulandı).
+   - `fuel/recalculate_vehicle_periods.py`: repo verilmediğinde
+     (varsayılan/prod yolu) session'sız singleton'a düşüp `RuntimeError`
+     fırlatıyordu — Excel yakıt toplu-import'unda sessizce yutulup
+     periyotlar HİÇ hesaplanmıyordu. `AsyncExitStack` ile düzeltildi.
+3. `4b15215` — **4 MEDIUM + 9 LOW bulgu**: fleet/fuel'in toplu-Excel-import
+   yollarında outbox event eksikliği (RAG sync/cache-invalidation'a
+   düşmüyordu); notification'ın `webpush_client.py`'sindeki senkron/
+   bloklayıcı `pywebpush.webpush()` çağrısı (aynı modülün gerçek bir
+   prod-incident'ine [Sentry LOJINEXT-182] yol açmış bloklayıcı-çağrı
+   hatasıyla aynı sınıf) `asyncio.to_thread`'e alındı + subscription'lara
+   sıralı gönderim `asyncio.gather`'a çevrildi; auth_rbac'ta
+   `LicenseEngine`'in class-level mutable dict paylaşımı + ölü kod;
+   import_excel'de eksik zorunlu-alan validasyonu; anomaly'de unreachable
+   duplicate except bloğu; fuel'de kanonik olmayan "Unknown" literal'i;
+   driver/reports'ta toplam 10 kullanılmayan `db` parametresi (5'i
+   denetimde bulundu, 1'i düzeltme sırasında ayrıca bulundu); driver'ın
+   CLAUDE.md'sindeki güncel-olmayan "event yayını ölü kod" notu.
+4. `95b2b99` — `4b15215`'in kırdığı TEK test (`test_bulk_add_yakit_emits_
+   fiyat_tl_and_toplam_tutar`, fake UoW gerçekçi olmayan `None` dönüyordu)
+   düzeltildi. **CI Hard Gates TAM YEŞİL** (`gh run view 29515827692` →
+   hard-gates `success`, 34dk24sn — OpenAPI drift + Playwright E2E dahil)
+   — commit `95b2b99` main'in HEAD'i.
+
+**Bilinçli KAPSAM DIŞI bırakılanlar** (davranış değişikliği veya DB
+migration gerektiriyor, tek başına ürün kararı ister — sessizce
+değiştirilmedi):
+- `auth_rbac/rol_repository.py`: isim-benzersizliği TOCTOU riski (gerçek
+  fix bir DB `UNIQUE` constraint'i ister).
+- `auth_rbac/preference_service.py`: çoklu "sutun" ayarı upsert'inin
+  yanlış satırı ezme riski (davranış değişikliği).
+- `anomaly`: aynı isimli 2 farklı `AnomalyResult`/`AnomalyType` sınıfı
+  (`detect_anomaly.py` vs `app.core.entities`) — iki alt-sistemin
+  kasıtlı olarak ayrı tutulduğu zaten dokümante, geniş bir rename riskli.
+- `route_simulation/openroute_client.py`: zaten ayrı, DURMA NOKTASI'lı
+  görev dosyasında (`TASKS/bug-openroute-client-architectural-leak.md`).
+- Yerel ad-hoc test koşumunda 11 ortam-kaynaklı hata (api-stub profili
+  başlatılmamış, gerçek Redis Sentinel, `USE_SEFER_FUEL_ESTIMATOR=true`)
+  — hepsi `TASKS/STATUS.md`'nin dalga 1 bölümünde zaten belgelenmiş
+  kategoriler, CI'da görülmez (CI kendi temiz ortamını kurar).
+
+**Doğrulama disiplini:** her düzeltme gerçek Docker container'da (ruff +
+mypy + hedefli pytest + çoğu için canlı before/after repro) doğrulandı;
+2 push kırmızı çıktı (`.gitignore` bug'ı ve bir mock'un gerçekçi olmayan
+davranışı), ikisi de gerçek kök nedenle (varsayımla değil) düzeltildi.
+
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
 baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports)
-main'de yeşil, CI Hard Gates ile doğrulandı (`gh run view 29501486141`,
-commit `1fdc78e`). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR
-faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor
-— bkz. görev dışı hatırlatma).
++ ilk 10 dalganın tam dedektif denetimi (4 HIGH bug + 4 MEDIUM + 9 LOW
+bulgu düzeltildi, bkz. yukarıdaki bölüm) main'de yeşil, CI Hard Gates ile
+doğrulandı (`gh run view 29515827692`, commit `95b2b99`). Depo şu an
+**PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş
+bitince tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

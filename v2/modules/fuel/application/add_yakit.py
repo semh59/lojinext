@@ -126,7 +126,12 @@ async def add_yakit(data: YakitAlimiCreate) -> int:
                 litre=float(data.litre),
                 km_sayac=data.km_sayac,
                 fis_no=data.fis_no,
-                depo_durumu=data.depo_durumu or "Unknown",
+                # "Unknown" (İngilizce) DepoDurumu Literal'inde YOK — kanonik
+                # değer "Bilinmiyor" (bkz. v2/modules/fuel/schemas.py); yanlış
+                # literal sync_create_fuel_periods'un "dolu"/"full" substring
+                # eşleşmesini sessizce atlıyordu (2026-07-16 dedektif
+                # denetimi bulgusu).
+                depo_durumu=data.depo_durumu or "Bilinmiyor",
                 # Verilmezse None geç; repo toplam'ı Decimal'de hesaplar.
                 toplam_tutar=getattr(data, "toplam_tutar", None),
             )

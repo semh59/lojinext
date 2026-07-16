@@ -5,6 +5,7 @@ Plan §7.2 — pywebpush ile VAPID self-hosted push gönderir.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -30,7 +31,14 @@ async def send_webpush(sub: PushSubscription, payload: dict) -> tuple[bool, bool
         return False, False
 
     try:
-        webpush(
+        # pywebpush.webpush() bloklayıcı — HTTPS round-trip + VAPID JWT/ECDSA
+        # imzalama (CPU-bound). Doğrudan çağrılırsa paylaşılan event loop'u
+        # her push için durdurur — telegram_client.py'nin docstring'inde
+        # anlatılan gerçek prod-incident'iyle (Sentry LOJINEXT-182, bloklayıcı
+        # bir çağrının event loop'u dondurup zamanlanmış coroutine'leri
+        # etkilemesi) aynı sınıf, 2026-07-16 dedektif denetiminde bulundu.
+        await asyncio.to_thread(
+            webpush,
             subscription_info={
                 "endpoint": sub.endpoint,
                 "keys": {"p256dh": sub.p256dh, "auth": sub.auth},

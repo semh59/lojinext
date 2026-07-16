@@ -7,6 +7,8 @@ Pasif (deaktif) plaka çakışması varsa aracı reaktive eder; aktif plaka
 from typing import List
 
 from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.events.event_bus import EventType
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
 from v2.modules.fleet.schemas import AracCreate
@@ -70,6 +72,19 @@ async def bulk_add_vehicles(data_list: List[AracCreate]) -> int:
             total += len(ids)
 
         if total:
+            # create_vehicle.py'nin tekil yolu her create/reactivate'te
+            # ARAC_ADDED outbox event'i yazıyor (RAG sync + cache invalidation
+            # relay'i tetikler); bulk yol bunu hiç yapmıyordu — Excel'den
+            # toplu eklenen araçlar RAG indeksine/cache invalidation'a hiç
+            # düşmüyordu (2026-07-16 dedektif denetimi bulgusu). Tek bir
+            # aggregate event yeterli: on_arac_change (cache_invalidation.py)
+            # payload'ı okumuyor, yalnız `arac:*`/`stats:filo*` wildcard
+            # invalidate ediyor.
+            await save_outbox_event(
+                uow.session,
+                EventType.ARAC_ADDED,
+                {"created": len(to_add), "reactivated": len(to_reactivate)},
+            )
             await uow.commit()
 
     return total

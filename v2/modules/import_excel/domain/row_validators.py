@@ -38,7 +38,16 @@ def validate_arac_row(row: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str,
 
 
 def validate_surucu_row(row: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
+    from app.core.exceptions import ImportValidationError
+
     ad_soyad = row.get(mapping.get("ad_soyad", "ad_soyad"))
+    if not ad_soyad:
+        # Diğer 3 kardeşle (arac/sefer/yakit) tutarlı: eksik zorunlu alan
+        # temiz bir ImportValidationError olarak yükselmeli, aksi halde
+        # execute_import.py'nin ham SQL INSERT'i (PII şifreleme/NOT NULL)
+        # opak bir hata ile patlıyordu (2026-07-16 dedektif denetimi
+        # bulgusu).
+        raise ImportValidationError(["Ad Soyad alanı zorunludur."])
     ehliyet_key = mapping.get("ehliyet_sinifi", "ehliyet_sinifi")
     ehliyet_sinifi = row.get(ehliyet_key)
     telefon = row.get(mapping.get("telefon", "telefon"))

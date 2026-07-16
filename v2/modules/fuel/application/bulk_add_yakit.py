@@ -6,6 +6,8 @@ from typing import List
 
 from app.core.entities.models import YakitAlimiCreate
 from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.events.event_bus import EventType
+from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -70,13 +72,28 @@ async def bulk_add_yakit(yakit_list: List[YakitAlimiCreate]) -> int:
                         ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
                         "km_sayac": data.km_sayac,
                         "fis_no": data.fis_no,
-                        "depo_durumu": data.depo_durumu,
+                        # add_yakit.py'nin tekil yoluyla tutarlı fallback
+                        # (2026-07-16 dedektif denetimi bulgusu).
+                        "depo_durumu": data.depo_durumu or "Bilinmiyor",
                     }
                 )
                 last_km_cache[data.arac_id] = data.km_sayac
 
             if items_to_add:
-                await uow.yakit_repo.bulk_create(items_to_add)
+                new_ids = await uow.yakit_repo.bulk_create(items_to_add)
+                # add_yakit.py'nin tekil yolu her eklemede YAKIT_ADDED outbox
+                # event'i yazıyor (arac_id ile — model_training_handler'ın
+                # araç-başına ML-retrain sayacı buna bağlı); bulk yol bunu
+                # hiç yapmıyordu — Excel'den toplu eklenen yakıt kayıtları
+                # retrain sayacına hiç düşmüyordu (2026-07-16 dedektif
+                # denetimi bulgusu). `bulk_create` id'leri `items_to_add`
+                # sırasıyla aynı sırada döner.
+                for yakit_id, item in zip(new_ids, items_to_add):
+                    await save_outbox_event(
+                        uow.session,
+                        EventType.YAKIT_ADDED,
+                        {"result": int(yakit_id), "arac_id": item["arac_id"]},
+                    )
                 await uow.commit()
                 count = len(items_to_add)
 

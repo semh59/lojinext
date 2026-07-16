@@ -114,18 +114,16 @@ veya mutable eğitilmiş model durumu — CRUD-benzeri bir servis değiller.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
-`SOFOR_ADDED`, `SOFOR_UPDATED`, `SOFOR_DELETED` — `@publishes(...)`
-decorator'ı `add_sofor`/`update_sofor`/`delete_sofor` üzerinde var ama
-**repo-genelinde ölü kod** (fuel/fleet/notification/location'ın aynı
-bulgusu): `publishes()` yalnızca fonksiyona `_publishes` attribute'u
-ekliyor, hiçbir yerde okunmuyor; fonksiyon gövdeleri de
-`event_bus.publish(...)` çağırmıyor (dalga 5'te yeniden doğrulandı: repo
-genelinde `grep "publish(" | grep -i sofor` sıfır sonuç).
-
-`app/core/ai/rag_sync_service.py` `SOFOR_ADDED`/`SOFOR_UPDATED`'a subscribe
-olup RAG indeksini günceller (`rag.index_driver`) — bu subscriber de
-publish hiç tetiklenmediği için pratikte etkisiz (fuel'in YAKIT_* bulgusuyla
-aynı sınıf, taşımadan önce de böyleydi, regresyon değil).
+✅ **GÜNCEL (2026-07-16 dedektif denetiminde düzeltildi — bu bölüm
+`e55edf7`'den [2026-07-16, "gerçekten bağla"] sonra hâlâ eski hâliyle
+kalmıştı):** `SOFOR_ADDED`/`SOFOR_UPDATED`/`SOFOR_DELETED` artık GERÇEKTEN
+çalışıyor — `add_sofor`/`update_sofor`/`delete_sofor` her biri commit'ten
+önce aynı transaction'da `save_outbox_event(...)` çağırıyor, Celery
+beat'in 60s outbox-relay task'ı bunu gerçek `event_bus.publish(...)`'e
+çeviriyor. `app/core/ai/rag_sync_service.py`'nin `SOFOR_ADDED`/
+`SOFOR_UPDATED` subscriber'ı (`rag.index_driver`) artık gerçekten
+tetikleniyor — bu bölüm eskiden "ölü kod, hiçbir yerde publish
+çağrılmıyor" diyordu, bu artık YANLIŞ.
 
 ## Şema & tablo sahipliği
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -56,8 +57,13 @@ async def _send_for_all(uow: UnitOfWork, payload: dict) -> PushSendResult:
     sent = expired = failed = 0
     expired_ids: list[int] = []
     used_ids: list[int] = []
-    for sub in subs:
-        ok, gone = await send_webpush(sub, payload)
+
+    # Filo geneli broadcast — sıralı gönderim en kötü durumda (fleet ölçekli
+    # abone sayısı) event loop'u N ardışık HTTPS round-trip boyunca bloke
+    # ederdi. send_webpush hiçbir shared/mutable state'e dokunmuyor,
+    # paralelleştirmek güvenli (2026-07-16 dedektif denetimi bulgusu).
+    results = await asyncio.gather(*(send_webpush(sub, payload) for sub in subs))
+    for sub, (ok, gone) in zip(subs, results):
         if ok:
             sent += 1
             used_ids.append(sub.id)

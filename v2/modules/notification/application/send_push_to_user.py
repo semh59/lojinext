@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Optional
@@ -91,8 +92,13 @@ async def _send_for_user(
     sent = expired = failed = 0
     expired_ids: list[int] = []
     used_ids: list[int] = []
-    for sub in subs:
-        ok, gone = await send_webpush(sub, payload)
+
+    # Bağımsız subscription'lara paralel gönder — sıralı `await` her push'u
+    # (bloklayıcı-çağrı düzeltmesinden sonra bile) birbiri ardına bekletirdi.
+    # send_webpush hiçbir shared/mutable state'e (uow.session) dokunmuyor,
+    # yalnız `sub`'ın kendi alanlarını okuyor — paralelleştirmek güvenli.
+    results = await asyncio.gather(*(send_webpush(sub, payload) for sub in subs))
+    for sub, (ok, gone) in zip(subs, results):
         if ok:
             sent += 1
             used_ids.append(sub.id)

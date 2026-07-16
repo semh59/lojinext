@@ -266,7 +266,6 @@ async def get_vehicle_comparison_pdf(
 
 @router.get("/cost/period", response_model=CostBreakdownResponse)
 async def get_period_cost(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     start_date: str = Query(...),
     end_date: str = Query(...),
@@ -300,7 +299,6 @@ async def get_period_cost(
 
 @router.get("/cost/trend", response_model=List[CostTrendPoint])
 async def get_cost_trend(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     months: int = Query(12, ge=1, le=24),
 ):
@@ -313,7 +311,6 @@ async def get_cost_trend(
 
 @router.get("/cost/vehicle-comparison", response_model=List[VehicleCostComparisonItem])
 async def get_vehicle_cost_comparison(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     months: int = Query(3, ge=1, le=12),
 ):
@@ -326,7 +323,6 @@ async def get_vehicle_cost_comparison(
 
 @router.get("/cost/savings-potential", response_model=SavingsPotentialResponse)
 async def get_savings_potential(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     target_consumption: float = Query(30.0, ge=20, le=45),
 ):
@@ -343,7 +339,6 @@ async def get_savings_potential(
 
 @router.get("/cost/roi", response_model=ROIResponse)
 async def get_roi_analysis(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     investment: float = Query(50000, ge=0),
     months: int = Query(12, ge=3, le=24),
@@ -369,7 +364,6 @@ async def get_roi_analysis(
 )
 async def get_excel_template(
     entity_type: str,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """
@@ -402,12 +396,12 @@ async def get_excel_template(
     response_class=Response,
 )
 async def export_analytical_report_excel(
+    db: SessionDep,
+    current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     report_type: str = Query(
         ...,
         description="fleet_summary, driver_comparison, cost_trend, vehicle_comparison",
     ),
-    db: SessionDep = None,
-    current_user: Annotated[Kullanici, Depends(get_current_active_admin)] = None,
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     months: int = Query(12, ge=1, le=24),

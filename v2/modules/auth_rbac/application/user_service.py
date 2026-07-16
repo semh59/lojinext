@@ -187,16 +187,16 @@ async def _change_password(
     user = await uow.kullanici_repo.get_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
-    real_id = user_id
-    stored_hash: str = (
-        user.sifre_hash if hasattr(user, "sifre_hash") else user["sifre_hash"]
-    )
+    # get_by_id() always returns a dict (BaseRepository.get_by_id's return
+    # type), never an ORM object — the hasattr/attribute-access branch this
+    # used to have was dead code (2026-07-16 dedektif denetimi bulgusu).
+    stored_hash: str = user["sifre_hash"]
 
     if not verify_password(current_password, stored_hash):
         return False
 
     new_hash = get_password_hash(new_password)
-    success = await uow.kullanici_repo.update(real_id, sifre_hash=new_hash)
+    success = await uow.kullanici_repo.update(user_id, sifre_hash=new_hash)
     if not success:
         raise HTTPException(status_code=500, detail="Şifre güncellenemedi")
 

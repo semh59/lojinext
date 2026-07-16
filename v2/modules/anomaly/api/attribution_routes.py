@@ -55,11 +55,9 @@ async def override_trip_attribution(
             if success
             else "Güncelleme yapılamadı.",
         )
-    except HTTPException as e:
-        raise e
-    except DomainError:
-        raise
     except HTTPException:
+        raise
+    except DomainError:
         raise
     except Exception as e:
         raise HTTPException(

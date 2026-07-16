@@ -21,7 +21,7 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
+from app.api.deps import get_current_active_admin, get_current_active_user
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -65,7 +65,6 @@ router = APIRouter()
 
 @router.get("/", response_model=StandardResponse[List[SoforResponse]])
 async def read_soforler(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -114,7 +113,6 @@ async def get_driver_fleet_stats(
 @router.post("/", response_model=SoforResponse, status_code=201)
 async def create_sofor(
     sofor: SoforCreate,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ) -> Any:
     from v2.modules.driver.application.add_sofor import add_sofor
@@ -386,7 +384,6 @@ async def get_driver_route_profile(
 async def update_sofor(
     sofor_id: int,
     sofor_in: SoforUpdate,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     try:
@@ -512,7 +509,6 @@ async def delete_sofor(
 @router.post("/{sofor_id}/score", response_model=SoforResponse)
 async def update_driver_score(
     sofor_id: int,
-    db: SessionDep,
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
     score: float = Query(..., ge=0.1, le=2.0),
 ):

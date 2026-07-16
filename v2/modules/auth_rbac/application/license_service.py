@@ -45,6 +45,12 @@ class LicenseEngine:
     def __init__(self):
         self.license_key: Optional[str] = None
         self.tier: str = "FREE"
+        # Instance-scoped kopya — aksi halde `self._LICENSE_HASHES[k] = v`
+        # sınıf-seviyesi dict'i mutate eder ve her yeni LicenseEngine()
+        # instance'ı öncekiyle state paylaşır/kirletir (üretimde container'ın
+        # tek singleton'ıyla maskeleniyordu, 2026-07-16 dedektif denetiminde
+        # bulundu — testte veya ikinci bir instantiation'da gerçek risk).
+        self._LICENSE_HASHES = dict(type(self)._LICENSE_HASHES)
         self._init_license_hashes()
 
     def _init_license_hashes(self):

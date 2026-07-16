@@ -1,6 +1,8 @@
+import threading
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
 from app.database.models import Dorse
@@ -101,11 +103,6 @@ class DorseRepository(BaseRepository[Dorse]):
             (overdue if row["bucket"] == "overdue" else expiring).append(item)
         return {"expiring": expiring, "overdue": overdue}
 
-
-import threading  # noqa: E402
-from typing import Optional  # noqa: E402
-
-from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 _dorse_repo_lock = threading.Lock()
 _dorse_repo: Optional["DorseRepository"] = None

@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 8/17 kalem tamam, dalga 10 kod-tarafı hazır | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) kod-tarafı tamam + yerel doğrulama yeşil, push/CI bekliyor (bkz. DALGA 10 bölümü); sıradaki: dalga 11 (analytics-executive), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 9/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil (bkz. DALGA 10 bölümü); sıradaki: dalga 11 (analytics-executive), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -43,7 +43,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
-| 10 | reports | `modules/reports.md` | 🟡 kod-tarafı tamam, push/CI bekliyor (bkz. DALGA 10 bölümü) |
+| 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | 🔲 |
 | 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
@@ -703,7 +703,27 @@ oturumda başlatılmamıştı, ORS/Redis/CORS-cwd flake'leri) — HEAD'e karşı
 `git stash` ile birebir aynı şekilde başarısız olduğu doğrulandı (regresyon
 değil).
 
-## DALGA 10 — 🟡 KOD-TARAFI TAMAM, PUSH/CI BEKLİYOR (2026-07-16)
+## DALGA 10 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-16)
+
+**Push geçmişi (4 commit, ilk 2'si kırmızı çıktı, ikisi de gerçek kök
+nedenle düzeltildi):**
+1. `6251b49` — ana taşıma (59 dosya). CI'nin "Backend import smoke"
+   adımında kırmızı çıktı.
+2. `3f308a9` — kök neden: `.gitignore`'un `*_report.*` deseni
+   `generate_vehicle_report.py`/`generate_driver_report.py`'yi sessizce
+   git'e hiç eklememişti (yerel Docker doğrulaması bunu yakalamadı —
+   dosyalar `docker cp` ile container'a kopyalanmıştı, git tracking'i
+   bypass ediyordu). Desen `*_report.txt`/`.json`/`.log`'a daraltıldı.
+3. `8a5e9de` — kullanıcı talebiyle 4 bağımsız sıfır-context ajanla
+   "dedektif" tam denetim yapıldı (bkz. aşağıdaki "Dedektif denetim"
+   bölümü); 2 gerçek (pre-existing, regresyon OLMAYAN) boşluk +
+   `frontend/openapi.json` drift düzeltildi. CI'nin "OpenAPI schema
+   drift check" adımında kırmızı çıktı (bu commit'in KENDİSİ
+   düzeltiyordu ama farklı bir push sırasında ayrıca test edildi).
+4. `1fdc78e` — `reports.md`/`STATUS.md` dokümantasyon düzeltmeleri.
+   **CI Hard Gates TAM YEŞİL** (`gh run view 29501486141` → hard-gates
+   job `success`, 33dk31sn — OpenAPI drift check + Playwright E2E dahil
+   tüm adımlar geçti) — commit `1fdc78e` main'in HEAD'i.
 
 **Kapsam:** reports modülü (12 dosya, gerçek 2.519 LOC — görev dosyasının
 "2.404" iddiası dedektif denetimde yanlış çıktı, `reports.md`'de düzeltildi)
@@ -801,13 +821,16 @@ sayısı 15→16, LOC 2.404→2.519, `triage_aggregator` hedef yolu) denetimde
 bulunup düzeltildi — hiçbiri kod-seviyesinde etkili değildi, yalnız
 dokümantasyon.
 
-**Sıradaki adım:** commit + push (`8a5e9de` zaten push edildi), CI Hard
-Gates'i izle (E2E dahil), yeşil olunca bu bölüm + tablo satırı "main'de
-yeşil" olarak güncellenecek.
+**Dalga 10 kapandı.** Sıradaki: dalga 11 (analytics-executive) — yeni
+oturumda, `TASKS/modules/analytics-executive.md` okunarak, kullanıcı
+onayıyla başlanacak (DURMA NOKTASI kuralı). Not: analytics-executive'in
+görev dosyası, dalga 10'da bulunan page_views tablo-sahipliği
+tutarsızlığını (bkz. yukarı) çözecek şekilde gözden geçirilmeli.
 
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
-baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports,
-yukarı bakınız) tamamlandı. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR
+baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports)
+main'de yeşil, CI Hard Gates ile doğrulandı (`gh run view 29501486141`,
+commit `1fdc78e`). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR
 faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor
 — bkz. görev dışı hatırlatma).

@@ -25,7 +25,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE = "/api/v1/advanced-reports"
-MOD = "app.api.v1.endpoints.advanced_reports"
+MOD = "v2.modules.reports.api.advanced_reports_routes"
 
 
 def _make_cost_breakdown(**kwargs):
@@ -51,7 +51,7 @@ async def test_fleet_summary_pdf_domain_error(async_client, admin_auth_headers):
     from app.core.exceptions import DomainError
 
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(side_effect=DomainError("domain error")),
     ):
         resp = await async_client.get(
@@ -65,7 +65,7 @@ async def test_fleet_summary_pdf_domain_error(async_client, admin_auth_headers):
 async def test_fleet_summary_pdf_generic_exception(async_client, admin_auth_headers):
     """GET /pdf/fleet-summary generic exception → 500."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(side_effect=RuntimeError("pdf generation failed")),
     ):
         resp = await async_client.get(
@@ -84,7 +84,7 @@ async def test_fleet_summary_pdf_generic_exception(async_client, admin_auth_head
 async def test_vehicle_report_pdf_generic_exception(async_client, admin_auth_headers):
     """GET /pdf/vehicle/1 generic exception → 500."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_vehicle_report",
+        "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
         new=AsyncMock(side_effect=RuntimeError("crash")),
     ):
         resp = await async_client.get(
@@ -106,7 +106,7 @@ async def test_vehicle_report_pdf_plaka_with_special_chars(
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_vehicle_report",
+            "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
             new=AsyncMock(return_value={"plaka": "06 ABC 123/test<>"}),
         ),
         patch(f"{MOD}.get_report_generator", return_value=mock_gen),
@@ -132,7 +132,7 @@ async def test_vehicle_report_pdf_empty_plaka(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_vehicle_report",
+            "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
             # Truthy dict without 'plaka' key → safe_plaka='' → "arac_5"
             new=AsyncMock(return_value={"arac_id": 5}),
         ),
@@ -235,7 +235,7 @@ async def test_cost_period_generic_exception(async_client, admin_auth_headers):
 async def test_excel_export_fleet_summary_empty_data(async_client, admin_auth_headers):
     """GET /excel/export fleet_summary returns empty raw_data → 404."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(return_value=[]),  # empty list
     ):
         resp = await async_client.get(
@@ -259,7 +259,7 @@ async def test_excel_export_cost_trend_dict_result(async_client, admin_auth_head
     with (
         patch(f"{MOD}.get_cost_analyzer", return_value=mock_analyzer),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -275,7 +275,7 @@ async def test_excel_export_cost_trend_dict_result(async_client, admin_auth_head
 async def test_excel_export_generic_exception(async_client, admin_auth_headers):
     """GET /excel/export generic exception → 500."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(side_effect=RuntimeError("crash")),
     ):
         resp = await async_client.get(
@@ -420,11 +420,11 @@ async def test_excel_export_fleet_summary_dict_result(async_client, admin_auth_h
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_fleet_summary",
+            "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
             new=AsyncMock(return_value={"total": 5, "vehicles": []}),
         ),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):

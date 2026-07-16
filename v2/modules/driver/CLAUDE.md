@@ -47,7 +47,7 @@ compare_drivers(sofor_ids=None, uow=None) -> dict
 get_driver_trend(sofor_id, window=10, uow=None) -> dict
 get_route_performance(sofor_id, uow=None) -> list[dict]
 calculate_elite_performance_score(sofor_id, baslangic=None, bitis=None, uow=None) -> float | None  # 0-100, ML-deviation
-calculate_performance_score(ort_tuketim, filo_ort, sefer_sayisi) -> float  # 0-100, fleet-comparison (report_service kullanır)
+calculate_performance_score(ort_tuketim, filo_ort, sefer_sayisi) -> float  # 0-100, fleet-comparison (reports modülü kullanır)
 calculate_trend(values: list[float]) -> str
 
 # Evaluation — kapsamlı 0-100 karne (domain/evaluation.py)
@@ -171,10 +171,13 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
 - **anomaly (taşındı, dalga 8)**: `DriverCoachingEngine`
   `v2.modules.anomaly.public.get_anomaly_detector()` kullanır (public.py
   üzerinden — driver→anomaly bağımlılığı artık modül sınırını doğru geçiyor).
-- **reports (senkron, henüz taşınmadı)**: `SoforSeferPDFService`
-  `app.core.services.report_generator.PDFReportGenerator`'dan miras alır.
-  `report_service.py` (reports) `calculate_performance_score`'u driver
-  raporlarında kullanır.
+- **reports (taşındı, dalga 10)**: `SoforSeferPDFService`
+  `v2.modules.reports.infrastructure.pdf_export.PDFReportGenerator`'dan
+  miras alır (public.py üzerinden değil — reports'un kendi `pdf_export.py`
+  dosyasından doğrudan, `RouteSimulator`/`LokasyonHydrator` sınıf-istisnası
+  desenindeki gibi). `reports/application/generate_vehicle_report.py`
+  `calculate_performance_score`'u (bu modülün `domain/report_metrics.py`'si)
+  driver raporlarında kullanır.
 - **fuel (senkron, tersine — zaten taşınmış)**: `v2/modules/fuel/domain/consumption_prediction.py`
   `get_driver_stats`'i (eski `SoforAnalizService.get_driver_stats`) çağırıp
   şoför-bazlı tüketim düzeltme faktörü hesaplar.
@@ -222,7 +225,7 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
   kolonunda saklanır), `_calc_elite_from_trips`/`calculate_elite_performance_score`
   (0-100, baseline 75 = ML tahminiyle tam eşleşme, analytics dashboard'da
   `performans_puani`), `calculate_performance_score` (0-100, baseline 50 =
-  filo ortalaması, report_service kullanır — analytics dashboard'da
+  filo ortalaması, reports modülü kullanır — analytics dashboard'da
   KULLANILMAZ).
 - **Coaching PII politikası** (`application/generate_coaching.py::_build_prompt`):
   Groq LLM'e giden prompt'ta isim/plaka/telegram_id/sofor_id KESİNLİKLE

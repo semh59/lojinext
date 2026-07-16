@@ -48,18 +48,25 @@ def test_cost_analyzer_uses_clock_helper():
 
 
 def test_report_service_uses_clock_helper():
-    import app.core.services.report_service as mod
+    import v2.modules.reports.application.generate_fleet_summary as mod
 
     assert hasattr(mod, "current_date")
 
 
 def test_no_direct_date_today_in_three_services():
-    """Production kodunda date.today() çağrısı bu 3 modülde olmamalı."""
+    """Production kodunda date.today() çağrısı bu modüllerde olmamalı.
+
+    dalga 10'da report_service.py application/generate_fleet_summary.py +
+    generate_vehicle_report.py + generate_monthly_trend.py'ye bölündü (B.1
+    free-function refactor) — üçü de current_date() kullanıyor.
+    """
     import app.core.services.cost_analyzer as cost_mod
     import app.core.services.dashboard_service as dash_mod
-    import app.core.services.report_service as rep_mod
+    import v2.modules.reports.application.generate_fleet_summary as fleet_mod
+    import v2.modules.reports.application.generate_monthly_trend as trend_mod
+    import v2.modules.reports.application.generate_vehicle_report as vehicle_mod
 
-    for mod in (dash_mod, cost_mod, rep_mod):
+    for mod in (dash_mod, cost_mod, fleet_mod, vehicle_mod, trend_mod):
         src = inspect.getsource(mod)
         assert "date.today()" not in src, (
             f"{mod.__name__} hala date.today() kullanıyor (clock injection bozuk)"

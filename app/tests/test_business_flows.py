@@ -19,18 +19,23 @@ from v2.modules.fuel.application.add_yakit import add_yakit
 async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
     """End-to-end operational flow with explicit dependency injection."""
     from app.core.services.analiz_service import AnalizService
-    from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
+    from app.database.repositories.analiz_repo import get_analiz_repo
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
+    from v2.modules.reports.infrastructure.repo_access import ReportRepos
 
     sofor_repo_local = get_sofor_repo(session=db_session)
 
     sefer_service = SeferService(repo=sefer_repo)
-    report_service = ReportService(
-        sefer_repo=sefer_repo,
-        yakit_repo=yakit_repo,
+    # ReportService taşımadan önce sefer/yakit/arac/sofor repo'larının
+    # `_session`'ından paylaşılan session'ı bulup analiz_repo'yu ona bağlardı
+    # (bkz. eski report_service.py::__init__) — burada aynı session doğrudan
+    # geçiriliyor, davranış aynı.
+    report_repos = ReportRepos(
+        analiz_repo=get_analiz_repo(session=db_session),
         arac_repo=arac_repo,
         sofor_repo=sofor_repo_local,
+        yakit_repo=yakit_repo,
     )
     analiz_service = AnalizService(
         yakit_repo=yakit_repo, sefer_repo=sefer_repo, arac_repo=arac_repo
@@ -132,10 +137,17 @@ async def test_end_to_end_flow(db_session, arac_repo, sefer_repo, yakit_repo):
         assert p["toplam_yakit"] == 180.0
         assert abs(p["ort_tuketim"] - 30.0) < 0.1
 
-    summary = await report_service.get_dashboard_summary()
+    from v2.modules.reports.application.get_daily_consumption_trend import (
+        get_daily_consumption_trend,
+    )
+    from v2.modules.reports.application.get_dashboard_summary import (
+        get_dashboard_summary,
+    )
+
+    summary = await get_dashboard_summary(report_repos)
     assert summary.get("aktif_arac", 0) >= 2
     assert summary.get("filo_ortalama", 0) > 0
 
-    trend = await report_service.get_daily_consumption_trend(days=7)
+    trend = await get_daily_consumption_trend(report_repos, days=7)
     assert summary is not None
     assert isinstance(trend, list)

@@ -16,9 +16,8 @@ from app.api.deps import SessionDep, get_current_active_admin
 from app.api.v1.utils import parse_date_param
 from app.core.exceptions import DomainError
 from app.core.services.cost_analyzer import get_cost_analyzer
-from app.core.services.report_generator import get_report_generator
-from app.core.services.report_service import ReportService
 from app.database.models import Kullanici
+from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import (
     EXCEL_XLSX_RESPONSES,
@@ -27,6 +26,12 @@ from app.schemas.api_responses import (
     VehicleCostComparisonItem,
 )
 from v2.modules.import_excel.public import export_data, get_export_service
+from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
+from v2.modules.reports.application.generate_vehicle_report import (
+    generate_vehicle_report,
+)
+from v2.modules.reports.infrastructure.pdf_export import get_report_generator
+from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
 logger = get_logger(__name__)
 
@@ -89,9 +94,9 @@ async def get_fleet_summary_pdf(
         )
         end = parse_date_param(end_date, "end_date") or date.today()
 
-        # Rapor verileri (async) — session-scoped service to avoid sessionless repo crash
-        report_service = ReportService(session=db)
-        data = await report_service.generate_fleet_summary(start, end)
+        # Rapor verileri (async) — session-scoped repos to avoid sessionless repo crash
+        async with UnitOfWork(session=db) as uow:
+            data = await generate_fleet_summary(resolve_repos(uow), start, end)
 
         # PDF oluştur (Bloklayıcı işlemi thread'e taşı)
         generator = get_report_generator()
@@ -141,8 +146,10 @@ async def get_vehicle_report_pdf(
     """
     try:
         # Rapor verileri (async)
-        report_service = ReportService(session=db)
-        data = await report_service.generate_vehicle_report(arac_id, month, year)
+        async with UnitOfWork(session=db) as uow:
+            data = await generate_vehicle_report(
+                resolve_repos(uow), arac_id, month, year
+            )
 
         if not data or "error" in data:
             raise HTTPException(status_code=404, detail="Araç bulunamadı")
@@ -185,7 +192,6 @@ async def get_driver_comparison_pdf(
 ):
     """Şoför performans karşılaştırma raporu PDF"""
     try:
-        from app.database.unit_of_work import UnitOfWork
         from v2.modules.driver.domain.driver_stats import get_driver_stats
 
         async with UnitOfWork() as uow:
@@ -216,8 +222,6 @@ async def get_driver_comparison_pdf(
     except HTTPException:
         raise
     except DomainError:
-        raise
-    except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Driver comparison PDF error: {e}", exc_info=True)
@@ -421,8 +425,8 @@ async def export_analytical_report_excel(
             )
             end = parse_date_param(end_date, "end_date") or date.today()
 
-            report_service = ReportService(session=db)
-            raw_data = await report_service.generate_fleet_summary(start, end)
+            async with UnitOfWork(session=db) as uow:
+                raw_data = await generate_fleet_summary(resolve_repos(uow), start, end)
             # Flatten or format raw_data for Excel
             data = [raw_data] if isinstance(raw_data, dict) else raw_data
 

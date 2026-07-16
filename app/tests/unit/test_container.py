@@ -95,10 +95,12 @@ class TestContainer(unittest.TestCase):
         # Check Services
         self.assertIsNotNone(container.sefer_service)
         self.assertIsNotNone(container.analiz_service)
-        self.assertIsNotNone(container.report_service)
         # NOT: container.import_service YOK — ImportService sınıfı B.1
         # free-function geçişinde kaldırıldı (dalga 9), import_excel modülü
         # artık container'a değil v2.modules.import_excel.public'e bağlı.
+        # NOT: container.report_service YOK — ReportService sınıfı B.1
+        # free-function geçişinde kaldırıldı (dalga 10), reports modülü
+        # artık container'a değil v2.modules.reports.public'e bağlı.
 
         # Check Injection (White-box testing)
         self.assertEqual(container.sefer_service.repo, container.sefer_repo)

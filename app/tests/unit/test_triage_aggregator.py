@@ -78,7 +78,9 @@ class _FakeUoW:
     ],
 )
 def test_map_anomaly_severity(raw, expected):
-    from app.core.services.triage_aggregator import _map_anomaly_severity
+    from v2.modules.reports.application.aggregate_today_triage import (
+        _map_anomaly_severity,
+    )
 
     assert _map_anomaly_severity(raw) == expected
 
@@ -96,14 +98,19 @@ def test_map_anomaly_severity(raw, expected):
     ],
 )
 def test_map_maintenance_risk(risk, expected):
-    from app.core.services.triage_aggregator import _map_maintenance_risk
+    from v2.modules.reports.application.aggregate_today_triage import (
+        _map_maintenance_risk,
+    )
 
     assert _map_maintenance_risk(risk) == expected
 
 
 # ── _sort_items ───────────────────────────────────────────────────────
 def test_sort_items_critical_first():
-    from app.core.services.triage_aggregator import TriageItem, _sort_items
+    from v2.modules.reports.application.aggregate_today_triage import (
+        TriageItem,
+        _sort_items,
+    )
 
     now = datetime.now(timezone.utc)
     items = [
@@ -137,7 +144,10 @@ def test_sort_items_critical_first():
 
 
 def test_sort_items_same_severity_newer_first():
-    from app.core.services.triage_aggregator import TriageItem, _sort_items
+    from v2.modules.reports.application.aggregate_today_triage import (
+        TriageItem,
+        _sort_items,
+    )
 
     older = datetime.now(timezone.utc) - timedelta(hours=2)
     newer = datetime.now(timezone.utc) - timedelta(minutes=10)
@@ -167,7 +177,7 @@ def test_sort_items_same_severity_newer_first():
 @pytest.mark.asyncio
 async def test_aggregate_empty_returns_zero_counts(monkeypatch):
     """Hiç veri yok → 0 counts, empty items list."""
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     # D.1 MaintenancePredictor.predict_all → empty
     class _EmptyPredictor:
@@ -191,7 +201,7 @@ async def test_aggregate_empty_returns_zero_counts(monkeypatch):
 @pytest.mark.asyncio
 async def test_aggregate_anomaly_critical_first(monkeypatch):
     """1 critical + 1 low anomaly → critical önce sıralı."""
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     class _EmptyPredictor:
         async def predict_all(self):
@@ -238,7 +248,7 @@ async def test_aggregate_maintenance_filters_far_future(monkeypatch):
     """30 gün sonraki bakım triage'a girmemeli (>7 gün)."""
     from datetime import date
 
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     class _Pred:
         def __init__(self, predicted_date, predictable=True, risk_level="normal"):
@@ -271,7 +281,7 @@ async def test_aggregate_maintenance_filters_far_future(monkeypatch):
 @pytest.mark.asyncio
 async def test_aggregate_investigation_severity_mapping(monkeypatch):
     """high suspicion → critical (B kanalı en kritik)."""
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     class _EmptyPredictor:
         async def predict_all(self):
@@ -303,7 +313,7 @@ async def test_aggregate_investigation_severity_mapping(monkeypatch):
 @pytest.mark.asyncio
 async def test_aggregate_active_trips_counter(monkeypatch):
     """Counter sayıları ayrı SQL'den geliyor — sıralamayı etkilemez."""
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     class _EmptyPredictor:
         async def predict_all(self):
@@ -323,7 +333,7 @@ async def test_aggregate_active_trips_counter(monkeypatch):
 @pytest.mark.asyncio
 async def test_aggregate_limit_respected(monkeypatch):
     """limit=5 → max 5 item döner."""
-    from app.core.services import triage_aggregator
+    import v2.modules.reports.application.aggregate_today_triage as triage_aggregator
 
     class _EmptyPredictor:
         async def predict_all(self):

@@ -1,4 +1,4 @@
-"""Coverage tests for app/core/services/report_generator.py"""
+"""Coverage tests for v2/modules/reports/infrastructure/pdf_export.py"""
 
 from __future__ import annotations
 
@@ -16,13 +16,13 @@ pytestmark = pytest.mark.unit
 
 def test_reportlab_available_flag():
     """REPORTLAB_AVAILABLE is a module-level bool."""
-    from app.core.services import report_generator as rg
+    from v2.modules.reports.infrastructure import pdf_export as rg
 
     assert isinstance(rg.REPORTLAB_AVAILABLE, bool)
 
 
 def test_get_system_font_returns_string():
-    from app.core.services.report_generator import get_system_font
+    from v2.modules.reports.infrastructure.pdf_export import get_system_font
 
     path = get_system_font()
     assert isinstance(path, str)
@@ -31,7 +31,7 @@ def test_get_system_font_returns_string():
 
 def test_get_system_font_windows(monkeypatch):
     monkeypatch.setattr("platform.system", lambda: "Windows")
-    from app.core.services.report_generator import get_system_font
+    from v2.modules.reports.infrastructure.pdf_export import get_system_font
 
     path = get_system_font()
     assert "arial" in path.lower() or "Windows" in path
@@ -39,7 +39,7 @@ def test_get_system_font_windows(monkeypatch):
 
 def test_get_system_font_darwin(monkeypatch):
     monkeypatch.setattr("platform.system", lambda: "Darwin")
-    from app.core.services.report_generator import get_system_font
+    from v2.modules.reports.infrastructure.pdf_export import get_system_font
 
     path = get_system_font()
     assert "Helvetica" in path or "System" in path
@@ -60,7 +60,7 @@ def test_get_system_font_linux_existing(monkeypatch, tmp_path):
         return orig_exists(p)
 
     monkeypatch.setattr("os.path.exists", patched_exists)
-    from app.core.services import report_generator as rg
+    from v2.modules.reports.infrastructure import pdf_export as rg
 
     # Re-execute so the patched os.path.exists applies
     path = rg.get_system_font()
@@ -71,7 +71,7 @@ def test_get_system_font_linux_fallback(monkeypatch):
     """Linux — no candidates exist → returns default DejaVuSans path."""
     monkeypatch.setattr("platform.system", lambda: "Linux")
     monkeypatch.setattr("os.path.exists", lambda _p: False)
-    from app.core.services.report_generator import get_system_font
+    from v2.modules.reports.infrastructure.pdf_export import get_system_font
 
     path = get_system_font()
     assert "DejaVuSans" in path or path.endswith(".ttf")
@@ -83,7 +83,7 @@ def test_get_system_font_linux_fallback(monkeypatch):
 
 
 def test_get_report_generator_singleton():
-    import app.core.services.report_generator as rg
+    import v2.modules.reports.infrastructure.pdf_export as rg
 
     rg._report_generator = None  # reset
     g1 = rg.get_report_generator()
@@ -92,7 +92,7 @@ def test_get_report_generator_singleton():
 
 
 def test_get_report_generator_returns_instance():
-    from app.core.services.report_generator import (
+    from v2.modules.reports.infrastructure.pdf_export import (
         PDFReportGenerator,
         get_report_generator,
     )
@@ -108,7 +108,7 @@ def test_get_report_generator_returns_instance():
 
 def test_init_without_reportlab(monkeypatch):
     """When reportlab is not available __init__ returns early without crashing."""
-    import app.core.services.report_generator as rg
+    import v2.modules.reports.infrastructure.pdf_export as rg
 
     monkeypatch.setattr(rg, "REPORTLAB_AVAILABLE", False)
     gen = rg.PDFReportGenerator()
@@ -117,7 +117,7 @@ def test_init_without_reportlab(monkeypatch):
 
 
 def test_styles_property_none_when_reportlab_unavailable(monkeypatch):
-    import app.core.services.report_generator as rg
+    import v2.modules.reports.infrastructure.pdf_export as rg
 
     monkeypatch.setattr(rg, "REPORTLAB_AVAILABLE", False)
     gen = rg.PDFReportGenerator()
@@ -133,13 +133,13 @@ def test_styles_property_none_when_reportlab_unavailable(monkeypatch):
 
 @pytest.mark.skipif(
     not __import__(
-        "app.core.services.report_generator", fromlist=["REPORTLAB_AVAILABLE"]
+        "v2.modules.reports.infrastructure.pdf_export", fromlist=["REPORTLAB_AVAILABLE"]
     ).REPORTLAB_AVAILABLE,
     reason="reportlab not installed",
 )
 class TestWithReportlab:
     def _generator(self):
-        import app.core.services.report_generator as rg
+        import v2.modules.reports.infrastructure.pdf_export as rg
 
         rg._report_generator = None
         return rg.get_report_generator()
@@ -362,13 +362,13 @@ class TestWithReportlab:
 
 @pytest.mark.skipif(
     not __import__(
-        "app.core.services.report_generator", fromlist=["REPORTLAB_AVAILABLE"]
+        "v2.modules.reports.infrastructure.pdf_export", fromlist=["REPORTLAB_AVAILABLE"]
     ).REPORTLAB_AVAILABLE,
     reason="reportlab not installed",
 )
 def test_register_fonts_exception_fallback(monkeypatch):
     """When font registration raises, fallback to Helvetica."""
-    import app.core.services.report_generator as rg
+    import v2.modules.reports.infrastructure.pdf_export as rg
 
     # Make os.path.exists always False to force Helvetica fallback
     monkeypatch.setattr("os.path.exists", lambda _p: False)

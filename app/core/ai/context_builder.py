@@ -28,9 +28,22 @@ class ContextBuilder:
 
     @property
     def report_service(self):
-        from app.core.services.report_service import get_report_service
+        """Adapter exposing ``get_dashboard_summary()`` — kept as a
+        patchable property for existing tests; reports itself has no
+        ``ReportService`` class (v2/modules/reports, B.1: free functions)."""
 
-        return get_report_service()
+        class _ReportsFacade:
+            async def get_dashboard_summary(self, days: int = 30):
+                from v2.modules.reports.application.get_dashboard_summary import (
+                    get_dashboard_summary,
+                )
+                from v2.modules.reports.infrastructure.repo_access import (
+                    resolve_repos,
+                )
+
+                return await get_dashboard_summary(resolve_repos(), days=days)
+
+        return _ReportsFacade()
 
     @property
     def arac_repo(self):

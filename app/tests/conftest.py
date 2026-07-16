@@ -510,10 +510,21 @@ def mock_event_bus():
 
 
 @pytest.fixture
-def report_service(db_session):
-    from app.core.services.report_service import ReportService
+def report_repos(db_session):
+    """ReportRepos bundle bound to the test session (dalga 10 — B.1: reports
+    has no ``ReportService`` class anymore, use-cases take this bundle)."""
+    from app.database.repositories.analiz_repo import get_analiz_repo
+    from v2.modules.driver.infrastructure.repository import SoforRepository
+    from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
+    from v2.modules.fuel.infrastructure.repository import YakitRepository
+    from v2.modules.reports.infrastructure.repo_access import ReportRepos
 
-    return ReportService(session=db_session)
+    return ReportRepos(
+        analiz_repo=get_analiz_repo(session=db_session),
+        arac_repo=AracRepository(session=db_session),
+        sofor_repo=SoforRepository(session=db_session),
+        yakit_repo=YakitRepository(session=db_session),
+    )
 
 
 @pytest.fixture

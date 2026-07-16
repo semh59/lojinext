@@ -15,16 +15,37 @@ from app.infrastructure.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
+class _ReportsFacade:
+    """Bridges reports' free-function use-cases to the injectable
+    ``self.report_service.get_dashboard_summary()``/``.get_monthly_comparison()``
+    call shape ``DashboardService`` exposes for test overrides (see
+    ``app/tests/unit/test_service_optimizations.py``) — reports itself has
+    no ``ReportService`` class (v2/modules/reports, B.1: free functions)."""
+
+    async def get_dashboard_summary(self, days: int = 30):
+        from v2.modules.reports.application.get_dashboard_summary import (
+            get_dashboard_summary,
+        )
+        from v2.modules.reports.infrastructure.repo_access import resolve_repos
+
+        return await get_dashboard_summary(resolve_repos(), days=days)
+
+    async def get_monthly_comparison(self, year=None, month=None):
+        from v2.modules.reports.application.get_monthly_comparison import (
+            get_monthly_comparison,
+        )
+        from v2.modules.reports.infrastructure.repo_access import resolve_repos
+
+        return await get_monthly_comparison(resolve_repos(), year=year, month=month)
+
+
 class DashboardService:
     """Dashboard summary and card data service."""
 
     def __init__(self, report_service=None, sefer_repo=None):
-        if report_service is not None:
-            self.report_service = report_service
-        else:
-            from app.core.services.report_service import get_report_service
-
-            self.report_service = get_report_service()
+        self.report_service = (
+            report_service if report_service is not None else _ReportsFacade()
+        )
 
         self.sefer_repo = sefer_repo  # None = use UoW in get_dashboard_data
 

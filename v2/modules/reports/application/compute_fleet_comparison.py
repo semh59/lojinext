@@ -48,7 +48,7 @@ class FleetComparison:
 
 
 def _delta_pct(current: float, previous: float) -> Optional[float]:
-    """Yüzdesel değişim. previous=0 → None (anlamsız)."""
+    """Yüzdesel değişim. previous=0 -> None (anlamsız)."""
     if previous == 0:
         return None
     return round((current - previous) / previous * 100, 1)

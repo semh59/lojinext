@@ -94,11 +94,13 @@ class PDFReportGenerator:
             # 1. Öncelik: Proje içindeki gömülü fontlar (Taşınabilirlik için)
             current_dir = os.path.dirname(
                 os.path.abspath(__file__)
-            )  # app/core/services
-            app_dir = os.path.dirname(os.path.dirname(current_dir))  # app
-            asset_font = os.path.join(app_dir, "assets", "fonts", "DocFont.ttf")
+            )  # v2/modules/reports/infrastructure
+            app_dir = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+            )  # repo kökü
+            asset_font = os.path.join(app_dir, "app", "assets", "fonts", "DocFont.ttf")
             asset_font_bold = os.path.join(
-                app_dir, "assets", "fonts", "DocFont-Bold.ttf"
+                app_dir, "app", "assets", "fonts", "DocFont-Bold.ttf"
             )
 
             if os.path.exists(asset_font):

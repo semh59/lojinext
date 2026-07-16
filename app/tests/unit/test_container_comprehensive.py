@@ -183,9 +183,10 @@ class TestContainerInitialization:
 
         assert container.sefer_service is not None
         assert container.analiz_service is not None
-        assert container.report_service is not None
         # container.import_service removed — ImportService class deleted in
         # dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
+        # container.report_service removed — ReportService class deleted in
+        # dalga 10 (B.1 free-function refactor, v2.modules.reports).
 
     def test_event_bus_initialized(self):
         """EventBus initialize edilmeli."""
@@ -252,16 +253,11 @@ class TestDependencyInjection:
     # opens its own UnitOfWork() or reaches container.sefer_service inline
     # (bkz. v2/modules/import_excel/CLAUDE.md).
 
-    def test_report_service_has_all_repos(self):
-        """ReportService tüm repository'leri almalı."""
-        from app.core.container import get_container
-
-        container = get_container()
-
-        assert container.report_service.sefer_repo is container.sefer_repo
-        assert container.report_service.yakit_repo is container.yakit_repo
-        assert container.report_service.arac_repo is container.arac_repo
-        assert container.report_service.sofor_repo is container.sofor_repo
+    # test_report_service_has_all_repos removed — ReportService class deleted
+    # in dalga 10 (B.1 free-function refactor, v2.modules.reports); reports
+    # use-cases take an explicit ReportRepos bundle (resolve_repos(uow)),
+    # never a constructor-injected repo (container.{arac,sofor,yakit,sefer}_repo
+    # still exist, used by other services e.g. analiz_service, asserted above).
 
     def test_all_services_share_same_event_bus(self):
         """Event-publishing servisler aynı EventBus'ı paylaşmalı."""
@@ -369,15 +365,9 @@ class TestFactoryFunctions:
     # get_import_service() factory + container.import_service property both
     # deleted in dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
 
-    def test_get_report_service_returns_container_instance(self):
-        """get_report_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
-        from app.core.services.report_service import get_report_service
-
-        container = get_container()
-        service = get_report_service()
-
-        assert service is container.report_service
+    # test_get_report_service_returns_container_instance removed —
+    # get_report_service() factory + container.report_service property both
+    # deleted in dalga 10 (B.1 free-function refactor, v2.modules.reports).
 
 
 # =============================================================================

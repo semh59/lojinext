@@ -73,14 +73,14 @@ class _FakeUoW:
     ],
 )
 def test_delta_pct(current, previous, expected):
-    from app.core.services.fleet_comparison import _delta_pct
+    from v2.modules.reports.application.compute_fleet_comparison import _delta_pct
 
     assert _delta_pct(current, previous) == expected
 
 
 # ── _period_dates ──────────────────────────────────────────────────────
 def test_period_dates_week():
-    from app.core.services.fleet_comparison import _period_dates
+    from v2.modules.reports.application.compute_fleet_comparison import _period_dates
 
     cs, ce, ps, pe = _period_dates("week")
     assert (ce - cs).days == 7
@@ -89,7 +89,7 @@ def test_period_dates_week():
 
 
 def test_period_dates_month():
-    from app.core.services.fleet_comparison import _period_dates
+    from v2.modules.reports.application.compute_fleet_comparison import _period_dates
 
     cs, ce, ps, pe = _period_dates("month")
     assert (ce - cs).days == 30
@@ -102,7 +102,9 @@ async def test_compute_comparison_zero_previous_period():
     """Önceki period boşsa delta None döner."""
     from datetime import date as _date
 
-    from app.core.services.fleet_comparison import compute_fleet_comparison
+    from v2.modules.reports.application.compute_fleet_comparison import (
+        compute_fleet_comparison,
+    )
 
     today = _date.today()
     current_start = today - timedelta(days=30)
@@ -128,7 +130,9 @@ async def test_compute_comparison_positive_delta():
     """Bu ay 1100 L, geçen 1000 L → +10% delta."""
     from datetime import date as _date
 
-    from app.core.services.fleet_comparison import compute_fleet_comparison
+    from v2.modules.reports.application.compute_fleet_comparison import (
+        compute_fleet_comparison,
+    )
 
     current_start = _date.today() - timedelta(days=30)
     uow = _FakeUoW(
@@ -152,7 +156,9 @@ async def test_compute_comparison_negative_delta_improvement():
     """Bu ay daha az yakıt → negative delta (iyileşme)."""
     from datetime import date as _date
 
-    from app.core.services.fleet_comparison import compute_fleet_comparison
+    from v2.modules.reports.application.compute_fleet_comparison import (
+        compute_fleet_comparison,
+    )
 
     current_start = _date.today() - timedelta(days=7)
     uow = _FakeUoW(

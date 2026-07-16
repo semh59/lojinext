@@ -157,7 +157,7 @@ class TestFileDownloadContent:
 
     def test_pdf_magic_bytes_pattern(self):
         """PDF generator gerçek PDF bytes döndürmeli."""
-        from app.core.services.report_generator import PDFReportGenerator
+        from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
 
         gen = PDFReportGenerator()
         result = gen.generate_driver_comparison(

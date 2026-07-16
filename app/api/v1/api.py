@@ -9,20 +9,15 @@ from app.api.v1.endpoints import (
     admin_pilot,
     admin_predictions,
     admin_ws,
-    advanced_reports,
     ai,
     analytics,
     error_stream,
     executive,
     feedback,
-    fleet_insights,
     health,
     internal,
     predictions,
-    reports,
-    reports_studio,
     system,
-    today_triage,
     trips,
     weather,
 )
@@ -58,6 +53,15 @@ from v2.modules.notification.api.notification_routes import (
     router as notification_router,
 )
 from v2.modules.notification.api.push_routes import router as push_router
+from v2.modules.reports.api.advanced_reports_routes import (
+    router as advanced_reports_router,
+)
+from v2.modules.reports.api.dashboard_routes import router as reports_router
+from v2.modules.reports.api.fleet_insights_routes import (
+    router as fleet_insights_router,
+)
+from v2.modules.reports.api.studio_routes import router as reports_studio_router
+from v2.modules.reports.api.triage_routes import router as today_triage_router
 from v2.modules.route_simulation.api.route_routes import router as route_router
 
 api_router = APIRouter()
@@ -89,7 +93,7 @@ api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
     predictions.router, prefix="/predictions", tags=["predictions"]
 )
-api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
+api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(
     executive.router, prefix="/reports/executive", tags=["executive"]
@@ -102,7 +106,7 @@ api_router.include_router(
     tags=["investigations"],
 )
 api_router.include_router(
-    advanced_reports.router, prefix="/advanced-reports", tags=["advanced-reports"]
+    advanced_reports_router, prefix="/advanced-reports", tags=["advanced-reports"]
 )
 api_router.include_router(health.router, prefix="/health", tags=["health"])
 api_router.include_router(ai.router, prefix="/ai", tags=["AI"])
@@ -150,15 +154,15 @@ api_router.include_router(
 api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(
-    today_triage.router, prefix="/reports/today", tags=["reports-v2"]
+    today_triage_router, prefix="/reports/today", tags=["reports-v2"]
 )
 api_router.include_router(
-    fleet_insights.router,
+    fleet_insights_router,
     prefix="/reports/insights/fleet",
     tags=["reports-v2"],
 )
 api_router.include_router(
-    reports_studio.router,
+    reports_studio_router,
     prefix="/reports/studio",
     tags=["reports-v2"],
 )

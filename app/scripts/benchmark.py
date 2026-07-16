@@ -111,10 +111,16 @@ class Benchmark:
 
 def create_benchmarks() -> List[Benchmark]:
     """Create benchmark suite."""
-    from app.core.services.report_service import get_report_service
     from app.core.services.sefer_service import get_sefer_service
     from app.database.connection import get_connection
     from v2.modules.fleet.application.list_vehicles import get_all_vehicles
+    from v2.modules.reports.application.generate_fleet_summary import (
+        generate_fleet_summary,
+    )
+    from v2.modules.reports.application.generate_monthly_trend import (
+        generate_monthly_trend,
+    )
+    from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
     return [
         Benchmark(
@@ -137,13 +143,13 @@ def create_benchmarks() -> List[Benchmark]:
         ),
         Benchmark(
             "Monthly Trend Report",
-            lambda: get_report_service().generate_monthly_trend(),
+            lambda: generate_monthly_trend(resolve_repos()),
             iterations=20,
             threshold_ms=200.0,
         ),
         Benchmark(
             "Fleet Summary",
-            lambda: get_report_service().generate_fleet_summary(days=30),
+            lambda: generate_fleet_summary(resolve_repos(), days=30),
             iterations=20,
             threshold_ms=200.0,
         ),

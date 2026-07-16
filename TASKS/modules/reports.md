@@ -44,6 +44,10 @@ app/schemas/fleet_insights.py
 6. Shim'ler + CLAUDE.md.
 
 ## 6. Kabul kriterleri
-- [ ] 12 dosya taşındı (fleet_comparison + fleet_insights ikilisi birlikte)
-- [ ] triage_aggregator'ın 4-modül raw-SQL erişimi FAZ2 read-model grant listesine eklendi
-- [ ] REPORTS_V2_ENABLED flag davranışı REGRESYONSUZ
+- [x] 12 dosya taşındı (fleet_comparison + fleet_insights ikilisi birlikte) — bkz. `v2/modules/reports/`
+- [ ] triage_aggregator'ın 4-modül raw-SQL erişimi FAZ2 read-model grant listesine eklendi (FAZ2 kapsamı, bu dalgada yapılmadı)
+- [x] REPORTS_V2_ENABLED flag davranışı REGRESYONSUZ (mekanik taşıma, `settings.REPORTS_V2_ENABLED` kontrolleri aynen korundu)
+
+**Not (2026-07-16):** page_views tablo-sahipliği görev dosyasının madde 3'ü
+ile gerçek kod-sahipliği arasında tutarsızlık bulundu — detay
+`v2/modules/reports/CLAUDE.md` + `TASKS/STATUS.md` DALGA 10 bölümü.

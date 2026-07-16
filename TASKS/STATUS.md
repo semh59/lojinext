@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 8/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; sıradaki: dalga 10 (reports), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 8/17 kalem tamam, dalga 10 kod-tarafı hazır | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) kod-tarafı tamam + yerel doğrulama yeşil, push/CI bekliyor (bkz. DALGA 10 bölümü); sıradaki: dalga 11 (analytics-executive), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -43,7 +43,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 7 | *(route-simulation dalga 1'e taşındı, bkz. üstte)* | — | — |
 | 8 | anomaly | `modules/anomaly.md` | ✅ main'de yeşil (commit — bkz. DALGA 8 bölümü) |
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
-| 10 | reports | `modules/reports.md` | 🔲 |
+| 10 | reports | `modules/reports.md` | 🟡 kod-tarafı tamam, push/CI bekliyor (bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | 🔲 |
 | 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
@@ -703,9 +703,80 @@ oturumda başlatılmamıştı, ORS/Redis/CORS-cwd flake'leri) — HEAD'e karşı
 `git stash` ile birebir aynı şekilde başarısız olduğu doğrulandı (regresyon
 değil).
 
+## DALGA 10 — 🟡 KOD-TARAFI TAMAM, PUSH/CI BEKLİYOR (2026-07-16)
+
+**Kapsam:** reports modülü (12 dosya, ~2.404 LOC envanteri) — dashboard/filo/
+araç/şoför rapor üretimi (JSON+PDF+Excel), aylık trend, Reports-v2 (Today/
+Triage, Fleet İçgörü, Reports Studio). `TASKS/modules/reports.md` + yeni
+`v2/modules/reports/CLAUDE.md`.
+
+**Öne çıkan kararlar/bulgular:**
+- `ReportService` sınıfı kaldırıldı (B.1, önceki 6 dalgayla aynı gerekçe) —
+  7 bağımsız use-case fonksiyona bölündü (`generate_fleet_summary`,
+  `generate_vehicle_report`, `generate_driver_report`, `generate_monthly_trend`,
+  `get_dashboard_summary`, `get_monthly_comparison`, `get_daily_consumption_trend`).
+  Session-mi-yoksa-singleton-mi ayrımı `ReportRepos`/`resolve_repos(uow)`
+  ile korundu (driver'ın `_repos(uow)` desenini birebir taklit eder).
+- `triage_aggregator.py`/`fleet_comparison.py` mekanik taşındı (davranış
+  değişikliği yok) — Reports-v2'nin RV2.1/RV2.2 özellikleri.
+- `report_generator.py` → `infrastructure/pdf_export.py`; font-kaydı repo-kökü
+  hesaplaması `dirname()` 2'den 4'e çıktı (yeni dosya derinliği), pratik
+  etkisi yok (asset font dizini bu ortamda zaten mevcut değil, fallback zinciri
+  aynı).
+- 🔴 **page_views tablo-sahipliği tutarsızlığı bulundu (düzeltilmedi, dalga
+  11'e not düşüldü):** görev dosyası "page_views reports'ta" diyordu ama
+  `page_view_repo.py`/`analytics.py`/`analytics_tasks.py` (gerçek kod-sahibi)
+  analytics_executive'in (dalga 11, henüz taşınmadı) alanında — 12 dosyalık
+  envanterin dışında, taşınmadı. Detay: `v2/modules/reports/CLAUDE.md`
+  "page_views tablo-sahipliği tutarsızlığı" bölümü.
+- `dashboard_service.py`/`context_builder.py` (app/core/, bu dalganın dosya
+  envanterinin dışı) `_ReportsFacade` küçük adaptör sınıfı kullanıyor — eski
+  `self.report_service.get_dashboard_summary()` çağrı şeklini koruyan bir
+  köprü (mevcut testlerin `AsyncMock` override'ı bunu bekliyor); reports'un
+  kendisinde `ReportService` yok, yalnız bu 2 TÜKETİCİ dosyanın eski
+  instance-method arayüzünü bu dalgada değiştirmek kapsam dışı bırakıldı.
+- `container.py`'nin `report_service` property'si + `_report_service` state'i
+  kaldırıldı (önceki 6 dalgayla aynı desen — `arac_service`/`sofor_service`/
+  `yakit_service`/`import_service` de aynı şekilde kaldırılmıştı).
+
+**Doğrulama (gerçek Docker container — `docker cp` + `docker compose restart backend`,
+CLAUDE.md'nin dokümante ettiği pattern; MSYS/Git-Bash'in `docker exec`'e geçirilen
+çıplak `/app/...` yollarını Windows yoluna çevirdiği bir gotcha bulundu — `rm -f`
+sessizce no-op oldu, `MSYS_NO_PATHCONV=1` + `-u root` ile düzeltildi):**
+- Backend gerçek restart ile temiz açıldı, 5/5 yeni route grubu (`/reports`,
+  `/advanced-reports`, `/reports/today`, `/reports/insights/fleet`,
+  `/reports/studio`) `app.routes`'ta doğrulandı.
+- `ruff check app v2 --select E,F,W,I` → temiz (12 import-order hatası
+  bulunup düzeltildi).
+- `mypy app --ignore-missing-imports --no-strict-optional` (CI'nin TAM
+  kapsamı) → **0 hata**. `mypy app v2` (v2 dahil, ekstra) → 10 hata bulunup
+  düzeltildi (`ReportRepos` alanları `object` yerine `Any` olmalıydı,
+  AsyncMock/gerçek-repo ikili kullanımı için) → **0 hata**.
+- `pytest --collect-only`: `app/tests` 6745 test / kök `tests/` 264 test,
+  0 hata (dalga 1'deki conftest-collect riskiyle aynı sınıf kontrol edildi).
+- Hedefli testler gerçek `lojinext_test` DB'sine karşı: reports-özgü
+  130 (unit) + 72 (API/advanced-reports) + 9 (business-flow/detailed-scenario,
+  `test_analysis_and_report.py` DAHİL — bu dosya `.gitignore`'un
+  `*_report.*` deseniyle YANLIŞLIKLA eşleşip hiç git-tracked olmadığı
+  bulundu, CI'da hiç çalışmıyor, düzeltme yalnız yerel doğrulama için) +
+  32 (import_excel export_service, tüketici) + 15 (notification weekly-digest,
+  tüketici) = **258 test, 0 fail**. 1 pre-existing stale mock-assertion
+  bulundu (`test_generate_vehicle_report`'ın `get_by_id(1)` beklentisi,
+  gerçek çağrı taşımadan ÖNCE de `get_by_id(1, include_inactive=True)`
+  idi — `git show HEAD:...report_service.py` ile doğrulandı, regresyon
+  değil) düzeltildi.
+- `app/tests/sections/test_section_1_backend_core.py`'de 12 hata bulundu
+  (anomaly modülünün `detect_anomaly.py`↔`public.py` dairesel importu) —
+  **bu dalgayla İLGİSİZ** (reports hiç bu zincirde yok), izole koşumda da
+  aynı şekilde tekrarlandığı doğrulandı (pre-existing, ayrı bir flake-avcılığı
+  görevi konusu).
+
+**Sıradaki adım:** commit + push, CI Hard Gates'i izle (E2E dahil), yeşil
+olunca bu bölüm + tablo satırı "main'de yeşil" olarak güncellenecek.
+
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
-baseline hatalarının (7→0) temizliği + event-bus wiring (yukarı bakınız)
-tamamlandı. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu
-için geçici; iş bitince tekrar private yapılması gerekiyor — bkz. görev
-dışı hatırlatma).
+baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports,
+yukarı bakınız) tamamlandı. Depo şu an **PUBLIC** (kullanıcı kararı, GHCR
+faturalama sorunu için geçici; iş bitince tekrar private yapılması gerekiyor
+— bkz. görev dışı hatırlatma).

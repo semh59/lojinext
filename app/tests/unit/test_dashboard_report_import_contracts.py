@@ -10,8 +10,18 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.core.services.report_service import ReportService
+from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
+from v2.modules.reports.application.generate_monthly_trend import generate_monthly_trend
+from v2.modules.reports.application.generate_vehicle_report import (
+    generate_vehicle_report,
+)
+from v2.modules.reports.application.get_dashboard_summary import get_dashboard_summary
+from v2.modules.reports.application.get_monthly_comparison import (
+    get_monthly_comparison,
+)
+from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
 pytestmark = pytest.mark.integration
 
@@ -37,26 +47,27 @@ async def test_report_service_exposes_dashboard_compat_methods(db_session):
     )
     await db_session.commit()
 
-    service = ReportService(session=db_session)
+    async with UnitOfWork(session=db_session) as uow:
+        repos = resolve_repos(uow)
 
-    fleet = await service.generate_fleet_summary()
-    summary = await service.get_dashboard_summary()
+        fleet = await generate_fleet_summary(repos)
+        summary = await get_dashboard_summary(repos)
 
-    # Mapping assertions: compat wrapper must relay generate_fleet_summary keys
-    assert summary["toplam_sefer"] == fleet["total_trips"]
-    assert summary["toplam_km"] == fleet["total_distance"]
-    assert summary["toplam_yakit"] == fleet["total_fuel"]
-    assert summary["filo_ortalama"] == fleet["avg_consumption"]
+        # Mapping assertions: compat wrapper must relay generate_fleet_summary keys
+        assert summary["toplam_sefer"] == fleet["total_trips"]
+        assert summary["toplam_km"] == fleet["total_distance"]
+        assert summary["toplam_yakit"] == fleet["total_fuel"]
+        assert summary["filo_ortalama"] == fleet["avg_consumption"]
 
-    trend = await service.generate_monthly_trend()
-    comparison = await service.get_monthly_comparison()
+        trend = await generate_monthly_trend(repos)
+        comparison = await get_monthly_comparison(repos)
 
-    degisimler = trend.get("degisimler", {})
-    assert comparison["sefer_degisim"] == degisimler.get("toplam_sefer_degisim", 0)
-    assert comparison["km_degisim"] == degisimler.get("toplam_km_degisim", 0)
-    assert comparison["tuketim_degisim"] == degisimler.get(
-        "ortalama_tuketim_degisim", 0
-    )
+        degisimler = trend.get("degisimler", {})
+        assert comparison["sefer_degisim"] == degisimler.get("toplam_sefer_degisim", 0)
+        assert comparison["km_degisim"] == degisimler.get("toplam_km_degisim", 0)
+        assert comparison["tuketim_degisim"] == degisimler.get(
+            "ortalama_tuketim_degisim", 0
+        )
 
 
 async def test_dashboard_service_filters_deleted_trip_count_and_recent_list(
@@ -150,8 +161,8 @@ async def test_generate_vehicle_report_computes_performance_score_from_actual_st
         )
     await db_session.commit()
 
-    service = ReportService(session=db_session)
-    report = await service.generate_vehicle_report(arac.id, days=30)
+    async with UnitOfWork(session=db_session) as uow:
+        report = await generate_vehicle_report(resolve_repos(uow), arac.id, days=30)
 
     # Real performance_score from real DB stats
     # Expected: 80.0 (see formula comment above)

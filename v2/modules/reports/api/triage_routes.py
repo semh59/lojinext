@@ -9,17 +9,17 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.core.services.triage_aggregator import aggregate_today_triage
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.schemas.today import (
+from v2.modules.reports.application.aggregate_today_triage import aggregate_today_triage
+from v2.modules.reports.schemas import (
     TodayTriageResponse,
 )
-from app.schemas.today import (
+from v2.modules.reports.schemas import (
     TriageAction as TriageActionSchema,
 )
-from app.schemas.today import (
+from v2.modules.reports.schemas import (
     TriageItem as TriageItemSchema,
 )
 

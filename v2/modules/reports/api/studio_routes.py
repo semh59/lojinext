@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_current_active_user
 from app.config import settings
 from app.database.models import Kullanici
-from app.schemas.report_template import TemplateListResponse, TemplateMeta
+from v2.modules.reports.schemas import TemplateListResponse, TemplateMeta
 
 logger = logging.getLogger(__name__)
 

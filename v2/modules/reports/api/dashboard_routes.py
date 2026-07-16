@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,6 +10,8 @@ from app.core.exceptions import DomainError
 from app.database.models import Kullanici, YakitAlimi
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
+from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
 logger = get_logger(__name__)
 
@@ -58,21 +61,16 @@ async def get_dashboard_stats(
 ):
     """
     Dashboard istatistiklerini getir.
-    ReportService üzerinden çekilir.
     """
-    from datetime import datetime, timezone
-
-    from app.core.services.report_service import ReportService
-
-    service = ReportService(session=db)
     today_utc = datetime.now(timezone.utc).date()
 
     try:
         async with UnitOfWork(session=db) as uow:
+            repos = resolve_repos(uow)
             # Tek bir DB session paylaşıldığı için sıralı await; aksi halde
             # SQLAlchemy "concurrent operations" hatası verir.
-            data = await service.generate_fleet_summary(
-                start_date=today_utc.replace(day=1)
+            data = await generate_fleet_summary(
+                repos, start_date=today_utc.replace(day=1)
             )
             aktif_arac = await uow.arac_repo.count_active()
             aktif_sofor = await uow.sofor_repo.count_active()

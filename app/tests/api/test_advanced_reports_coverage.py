@@ -1,7 +1,7 @@
 """
 Advanced Reports endpoint coverage tests.
 
-Targets missing lines in app/api/v1/endpoints/advanced_reports.py (~33% → ≥70%).
+Targets missing lines in v2/modules/reports/api/advanced_reports_routes.py (~33% → ≥70%).
 All service/DB calls are mocked — no real DB needed.
 
 Patch rule: patch at the point of USE (the endpoint module's namespace), not
@@ -16,7 +16,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE = "/api/v1/advanced-reports"
-ENDPOINT_MOD = "app.api.v1.endpoints.advanced_reports"
+ENDPOINT_MOD = "v2.modules.reports.api.advanced_reports_routes"
 
 
 # ---------------------------------------------------------------------------
@@ -344,11 +344,11 @@ async def test_excel_export_fleet_summary(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_fleet_summary",
+            "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
             new=AsyncMock(return_value={"total": 5, "vehicles": []}),
         ),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -377,7 +377,7 @@ async def test_excel_export_driver_comparison(async_client, admin_auth_headers):
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -400,7 +400,7 @@ async def test_excel_export_cost_trend(async_client, admin_auth_headers):
     with (
         patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -464,7 +464,7 @@ async def test_fleet_summary_pdf_happy_path(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_fleet_summary",
+            "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
             new=AsyncMock(return_value={"total_km": 5000}),
         ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
@@ -487,7 +487,7 @@ async def test_fleet_summary_pdf_with_date_params(async_client, admin_auth_heade
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_fleet_summary",
+            "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
             new=AsyncMock(return_value={}),
         ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
@@ -514,7 +514,7 @@ async def test_vehicle_report_pdf_happy_path(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_vehicle_report",
+            "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
             new=AsyncMock(return_value={"plaka": "34ABC123"}),
         ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),
@@ -532,7 +532,7 @@ async def test_vehicle_report_pdf_happy_path(async_client, admin_auth_headers):
 async def test_vehicle_report_pdf_not_found(async_client, admin_auth_headers):
     """Returns 404 when vehicle data has error key."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_vehicle_report",
+        "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
         new=AsyncMock(return_value={"error": "not found"}),
     ):
         resp = await async_client.get(
@@ -547,7 +547,7 @@ async def test_vehicle_report_pdf_not_found(async_client, admin_auth_headers):
 async def test_vehicle_report_pdf_no_data(async_client, admin_auth_headers):
     """Returns 404 when generate_vehicle_report returns falsy."""
     with patch(
-        "app.core.services.report_service.ReportService.generate_vehicle_report",
+        "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
         new=AsyncMock(return_value=None),
     ):
         resp = await async_client.get(
@@ -660,7 +660,7 @@ async def test_excel_export_vehicle_comparison(async_client, admin_auth_headers)
     with (
         patch(f"{ENDPOINT_MOD}.get_cost_analyzer", return_value=mock_analyzer),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):

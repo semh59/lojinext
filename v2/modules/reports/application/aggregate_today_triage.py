@@ -1,4 +1,4 @@
-"""Reports v2 RV2.1 — Triage aggregator.
+"""Reports v2 RV2.1 — Today/Triage aggregator.
 
 Bugünün acil + bekleyen aksiyonlarını çoklu kaynaktan toplar:
   - Açık anomaliler (resolved_at IS NULL, son 7g)
@@ -7,7 +7,7 @@ Bugünün acil + bekleyen aksiyonlarını çoklu kaynaktan toplar:
   - Aktif sefer sayısı (sadece counter)
   - Bugün tamamlanan sefer sayısı (sadece counter)
 
-Priority sıralama: severity (critical→low) → timestamp DESC.
+Priority sıralama: severity (critical->low) -> timestamp DESC.
 
 Plan kaynağı: docs/superpowers/plans/2026-05-27-reports-v2-mvp-v3.md §3
 """
@@ -68,7 +68,7 @@ class TodayTriage:
 
 # ── Saf yardımcılar ────────────────────────────────────────────────────
 def _map_anomaly_severity(raw: Optional[str]) -> TriageSeverity:
-    """Anomaly.severity → TriageSeverity (Literal)."""
+    """Anomaly.severity -> TriageSeverity (Literal)."""
     if not raw:
         return "low"
     s = raw.lower()
@@ -82,7 +82,7 @@ def _map_anomaly_severity(raw: Optional[str]) -> TriageSeverity:
 
 
 def _map_maintenance_risk(risk_level: Optional[str]) -> TriageSeverity:
-    """D.1 risk_level (overdue/soon/normal/low) → TriageSeverity."""
+    """D.1 risk_level (overdue/soon/normal/low) -> TriageSeverity."""
     mapping: Dict[str, TriageSeverity] = {
         "overdue": "critical",
         "soon": "high",

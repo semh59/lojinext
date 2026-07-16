@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from app.core.services.analiz_service import AnalizService
     from app.core.services.health_service import HealthService
-    from app.core.services.report_service import ReportService
     from app.core.services.sefer_service import SeferService
     from app.database.repositories.analiz_repo import AnalizRepository
     from app.database.repositories.sefer_repo import SeferRepository
@@ -49,9 +48,8 @@ class Container:
     1. Infrastructure : event_bus
     2. Repositories   : arac, sefer, sofor, yakit, lokasyon, dorse, analiz
     3. Domain Services: arac, sofor, sefer, yakit, lokasyon, dorse, analiz
-    4. Composite      : report_service (birden fazla servise bağımlı)
-    5. ML/AI          : prediction, anomaly_detector, time_series (ağır)
-    6. External/Infra : license, health, route, smart_ai, weather (ağ bağımlı)
+    4. ML/AI          : prediction, anomaly_detector, time_series (ağır)
+    5. External/Infra : license, health, route, smart_ai, weather (ağ bağımlı)
 
     SINGLETON vs PER-REQUEST KURALI:
     - BURAYA GİRER (singleton): ML model yüklemesi, AI engine, external API client,
@@ -91,10 +89,7 @@ class Container:
         self._sefer_service: Optional["SeferService"] = None
         self._analiz_service: Optional["AnalizService"] = None
 
-        # ── 4. Composite Services (birden fazla servise/repo'ya bağımlı) ────
-        self._report_service: Optional["ReportService"] = None
-
-        # ── 5. ML/AI Subsystem (singleton — ağır model yüklemesi) ───────────
+        # ── 4. ML/AI Subsystem (singleton — ağır model yüklemesi) ───────────
         # Model dosyaları ilk erişimde bir kez yüklenir.
         # Sonraki request'lerde in-memory model kullanılır.
         # Bu servisler THREAD-SAFE olmak zorunda (paralel inference).
@@ -104,7 +99,7 @@ class Container:
         self._ai_service = None
         self._smart_ai_service: Optional["SmartAIService"] = None
 
-        # ── 6. External / Infrastructure Services ───────────────────────────
+        # ── 5. External / Infrastructure Services ───────────────────────────
         # Ağ bağımlı veya konfigürasyon tabanlı servisler.
         self._license_service: Optional["LicenseEngine"] = None
         self._health_service: Optional["HealthService"] = None
@@ -232,21 +227,6 @@ class Container:
                         yakit_repo=self.yakit_repo,
                     )
         return self._analiz_service
-
-    @property
-    def report_service(self) -> "ReportService":
-        if self._report_service is None:
-            with self._lock:
-                if self._report_service is None:
-                    from app.core.services.report_service import ReportService
-
-                    self._report_service = ReportService(
-                        sefer_repo=self.sefer_repo,
-                        yakit_repo=self.yakit_repo,
-                        arac_repo=self.arac_repo,
-                        sofor_repo=self.sofor_repo,
-                    )
-        return self._report_service
 
     @property
     def prediction_service(self) -> "PredictionService":
@@ -378,7 +358,6 @@ class Container:
             self._time_series_service = None
             self._anomaly_detector = None
             self._prediction_service = None
-            self._report_service = None
             self._analiz_service = None
             self._sefer_service = None
 

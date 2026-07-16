@@ -35,7 +35,7 @@ async def test_driver_comparison_pdf_returns_pdf(async_client, admin_auth_header
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(
-            "app.core.services.report_generator.get_report_generator"
+            "v2.modules.reports.api.advanced_reports_routes.get_report_generator"
         ) as mock_gen_factory,
     ):
         mock_generator = MagicMock()
@@ -74,7 +74,7 @@ async def test_fleet_summary_pdf_unexpected_error_does_not_leak_internal_message
         "psycopg2.OperationalError: FATAL: password authentication failed"
     )
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
     ):
         response = await async_client.get(
@@ -100,7 +100,7 @@ async def test_vehicle_pdf_unexpected_error_does_not_leak_internal_message(
         "internal stack trace with secret config path /etc/lojinext/secret.key"
     )
     with patch(
-        "app.core.services.report_service.ReportService.generate_vehicle_report",
+        "v2.modules.reports.api.advanced_reports_routes.generate_vehicle_report",
         new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
     ):
         response = await async_client.get(
@@ -131,11 +131,11 @@ async def test_excel_export_returns_xlsx(async_client, admin_auth_headers):
 
     with (
         patch(
-            "app.core.services.report_service.ReportService.generate_fleet_summary",
+            "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
             new=AsyncMock(return_value={"total": 0, "trips": []}),
         ),
         patch(
-            "app.api.v1.endpoints.advanced_reports.export_data",
+            "v2.modules.reports.api.advanced_reports_routes.export_data",
             new=AsyncMock(return_value=fake_xlsx),
         ),
     ):
@@ -183,7 +183,7 @@ async def test_excel_export_unexpected_error_does_not_leak_internal_message(
     mesaj dönmeli, gerçek detay yalnızca sunucu log'una yazılmalı."""
     sensitive_detail = "connection to postgresql://lojinext_user:s3cr3t@10.0.0.5/db failed"  # pragma: allowlist secret
     with patch(
-        "app.core.services.report_service.ReportService.generate_fleet_summary",
+        "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
         new=AsyncMock(side_effect=RuntimeError(sensitive_detail)),
     ):
         response = await async_client.get(

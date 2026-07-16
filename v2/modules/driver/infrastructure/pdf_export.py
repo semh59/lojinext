@@ -8,10 +8,10 @@ from xml.sax.saxutils import escape as xml_escape
 
 from sqlalchemy import select
 
-from app.core.services.report_generator import PDFReportGenerator
 from app.database.models import Sefer, Sofor
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
 
 logger = get_logger(__name__)
 

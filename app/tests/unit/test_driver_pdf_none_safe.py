@@ -1,6 +1,6 @@
 def test_generate_driver_comparison_with_all_none_values():
     """Tüm alanları None olan şoför verisi ile PDF oluşturulabilmeli."""
-    from app.core.services.report_generator import PDFReportGenerator
+    from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
 
     gen = PDFReportGenerator()
     driver_data = [
@@ -18,7 +18,7 @@ def test_generate_driver_comparison_with_all_none_values():
 
 def test_generate_driver_comparison_with_partial_none():
     """Bazı alanlar None, bazıları gerçek değer."""
-    from app.core.services.report_generator import PDFReportGenerator
+    from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
 
     gen = PDFReportGenerator()
     driver_data = [
@@ -32,7 +32,7 @@ def test_generate_driver_comparison_with_partial_none():
 
 def test_generate_driver_comparison_empty_list():
     """Boş liste — exception değil PDF dönmeli."""
-    from app.core.services.report_generator import PDFReportGenerator
+    from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
 
     gen = PDFReportGenerator()
     result = gen.generate_driver_comparison([])

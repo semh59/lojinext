@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.v1.endpoints.reports_studio import _TEMPLATES, list_templates
-from app.schemas.report_template import TemplateMeta
+from v2.modules.reports.api.studio_routes import _TEMPLATES, list_templates
+from v2.modules.reports.schemas import TemplateMeta
 
 
 class _FakeUser:

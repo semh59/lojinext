@@ -8,18 +8,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
-from app.core.services.fleet_comparison import (
-    PeriodType,
-    compute_fleet_comparison,
-)
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.schemas.fleet_insights import (
+from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.reports.application.compute_fleet_comparison import (
+    PeriodType,
+    compute_fleet_comparison,
+)
+from v2.modules.reports.schemas import (
     FleetComparisonResponse,
     PeriodMetricsResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
 
 logger = logging.getLogger(__name__)
 

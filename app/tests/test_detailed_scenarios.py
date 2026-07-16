@@ -18,7 +18,7 @@ class TestDetailedScenarios:
 
     @pytest.mark.asyncio
     async def test_reporting_scenario_passive_driver(
-        self, db_session, report_service, sefer_service
+        self, db_session, report_repos, sefer_service
     ):
         """SENARYO 1: Pasif şoförlerin raporlarda görünmesi"""
         from app.database.unit_of_work import UnitOfWork
@@ -102,9 +102,11 @@ class TestDetailedScenarios:
             container.yakit_repo.session = uow.session
             container.arac_repo.session = uow.session
 
-            stats = await report_service.generate_driver_report(
-                sofor_id, days=days_diff
+            from v2.modules.reports.application.generate_driver_report import (
+                generate_driver_report,
             )
+
+            stats = await generate_driver_report(report_repos, sofor_id, days=days_diff)
 
         # 7. Sonuçları doğrula
         assert stats is not None

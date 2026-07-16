@@ -10,7 +10,7 @@ async def test_driver_comparison_uses_real_unit_of_work(db_session):
     Endpoint gerçek UnitOfWork context manager kullanmalı (real DB).
     db_session fixture UoW'u test oturumuna yönlendirir — endpoint yeşil döner.
     """
-    from app.api.v1.endpoints import advanced_reports as ar_mod
+    from v2.modules.reports.api import advanced_reports_routes as ar_mod
 
     mock_drivers = [
         MagicMock(
@@ -31,7 +31,7 @@ async def test_driver_comparison_uses_real_unit_of_work(db_session):
             AsyncMock(return_value=mock_drivers),
         ),
         patch(
-            "app.api.v1.endpoints.advanced_reports.get_report_generator",
+            "v2.modules.reports.api.advanced_reports_routes.get_report_generator",
             return_value=mock_generator,
         ),
     ):

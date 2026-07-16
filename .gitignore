@@ -117,7 +117,9 @@ test_*.txt
 final_test*.txt
 test_results*.json
 *_output.txt
-*_report.*
+*_report.txt
+*_report.json
+*_report.log
 all_test_results.txt
 fresh_test_output.txt
 full_test_*.txt

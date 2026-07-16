@@ -3,14 +3,19 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import desc, func, select
 
 from app.api.deps import SessionDep, get_current_active_user
 from app.core.exceptions import DomainError
-from app.database.models import Kullanici, YakitAlimi
+from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
+from v2.modules.reports.application.get_consumption_trend import (
+    get_consumption_trend as get_consumption_trend_usecase,
+)
+from v2.modules.reports.application.get_dashboard_counters import (
+    get_dashboard_counters,
+)
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
 logger = get_logger(__name__)
@@ -72,20 +77,17 @@ async def get_dashboard_stats(
             data = await generate_fleet_summary(
                 repos, start_date=today_utc.replace(day=1)
             )
-            aktif_arac = await uow.arac_repo.count_active()
-            aktif_sofor = await uow.sofor_repo.count_active()
-            bugun_sefer = await uow.sefer_repo.count_today(today_utc)
-            trends = await uow.analiz_repo.get_month_over_month_trends(today_utc)
+            counters = await get_dashboard_counters(uow, today_utc)
         return DashboardStatsResponse(
             toplam_sefer=data.get("total_trips", 0),
             toplam_km=data.get("total_distance", 0.0),
             toplam_yakit=data.get("total_fuel", 0.0),
             filo_ortalama=data.get("avg_consumption", 32.0),
             toplam_arac=data.get("total_vehicles", 0),
-            aktif_arac=aktif_arac,
-            aktif_sofor=aktif_sofor,
-            bugun_sefer=bugun_sefer,
-            trends=DashboardTrends(**trends),
+            aktif_arac=counters["aktif_arac"],
+            aktif_sofor=counters["aktif_sofor"],
+            bugun_sefer=counters["bugun_sefer"],
+            trends=DashboardTrends(**counters["trends"]),
         )
     except DomainError:
         raise
@@ -106,23 +108,4 @@ async def get_consumption_trend(
     """
     Son 6 ayın aylık toplam yakıt tüketim trendi (kronolojik sırada).
     """
-    month_col = func.to_char(YakitAlimi.tarih, "YYYY-MM")
-
-    # Subquery: son 6 ayı DESC ile seç, dış sorgu ile ASC'ye çevir
-    subq = (
-        select(
-            month_col.label("month"),
-            func.sum(YakitAlimi.litre).label("consumption"),
-        )
-        .group_by(month_col)
-        .order_by(desc(month_col))
-        .limit(6)
-    ).subquery()
-
-    stmt = select(subq.c.month, subq.c.consumption).order_by(subq.c.month)
-
-    result = await db.execute(stmt)
-    return [
-        {"month": row.month, "consumption": float(row.consumption)}
-        for row in result.all()
-    ]
+    return await get_consumption_trend_usecase(db)

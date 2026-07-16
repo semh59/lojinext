@@ -38,6 +38,11 @@ FleetComparison, PeriodMetrics, PeriodType
 PDFReportGenerator, get_report_generator() -> PDFReportGenerator
 ```
 
+Ayrıca yalnız `dashboard_routes.py`'nin kendi kullandığı 2 use-case (public.py'de
+YOK, tek tüketicisi kendi route dosyası — bkz. "Modüle özel iş kuralları"):
+`get_consumption_trend(session, months=6) -> list[dict]`,
+`get_dashboard_counters(uow, today_utc) -> dict`.
+
 **Önemli**: `ReportService` sınıfı YOK. Her use-case bağımsız bir fonksiyon
 (B.1, location/notification/fleet/fuel/driver ile aynı karar — orijinal
 sınıfın 7 metodu birbirinden bağımsız use-case'lerdi, `RouteSimulator`/
@@ -47,6 +52,27 @@ singleton-mi ayrımı `ReportRepos`/`resolve_repos(uow)` ile korundu: `uow`
 verilirse `uow.<repo>` (aynı transaction, request-scoped session), verilmezse
 her repo'nun modül-seviyeli singleton getter'ı kullanılır — driver'ın
 `domain/driver_stats.py::_repos` ile aynı desen.
+
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 1 adet)
+
+**`PDFReportGenerator`** (`infrastructure/pdf_export.py`) — 4 bağımsız
+rapor-üretim use-case'i barındırıyor (`generate_fleet_summary`,
+`generate_vehicle_report`, `generate_driver_comparison`,
+`generate_vehicle_comparison`, + 2 async wrapper) ama `ReportService` ile
+AYNI GEREKÇEYLE bölünmedi — `RouteSimulator`/`LokasyonHydrator`/driver'ın
+`DriverCoachingEngine` istisnalarındaki gerçek gerekçe: constructor
+(`__init__`/`_register_fonts`) font kaydını (ReportLab `pdfmetrics`
+global registry'sine TTF font yükleme, dosya I/O) BİR KEZ yapıp
+`self.font_name`/`self.font_bold`/`self._styles` olarak instance state'te
+tutuyor; her `generate_*` metodu bu paylaşılan state'i okuyor. Free
+function'lara bölünseydi ya her çağrıda font yeniden kaydedilir (gereksiz
+I/O, `pdfmetrics.registerFont` idempotent değil — ikinci kayıt hataya
+düşebilir) ya da font state'i modül-global değişkenlere taşımak gerekirdi
+(driver'ın `DriverPerformanceML` istisnasındaki "daha kötü tasarım"
+gerekçesiyle aynı). Taşımadan ÖNCE de (eski `report_generator.py`'de)
+sınıftı, dalga 10 yalnız yerini değiştirdi (mekanik) — bu istisna
+gerekçesi ilk yazımda dokümante edilmemişti, bağımsız denetimde
+(2026-07-16) eksik bulunup buraya eklendi.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -77,11 +103,12 @@ sonuç verdi, taşıma bunu değiştirmedi).
   `app.core.services.cost_analyzer.get_cost_analyzer()` çağırır — ikisi de
   analytics_executive dalgasına (11) taşınınca `public.py` üzerinden
   geçilecek.
-- **trip (henüz taşınmadı, geçici)**: `ReportRepos.sefer_repo` yok (dashboard
-  endpoint'i `uow.sefer_repo.count_today(...)`'u doğrudan `app.database.
-  repositories.sefer_repo`'dan kullanır — `generate_fleet_summary`'nin
-  kendisi sefer_repo'ya ihtiyaç duymuyor, yalnız `dashboard_routes.py`'nin
-  ek sayaçları).
+- **trip (henüz taşınmadı, geçici)**: `ReportRepos.sefer_repo` yok
+  (`generate_fleet_summary`'nin kendisi sefer_repo'ya ihtiyaç duymuyor) —
+  `application/get_dashboard_counters.py::get_dashboard_counters(uow, ...)`
+  `uow.sefer_repo.count_today(...)`'u doğrudan `app.database.repositories.
+  sefer_repo`'dan kullanır (`aggregate_today_triage`/`compute_fleet_comparison`
+  ile aynı desen: `ReportRepos`'a sığmayan, `uow` alan use-case).
 - **Ters yön (X → reports, bu modül sağlayıcı):** driver'ın
   `SoforSeferPDFService` (`infrastructure/pdf_export.py`)
   `PDFReportGenerator`'dan miras alır; import_excel'in `ExportService`
@@ -150,6 +177,20 @@ diğer modüller yalnız `v2.modules.reports.public`/`.events`'i import eder;
   `app/core/services/`den 2 kez yeterliydi) — `app/assets/fonts/DocFont*.ttf`
   yolu bu ortamda mevcut değil (dizin hiç yok), pratikte her zaman sistem
   fontuna/Helvetica'ya düşer; taşımadan önce de aynı fallback zinciriydi.
+- ✅ **DÜZELTİLDİ (2026-07-16, bağımsız denetimde bulundu)** —
+  `api/dashboard_routes.py`'nin 2 handler'ı `application/`'ı atlayıp
+  doğrudan repo/UoW'a erişiyordu (`bug-route-layer-bypasses-application.md`
+  sınıfı — dalga 2/3/5/6/9'da bulunan aynı desenin bu dalgadaki tekrarı,
+  ama **dalga 10'un getirdiği bir regresyon değil**: `git show
+  6251b49~1:app/api/v1/endpoints/reports.py` ile doğrulandı, taşımadan
+  ÖNCE de bu şekildeydi — mekanik taşıma sırasında fark edilmemişti).
+  `get_dashboard_stats`'in `uow.arac_repo.count_active()`/
+  `uow.sofor_repo.count_active()`/`uow.sefer_repo.count_today()`/
+  `uow.analiz_repo.get_month_over_month_trends()` çağrıları yeni
+  `application/get_dashboard_counters.py::get_dashboard_counters(uow, ...)`'a,
+  `get_consumption_trend`'in ham SQLAlchemy `select(YakitAlimi...)` sorgusu
+  yeni `application/get_consumption_trend.py::get_consumption_trend(session, ...)`'a
+  taşındı. Mekanik, davranış değişikliği yok (aynı sorgular, aynı sıra).
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

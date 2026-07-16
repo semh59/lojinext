@@ -8,7 +8,9 @@
 
 ---
 
-## 1. Dosya envanteri (12 dosya, 2.404 LOC)
+## 1. Dosya envanteri (12 dosya, 2.519 LOC — düzeltme 2026-07-16: görev
+dosyası ilk yazımda 2.404 diyordu, `git show 6251b49~1` ile gerçek toplam
+2.519 olduğu doğrulandı, dedektif denetimde bulundu)
 ```
 app/api/v1/endpoints/reports.py
 app/api/v1/endpoints/advanced_reports.py
@@ -24,8 +26,14 @@ app/schemas/today.py
 app/schemas/fleet_insights.py
 ```
 
-## 2. Route envanteri (15 route)
-`reports.py`(2) + `advanced_reports.py`(10) + `reports_studio.py`(1) + `today_triage.py`(1) + `fleet_insights.py`(1) = 15.
+## 2. Route envanteri (16 route)
+`reports.py`(2) + `advanced_reports.py`(11) + `reports_studio.py`(1) + `today_triage.py`(1) + `fleet_insights.py`(1) = 16.
+
+**Düzeltme (2026-07-16, dedektif denetimde bulundu):** bu madde eskiden
+"15 route (advanced_reports.py 10)" diyordu — `git show 6251b49~1:app/api/v1/
+endpoints/advanced_reports.py | grep -c "^@router\."` ile doğru sayı 11
+olduğu (dolayısıyla toplam 16) doğrulandı. Taşımada hiçbir route
+kaybolmadı, yalnız bu görev dosyasının kendi ön-taraması yanlıştı.
 
 ## 3. Tablo sahipliği (1 tablo)
 `page_views` — analytics_executive'te DEĞİL, reports'ta (kendi read-model'i page_views'i besliyor).
@@ -37,8 +45,8 @@ app/schemas/fleet_insights.py
 
 ## 5. Taşıma adımları
 1. İskelet oluştur.
-2. `report_service.py` (5 repo bağımlısı: analiz, arac, sofor, sefer, yakit — MEMORY §2.1) → `application/generate_report.py`; her repo bağımlılığı ilgili modülün public.py'sine döner.
-3. `triage_aggregator.py` (raw-SQL: anomalies+seferler+araclar+fuel_investigations) → `infrastructure/triage_read_model.py` — 4 modülden okuyor, read-model rolü FAZ2'de SELECT-only.
+2. `report_service.py` (5 repo bağımlısı: analiz, arac, sofor, sefer, yakit — MEMORY §2.1) → tek bir `application/generate_report.py` DEĞİL, B.1 gereği 7 bağımsız use-case dosyasına bölündü (`generate_fleet_summary.py`/`generate_vehicle_report.py`/`generate_driver_report.py`/`generate_monthly_trend.py`/`get_dashboard_summary.py`/`get_monthly_comparison.py`/`get_daily_consumption_trend.py`, bkz. `v2/modules/reports/CLAUDE.md`) — görev dosyası ilk yazımda tek dosya öngörüyordu, gerçek taşıma B.1'e sadık kaldı; her repo bağımlılığı ilgili modülün public.py'sine döner.
+3. `triage_aggregator.py` (raw-SQL: anomalies+seferler+araclar+fuel_investigations) → `application/aggregate_today_triage.py` (görev dosyası ilk yazımda `infrastructure/triage_read_model.py` öngörüyordu; gerçek taşıma sırasında `application/`'a alındı çünkü bu bir use-case'tir, ham SQL içermesi onu FAZ2'nin "read-model" kategorisine sokmuyor — davranış aynı, yalnız dosya konumu planla farklı, bağımsız denetimde bulunup burada düzeltildi) — 4 modülden okuyor, read-model rolü FAZ2'de SELECT-only.
 4. `fleet_comparison.py` + `fleet_insights.py` (endpoint+schema) → birlikte taşınır (aynı Reports-v2 özelliği, ayrılmaz).
 5. `report_generator.py` → `infrastructure/pdf_export.py` (dosya üretimi).
 6. Shim'ler + CLAUDE.md.

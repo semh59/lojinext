@@ -705,7 +705,9 @@ değil).
 
 ## DALGA 10 — 🟡 KOD-TARAFI TAMAM, PUSH/CI BEKLİYOR (2026-07-16)
 
-**Kapsam:** reports modülü (12 dosya, ~2.404 LOC envanteri) — dashboard/filo/
+**Kapsam:** reports modülü (12 dosya, gerçek 2.519 LOC — görev dosyasının
+"2.404" iddiası dedektif denetimde yanlış çıktı, `reports.md`'de düzeltildi)
+— dashboard/filo/
 araç/şoför rapor üretimi (JSON+PDF+Excel), aylık trend, Reports-v2 (Today/
 Triage, Fleet İçgörü, Reports Studio). `TASKS/modules/reports.md` + yeni
 `v2/modules/reports/CLAUDE.md`.
@@ -771,8 +773,37 @@ sessizce no-op oldu, `MSYS_NO_PATHCONV=1` + `-u root` ile düzeltildi):**
   aynı şekilde tekrarlandığı doğrulandı (pre-existing, ayrı bir flake-avcılığı
   görevi konusu).
 
-**Sıradaki adım:** commit + push, CI Hard Gates'i izle (E2E dahil), yeşil
-olunca bu bölüm + tablo satırı "main'de yeşil" olarak güncellenecek.
+**İlk push (`6251b49`) kırmızı çıktı:** `.gitignore`'un `*_report.*`
+deseni (ad-hoc test-çıktı dosyaları için yazılmış) `generate_vehicle_report.py`/
+`generate_driver_report.py`'yi sessizce commit'ten dışlamıştı — lokal
+Docker doğrulaması bunu hiç yakalamadı çünkü dosyalar container'a
+`docker cp` ile kopyalanmıştı (git tracking'i bypass ediyordu). `3f308a9`
+ile düzeltildi (`*_report.txt`/`.json`/`.log`'a daraltıldı + 2 dosya eklendi).
+
+**Kullanıcı talebiyle (2026-07-16) 4 bağımsız sıfır-context ajanla
+"dedektif gibi" tam denetim yapıldı** — B.1 uyumu, tüketici/stale-referans
+taraması, davranışsal satır-satır diff, test-dönüşüm + STATUS.md
+dürüstlük kontrolü. 6/6 davranışsal eşleme PASS, hiçbir regresyon
+bulunmadı. 2 gerçek (ama pre-existing, dalga 10'un ürettiği DEĞİL) boşluk
+bulunup `8a5e9de` ile düzeltildi:
+1. `dashboard_routes.py`'nin 2 handler'ı `application/`'ı atlıyordu
+   (`bug-route-layer-bypasses-application.md` sınıfı, `git show
+   6251b49~1` ile taşımadan önce de böyle olduğu doğrulandı) →
+   `application/get_dashboard_counters.py` + `get_consumption_trend.py`.
+2. `PDFReportGenerator`'ın B.1 sınıf-istisna gerekçesi CLAUDE.md'de hiç
+   yazılmamıştı → eklendi.
+Bu düzeltme sırasında `get_dashboard_stats`'in temizlenmiş docstring'i
+`frontend/openapi.json`'a hiç yansımadığı bulundu — gerçek çalışan
+backend'e karşı byte-level doğrulanıp düzeltildi (CI'nin "OpenAPI schema
+drift check" adımının `3f308a9`'da kırmızı çıkmasının kök nedeni).
+Ayrıca `reports.md` görev dosyasının 3 küçük ön-tarama hatası (route
+sayısı 15→16, LOC 2.404→2.519, `triage_aggregator` hedef yolu) denetimde
+bulunup düzeltildi — hiçbiri kod-seviyesinde etkili değildi, yalnız
+dokümantasyon.
+
+**Sıradaki adım:** commit + push (`8a5e9de` zaten push edildi), CI Hard
+Gates'i izle (E2E dahil), yeşil olunca bu bölüm + tablo satırı "main'de
+yeşil" olarak güncellenecek.
 
 ## Son güncelleme
 2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy

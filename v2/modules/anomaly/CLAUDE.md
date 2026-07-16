@@ -33,8 +33,9 @@ AnomalyDetector, get_anomaly_detector() -> AnomalyDetector
   .save_model(filepath) / .load_model(filepath) / .get_detector_status() -> dict
 AnomalyResult, AnomalyType, SeverityEnum        # dataclass/enum'lar
 
-# İstatistiksel alt-sistem (analytics_executive'in henüz taşınmamış
-# analiz_service.py'si kullanır — sınıf istisnası, aşağıya bkz.)
+# İstatistiksel alt-sistem (dalga 11'de silinen analiz_service.py'nin
+# tek tüketicisiydi — artık hiçbir prod kod çağırmıyor, bkz. aşağıdaki
+# çapraz-modül bölümü. Sınıf istisnası gerekçesi hâlâ geçerli, aşağıya bkz.)
 AnomalyDetectionService, get_anomaly_detection_service() -> AnomalyDetectionService
   .detect_anomalies(consumptions, z_threshold=None, use_iqr=True) -> list[AnomalyResult]
   .analyze_vehicle_consumption(arac_id, consumptions) -> VehicleStats
@@ -96,9 +97,11 @@ karar aynı gerekçeyle — free function'a çevrildi; kalan 3 sınıf `RouteSim
   (`get_cache_manager()`) + iki alt-metodun (detect/analyze) birlikte
   tutarlı bir hesap hattı oluşturması. `AnomalyDetector`'dan FARKLI, bilinçli
   ikinci bir alt-sistem (docstring'de "two anomaly subsystems exist
-  intentionally" notu) — sadece analytics_executive'in (henüz taşınmamış
-  `app/core/services/analiz_service.py`) kullandığı Z-Score/IQR yolu, DB
-  yazmaz.
+  intentionally" notu) — Z-Score/IQR yolu, DB yazmaz. Tek tüketicisi
+  (`app/core/services/analiz_service.py`) dalga 11'de dead-code olarak
+  silindi; bu sınıf artık hiçbir prod koddan çağrılmıyor (kendi testleri
+  hariç) — sınıf hâlâ burada duruyor çünkü silinmesi bu modülün kapsamı
+  dışında bir karar (anomaly dalgasının kendi görev dosyası bunu kapsamıyor).
 - **`FuelTheftClassifier`** — stateless, tek-pipeline (skor bileşenlerini
   birlikte hesaplayan tek akış), `get_fuel_theft_classifier()` singleton.
 
@@ -121,10 +124,13 @@ bkz. dalga 8 doğrulama notu STATUS.md'de).
   (`v2/modules/driver/application/generate_coaching.py`) `v2.modules.anomaly.public.get_anomaly_detector()`
   kullanır — public.py üzerinden doğru sınır geçişi (dalga 8'de düzeltildi,
   önceden `app.core.services.anomaly_detector`'a bağımlıydı).
-- **analytics_executive (senkron, henüz taşınmadı)**: `app/core/services/analiz_service.py`
-  `v2.modules.anomaly.public.get_anomaly_detection_service()` kullanır (public.py
-  üzerinden, analytics_executive henüz kendi `public.py`'sini yayınlamadığı
-  için bu modülün public.py'si tek yönlü tüketici).
+- ✅ **ÇÖZÜLDÜ (dalga 11, 2026-07-16)** — eski `app/core/services/analiz_service.py`
+  `v2.modules.anomaly.public.get_anomaly_detection_service()`'in tek prod
+  tüketicisiydi; dedektif denetiminde hiçbir yerden çağrılmadığı bulundu
+  (dead code) ve silindi. `get_anomaly_detection_service()`/
+  `AnomalyDetectionService` artık kendi test dosyaları dışında hiçbir
+  yerden çağrılmıyor (aynı şekilde dead — bu modülün kapsamı dışında
+  bir karar, silinmedi).
 - **trip/fuel → notification (anomaly DEĞİL)**: `EventType.ANOMALY_DETECTED`
   fuel modülü (`add_yakit.py`) ve henüz taşınmamış trip modülü
   (`sefer_analiz_service.py`) tarafından publish edilir, notification

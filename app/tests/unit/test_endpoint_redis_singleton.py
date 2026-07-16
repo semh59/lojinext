@@ -40,7 +40,7 @@ def _install_fake_redis(monkeypatch):
 async def test_executive_get_redis_singleton(monkeypatch):
     """executive._get_redis 3 ardışık çağrıda aynı instance dönmeli +
     from_url sadece 1 kez çağrılmalı."""
-    from app.api.v1.endpoints import executive as mod
+    from v2.modules.analytics_executive.api import executive_routes as mod
 
     fake_mod = _install_fake_redis(monkeypatch)
     # Test izolasyonu: önceki test'ten kalan cache'i sıfırla
@@ -77,7 +77,7 @@ async def test_coaching_get_redis_singleton(monkeypatch):
 @pytest.mark.asyncio
 async def test_executive_redis_none_on_import_error(monkeypatch):
     """redis.asyncio import edilemezse None döner (cache-miss davranışı)."""
-    from app.api.v1.endpoints import executive as mod
+    from v2.modules.analytics_executive.api import executive_routes as mod
 
     monkeypatch.setattr(mod, "_exec_redis", None, raising=False)
     # redis.asyncio modülünü sys.modules'ten çıkar — None bırakırsa

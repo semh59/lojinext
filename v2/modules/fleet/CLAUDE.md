@@ -117,8 +117,10 @@ auth_rbac.kullanicilar; `arac_bakimlari.arac_id`/`.dorse_id` modül-içi.
   bağımlılık — fleet hem import_excel'e sağlıyor hem ondan tüketiyor).
 - **prediction_ml** (senkron, geçici, ai_assistant/reports/analytics_executive
   üzerinden dolaylı): `ensemble_service.py`, `ai_service.py`,
-  `recommendation_engine.py`, `cost_analyzer.py`, `cashflow_projector.py`,
-  `analiz_service.py`, `report_service.py`, `triage_aggregator.py`,
+  `recommendation_engine.py`, `analyze_costs.py`/`project_cashflow.py`
+  (dalga 11'de analytics_executive'e taşındı — eski adları
+  `cost_analyzer.py`/`cashflow_projector.py`'ydi; `analiz_service.py`
+  dalga 11'de dead-code olarak silindi, listeden düşürüldü), `triage_aggregator.py`,
   `rag_sync_service.py`, `context_builder.py`, `trip_planner.py`,
   `physics_handler.py`, `sefer_write_service.py`, `yakit_service.py`,
   `yakit_tahmin_service.py` bu modülün `AracRepository`/`get_arac_repo`

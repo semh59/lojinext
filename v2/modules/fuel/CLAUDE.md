@@ -67,8 +67,11 @@ enjekte edilen `self.repo` hiçbir metot gövdesinde okunmuyordu; buraya
 taşınmadı. Aynı şekilde `PeriodCalculationService.__init__(yakit_repo=...,
 sefer_repo=...)` opsiyonel repo enjeksiyonu, sadece `recalculate_vehicle_periods`
 free function'ında (`yakit_repo=None, sefer_repo=None` parametreleri) korundu
-— `analiz_service.py` (analytics_executive, henüz taşınmadı) bu parametreleri
-gerçekten kullanıyor (kendi test-injected repo'larını geçiriyor).
+— testler kendi test-injected repo'larını geçiriyor (`app/tests/test_business_flows.py`).
+Eski `analiz_service.py`'nin (`AnalizService.recalculate_vehicle_periods`
+delegasyonu) bu parametreleri kullanan çağıranı dalga 11'de silindi (dead
+code, hiçbir prod kod çağırmıyordu) — kalan tek çağıran `import_excel`'in
+`yakit_importer.py`'si zaten `yakit_repo`/`sefer_repo` vermeden çağırıyor.
 
 `YakitTahminService`'in `self.model = LinearRegressionModel()` constructor
 attribute'u da dead weight'ti — hiçbir metot `self.model`'i okumuyordu, her
@@ -119,13 +122,13 @@ dalgada DEĞİŞTİRİLMEDİ.**
   çağırır — periyot-sefer eşleştirmesi ve dağıtılan-yakıt/tüketim yazımı aynı
   transaction'da. Bu bağımlılık BİLİNÇLİ OLARAK fuel tarafında kalıyor (görev
   dosyası kararı) — trip taşınınca bu dosyanın importu güncellenir.
-- **analytics_executive (senkron, henüz taşınmadı)**: `analiz_service.py`
+- ✅ **ÇÖZÜLDÜ (dalga 11, 2026-07-16)** — eski `analiz_service.py`
   (`AnalizService`) `create_fuel_periods`/`distribute_fuel_to_trips`/
   `match_periods_with_trips`/`recalculate_vehicle_periods`'i doğrudan import
-  edip delege ediyor (facade pattern) — kendi `yakit_repo`/`sefer_repo`
-  fallback'leriyle. analytics_executive henüz `public.py` yayınlamadığı
-  için bu geçici bir borç değil, YÖNÜ (tüketen taraf analytics_executive)
-  fuel'in CLAUDE.md'sinde not düşülmüş bir konu değil.
+  edip delege eden bir facade'dı (pure pass-through, kendi gerçek mantığı
+  yoktu) — dedektif denetiminde hiçbir prod kod tarafından çağrılmadığı
+  bulundu (dead code) ve kullanıcı kararıyla tamamen silindi. fuel↔
+  analytics_executive arasında bu yönde artık HİÇBİR bağımlılık yok.
 - **import_excel (senkron, henüz taşınmadı)**: `import_service.py`
   `process_yakit_import` içinde `bulk_add_yakit` + `recalculate_vehicle_periods`'i
   doğrudan çağırır (location'ın `create_location` tüketimiyle aynı desen).

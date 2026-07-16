@@ -584,7 +584,12 @@ def test_runtime_and_persistence_layers_no_longer_reference_is_real():
         ROOT / "app" / "database" / "repositories" / "sefer_repo.py"
     ).read_text(encoding="utf-8")
     analytics_repo = (
-        ROOT / "app" / "database" / "repositories" / "analiz_repo.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "analytics_executive"
+        / "infrastructure"
+        / "executive_read_models.py"
     ).read_text(encoding="utf-8")
     vehicle_repo = (
         ROOT / "v2" / "modules" / "fleet" / "infrastructure" / "vehicle_repository.py"

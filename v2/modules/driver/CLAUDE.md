@@ -160,10 +160,14 @@ bulk-insert path'ini kullanacak şekilde refactor edilebilir).
   `_calc_elite_from_trips`/`calculate_elite_performance_score`
   `app.services.prediction_service.get_prediction_service()` çağırır
   (ML tahmin ile gerçek tüketim farkına dayalı elite skor).
-- **analytics_executive (senkron, henüz taşınmadı)**: `domain/driver_stats.py`
-  ve `domain/evaluation.py` `app.database.repositories.analiz_repo.get_analiz_repo()`
-  çağırır (bulk driver metrics, filo ortalaması — analytics_executive henüz
-  `public.py` yayınlamadığı için doğrudan repo importu).
+- **analytics_executive (taşındı, dalga 11)**: `domain/driver_stats.py` ve
+  `domain/evaluation.py` `v2.modules.analytics_executive.infrastructure.
+  executive_read_models.get_analiz_repo()` çağırır (filo ortalaması —
+  `public.py` üzerinden değil, doğrudan `infrastructure` importu, henüz
+  mimari borç). Bulk driver metrikleri (`get_bulk_driver_metrics`/
+  `get_driver_comparison`) dalga 11'de bu modülün kendi
+  `infrastructure/driver_metrics_queries.py`'sine taşındı (driver
+  dalgasının [5] atladığı bir taşımaydı, dalga 11'de düzeltildi).
 - **ai_assistant (senkron, henüz taşınmadı)**: `DriverCoachingEngine`
   `app.core.ai.groq_service.get_groq_service()` çağırır (LLM inference).
 - **anomaly (taşındı, dalga 8)**: `DriverCoachingEngine`

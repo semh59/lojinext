@@ -1,31 +1,26 @@
 """
-Unit tests for ContextBuilder — targeting ≥70% coverage.
+Unit tests for build_context free functions — targeting ≥70% coverage.
 
-All service/repo calls are mocked; no DB, no network.
+All service/repo calls are mocked; no DB, no network. B.1: eski
+`ContextBuilder` sınıfı taşınırken free function'lara bölündü (dalga 12,
+constructor'ı `pass` idi — anlamlı state yoktu), bu testler de class-mock'tan
+free-function-mock'a çevrildi (patch hedefi
+`v2.modules.ai_assistant.application.build_context.<fn>`).
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.ai.context_builder import ContextBuilder, get_context_builder
+from v2.modules.ai_assistant.application import build_context
 
 pytestmark = pytest.mark.unit
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_builder() -> ContextBuilder:
-    return ContextBuilder()
+MOD = "v2.modules.ai_assistant.application.build_context"
 
 
 def _mock_report_service(stats: dict):
-    svc = MagicMock()
-    svc.get_dashboard_summary = AsyncMock(return_value=stats)
-    return svc
+    return AsyncMock(return_value=stats)
 
 
 def _mock_rag_engine(total_documents: int = 100):
@@ -40,7 +35,6 @@ def _mock_rag_engine(total_documents: int = 100):
 
 
 async def test_build_system_context_returns_formatted_string():
-    builder = _make_builder()
     stats = {
         "aktif_arac": 10,
         "aktif_sofor": 8,
@@ -50,18 +44,10 @@ async def test_build_system_context_returns_formatted_string():
     }
 
     with (
-        patch.object(
-            type(builder),
-            "report_service",
-            new_callable=lambda: property(lambda self: _mock_report_service(stats)),
-        ),
-        patch.object(
-            type(builder),
-            "rag_engine",
-            new_callable=lambda: property(lambda self: _mock_rag_engine(42)),
-        ),
+        patch(f"{MOD}._get_dashboard_summary", _mock_report_service(stats)),
+        patch(f"{MOD}._get_rag_engine", return_value=_mock_rag_engine(42)),
     ):
-        result = await builder.build_system_context()
+        result = await build_context.build_system_context()
 
     assert "10" in result
     assert "8" in result
@@ -70,20 +56,11 @@ async def test_build_system_context_returns_formatted_string():
 
 
 async def test_build_system_context_exception_returns_fallback():
-    builder = _make_builder()
-
-    with (
-        patch.object(
-            type(builder),
-            "report_service",
-            new_callable=lambda: property(
-                lambda self: MagicMock(
-                    get_dashboard_summary=AsyncMock(side_effect=RuntimeError("DB down"))
-                )
-            ),
-        ),
+    with patch(
+        f"{MOD}._get_dashboard_summary",
+        AsyncMock(side_effect=RuntimeError("DB down")),
     ):
-        result = await builder.build_system_context()
+        result = await build_context.build_system_context()
 
     assert "erişilemiyor" in result.lower() or "sistem" in result.lower()
 
@@ -94,36 +71,26 @@ async def test_build_system_context_exception_returns_fallback():
 
 
 async def test_build_vehicle_context_invalid_id_string_returns_error():
-    builder = _make_builder()
-    result = await builder.build_vehicle_context("bad")  # type: ignore
+    result = await build_context.build_vehicle_context("bad")  # type: ignore
     assert "Geçersiz" in result
 
 
 async def test_build_vehicle_context_invalid_id_zero_returns_error():
-    builder = _make_builder()
-    result = await builder.build_vehicle_context(0)
+    result = await build_context.build_vehicle_context(0)
     assert "Geçersiz" in result
 
 
 async def test_build_vehicle_context_arac_not_found_returns_error():
-    builder = _make_builder()
-
     mock_arac_repo = MagicMock()
     mock_arac_repo.get_by_id = AsyncMock(return_value=None)
 
-    with patch.object(
-        type(builder),
-        "arac_repo",
-        new_callable=lambda: property(lambda self: mock_arac_repo),
-    ):
-        result = await builder.build_vehicle_context(1)
+    with patch(f"{MOD}._get_arac_repo", return_value=mock_arac_repo):
+        result = await build_context.build_vehicle_context(1)
 
     assert "bulunamadı" in result
 
 
 async def test_build_vehicle_context_success():
-    builder = _make_builder()
-
     arac_data = {
         "id": 1,
         "plaka": "34 TIR 001",
@@ -142,48 +109,30 @@ async def test_build_vehicle_context_success():
     mock_yakit_repo = MagicMock()
     mock_yakit_repo.get_all = AsyncMock(return_value=[])
 
-    # Mock Arac entity — patched at its source module (lazy import inside method)
+    # Mock Arac entity — patched at its source module (lazy import inside function)
     mock_arac_entity = MagicMock()
     mock_arac_entity.yas = 4
     mock_arac_entity.euro_sinifi = "Euro 6"
     mock_arac_entity.yas_faktoru = 1.02
 
     with (
-        patch.object(
-            type(builder),
-            "arac_repo",
-            new_callable=lambda: property(lambda self: mock_arac_repo),
-        ),
-        patch.object(
-            type(builder),
-            "sefer_repo",
-            new_callable=lambda: property(lambda self: mock_sefer_repo),
-        ),
-        patch.object(
-            type(builder),
-            "yakit_repo",
-            new_callable=lambda: property(lambda self: mock_yakit_repo),
-        ),
+        patch(f"{MOD}._get_arac_repo", return_value=mock_arac_repo),
+        patch(f"{MOD}._get_sefer_repo", return_value=mock_sefer_repo),
+        patch(f"{MOD}._get_yakit_repo", return_value=mock_yakit_repo),
         patch("app.core.entities.models.Arac", return_value=mock_arac_entity),
     ):
-        result = await builder.build_vehicle_context(1)
+        result = await build_context.build_vehicle_context(1)
 
     assert "34 TIR 001" in result
     assert "VOLVO" in result
 
 
 async def test_build_vehicle_context_exception_returns_fallback():
-    builder = _make_builder()
-
     mock_arac_repo = MagicMock()
     mock_arac_repo.get_by_id = AsyncMock(side_effect=RuntimeError("DB error"))
 
-    with patch.object(
-        type(builder),
-        "arac_repo",
-        new_callable=lambda: property(lambda self: mock_arac_repo),
-    ):
-        result = await builder.build_vehicle_context(1)
+    with patch(f"{MOD}._get_arac_repo", return_value=mock_arac_repo):
+        result = await build_context.build_vehicle_context(1)
 
     assert "erişilemiyor" in result.lower()
 
@@ -194,27 +143,22 @@ async def test_build_vehicle_context_exception_returns_fallback():
 
 
 async def test_build_driver_context_invalid_id_returns_error():
-    builder = _make_builder()
-    result = await builder.build_driver_context(-1)
+    result = await build_context.build_driver_context(-1)
     assert "Geçersiz" in result
 
 
 async def test_build_driver_context_no_evaluation_returns_error():
-    builder = _make_builder()
-
     with patch(
         "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=None),
     ):
-        result = await builder.build_driver_context(1)
+        result = await build_context.build_driver_context(1)
 
     assert "yapılamadı" in result
 
 
 async def test_build_driver_context_success():
     from v2.modules.driver.domain.evaluation import DereceEnum, TrendEnum
-
-    builder = _make_builder()
 
     mock_eval = MagicMock()
     mock_eval.ad_soyad = "Mehmet Kaya"
@@ -237,7 +181,7 @@ async def test_build_driver_context_success():
         "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=mock_eval),
     ):
-        result = await builder.build_driver_context(1)
+        result = await build_context.build_driver_context(1)
 
     assert "Mehmet Kaya" in result
     assert "78.5" in result
@@ -245,13 +189,11 @@ async def test_build_driver_context_success():
 
 
 async def test_build_driver_context_exception_returns_fallback():
-    builder = _make_builder()
-
     with patch(
         "v2.modules.driver.public.evaluate_driver",
         AsyncMock(side_effect=RuntimeError("evaluate_driver error")),
     ):
-        result = await builder.build_driver_context(1)
+        result = await build_context.build_driver_context(1)
 
     assert "erişilemiyor" in result.lower()
 
@@ -262,8 +204,6 @@ async def test_build_driver_context_exception_returns_fallback():
 
 
 async def test_build_analysis_context_success():
-    builder = _make_builder()
-
     mock_analiz_repo = MagicMock()
     mock_analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=31.8)
 
@@ -279,22 +219,14 @@ async def test_build_analysis_context_success():
         "tutarlilik": [],
     }
     with (
-        patch.object(
-            type(builder),
-            "analiz_repo",
-            new_callable=lambda: property(lambda self: mock_analiz_repo),
-        ),
-        patch.object(
-            type(builder),
-            "arac_repo",
-            new_callable=lambda: property(lambda self: mock_arac_repo),
-        ),
+        patch(f"{MOD}._get_analiz_repo", return_value=mock_analiz_repo),
+        patch(f"{MOD}._get_arac_repo", return_value=mock_arac_repo),
         patch(
             "v2.modules.driver.public.get_rankings",
             AsyncMock(return_value=mock_rankings),
         ),
     ):
-        result = await builder.build_analysis_context()
+        result = await build_context.build_analysis_context()
 
     assert "31.8" in result
     assert "3" in result  # 3 araç
@@ -302,8 +234,6 @@ async def test_build_analysis_context_success():
 
 
 async def test_build_analysis_context_filo_none_defaults_to_32():
-    builder = _make_builder()
-
     mock_analiz_repo = MagicMock()
     mock_analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=None)
 
@@ -311,40 +241,26 @@ async def test_build_analysis_context_filo_none_defaults_to_32():
     mock_arac_repo.get_all = AsyncMock(return_value=[])
 
     with (
-        patch.object(
-            type(builder),
-            "analiz_repo",
-            new_callable=lambda: property(lambda self: mock_analiz_repo),
-        ),
-        patch.object(
-            type(builder),
-            "arac_repo",
-            new_callable=lambda: property(lambda self: mock_arac_repo),
-        ),
+        patch(f"{MOD}._get_analiz_repo", return_value=mock_analiz_repo),
+        patch(f"{MOD}._get_arac_repo", return_value=mock_arac_repo),
         patch(
             "v2.modules.driver.public.get_rankings",
             AsyncMock(return_value={"genel": []}),
         ),
     ):
-        result = await builder.build_analysis_context()
+        result = await build_context.build_analysis_context()
 
     assert "32.0" in result
 
 
 async def test_build_analysis_context_exception_returns_fallback():
-    builder = _make_builder()
-
     mock_analiz_repo = MagicMock()
     mock_analiz_repo.get_filo_ortalama_tuketim = AsyncMock(
         side_effect=RuntimeError("DB error")
     )
 
-    with patch.object(
-        type(builder),
-        "analiz_repo",
-        new_callable=lambda: property(lambda self: mock_analiz_repo),
-    ):
-        result = await builder.build_analysis_context()
+    with patch(f"{MOD}._get_analiz_repo", return_value=mock_analiz_repo):
+        result = await build_context.build_analysis_context()
 
     assert "erişilemiyor" in result.lower()
 
@@ -355,40 +271,33 @@ async def test_build_analysis_context_exception_returns_fallback():
 
 
 async def test_build_full_context_system_only():
-    builder = _make_builder()
-
-    with patch.object(
-        builder,
-        "build_system_context",
+    with patch(
+        f"{MOD}.build_system_context",
         new_callable=AsyncMock,
         return_value="## Sistem",
     ):
-        result = await builder.build_full_context()
+        result = await build_context.build_full_context()
 
     assert "## Sistem" in result
 
 
 async def test_build_full_context_with_arac_and_sofor():
-    builder = _make_builder()
-
     with (
-        patch.object(
-            builder, "build_system_context", new_callable=AsyncMock, return_value="SYS"
+        patch(
+            f"{MOD}.build_system_context", new_callable=AsyncMock, return_value="SYS"
         ),
-        patch.object(
-            builder,
-            "build_vehicle_context",
+        patch(
+            f"{MOD}.build_vehicle_context",
             new_callable=AsyncMock,
             return_value="ARAC",
         ),
-        patch.object(
-            builder,
-            "build_driver_context",
+        patch(
+            f"{MOD}.build_driver_context",
             new_callable=AsyncMock,
             return_value="SOFOR",
         ),
     ):
-        result = await builder.build_full_context(arac_id=1, sofor_id=2)
+        result = await build_context.build_full_context(arac_id=1, sofor_id=2)
 
     assert "SYS" in result
     assert "ARAC" in result
@@ -396,52 +305,32 @@ async def test_build_full_context_with_arac_and_sofor():
 
 
 async def test_build_full_context_with_analysis():
-    builder = _make_builder()
-
     with (
-        patch.object(
-            builder, "build_system_context", new_callable=AsyncMock, return_value="SYS"
+        patch(
+            f"{MOD}.build_system_context", new_callable=AsyncMock, return_value="SYS"
         ),
-        patch.object(
-            builder,
-            "build_analysis_context",
+        patch(
+            f"{MOD}.build_analysis_context",
             new_callable=AsyncMock,
             return_value="ANALIZ",
         ),
     ):
-        result = await builder.build_full_context(include_analysis=True)
+        result = await build_context.build_full_context(include_analysis=True)
 
     assert "ANALIZ" in result
 
 
 async def test_build_full_context_truncates_long_output():
-    builder = _make_builder()
-    long_text = "X" * (builder.MAX_CONTEXT_CHARS + 1000)
+    long_text = "X" * (build_context.MAX_CONTEXT_CHARS + 1000)
 
-    with patch.object(
-        builder, "build_system_context", new_callable=AsyncMock, return_value=long_text
+    with patch(
+        f"{MOD}.build_system_context",
+        new_callable=AsyncMock,
+        return_value=long_text,
     ):
-        result = await builder.build_full_context()
+        result = await build_context.build_full_context()
 
-    assert len(result) <= builder.MAX_CONTEXT_CHARS + 100  # truncation marker overhead
+    assert (
+        len(result) <= build_context.MAX_CONTEXT_CHARS + 100
+    )  # truncation marker overhead
     assert "kırpıldı" in result
-
-
-# ---------------------------------------------------------------------------
-# get_context_builder — singleton
-# ---------------------------------------------------------------------------
-
-
-def test_get_context_builder_returns_singleton():
-    import app.core.ai.context_builder as mod
-
-    # Reset singleton
-    mod._context_builder = None
-
-    c1 = get_context_builder()
-    c2 = get_context_builder()
-    assert c1 is c2
-    assert isinstance(c1, ContextBuilder)
-
-    # cleanup
-    mod._context_builder = None

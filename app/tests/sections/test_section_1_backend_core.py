@@ -678,7 +678,10 @@ class TestRAGEngine:
     def rag_engine(self):
         """RAG Engine instance - mock dependencies"""
         try:
-            from app.core.ai.rag_engine import RAGEngine, is_rag_available
+            from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+                RAGEngine,
+                is_rag_available,
+            )
 
             if not is_rag_available():
                 pytest.skip(
@@ -771,7 +774,7 @@ class TestRAGEngine:
         rag_engine.save_to_disk(save_path)
 
         # Yeni instance oluştur ve yükle
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         new_engine = RAGEngine()
         assert new_engine.wait_until_ready(timeout=120)

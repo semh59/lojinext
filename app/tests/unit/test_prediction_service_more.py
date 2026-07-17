@@ -449,7 +449,7 @@ async def test_log_prediction_to_ai_get_smart_ai_exception_swallowed():
         side_effect=RuntimeError("task fail"),
     ):
         with patch(
-            "app.services.smart_ai_service.get_smart_ai",
+            "v2.modules.ai_assistant.application.knowledge_base.get_smart_ai",
             side_effect=ImportError("smart_ai not available"),
             create=True,
         ):
@@ -477,7 +477,7 @@ async def test_log_prediction_to_ai_creates_task():
             side_effect=capture_task,
         ),
         patch(
-            "app.services.smart_ai_service.get_smart_ai",
+            "v2.modules.ai_assistant.application.knowledge_base.get_smart_ai",
             return_value=mock_smart_ai,
             create=True,
         ),

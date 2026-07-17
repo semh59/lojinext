@@ -26,8 +26,13 @@ pytestmark = pytest.mark.unit
 
 def _make_service():
     """Return an AIService with a stubbed GroqService so no real LLM call."""
-    with patch("app.core.ai.groq_service.GroqService.__init__", return_value=None):
-        from app.core.services.ai_service import AIService
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.llm.groq_client.GroqService.__init__",
+        return_value=None,
+    ):
+        from v2.modules.ai_assistant.application.orchestrate_ai_response import (
+            AIService,
+        )
 
         svc = AIService.__new__(AIService)
         svc._predictor_cache = {}
@@ -208,7 +213,10 @@ class TestGetProgress:
             status = "ready"
             async_pending_jobs = 2
 
-        with patch("app.core.ai.rag_engine.get_rag_engine", return_value=_FakeRag()):
+        with patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine",
+            return_value=_FakeRag(),
+        ):
             result = svc.get_progress()
         assert result["status"] == "ready"
         assert result["pending_jobs"] == 2
@@ -216,7 +224,8 @@ class TestGetProgress:
     def test_error_path_returns_error_status(self):
         svc = _make_service()
         with patch(
-            "app.core.ai.rag_engine.get_rag_engine", side_effect=Exception("no rag")
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine",
+            side_effect=Exception("no rag"),
         ):
             result = svc.get_progress()
         assert result["status"] == "error"
@@ -229,7 +238,10 @@ class TestGetProgress:
             status = "loading"
             async_pending_jobs = None
 
-        with patch("app.core.ai.rag_engine.get_rag_engine", return_value=_FakeRag()):
+        with patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine",
+            return_value=_FakeRag(),
+        ):
             result = svc.get_progress()
         assert result["pending_jobs"] == 0
 

@@ -11,10 +11,13 @@ from typing import cast
 
 import redis
 
-from app.core.ai.llm_client import LLMMessage, get_llm_client
 from app.database.connection import AsyncSessionLocal
 from app.database.models import PredictionResult
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.ai_assistant.infrastructure.llm.raw_client import (
+    LLMMessage,
+    get_llm_client,
+)
 
 _log = logging.getLogger(__name__)
 

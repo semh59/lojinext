@@ -57,13 +57,13 @@ def _patch_container_weather(monkeypatch, weather_service):
 
 
 def _make_engine():
-    from app.core.ai.trip_planner import TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
 
     return TripPlannerEngine(prediction_service=None)
 
 
 def _make_input(guzergah_id: Optional[int] = None):
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     return PlanInput(
         cikis_yeri="A",

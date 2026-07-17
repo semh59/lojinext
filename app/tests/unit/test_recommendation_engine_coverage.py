@@ -70,7 +70,9 @@ async def _seed_trip_on(db_session, *, arac_id, sofor_id, tuketim, days_ago):
 
 def _make_engine():
     """Return a fresh RecommendationEngine instance (bypasses singleton)."""
-    from app.core.ai.recommendation_engine import RecommendationEngine
+    from v2.modules.ai_assistant.application.recommendation_engine import (
+        RecommendationEngine,
+    )
 
     engine = RecommendationEngine.__new__(RecommendationEngine)
     engine._cache = {}
@@ -134,7 +136,7 @@ def _make_row(**kwargs):
 
 def test_recommendation_dataclass():
     """Recommendation dataclass stores all fields correctly."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     rec = Recommendation(
         kategori="verimlilik",
@@ -153,7 +155,7 @@ def test_recommendation_dataclass():
 
 def test_recommendation_optional_aksiyon():
     """Recommendation aksiyon defaults to None."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     rec = Recommendation(
         kategori="egitim",
@@ -231,7 +233,7 @@ async def test_get_vehicle_recommendations_old_vehicle(db_session):
 
 async def test_get_vehicle_recommendations_cache_hit():
     """get_vehicle_recommendations returns cached result on second call."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     engine = _make_engine()
     cached_recs = [
@@ -353,7 +355,7 @@ async def test_get_driver_recommendations_exception_logged():
 
 async def test_get_driver_recommendations_cache_hit():
     """get_driver_recommendations returns cache on second call."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     engine = _make_engine()
     cached = [
@@ -408,7 +410,7 @@ async def test_get_fleet_recommendations_worst_vehicle_critical(db_session):
 
 async def test_get_fleet_recommendations_cache_hit():
     """get_fleet_recommendations uses cached result on second call."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     engine = _make_engine()
     cached = [
@@ -531,7 +533,7 @@ def test_invalidate_fleet_cache():
 
 def test_get_recommendation_engine_singleton():
     """get_recommendation_engine returns same instance on multiple calls."""
-    import app.core.ai.recommendation_engine as mod
+    import v2.modules.ai_assistant.application.recommendation_engine as mod
 
     mod._recommendation_engine = None  # Reset singleton
 

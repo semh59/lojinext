@@ -35,7 +35,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_vehicle_reasons_high_fuel_score():
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     out = _vehicle_reasons(
         fuel_score=0.96,
@@ -51,7 +51,7 @@ def test_vehicle_reasons_high_fuel_score():
 
 
 def test_vehicle_reasons_medium_fuel_score():
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     out = _vehicle_reasons(
         fuel_score=0.75,
@@ -67,7 +67,7 @@ def test_vehicle_reasons_medium_fuel_score():
 
 
 def test_vehicle_reasons_low_fuel_score_no_extras():
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     out = _vehicle_reasons(
         fuel_score=0.3,
@@ -82,7 +82,7 @@ def test_vehicle_reasons_low_fuel_score_no_extras():
 
 def test_vehicle_reasons_capped_at_5():
     """Output list is never longer than 5."""
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     out = _vehicle_reasons(
         fuel_score=0.97,
@@ -100,7 +100,7 @@ def test_vehicle_reasons_capped_at_5():
 
 
 def test_driver_reasons_cold_start():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     out = _driver_reasons(
         route_type="mixed",
@@ -114,7 +114,7 @@ def test_driver_reasons_cold_start():
 
 
 def test_driver_reasons_high_perf_savings():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     out = _driver_reasons(
         route_type="motorway",
@@ -130,7 +130,7 @@ def test_driver_reasons_high_perf_savings():
 
 
 def test_driver_reasons_medium_perf():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     out = _driver_reasons(
         route_type="mixed",
@@ -144,7 +144,7 @@ def test_driver_reasons_medium_perf():
 
 
 def test_driver_reasons_low_perf_risky():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     out = _driver_reasons(
         route_type="mixed",
@@ -160,7 +160,7 @@ def test_driver_reasons_low_perf_risky():
 
 
 def test_driver_reasons_capped_at_5():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     out = _driver_reasons(
         route_type="mountain",
@@ -179,14 +179,14 @@ def test_driver_reasons_capped_at_5():
 
 
 def test_vehicle_age_years_future_year_clamped():
-    from app.core.ai.trip_planner import _vehicle_age_years
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_age_years
 
     future = date.today().year + 5
     assert _vehicle_age_years({"yil": future}) == 0
 
 
 def test_vehicle_age_years_negative_result_clamped():
-    from app.core.ai.trip_planner import _vehicle_age_years
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_age_years
 
     # yil > current year → age < 0 → clamped to 0
     assert _vehicle_age_years({"yil": 9999}) == 0
@@ -198,7 +198,8 @@ def test_vehicle_age_years_negative_result_clamped():
 
 
 def test_classify_exception_falls_back_to_mixed():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
 
@@ -210,7 +211,7 @@ def test_classify_exception_falls_back_to_mixed():
     )
 
     with patch(
-        "app.core.ai.trip_planner.classify_route",
+        "v2.modules.ai_assistant.application.plan_trip.classify_route",
         side_effect=RuntimeError("classify failed"),
     ):
         result = engine._classify(inp)
@@ -224,7 +225,8 @@ def test_classify_exception_falls_back_to_mixed():
 
 
 async def test_count_similar_no_route_analysis():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -239,7 +241,8 @@ async def test_count_similar_no_route_analysis():
 
 
 async def test_count_similar_find_similar_trips_exception():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -251,7 +254,7 @@ async def test_count_similar_find_similar_trips_exception():
     )
 
     with patch(
-        "app.core.ai.trip_planner.find_similar_trips",
+        "v2.modules.ai_assistant.application.plan_trip.find_similar_trips",
         side_effect=RuntimeError("DB error"),
     ):
         count = await engine._count_similar(inp)
@@ -260,7 +263,8 @@ async def test_count_similar_find_similar_trips_exception():
 
 
 async def test_count_similar_with_route_analysis():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -272,7 +276,7 @@ async def test_count_similar_with_route_analysis():
     )
 
     with patch(
-        "app.core.ai.trip_planner.find_similar_trips",
+        "v2.modules.ai_assistant.application.plan_trip.find_similar_trips",
         AsyncMock(return_value=[{"id": 1}, {"id": 2}]),
     ):
         count = await engine._count_similar(inp)
@@ -286,7 +290,8 @@ async def test_count_similar_with_route_analysis():
 
 
 async def test_score_vehicles_empty_list():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -305,7 +310,8 @@ async def test_score_vehicles_empty_list():
 
 
 async def test_score_vehicles_all_zero_liters():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     mock_predictor = MagicMock()
     mock_predictor.predict_consumption = AsyncMock(
@@ -326,7 +332,8 @@ async def test_score_vehicles_all_zero_liters():
     ]
 
     with patch(
-        "app.core.ai.trip_planner.find_similar_trips", AsyncMock(return_value=[])
+        "v2.modules.ai_assistant.application.plan_trip.find_similar_trips",
+        AsyncMock(return_value=[]),
     ):
         result = await engine._score_vehicles(vehicles, inp)
 
@@ -341,7 +348,8 @@ async def test_score_vehicles_all_zero_liters():
 
 
 async def test_score_drivers_empty_list():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -363,7 +371,8 @@ async def test_score_drivers_empty_list():
 
 
 async def test_fetch_route_analysis_exception_silenced():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -384,8 +393,9 @@ async def test_fetch_route_analysis_exception_silenced():
 
 
 async def test_fetch_route_analysis_lok_none():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -412,8 +422,9 @@ async def test_fetch_route_analysis_lok_none():
 
 
 async def test_fetch_route_analysis_sets_route_analysis():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -446,7 +457,8 @@ async def test_fetch_route_analysis_sets_route_analysis():
 
 
 async def test_plan_top_n_clamped_to_min_1():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -462,7 +474,10 @@ async def test_plan_top_n_clamped_to_min_1():
     engine._score_vehicles = AsyncMock(return_value=[])
     engine._score_drivers = AsyncMock(return_value=[])
 
-    with patch("app.core.ai.trip_planner.classify_route", return_value="mixed"):
+    with patch(
+        "v2.modules.ai_assistant.application.plan_trip.classify_route",
+        return_value="mixed",
+    ):
         result = await engine.plan(inp, top_n=0)  # 0 → clamped to 1
 
     assert result.vehicles == []
@@ -470,7 +485,8 @@ async def test_plan_top_n_clamped_to_min_1():
 
 
 async def test_plan_top_n_clamped_to_max_5():
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -485,7 +501,10 @@ async def test_plan_top_n_clamped_to_max_5():
     engine._score_vehicles = AsyncMock(return_value=[])
     engine._score_drivers = AsyncMock(return_value=[])
 
-    with patch("app.core.ai.trip_planner.classify_route", return_value="motorway"):
+    with patch(
+        "v2.modules.ai_assistant.application.plan_trip.classify_route",
+        return_value="motorway",
+    ):
         result = await engine.plan(inp, top_n=99)  # 99 → clamped to MAX_TOP_N
 
     assert isinstance(result.risk_label, str)
@@ -499,7 +518,7 @@ async def test_plan_top_n_clamped_to_max_5():
 def test_plan_result_fields():
     from datetime import datetime, timezone
 
-    from app.core.ai.trip_planner import PlanResult
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanResult
 
     now = datetime.now(timezone.utc)
     r = PlanResult(

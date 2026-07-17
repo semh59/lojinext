@@ -59,7 +59,7 @@ from app.schemas.sefer import (
     SeferUpdate,
 )
 from app.schemas.telegram import SeferOnayRequest
-from app.schemas.trip_planner import (
+from v2.modules.ai_assistant.schemas import (
     DriverSuggestion,
     PlanWizardRequest,
     PlanWizardResponse,
@@ -955,9 +955,10 @@ async def plan_wizard(
     Hard filter boş ise 200 + boş listeler (404 değil).
     """
     from app.config import settings
-    from app.core.ai.trip_planner import PlanInput, TripPlannerEngine
     from app.infrastructure.audit.audit_logger import log_audit_event
     from app.services.prediction_service import PredictionService
+    from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     if not settings.TRIP_PLANNER_ENABLED:
         raise HTTPException(status_code=503, detail="Sefer planlama sihirbazı kapalı")

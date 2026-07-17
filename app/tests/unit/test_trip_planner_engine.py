@@ -99,7 +99,7 @@ async def _fake_get_route_profile_sofor(
 def _patched_engine(monkeypatch):
     """UoW + SoforService'i fake'lere bağla; PredictionService caller verir."""
 
-    import app.core.ai.trip_planner as planner_mod
+    import v2.modules.ai_assistant.application.plan_trip as planner_mod
 
     current_year = date.today().year
     arac_rows = [
@@ -159,7 +159,7 @@ def _patched_engine(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_engine_returns_top_3_vehicles_sorted_by_score(_patched_engine):
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     inp = PlanInput(
         cikis_yeri="Ankara",
@@ -186,7 +186,7 @@ async def test_engine_returns_top_3_vehicles_sorted_by_score(_patched_engine):
 
 @pytest.mark.asyncio
 async def test_engine_classifies_route_type_highway(_patched_engine):
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     inp = PlanInput(
         cikis_yeri="Ankara",
@@ -208,7 +208,7 @@ async def test_engine_classifies_route_type_highway(_patched_engine):
 
 @pytest.mark.asyncio
 async def test_engine_returns_top_3_drivers_sorted(_patched_engine):
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     inp = PlanInput(
         cikis_yeri="Ankara",
@@ -233,7 +233,7 @@ async def test_engine_returns_top_3_drivers_sorted(_patched_engine):
 @pytest.mark.asyncio
 async def test_engine_no_guzergah_id_defaults_neutral_weather(_patched_engine):
     """guzergah_id verilmediğinde weather_impact=1.0 (unknown)."""
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     inp = PlanInput(
         cikis_yeri="A",
@@ -250,7 +250,7 @@ async def test_engine_no_guzergah_id_defaults_neutral_weather(_patched_engine):
 
 @pytest.mark.asyncio
 async def test_engine_top_n_clamped_to_max(_patched_engine):
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     inp = PlanInput(
         cikis_yeri="A",
@@ -270,7 +270,7 @@ async def test_engine_top_n_clamped_to_max(_patched_engine):
 async def test_engine_empty_candidates_returns_empty_lists(monkeypatch):
     """Hard filter boş → vehicles=[] + drivers=[]; engine hata fırlatmaz."""
 
-    import app.core.ai.trip_planner as planner_mod
+    import v2.modules.ai_assistant.application.plan_trip as planner_mod
 
     monkeypatch.setattr(
         "app.database.unit_of_work.UnitOfWork",
@@ -291,7 +291,7 @@ async def test_engine_empty_candidates_returns_empty_lists(monkeypatch):
     monkeypatch.setattr(planner_mod, "find_similar_trips", _empty_similar)
 
     engine = planner_mod.TripPlannerEngine(_FakePredictor({}))
-    from app.core.ai.trip_planner import PlanInput
+    from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
 
     result = await engine.plan(
         PlanInput(

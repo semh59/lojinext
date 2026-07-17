@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.services.ai_service import AIService
+from v2.modules.ai_assistant.application.orchestrate_ai_response import AIService
 
 
 @pytest.fixture
@@ -116,13 +116,18 @@ class TestAIService:
             status = "loading"
             async_pending_jobs = 3
 
-        with _patch("app.core.ai.rag_engine.get_rag_engine", return_value=_FakeRag()):
+        with _patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine",
+            return_value=_FakeRag(),
+        ):
             result = service.get_progress()
             assert result["status"] == "loading"
             assert result["pending_jobs"] == 3
 
     def test_get_ai_service_singleton(self, service):
-        from app.core.services.ai_service import get_ai_service
+        from v2.modules.ai_assistant.application.orchestrate_ai_response import (
+            get_ai_service,
+        )
 
         s1 = get_ai_service()
         s2 = get_ai_service()

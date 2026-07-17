@@ -1,7 +1,7 @@
 import pytest
 
-from app.core.services.ai_service import AIService
 from app.schemas.validators import sanitize_string, validate_safe_string
+from v2.modules.ai_assistant.application.orchestrate_ai_response import AIService
 
 
 class TestSecurityPenetration:

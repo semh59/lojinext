@@ -32,7 +32,7 @@ def _build_payload(**overrides: Any) -> Dict[str, Any]:
 
 def _fake_plan_result(*, vehicles: int = 3, drivers: int = 3):
     """TripPlannerEngine.plan'in döneceği nesne — dataclass benzeri."""
-    from app.core.ai.trip_planner import (
+    from v2.modules.ai_assistant.domain.planner_scoring import (
         DriverCandidate,
         PlanResult,
         VehicleCandidate,
@@ -87,7 +87,7 @@ class TestPlanWizardEndpoint:
     async def test_happy_path_returns_3_vehicles_and_3_drivers(
         self, async_client, admin_auth_headers, monkeypatch
     ):
-        from app.core.ai import trip_planner as tp_mod
+        from v2.modules.ai_assistant.application import plan_trip as tp_mod
 
         async def _fake_plan(self, inp, top_n=3):  # noqa: ARG001
             return _fake_plan_result(vehicles=min(3, top_n), drivers=min(3, top_n))
@@ -112,7 +112,7 @@ class TestPlanWizardEndpoint:
     async def test_top_n_passed_to_engine(
         self, async_client, admin_auth_headers, monkeypatch
     ):
-        from app.core.ai import trip_planner as tp_mod
+        from v2.modules.ai_assistant.application import plan_trip as tp_mod
 
         captured: Dict[str, Any] = {}
 
@@ -145,7 +145,7 @@ class TestPlanWizardEndpoint:
         self, async_client, admin_auth_headers, monkeypatch
     ):
         """Hard filter boş → 200 + boş listeler."""
-        from app.core.ai import trip_planner as tp_mod
+        from v2.modules.ai_assistant.application import plan_trip as tp_mod
 
         async def _fake_plan(self, inp, top_n=3):  # noqa: ARG001
             return _fake_plan_result(vehicles=0, drivers=0)

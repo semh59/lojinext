@@ -12,7 +12,9 @@ pytestmark = pytest.mark.unit
 
 def _make_service():
     """Build a RAGSyncService with a stubbed rag engine."""
-    from app.core.ai.rag_sync_service import RAGSyncService
+    from v2.modules.ai_assistant.infrastructure.rag.rag_sync_service import (
+        RAGSyncService,
+    )
 
     svc = RAGSyncService.__new__(RAGSyncService)
     import asyncio
@@ -48,7 +50,10 @@ async def test_initialize_subscribes_events():
         return MagicMock()
 
     with (
-        patch("app.core.ai.rag_sync_service.get_event_bus", return_value=mock_eb),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_sync_service.get_event_bus",
+            return_value=mock_eb,
+        ),
         patch("asyncio.create_task", side_effect=_consume_coro),
     ):
         await svc.initialize()
@@ -73,7 +78,10 @@ async def test_initialize_creates_background_task():
         return t
 
     with (
-        patch("app.core.ai.rag_sync_service.get_event_bus", return_value=mock_eb),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_sync_service.get_event_bus",
+            return_value=mock_eb,
+        ),
         patch("asyncio.create_task", side_effect=_capture_task),
     ):
         await svc.initialize()
@@ -289,13 +297,16 @@ async def test_on_sefer_changed_non_dict_skips():
 
 
 def test_get_rag_sync_service_returns_same_instance():
-    import app.core.ai.rag_sync_service as mod
+    import v2.modules.ai_assistant.infrastructure.rag.rag_sync_service as mod
 
     # Reset singleton for test isolation
     orig = mod._rag_sync_service
     mod._rag_sync_service = None
 
-    with patch("app.core.ai.rag_sync_service.get_rag_engine", return_value=MagicMock()):
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.rag.rag_sync_service.get_rag_engine",
+        return_value=MagicMock(),
+    ):
         s1 = mod.get_rag_sync_service()
         s2 = mod.get_rag_sync_service()
 

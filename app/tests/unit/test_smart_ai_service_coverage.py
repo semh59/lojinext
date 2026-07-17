@@ -19,7 +19,7 @@ pytestmark = pytest.mark.unit
 
 def _make_kb(has_model: bool = True):
     """Return a KnowledgeBase with a stubbed FAISSVectorStore."""
-    import app.services.smart_ai_service as mod
+    import v2.modules.ai_assistant.application.knowledge_base as mod
 
     kb = mod.KnowledgeBase.__new__(mod.KnowledgeBase)
     vs = MagicMock()
@@ -184,7 +184,7 @@ class TestKnowledgeBase:
 
 
 def _make_svc():
-    import app.services.smart_ai_service as mod
+    import v2.modules.ai_assistant.application.knowledge_base as mod
 
     svc = mod.SmartAIService.__new__(mod.SmartAIService)
     kb = _make_kb(has_model=True)
@@ -383,7 +383,10 @@ class TestGetLlm:
         svc = _make_svc()
         mock_llm = MagicMock()
 
-        with patch("app.core.ai.llm_client.get_llm_client", return_value=mock_llm):
+        with patch(
+            "v2.modules.ai_assistant.infrastructure.llm.raw_client.get_llm_client",
+            return_value=mock_llm,
+        ):
             r1 = svc._get_llm()
             r2 = svc._get_llm()
 
@@ -393,7 +396,7 @@ class TestGetLlm:
     def test_get_llm_exception_returns_none(self):
         svc = _make_svc()
         with patch(
-            "app.core.ai.llm_client.get_llm_client",
+            "v2.modules.ai_assistant.infrastructure.llm.raw_client.get_llm_client",
             side_effect=Exception("no config"),
         ):
             result = svc._get_llm()

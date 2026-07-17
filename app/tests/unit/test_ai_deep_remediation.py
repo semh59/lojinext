@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import select
 
-from app.core.ai.rag_engine import get_rag_engine
 from app.database.models import Anomaly
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import get_rag_engine
 from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyDetector,
     AnomalyResult,
@@ -52,7 +52,9 @@ async def test_anomaly_bulk_insert(db_session):
 @pytest.mark.asyncio
 async def test_recommendation_cache_thread_safety():
     """Cache lock'unun varlığını doğrula"""
-    from app.core.ai.recommendation_engine import get_recommendation_engine
+    from v2.modules.ai_assistant.application.recommendation_engine import (
+        get_recommendation_engine,
+    )
 
     engine = get_recommendation_engine()
     assert hasattr(engine, "_lock")

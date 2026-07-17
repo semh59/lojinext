@@ -40,7 +40,7 @@ def _make_embedding(dim: int = 8) -> np.ndarray:
 
 
 def _make_faiss_store(dim: int = 8):
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.embedding_dim = dim
@@ -62,7 +62,7 @@ def _make_faiss_store(dim: int = 8):
 
 
 def _make_rag_engine(initialized: bool = True):
-    from app.core.ai.rag_engine import RAGEngine
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
     engine = RAGEngine.__new__(RAGEngine)
     engine.is_initialized = initialized
@@ -91,7 +91,7 @@ def _make_rag_engine(initialized: bool = True):
 
 
 def test_faiss_store_save_index_no_faiss():
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.index = None
@@ -114,7 +114,9 @@ def test_faiss_store_load_index_missing_files():
 
 def test_faiss_store_load_index_no_faiss():
     store = _make_faiss_store()
-    with patch("app.core.ai.rag_engine.FAISS_AVAILABLE", False):
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISS_AVAILABLE", False
+    ):
         result = store.load_index("/tmp/test_rag")
     assert result is False
 
@@ -201,7 +203,7 @@ def test_faiss_store_add_rejects_when_full():
 
 
 def test_faiss_store_search_no_index():
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.index = None
@@ -356,7 +358,7 @@ async def test_rag_engine_search_exception():
 
 
 async def test_rag_engine_search_for_context_truncation_message():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     engine = _make_rag_engine(initialized=True)
     # Two large documents — second should be truncated due to max_chars
@@ -378,7 +380,7 @@ async def test_rag_engine_search_for_context_truncation_message():
 
 
 async def test_rag_engine_search_for_context_source_labels():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     engine = _make_rag_engine(initialized=True)
 

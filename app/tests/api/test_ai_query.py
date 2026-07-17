@@ -8,7 +8,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 async def test_general_category_returns_answer(async_client, normal_auth_headers):
-    with patch("app.api.v1.endpoints.ai.get_ai_service") as mock_ai:
+    with patch("v2.modules.ai_assistant.api.ai_routes.get_ai_service") as mock_ai:
         mock_ai.return_value.generate_response = AsyncMock(return_value="Merhaba!")
         resp = await async_client.post(
             "/api/v1/ai/query",
@@ -63,7 +63,7 @@ async def test_fuel_trend_returns_chart_and_action(
     )
     await db_session.commit()
 
-    with patch("app.api.v1.endpoints.ai.get_ai_service") as mock_ai:
+    with patch("v2.modules.ai_assistant.api.ai_routes.get_ai_service") as mock_ai:
         mock_ai.return_value.generate_response = AsyncMock(return_value="Trend yukarı.")
         resp = await async_client.post(
             "/api/v1/ai/query",
@@ -88,7 +88,7 @@ async def test_query_requires_auth(async_client):
 async def test_fuel_trend_llm_failure_still_returns_chart(
     async_client, admin_auth_headers
 ):
-    with patch("app.api.v1.endpoints.ai.get_ai_service") as mock_ai:
+    with patch("v2.modules.ai_assistant.api.ai_routes.get_ai_service") as mock_ai:
         mock_ai.return_value.generate_response = AsyncMock(
             side_effect=RuntimeError("groq down")
         )

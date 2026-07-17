@@ -45,8 +45,11 @@ async def test_check_db_unhealthy(health_service):
 
 @pytest.mark.asyncio
 async def test_check_ai_readiness_healthy(health_service):
-    # get_rag_engine fonksiyon içinde import edildiği için kaynağından (app.core.ai.rag_engine) patch edilmeli
-    with patch("app.core.ai.rag_engine.get_rag_engine") as mock_get_rag:
+    # get_rag_engine fonksiyon içinde import edildiği için kaynağından
+    # (v2.modules.ai_assistant.infrastructure.rag.rag_engine) patch edilmeli
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine"
+    ) as mock_get_rag:
         mock_rag = Mock()
         mock_rag.get_stats.return_value = {"initialized": True, "total_documents": 100}
         mock_get_rag.return_value = mock_rag
@@ -61,7 +64,9 @@ async def test_check_ai_readiness_healthy(health_service):
 
 @pytest.mark.asyncio
 async def test_check_ai_readiness_degraded(health_service):
-    with patch("app.core.ai.rag_engine.get_rag_engine") as mock_get_rag:
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine"
+    ) as mock_get_rag:
         mock_rag = Mock()
         mock_rag.get_stats.return_value = {"initialized": False}
         mock_get_rag.return_value = mock_rag

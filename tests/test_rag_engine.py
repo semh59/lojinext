@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, ".")
 
-from app.core.ai.rag_engine import (
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
     FAISS_AVAILABLE,
     SENTENCE_TRANSFORMERS_AVAILABLE,
     FAISSVectorStore,
@@ -324,7 +324,7 @@ class TestIntegration:
     )
     async def test_full_rag_pipeline(self):
         """Tam RAG pipeline testi"""
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine()
         # CRITICAL: Wait for model to load

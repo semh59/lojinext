@@ -834,7 +834,7 @@ class PredictionService:
     ):
         """Background task: AI'a tahmin bilgisi gönder"""
         try:
-            from app.services.smart_ai_service import get_smart_ai
+            from v2.modules.ai_assistant.application.knowledge_base import get_smart_ai
 
             smart_ai = get_smart_ai()
 

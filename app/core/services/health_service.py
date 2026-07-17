@@ -76,8 +76,10 @@ class HealthService:
     async def check_ai_readiness(self) -> Dict[str, Any]:
         """AI modellerinin yüklenme durumu"""
         try:
-            from app.core.ai.rag_engine import get_rag_engine
             from app.core.container import get_container
+            from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+                get_rag_engine,
+            )
 
             rag = get_rag_engine()
             rag_stats = rag.get_stats()

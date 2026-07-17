@@ -21,7 +21,7 @@ import pytest
     ],
 )
 def test_risk_label_boundaries(impact, expected):
-    from app.core.ai.trip_planner import _risk_label
+    from v2.modules.ai_assistant.domain.planner_scoring import _risk_label
 
     assert _risk_label(impact) == expected
 
@@ -39,14 +39,14 @@ def test_risk_label_boundaries(impact, expected):
     ],
 )
 def test_availability_score_boundaries(trips, expected):
-    from app.core.ai.trip_planner import _availability_score
+    from v2.modules.ai_assistant.domain.planner_scoring import _availability_score
 
     assert _availability_score(trips) == pytest.approx(expected, abs=1e-9)
 
 
 # ── _vehicle_age_years ─────────────────────────────────────────────────
 def test_vehicle_age_years_from_yil():
-    from app.core.ai.trip_planner import _vehicle_age_years
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_age_years
 
     current = date.today().year
     assert _vehicle_age_years({"yil": current}) == 0
@@ -58,7 +58,7 @@ def test_vehicle_age_years_from_yil():
 
 # ── _vehicle_health_score ──────────────────────────────────────────────
 def test_vehicle_health_score_age_only():
-    from app.core.ai.trip_planner import _vehicle_health_score
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_health_score
 
     assert _vehicle_health_score(0, False) == 1.0
     assert _vehicle_health_score(25, False) == 0.0
@@ -68,7 +68,7 @@ def test_vehicle_health_score_age_only():
 
 
 def test_vehicle_health_score_with_open_alert_halves():
-    from app.core.ai.trip_planner import _vehicle_health_score
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_health_score
 
     base = _vehicle_health_score(5, False)
     with_alert = _vehicle_health_score(5, True)
@@ -77,14 +77,14 @@ def test_vehicle_health_score_with_open_alert_halves():
 
 # ── _route_type_perf ───────────────────────────────────────────────────
 def test_route_type_perf_low_trip_count_returns_neutral():
-    from app.core.ai.trip_planner import _route_type_perf
+    from v2.modules.ai_assistant.domain.planner_scoring import _route_type_perf
 
     assert _route_type_perf(deviation_pct=10, trip_count=0) == 0.5
     assert _route_type_perf(deviation_pct=20, trip_count=4) == 0.5  # eşik altı
 
 
 def test_route_type_perf_low_deviation_is_high():
-    from app.core.ai.trip_planner import _route_type_perf
+    from v2.modules.ai_assistant.domain.planner_scoring import _route_type_perf
 
     # |dev|=0 → score 1.0
     assert _route_type_perf(0, 10) == 1.0
@@ -100,7 +100,7 @@ def test_route_type_perf_low_deviation_is_high():
 
 # ── _vehicle_reasons ───────────────────────────────────────────────────
 def test_vehicle_reasons_top_score_includes_low_consumption():
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     reasons = _vehicle_reasons(
         fuel_score=0.98,
@@ -118,7 +118,7 @@ def test_vehicle_reasons_top_score_includes_low_consumption():
 
 
 def test_vehicle_reasons_open_alert_and_old_age():
-    from app.core.ai.trip_planner import _vehicle_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _vehicle_reasons
 
     reasons = _vehicle_reasons(
         fuel_score=0.5,
@@ -134,7 +134,7 @@ def test_vehicle_reasons_open_alert_and_old_age():
 
 # ── _driver_reasons ────────────────────────────────────────────────────
 def test_driver_reasons_cold_start_says_new_driver():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     reasons = _driver_reasons(
         route_type="highway_dominant",
@@ -148,7 +148,7 @@ def test_driver_reasons_cold_start_says_new_driver():
 
 
 def test_driver_reasons_savings_message_when_negative_deviation():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     reasons = _driver_reasons(
         route_type="highway_dominant",
@@ -163,7 +163,7 @@ def test_driver_reasons_savings_message_when_negative_deviation():
 
 
 def test_driver_reasons_risk_high_deviation_warning():
-    from app.core.ai.trip_planner import _driver_reasons
+    from v2.modules.ai_assistant.domain.planner_scoring import _driver_reasons
 
     reasons = _driver_reasons(
         route_type="mountain",

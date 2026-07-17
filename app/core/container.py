@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     from app.database.repositories.sefer_repo import SeferRepository
     from app.infrastructure.events.event_bus import EventBus
     from app.services.prediction_service import PredictionService
-    from app.services.smart_ai_service import SmartAIService
     from app.services.time_series_service import TimeSeriesService
+    from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.analytics_executive.infrastructure.executive_read_models import (
         AnalizRepository,
     )
@@ -275,7 +275,9 @@ class Container:
         if self._ai_service is None:
             with self._lock:
                 if self._ai_service is None:
-                    from app.core.services.ai_service import AIService
+                    from v2.modules.ai_assistant.application.orchestrate_ai_response import (
+                        AIService,
+                    )
 
                     self._ai_service = AIService()
         return self._ai_service
@@ -285,7 +287,9 @@ class Container:
         if self._smart_ai_service is None:
             with self._lock:
                 if self._smart_ai_service is None:
-                    from app.services.smart_ai_service import SmartAIService
+                    from v2.modules.ai_assistant.application.knowledge_base import (
+                        SmartAIService,
+                    )
 
                     self._smart_ai_service = SmartAIService()
         return self._smart_ai_service

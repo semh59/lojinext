@@ -27,7 +27,9 @@ pytestmark = pytest.mark.integration
 
 def _make_engine():
     """Return a fresh RecommendationEngine (bypasses singleton)."""
-    from app.core.ai.recommendation_engine import RecommendationEngine
+    from v2.modules.ai_assistant.application.recommendation_engine import (
+        RecommendationEngine,
+    )
 
     engine = RecommendationEngine.__new__(RecommendationEngine)
     engine._cache = {}
@@ -56,7 +58,7 @@ def test_cache_ttl_invalid_env_var_falls_back_to_default():
     orig = os.environ.get("AI_CACHE_TTL")
     os.environ["AI_CACHE_TTL"] = "not_a_number"
     try:
-        import app.core.ai.recommendation_engine as mod
+        import v2.modules.ai_assistant.application.recommendation_engine as mod
 
         importlib.reload(mod)
         assert mod.RecommendationEngine.CACHE_TTL == 3600
@@ -75,7 +77,7 @@ def test_cache_ttl_valid_env_var_is_used():
     orig = os.environ.get("AI_CACHE_TTL")
     os.environ["AI_CACHE_TTL"] = "7200"
     try:
-        import app.core.ai.recommendation_engine as mod
+        import v2.modules.ai_assistant.application.recommendation_engine as mod
 
         importlib.reload(mod)
         assert mod.RecommendationEngine.CACHE_TTL == 7200
@@ -102,7 +104,7 @@ async def test_get_all_recommendations_empty_fleet(db_session):
 
 async def test_get_all_recommendations_sorted_by_priority(db_session):
     """Combined recs are sorted descending by oncelik."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     engine = _make_engine()
     low = Recommendation(
@@ -120,7 +122,7 @@ async def test_get_all_recommendations_sorted_by_priority(db_session):
 
 async def test_get_all_recommendations_with_vehicles_and_drivers(db_session):
     """Each seeded vehicle/driver triggers its sub-recommendation call (real ids)."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     arac = await seed_arac(db_session, plaka="34 ABC 010")
     sofor = await seed_sofor(db_session, ad_soyad="Sofor 20")
@@ -162,7 +164,7 @@ async def test_get_all_recommendations_multiple_vehicles_and_drivers(db_session)
 
 async def test_get_all_recommendations_results_gathered_correctly(db_session):
     """Fleet + cost + vehicle results are flattened and priority-sorted."""
-    from app.core.ai.recommendation_engine import Recommendation
+    from v2.modules.ai_assistant.application.recommendation_engine import Recommendation
 
     await seed_arac(db_session, plaka="34 ABC 001")
     await db_session.commit()

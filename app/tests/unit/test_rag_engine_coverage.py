@@ -27,7 +27,7 @@ def _make_embedding(dim: int = 384) -> np.ndarray:
 
 def _make_faiss_store(dim: int = 8):
     """Build a minimal FAISSVectorStore with a tiny mock FAISS index."""
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.embedding_dim = dim
@@ -51,7 +51,7 @@ def _make_faiss_store(dim: int = 8):
 
 def _make_rag_engine(initialized: bool = True):
     """Build a RAGEngine with mocked embedder and vector_store."""
-    from app.core.ai.rag_engine import RAGEngine
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
     engine = RAGEngine.__new__(RAGEngine)
     engine.is_initialized = initialized
@@ -80,7 +80,7 @@ def _make_rag_engine(initialized: bool = True):
 
 
 def test_search_result_fields():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     sr = SearchResult(
         document="doc",
@@ -99,7 +99,7 @@ def test_search_result_fields():
 
 
 def test_faiss_store_count_no_index():
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.index = None
@@ -126,7 +126,7 @@ def test_faiss_store_clear_resets_state():
 
 
 def test_faiss_store_add_rejects_no_index():
-    from app.core.ai.rag_engine import FAISSVectorStore
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import FAISSVectorStore
 
     store = FAISSVectorStore.__new__(FAISSVectorStore)
     store.index = None
@@ -451,7 +451,7 @@ async def test_rag_engine_search_returns_search_results():
         with patch.object(engine.vector_store, "search", return_value=[(0, 0.9)]):
             results = await engine.search("araç tüketimi")
 
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     assert len(results) == 1
     assert isinstance(results[0], SearchResult)
@@ -471,7 +471,7 @@ async def test_rag_engine_search_for_context_no_results():
 
 
 async def test_rag_engine_search_for_context_filters_low_score():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     engine = _make_rag_engine(initialized=True)
     low_score_result = SearchResult(
@@ -484,7 +484,7 @@ async def test_rag_engine_search_for_context_filters_low_score():
 
 
 async def test_rag_engine_search_for_context_with_results():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     engine = _make_rag_engine(initialized=True)
     good_result = SearchResult(
@@ -496,7 +496,7 @@ async def test_rag_engine_search_for_context_with_results():
 
 
 async def test_rag_engine_search_for_context_respects_max_chars():
-    from app.core.ai.rag_engine import SearchResult
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
     engine = _make_rag_engine(initialized=True)
     big_doc = "A" * 5000
@@ -595,14 +595,20 @@ def test_create_document_id():
 
 
 def test_get_rag_engine_returns_same_instance():
-    import app.core.ai.rag_engine as mod
+    import v2.modules.ai_assistant.infrastructure.rag.rag_engine as mod
 
     orig = mod._rag_engine
     mod._rag_engine = None
     try:
         with (
-            patch("app.core.ai.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE", False),
-            patch("app.core.ai.rag_engine.FAISS_AVAILABLE", False),
+            patch(
+                "v2.modules.ai_assistant.infrastructure.rag.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE",
+                False,
+            ),
+            patch(
+                "v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISS_AVAILABLE",
+                False,
+            ),
         ):
             e1 = mod.get_rag_engine()
             e2 = mod.get_rag_engine()
@@ -612,16 +618,28 @@ def test_get_rag_engine_returns_same_instance():
 
 
 def test_is_rag_available():
-    from app.core.ai.rag_engine import is_rag_available
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import is_rag_available
 
     with (
-        patch("app.core.ai.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE", True),
-        patch("app.core.ai.rag_engine.FAISS_AVAILABLE", True),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE",
+            True,
+        ),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISS_AVAILABLE",
+            True,
+        ),
     ):
         assert is_rag_available() is True
 
     with (
-        patch("app.core.ai.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE", False),
-        patch("app.core.ai.rag_engine.FAISS_AVAILABLE", True),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE",
+            False,
+        ),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISS_AVAILABLE",
+            True,
+        ),
     ):
         assert is_rag_available() is False

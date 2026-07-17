@@ -72,7 +72,7 @@ def _make_alert(aid=1):
 
 def _build_rag_engine_with_mocks():
     """Return a RAGEngine with is_initialized=True and mocked internals."""
-    from app.core.ai.rag_engine import RAGEngine
+    from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
     engine = RAGEngine.__new__(RAGEngine)
     engine.is_initialized = True
@@ -99,7 +99,9 @@ def _build_rag_engine_with_mocks():
 class TestFAISSVectorStoreNoFaiss:
     def test_instantiates_without_faiss(self):
         """FAISSVectorStore should not crash when faiss is absent."""
-        from app.core.ai.rag_engine import FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISSVectorStore,
+        )
 
         store = FAISSVectorStore(embedding_dim=384)
         # If FAISS is available, index is set; otherwise it's None
@@ -107,7 +109,10 @@ class TestFAISSVectorStoreNoFaiss:
         assert store.embedding_dim == 384
 
     def test_count_returns_zero_on_empty(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if FAISS_AVAILABLE:
             pytest.skip("Test targets no-FAISS path")
@@ -116,7 +121,10 @@ class TestFAISSVectorStoreNoFaiss:
         assert store.count() == 0
 
     def test_add_noop_without_faiss(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if FAISS_AVAILABLE:
             pytest.skip("Test targets no-FAISS path")
@@ -129,7 +137,10 @@ class TestFAISSVectorStoreNoFaiss:
         assert store.count() == 0
 
     def test_search_returns_empty_without_faiss(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if FAISS_AVAILABLE:
             pytest.skip("Test targets no-FAISS path")
@@ -139,7 +150,10 @@ class TestFAISSVectorStoreNoFaiss:
         assert results == []
 
     def test_clear_noop_without_faiss(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if FAISS_AVAILABLE:
             pytest.skip("Test targets no-FAISS path")
@@ -156,7 +170,10 @@ class TestFAISSVectorStoreNoFaiss:
 
 class TestFAISSVectorStoreWithFaiss:
     def test_add_and_count(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if not FAISS_AVAILABLE:
             pytest.skip("faiss not installed")
@@ -172,7 +189,10 @@ class TestFAISSVectorStoreWithFaiss:
         assert store.count() == 1
 
     def test_short_document_rejected(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if not FAISS_AVAILABLE:
             pytest.skip("faiss not installed")
@@ -183,7 +203,10 @@ class TestFAISSVectorStoreWithFaiss:
         assert store.count() == before  # rejected
 
     def test_upsert_marks_old_as_deleted(self):
-        from app.core.ai.rag_engine import FAISS_AVAILABLE, FAISSVectorStore
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            FAISS_AVAILABLE,
+            FAISSVectorStore,
+        )
 
         if not FAISS_AVAILABLE:
             pytest.skip("faiss not installed")
@@ -202,7 +225,7 @@ class TestFAISSVectorStoreWithFaiss:
         assert store.metadatas[old_idx].get("_deleted") is True
 
     def test_create_document_id(self):
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine.__new__(RAGEngine)
         doc_id = engine._create_document_id("vehicle", 42)
@@ -216,7 +239,7 @@ class TestFAISSVectorStoreWithFaiss:
 
 class TestRAGEngineNotInitialized:
     def test_stats_when_not_initialized(self):
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine.__new__(RAGEngine)
         engine.is_initialized = False
@@ -225,7 +248,7 @@ class TestRAGEngineNotInitialized:
         assert result["initialized"] is False
 
     async def test_search_returns_empty_when_not_initialized(self):
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine.__new__(RAGEngine)
         engine.is_initialized = False
@@ -233,7 +256,7 @@ class TestRAGEngineNotInitialized:
         assert results == []
 
     async def test_index_vehicle_returns_false_when_not_initialized(self):
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine.__new__(RAGEngine)
         engine.is_initialized = False
@@ -241,7 +264,7 @@ class TestRAGEngineNotInitialized:
         assert result is False
 
     def test_clear_index_returns_false_when_not_initialized(self):
-        from app.core.ai.rag_engine import RAGEngine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
         engine = RAGEngine.__new__(RAGEngine)
         engine.is_initialized = False
@@ -396,13 +419,15 @@ class TestRAGEngineBulkIndex:
 
 class TestRAGEngineSingleton:
     def test_is_rag_available_returns_bool(self):
-        from app.core.ai.rag_engine import is_rag_available
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+            is_rag_available,
+        )
 
         result = is_rag_available()
         assert isinstance(result, bool)
 
     def test_search_result_dataclass(self):
-        from app.core.ai.rag_engine import SearchResult
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import SearchResult
 
         sr = SearchResult(
             document="test doc",

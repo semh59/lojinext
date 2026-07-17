@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("test_chatbot")
 
-from app.core.ai.groq_service import get_groq_service
+from v2.modules.ai_assistant.infrastructure.llm.groq_client import get_groq_service
 
 
 async def test_direct_chat():

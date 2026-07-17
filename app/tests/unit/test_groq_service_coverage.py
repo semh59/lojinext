@@ -26,7 +26,7 @@ def _make_service_no_key():
     not a cached self.client attribute. Mock _get_client() directly rather
     than setting .client, which is no longer read by production code.
     """
-    from app.core.ai.groq_service import GroqService
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     svc = GroqService.__new__(GroqService)
     svc.api_key = None
@@ -38,7 +38,7 @@ def _make_service_no_key():
 
 def _make_service_with_client():
     """GroqService with a mocked Groq client returned by _get_client()."""
-    from app.core.ai.groq_service import GroqService
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     svc = GroqService.__new__(GroqService)
     svc.api_key = "test-key"  # pragma: allowlist secret
@@ -49,7 +49,7 @@ def _make_service_with_client():
 
 
 def _make_chat_message(role: str = "user", content: str = "hello"):
-    from app.core.ai.groq_service import ChatMessage
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import ChatMessage
 
     return ChatMessage(role=role, content=content)
 
@@ -68,7 +68,7 @@ def test_chat_message_defaults():
 
 
 def test_chat_message_explicit_timestamp():
-    from app.core.ai.groq_service import ChatMessage
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import ChatMessage
 
     ts = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
     msg = ChatMessage(role="assistant", content="response", timestamp=ts)
@@ -86,20 +86,22 @@ def test_chat_message_role_assistant():
 
 
 def test_groq_service_init_no_key():
-    from app.core.ai.groq_service import GroqService
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     mock_settings = MagicMock()
     mock_settings.GROQ_API_KEY = None
     mock_settings.GROQ_MODEL_NAME = "test-model"
 
-    with patch("app.core.ai.groq_service.settings", mock_settings):
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.llm.groq_client.settings", mock_settings
+    ):
         svc = GroqService()
     assert svc.client is None
 
 
 def test_groq_service_init_with_key_no_groq_package():
     """When groq package is absent, client stays None but no exception."""
-    from app.core.ai.groq_service import GroqService
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     mock_settings = MagicMock()
     mock_key = MagicMock()
@@ -108,8 +110,11 @@ def test_groq_service_init_with_key_no_groq_package():
     mock_settings.GROQ_MODEL_NAME = "llama"
 
     with (
-        patch("app.core.ai.groq_service.settings", mock_settings),
-        patch("app.core.ai.groq_service.AsyncGroq", None),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client.settings",
+            mock_settings,
+        ),
+        patch("v2.modules.ai_assistant.infrastructure.llm.groq_client.AsyncGroq", None),
     ):
         svc = GroqService()
     assert svc.client is None
@@ -117,7 +122,7 @@ def test_groq_service_init_with_key_no_groq_package():
 
 def test_groq_service_init_with_key_and_groq():
     """Happy path: key present + AsyncGroq available → client created."""
-    from app.core.ai.groq_service import GroqService
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     mock_settings = MagicMock()
     mock_key = MagicMock()
@@ -130,8 +135,14 @@ def test_groq_service_init_with_key_and_groq():
     mock_groq_cls.return_value = MagicMock()
 
     with (
-        patch("app.core.ai.groq_service.settings", mock_settings),
-        patch("app.core.ai.groq_service.AsyncGroq", mock_groq_cls),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client.settings",
+            mock_settings,
+        ),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client.AsyncGroq",
+            mock_groq_cls,
+        ),
     ):
         svc = GroqService()
 
@@ -149,13 +160,13 @@ def test_groq_service_init_with_key_and_groq():
 
 
 def test_sdk_base_url_strips_openai_v1_suffix():
-    from app.core.ai.groq_service import _sdk_base_url
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import _sdk_base_url
 
     assert _sdk_base_url("https://api.groq.com/openai/v1") == "https://api.groq.com"
 
 
 def test_sdk_base_url_leaves_bare_host_unchanged():
-    from app.core.ai.groq_service import _sdk_base_url
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import _sdk_base_url
 
     assert _sdk_base_url("https://api.groq.com") == "https://api.groq.com"
 
@@ -266,7 +277,10 @@ async def test_chat_timeout_raises_llm_provider_error():
     svc.client.chat.completions.create = _never_returns
 
     with (
-        patch("app.core.ai.groq_service._GROQ_TIMEOUT_S", 0.01),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client._GROQ_TIMEOUT_S",
+            0.01,
+        ),
         pytest.raises(LLMProviderError, match="zaman aşımına"),
     ):
         await svc.chat("Soru?")
@@ -398,7 +412,7 @@ def test_prepare_messages_empty_history():
 
 
 def test_get_groq_service_singleton():
-    import app.core.ai.groq_service as mod
+    import v2.modules.ai_assistant.infrastructure.llm.groq_client as mod
 
     orig = mod._groq_service
     mod._groq_service = None
@@ -407,7 +421,10 @@ def test_get_groq_service_singleton():
         mock_settings.GROQ_API_KEY = None
         mock_settings.GROQ_MODEL_NAME = "test"
 
-        with patch("app.core.ai.groq_service.settings", mock_settings):
+        with patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client.settings",
+            mock_settings,
+        ):
             s1 = mod.get_groq_service()
             s2 = mod.get_groq_service()
         assert s1 is s2
@@ -416,8 +433,8 @@ def test_get_groq_service_singleton():
 
 
 def test_get_groq_service_returns_groq_service_instance():
-    import app.core.ai.groq_service as mod
-    from app.core.ai.groq_service import GroqService
+    import v2.modules.ai_assistant.infrastructure.llm.groq_client as mod
+    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
     orig = mod._groq_service
     mod._groq_service = None
@@ -426,7 +443,10 @@ def test_get_groq_service_returns_groq_service_instance():
         mock_settings.GROQ_API_KEY = None
         mock_settings.GROQ_MODEL_NAME = "test"
 
-        with patch("app.core.ai.groq_service.settings", mock_settings):
+        with patch(
+            "v2.modules.ai_assistant.infrastructure.llm.groq_client.settings",
+            mock_settings,
+        ):
             svc = mod.get_groq_service()
         assert isinstance(svc, GroqService)
     finally:

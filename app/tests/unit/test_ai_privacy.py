@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.core.ai.rag_engine import RAGEngine
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import RAGEngine
 
 
 def test_config_robustness():
@@ -23,10 +23,12 @@ async def test_rag_thread_safe_init():
     """RAG motorunun çoklu thread'de güvenli yüklendiğini doğrula"""
     # FAISS ve ST mockla (ağır yükleme yapmasın)
     with (
-        patch("app.core.ai.rag_engine.SentenceTransformer"),
-        patch("app.core.ai.rag_engine.FAISSVectorStore"),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.SentenceTransformer"
+        ),
+        patch("v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISSVectorStore"),
     ):
-        from app.core.ai.rag_engine import get_rag_engine
+        from v2.modules.ai_assistant.infrastructure.rag.rag_engine import get_rag_engine
 
         # Birden fazla thread ile aynı anda motoru istemeye çalış
         results = []

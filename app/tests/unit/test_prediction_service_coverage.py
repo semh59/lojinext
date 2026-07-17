@@ -806,7 +806,7 @@ async def test_log_prediction_to_ai_no_error():
     with patch("app.services.prediction_service.asyncio") as mock_asyncio:
         mock_asyncio.create_task = MagicMock()
         with patch(
-            "app.services.smart_ai_service.get_smart_ai",
+            "v2.modules.ai_assistant.application.knowledge_base.get_smart_ai",
             return_value=mock_smart_ai,
             create=True,
         ):

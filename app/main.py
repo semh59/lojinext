@@ -336,7 +336,9 @@ async def lifespan(app: FastAPI):
         logger.warning("Notification event handlers registration failed: %s", exc)
 
     try:
-        from app.core.ai.rag_sync_service import get_rag_sync_service
+        from v2.modules.ai_assistant.infrastructure.rag.rag_sync_service import (
+            get_rag_sync_service,
+        )
 
         await get_rag_sync_service().initialize()
     except Exception as exc:  # pragma: no cover

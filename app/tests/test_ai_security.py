@@ -8,15 +8,26 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
-from app.core.ai.rag_engine import FAISSVectorStore, RAGEngine
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+    FAISSVectorStore,
+    RAGEngine,
+)
 
 
 @pytest.fixture
 def mock_rag_engine():
     with (
-        patch("app.core.ai.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE", True),
-        patch("app.core.ai.rag_engine.FAISS_AVAILABLE", True),
-        patch("app.core.ai.rag_engine.faiss") as _mock_faiss,
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.SENTENCE_TRANSFORMERS_AVAILABLE",
+            True,
+        ),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.rag_engine.FAISS_AVAILABLE",
+            True,
+        ),
+        patch(
+            "v2.modules.ai_assistant.infrastructure.rag.vector_store.faiss"
+        ) as _mock_faiss,
     ):
         rag = RAGEngine()
         rag.is_initialized = True

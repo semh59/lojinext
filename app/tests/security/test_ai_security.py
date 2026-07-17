@@ -1,7 +1,7 @@
 import pytest
 
-from app.core.ai.prompt_tuner import get_prompt_tuner
-from app.core.ai.rag_engine import get_rag_engine
+from v2.modules.ai_assistant.application.prompt_tuner import get_prompt_tuner
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import get_rag_engine
 
 
 @pytest.mark.asyncio

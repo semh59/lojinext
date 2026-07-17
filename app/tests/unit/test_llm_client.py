@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from app.core.ai.llm_client import LLMClient, LLMMessage
 from app.core.exceptions import LLMProviderError
+from v2.modules.ai_assistant.infrastructure.llm.raw_client import LLMClient, LLMMessage
 
 
 class _FakeResponse:
@@ -39,7 +39,7 @@ class _FakeClient:
 async def test_llm_client_success(monkeypatch):
     # Arrange: stub get_monitored_client (llm_client no longer imports httpx directly)
     monkeypatch.setattr(
-        "app.core.ai.llm_client.get_monitored_client",
+        "v2.modules.ai_assistant.infrastructure.llm.raw_client.get_monitored_client",
         lambda **kwargs: _FakeClient(),
     )
     client = LLMClient(api_key="key", model="m")
@@ -60,7 +60,7 @@ async def test_llm_client_retries_then_raises(monkeypatch):
     queue flow ready and waiting) never actually saw a failure to react to."""
     counter = {"count": 0}
     monkeypatch.setattr(
-        "app.core.ai.llm_client.get_monitored_client",
+        "v2.modules.ai_assistant.infrastructure.llm.raw_client.get_monitored_client",
         lambda **kwargs: _FakeClient(fail=True, call_counter=counter),
     )
     client = LLMClient(api_key="key", model="m", max_retries=1, timeout_seconds=0.1)

@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 11/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); sıradaki: dalga 12 (ai-assistant), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 11/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) kod+yerel Docker doğrulama tam, CI/push kullanıcı onayı bekliyor (bkz. DALGA 12 bölümü) |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -45,7 +45,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
-| 12 | ai-assistant | `modules/ai-assistant.md` | 🔲 |
+| 12 | ai-assistant | `modules/ai-assistant.md` | 🟡 kod+yerel doğrulama tam, CI/push bekliyor (bkz. DALGA 12 bölümü) |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
 | 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
@@ -1050,6 +1050,120 @@ API hatasıyla kırmızı çıkmıştı — ham GitHub 404 HTML sayfası dönmü
 backend metadata/build adımı hemen öncesinde sorunsuz geçmişti; kod
 değişikliğiyle ilgisiz bir altyapı hıçkırığı olduğu teyit edildi,
 `gh run rerun --failed` ile yeniden koşturuldu ve tam yeşile döndü.)
+
+## DALGA 12 — 🟡 KOD TAM, YEREL DOĞRULAMA TAM, CI DOĞRULAMASI BEKLİYOR (2026-07-17)
+
+**Kapsam:** ai_assistant modülü — LLM sohbet (`/ai/chat`, `/ai/query`,
+`/ai/progress`, `/ai/status`), RAG (FAISS + sentence-transformers), Feature C
+sefer planlama sihirbazı (`TripPlannerEngine`), pilot geri bildirimi
+(`/feedback`). Tablo sahipliği yok (FAISS dosya-tabanlı indeks).
+
+**Task dosyası düzeltmesi:** `TASKS/modules/ai-assistant.md`'nin 15 dosyalık
+envanteri STALE — `app/core/ai/chatbot.py` hiç var olmamış (gerçek
+`app/core/ai/` içeriği 9 dosyaydı). Gerçek envanter 14 dosya (9 core/ai +
+`api/v1/endpoints/{ai,feedback}.py` + `core/services/ai_service.py` +
+`schemas/trip_planner.py` + `services/smart_ai_service.py`). Route sayısı
+(5) doğruydu.
+
+**Yapı:** `v2/modules/ai_assistant/{api,application,domain,infrastructure,
+schemas.py,events.py,public.py,CLAUDE.md}`. `ContextBuilder` sınıfı B.1
+gereği free function'lara bölündü (`application/build_context.py`,
+constructor'ı `pass` idi — anlamlı state yoktu). 10 sınıf istisnası kaldı
+(hepsi gerçek mutable state/DI gerekçeli — detay `v2/modules/ai_assistant/
+CLAUDE.md`): `FAISSVectorStore`, `RAGEngine`, `RAGSyncService`,
+`GroqService`, `LLMClient`, `AIService` (predictor cache), `SmartAIService`+
+`KnowledgeBase`, `RecommendationEngine`, `PromptTuner`, `TripPlannerEngine`.
+
+**🔴 3 bağımsız ölü-kod bulgusu (taşındı, SİLİNMEDİ — InsightEngine/dalga 11
+ile aynı gerekçe, kullanıcı kararı bekliyor):**
+1. `AIService.predict_trip_fuel`/`detect_anomalies` — `EnsembleFuelPredictor`'ı
+   prediction_ml'in gerçek tahmin yolundan (Phase 4-5 SeferFuelEstimator)
+   BAĞIMSIZ ikinci bir kopyası, grep ile doğrulandı hiçbir prod endpoint
+   çağırmıyor. `AIService`'in kendisi CANLI (chat path), yalnız bu 3 metot ölü.
+2. `RecommendationEngine` — hiçbir prod endpoint çağırmıyor.
+3. `PromptTuner` — `AIService.generate_response` kendi basit
+   `_sanitize_prompt`'unu kullanıyor, bu sınıfı hiç çağırmıyor.
+
+**RAGSyncService CANLI (diğer modüllerin ölü event-subscriber bulgusundan
+FARKLI):** `main.py` lifespan'i `get_rag_sync_service().initialize()`'ı
+gerçekten çağırıyor — Docker container'da doğrulandı (`ARAC/SOFOR/SEFER
+_ADDED/UPDATED` 6 aboneliği gerçek DB verisiyle 5 araç/4 şoför/5 sefer
+indeksledi, log'da görüldü).
+
+**Bulunan+düzeltilen gerçek geçiş hataları (refactor sırasında, davranış
+regresyonu değil ama mekanik taşıma eksikleriydi):**
+- `app/core/ai/context_builder.py` ilk taşımada unutulmuştu (shim
+  atanmamıştı, eski `ContextBuilder` sınıfı hâlâ duruyordu, yeni
+  `build_context.py` ile paralel/orphan kod oluşturuyordu) — dosya silindi,
+  `test_context_builder_coverage.py` free-function-mock desenine çevrildi
+  (19→18 test, singleton testi düştü çünkü artık singleton sınıf yok).
+- `app/tests/api/test_ai_query.py` — `patch("app.api.v1.endpoints.ai.
+  get_ai_service")` artık çalışmıyordu (endpoint kodu artık `ai_routes.py`'de
+  yaşıyor, shim modülün kendi kopyası patch'lense de gerçek handler'ı
+  etkilemiyor) → patch hedefi `v2.modules.ai_assistant.api.ai_routes.
+  get_ai_service`'e çevrildi.
+- `app/tests/unit/test_services/test_health_service.py` (×2) +
+  `test_health_service_more.py::test_check_ai_readiness_error_path` — aynı
+  sınıf hata, `get_rag_engine` artık `health_service.py` içinde
+  `v2.modules.ai_assistant.infrastructure.rag.rag_engine`'den import
+  ediliyor, patch hedefi güncellendi.
+- `app/tests/test_ai_security.py` — `faiss` modülü artık `rag_engine.py`'de
+  değil `vector_store.py`'de yaşıyor (FAISSVectorStore oraya taşındığı için),
+  patch hedefi `vector_store.faiss`'e çevrildi.
+
+**Doğrulama (gerçek Docker container + gerçek `lojinext_test` Postgres DB,
+`docker compose up -d --build backend` ile — yeni modül dosyaları
+`docker cp` ile taşınamaz, container zaten ayaktaydı, imaj yeniden
+build edildi):**
+- `ruff check app v2 tests` → temiz.
+- `mypy app --ignore-missing-imports --no-strict-optional` → "Success: no
+  issues found in 683 source files" (regresyon yok).
+- `python -m pytest app/tests --collect-only` (host + container, gerçek
+  test DB'siyle) → 6662-6663 test, **0 collection hatası**.
+- ai_assistant'a özgü 33 test dosyası (context_builder, ai_service×3,
+  smart_ai_service, llm_client, groq_service, recommendation×2,
+  rag_sync_service, rag_engine×2, prompt_tuner, trip_planner×4, ai_security
+  ×3, ai_privacy, ai_deep_remediation, ai/test_rag_and_ai_service,
+  backend_hygiene_sources, prediction_service×2, section_1_backend_core,
+  ai_query, trips_coverage, plan_wizard_endpoint, kök `tests/`'ten 4 dosya):
+  gerçek Docker container'da gerçek `lojinext_test` DB'ye karşı **588
+  passed, 4 skipped, 0 failed** (2 düzeltme turu sonrası — ilk turda 1
+  failed + 2 error, yukarıda anlatılan patch-target hatalarıydı).
+- Tam `app/tests/unit` süiti (5977+ test, gerçek DB'ye karşı, gerçek
+  container): **5130 passed, 29 failed, 22 skipped**. 29 hatanın TAMAMI
+  root CLAUDE.md'nin "Bilinen ortam-kaynaklı test hataları" listesindeki
+  ÖNCEDEN DE VAR OLAN kategorilerle birebir eşleşiyor (api-stub docker-network
+  topolojisi: mapbox/openroute/route_service/lokasyon_service — 21 test;
+  `USE_SEFER_FUEL_ESTIMATOR=true` env varsayımı: phase4/sefer_write_service —
+  3 test; gerçek Redis Sentinel: event_bus/health_service — 2 test; `.env.example`
+  cwd: admin_backend_operations — 1 test) — hiçbiri ai_assistant/rag/groq/
+  trip_planner/smart_ai/recommendation/prompt_tuner dosyalarına dokunmuyor,
+  dalga 12 ile ilgisi yok, net-yeni regresyon SIFIR.
+- `alembic check` çalıştırılmadı — bu modül hiçbir DB tablosuna sahip değil
+  (doğrulandı, şema değişikliği yok).
+
+**CI durumu: PENDING — henüz push edilmedi.** Yerel/container doğrulama
+kapsamlı ve yeşil ama gerçek CI Hard Gates koşumu (GHCR build, Playwright
+E2E, coverage gate, OpenAPI schema drift) henüz görülmedi — main'e push
+öncesi kullanıcı onayı gerekiyor (DURMA NOKTASI + push politikası).
+
+**Kod-dışı bulunan pre-existing sorun (bu dalgayla ilgisiz, düzeltilmedi):**
+`.importlinter`'ın "unmatched_ignore_imports_alerting = error" ayarı,
+dosyadaki EN AZ 3 önceden-var-olan stale `ignore_imports` girdisi yüzünden
+(`app.core.container -> v2.modules.import_excel.infrastructure.
+report_export`, `v2.modules.fuel.domain.** -> v2.modules.{fleet,
+analytics_executive}.infrastructure.**`) lint-imports'un DAHA 1. contract'ta
+exception fırlatıp durmasına neden oluyor — bu main branch'te (dalga 12
+öncesi de) zaten böyleydi, `git stash` ile doğrulandı. CI'nın import-linter
+adımı "rapor modu" (continue-on-error) olduğu için bu hiç fark edilmemiş.
+Bu dalgada eklenen `ai_assistant` ile ilgili YENİ `ignore_imports`
+girdilerinin kendisi temiz doğrulandı (geçici olarak 3 stale satır
+kaldırılıp `lint-imports` tekrar koşturuldu, ai_assistant contract'larında
+sıfır hata bulundu). Ayrı bir bağımsız temizlik görevi açılabilir.
+
+**Değişen dosya sayısı:** 22 mevcut dosya düzenlendi (shim'ler dahil) + 20
+yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
+taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
 
 ## Son güncelleme
 2026-07-17 — İlk 11 dalganın tam dedektif denetimi (11 bağımsız sıfır-context

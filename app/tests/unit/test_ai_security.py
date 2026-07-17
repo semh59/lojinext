@@ -2,8 +2,11 @@ from unittest.mock import patch
 
 import pytest
 
-from app.core.ai.prompt_tuner import PromptTuner
-from app.core.ai.rag_engine import RAGEngine, SearchResult
+from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
+from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
+    RAGEngine,
+    SearchResult,
+)
 
 
 @pytest.mark.asyncio

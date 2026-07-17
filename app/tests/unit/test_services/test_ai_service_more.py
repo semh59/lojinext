@@ -24,8 +24,13 @@ pytestmark = pytest.mark.integration
 
 def _make_service():
     """Return an AIService with a stubbed GroqService."""
-    with patch("app.core.ai.groq_service.GroqService.__init__", return_value=None):
-        from app.core.services.ai_service import AIService
+    with patch(
+        "v2.modules.ai_assistant.infrastructure.llm.groq_client.GroqService.__init__",
+        return_value=None,
+    ):
+        from v2.modules.ai_assistant.application.orchestrate_ai_response import (
+            AIService,
+        )
 
         svc = AIService.__new__(AIService)
         svc._predictor_cache = {}

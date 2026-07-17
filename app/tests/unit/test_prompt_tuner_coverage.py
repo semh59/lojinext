@@ -24,7 +24,7 @@ pytestmark = pytest.mark.unit
 
 def _make_tuner(data: dict | None = None):
     """Build PromptTuner with pre-loaded data (no file I/O)."""
-    from app.core.ai.prompt_tuner import PromptTuner
+    from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
 
     tuner = PromptTuner.__new__(PromptTuner)
     tuner.data = data or {
@@ -44,7 +44,7 @@ def _make_tuner(data: dict | None = None):
 
 
 def test_load_data_file_exists():
-    from app.core.ai.prompt_tuner import PromptTuner
+    from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
 
     test_data = {"DOMAIN_KNOWLEDGE": "Test", "FEW_SHOT_EXAMPLES": {}}
     with tempfile.NamedTemporaryFile(
@@ -54,7 +54,9 @@ def test_load_data_file_exists():
         tmp_path = Path(f.name)
 
     try:
-        with patch("app.core.ai.prompt_tuner.PROMPT_FILE", tmp_path):
+        with patch(
+            "v2.modules.ai_assistant.application.prompt_tuner.PROMPT_FILE", tmp_path
+        ):
             tuner = PromptTuner.__new__(PromptTuner)
             result = tuner._load_data()
         assert result["DOMAIN_KNOWLEDGE"] == "Test"
@@ -64,7 +66,7 @@ def test_load_data_file_exists():
 
 def test_load_data_file_invalid_json():
     """Corrupt JSON file → falls back to empty defaults."""
-    from app.core.ai.prompt_tuner import PromptTuner
+    from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
 
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, encoding="utf-8"
@@ -73,7 +75,9 @@ def test_load_data_file_invalid_json():
         tmp_path = Path(f.name)
 
     try:
-        with patch("app.core.ai.prompt_tuner.PROMPT_FILE", tmp_path):
+        with patch(
+            "v2.modules.ai_assistant.application.prompt_tuner.PROMPT_FILE", tmp_path
+        ):
             tuner = PromptTuner.__new__(PromptTuner)
             result = tuner._load_data()
         assert result["DOMAIN_KNOWLEDGE"] == ""
@@ -85,11 +89,13 @@ def test_load_data_file_invalid_json():
 def test_load_data_file_missing_creates_default():
     """When file is missing, creates default data file."""
 
-    from app.core.ai.prompt_tuner import PromptTuner
+    from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         nonexistent = Path(tmp_dir) / "subdir" / "ai_prompts.json"
-        with patch("app.core.ai.prompt_tuner.PROMPT_FILE", nonexistent):
+        with patch(
+            "v2.modules.ai_assistant.application.prompt_tuner.PROMPT_FILE", nonexistent
+        ):
             tuner = PromptTuner.__new__(PromptTuner)
             result = tuner._load_data()
         assert "DOMAIN_KNOWLEDGE" in result
@@ -298,7 +304,9 @@ def test_save_data_writes_json():
         tmp_path = Path(f.name)
 
     try:
-        with patch("app.core.ai.prompt_tuner.PROMPT_FILE", tmp_path):
+        with patch(
+            "v2.modules.ai_assistant.application.prompt_tuner.PROMPT_FILE", tmp_path
+        ):
             tuner._save_data()
         with open(tmp_path, encoding="utf-8") as f:
             loaded = json.load(f)
@@ -310,7 +318,9 @@ def test_save_data_writes_json():
 def test_save_data_handles_error():
     tuner = _make_tuner()
     bad_path = Path("/nonexistent/path/file.json")
-    with patch("app.core.ai.prompt_tuner.PROMPT_FILE", bad_path):
+    with patch(
+        "v2.modules.ai_assistant.application.prompt_tuner.PROMPT_FILE", bad_path
+    ):
         # Should not raise
         tuner._save_data()
 
@@ -321,7 +331,7 @@ def test_save_data_handles_error():
 
 
 def test_get_prompt_tuner_returns_same_instance():
-    import app.core.ai.prompt_tuner as mod
+    import v2.modules.ai_assistant.application.prompt_tuner as mod
 
     orig = mod._prompt_tuner
     mod._prompt_tuner = None
@@ -339,7 +349,7 @@ def test_get_prompt_tuner_returns_same_instance():
 
 
 def test_get_prompt_tuner_thread_safe():
-    import app.core.ai.prompt_tuner as mod
+    import v2.modules.ai_assistant.application.prompt_tuner as mod
 
     orig = mod._prompt_tuner
     mod._prompt_tuner = None

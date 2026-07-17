@@ -16,9 +16,7 @@ from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
 
 
 async def import_routes(content: bytes) -> Tuple[int, list]:
-    from v2.modules.location.application.create_location import create_location
-    from v2.modules.location.domain.route_key import route_key
-    from v2.modules.location.schemas import LokasyonCreate
+    from v2.modules.location.public import LokasyonCreate, create_location, route_key
 
     try:
         items = await parse_route_excel(content)

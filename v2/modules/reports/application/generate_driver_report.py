@@ -10,7 +10,7 @@ from v2.modules.reports.infrastructure.repo_access import ReportRepos
 async def generate_driver_report(
     repos: ReportRepos, sofor_id: int, days: int = 30
 ) -> Dict:
-    from v2.modules.driver.domain.evaluation import evaluate_driver
+    from v2.modules.driver.public import evaluate_driver
 
     # Raporlar tarihsel veri okur — pasifleştirilmiş şoför için de üretilebilmeli
     sofor = await repos.sofor_repo.get_by_id(sofor_id, include_inactive=True)

@@ -758,16 +758,18 @@ class TestProcessYakitImportExtra:
             }
         ]
 
-        # bulk_add_yakit is a free function imported inline inside
-        # process_yakit_import — patch target is the SOURCE module (same
-        # inline-import gotcha as bulk_add_vehicles, see location/CLAUDE.md).
+        # bulk_add_yakit/recalculate_vehicle_periods are free functions
+        # imported inline inside process_yakit_import — patch target is the
+        # SOURCE module (inline-import gotcha, see location/CLAUDE.md); as
+        # of the 2026-07-17 public.py boundary fix, that source is
+        # v2.modules.fuel.public itself (the importer no longer bypasses it).
         with (
             patch(
-                "v2.modules.fuel.application.bulk_add_yakit.bulk_add_yakit",
+                "v2.modules.fuel.public.bulk_add_yakit",
                 AsyncMock(return_value=1),
             ),
             patch(
-                "v2.modules.fuel.application.recalculate_vehicle_periods.recalculate_vehicle_periods",
+                "v2.modules.fuel.public.recalculate_vehicle_periods",
                 side_effect=Exception("service unavailable"),
             ),
         ):
@@ -1202,7 +1204,7 @@ class TestProcessDriverImportExtra:
         assert count == 0
         assert "Sistem hatası" in errors[0]
 
-    @patch("v2.modules.driver.application.add_sofor.bulk_add_sofor")
+    @patch("v2.modules.driver.public.bulk_add_sofor")
     @patch(
         "v2.modules.import_excel.application.driver_importer.parse_driver_excel",
         new_callable=AsyncMock,
@@ -1259,7 +1261,7 @@ class TestImportRoutesExtra:
             raise ValueError("invalid lokasyon")
 
         monkeypatch.setattr(
-            "v2.modules.location.application.create_location.create_location",
+            "v2.modules.location.public.create_location",
             _fake_create_location,
         )
 

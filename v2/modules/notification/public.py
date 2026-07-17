@@ -33,14 +33,14 @@ from v2.modules.notification.application.mark_all_notifications_read import (
     mark_all_as_read,
 )
 from v2.modules.notification.application.mark_notification_read import mark_as_read
+from v2.modules.notification.application.quiet_hours import (
+    is_user_quiet_now,
+    is_within_quiet_hours,
+)
 from v2.modules.notification.application.send_push_broadcast import (
     send_push_broadcast,
 )
 from v2.modules.notification.application.send_push_to_user import send_push_to_user
-from v2.modules.notification.domain.quiet_hours import (
-    is_user_quiet_now,
-    is_within_quiet_hours,
-)
 from v2.modules.notification.domain.vapid import vapid_configured
 from v2.modules.notification.infrastructure.email_client import (
     send_password_reset,

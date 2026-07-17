@@ -91,11 +91,14 @@ sonuç verdi, taşıma bunu değiştirmedi).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **driver (taşındı)**: `generate_driver_report` → `v2.modules.driver.domain.evaluation.evaluate_driver`
-  (public.py yerine `domain/`'dan doğrudan import — driver henüz kendi
-  `evaluate_driver`'ını public.py'de yayınlamıyor, mimari borç); PDF
-  route'ları `v2.modules.driver.domain.driver_stats.get_driver_stats`
-  çağırır. `ReportRepos.sofor_repo` = `v2.modules.driver.infrastructure.repository`.
+- **driver (taşındı)**: `generate_driver_report` → `v2.modules.driver.public.evaluate_driver`
+  (2026-07-17 dedektif denetimi düzeltmesi — eskiden `domain/`'dan doğrudan
+  import ediyordu, driver'ın public.py'si zaten `evaluate_driver`'ı
+  yayınlıyordu, "henüz yayınlamıyor" iddiası bayattı); PDF
+  route'ları `v2.modules.driver.public.get_driver_stats` çağırır.
+  `ReportRepos.sofor_repo` = `v2.modules.driver.infrastructure.repository`
+  (repo-bundle wiring, container.py'deki sistemik desenle aynı — bkz.
+  `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` madde 2 notu).
 - **fleet (taşındı)**: `ReportRepos.arac_repo` = `v2.modules.fleet.infrastructure.vehicle_repository`.
 - **fuel (taşındı)**: `ReportRepos.yakit_repo` = `v2.modules.fuel.infrastructure.repository`.
 - **import_excel (taşındı)**: `advanced_reports_routes.py`'nin Excel
@@ -104,7 +107,7 @@ sonuç verdi, taşıma bunu değiştirmedi).
 - **auth_rbac (taşındı)**: `fleet_insights_routes.py`
   `v2.modules.auth_rbac.domain.permission_checker.require_yetki` kullanır.
 - **fleet (taşındı, geçici)**: `aggregate_today_triage`
-  `v2.modules.fleet.domain.maintenance_prediction.MaintenancePredictor`'ı
+  `v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor`'ı
   çağırır.
 - **analytics_executive (taşındı, geçici)**: `ReportRepos.analiz_repo`
   = `v2.modules.analytics_executive.infrastructure.executive_read_models`

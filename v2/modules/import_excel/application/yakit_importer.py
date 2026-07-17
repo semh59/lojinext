@@ -89,7 +89,7 @@ async def process_yakit_import(content: bytes) -> Tuple[int, list]:
 
         count = 0
         if yakit_list:
-            from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
+            from v2.modules.fuel.public import bulk_add_yakit
 
             # bulk_add_yakit's signature types its param as YakitAlimiCreate
             # (core/entities/models.py) — this pre-existing latent mismatch
@@ -107,9 +107,7 @@ async def process_yakit_import(content: bytes) -> Tuple[int, list]:
             # YAKIT_ADDED event burada subscribe edilmiyor; bulk import'tan
             # sonra manuel çağrı tek seferde tetikleyici.
             try:
-                from v2.modules.fuel.application.recalculate_vehicle_periods import (
-                    recalculate_vehicle_periods,
-                )
+                from v2.modules.fuel.public import recalculate_vehicle_periods
 
                 for arac_id in affected_arac_ids:
                     try:

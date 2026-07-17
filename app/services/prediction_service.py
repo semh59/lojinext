@@ -873,7 +873,7 @@ class PredictionService:
         # Feature setini hazırla (predict ile uyumlu)
         s_score = sofor_score
         if s_score is None and sofor_id:
-            from v2.modules.driver.domain.driver_stats import get_driver_stats
+            from v2.modules.driver.public import get_driver_stats
 
             stats = await get_driver_stats(sofor_id, include_elite_score=False)
             if stats:

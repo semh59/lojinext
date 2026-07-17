@@ -102,7 +102,7 @@ class RAGSyncService:
         if data and isinstance(data, dict):
             await self.rag.index_driver(data)
         elif isinstance(data, int):  # Sadece ID geldiyse repodan çek
-            from v2.modules.driver.infrastructure.repository import get_sofor_repo
+            from v2.modules.driver.public import get_sofor_repo
 
             sofor = await get_sofor_repo().get_by_id(data)
             if sofor:

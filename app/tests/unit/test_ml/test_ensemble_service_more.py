@@ -363,7 +363,7 @@ class TestTrainForVehicleAracEntityFail:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             # Make Arac(**arac) fail
@@ -428,7 +428,7 @@ class TestTrainForVehicleSoforKatsayi:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[driver_stat]),
             ),
         ):
@@ -491,7 +491,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch(
@@ -545,7 +545,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch(
@@ -595,7 +595,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch(
@@ -793,7 +793,7 @@ class TestPredictConsumptionDorse:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -842,7 +842,7 @@ class TestPredictConsumptionDorse:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -877,7 +877,7 @@ class TestPredictConsumptionEntityMapFail:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             # Make Arac(**arac) fail
@@ -924,7 +924,7 @@ class TestPredictConsumptionSoforStats:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[driver_stat]),
             ),
         ):
@@ -987,7 +987,7 @@ class TestPredictConsumptionGeneralModelFallback:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):

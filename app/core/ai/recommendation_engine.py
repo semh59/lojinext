@@ -124,7 +124,7 @@ class RecommendationEngine:
             return self._cache[cache_key]
 
         recommendations: list[Recommendation] = []
-        from v2.modules.driver.domain.evaluation import evaluate_driver
+        from v2.modules.driver.public import evaluate_driver
 
         try:
             degerlendirme = await evaluate_driver(sofor_id)

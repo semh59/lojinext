@@ -3,11 +3,9 @@ TIR Yakıt Takip - Route Path Repository
 Rota geometrisi ve API cache yönetimi
 """
 
-import threading
 from typing import Dict, Optional
 
 from sqlalchemy import and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
 from app.database.models import RoutePath
@@ -67,19 +65,3 @@ class RouteRepository(BaseRepository[RoutePath]):
         else:
             # Create
             return await self.create(**data)
-
-
-# Thread-safe Singleton
-_route_repo_lock = threading.Lock()
-_route_repo: Optional[RouteRepository] = None
-
-
-def get_route_repo(session: Optional[AsyncSession] = None) -> RouteRepository:
-    """RouteRepo Provider. Eğer session verilirse yeni instance döner (UoW için)."""
-    global _route_repo
-    if session:
-        return RouteRepository(session=session)
-    with _route_repo_lock:
-        if _route_repo is None:
-            _route_repo = RouteRepository()
-    return _route_repo

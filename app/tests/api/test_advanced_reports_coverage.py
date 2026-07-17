@@ -386,7 +386,7 @@ async def test_excel_export_driver_comparison(async_client, admin_auth_headers):
     # driver_comparison uses an inline import: get_driver_stats (free function)
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(
@@ -601,7 +601,7 @@ async def test_driver_comparison_pdf_happy_path(async_client, admin_auth_headers
 
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(f"{ENDPOINT_MOD}.get_report_generator", return_value=mock_gen),

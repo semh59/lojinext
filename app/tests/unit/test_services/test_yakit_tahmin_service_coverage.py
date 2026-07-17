@@ -209,7 +209,7 @@ class TestPredictWithModel:
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[mock_stats]),
             ),
         ):
@@ -229,7 +229,7 @@ class TestPredictWithModel:
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[mock_stats]),
             ),
         ):
@@ -245,7 +245,7 @@ class TestPredictWithModel:
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -263,7 +263,7 @@ class TestPredictWithModel:
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[mock_stats]),
             ),
         ):
@@ -278,7 +278,7 @@ class TestPredictWithModel:
         with (
             _patch_analiz_repo(_make_analiz_repo_mock(params=params)),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(side_effect=Exception("sofor service down")),
             ),
         ):

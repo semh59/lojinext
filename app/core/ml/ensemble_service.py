@@ -262,7 +262,7 @@ class EnsemblePredictorService:
         Veritabanından verileri toplar ve enrich eder.
         """
         from app.core.services.weather_service import get_weather_service
-        from v2.modules.driver.domain.driver_stats import get_driver_stats
+        from v2.modules.driver.public import get_driver_stats
 
         # Araç bilgisini al
         arac = await self.arac_repo.get_by_id(arac_id)
@@ -531,7 +531,7 @@ class EnsemblePredictorService:
         Yakıt tüketimi tahmin et
         """
         from app.core.services.weather_service import get_weather_service
-        from v2.modules.driver.domain.driver_stats import get_driver_stats
+        from v2.modules.driver.public import get_driver_stats
 
         # Single Session Reuse Pattern (Phase 3 Optimization)
         if uow:

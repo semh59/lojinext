@@ -203,7 +203,7 @@ async def test_build_driver_context_no_evaluation_returns_error():
     builder = _make_builder()
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=None),
     ):
         result = await builder.build_driver_context(1)
@@ -234,7 +234,7 @@ async def test_build_driver_context_success():
     mock_eval.tavsiyeler = []
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=mock_eval),
     ):
         result = await builder.build_driver_context(1)
@@ -248,7 +248,7 @@ async def test_build_driver_context_exception_returns_fallback():
     builder = _make_builder()
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(side_effect=RuntimeError("evaluate_driver error")),
     ):
         result = await builder.build_driver_context(1)
@@ -290,7 +290,7 @@ async def test_build_analysis_context_success():
             new_callable=lambda: property(lambda self: mock_arac_repo),
         ),
         patch(
-            "v2.modules.driver.domain.evaluation.get_rankings",
+            "v2.modules.driver.public.get_rankings",
             AsyncMock(return_value=mock_rankings),
         ),
     ):
@@ -322,7 +322,7 @@ async def test_build_analysis_context_filo_none_defaults_to_32():
             new_callable=lambda: property(lambda self: mock_arac_repo),
         ),
         patch(
-            "v2.modules.driver.domain.evaluation.get_rankings",
+            "v2.modules.driver.public.get_rankings",
             AsyncMock(return_value={"genel": []}),
         ),
     ):

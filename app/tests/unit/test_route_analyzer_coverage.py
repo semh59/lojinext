@@ -1,6 +1,6 @@
 """Additional coverage for app/domain/services/route_analyzer.py.
 Targets: assign_grade_class all branches, _haversine, _build_all_boundary_distances,
-_init_stats_buckets, _aggregate_results, _parse_extra_segments edge cases,
+_init_stats_buckets, _parse_extra_segments edge cases,
 analyze_segments with/without scaling + waytype fallback + distributions +
 granular_nodes + ratios + December-boundary logic.
 """
@@ -150,35 +150,6 @@ def test_init_stats_buckets_all_zeros():
     buckets = RouteAnalyzer._init_stats_buckets()
     for cat, vals in buckets.items():
         assert vals == {"flat": 0.0, "up": 0.0, "down": 0.0}
-
-
-# ─── _aggregate_results ──────────────────────────────────────────────────────
-
-
-def test_aggregate_results_combines_highway():
-    stats = {
-        "motorway": {"flat": 10.0, "up": 2.0, "down": 1.0},
-        "trunk": {"flat": 5.0, "up": 0.0, "down": 0.0},
-        "primary": {"flat": 3.0, "up": 1.0, "down": 0.0},
-        "secondary": {"flat": 4.0, "up": 0.0, "down": 0.0},
-        "other": {"flat": 1.0, "up": 0.5, "down": 0.0},
-    }
-    result = RouteAnalyzer._aggregate_results(stats)
-    assert result["highway"]["flat"] == 10.0 + 5.0 + 3.0
-    assert result["other"]["flat"] == 4.0 + 1.0
-
-
-def test_aggregate_results_non_highway_goes_to_other():
-    stats = {
-        "motorway": {"flat": 0.0, "up": 0.0, "down": 0.0},
-        "trunk": {"flat": 0.0, "up": 0.0, "down": 0.0},
-        "primary": {"flat": 0.0, "up": 0.0, "down": 0.0},
-        "residential": {"flat": 7.0, "up": 0.0, "down": 0.0},
-        "unclassified": {"flat": 3.0, "up": 0.0, "down": 0.0},
-        "other": {"flat": 0.0, "up": 0.0, "down": 0.0},
-    }
-    result = RouteAnalyzer._aggregate_results(stats)
-    assert result["other"]["flat"] == 10.0
 
 
 # ─── _parse_extra_segments ───────────────────────────────────────────────────

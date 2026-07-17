@@ -33,14 +33,6 @@ AnomalyDetector, get_anomaly_detector() -> AnomalyDetector
   .save_model(filepath) / .load_model(filepath) / .get_detector_status() -> dict
 AnomalyResult, AnomalyType, SeverityEnum        # dataclass/enum'lar
 
-# İstatistiksel alt-sistem (dalga 11'de silinen analiz_service.py'nin
-# tek tüketicisiydi — artık hiçbir prod kod çağırmıyor, bkz. aşağıdaki
-# çapraz-modül bölümü. Sınıf istisnası gerekçesi hâlâ geçerli, aşağıya bkz.)
-AnomalyDetectionService, get_anomaly_detection_service() -> AnomalyDetectionService
-  .detect_anomalies(consumptions, z_threshold=None, use_iqr=True) -> list[AnomalyResult]
-  .analyze_vehicle_consumption(arac_id, consumptions) -> VehicleStats
-  .calculate_eei(actual_consumption, predicted_consumption) -> float
-
 # Kümeleme (saf fonksiyon)
 cluster_anomalies(rows: list[dict], *, eps=0.6, min_samples=2) -> list[dict]
 
@@ -124,13 +116,19 @@ bkz. dalga 8 doğrulama notu STATUS.md'de).
   (`v2/modules/driver/application/generate_coaching.py`) `v2.modules.anomaly.public.get_anomaly_detector()`
   kullanır — public.py üzerinden doğru sınır geçişi (dalga 8'de düzeltildi,
   önceden `app.core.services.anomaly_detector`'a bağımlıydı).
-- ✅ **ÇÖZÜLDÜ (dalga 11, 2026-07-16)** — eski `app/core/services/analiz_service.py`
-  `v2.modules.anomaly.public.get_anomaly_detection_service()`'in tek prod
-  tüketicisiydi; dedektif denetiminde hiçbir yerden çağrılmadığı bulundu
-  (dead code) ve silindi. `get_anomaly_detection_service()`/
-  `AnomalyDetectionService` artık kendi test dosyaları dışında hiçbir
-  yerden çağrılmıyor (aynı şekilde dead — bu modülün kapsamı dışında
-  bir karar, silinmedi).
+- ✅ **ÇÖZÜLDÜ (dalga 11, 2026-07-16 + temizlik 2026-07-17)** — eski
+  `app/core/services/analiz_service.py` `v2.modules.anomaly.public.
+  get_anomaly_detection_service()`'in tek prod tüketicisiydi; dedektif
+  denetiminde hiçbir yerden çağrılmadığı bulundu (dead code) ve silindi
+  (dalga 11). `AnomalyDetectionService`/`get_anomaly_detection_service()`
+  kendisi de (`application/detect_statistical_anomaly.py`) o zaman kendi
+  test dosyaları dışında çağıranı kalmamıştı — kullanıcı onayıyla tamamen
+  silindi (2026-07-17, bkz. `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
+  madde 4). Bu, `app.core.entities`'in Pydantic `AnomalyResult`/
+  `AnomalyType`/`SeverityEnum`'ı ile `detect_anomaly.py`'nin kendi
+  (canlı, ML-augmented) dataclass eşadlılarının çakışma riskini de ortadan
+  kaldırdı — artık modülde tek bir `AnomalyResult`/`AnomalyType`/
+  `SeverityEnum` seti yaşıyor (`detect_anomaly.py`'deki dataclass'lar).
 - **trip/fuel → notification (anomaly DEĞİL)**: `EventType.ANOMALY_DETECTED`
   fuel modülü (`add_yakit.py`) ve henüz taşınmamış trip modülü
   (`sefer_analiz_service.py`) tarafından publish edilir, notification

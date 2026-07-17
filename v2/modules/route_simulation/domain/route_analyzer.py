@@ -384,21 +384,6 @@ class RouteAnalyzer:
         ]
         return {cat: {"flat": 0.0, "up": 0.0, "down": 0.0} for cat in categories}
 
-    @staticmethod
-    def _aggregate_results(stats: Dict[str, Dict[str, float]]) -> Dict[str, Any]:
-        """Granular stats'ı highway/other aggregate'lerine dönüştürür."""
-        highway_keys = {"motorway", "trunk", "primary"}
-        result: Dict[str, Any] = dict(stats)
-        highway: Dict[str, float] = {"flat": 0.0, "up": 0.0, "down": 0.0}
-        other: Dict[str, float] = {"flat": 0.0, "up": 0.0, "down": 0.0}
-        for key, bucket in stats.items():
-            target = highway if key in highway_keys else other
-            for direction in ("flat", "up", "down"):
-                target[direction] += bucket[direction]
-        result["highway"] = highway
-        result["other"] = other
-        return result
-
     def _calculate_cumulative_distances(self, points: List[List[float]]) -> List[float]:
         """Calculates cumulative distance in meters for each point in the route geometry."""
         cum_dist = [0.0]

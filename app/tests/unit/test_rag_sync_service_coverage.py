@@ -233,7 +233,7 @@ async def test_on_sofor_changed_int_id_fetches_from_repo():
     mock_sofor_repo.get_by_id = AsyncMock(return_value=sofor_data)
 
     with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
+        "v2.modules.driver.public.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
         await svc._on_sofor_changed(event)
@@ -249,7 +249,7 @@ async def test_on_sofor_changed_int_id_not_found_skips():
     mock_sofor_repo.get_by_id = AsyncMock(return_value=None)
 
     with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
+        "v2.modules.driver.public.get_sofor_repo",
         return_value=mock_sofor_repo,
     ):
         await svc._on_sofor_changed(event)

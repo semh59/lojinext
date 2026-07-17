@@ -31,7 +31,7 @@ async def test_driver_comparison_pdf_returns_pdf(async_client, admin_auth_header
 
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=[fake_driver]),
         ),
         patch(

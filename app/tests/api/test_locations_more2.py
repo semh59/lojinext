@@ -261,7 +261,7 @@ async def test_hydrate_provider_unavailable(
     from app.config import settings
     from app.database.models import Lokasyon
     from app.main import app
-    from v2.modules.location.domain.hydration import (
+    from v2.modules.location.application.hydration import (
         LokasyonHydrator,
         get_lokasyon_hydrator,
     )

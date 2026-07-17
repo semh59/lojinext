@@ -14,9 +14,6 @@ from app.core.services.runtime_config import get_runtime_float
 from app.infrastructure.cache.redis_cache import get_redis_cache
 from app.services.prediction_service import PredictionService
 from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
-from v2.modules.anomaly.application.detect_statistical_anomaly import (
-    AnomalyDetectionService,
-)
 
 pytestmark = pytest.mark.unit
 
@@ -58,25 +55,6 @@ async def test_get_runtime_float_falls_back_when_row_missing(db_session):
 async def test_get_runtime_float_falls_back_on_non_numeric(db_session):
     await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", '"bozuk"')
     assert await get_runtime_float("ANOMALY_Z_THRESHOLD", 2.5) == 2.5
-
-
-async def test_detect_anomalies_behavior_follows_db_threshold(db_session):
-    """Epiğin asıl kanıtı: UI'dan (DB'den) değişen eşik, tespiti değiştirir.
-
-    Örneklem: 10×30.0 + tek 45.0 → outlier z-skoru ≈ 3.3.
-    Eşik 99 → anomali YOK; eşik 1.0 → outlier anomali. (use_iqr=False:
-    IQR yolu z-eşiğinden bağımsız, kanıtı bulandırmasın.)
-    """
-    service = AnomalyDetectionService()
-    consumptions = [30.0] * 10 + [45.0]
-
-    await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", "99")
-    tolerant = await service.detect_anomalies(consumptions, use_iqr=False)
-    assert tolerant == []
-
-    await _set_config_row(db_session, "ANOMALY_Z_THRESHOLD", "1.0")
-    sensitive = await service.detect_anomalies(consumptions, use_iqr=False)
-    assert any(r.value == 45.0 for r in sensitive)
 
 
 async def test_anomaly_detector_consumption_anomalies_follows_db_threshold(

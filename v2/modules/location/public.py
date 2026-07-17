@@ -18,13 +18,13 @@ from v2.modules.location.application.analyze_location_route import (
 from v2.modules.location.application.create_location import create_location
 from v2.modules.location.application.delete_location import delete_location
 from v2.modules.location.application.geocode_location import geocode_location
-from v2.modules.location.application.list_locations import list_locations
-from v2.modules.location.application.update_location import update_location
-from v2.modules.location.domain.hydration import (
+from v2.modules.location.application.hydration import (
     HydrationResult,
     LokasyonHydrator,
     get_lokasyon_hydrator,
 )
+from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.application.update_location import update_location
 from v2.modules.location.domain.route_key import normalize_turkish_title, route_key
 from v2.modules.location.infrastructure.repository import (
     LokasyonRepository,

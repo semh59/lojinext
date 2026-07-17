@@ -6,8 +6,7 @@ TASKS/modules/anomaly.md and .importlinter's forbidden-imports contract,
 enforced from FAZ1's import-linter gate task onward).
 
 Sınıf istisnaları (B.1, CLAUDE.md'de detaylı gerekçe): ``AnomalyDetector``
-(sklearn/LightGBM eğitilmiş model state'i), ``AnomalyDetectionService``
-(cache-injected istatistiksel alt-sistem), ``FuelTheftClassifier``
+(sklearn/LightGBM eğitilmiş model state'i), ``FuelTheftClassifier``
 (stateless tek-pipeline). ``AttributionService`` KALDIRILDI —
 ``override_attribution``/``bulk_override_attribution`` free function.
 """
@@ -26,10 +25,6 @@ from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyType,
     SeverityEnum,
     get_anomaly_detector,
-)
-from v2.modules.anomaly.application.detect_statistical_anomaly import (
-    AnomalyDetectionService,
-    get_anomaly_detection_service,
 )
 from v2.modules.anomaly.application.get_fleet_insights import get_fleet_insights
 from v2.modules.anomaly.application.manage_investigations import (
@@ -55,7 +50,6 @@ from v2.modules.anomaly.schemas import (
 )
 
 __all__ = [
-    "AnomalyDetectionService",
     "AnomalyDetector",
     "AnomalyResult",
     "AnomalyType",
@@ -72,7 +66,6 @@ __all__ = [
     "bulk_override_attribution",
     "cluster_anomalies",
     "create_investigation",
-    "get_anomaly_detection_service",
     "get_anomaly_detector",
     "get_fleet_insights",
     "get_fuel_theft_classifier",

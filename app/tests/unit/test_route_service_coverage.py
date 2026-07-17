@@ -21,9 +21,6 @@ from unittest.mock import patch
 import pytest
 
 from app.config import settings
-from v2.modules.route_simulation.application.get_base_location import (
-    get_base_location,
-)
 from v2.modules.route_simulation.application.get_route_details import (
     get_route_details,
 )
@@ -278,32 +275,3 @@ class TestGetRouteDetailsException:
 
         assert result["error_code"] == "SERVICE_UNAVAILABLE"
         assert result["source"] == "internal_error"
-
-
-# ---------------------------------------------------------------------------
-# get_base_location (real DB config lookup)
-# ---------------------------------------------------------------------------
-
-
-class TestGetBaseLocation:
-    async def test_returns_config_value(self, db_session):
-        from app.database.models import SistemKonfig
-
-        db_session.add(
-            SistemKonfig(
-                anahtar="default_base_location",
-                deger="ISTANBUL",
-                tip="string",
-                grup="general",
-            )
-        )
-        await db_session.flush()
-
-        result = await get_base_location()
-
-        assert result == "ISTANBUL"
-
-    async def test_returns_default_when_not_configured(self, db_session):
-        result = await get_base_location()
-
-        assert result == "FABRIKA"

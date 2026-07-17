@@ -1231,7 +1231,7 @@ class TestGetDriverTripsByRouteType:
         repo._get_session = fake_get_session
 
         with patch(
-            "v2.modules.driver.domain.route_profile.classify_route",
+            "v2.modules.driver.public.classify_route",
             side_effect=lambda rd: "highway"
             if rd.get("primary_type") == "highway"
             else "city",
@@ -1260,7 +1260,7 @@ class TestGetDriverTripsByRouteType:
         repo._get_session = fake_get_session
 
         with patch(
-            "v2.modules.driver.domain.route_profile.classify_route",
+            "v2.modules.driver.public.classify_route",
             return_value="city",
         ):
             result = await repo.get_driver_trips_by_route_type(

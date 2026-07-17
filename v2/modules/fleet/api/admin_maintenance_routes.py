@@ -27,13 +27,16 @@ from v2.modules.fleet.application.export_maintenance_calendar import (
 from v2.modules.fleet.application.get_maintenance_ics_data import (
     get_maintenance_ics_data,
 )
+from v2.modules.fleet.application.get_maintenance_predictions import (
+    get_all_maintenance_predictions,
+    get_maintenance_prediction_for_vehicle,
+)
 from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     get_upcoming_maintenance_alerts,
     get_vehicle_maintenance_history,
     mark_maintenance_completed,
 )
 from v2.modules.fleet.application.maintenance_cache import PREDICTIONS_CACHE_ALL
-from v2.modules.fleet.domain.maintenance_prediction import MaintenancePredictor
 from v2.modules.fleet.schemas import MaintenancePrediction
 
 logger = logging.getLogger(__name__)
@@ -133,8 +136,7 @@ async def get_all_predictions(
         except Exception as exc:
             logger.warning("Predictions cache read failed: %s", exc)
 
-    predictor = MaintenancePredictor()
-    preds = await predictor.predict_all()
+    preds = await get_all_maintenance_predictions()
     result = [MaintenancePrediction.model_validate(p) for p in preds]
 
     if redis_client is not None:
@@ -176,7 +178,7 @@ async def get_prediction_for_arac(
     """Tek araç için PERIYODIK bakım tahmini."""
     if not settings.MAINTENANCE_PREDICTOR_ENABLED:
         raise HTTPException(status_code=503, detail="Bakım tahmin modülü devre dışı")
-    pred = await MaintenancePredictor().predict_for_arac(arac_id)
+    pred = await get_maintenance_prediction_for_vehicle(arac_id)
     if pred is None:
         raise HTTPException(status_code=404, detail="Araç bulunamadı")
 

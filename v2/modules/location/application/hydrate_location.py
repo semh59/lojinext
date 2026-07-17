@@ -7,7 +7,7 @@ session içinde mutate edip caller'ın commit etmesini bekler.
 
 from typing import Any, Dict
 
-from v2.modules.location.domain.hydration import LokasyonHydrator
+from v2.modules.location.application.hydration import LokasyonHydrator
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 
 

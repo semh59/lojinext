@@ -75,11 +75,6 @@ class LokasyonRepository(BaseRepository[Lokasyon]):
             for row in result
         ]
 
-    async def get_mesafe(self, cikis: str, varis: str) -> Optional[int]:
-        """Lokasyonlar arası mesafeyi getir"""
-        loc = await self.get_by_route(cikis, varis)
-        return loc.get("mesafe_km") if loc else None
-
     async def get_benzersiz_lokasyonlar(
         self, limit: int = 1000, offset: int = 0
     ) -> List[str]:
@@ -141,28 +136,6 @@ class LokasyonRepository(BaseRepository[Lokasyon]):
             aktif=aktif,
             ad=ad,
         )
-
-    async def get_with_elevation(self, lokasyon_id: int) -> Optional[Dict]:
-        """Yükseklik bilgisi ile lokasyon getir"""
-        # BaseRepo get_by_id returns all cols including ascent_m/descent_m
-        loc = await self.get_by_id(lokasyon_id)
-        if loc:
-            # Add alias keys if frontend expects them
-            loc["ascent"] = loc.get("ascent_m") or 0
-            loc["descent"] = loc.get("descent_m") or 0
-        return loc
-
-    async def get_route_for_prediction(self, cikis: str, varis: str) -> Dict:
-        """Tahmin için rota bilgilerini getir"""
-        loc = await self.get_by_route(cikis, varis)
-        if loc:
-            return {
-                "mesafe_km": loc.get("mesafe_km", 0),
-                "ascent_m": loc.get("ascent_m") or 0,
-                "descent_m": loc.get("descent_m") or 0,
-                "zorluk": loc.get("zorluk", "Normal"),
-            }
-        return {"mesafe_km": 0, "ascent_m": 0, "descent_m": 0, "zorluk": "Normal"}
 
     async def find_closest_match(
         self,

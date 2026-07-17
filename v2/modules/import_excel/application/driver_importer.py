@@ -11,7 +11,7 @@ from v2.modules.import_excel.infrastructure.parsers import parse_driver_excel
 async def process_driver_import(content: bytes) -> Tuple[int, list]:
     """Processes driver import."""
     try:
-        from v2.modules.driver.application.add_sofor import bulk_add_sofor
+        from v2.modules.driver.public import bulk_add_sofor
 
         items = await parse_driver_excel(content)
         if not items:

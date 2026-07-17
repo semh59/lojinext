@@ -122,13 +122,21 @@ kendi SELECT'ini atsaydı N+1 regresyonu olurdu.
   publish eder (trip'in event'i, bu modülün sahibi olmadığı — events.py'de not).
 - **fuel (taşındı)**: `process_yakit_import` → `bulk_add_yakit` +
   `recalculate_vehicle_periods`.
-- **fleet (taşındı)**: `process_vehicle_import` → `bulk_add_vehicles`;
+- **fleet (taşındı)**: `process_vehicle_import` → `bulk_add_vehicles`
+  (hâlâ `v2.modules.fleet.application.bulk_add_vehicles`'tan doğrudan —
+  fleet'in kendi public.py sınır düzeltmesi bu dalganın kapsamı dışında);
   `export_trailers.py::import_trailers`/`get_trailer_template`/
   `export_all_trailers` bu modülün `public.py`'sini (`parse_dorse_excel`/
   `generate_template`/`export_data`) çağırır (YÖN TERSİ: fleet tüketici).
-- **driver (taşındı)**: `process_driver_import` → `bulk_add_sofor`.
-- **location (taşındı)**: `import_routes` → `create_location` (N+1 önleme
-  için `existing_index` tek seferde prefetch edilip geçirilir).
+- **driver (taşındı)**: `process_driver_import` → `v2.modules.driver.public.
+  bulk_add_sofor` (2026-07-17 dedektif denetimi düzeltmesi — eskiden
+  `application.add_sofor`'dan doğrudan import ediyordu).
+- **location (taşındı)**: `import_routes` → `v2.modules.location.public.
+  create_location`/`route_key`/`LokasyonCreate` (2026-07-17 düzeltmesi —
+  eskiden `domain/`/`application/`/`schemas`'tan doğrudan import ediyordu,
+  bu dosyanın kendi CLAUDE.md iddiası "hepsi public.py üzerinden" o zaman
+  yanlıştı, şimdi doğru; N+1 önleme için `existing_index` tek seferde
+  prefetch edilip geçirilir).
 
 **Ters yön (X → import_excel, bu modül sağlayıcı):** fuel/fleet/driver/
 location/reports (`advanced_reports.py`) kendi Excel export/template/

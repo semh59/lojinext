@@ -137,11 +137,11 @@ def _patched_engine(monkeypatch):
         lambda: _FakeUoW(arac_rows, sofor_rows),
     )
     monkeypatch.setattr(
-        "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+        "v2.modules.driver.public.get_score_breakdown_sofor",
         _fake_get_score_breakdown_sofor,
     )
     monkeypatch.setattr(
-        "v2.modules.driver.application.get_route_profile.get_route_profile_sofor",
+        "v2.modules.driver.public.get_route_profile_sofor",
         _fake_get_route_profile_sofor,
     )
 
@@ -277,11 +277,11 @@ async def test_engine_empty_candidates_returns_empty_lists(monkeypatch):
         lambda: _FakeUoW([], []),
     )
     monkeypatch.setattr(
-        "v2.modules.driver.application.get_score.get_score_breakdown_sofor",
+        "v2.modules.driver.public.get_score_breakdown_sofor",
         _fake_get_score_breakdown_sofor,
     )
     monkeypatch.setattr(
-        "v2.modules.driver.application.get_route_profile.get_route_profile_sofor",
+        "v2.modules.driver.public.get_route_profile_sofor",
         _fake_get_route_profile_sofor,
     )
 

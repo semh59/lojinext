@@ -123,7 +123,7 @@ async def predict(
         sofor_faktor = 1.0
         if sofor_id:
             try:
-                from v2.modules.driver.domain.driver_stats import get_driver_stats
+                from v2.modules.driver.public import get_driver_stats
 
                 # DOĞRUDAN AWAIT! (Artık async metoddasın)
                 stats_list = await get_driver_stats(sofor_id=sofor_id)

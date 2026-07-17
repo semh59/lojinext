@@ -158,7 +158,7 @@ class ContextBuilder:
             return "Geçersiz şoför ID."
 
         try:
-            from v2.modules.driver.domain.evaluation import evaluate_driver
+            from v2.modules.driver.public import evaluate_driver
 
             degerlendirme = await evaluate_driver(sofor_id)
 
@@ -207,7 +207,7 @@ class ContextBuilder:
             filo_ort_task = self.analiz_repo.get_filo_ortalama_tuketim()
             araclar_task = self.arac_repo.get_all(sadece_aktif=True)
 
-            from v2.modules.driver.domain.evaluation import get_rankings
+            from v2.modules.driver.public import get_rankings
 
             rankings_task = get_rankings()
 

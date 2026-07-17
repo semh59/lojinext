@@ -177,7 +177,9 @@ async def aggregate_today_triage(
 
     # 2. Bakım gecikmeli/yakın (D.1)
     try:
-        from v2.modules.fleet.domain.maintenance_prediction import MaintenancePredictor
+        from v2.modules.fleet.application.maintenance_prediction import (
+            MaintenancePredictor,
+        )
 
         preds = await MaintenancePredictor().predict_all()
         today = date.today()

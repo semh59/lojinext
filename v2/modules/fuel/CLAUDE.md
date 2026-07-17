@@ -79,6 +79,17 @@ attribute'u da dead weight'ti — hiçbir metot `self.model`'i okumuyordu, her
 (concurrent request izolasyonu için kasıtlı). Free function'a geçişte bu
 attribute hiç oluşturulmuyor.
 
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar)
+
+1. **`OpetFuelProvider`** (`infrastructure/integrations/opet_client.py`) —
+   stateless tek-pipeline (bkz. "Opet entegrasyonu" bölümü aşağıda);
+   `FuelCardProvider` arayüzünün tek implementasyonu, constructor'da API
+   client bağımlılığı enjekte edilir.
+2. **`LinearRegressionModel`** (`domain/local_regression.py`) — modül-içi
+   consumption prediction subsystem'inin (aşağıya bkz., ölü/kullanılmayan)
+   regresyon model wrapper'ı; her çağrıda yeni instance açılır (concurrent
+   request izolasyonu), mutable eğitilmiş katsayı state'i taşır.
+
 ## Modül-içi consumption prediction — kullanılmıyor (dead subsystem, taşımadan önce de böyleydi)
 
 `domain/consumption_prediction.py` (`train_consumption_model`/
@@ -93,20 +104,21 @@ kullanılmıyordu. Asıl tahmin pipeline'ı `EnsembleFuelPredictor`/
 
 ## Yayınladığı / dinlediği event'ler (events.py DTO'ları)
 
+✅ **DÜZELTİLDİ (2026-07-16, dedektif denetimi — bkz. `events.py`'nin kendi
+changelog'u, bu bölüm 2026-07-17'de bayat kaldığı için güncellendi):**
 `YAKIT_ADDED`, `YAKIT_UPDATED`, `YAKIT_DELETED` — `@publishes(...)`
-decorator'ı `add_yakit`/`update_yakit`/`delete_yakit` üzerinde var ama
-**repo-genelinde ölü kod** (location/notification/fleet'in aynı bulgusu):
-`publishes()` yalnızca fonksiyona `_publishes` attribute'u ekliyor, hiçbir
-yerde okunmuyor; fonksiyon gövdeleri de `event_bus.publish(...)` çağırmıyor.
-
-**Bu modülde diğerlerinden FARKLI olarak gerçek abonelikler var ve onlar da
-etkisiz kalıyor**: `app/core/handlers/model_training_handler.py`
-`YAKIT_ADDED`'a subscribe olup ML retrain tetiklemeyi bekliyor;
-`app/infrastructure/cache/cache_invalidation.py` her üç YAKIT_* event'ine
-subscribe olup cache invalidation bekliyor. İkisi de bugün hiç tetiklenmiyor.
-Taşımadan önce de aynıydı (orijinal `yakit_service.py` aynı decorator-only
-kablolamaya sahipti) — regresyon değil, ama fleet/location'ın ARAC_*/
-LOKASYON_* bulgularından daha yüksek etkili bir önceden var olan boşluk.
+decorator'ı `add_yakit`/`update_yakit`/`delete_yakit` üzerinde hâlâ
+metadata-only, ama her fonksiyon artık gerçekten transactional outbox'a
+yazıyor (`save_outbox_event(uow.session, EventType.YAKIT_X, ...)`, aynı
+transaction, `uow.commit()`'ten önce). Eskiden ölü olan iki gerçek
+abonelik artık Celery'nin `relay-outbox-events-every-60s` task'ı satırı
+relay ettiğinde GERÇEKTEN tetikleniyor: `app/core/handlers/
+model_training_handler.py` (`YAKIT_ADDED` → ML retrain sayaç) ve
+`app/infrastructure/cache/cache_invalidation.py` (üç YAKIT_* event'inin
+hepsi, wildcard cache temizliği). Her iki handler da artık app startup'ta
+(`app/main.py` lifespan) gerçekten register ediliyor — eskiden ne
+`ModelTrainingHandler.setup()` ne `setup_cache_invalidation()` hiçbir
+yerden çağrılmıyordu.
 
 ## Şema & tablo sahipliği
 

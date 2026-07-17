@@ -163,17 +163,6 @@ class TestAnalizService:
             < 0.1
         )
 
-    @pytest.mark.asyncio
-    async def test_detect_anomalies(self):
-        """Anomali tespiti testi"""
-        from v2.modules.anomaly.public import get_anomaly_detection_service
-
-        consumptions = [30, 31, 32, 29, 30, 31, 33, 30, 55, 32]
-        anomaly_service = get_anomaly_detection_service()
-        anomalies = await anomaly_service.detect_anomalies(consumptions)
-        assert len(anomalies) > 0
-        assert any(a.value == 55 for a in anomalies)
-
 
 class TestEventBus:
     """EventBus testleri"""

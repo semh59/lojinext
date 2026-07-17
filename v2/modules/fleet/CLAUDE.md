@@ -52,7 +52,9 @@ mark_maintenance_completed(bakim_id) -> bool
 get_upcoming_maintenance_alerts() -> list[dict]
 generate_ics_for_maintenance(bakim, arac) -> str
 get_maintenance_ics_data(bakim_id: int) -> tuple[AracBakim, Arac | None] | None
-MaintenancePredictor, Prediction, PredictionInput      # domain/maintenance_prediction.py
+MaintenancePredictor, Prediction, PredictionInput      # application/maintenance_prediction.py
+get_all_maintenance_predictions() -> list[Prediction]   # application/get_maintenance_predictions.py
+get_maintenance_prediction_for_vehicle(arac_id) -> Prediction | None
 
 # Repositories
 AracRepository, get_arac_repo(session=None)
@@ -211,10 +213,23 @@ geçici borç olarak kalıyor, dokümante edildi.
 - **RFC 5545 satır katlama** (`export_maintenance_calendar.py`): UTF-8
   multi-byte karakter (Türkçe ş/ğ/ı/ü) ortadan kesilmez; 75 oktet sınırı
   bayt-güvenli şekilde bölünür.
-- **Tahmin motoru stateless** (`domain/maintenance_prediction.py`): ML
+- **Tahmin motoru stateless** (`application/maintenance_prediction.py`): ML
   modeli eğitilmez, her istekte hesaplanır (hibrit kural-tabanlı interval +
   kullanım hızı + tüketim trendi). Redis cache (`maintenance_cache.py`)
   TTL 1 saat; bakım create/complete'te invalidate edilir.
+- ✅ **DÜZELTİLDİ (2026-07-17, dedektif denetimi bulgusu)** —
+  `MaintenancePredictor` (gerçek `UnitOfWork()` açıp ham SQL çalıştırıyor)
+  `domain/`'de yaşıyordu (I/O yok kuralına aykırı, `route_simulation`'ın
+  eşdeğeri `RouteSimulator` doğru şekilde `application/`'da) — `application/
+  maintenance_prediction.py`'a taşındı. `api/admin_maintenance_routes.py`'nin
+  `/predictions` + `/predictions/{arac_id}` handler'ları onu DOĞRUDAN
+  çağırıyordu (modülün diğer route'larının hepsi application/ katmanından
+  geçerken bu 2 endpoint istisnaydı) — yeni `application/
+  get_maintenance_predictions.py` (`get_all_maintenance_predictions`/
+  `get_maintenance_prediction_for_vehicle`) eklendi, route'lar artık onu
+  çağırıyor. Cache/audit orkestrasyonu route'ta kalır (diğer route'larla
+  aynı desen). Davranış değişikliği yok (path/method/response/yetki
+  birebir), gerçek Docker container'a karşı doğrulandı.
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

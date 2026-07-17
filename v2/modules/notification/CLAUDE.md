@@ -86,9 +86,14 @@ doğrudan çağrılan bir yol).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **auth_rbac** (senkron, in-edge): `auth.py`'nin `/password-reset-request`
-  endpoint'i `send_password_reset`'i public.py üzerinden çağırır.
-- **auth_rbac** (senkron, out-edge): `domain/quiet_hours.py`'nin
+- **auth_rbac** (senkron, in-edge): `auth_routes.py`'nin
+  `/password-reset-request` endpoint'i `send_password_reset`'i public.py'yi
+  ATLAYIP `v2.modules.notification.infrastructure.email_client`'tan
+  doğrudan import edip çağırır (public.py de aynı fonksiyonu re-export
+  eder ama bu çağıran onu kullanmıyor — düzeltildi, 2026-07-17
+  dedektif denetimi bulgusu, bkz. `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
+  madde 3).
+- **auth_rbac** (senkron, out-edge): `application/quiet_hours.py`'nin
   `is_user_quiet_now`'ı `v2.modules.auth_rbac.application.preference_service`'i
   doğrudan import eder (dalga 6'da güncellendi — eski `app.core.services.
   preference_service.PreferenceService` yolu artık yok).
@@ -231,4 +236,4 @@ notla aynı durum).
   namespace'i (örn. `v2.modules.notification.application.send_push_to_user.send_webpush`)
   — İstisna: fonksiyon-içi (inline) importlar (`insight_engine.py`'deki
   `send_push_broadcast`, `push_to_user`'ın `is_user_quiet_now`'ı gibi) —
-  bunlar KAYNAK modülden patch'lenir (`v2.modules.notification.domain.quiet_hours.is_user_quiet_now`).
+  bunlar KAYNAK modülden patch'lenir (`v2.modules.notification.application.quiet_hours.is_user_quiet_now`).

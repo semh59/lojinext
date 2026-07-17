@@ -3,11 +3,8 @@
 Covers:
 - get_all: default kwargs, custom order_by/limit, include_inactive
 - get_by_route: found, not found
-- get_mesafe: found returns int, not found returns None
 - get_benzersiz_lokasyonlar: row extraction, limit clamping, offset clamping
 - add: delegates to create with all params
-- get_with_elevation: found adds ascent/descent alias, not found returns None
-- get_route_for_prediction: found returns dict, not found returns defaults
 - find_closest_match: empty input, no pre_fetched (fetches), pre_fetched match,
   pre_fetched no match above threshold, all_names empty
 - get_lokasyon_repo: session arg returns new instance, no session returns singleton
@@ -20,12 +17,11 @@ import pytest
 pytestmark = pytest.mark.integration
 # 0-mock epiği: get_by_route/get_benzersiz_lokasyonlar testleri gerçek DB'ye
 # (db_session) çevrildi — bu iki metod gerçekten `_session.execute` çağırıyor.
-# Diğer sınıflar (get_mesafe/get_with_elevation/get_route_for_prediction/
-# find_closest_match/add) SESSION'ı değil, AYNI sınıfın kardeş bir metodunu
-# (get_by_route/get_by_id/execute_query/get_benzersiz_lokasyonlar/create)
-# mock'luyor — bu gerçek bir dış sınır değil, meşru bir call-contract/
-# delegation testi (o kardeş metod kendi testinde ayrıca gerçek DB'ye karşı
-# doğrulanıyor), o yüzden dokunulmadı.
+# Diğer sınıflar (find_closest_match/add) SESSION'ı değil, AYNI sınıfın
+# kardeş bir metodunu (get_by_route/execute_query/
+# get_benzersiz_lokasyonlar/create) mock'luyor — bu gerçek bir dış sınır
+# değil, meşru bir call-contract/delegation testi (o kardeş metod kendi
+# testinde ayrıca gerçek DB'ye karşı doğrulanıyor), o yüzden dokunulmadı.
 
 
 # ---------------------------------------------------------------------------
@@ -152,37 +148,6 @@ class TestLokasyonRepoGetByRoute:
 
 
 # ---------------------------------------------------------------------------
-# get_mesafe
-# ---------------------------------------------------------------------------
-
-
-class TestLokasyonRepoGetMesafe:
-    async def test_found_returns_mesafe_km(self):
-        """get_mesafe returns the mesafe_km value when route exists."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(return_value={"mesafe_km": 450})
-
-        result = await repo.get_mesafe("İstanbul", "Ankara")
-        assert result == 450
-
-    async def test_not_found_returns_none(self):
-        """get_mesafe returns None when route not found."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(return_value=None)
-
-        result = await repo.get_mesafe("A", "B")
-        assert result is None
-
-    async def test_mesafe_km_missing_returns_none(self):
-        """get_mesafe returns None if mesafe_km key missing."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(return_value={"cikis_yeri": "X"})
-
-        result = await repo.get_mesafe("X", "Y")
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
 # get_benzersiz_lokasyonlar
 # ---------------------------------------------------------------------------
 
@@ -301,97 +266,6 @@ class TestLokasyonRepoAdd:
         call_kwargs = repo.create.call_args.kwargs
         assert call_kwargs["zorluk"] == "Normal"
         assert call_kwargs["aktif"] is True
-
-
-# ---------------------------------------------------------------------------
-# get_with_elevation
-# ---------------------------------------------------------------------------
-
-
-class TestLokasyonRepoGetWithElevation:
-    async def test_found_adds_alias_keys(self):
-        """get_with_elevation adds 'ascent' and 'descent' aliases."""
-        repo = _make_repo()
-        repo.get_by_id = AsyncMock(
-            return_value={"id": 1, "ascent_m": 300.0, "descent_m": 280.0}
-        )
-
-        result = await repo.get_with_elevation(1)
-        assert result is not None
-        assert result["ascent"] == 300.0
-        assert result["descent"] == 280.0
-
-    async def test_found_none_ascent_defaults_zero(self):
-        """get_with_elevation uses 0 when ascent_m/descent_m are None."""
-        repo = _make_repo()
-        repo.get_by_id = AsyncMock(
-            return_value={"id": 1, "ascent_m": None, "descent_m": None}
-        )
-
-        result = await repo.get_with_elevation(1)
-        assert result["ascent"] == 0
-        assert result["descent"] == 0
-
-    async def test_not_found_returns_none(self):
-        """get_with_elevation returns None when lokasyon not found."""
-        repo = _make_repo()
-        repo.get_by_id = AsyncMock(return_value=None)
-
-        result = await repo.get_with_elevation(999)
-        assert result is None
-
-
-# ---------------------------------------------------------------------------
-# get_route_for_prediction
-# ---------------------------------------------------------------------------
-
-
-class TestLokasyonRepoGetRouteForPrediction:
-    async def test_found_returns_route_dict(self):
-        """get_route_for_prediction returns populated dict when found."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(
-            return_value={
-                "mesafe_km": 450,
-                "ascent_m": 300.0,
-                "descent_m": 280.0,
-                "zorluk": "Dik/Dağlık",
-            }
-        )
-
-        result = await repo.get_route_for_prediction("İstanbul", "Ankara")
-        assert result["mesafe_km"] == 450
-        assert result["ascent_m"] == 300.0
-        assert result["zorluk"] == "Dik/Dağlık"
-
-    async def test_not_found_returns_defaults(self):
-        """get_route_for_prediction returns zero-defaults when not found."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(return_value=None)
-
-        result = await repo.get_route_for_prediction("A", "B")
-        assert result == {
-            "mesafe_km": 0,
-            "ascent_m": 0,
-            "descent_m": 0,
-            "zorluk": "Normal",
-        }
-
-    async def test_found_none_ascent_defaults(self):
-        """get_route_for_prediction uses 0 for None ascent/descent."""
-        repo = _make_repo()
-        repo.get_by_route = AsyncMock(
-            return_value={
-                "mesafe_km": 200,
-                "ascent_m": None,
-                "descent_m": None,
-                "zorluk": "Normal",
-            }
-        )
-
-        result = await repo.get_route_for_prediction("X", "Y")
-        assert result["ascent_m"] == 0
-        assert result["descent_m"] == 0
 
 
 # ---------------------------------------------------------------------------

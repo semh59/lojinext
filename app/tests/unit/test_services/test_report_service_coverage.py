@@ -332,7 +332,7 @@ class TestGenerateDriverReport:
         mock_eval.model_dump.return_value = {"score": 80}
 
         with patch(
-            "v2.modules.driver.domain.evaluation.evaluate_driver",
+            "v2.modules.driver.public.evaluate_driver",
             AsyncMock(return_value=mock_eval),
         ):
             result = await generate_driver_report(repos, sofor_id=1)

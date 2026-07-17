@@ -232,25 +232,6 @@ class TestUnicodeCharacters:
 class TestNaNInfinity:
     """NaN ve Infinity değer testleri."""
 
-    @pytest.mark.asyncio
-    async def test_nan_consumption_detected(self):
-        """NaN tüketim değeri anomali olarak tespit edilmeli."""
-        from v2.modules.anomaly.public import get_anomaly_detection_service
-
-        service = get_anomaly_detection_service()
-
-        # NaN içeren veri
-        consumptions = [30, 31, float("nan"), 32, 33, 34, 35, 36, 37, 38]
-
-        # Anomaly detection NaN'ı handle etmeli
-        try:
-            result = await service.detect_anomalies(consumptions)
-            # NaN bir anomali olarak döndürülmeli veya filtrelenmeli
-            assert isinstance(result, list)
-        except (ValueError, TypeError, AttributeError):
-            # NaN için hata vermesi de kabul edilebilir (Python 3.14 statistics behavior)
-            pass
-
     def test_infinity_value_rejected(self):
         """Infinity değeri reddedilmeli."""
         from app.core.entities import YakitAlimi

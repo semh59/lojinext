@@ -275,7 +275,7 @@ class TestGetCoachingSnapshot:
         mock_engine.generate_coaching = AsyncMock(return_value=mock_insights)
 
         with patch(
-            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
+            "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
             result = await InternalService().get_coaching_snapshot("tg3")
@@ -296,7 +296,7 @@ class TestGetCoachingSnapshot:
         )
 
         with patch(
-            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
+            "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
             result = await InternalService().get_coaching_snapshot("tg4")
@@ -323,7 +323,7 @@ class TestGetCoachingSnapshot:
         mock_engine.generate_coaching = AsyncMock(return_value=mock_insights)
 
         with patch(
-            "v2.modules.driver.application.generate_coaching.get_driver_coaching_engine",
+            "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
             result = await InternalService().get_coaching_snapshot("tg5")

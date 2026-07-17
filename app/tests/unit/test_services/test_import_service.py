@@ -45,7 +45,6 @@ from v2.modules.import_excel.domain.entity_resolvers import (
     resolve_sofor_id,
 )
 from v2.modules.import_excel.domain.field_validators import (
-    validate_location,
     validate_name,
     validate_numeric,
     validate_plaka,
@@ -118,11 +117,15 @@ class TestProcessImports:
 
         ``bulk_add_vehicles``/``bulk_add_yakit``/``bulk_add_sofor`` birer
         free function — ilgili importer bunları inline import ile çağırır,
-        bu yüzden patch hedefi KAYNAK modül (v2.modules.fleet.application.
-        bulk_add_vehicles vb.), tüketen modül değil (location/CLAUDE.md
-        inline-import gotcha'sı). ``sefer_service.bulk_add_sefer`` container
-        üzerinden çağrılıyor (trip henüz taşınmadı) — container.sefer_service
-        patch'lenir.
+        bu yüzden patch hedefi KAYNAK modül (location/CLAUDE.md inline-import
+        gotcha'sı) — ``bulk_add_vehicles`` için hâlâ
+        ``v2.modules.fleet.application.bulk_add_vehicles`` (fleet henüz bu
+        importer'ı public.py'ye yönlendirmedi); ``bulk_add_yakit``/
+        ``bulk_add_sofor`` için artık "kaynak" `public.py`'nin kendisi
+        (2026-07-17 dedektif denetimi düzeltmesi — importer'lar artık
+        `fuel.public`/`driver.public` üzerinden geçiyor). ``sefer_service.
+        bulk_add_sefer`` container üzerinden çağrılıyor (trip henüz
+        taşınmadı) — container.sefer_service patch'lenir.
         """
         arac = await seed_arac(
             db_session, plaka="34ABC123", marka="Mercedes", bos_agirlik_kg=0
@@ -144,11 +147,11 @@ class TestProcessImports:
             AsyncMock(return_value=1),
         )
         monkeypatch.setattr(
-            "v2.modules.fuel.application.bulk_add_yakit.bulk_add_yakit",
+            "v2.modules.fuel.public.bulk_add_yakit",
             AsyncMock(return_value=1),
         )
         monkeypatch.setattr(
-            "v2.modules.driver.application.add_sofor.bulk_add_sofor",
+            "v2.modules.driver.public.bulk_add_sofor",
             AsyncMock(return_value=1),
         )
         return SimpleNamespace(
@@ -270,7 +273,7 @@ class TestProcessImports:
         ]
         fake_create_location = AsyncMock(return_value=1)
         monkeypatch.setattr(
-            "v2.modules.location.application.create_location.create_location",
+            "v2.modules.location.public.create_location",
             fake_create_location,
         )
 
@@ -550,9 +553,6 @@ class TestImportValidation:
         assert validate_name("ahmet yılmaz") == "Ahmet Yılmaz"
         with pytest.raises(ImportValidationError, match="en az 2"):
             validate_name("A")
-
-    def test_validate_location(self):
-        assert validate_location("İstanbul") == "İstanbul"
 
     def test_validate_numeric(self):
         from app.core.exceptions import ImportValidationError

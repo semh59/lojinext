@@ -200,7 +200,7 @@ async def get_driver_comparison_pdf(
 ):
     """Şoför performans karşılaştırma raporu PDF"""
     try:
-        from v2.modules.driver.domain.driver_stats import get_driver_stats
+        from v2.modules.driver.public import get_driver_stats
 
         async with UnitOfWork() as uow:
             drivers = await get_driver_stats(uow=uow)
@@ -427,7 +427,7 @@ async def export_analytical_report_excel(
             data = [raw_data] if isinstance(raw_data, dict) else raw_data
 
         elif report_type == "driver_comparison":
-            from v2.modules.driver.domain.driver_stats import get_driver_stats
+            from v2.modules.driver.public import get_driver_stats
 
             # get_driver_stats()'in uow'suz singleton fallback'i raw-SQL
             # metotlarında session-less crash veriyordu (aynı dosyadaki

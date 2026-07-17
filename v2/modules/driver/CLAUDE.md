@@ -132,15 +132,18 @@ PII şifreli, arama trigram tablosu üzerinden yapılır), `sofor_adaptasyon`,
 `coaching_deliveries` (Feature A.5 — koçluk etki ölçümü).
 
 **Bilinen istisna (pre-existing, dalga 5'ten ÖNCE de vardı, taşımayla
-değişmedi):** `app/core/services/import_service.py` (import-excel modülü,
-henüz taşınmadı) `soforler`/`sofor_ad_soyad_trigram`'a `infrastructure/
+değişmedi):** eski `app/core/services/import_service.py` dalga 9'da
+`v2/modules/import_excel/`'e taşınırken silindi (artık hiç yok) — aynı
+bypass deseni artık `v2/modules/import_excel/application/execute_import.py`'de
+yaşıyor: `surucu` dalı `soforler`/`sofor_ad_soyad_trigram`'a `infrastructure/
 repository.py`'yi bypass eden HAM SQL `INSERT`/`DELETE` yazıyor (bulk Excel
-import performansı için — satır ~401-408/424-427/582, `git show
-f2321a1^:app/core/services/import_service.py`'de de aynı desen doğrulandı).
-Dedektif denetiminde (2026-07-14) bulundu, gerçek bir tablo-sahipliği
-istisnası ama davranış değişikliği gerektirmediği için bu dalgada
-dokunulmadı — import-excel dalga 9'da ele alınacak (driver repository'sinin
-bulk-insert path'ini kullanacak şekilde refactor edilebilir).
+import performansı için, PII şifreleme + trigram). Dedektif denetiminde
+(2026-07-14) bulundu, gerçek bir tablo-sahipliği istisnası ama davranış
+değişikliği gerektirmediği için dalga 5'te dokunulmadı; dalga 9'un
+(import_excel taşıması) kabul kriterlerinde de yoktu, o da kapsam dışı
+bıraktı (bkz. `v2/modules/import_excel/CLAUDE.md`'nin kendi notu) — ayrı
+bir bug-fix görevi olarak açılabilir (driver repository'sinin bulk-insert
+path'ini kullanacak şekilde refactor).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 

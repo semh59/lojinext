@@ -27,7 +27,7 @@ async def test_driver_comparison_uses_real_unit_of_work(db_session):
 
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=mock_drivers),
         ),
         patch(

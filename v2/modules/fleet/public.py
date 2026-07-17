@@ -70,13 +70,13 @@ from v2.modules.fleet.application.maintenance_cache import (
     PREDICTIONS_CACHE_ALL,
     invalidate_predictions_cache,
 )
-from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
-from v2.modules.fleet.application.update_vehicle import update_vehicle
-from v2.modules.fleet.domain.maintenance_prediction import (
+from v2.modules.fleet.application.maintenance_prediction import (
     MaintenancePredictor,
     Prediction,
     PredictionInput,
 )
+from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
+from v2.modules.fleet.application.update_vehicle import update_vehicle
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
 )

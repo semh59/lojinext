@@ -17,7 +17,7 @@ from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from app.core.ml.route_similarity import find_similar_trips
-from v2.modules.driver.domain.route_profile import classify_route
+from v2.modules.driver.public import classify_route
 
 logger = logging.getLogger(__name__)
 
@@ -431,10 +431,10 @@ class TripPlannerEngine:
             return []
 
         from app.database.unit_of_work import UnitOfWork
-        from v2.modules.driver.application.get_route_profile import (
+        from v2.modules.driver.public import (
             get_route_profile_sofor,
+            get_score_breakdown_sofor,
         )
-        from v2.modules.driver.application.get_score import get_score_breakdown_sofor
 
         out: List[DriverCandidate] = []
         async with UnitOfWork() as uow:

@@ -45,7 +45,7 @@ async def send_push_to_user(
         return PushSendResult(sent=0, expired=0, failed=0)
 
     if respect_quiet_hours:
-        from v2.modules.notification.domain.quiet_hours import is_user_quiet_now
+        from v2.modules.notification.application.quiet_hours import is_user_quiet_now
 
         if await is_user_quiet_now(user_id):
             logger.debug("Kullanıcı %s sessiz saatte; push atlandı", user_id)

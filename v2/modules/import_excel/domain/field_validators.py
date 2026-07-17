@@ -68,10 +68,6 @@ def validate_name(name: Any) -> str:
     return str(name).strip().title()
 
 
-def validate_location(loc: Any) -> Any:
-    return loc
-
-
 def normalize_text(value: Any) -> str:
     s = str(value or "").strip().upper()
     # Türkçe büyük İ (U+0130) → ASCII I; karşılaştırma tutarlılığı için

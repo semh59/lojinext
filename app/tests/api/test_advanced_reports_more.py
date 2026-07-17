@@ -159,7 +159,7 @@ async def test_driver_comparison_pdf_generic_exception(
 ):
     """GET /pdf/driver-comparison generic exception → 500."""
     with patch(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         new=AsyncMock(side_effect=RuntimeError("crash")),
     ):
         resp = await async_client.get(
@@ -175,7 +175,7 @@ async def test_driver_comparison_pdf_domain_error(async_client, admin_auth_heade
     from app.core.exceptions import DomainError
 
     with patch(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         new=AsyncMock(side_effect=DomainError("domain issue")),
     ):
         resp = await async_client.get(
@@ -290,7 +290,7 @@ async def test_excel_export_generic_exception(async_client, admin_auth_headers):
 async def test_excel_export_driver_comparison_empty(async_client, admin_auth_headers):
     """GET /excel/export driver_comparison with empty drivers → 404."""
     with patch(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         AsyncMock(return_value=[]),  # empty
     ):
         resp = await async_client.get(

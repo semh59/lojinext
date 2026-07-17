@@ -4,7 +4,7 @@ from datetime import time
 
 import pytest
 
-from v2.modules.notification.domain.quiet_hours import is_within_quiet_hours
+from v2.modules.notification.application.quiet_hours import is_within_quiet_hours
 
 pytestmark = pytest.mark.unit
 
@@ -52,7 +52,7 @@ async def test_send_push_skipped_during_quiet_hours(monkeypatch):
     monkeypatch.setattr(s, "VAPID_SUBJECT", "mailto:a@b")
     monkeypatch.setattr(s, "PUSH_NOTIFICATION_ENABLED", True)
     monkeypatch.setattr(
-        "v2.modules.notification.domain.quiet_hours.is_user_quiet_now",
+        "v2.modules.notification.application.quiet_hours.is_user_quiet_now",
         AsyncMock(return_value=True),
     )
 

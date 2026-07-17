@@ -167,7 +167,7 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
   `AnalizRepository`'si; `advanced_reports_routes.py` maliyet
   endpoint'leri `analyze_costs.py`'nin free function'larını çağırır.
 - **fleet (taşındı, geçici)**: `project_cashflow`
-  `v2.modules.fleet.domain.maintenance_prediction.MaintenancePredictor`'ı
+  `v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor`'ı
   çağırır.
 - **notification (taşındı)**: `generate_insights.py`/`compliance_tasks.py`
   `v2.modules.notification.application.send_push_broadcast`'i çağırır.

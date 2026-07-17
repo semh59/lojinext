@@ -334,7 +334,7 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -373,7 +373,7 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -421,7 +421,7 @@ class TestPredictConsumption:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -458,7 +458,7 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -502,7 +502,7 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
         ):
@@ -557,7 +557,7 @@ class TestTrainForVehicle:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch(
@@ -702,7 +702,7 @@ class TestPredictBatch:
                 return_value=mock_weather,
             ),
             patch(
-                "v2.modules.driver.domain.driver_stats.get_driver_stats",
+                "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),

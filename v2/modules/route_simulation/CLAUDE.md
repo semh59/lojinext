@@ -76,6 +76,14 @@ getirildi). `container.route_service`/`import_service.route_service`
 property'leri de hiçbir prod kod tarafından çağrılmadığı için kaldırıldı
 (dead code).
 
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar)
+
+1. **`RouteSimulator`** (`application/simulate_route.py`) — tek-cohesive
+   pipeline: Mapbox Directions → segment_resampler → elevation → simulate,
+   constructor-injected client bağımlılığı (Mapbox/Open-Meteo client'ları).
+   CRUD-benzeri bir servis değil, `LokasyonHydrator`/`DriverCoachingEngine`
+   ile aynı gerekçe kategorisi.
+
 ## Yayınladığı / dinlediği event'ler
 
 Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor

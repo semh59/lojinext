@@ -509,7 +509,7 @@ async def test_explain_consumption_sofor_id_stats_fetch():
 
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=[driver_stat]),
         ) as mock_get_driver_stats,
         patch(
@@ -575,7 +575,7 @@ async def test_explain_consumption_sofor_id_no_stats():
 
     with (
         patch(
-            "v2.modules.driver.domain.driver_stats.get_driver_stats",
+            "v2.modules.driver.public.get_driver_stats",
             AsyncMock(return_value=[]),
         ),
         patch(

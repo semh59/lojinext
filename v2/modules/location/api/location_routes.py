@@ -52,12 +52,15 @@ from v2.modules.location.application.get_unique_location_names import (
 from v2.modules.location.application.hydrate_location import (
     hydrate_location as hydrate_location_usecase,
 )
+from v2.modules.location.application.hydration import (
+    LokasyonHydrator,
+    get_lokasyon_hydrator,
+)
 from v2.modules.location.application.list_locations import list_locations
 from v2.modules.location.application.search_locations_by_route import (
     search_locations_by_route,
 )
 from v2.modules.location.application.update_location import update_location
-from v2.modules.location.domain.hydration import LokasyonHydrator, get_lokasyon_hydrator
 from v2.modules.location.infrastructure.repository import get_lokasyon_repo
 from v2.modules.location.schemas import (
     GeocodeSuggestion,

@@ -193,7 +193,7 @@ async def test_train_for_vehicle_uses_each_trip_date_for_seasonal_factor(monkeyp
         lambda: SimpleNamespace(get_seasonal_factor=get_seasonal_factor),
     )
     monkeypatch.setattr(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         AsyncMock(
             return_value=[
                 SimpleNamespace(sofor_id=1, filo_karsilastirma=8),
@@ -235,7 +235,7 @@ async def test_predict_consumption_uses_dorse_repo_without_uow(monkeypatch):
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.05),
     )
     monkeypatch.setattr(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         AsyncMock(return_value=[]),
     )
 
@@ -285,7 +285,7 @@ async def test_predict_consumption_prefers_vehicle_class_fallback_before_general
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.0),
     )
     monkeypatch.setattr(
-        "v2.modules.driver.domain.driver_stats.get_driver_stats",
+        "v2.modules.driver.public.get_driver_stats",
         AsyncMock(return_value=[]),
     )
 

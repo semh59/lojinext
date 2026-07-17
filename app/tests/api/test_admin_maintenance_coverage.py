@@ -222,15 +222,16 @@ async def test_get_all_predictions_feature_enabled_no_cache(monkeypatch):
     pred_obj.savings_pct = 5.0
     pred_obj.reasons = []
 
-    fake_predictor = AsyncMock()
-    fake_predictor.predict_all.return_value = [pred_obj]
-
     fake_user = MagicMock()
     fake_user.id = 2
 
     with (
         patch.object(mod, "_get_redis", return_value=fake_redis),
-        patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
+        patch.object(
+            mod,
+            "get_all_maintenance_predictions",
+            AsyncMock(return_value=[pred_obj]),
+        ),
         patch(
             "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,
@@ -280,15 +281,14 @@ async def test_get_all_predictions_redis_none(monkeypatch):
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
-    fake_predictor = AsyncMock()
-    fake_predictor.predict_all.return_value = []
-
     fake_user = MagicMock()
     fake_user.id = 0  # edge: id == 0 → creator_id = None
 
     with (
         patch.object(mod, "_get_redis", return_value=None),
-        patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
+        patch.object(
+            mod, "get_all_maintenance_predictions", AsyncMock(return_value=[])
+        ),
         patch(
             "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,
@@ -329,13 +329,12 @@ async def test_get_prediction_for_arac_not_found(monkeypatch):
 
     monkeypatch.setattr(mod.settings, "MAINTENANCE_PREDICTOR_ENABLED", True)
 
-    fake_predictor = AsyncMock()
-    fake_predictor.predict_for_arac.return_value = None
-
     fake_user = MagicMock()
     fake_user.id = 1
 
-    with patch.object(mod, "MaintenancePredictor", return_value=fake_predictor):
+    with patch.object(
+        mod, "get_maintenance_prediction_for_vehicle", AsyncMock(return_value=None)
+    ):
         with pytest.raises(HTTPException) as exc_info:
             await mod.get_prediction_for_arac(arac_id=999, current_user=fake_user)
 
@@ -361,14 +360,15 @@ async def test_get_prediction_for_arac_success(monkeypatch):
     pred_obj.savings_pct = 0.0
     pred_obj.reasons = []
 
-    fake_predictor = AsyncMock()
-    fake_predictor.predict_for_arac.return_value = pred_obj
-
     fake_user = MagicMock()
     fake_user.id = 1
 
     with (
-        patch.object(mod, "MaintenancePredictor", return_value=fake_predictor),
+        patch.object(
+            mod,
+            "get_maintenance_prediction_for_vehicle",
+            AsyncMock(return_value=pred_obj),
+        ),
         patch(
             "v2.modules.fleet.api.admin_maintenance_routes.log_audit_event",
             new_callable=AsyncMock,

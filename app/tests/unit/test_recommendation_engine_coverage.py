@@ -253,7 +253,7 @@ async def test_get_vehicle_recommendations_cache_hit():
 # ---------------------------------------------------------------------------
 # get_driver_recommendations
 #
-# These delegate to v2.modules.driver.domain.evaluation.evaluate_driver(), a
+# These delegate to v2.modules.driver.public.evaluate_driver(), a
 # free function (dalga 5, B.1 refactor — was SoforDegerlendirmeService via
 # container.degerlendirme_service) that computes a full driver evaluation
 # from trips. The tests below isolate the recommendation engine's branching on
@@ -269,7 +269,7 @@ async def test_get_driver_recommendations_none_degerlendirme():
     engine = _make_engine()
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=None),
     ):
         result = await engine.get_driver_recommendations(sofor_id=99)
@@ -288,7 +288,7 @@ async def test_get_driver_recommendations_low_score():
     degerlendirme.filo_karsilastirma = 0
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=1)
@@ -309,7 +309,7 @@ async def test_get_driver_recommendations_worsening_trend():
     degerlendirme.filo_karsilastirma = 0
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=2)
@@ -329,7 +329,7 @@ async def test_get_driver_recommendations_below_fleet_average():
     degerlendirme.filo_karsilastirma = -15  # <-10
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(return_value=degerlendirme),
     ):
         result = await engine.get_driver_recommendations(sofor_id=3)
@@ -342,7 +342,7 @@ async def test_get_driver_recommendations_exception_logged():
     engine = _make_engine()
 
     with patch(
-        "v2.modules.driver.domain.evaluation.evaluate_driver",
+        "v2.modules.driver.public.evaluate_driver",
         AsyncMock(side_effect=Exception("DB error")),
     ):
         result = await engine.get_driver_recommendations(sofor_id=50)

@@ -30,7 +30,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | # | Modül/kalem | Görev dosyası | Durum |
 |---|---|---|---|
 | — | Registry+iskelet+shim deseni (çatı) | `faz1-registry-iskelet-ve-shim.md` | 🔲 |
-| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🔲 |
+| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 11/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 13 kept, 1 broken[kapsam dışı]`); gate (continue-on-error kaldırma) kalan 6 dalga sonrası ayrı onayla |
 | — | Davranışsal mimari testleri (çatı) | `faz1-davranissal-mimari-testler.md` | 🔲 |
 | — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | 🔲 |
 | — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |

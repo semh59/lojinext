@@ -1,5 +1,7 @@
 [importlinter]
-root_package = app
+root_packages =
+    app
+    v2
 
 [importlinter:contract:report-only]
 name = Modular monolith boundary (report-only, FAZ0)
@@ -7,3 +9,1051 @@ type = independence
 modules =
     app.core.services
     app.services
+
+[importlinter:contract:module-cross-domain-infra-independence]
+name = 11 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
+type = independence
+modules =
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
+    v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.domain.**
+    v2.modules.auth_rbac.infrastructure.** -> v2.modules.auth_rbac.domain.**
+    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
+    v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
+    v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
+    v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
+    v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
+    v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
+    v2.modules.analytics_executive.infrastructure.** -> v2.modules.reports.infrastructure.**
+    v2.modules.driver.domain.** -> v2.modules.analytics_executive.infrastructure.**
+    v2.modules.driver.infrastructure.** -> v2.modules.reports.infrastructure.**
+    v2.modules.fuel.domain.** -> v2.modules.analytics_executive.infrastructure.**
+    v2.modules.fuel.domain.** -> v2.modules.fleet.infrastructure.**
+    v2.modules.fuel.infrastructure.** -> v2.modules.notification.infrastructure.**
+    v2.modules.reports.infrastructure.** -> v2.modules.analytics_executive.infrastructure.**
+    v2.modules.reports.infrastructure.** -> v2.modules.driver.infrastructure.**
+    v2.modules.reports.infrastructure.** -> v2.modules.fleet.infrastructure.**
+    v2.modules.reports.infrastructure.** -> v2.modules.fuel.infrastructure.**
+    v2.modules.import_excel.infrastructure.** -> v2.modules.reports.infrastructure.**
+    v2.modules.analytics_executive.infrastructure.** -> v2.modules.notification.application.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:module-internal-layers]
+name = Modul-ici katman sirasi (api -> application -> infrastructure -> domain)
+type = layers
+layers =
+    api
+    application
+    infrastructure
+    domain
+containers =
+    v2.modules.location
+    v2.modules.route_simulation
+    v2.modules.notification
+    v2.modules.fleet
+    v2.modules.fuel
+    v2.modules.driver
+    v2.modules.auth_rbac
+    v2.modules.anomaly
+    v2.modules.import_excel
+    v2.modules.reports
+    v2.modules.analytics_executive
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
+    v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.application.**
+    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
+    v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
+    v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
+    v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-location]
+name = location application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.location.application
+forbidden_modules =
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.location.application.** -> v2.modules.route_simulation.application.**
+    v2.modules.location.application.** -> v2.modules.route_simulation.domain.**
+    v2.modules.location.application.** -> v2.modules.route_simulation.infrastructure.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-route_simulation]
+name = route_simulation application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.route_simulation.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-notification]
+name = notification application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.notification.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.notification.application.** -> v2.modules.auth_rbac.application.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-fleet]
+name = fleet application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.fleet.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-fuel]
+name = fuel application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.fuel.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-driver]
+name = driver application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.driver.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-auth_rbac]
+name = auth_rbac application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.auth_rbac.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-anomaly]
+name = anomaly application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.anomaly.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-import_excel]
+name = import_excel application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.import_excel.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.import_excel.application.** -> v2.modules.fleet.application.**
+    v2.modules.import_excel.application.** -> v2.modules.fleet.schemas
+    v2.modules.import_excel.application.** -> v2.modules.fuel.schemas
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-reports]
+name = reports application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.reports.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.reports.application.** -> v2.modules.fleet.application.**
+    v2.modules.reports.infrastructure.repo_access -> v2.modules.analytics_executive.infrastructure.**
+    v2.modules.reports.infrastructure.repo_access -> v2.modules.driver.infrastructure.**
+    v2.modules.reports.infrastructure.repo_access -> v2.modules.fleet.infrastructure.**
+    v2.modules.reports.infrastructure.repo_access -> v2.modules.fuel.infrastructure.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-analytics_executive]
+name = analytics_executive application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.analytics_executive.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> app.core.services.ai_service
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> app.services.prediction_service
+    app.core.container -> app.services.smart_ai_service
+    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.import_excel.infrastructure.report_export
+    app.core.container -> v2.modules.location.infrastructure.repository
+    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.analytics_executive.application.** -> v2.modules.fleet.application.**
+    v2.modules.analytics_executive.application.** -> v2.modules.notification.application.**
+unmatched_ignore_imports_alerting = error

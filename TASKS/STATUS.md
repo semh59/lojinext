@@ -1002,14 +1002,65 @@ container'a özgü, CI'nın temiz ortamında görülmez).
 hard-gates 33dk25sn + GHCR build/push 18dk32sn + Deploy→Production dahil) —
 commit `48e8e21` main'in HEAD'i. https://github.com/semh59/lojinext/actions/runs/29531899079
 
+### İlk 11 dalganın tam dedektif denetimi (2026-07-17)
+
+Kullanıcı talebiyle ("ilk 11 dalgayı detaylı ve derin kontrol edelim...
+SIFIR AJANLARA VER... DEDEKTİF GİBİ") 11 modülün (`location`,
+`route_simulation`, `notification`, `fleet`, `fuel`, `driver`,
+`auth_rbac`, `anomaly`, `import_excel`, `reports`, `analytics_executive`)
+her biri için ayrı, sıfır-context, bağımsız ajan çalıştırıldı — B.1
+kuralına ("her dosya/sınıf tek sorumluluk") satır satır denetim.
+`auth_rbac` ve `reports` sıfır bulguyla tam temiz çıktı; diğer 9 modülde
+toplam ~30 bulgu (1 GERÇEK BUG + mimari/dokümantasyon borcu).
+
+**GERÇEK BUG bulundu ve aynı oturumda düzeltildi:** `import_excel`
+modülündeki `ocr.process_belge` Celery task'ı (`v2/modules/import_excel/
+infrastructure/tasks.py::process_belge_ocr`) `app/infrastructure/
+background/celery_app.py`'nin explicit import listesinde YOKTU — dalga
+9'un (`bffa2d4`) atladığı bir kayıt. Celery `autodiscover_tasks`
+kullanmıyor, kayıt tamamen bu explicit import listesine bağlı; eksik
+olunca Telegram sürücü-bot'unun belge-yükleme akışı (`.delay()` çağıran
+gerçek prod kod) worker'da `NotRegistered` ile sessizce patlıyordu.
+Testler bunu yakalayamamıştı çünkü hepsi task fonksiyonunu doğrudan
+import ediyordu, worker'ın gerçek yükleme yolunu hiç kullanmıyordu.
+
+**Düzeltme:** `celery_app.py`'ye eksik import eklendi + yeni regresyon
+testi (`test_ocr_tasks_coverage.py::
+test_task_registered_with_worker_via_celery_app_import_list` — gerçek
+`celery_app.tasks` registry'sini kontrol ediyor, `.name` attribute'una
+değil). TDD red→green gerçek Docker container'da doğrulandı (fix
+revert edilince test kırmızı, geri konunca yeşil). `pytest app/tests/
+unit/test_workers app/tests/unit/test_infrastructure/
+test_celery_app_config.py` → 101 passed.
+
+Kalan ~30 bulgu (domain/ katmanında I/O ihlalleri, public.py sınır
+ihlalleri, CLAUDE.md doc-drift, dokümante edilmemiş ölü kod) kullanıcı
+kararıyla ("Önce sadece gerçek bug'ı düzelt") bu oturumda uygulanmadı —
+`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`'de takip ediliyor,
+kullanıcı onayı olmadan dokunulmayacak.
+
+**CI Hard Gates TAM YEŞİL** — commit `49b7532` main'in HEAD'i
+(`gh run view 29555563172` → `success`, hard-gates 33dk49sn + GHCR
+build/push 25dk24sn + Deploy→Production dahil).
+https://github.com/semh59/lojinext/actions/runs/29555563172
+
+(Not: bir önceki docs-only commit `4534eea`'nin CI'sında "Build & Push
+to GHCR" job'ı "Extract frontend metadata" adımında geçici bir GitHub
+API hatasıyla kırmızı çıkmıştı — ham GitHub 404 HTML sayfası dönmüştü,
+backend metadata/build adımı hemen öncesinde sorunsuz geçmişti; kod
+değişikliğiyle ilgisiz bir altyapı hıçkırığı olduğu teyit edildi,
+`gh run rerun --failed` ile yeniden koşturuldu ve tam yeşile döndü.)
+
 ## Son güncelleme
-2026-07-16 — İlk 9 dalganın dedektif-denetim düzeltmeleri + bilinen mypy
-baseline hatalarının (7→0) temizliği + event-bus wiring + dalga 10 (reports)
-+ ilk 10 dalganın tam dedektif denetimi (4 HIGH bug + 4 MEDIUM + 9 LOW
-bulgu düzeltildi, bkz. yukarıdaki bölüm) main'de yeşil, CI Hard Gates ile
-doğrulandı (`gh run view 29515827692`, commit `95b2b99`). Dalga 11
-(analytics-executive) main'de yeşil (5 bağımsız ajanla dedektif denetimi
-+ CI-fix turu dahil, bkz. DALGA 11 bölümü, commit `48e8e21`, `gh run view
-29531899079`). Depo şu an **PUBLIC** (kullanıcı kararı, GHCR faturalama
-sorunu için geçici; iş bitince tekrar private yapılması gerekiyor — bkz.
-görev dışı hatırlatma).
+2026-07-17 — İlk 11 dalganın tam dedektif denetimi (11 bağımsız sıfır-context
+ajan, her modül için bir ajan): `auth_rbac`+`reports` temiz, diğer 9 modülde
+~30 bulgu (1 GERÇEK BUG + mimari/dok borcu). GERÇEK BUG (`import_excel`'in
+`ocr.process_belge` Celery task'ı worker'a hiç kayıtlı değildi, dalga 9
+regresyonu) aynı oturumda TDD red→green ile düzeltildi ve main'e push edildi
+(commit `49b7532`, `gh run view 29555563172` → tam yeşil). Kalan ~30 bulgu
+`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`'de takip ediliyor,
+kullanıcı onayı olmadan uygulanmayacak. Dalga 11 (analytics-executive)
+main'de yeşil (5 bağımsız ajanla dedektif denetimi + CI-fix turu dahil, bkz.
+DALGA 11 bölümü, commit `48e8e21`, `gh run view 29531899079`). Depo şu an
+**PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince
+tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).

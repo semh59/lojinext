@@ -34,7 +34,7 @@ async def _override_user():
 async def test_feedback_returns_202_and_calls_notifier():
     app = await _override_user()
     with patch(
-        "app.api.v1.endpoints.feedback.notify_feedback",
+        "v2.modules.ai_assistant.api.feedback_routes.notify_feedback",
         new=AsyncMock(return_value=True),
     ) as mock_notify:
         try:
@@ -56,7 +56,7 @@ async def test_feedback_returns_202_and_calls_notifier():
 async def test_feedback_still_202_when_ops_delivery_fails():
     app = await _override_user()
     with patch(
-        "app.api.v1.endpoints.feedback.notify_feedback",
+        "v2.modules.ai_assistant.api.feedback_routes.notify_feedback",
         new=AsyncMock(return_value=False),
     ):
         try:

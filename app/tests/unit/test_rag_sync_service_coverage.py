@@ -98,9 +98,7 @@ async def test_initial_sync_skips_if_already_syncing():
     svc = _make_service()
     svc._is_syncing = True
 
-    with patch(
-        "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo"
-    ) as mock_repo:
+    with patch("v2.modules.fleet.public.get_arac_repo") as mock_repo:
         await svc.initial_sync()
 
     mock_repo.assert_not_called()
@@ -182,7 +180,7 @@ async def test_on_arac_changed_int_id_fetches_from_repo():
     mock_arac_repo.get_by_id = AsyncMock(return_value=arac_data)
 
     with patch(
-        "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
+        "v2.modules.fleet.public.get_arac_repo",
         return_value=mock_arac_repo,
     ):
         await svc._on_arac_changed(event)
@@ -198,7 +196,7 @@ async def test_on_arac_changed_int_id_not_found_skips():
     mock_arac_repo.get_by_id = AsyncMock(return_value=None)
 
     with patch(
-        "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
+        "v2.modules.fleet.public.get_arac_repo",
         return_value=mock_arac_repo,
     ):
         await svc._on_arac_changed(event)

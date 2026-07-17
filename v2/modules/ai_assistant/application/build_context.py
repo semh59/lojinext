@@ -23,7 +23,7 @@ async def _get_dashboard_summary(days: int = 30):
 
 
 def _get_arac_repo():
-    from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
+    from v2.modules.fleet.public import get_arac_repo
 
     return get_arac_repo()
 
@@ -35,15 +35,13 @@ def _get_sefer_repo():
 
 
 def _get_yakit_repo():
-    from v2.modules.fuel.infrastructure.repository import get_yakit_repo
+    from v2.modules.fuel.public import get_yakit_repo
 
     return get_yakit_repo()
 
 
 def _get_analiz_repo():
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
+    from v2.modules.analytics_executive.public import get_analiz_repo
 
     return get_analiz_repo()
 

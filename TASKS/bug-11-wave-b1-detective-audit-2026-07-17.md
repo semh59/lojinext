@@ -188,6 +188,125 @@ denetimi o modülün kendi taşıma PR'ının parçası olarak yapılacak.
 
 ---
 
+# BÖLÜM C — dalga 12 (ai_assistant) B.1 dedektif denetimi (2026-07-17)
+
+Kullanıcı talebiyle ("ilk 12 dalgayı detaylı ve derin kontrol edelim...
+SIFIR AJANLARA VER... DEDEKTİF GİBİ") dalga 12'nin (`ai_assistant`, henüz
+aynı gün main'e push edilmiş) TÜM dosyaları 4 bağımsız sıfır-context ajana
+bölünerek (giriş katmanı/api+public+events+schemas+orchestration; RAG
+altyapısı; LLM+prompt+recommendation; trip-planner+repo-geneli
+tüketici/shim taraması) denetlendi.
+
+## Mekanik düzeltmeler — bu oturumda ÇÖZÜLDÜ
+
+1. **Redundant shim satırları** (`app/api/v1/endpoints/ai.py`,
+   `app/api/v1/endpoints/feedback.py`, `app/core/ai/trip_planner.py`) —
+   iki ajan çelişkili iddia üretti (biri "gerekli", diğeri "gereksiz");
+   bağımsız olarak kendim doğruladım (gerçek Docker container'da
+   `from mod import *` davranışı test edildi: `__all__` yokken router/sınıf
+   dahil TÜM modül-seviyesi isimler zaten star-import'a dahil oluyor) —
+   ikinci ajanın bulgusu doğru çıktı. Üç dosya da artık gerçek tek-satır
+   shim (`TASKS/faz1-registry-iskelet-ve-shim.md` kontratına tam uyum).
+2. **`trips.py`'nin CLAUDE.md/public.py'nin iddiasının aksine `public.py`'yi
+   atlaması** — `app/api/v1/endpoints/trips.py:960-961`
+   `TripPlannerEngine`/`PlanInput`'u `application`/`domain` içinden
+   doğrudan import ediyordu; CLAUDE.md + `public.py`'nin docstring'i bunun
+   `public.py` üzerinden yapıldığını iddia ediyordu (yanlış). Tek satırlık
+   import düzeltmesiyle iddia artık doğru.
+3. **`build_context.py`'nin fleet/fuel/analytics_executive'e ait
+   `public.py`'yi atlayıp `infrastructure/`'a doğrudan erişmesi** —
+   `_get_arac_repo`/`_get_yakit_repo`/`_get_analiz_repo` üç fonksiyon da
+   ilgili modülün `public.py`'sinde zaten export edilen aynı isimli
+   fonksiyonu çağıracak şekilde düzeltildi (davranış birebir aynı, yalnız
+   import path).
+4. **`rag_sync_service.py::_on_arac_changed`'in fleet'e ait
+   `infrastructure/vehicle_repository`'yi doğrudan import etmesi** —
+   aynı dosyadaki `_on_sofor_changed`'in zaten doğru yaptığı gibi
+   `v2.modules.fleet.public.get_arac_repo`'ya çevrildi.
+
+## Dokümantasyon düzeltmeleri — bu oturumda ÇÖZÜLDÜ (CLAUDE.md güncellendi)
+
+5. `RAGSyncService`'in "6/6 event aboneliği CANLI" iddiası **yarı-doğru**
+   çıktı — abonelik/registration gerçekten canlı (main.py'de `initialize()`
+   gerçekten çağrılıyor, 6 `EventType`'ın hepsinin gerçek publisher'ı var)
+   ama 2 kalem (SEFER_ADDED/UPDATED) fiili olarak devre dışı (bkz. madde 8).
+   CLAUDE.md bu nüansı yansıtacak şekilde düzeltildi.
+6. `build_context.py`'nin TÜM public API'si (`build_system_context`/
+   `build_vehicle_context`/`build_driver_context`/`build_analysis_context`/
+   `build_full_context`) — dokümante edilmemiş 4. bir ölü-kod kümesi olarak
+   eklendi (canlı chat yolu kendi ayrı, dublicate `_build_context()`'ini
+   kullanıyor, bunları hiç çağırmıyor).
+7. `RAGEngine.index_log`/`index_event`/`bulk_index` (`index_alert`'in tek
+   çağırdığı) — dokümante edilmemiş ek ölü metotlar olarak eklendi.
+
+## Gerçek, DAVRANIŞ DEĞİŞTİRİCİ bulgular — PRE-EXISTING (dalga 12'den önce de vardı), BU OTURUMDA DÜZELTİLMEDİ, kullanıcı kararı bekliyor
+
+Üçü de `git show d0b8f1e:<eski-yol>` ile dalga-12-öncesi koda karşı
+doğrulandı — dalga 12'nin taşıması bunları birebir/faithfully taşıdı,
+YENİ regresyon değiller. Ama gerçek, production etkisi olan bug'lar,
+davranış değişikliği gerektirdikleri için kullanıcı onayı olmadan
+düzeltilmedi:
+
+8. **`RAGSyncService._on_sefer_changed` prod'da fiilen no-op** —
+   handler yalnız `event.data.get("result")` bir dict ise işliyor. Gerçek
+   sefer event publisher'larının HİÇBİRİ `"result"` anahtarı kullanmıyor
+   (`sefer_write_service.py:965` → `{"sefer_id": ..., "sefer_no": ...}`,
+   `sefer_analiz_service.py:109` → `publish_simple_async(..., id=t_id,
+   tuketim=...)` → `{"id": ..., "tuketim": ...}`, `physics_handler.py`/
+   `anomaly/attribute_loss.py`/`import_excel/execute_import.py` →
+   `{"sefer_id": ..., ...}`). Anahtar isimleri publisher'lar arasında
+   TUTARSIZ (`sefer_id` vs `id`) — bu ayrı bir mimari sorun. Sonuç: sefer
+   eklenince/güncellenince RAG indeksi ASLA artımlı güncellenmiyor, yalnız
+   `initial_sync()`'in tek seferlik başlangıç taramasıyla (`limit=1000`)
+   sınırlı kalıyor.
+9. **`_on_arac_changed`/`_on_sofor_changed`'in int-branch'i muhtemelen
+   `RuntimeError` ile çöküyor (event_bus tarafından yutuluyor, sessiz)** —
+   gerçek publisher'lar (`fleet/application/create_vehicle.py:78,129`,
+   `update_vehicle.py:102`, `driver/application/add_sofor.py`,
+   `update_sofor.py`) HER ZAMAN `{"result": <int id>}` gönderiyor (asla
+   dict değil) — yani `isinstance(data, dict)` dalı hiç tetiklenmiyor,
+   HER ZAMAN int-branch çalışıyor: `get_arac_repo().get_by_id(data)` /
+   `get_sofor_repo().get_by_id(data)` — bunlar session'sız singleton
+   repo'lar, `BaseRepository.get_by_id`'nin kullandığı `self.session`
+   property'si session set edilmemişse `RuntimeError` fırlatıyor (kök
+   CLAUDE.md'nin "Singleton repos need UoW for raw-SQL methods" gotcha'sı
+   — `get_by_id` da aynı kısıtlamaya tabi). `event_bus.publish_async`
+   subscriber hatalarını yutup log'luyor (`except Exception: logger.
+   exception(...)`) — yani bu muhtemelen HER ARAC/SOFOR event'inde
+   sessizce patlıyor ve RAG hiç güncellenmiyor. **Doğrulanması gereken
+   varsayım:** bu analiz kod-okumasına dayanıyor, gerçek bir Docker
+   container'da canlı bir ARAC_ADDED event'i tetiklenip loglarda
+   `RuntimeError`/"Event handler failed" mesajı arandığında teyit
+   edilmeli (henüz yapılmadı — kullanıcı önceliklendirirse yapılabilir).
+   **Önerilen düzeltme:** `UnitOfWork` içinde `uow.arac_repo.get_by_id(...)`
+   çağırmak (initial_sync'in zaten yaptığı gibi).
+10. **FAISS indeksleri paylaşımlı `app_data` Docker volume'ünün DIŞINDA**
+    — hem kök CLAUDE.md hem bu modülün CLAUDE.md'si "Docker `app_data`
+    named volume üzerinden paylaşımlı persist" iddia ediyor, ama
+    `rag_engine.py`'nin `save_to_disk`/`load_from_disk` varsayılanı
+    (`"data/vector_store"`) ve `knowledge_base.py`'nin `KB_DIR`'ı
+    (`<repo_root>/data/ai_kb`) ikisi de `docker-compose.yml`'ın mount
+    ettiği `app_data:/app/app/data` yolunun DIŞINDA kalıyor (gerçek yol
+    `/app/data/*`, mount `/app/app/data`). Sonuç: her container
+    yeniden-oluşturmada FAISS indeksleri kayboluyor, replica'lar arasında
+    paylaşılmıyor. `git show`'la doğrulandı: `app/services/
+    smart_ai_service.py`'nin eski yolu da aynı (zaten bozuk) hedefe
+    çözümleniyordu — dalga 12 öncesinde de var.
+11. **`ai_routes.py::_fuel_trend_chart`'ın fuel modülünün `yakit_alimlari`
+    tablosuna ham SQL atması** — endpoint katmanı DB'ye doğrudan erişmemeli
+    (kök CLAUDE.md layer-order kuralı), `fuel.public`'in eşdeğer bir
+    fonksiyonu var mı kontrol edilip ona geçirilmeli. `git show`'la
+    doğrulandı: dalga 12 öncesinde de aynıydı (`app/api/v1/endpoints/
+    ai.py`'de).
+
+**Durum: madde 8-11 kullanıcı onayı olmadan dokunulmayacak** (davranış
+değişikliği + potansiyel geniş etki alanı — madde 10 özellikle bir
+deployment/infra kararı gerektiriyor, madde 8/9 fuel/fleet/driver event
+publisher'larının sözleşmesini etkileyebilir). Madde 1-7 (mekanik +
+dokümantasyon) bu oturumda kapatıldı.
+
+---
+
 ## Genel doğrulama özeti (2026-07-17, oturum sonu)
 
 - **Değiştirilen dosya sayısı:** ~75 (kod + test + CLAUDE.md), 5 dosya

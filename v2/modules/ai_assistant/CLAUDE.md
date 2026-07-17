@@ -8,8 +8,20 @@ planlama sihirbazı (`TripPlannerEngine`, `app/api/v1/endpoints/trips.py`
 tarafından kullanılır — trip henüz taşınmadı, dalga 14), pilot geri
 bildirimi (`/feedback` → Telegram OPS). Bu modül **hiçbir DB tablosuna
 sahip değil** — FAISS dosya-tabanlı indeks (`app/data/ai_kb/` +
-`data/vector_store/`), Docker `app_data` named volume üzerinden
-çoklu-replica'da paylaşımlı persist ediyor (kök CLAUDE.md'de dokümante).
+`data/vector_store/`). 🔴 **DÜZELTME (2026-07-17 dedektif denetimi):** kök
+CLAUDE.md ve bu dosyanın önceki hâli "Docker `app_data` named volume
+üzerinden paylaşımlı persist" iddia ediyordu — bu YANLIŞ çıktı. Gerçek
+kod her iki yolu da REPO-KÖKÜNE-GÖRE relatif çözüyor
+(`rag_engine.py`'nin `save_to_disk`/`load_from_disk` varsayılanı
+`"data/vector_store"`, `knowledge_base.py`'nin `KB_DIR`'ı
+`<repo_root>/data/ai_kb`) → container'da `/app/data/*`'e çözümleniyor,
+oysa `docker-compose.yml`'ın mount ettiği paylaşımlı volume
+`app_data:/app/app/data`'dır (`/app/app/data/*`). Yani FAISS indeksleri
+**paylaşımlı volume'ün DIŞINDA** — her container yeniden-oluşturmada
+kayboluyor, replica'lar arasında paylaşılmıyor. `git show`'la doğrulandı:
+dalga 12'den ÖNCE de aynı (zaten bozuk) davranış vardı — bu taşımanın
+regresyonu değil, ama düzeltilmemiş pre-existing bug. Detay:
+`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C madde 10.
 
 NE YAPMAZ: gerçek ML yakıt tahmini (bu artık `sefer_fuel_estimator.py`'nin
 işi, Phase 4-5 SeferFuelEstimator — bkz. aşağıdaki ölü-kod notu),
@@ -59,12 +71,14 @@ RecommendationEngine, get_recommendation_engine()
 PromptTuner, get_prompt_tuner()
 ```
 
-## 🔴 Üç ayrı ölü-kod bulgusu (taşındı, SİLİNMEDİ — kullanıcı kararı bekliyor)
+## 🔴 Ölü-kod bulguları (taşındı, SİLİNMEDİ — kullanıcı kararı bekliyor)
 
-Bu dalgada B.1 sınıf-istisna taraması sırasında üç bağımsız "sadece
-testler çağırıyor, hiçbir prod endpoint/servis çağırmıyor" deseni bulundu
-(grep ile doğrulandı, InsightEngine/dalga 11 ile aynı gerekçeyle
-SİLİNMEDİ — davranış değişikliği kullanıcı kararı gerektirir):
+Bu dalgada B.1 sınıf-istisna taraması sırasında "sadece testler
+çağırıyor, hiçbir prod endpoint/servis çağırmıyor" deseninde birden çok
+bağımsız kalem bulundu (grep ile doğrulandı, InsightEngine/dalga 11 ile
+aynı gerekçeyle SİLİNMEDİ — davranış değişikliği kullanıcı kararı
+gerektirir). İlk 3 kalem ilk turda, 4. ve 5. kalem 2026-07-17 dedektif
+denetiminde (4 bağımsız sıfır-context ajan) bulundu:
 
 1. **`AIService.predict_trip_fuel`/`detect_anomalies`/
    `_get_predictor_for_vehicle`** (`application/orchestrate_ai_response.py`)
@@ -84,6 +98,18 @@ SİLİNMEDİ — davranış değişikliği kullanıcı kararı gerektirir):
    kendi basit `_sanitize_prompt`'unu kullanıyor, bu sınıfı hiç çağırmıyor.
    `self.data` (dosyadan yüklenen JSON) gerçek state taşıdığı için B.1
    sınıf istisnası.
+4. **`build_context.py`'nin TÜM public API'si** (`build_system_context`/
+   `build_vehicle_context`/`build_driver_context`/`build_analysis_context`/
+   `build_full_context`, `public.py` üzerinden export ediliyor) —
+   repo-genelinde sıfır çağıran (testler hariç). Canlı `/ai/chat` yolu
+   (`AIService.generate_response` → `orchestrate_ai_response.py`'nin
+   kendi ÖZEL, KOPYA `_build_context()` metodu) bunları hiç çağırmıyor —
+   iki ayrı, birbirinden bağımsız context-oluşturma implementasyonu var.
+   İlk ölü-kod taramasında kaçırılmıştı, 2026-07-17 denetiminde bulundu.
+5. **`RAGEngine.index_log`/`index_event`/`bulk_index`** (`bulk_index`
+   yalnız `index_alert`'i çağırıyor) — repo-genelinde sıfır prod çağıran
+   (testler hariç). Dalga-12-öncesinden beri ölü (`git show` ile
+   doğrulandı), ilk ölü-kod taramasında kaçırılmıştı.
 
 ## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 9 adet, hepsi gerçek mutable state/DI gerekçeli)
 
@@ -129,8 +155,21 @@ function'lara bölündü (AnalizService/CostAnalyzer ile aynı gerekçe).
 
 Yayınlamıyor (DB tablosu sahibi değil). `RAGSyncService` 6 event'e abone
 (`ARAC_ADDED/UPDATED`, `SOFOR_ADDED/UPDATED`, `SEFER_ADDED/UPDATED`) —
-**CANLI**, `main.py` lifespan startup'ında gerçekten `initialize()`
-çağrılıyor (diğer modüllerin ölü event-subscriber bulgusundan farklı).
+kayıt/wiring **CANLI** (`main.py` lifespan startup'ında gerçekten
+`initialize()` çağrılıyor, diğer modüllerin ölü event-subscriber
+bulgusundan farklı). 🔴 **DÜZELTME (2026-07-17 dedektif denetimi):**
+ama fiili etkileri yarı-yarıya — `_on_sefer_changed` prod'da hep no-op
+(hiçbir gerçek sefer-event publisher'ı handler'ın beklediği `"result"`
+anahtarını kullanmıyor — bkz. `TASKS/bug-11-wave-b1-detective-audit-
+2026-07-17.md` BÖLÜM C madde 8), `_on_arac_changed`/`_on_sofor_changed`'in
+gerçek koşulda hep girilen int-branch'i de muhtemelen session'sız
+singleton repo üzerinde `RuntimeError`'a çarpıp event-bus'ın sessizce
+yuttuğu bir hata veriyor (madde 9, koda-dayalı analiz — canlı ortamda
+henüz doğrulanmadı). Sonuç: RAG indeksinin araç/şoför/sefer için
+ARTIMLI güncellenmesi muhtemelen hiç çalışmıyor, yalnız `initial_sync()`'in
+tek seferlik başlangıç taraması (limit=1000 sefer) veri sağlıyor. Bu üç
+kalem dalga-12-öncesinden beri var (regresyon değil), kullanıcı kararı
+bekliyor.
 
 ## Şema & tablo sahipliği
 
@@ -139,19 +178,26 @@ istisnaları #2/#7).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **fleet (taşındı)**: `build_context.py` → `v2.modules.fleet.infrastructure.
-  vehicle_repository.get_arac_repo()`.
-- **fuel (taşındı)**: `build_context.py` → `v2.modules.fuel.infrastructure.
-  repository.get_yakit_repo()`.
+- **fleet (taşındı)**: `build_context.py` → `v2.modules.fleet.public.
+  get_arac_repo()` (2026-07-17 denetiminde `infrastructure/` doğrudan
+  erişimden `public.py`'ye çevrildi).
+- **fuel (taşındı)**: `build_context.py` → `v2.modules.fuel.public.
+  get_yakit_repo()` (aynı düzeltme).
 - **reports (taşındı)**: `build_context.py` → `v2.modules.reports.public.
   get_dashboard_summary()`.
 - **analytics_executive (taşındı)**: `build_context.py` →
-  `v2.modules.analytics_executive.infrastructure.executive_read_models.
-  get_analiz_repo()`.
+  `v2.modules.analytics_executive.public.get_analiz_repo()` (aynı
+  düzeltme).
 - **driver (taşındı)**: `build_context.py`/`recommendation_engine.py`/
   `plan_trip.py` → `v2.modules.driver.public.{evaluate_driver,
   get_rankings, classify_route, get_route_profile_sofor,
   get_score_breakdown_sofor}`.
+
+  **Not:** `build_context.py`'nin fleet/fuel/reports/analytics_executive/
+  driver'a olan yukarıdaki 5 bağlantısının hepsi doğru şekilde `public.py`
+  üzerinden geçiyor, AMA `build_context.py`'nin TÜM public API'si ölü kod
+  (yukarıdaki ölü-kod bulgusu #4) — yani bu bağlantılar şu an prod'da hiç
+  tetiklenmiyor, yalnız yeniden bağlanırsa doğru çalışacak durumda.
 - **notification (taşındı)**: `api/feedback_routes.py` →
   `v2.modules.notification.infrastructure.telegram_client.notify_feedback`.
 - **anomaly (taşındı, ters yön)**: `v2/modules/anomaly/application/
@@ -171,11 +217,20 @@ istisnaları #2/#7).
   trip taşınınca güncellenecek (location/route_simulation dalga 1'deki
   geçici bağımlılıkla aynı desen). `app/api/v1/endpoints/trips.py`
   (trip modülünün kendisi) bu modülün `public.py`'sinden
-  `TripPlannerEngine`/`PlanInput`/`PlanResult` import ediyor.
+  `TripPlannerEngine`/`PlanInput`/`PlanResult` import ediyor (2026-07-17
+  denetiminde bulundu: önceden `application`/`domain` içinden doğrudan
+  import ediyordu, bu iddia o zaman yanlıştı — düzeltildi, artık doğru).
 - **route_simulation (taşınmadı kısım, geçici)**: `plan_trip.py`
   `app.core.container.get_container().weather_service` (henüz taşınmayan
   `weather_service.py`) ve `app.core.ml.route_similarity.find_similar_trips`
   (henüz taşınmayan prediction_ml/route_similarity) çağırıyor.
+- **fuel (taşındı, katman ihlali — pre-existing, düzeltilmedi)**:
+  `api/ai_routes.py::_fuel_trend_chart` fuel'in `yakit_alimlari` tablosuna
+  API katmanından doğrudan ham SQL atıyor (`fuel.public`'i atlıyor, kök
+  CLAUDE.md'nin layer-order kuralını ihlal ediyor). `git show` ile
+  dalga-12-öncesinden beri aynı olduğu doğrulandı — 2026-07-17
+  denetiminde bulundu, kullanıcı kararı bekliyor
+  (`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C madde 11).
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

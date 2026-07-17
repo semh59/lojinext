@@ -90,7 +90,7 @@ class RAGSyncService:
         elif isinstance(
             data, int
         ):  # Sadece ID geldiyse repodan çek (opsiyonel iyileştirme)
-            from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
+            from v2.modules.fleet.public import get_arac_repo
 
             arac = await get_arac_repo().get_by_id(data)
             if arac:

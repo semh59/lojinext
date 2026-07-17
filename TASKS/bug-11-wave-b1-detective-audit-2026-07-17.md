@@ -299,11 +299,45 @@ düzeltilmedi:
     doğrulandı: dalga 12 öncesinde de aynıydı (`app/api/v1/endpoints/
     ai.py`'de).
 
-**Durum: madde 8-11 kullanıcı onayı olmadan dokunulmayacak** (davranış
-değişikliği + potansiyel geniş etki alanı — madde 10 özellikle bir
-deployment/infra kararı gerektiriyor, madde 8/9 fuel/fleet/driver event
-publisher'larının sözleşmesini etkileyebilir). Madde 1-7 (mekanik +
-dokümantasyon) bu oturumda kapatıldı.
+**DURUM GÜNCELLEMESİ (2026-07-17, aynı gün ikinci tur — kullanıcı onayı:
+"eksikleri düzelt, teknik borç bırakma, varsayım yok"):** madde 8, 9, 10,
+11'in HEPSİ bu oturumda düzeltildi:
+
+- **Madde 8 (sefer sync no-op) — ÇÖZÜLDÜ:** `_on_sefer_changed` artık
+  `"sefer_id"` VE `"id"` anahtarlarını kontrol edip `UnitOfWork` üzerinden
+  `uow.sefer_repo.get_by_id(...)` çağırıyor. Anahtar-isim tutarsızlığının
+  KENDİSİ (publisher'lar arası `sefer_id`/`id` farkı) ayrı bir mimari
+  sorun olarak DOKUNULMADAN bırakıldı — handler'ın ikisini de kabul etmesi
+  yeterli, publisher'ları tekilleştirmek bu düzeltmenin kapsamı dışı.
+- **Madde 9 (arac/sofor RuntimeError) — ÇÖZÜLDÜ + DOĞRULANDI (varsayım
+  değil):** `UnitOfWork` deseni uygulandı. "Doğrulanması gereken varsayım"
+  notu artık GEÇERSİZ — gerçek testler (`test_rag_sync_service_coverage.py`)
+  eski `get_arac_repo`/`get_sofor_repo` patch'inin YENİ kodu hiç
+  etkilemediğini (test'in gerçek DB'ye karşı sessizce başarısız olduğunu)
+  gösterdi, bu da RuntimeError-tetiklenme analizini doğruladı — test
+  düzeltmesiyle birlikte teyit edilmiş oldu.
+- **Madde 10 (FAISS volume) — ÇÖZÜLDÜ:** `rag_engine.py`'nin
+  `save_to_disk`/`load_from_disk` varsayılanı `"app/data/vector_store"`,
+  `knowledge_base.py`'nin `KB_DIR`'ı `<repo_root>/app/data/ai_kb` oldu —
+  ikisi de artık gerçek mount hedefi `/app/app/data/*`'e çözümleniyor.
+  Eski veri taşınmadı (bug indeksin hiç kalıcı olmaması, kaybedilecek
+  gerçek veri yok).
+- **Madde 11 (ai_routes ham SQL) — ÇÖZÜLDÜ:** sorgu
+  `fuel/infrastructure/repository.py::YakitRepository.get_monthly_cost_trend()`
+  + `fuel/application/list_yakit.py::get_monthly_cost_trend()`'e taşındı
+  (birebir aynı SQL), `fuel.public`'ten export edildi, `ai_routes.py`
+  artık onu çağırıyor (`SessionDep` bağımlılığı kalktı).
+
+**Doğrulama (gerçek Docker + `lojinext_test` DB):** `ruff check app v2`
+temiz, `mypy app` temiz (682 dosya), ilgili 18 test dosyası (ai_query,
+rag_sync_service — 4 yeni test eklendi, rag_engine ×3, smart_ai_service,
+context_builder, feedback, health_admin, plan_wizard, ai_service ×2,
+trip_planner ×4, yakit_service ×2, fuel_coverage/more) tek koşumda
+**345 passed, 0 fail**, `pytest --collect-only app/tests tests` 6928
+test / 0 hata.
+
+Madde 1-11'in TAMAMI + dokümantasyon (madde 3-7) bu iki oturumda
+kapatıldı.
 
 ---
 

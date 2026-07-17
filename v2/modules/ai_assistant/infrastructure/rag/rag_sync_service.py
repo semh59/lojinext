@@ -83,36 +83,72 @@ class RAGSyncService:
                 self._is_syncing = False
 
     async def _on_arac_changed(self, event: Event):
-        """Araç eklendiğinde veya güncellendiğinde tetiklenir."""
+        """Araç eklendiğinde veya güncellendiğinde tetiklenir.
+
+        Gerçek publisher'lar (`fleet/application/{create,update}_vehicle.py`)
+        her zaman `{"result": <int id>}` gönderiyor — dict dalı hiç
+        tetiklenmiyor, int dalı HER ZAMAN çalışıyor. 2026-07-17 dedektif
+        denetiminde bulundu: `get_arac_repo()` session'sız bir singleton
+        döndürüyor, `UnitOfWork` olmadan `.get_by_id()` çağırmak
+        `RuntimeError` fırlatıyordu (event-bus bunu sessizce yutup
+        logluyordu — RAG hiç artımlı güncellenmiyordu). Fix:
+        `initial_sync()`'in zaten yaptığı gibi `UnitOfWork` içinde çağır.
+        """
         data = event.data.get("result")
         if data and isinstance(data, dict):
             await self.rag.index_vehicle(data)
-        elif isinstance(
-            data, int
-        ):  # Sadece ID geldiyse repodan çek (opsiyonel iyileştirme)
-            from v2.modules.fleet.public import get_arac_repo
+        elif isinstance(data, int):
+            from app.database.unit_of_work import UnitOfWork
 
-            arac = await get_arac_repo().get_by_id(data)
+            async with UnitOfWork() as uow:
+                arac = await uow.arac_repo.get_by_id(data)
             if arac:
                 await self.rag.index_vehicle(arac)
 
     async def _on_sofor_changed(self, event: Event):
-        """Şoför değiştiğinde tetiklenir."""
+        """Şoför değiştiğinde tetiklenir (bkz. `_on_arac_changed` docstring'i — aynı fix)."""
         data = event.data.get("result")
         if data and isinstance(data, dict):
             await self.rag.index_driver(data)
-        elif isinstance(data, int):  # Sadece ID geldiyse repodan çek
-            from v2.modules.driver.public import get_sofor_repo
+        elif isinstance(data, int):
+            from app.database.unit_of_work import UnitOfWork
 
-            sofor = await get_sofor_repo().get_by_id(data)
+            async with UnitOfWork() as uow:
+                sofor = await uow.sofor_repo.get_by_id(data)
             if sofor:
                 await self.rag.index_driver(sofor)
 
     async def _on_sefer_changed(self, event: Event):
-        """Sefer değiştiğinde tetiklenir."""
+        """Sefer değiştiğinde tetiklenir.
+
+        Gerçek publisher'lar `"result"` anahtarını HİÇ kullanmıyor —
+        `sefer_write_service.py` `{"sefer_id": ..., "sefer_no": ...}`,
+        `sefer_analiz_service.py` `{"id": ..., "tuketim": ...}`,
+        `physics_handler.py`/`anomaly/attribute_loss.py`/
+        `import_excel/execute_import.py` `{"sefer_id": ..., ...}` gönderiyor
+        (anahtar isimleri publisher'lar arasında tutarsız — ayrı bir mimari
+        sorun, burada dokunulmadı). 2026-07-17 dedektif denetiminde
+        bulundu: eski kod yalnız `"result"` dict'ini kontrol ediyordu,
+        hiçbir gerçek publisher'la eşleşmiyordu — sefer RAG senkronu
+        prod'da hep no-op'tu, yalnız `initial_sync()`'in tek seferlik
+        taramasıyla (limit=1000) sınırlıydı. Fix: hem `"sefer_id"` hem
+        `"id"` anahtarını (int) kontrol et, `UnitOfWork` üzerinden çek.
+        """
         data = event.data.get("result")
         if data and isinstance(data, dict):
             await self.rag.index_trip(data)
+            return
+
+        sefer_id = event.data.get("sefer_id")
+        if not isinstance(sefer_id, int):
+            sefer_id = event.data.get("id")
+        if isinstance(sefer_id, int):
+            from app.database.unit_of_work import UnitOfWork
+
+            async with UnitOfWork() as uow:
+                sefer = await uow.sefer_repo.get_by_id(sefer_id)
+            if sefer:
+                await self.rag.index_trip(sefer)
 
 
 # Singleton

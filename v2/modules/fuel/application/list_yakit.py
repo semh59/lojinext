@@ -89,3 +89,10 @@ async def get_monthly_summary() -> List[Dict]:
         if hasattr(uow.analiz_repo, "get_monthly_consumption_series"):
             return await uow.analiz_repo.get_monthly_consumption_series()
         return await uow.analiz_repo.get_daily_consumption_series(days=365)
+
+
+async def get_monthly_cost_trend(months: int = 12) -> List[Dict]:
+    """Son N ay için aylık toplam yakıt maliyeti — `[{"ay": "YYYY-MM", "tutar": float}, ...]`."""
+    async with UnitOfWork() as uow:
+        rows = await uow.yakit_repo.get_monthly_cost_trend(months=months)
+    return [{"ay": r["ay"], "tutar": float(r["tutar"])} for r in rows]

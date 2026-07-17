@@ -124,13 +124,24 @@ class RAGEngine:
             time.sleep(0.1)
         return False
 
-    def save_to_disk(self, path: str = "data/vector_store"):
-        """Vektör dükkanını diske kaydet."""
+    def save_to_disk(self, path: str = "app/data/vector_store"):
+        """Vektör dükkanını diske kaydet.
+
+        Path WORKDIR'e (`/app`) göre relatif — `app/data/...` repo'nun
+        `app/` paketinin ALTINDAKİ `data/` klasörüne (`/app/app/data/...`)
+        çözümlenir, ki bu docker-compose'un `app_data:/app/app/data`
+        named-volume mount'uyla aynı yol (kök CLAUDE.md'nin "Index
+        persisted to app/data/ai_kb/" dokümantasyonuyla tutarlı — repo
+        köküne göre `app/data/...`). Eski `"data/vector_store"` varsayılanı
+        bu mount'un DIŞINA (`/app/data/...`) yazıyordu; indeks her
+        container yeniden-oluşturmada kayboluyor, replica'lar arasında
+        paylaşılmıyordu (2026-07-17 dedektif denetiminde bulundu).
+        """
         if self.is_initialized and self.vector_store:
             self.vector_store.save_index(path)
 
-    def load_from_disk(self, path: str = "data/vector_store"):
-        """Vektör dükkanını diskten yükle."""
+    def load_from_disk(self, path: str = "app/data/vector_store"):
+        """Vektör dükkanını diskten yükle (bkz. `save_to_disk` docstring'i)."""
         if self.is_initialized and self.vector_store:
             self.vector_store.load_index(path)
 

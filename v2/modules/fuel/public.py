@@ -27,6 +27,7 @@ from v2.modules.fuel.application.list_fuel_documents import list_fuel_documents
 from v2.modules.fuel.application.list_yakit import (
     get_all,
     get_all_paged,
+    get_monthly_cost_trend,
     get_monthly_summary,
     get_stats,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "get_all_paged",
     "get_stats",
     "get_monthly_summary",
+    "get_monthly_cost_trend",
     "list_fuel_documents",
     "get_fuel_accuracy_stats",
     # periods

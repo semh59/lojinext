@@ -3,9 +3,8 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy import text
 
-from app.api.deps import SessionDep, get_current_active_user
+from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
 from app.schemas.api_responses import (
     AiChatResponse,
@@ -13,6 +12,7 @@ from app.schemas.api_responses import (
     AiStatusResponse,
 )
 from v2.modules.ai_assistant.application.orchestrate_ai_response import get_ai_service
+from v2.modules.fuel.public import get_monthly_cost_trend
 
 router = APIRouter()
 
@@ -22,24 +22,14 @@ class AiQueryRequest(BaseModel):
     category: str = Field("general", max_length=40)
 
 
-async def _fuel_trend_chart(db) -> Optional[dict]:
-    """yakit_alimlari aylık toplam tutar → line chart spec (deterministik)."""
-    rows = (
-        (
-            await db.execute(
-                text(
-                    "SELECT to_char(date_trunc('month', tarih), 'YYYY-MM') AS ay, "
-                    "COALESCE(SUM(toplam_tutar), 0) AS tutar "
-                    "FROM yakit_alimlari "
-                    "WHERE tarih >= now() - make_interval(months => 12) "
-                    "GROUP BY 1 ORDER BY 1"
-                )
-            )
-        )
-        .mappings()
-        .all()
-    )
-    data = [{"ay": r["ay"], "tutar": float(r["tutar"])} for r in rows]
+async def _fuel_trend_chart() -> Optional[dict]:
+    """yakit_alimlari aylık toplam tutar → line chart spec (deterministik).
+
+    Ham SQL fuel.public.get_monthly_cost_trend()'e taşındı (2026-07-17
+    dedektif denetimi — endpoint katmanı başka modülün tablosuna doğrudan
+    erişmemeli, kök CLAUDE.md layer-order kuralı). Sorgu birebir aynı.
+    """
+    data = await get_monthly_cost_trend(months=12)
     if not data:
         return None
     return {
@@ -100,7 +90,6 @@ async def chat_with_ai(
 @router.post("/query")
 async def ai_query(
     request: AiQueryRequest,
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ) -> dict:
     """Faz 9 — kategori-farkında AI sorgu: fuel_trend → grafik+aksiyon, general → LLM.
@@ -111,7 +100,7 @@ async def ai_query(
     chart = None
     actions: list[dict] = []
     if request.category == "fuel_trend":
-        chart = await _fuel_trend_chart(db)
+        chart = await _fuel_trend_chart()
         actions = [{"label": "Yakıt sayfası", "url": "/fuel"}]
 
     try:

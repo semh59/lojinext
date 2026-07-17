@@ -31,7 +31,12 @@ from v2.modules.ai_assistant.infrastructure.rag.vector_store import FAISSVectorS
 
 logger = get_logger(__name__)
 
-KB_DIR = Path(__file__).parent.parent.parent.parent.parent / "data" / "ai_kb"
+# repo_root/app/data/ai_kb — docker-compose'un app_data:/app/app/data
+# named-volume mount'uyla aynı yol (kök CLAUDE.md'nin "Index persisted to
+# app/data/ai_kb/" dokümantasyonuyla tutarlı). Eski hâli ("data"/"ai_kb",
+# `app/` segmenti olmadan) bu mount'un DIŞINA yazıyordu — 2026-07-17
+# dedektif denetiminde bulundu, bkz. rag_engine.py::save_to_disk docstring'i.
+KB_DIR = Path(__file__).parent.parent.parent.parent.parent / "app" / "data" / "ai_kb"
 KB_DIR.mkdir(parents=True, exist_ok=True)
 
 

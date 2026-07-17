@@ -1243,7 +1243,7 @@ async def test_plan_wizard_success(async_client, admin_auth_headers):
     try:
         with (
             patch(
-                "v2.modules.ai_assistant.application.plan_trip.TripPlannerEngine",
+                "v2.modules.ai_assistant.public.TripPlannerEngine",
                 return_value=mock_engine,
             ),
             patch(
@@ -1278,7 +1278,7 @@ async def test_plan_wizard_engine_error(async_client, admin_auth_headers):
 
     try:
         with patch(
-            "v2.modules.ai_assistant.application.plan_trip.TripPlannerEngine",
+            "v2.modules.ai_assistant.public.TripPlannerEngine",
             return_value=mock_engine,
         ):
             resp = await async_client.post(

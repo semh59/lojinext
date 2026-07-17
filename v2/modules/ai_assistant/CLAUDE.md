@@ -8,20 +8,21 @@ planlama sihirbazı (`TripPlannerEngine`, `app/api/v1/endpoints/trips.py`
 tarafından kullanılır — trip henüz taşınmadı, dalga 14), pilot geri
 bildirimi (`/feedback` → Telegram OPS). Bu modül **hiçbir DB tablosuna
 sahip değil** — FAISS dosya-tabanlı indeks (`app/data/ai_kb/` +
-`data/vector_store/`). 🔴 **DÜZELTME (2026-07-17 dedektif denetimi):** kök
-CLAUDE.md ve bu dosyanın önceki hâli "Docker `app_data` named volume
-üzerinden paylaşımlı persist" iddia ediyordu — bu YANLIŞ çıktı. Gerçek
-kod her iki yolu da REPO-KÖKÜNE-GÖRE relatif çözüyor
-(`rag_engine.py`'nin `save_to_disk`/`load_from_disk` varsayılanı
-`"data/vector_store"`, `knowledge_base.py`'nin `KB_DIR`'ı
-`<repo_root>/data/ai_kb`) → container'da `/app/data/*`'e çözümleniyor,
-oysa `docker-compose.yml`'ın mount ettiği paylaşımlı volume
-`app_data:/app/app/data`'dır (`/app/app/data/*`). Yani FAISS indeksleri
-**paylaşımlı volume'ün DIŞINDA** — her container yeniden-oluşturmada
-kayboluyor, replica'lar arasında paylaşılmıyor. `git show`'la doğrulandı:
-dalga 12'den ÖNCE de aynı (zaten bozuk) davranış vardı — bu taşımanın
-regresyonu değil, ama düzeltilmemiş pre-existing bug. Detay:
-`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C madde 10.
+`app/data/vector_store/`), Docker `app_data` named volume üzerinden
+çoklu-replica'da paylaşımlı persist ediyor. ✅ **DÜZELTİLDİ (2026-07-17,
+aynı gün ikinci tur):** kök CLAUDE.md'nin bu iddiası önceden YANLIŞTI —
+`rag_engine.py`'nin `save_to_disk`/`load_from_disk` varsayılanı
+(`"data/vector_store"`) ve `knowledge_base.py`'nin `KB_DIR`'ı
+(`<repo_root>/data/ai_kb`) ikisi de container'da `/app/data/*`'e
+çözümleniyordu, oysa `docker-compose.yml`'ın mount ettiği paylaşımlı
+volume `app_data:/app/app/data`'dır — indeksler paylaşımlı volume'ün
+DIŞINDAYDI (dalga-12-öncesinden beri, `git show` ile doğrulanmış
+pre-existing bug, regresyon değil). Path'ler `"app/data/vector_store"`
+ve `<repo_root>/app/data/ai_kb` olarak düzeltildi (artık `/app/app/data/*`
+— gerçek mount hedefi, kök CLAUDE.md'nin dokümantasyonuyla tutarlı).
+Eski verinin taşınması GEREKMEZ — bug indeksin hiç kalıcı olmamasıydı,
+kaybedilecek gerçek veri yoktu. Detay: `TASKS/bug-11-wave-b1-detective-
+audit-2026-07-17.md` BÖLÜM C madde 10.
 
 NE YAPMAZ: gerçek ML yakıt tahmini (bu artık `sefer_fuel_estimator.py`'nin
 işi, Phase 4-5 SeferFuelEstimator — bkz. aşağıdaki ölü-kod notu),
@@ -156,20 +157,31 @@ function'lara bölündü (AnalizService/CostAnalyzer ile aynı gerekçe).
 Yayınlamıyor (DB tablosu sahibi değil). `RAGSyncService` 6 event'e abone
 (`ARAC_ADDED/UPDATED`, `SOFOR_ADDED/UPDATED`, `SEFER_ADDED/UPDATED`) —
 kayıt/wiring **CANLI** (`main.py` lifespan startup'ında gerçekten
-`initialize()` çağrılıyor, diğer modüllerin ölü event-subscriber
-bulgusundan farklı). 🔴 **DÜZELTME (2026-07-17 dedektif denetimi):**
-ama fiili etkileri yarı-yarıya — `_on_sefer_changed` prod'da hep no-op
-(hiçbir gerçek sefer-event publisher'ı handler'ın beklediği `"result"`
-anahtarını kullanmıyor — bkz. `TASKS/bug-11-wave-b1-detective-audit-
-2026-07-17.md` BÖLÜM C madde 8), `_on_arac_changed`/`_on_sofor_changed`'in
-gerçek koşulda hep girilen int-branch'i de muhtemelen session'sız
-singleton repo üzerinde `RuntimeError`'a çarpıp event-bus'ın sessizce
-yuttuğu bir hata veriyor (madde 9, koda-dayalı analiz — canlı ortamda
-henüz doğrulanmadı). Sonuç: RAG indeksinin araç/şoför/sefer için
-ARTIMLI güncellenmesi muhtemelen hiç çalışmıyor, yalnız `initial_sync()`'in
-tek seferlik başlangıç taraması (limit=1000 sefer) veri sağlıyor. Bu üç
-kalem dalga-12-öncesinden beri var (regresyon değil), kullanıcı kararı
-bekliyor.
+`initialize()` çağrılıyor). ⚠️ Not: bu abonelikler `Event`/`EventType`
+(ham `dict` payload) kullanıyor, `events.py`'de tipli DTO **yok** — bu
+modül yalnız DİNLEYİCİ, publisher değil (2026-07-17 compliance
+denetiminde bulunan doküman/gerçeklik farkı — bu bölüm önceden "DTO'lara
+bağlı" diyordu, bu yanlıştı, düzeltildi).
+
+✅ **DÜZELTİLDİ (2026-07-17, aynı gün ikinci tur):** 3 gerçek artımlı-
+senkron bug'ı (dalga-12-öncesinden beri var, `git show` ile doğrulanmıştı,
+kullanıcı onayıyla düzeltildi):
+1. `_on_sefer_changed` prod'da hep no-op'tu — hiçbir gerçek sefer-event
+   publisher'ı `"result"` anahtarını kullanmıyordu. Artık `"sefer_id"`
+   (ör. `sefer_write_service.py`) VE `"id"` (ör.
+   `sefer_analiz_service.py`'nin `publish_simple_async(..., id=t_id,
+   ...)` deseni) anahtarlarını da kontrol edip `UnitOfWork` üzerinden
+   `uow.sefer_repo.get_by_id(...)` ile çekiyor.
+2. `_on_arac_changed`/`_on_sofor_changed`'in gerçek koşulda HER ZAMAN
+   girilen int-branch'i session'sız singleton repo'nun `.get_by_id()`'ini
+   çağırıyordu — `RuntimeError` fırlatıp event-bus tarafından sessizce
+   yutuluyordu. Artık `initial_sync()`'in zaten kullandığı `UnitOfWork`
+   deseniyle (`uow.arac_repo`/`uow.sofor_repo`) çekiyor.
+3. Doğrulama: `app/tests/unit/test_rag_sync_service_coverage.py`'ye 4 yeni
+   regresyon testi eklendi (sefer_id/id anahtar varyantları), 2 mevcut
+   test `UnitOfWork` mock desenine çevrildi (eski `get_arac_repo`/
+   `get_sofor_repo` patch'i artık koda hiç değmiyordu — testler YANLIŞLIKLA
+   yeşildi). Gerçek Docker+DB'de 142 passed.
 
 ## Şema & tablo sahipliği
 
@@ -224,13 +236,40 @@ istisnaları #2/#7).
   `app.core.container.get_container().weather_service` (henüz taşınmayan
   `weather_service.py`) ve `app.core.ml.route_similarity.find_similar_trips`
   (henüz taşınmayan prediction_ml/route_similarity) çağırıyor.
-- **fuel (taşındı, katman ihlali — pre-existing, düzeltilmedi)**:
-  `api/ai_routes.py::_fuel_trend_chart` fuel'in `yakit_alimlari` tablosuna
-  API katmanından doğrudan ham SQL atıyor (`fuel.public`'i atlıyor, kök
-  CLAUDE.md'nin layer-order kuralını ihlal ediyor). `git show` ile
-  dalga-12-öncesinden beri aynı olduğu doğrulandı — 2026-07-17
-  denetiminde bulundu, kullanıcı kararı bekliyor
-  (`TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C madde 11).
+- **fuel (taşındı)**: ✅ **DÜZELTİLDİ (2026-07-17, aynı gün ikinci tur)** —
+  `api/ai_routes.py::_fuel_trend_chart` fuel'in `yakit_alimlari`
+  tablosuna API katmanından doğrudan ham SQL atıyordu (dalga-12-öncesinden
+  beri, `git show` ile doğrulanmış pre-existing katman ihlali). Sorgu
+  `v2/modules/fuel/infrastructure/repository.py::YakitRepository.
+  get_monthly_cost_trend()` + `application/list_yakit.py::
+  get_monthly_cost_trend()` olarak fuel'e taşındı (birebir aynı SQL,
+  davranış değişikliği yok), `fuel.public`'ten export edildi.
+  `ai_routes.py` artık `v2.modules.fuel.public.get_monthly_cost_trend`'i
+  çağırıyor, `SessionDep`'e bağımlılığı kalmadı. Detay:
+  `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C madde 11.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+FAZ1'in import-linter gate'i henüz aktif değil (rapor modu). Hedef
+kontrat: diğer modüller yalnız `v2.modules.ai_assistant.public`/
+`.events`'i import eder; `application/`/`domain/`/`infrastructure/`'a
+doğrudan erişim yasak — bu kontrat aktive olana kadar 2 bilinen tüketici
+(`anomaly/application/generate_cluster_insight.py`,
+`driver/application/generate_coaching.py`, ikisi de
+`infrastructure.llm.groq_client.get_groq_service`'i doğrudan import
+ediyor) geçici borç olarak kalıyor, dokümante edildi (bkz. yukarıdaki
+"Senkron konuştuğu modüller"). Bu modülün kendisi de fleet/fuel/
+analytics_executive/driver/reports/notification'a hep `public.py`
+üzerinden gidiyor (2026-07-17 denetiminde 2 istisna düzeltildi —
+`build_context.py`/`rag_sync_service.py`'nin fleet'e doğrudan
+`infrastructure` erişimi).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`sohbet`=chat, `bağlam`=context, `bilgi tabanı`=knowledge base,
+`gömme/vektör temsili`=embedding, `benzerlik eşiği`=similarity threshold,
+`istem`=prompt, `öneri`=recommendation, `sefer planlama sihirbazı`=trip
+planner wizard, `aday`=candidate (vehicle/driver şortlist üyesi).
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

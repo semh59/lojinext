@@ -280,6 +280,22 @@ class YakitRepository(BaseRepository[YakitAlimi]):
         except Exception as e:
             raise e
 
+    async def get_monthly_cost_trend(self, months: int = 12) -> List[Dict[str, Any]]:
+        """Son N ay için aylık toplam yakıt maliyeti (ham TL toplamı).
+
+        `ai_assistant/api/ai_routes.py::_fuel_trend_chart`'ın eski ham-SQL'i
+        buraya taşındı (2026-07-17 dedektif denetimi — endpoint katmanı DB'ye
+        doğrudan erişmemeli). Sorgu birebir aynı, davranış değişikliği yok.
+        """
+        query = """
+            SELECT to_char(date_trunc('month', tarih), 'YYYY-MM') AS ay,
+                   COALESCE(SUM(toplam_tutar), 0) AS tutar
+            FROM yakit_alimlari
+            WHERE tarih >= now() - make_interval(months => :months)
+            GROUP BY 1 ORDER BY 1
+        """
+        return await self.execute_query(query, {"months": months})
+
     async def get_fuel_periods(
         self, arac_id: int, limit: int = 20
     ) -> List[Dict[str, Any]]:

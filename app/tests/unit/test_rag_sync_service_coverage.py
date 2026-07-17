@@ -172,16 +172,24 @@ async def test_on_arac_changed_dict_data():
 
 
 async def test_on_arac_changed_int_id_fetches_from_repo():
+    """2026-07-17 fix: int-branch artık UnitOfWork içinde uow.arac_repo
+    kullanıyor (session'sız singleton + doğrudan .get_by_id() RuntimeError
+    fırlatıyordu — bkz. rag_sync_service.py docstring'i), bu yüzden
+    UnitOfWork mocklanıyor (test_initial_sync_indexes_all_entities'teki
+    aynı desen)."""
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
     event = _make_event({"result": 42})
 
-    mock_arac_repo = MagicMock()
     arac_data = {"id": 42, "plaka": "34XY"}
-    mock_arac_repo.get_by_id = AsyncMock(return_value=arac_data)
+    mock_uow = MagicMock()
+    mock_uow.arac_repo = MagicMock()
+    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac_data)
 
-    with patch(
-        "v2.modules.fleet.public.get_arac_repo",
-        return_value=mock_arac_repo,
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         await svc._on_arac_changed(event)
 
@@ -189,15 +197,18 @@ async def test_on_arac_changed_int_id_fetches_from_repo():
 
 
 async def test_on_arac_changed_int_id_not_found_skips():
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
     event = _make_event({"result": 99})
 
-    mock_arac_repo = MagicMock()
-    mock_arac_repo.get_by_id = AsyncMock(return_value=None)
+    mock_uow = MagicMock()
+    mock_uow.arac_repo = MagicMock()
+    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=None)
 
-    with patch(
-        "v2.modules.fleet.public.get_arac_repo",
-        return_value=mock_arac_repo,
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         await svc._on_arac_changed(event)
 
@@ -231,16 +242,20 @@ async def test_on_sofor_changed_dict_data():
 
 
 async def test_on_sofor_changed_int_id_fetches_from_repo():
+    """2026-07-17 fix: bkz. test_on_arac_changed_int_id_fetches_from_repo — aynı desen."""
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
     event = _make_event({"result": 5})
 
-    mock_sofor_repo = MagicMock()
     sofor_data = {"id": 5, "ad_soyad": "Mehmet"}
-    mock_sofor_repo.get_by_id = AsyncMock(return_value=sofor_data)
+    mock_uow = MagicMock()
+    mock_uow.sofor_repo = MagicMock()
+    mock_uow.sofor_repo.get_by_id = AsyncMock(return_value=sofor_data)
 
-    with patch(
-        "v2.modules.driver.public.get_sofor_repo",
-        return_value=mock_sofor_repo,
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         await svc._on_sofor_changed(event)
 
@@ -248,15 +263,18 @@ async def test_on_sofor_changed_int_id_fetches_from_repo():
 
 
 async def test_on_sofor_changed_int_id_not_found_skips():
+    from app.database.unit_of_work import UnitOfWork
+
     svc = _make_service()
     event = _make_event({"result": 99})
 
-    mock_sofor_repo = MagicMock()
-    mock_sofor_repo.get_by_id = AsyncMock(return_value=None)
+    mock_uow = MagicMock()
+    mock_uow.sofor_repo = MagicMock()
+    mock_uow.sofor_repo.get_by_id = AsyncMock(return_value=None)
 
-    with patch(
-        "v2.modules.driver.public.get_sofor_repo",
-        return_value=mock_sofor_repo,
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         await svc._on_sofor_changed(event)
 
@@ -283,9 +301,76 @@ async def test_on_sefer_changed_dict_data():
 
 
 async def test_on_sefer_changed_non_dict_skips():
+    """`{"result": 200}` hiçbir gerçek publisher'ın kullandığı bir şekil
+    değil (bkz. aşağıdaki sefer_id/id testleri) — sefer_id/id anahtarı
+    olmadığı için hâlâ no-op olmalı."""
     svc = _make_service()
     event = _make_event({"result": 200})
     await svc._on_sefer_changed(event)
+    svc.rag.index_trip.assert_not_called()
+
+
+async def test_on_sefer_changed_sefer_id_key_fetches_from_repo():
+    """2026-07-17 fix: gerçek publisher'lar (`sefer_write_service.py` vb.)
+    `"result"` değil `"sefer_id"` (int) gönderiyor — eski kod bunu hiç
+    işlemiyordu (prod'da hep no-op), yeni kod UnitOfWork üzerinden çekiyor."""
+    from app.database.unit_of_work import UnitOfWork
+
+    svc = _make_service()
+    event = _make_event({"sefer_id": 200, "sefer_no": "S-200"})
+
+    sefer_data = {"id": 200, "mesafe_km": 500}
+    mock_uow = MagicMock()
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_by_id = AsyncMock(return_value=sefer_data)
+
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
+        await svc._on_sefer_changed(event)
+
+    svc.rag.index_trip.assert_called_once_with(sefer_data)
+
+
+async def test_on_sefer_changed_id_key_fetches_from_repo():
+    """`sefer_analiz_service.py`'nin `publish_simple_async(..., id=t_id, ...)`
+    deseni — `"id"` anahtarı, `"sefer_id"` değil."""
+    from app.database.unit_of_work import UnitOfWork
+
+    svc = _make_service()
+    event = _make_event({"id": 201, "tuketim": 32.5})
+
+    sefer_data = {"id": 201, "mesafe_km": 300}
+    mock_uow = MagicMock()
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_by_id = AsyncMock(return_value=sefer_data)
+
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
+        await svc._on_sefer_changed(event)
+
+    svc.rag.index_trip.assert_called_once_with(sefer_data)
+
+
+async def test_on_sefer_changed_sefer_id_not_found_skips():
+    from app.database.unit_of_work import UnitOfWork
+
+    svc = _make_service()
+    event = _make_event({"sefer_id": 999})
+
+    mock_uow = MagicMock()
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_by_id = AsyncMock(return_value=None)
+
+    with (
+        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+    ):
+        await svc._on_sefer_changed(event)
+
     svc.rag.index_trip.assert_not_called()
 
 

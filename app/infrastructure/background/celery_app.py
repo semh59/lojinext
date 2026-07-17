@@ -168,6 +168,7 @@ import v2.modules.anomaly.infrastructure.cluster_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.theft_tasks  # noqa: E402,F401
 import v2.modules.driver.infrastructure.coaching_tasks  # noqa: E402,F401
 import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
+import v2.modules.import_excel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
 

@@ -221,7 +221,7 @@ async def error_stream(request: Request):
             content={"error": {"code": "FORBIDDEN"}},
         )
 
-    from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
+    from v2.modules.auth_rbac.public import Permission, SecurityService
 
     if not SecurityService.has_permission(db_user, Permission.ADMIN):
         return JSONResponse(

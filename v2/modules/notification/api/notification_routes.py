@@ -13,7 +13,7 @@ from app.schemas.api_responses import (
     NotificationItemResponse,
     NotificationRuleResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 from v2.modules.notification.application.get_user_notifications import (
     get_user_notifications,
 )

@@ -10,7 +10,7 @@ from app.core.services.admin_audit_service import AdminAuditService
 from app.core.services.konfig_service import KonfigService
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 
 router = APIRouter()
 logger = get_logger(__name__)

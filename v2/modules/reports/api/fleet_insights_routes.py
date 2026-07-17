@@ -11,7 +11,7 @@ from app.config import settings
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 from v2.modules.reports.application.compute_fleet_comparison import (
     PeriodType,
     compute_fleet_comparison,

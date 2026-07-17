@@ -3,6 +3,14 @@
 Other modules that need to call into auth_rbac must import from here, not
 from ``application/``, ``domain/``, or ``infrastructure/`` directly (see
 TASKS/modules/auth-rbac.md and .importlinter's forbidden-imports contract).
+2026-07-17 B.1 dedektif denetimi bulgusu: bu iddia daha önce doğru değildi
+— hiçbir gerçek tüketici buradan geçmiyordu. 7 kardeş v2 modülü +
+`app/core/services/sefer_read_service.py` + 5 admin endpoint + 3 script
+artık gerçekten ``public`` üzerinden gidiyor (düzeltildi). ``app/api/
+deps.py``/``app/core/container.py``/``app/database/repositories/
+__init__.py``/``app/infrastructure/websocket/ws_auth.py``/``app/main.py``
+hâlâ dokümante edilmiş composition-root/framework-wiring istisnası (bkz.
+aşağı) — bu proje genelinde tutarlı bir karar, auth_rbac'a özgü değil.
 
 There is no ``AuthService``/``UserService``/``PreferenceService`` class —
 each use-case is a standalone function (same B.1 pattern as location/

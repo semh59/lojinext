@@ -10,7 +10,7 @@ from app.schemas.api_responses import (
     BackupTriggerResponse,
     CircuitBreakerResetResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 
 logger = get_logger(__name__)
 

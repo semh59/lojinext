@@ -14,7 +14,7 @@ from v2.modules.anomaly.schemas import (
     AttributionOverrideRequest,
     AttributionOverrideResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 
 router = APIRouter()
 

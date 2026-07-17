@@ -190,20 +190,36 @@ dokunulmadı, davranış değişikliği yok.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **admin_platform (senkron, henüz taşınmadı)**: en yoğun tüketici — 8 import
-  (`admin_attribution.py`/`admin_config.py`/`admin_health.py`/
-  `admin_integrations.py`/`admin_ml.py`/`admin_imports.py`/
-  `fleet_insights.py`/`error_stream.py` — `require_yetki`/`get_current_user`/
-  `Permission` kullanıyor).
-- **notification (senkron, zaten taşınmış)**: `auth_rbac→notification` (tek
-  `out` kenarı) — `auth_routes.py::request_password_reset`
+**DÜZELTME (2026-07-17 B.1 dedektif denetimi):** bu bölüm önceden "diğer
+modüller require_yetki/Permission'a deps.py üzerinden dolaylı erişiyor"
+diyordu — bu YANLIŞTI. Gerçekte 7 v2 modülü (`analytics_executive`,
+`anomaly`, `fleet`, `import_excel`, `notification` — hem api/ hem
+application/'da —, `reports`) + `app/core/services/sefer_read_service.py`
++ 5 admin endpoint (`admin_calibration.py`/`admin_config.py`/
+`admin_health.py`/`admin_integrations.py`/`admin_ml.py`/`error_stream.py`)
++ 3 script `require_yetki`/`Permission`/`SecurityService`/
+`get_password_hash`'i `domain`/`application`'dan DOĞRUDAN import
+ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
+
+- **admin_platform (senkron, henüz taşınmadı)**: en yoğun tüketici — 6
+  endpoint (`admin_calibration.py`/`admin_config.py`/`admin_health.py`/
+  `admin_integrations.py`/`admin_ml.py`/`error_stream.py`) artık
+  `require_yetki`/`Permission`/`SecurityService`'i `auth_rbac.public`
+  üzerinden çekiyor; `get_current_user`/`get_current_active_user` hâlâ
+  `app/api/deps.py` üzerinden (o dosya kendisi composition-root
+  istisnası, aşağıya bkz.).
+- **notification (senkron, zaten taşınmış)**: iki yönlü —
+  `auth_rbac→notification`: `auth_routes.py::request_password_reset`
   `v2.modules.notification.infrastructure.email_client.send_password_reset`
-  çağırır.
-- **trip, fuel, fleet, driver, route_simulation, prediction_ml, anomaly,
-  import_excel, analytics_executive** (senkron, `in` kenarları) —
-  `require_permissions`/`get_current_active_user` gibi `app/api/deps.py`
-  wiring'ini kullanır (deps.py auth_rbac'a import eder, bu modüller deps.py'yi
-  kullanır — dolaylı bağımlılık).
+  çağırır. `notification→auth_rbac`: `notification_routes.py`
+  (`require_yetki`) ve `application/quiet_hours.py` (`get_preferences`)
+  artık `auth_rbac.public` üzerinden.
+- **fleet, anomaly, import_excel, analytics_executive, reports** —
+  `require_yetki`'yi artık `auth_rbac.public` üzerinden import ediyor.
+- **trip, fuel, driver, route_simulation, prediction_ml** — bu modüller
+  henüz auth_rbac'a doğrudan bir simge import etmiyor (yalnız `app/api/
+  deps.py`'nin genel `get_current_active_user`/`require_permissions`
+  wiring'ini dolaylı kullanıyor).
 
 ## Modüle özel iş kuralları & gotcha'lar
 

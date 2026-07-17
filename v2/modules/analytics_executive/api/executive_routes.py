@@ -54,7 +54,7 @@ from v2.modules.analytics_executive.schemas import (
     WhatIfRequest,
     WhatIfResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 
 logger = logging.getLogger(__name__)
 

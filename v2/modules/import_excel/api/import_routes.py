@@ -24,7 +24,7 @@ from app.schemas.api_responses import (
     ImportPreviewResponse,
     SuccessCountResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 from v2.modules.import_excel.application.execute_import import execute_import
 from v2.modules.import_excel.application.get_import_history import (
     get_import_history as get_import_history_usecase,

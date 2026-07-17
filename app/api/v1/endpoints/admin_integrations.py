@@ -24,7 +24,7 @@ from app.core.services.integration_secrets import (
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.container_health import get_container_status
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 
 router = APIRouter()
 logger = get_logger(__name__)

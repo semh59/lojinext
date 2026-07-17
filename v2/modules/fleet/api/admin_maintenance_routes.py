@@ -17,7 +17,7 @@ from app.schemas.api_responses import (
     MaintenanceCompleteResponse,
     MaintenanceRecordResponse,
 )
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.public import require_yetki
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
 )

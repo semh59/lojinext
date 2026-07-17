@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.database.connection import AsyncSessionLocal
 from app.database.models import Kullanici
-from v2.modules.auth_rbac.domain.security import get_password_hash
+from v2.modules.auth_rbac.public import hash_password as get_password_hash
 
 USERNAME = os.getenv("RESET_USERNAME", "")
 NEW_PASSWORD = os.getenv("NEW_PASSWORD", "")

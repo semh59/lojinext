@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 11/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) kod+yerel Docker doğrulama tam, CI/push kullanıcı onayı bekliyor (bkz. DALGA 12 bölümü) |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 12/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) main'de yeşil, 2 turluk dedektif denetim + 4 gerçek bug fix dahil (bkz. DALGA 12 bölümü); sıradaki: dalga 13 (prediction-ml), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -45,7 +45,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 9 | import-excel | `modules/import-excel.md` | ✅ main'de yeşil (commit `5d1a0fb`, bkz. DALGA 9 bölümü) |
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
-| 12 | ai-assistant | `modules/ai-assistant.md` | 🟡 kod+yerel doğrulama tam, CI/push bekliyor (bkz. DALGA 12 bölümü) |
+| 12 | ai-assistant | `modules/ai-assistant.md` | ✅ main'de yeşil (commit `928de51`, bkz. DALGA 12 bölümü) |
 | 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
 | 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
@@ -1051,7 +1051,7 @@ backend metadata/build adımı hemen öncesinde sorunsuz geçmişti; kod
 değişikliğiyle ilgisiz bir altyapı hıçkırığı olduğu teyit edildi,
 `gh run rerun --failed` ile yeniden koşturuldu ve tam yeşile döndü.)
 
-## DALGA 12 — 🟡 KOD TAM, YEREL DOĞRULAMA TAM, CI DOĞRULAMASI BEKLİYOR (2026-07-17)
+## DALGA 12 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-17/18)
 
 **Kapsam:** ai_assistant modülü — LLM sohbet (`/ai/chat`, `/ai/query`,
 `/ai/progress`, `/ai/status`), RAG (FAISS + sentence-transformers), Feature C
@@ -1088,7 +1088,12 @@ ile aynı gerekçe, kullanıcı kararı bekliyor):**
 FARKLI):** `main.py` lifespan'i `get_rag_sync_service().initialize()`'ı
 gerçekten çağırıyor — Docker container'da doğrulandı (`ARAC/SOFOR/SEFER
 _ADDED/UPDATED` 6 aboneliği gerçek DB verisiyle 5 araç/4 şoför/5 sefer
-indeksledi, log'da görüldü).
+indeksledi, log'da görüldü). ✅ **2026-07-18 dedektif denetiminde bulunan
++ düzeltilen nüans:** kayıt/wiring canlıydı ama İLK turdaki bu doğrulama
+yalnız `initial_sync()`'in tek seferlik başlangıç taramasını kapsıyordu —
+ARTIMLI (event-tetiklemeli) güncelleme yolu 3 gerçek bug yüzünden fiilen
+çalışmıyordu (bkz. aşağıdaki "İkinci tur dedektif denetimi" bölümü),
+bugünkü düzeltmeyle gerçekten 6/6 çalışır hale geldi.
 
 **Bulunan+düzeltilen gerçek geçiş hataları (refactor sırasında, davranış
 regresyonu değil ama mekanik taşıma eksikleriydi):**
@@ -1142,10 +1147,55 @@ build edildi):**
 - `alembic check` çalıştırılmadı — bu modül hiçbir DB tablosuna sahip değil
   (doğrulandı, şema değişikliği yok).
 
-**CI durumu: PENDING — henüz push edilmedi.** Yerel/container doğrulama
-kapsamlı ve yeşil ama gerçek CI Hard Gates koşumu (GHCR build, Playwright
-E2E, coverage gate, OpenAPI schema drift) henüz görülmedi — main'e push
-öncesi kullanıcı onayı gerekiyor (DURMA NOKTASI + push politikası).
+**İkinci tur dedektif denetimi (2026-07-17/18, kullanıcı talebiyle "ilk 12
+dalgayı detaylı ve derin kontrol edelim... dedektif gibi denetlesinler"):**
+4 bağımsız sıfır-context ajan (giriş katmanı/api+public+events+schemas+
+orchestration; RAG altyapısı; LLM+prompt+recommendation; trip-planner+
+repo-geneli tüketici/shim taraması) + ayrı bir 5. compliance-audit ajanı
+(görev dosyasının Taşıma Adımları/Kabul Kriterleri'ne + shim/CLAUDE.md
+şablon sözleşmesine harfiyen uyulup uyulmadığını denetledi) dalga 12'yi
+tekrar taradı. Bulgular:
+- Mekanik/dokümantasyon borcu (3 shim'in gereksiz 2. import satırı,
+  `trips.py`'nin CLAUDE.md'nin iddiasının aksine `public.py`'yi atlaması,
+  `build_context.py`/`rag_sync_service.py`'nin fleet/fuel/
+  analytics_executive'e doğrudan `infrastructure` erişimi, 2 eksik
+  CLAUDE.md şablon bölümü, `events.py`'nin DTO içermediğinin yanlış
+  dokümante edilmesi) — hepsi aynı oturumda düzeltildi.
+- **4 gerçek, davranış-etkileyen pre-existing bug** (`git show` ile
+  dalga-12-öncesinden beri var olduğu doğrulandı, dalga 12'nin
+  regresyonu DEĞİL): (1) sefer RAG senkronu payload-anahtar uyuşmazlığı
+  yüzünden prod'da hep no-op, (2) araç/şoför RAG senkronunun int-branch'i
+  session'sız singleton repo'da `RuntimeError`'a çarpıp event-bus
+  tarafından sessizce yutuluyordu, (3) FAISS indeksleri (`rag_engine.py`
+  + `knowledge_base.py`) paylaşımlı `app_data` Docker volume'ünün
+  DIŞINDA bir path'e yazıyordu, (4) `ai_routes.py::_fuel_trend_chart`
+  fuel'in `yakit_alimlari` tablosuna endpoint katmanından ham SQL
+  atıyordu. Kullanıcının açık onayıyla ("eksikleri düzelt, teknik borç
+  bırakma, varsayım yok") 4'ü de bu oturumda düzeltildi (detay:
+  `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md` BÖLÜM C).
+- Kendi düzeltmemin yan etkisi olarak bulunan ek gerçek regresyon:
+  `trips.py`'nin `public.py`'ye geçişi `app/tests/api/
+  test_trips_coverage.py`'nin 2 testinin patch hedefini geçersiz
+  kılmıştı (biri yanlışlıkla yeşil kalıyordu — mock koda hiç değmiyordu
+  — diğeri CI'da gerçekten kırmızı çıktı, `assert 200 == 500`). Patch
+  hedefi `v2.modules.ai_assistant.public.TripPlannerEngine`'e
+  güncellendi.
+
+**Doğrulama (2. tur, gerçek Docker + `lojinext_test` DB):** `ruff check
+app v2` temiz, `mypy app` temiz (682 dosya), `pytest --collect-only
+app/tests tests` 6928 test/0 hata, ilgili 19+2 test dosyası 345+69
+passed, `app/tests/api`'nin TAMAMI (879 test) passed.
+
+**CI durumu: ✅ TAM YEŞİL.** 3 push turu oldu: `df14908` (ana taşıma) →
+CI kırmızı (2 eski test patch-target) → `940bcf3` (düzeltme, ilk CI
+denemesi "Security — RBAC coverage" adımında native kütüphane
+çökmesiyle kırmızı çıktı — `git show` ile dalga-12-öncesi koda birebir
+aynı olduğu doğrulanıp rerun edildi, **yeşil**, 35dk37sn — geçici CI
+hıçkırığıydı, regresyon değil) → `fcee130` (1. tur dedektif denetim
+mekanik düzeltmeleri, yeşil) → `928de51` (2. tur dedektif denetim + 4
+gerçek bug fix + trips.py test düzeltmesi). **`gh run view 29611326223`
+→ `success`** (hard-gates 30dk43sn + GHCR build/push 15dk49sn + Deploy→
+Production/Staging dahil main'in HEAD'i).
 
 **Kod-dışı bulunan pre-existing sorun (bu dalgayla ilgisiz, düzeltilmedi):**
 `.importlinter`'ın "unmatched_ignore_imports_alerting = error" ayarı,
@@ -1166,6 +1216,21 @@ yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
 taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
 
 ## Son güncelleme
+2026-07-18 — Dalga 12 (ai_assistant) main'de TAM YEŞİL (commit `928de51`,
+`gh run view 29611326223` → `success`). İki turlu dedektif denetim: 1.
+tur (taşıma sırasında) 3 ölü-kod kümesi + RAGSyncService'in canlılığı
+doğrulandı; 2. tur (kullanıcı talebiyle "ilk 12 dalgayı detaylı ve derin
+kontrol edelim... dedektif gibi") 4 bağımsız sıfır-context ajan + 1
+compliance-audit ajanı ile mekanik/dokümantasyon borcu (shim'ler,
+public.py sınır ihlalleri, CLAUDE.md şablon eksikleri) VE 4 gerçek
+davranış-etkileyen pre-existing bug (sefer/araç/şoför RAG senkron
+hataları, FAISS'in paylaşımlı volume dışında kalması, ai_routes.py'nin
+fuel tablosuna ham SQL'i) bulundu — kullanıcı onayıyla ("eksikleri
+düzelt, teknik borç bırakma, varsayım yok") hepsi aynı oturumda
+düzeltildi, gerçek Docker+DB'de doğrulandı, main'de CI Hard Gates tam
+yeşil. Detay: `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
+BÖLÜM C.
+
 2026-07-17 — İlk 11 dalganın tam dedektif denetimi (11 bağımsız sıfır-context
 ajan, her modül için bir ajan): `auth_rbac`+`reports` temiz, diğer 9 modülde
 ~30 bulgu (1 GERÇEK BUG + mimari/dok borcu). GERÇEK BUG (`import_excel`'in

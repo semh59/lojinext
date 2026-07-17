@@ -18,12 +18,28 @@ from v2.modules.location.application.analyze_location_route import (
 from v2.modules.location.application.create_location import create_location
 from v2.modules.location.application.delete_location import delete_location
 from v2.modules.location.application.geocode_location import geocode_location
+from v2.modules.location.application.get_all_locations import get_all_locations
+from v2.modules.location.application.get_location_by_id import get_location_by_id
+from v2.modules.location.application.get_location_segments import (
+    get_location_segments,
+)
+from v2.modules.location.application.get_location_stats import get_location_stats
+from v2.modules.location.application.get_stale_locations import get_stale_locations
+from v2.modules.location.application.get_unique_location_names import (
+    get_unique_location_names,
+)
+from v2.modules.location.application.hydrate_location import (
+    hydrate_location,
+)
 from v2.modules.location.application.hydration import (
     HydrationResult,
     LokasyonHydrator,
     get_lokasyon_hydrator,
 )
 from v2.modules.location.application.list_locations import list_locations
+from v2.modules.location.application.search_locations_by_route import (
+    search_locations_by_route,
+)
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.domain.route_key import normalize_turkish_title, route_key
 from v2.modules.location.infrastructure.repository import (
@@ -63,4 +79,12 @@ __all__ = [
     "LokasyonSegmentsResponse",
     "LokasyonPaginationResponse",
     "GeocodeSuggestion",
+    "get_all_locations",
+    "get_location_by_id",
+    "get_location_segments",
+    "get_location_stats",
+    "get_stale_locations",
+    "get_unique_location_names",
+    "hydrate_location",
+    "search_locations_by_route",
 ]

@@ -305,9 +305,7 @@ class Container:
         if self._export_service is None:
             with self._lock:
                 if self._export_service is None:
-                    from v2.modules.import_excel.infrastructure.report_export import (
-                        ExportService,
-                    )
+                    from v2.modules.import_excel.public import ExportService
 
                     self._export_service = ExportService()
         return self._export_service

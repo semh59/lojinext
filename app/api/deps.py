@@ -46,6 +46,7 @@ from app.infrastructure.background.job_manager import (
     get_job_manager,
 )
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
 from v2.modules.auth_rbac.domain.token_blacklist import blacklist
 
@@ -85,13 +86,9 @@ async def get_current_user(
     try:
         # Phase 3 Security: Add leeway for clock skew. Verify aud/iss claims
         # so tokens issued for a different service or environment are rejected.
-        if settings.ALGORITHM == "RS256" and settings.JWT_PUBLIC_KEY:
-            _decode_key = settings.JWT_PUBLIC_KEY.get_secret_value()
-        else:
-            _decode_key = settings.SECRET_KEY.get_secret_value()
         payload = jwt.decode(
             token,
-            _decode_key,
+            jwt_handler.get_decode_key(),
             algorithms=[settings.ALGORITHM],
             audience=settings.JWT_AUDIENCE,
             issuer=settings.JWT_ISSUER,

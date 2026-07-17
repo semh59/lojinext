@@ -28,6 +28,7 @@ from v2.modules.import_excel.infrastructure.report_export import (
     ExportService,
     get_export_service,
 )
+from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
 __all__ = [
     "ExportService",
@@ -39,6 +40,7 @@ __all__ = [
     "import_sefer_excel_upload",
     "parse_and_preview",
     "parse_dorse_excel",
+    "process_belge_ocr",
     "process_driver_import",
     "process_sefer_import",
     "process_vehicle_import",

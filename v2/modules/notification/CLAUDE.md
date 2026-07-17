@@ -97,7 +97,7 @@ doğrudan çağrılan bir yol).
   `is_user_quiet_now`'ı `v2.modules.auth_rbac.application.preference_service`'i
   doğrudan import eder (dalga 6'da güncellendi — eski `app.core.services.
   preference_service.PreferenceService` yolu artık yok).
-- **analytics_executive** (senkron, in-edge): `insight_engine.py`'nin
+- **analytics_executive** (senkron, in-edge): `generate_insights.py`'nin
   `_notify_serious_alerts` fonksiyonu `send_push_broadcast`'i fonksiyon-içi
   (inline) import eder.
 - **fuel modülü adayı** (senkron, in-edge): `compliance_tasks.py`
@@ -146,7 +146,7 @@ FAZ1'in v2-modülü import-linter gate'i henüz aktif değil (bkz.
 ayrı bir onay gerektiren çatı görevi, location dalgasında da kurulmadı).
 Hedef kontrat: diğer modüller yalnız `v2.modules.notification.public`'i
 import eder; `application/`/`domain/`/`infrastructure/`'a doğrudan erişim
-yasak — bugünkü konsolide-fonksiyon çağrıları (`insight_engine.py`,
+yasak — bugünkü konsolide-fonksiyon çağrıları (`generate_insights.py`,
 `compliance_tasks.py` vb.) bu kurala aykırı, gate aktive olunca
 `ignore_imports`'a dondurulacak (location'ın kendi CLAUDE.md'sindeki
 notla aynı durum).
@@ -234,6 +234,6 @@ notla aynı durum).
   `mark_as_read` IDOR-guard'ı (gerçek DB, gerçek iki kullanıcı).
 - Free-function `unittest.mock.patch` hedefi HER ZAMAN **tüketen modül**
   namespace'i (örn. `v2.modules.notification.application.send_push_to_user.send_webpush`)
-  — İstisna: fonksiyon-içi (inline) importlar (`insight_engine.py`'deki
+  — İstisna: fonksiyon-içi (inline) importlar (`generate_insights.py`'deki
   `send_push_broadcast`, `push_to_user`'ın `is_user_quiet_now`'ı gibi) —
   bunlar KAYNAK modülden patch'lenir (`v2.modules.notification.application.quiet_hours.is_user_quiet_now`).

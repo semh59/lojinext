@@ -114,13 +114,11 @@ def create_benchmarks() -> List[Benchmark]:
     from app.core.services.sefer_service import get_sefer_service
     from app.database.connection import get_connection
     from v2.modules.fleet.application.list_vehicles import get_all_vehicles
-    from v2.modules.reports.application.generate_fleet_summary import (
+    from v2.modules.reports.public import (
         generate_fleet_summary,
-    )
-    from v2.modules.reports.application.generate_monthly_trend import (
         generate_monthly_trend,
+        resolve_repos,
     )
-    from v2.modules.reports.infrastructure.repo_access import resolve_repos
 
     return [
         Benchmark(

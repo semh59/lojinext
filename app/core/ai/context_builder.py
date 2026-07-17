@@ -34,10 +34,8 @@ class ContextBuilder:
 
         class _ReportsFacade:
             async def get_dashboard_summary(self, days: int = 30):
-                from v2.modules.reports.application.get_dashboard_summary import (
+                from v2.modules.reports.public import (
                     get_dashboard_summary,
-                )
-                from v2.modules.reports.infrastructure.repo_access import (
                     resolve_repos,
                 )
 

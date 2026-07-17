@@ -77,12 +77,10 @@ class TestCRUDResponseContent:
 
         mock_get_all_paged = AsyncMock(return_value={"items": mock_items, "total": 2})
 
-        mock_db = MagicMock()
         mock_user = MagicMock()
 
         with patch.object(v_mod, "get_all_vehicles_paged", mock_get_all_paged):
             result = await v_mod.read_araclar(
-                db=mock_db,
                 current_user=mock_user,
                 skip=0,
                 limit=100,
@@ -121,7 +119,6 @@ class TestCRUDResponseContent:
 
         with patch.object(v_mod, "get_all_vehicles_paged", mock_get_all_paged):
             result = await v_mod.read_araclar(
-                db=MagicMock(),
                 current_user=MagicMock(),
                 skip=0,
                 limit=100,

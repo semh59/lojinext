@@ -28,7 +28,6 @@ get_monthly_comparison(repos: ReportRepos, year=None, month=None) -> dict
 get_daily_consumption_trend(repos: ReportRepos, days=30) -> list
 
 ReportRepos, resolve_repos(uow: UnitOfWork | None = None) -> ReportRepos
-TrendReport                                            # domain/report_metrics.py dataclass
 
 aggregate_today_triage(uow, *, limit=50, lookback_days=7) -> TodayTriage
 TodayTriage, TriageItem, TriageAction

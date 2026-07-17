@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFi
 from sqlalchemy.exc import IntegrityError
 
 from app.api.deps import (
-    SessionDep,
     UOWDep,
     get_current_active_admin,
     get_current_active_user,
@@ -50,7 +49,6 @@ router = APIRouter()
 
 @router.get("/", response_model=StandardResponse[List[DorseResponse]])
 async def read_dorseler(
-    db: SessionDep,
     uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     skip: int = Query(0, ge=0),

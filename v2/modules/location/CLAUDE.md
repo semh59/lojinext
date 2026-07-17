@@ -25,6 +25,15 @@ normalize_turkish_title(s) -> str                           # İ/ı bug-fix'li t
 
 LokasyonHydrator, get_lokasyon_hydrator()                   # application/hydration.py
 LokasyonRepository, get_lokasyon_repo(session=None)
+
+get_location_stats(repo) -> dict
+get_stale_locations(repo, days: int) -> list[dict]
+get_location_by_id(repo, lokasyon_id: int, include_inactive=False) -> dict | None
+search_locations_by_route(repo, cikis: str, varis: str) -> list[Lokasyon]
+get_unique_location_names(repo) -> list[str]
+get_all_locations(repo) -> list[dict]
+hydrate_location(repo, hydrator: LokasyonHydrator, lokasyon_id: int) -> dict
+get_location_segments(repo, lokasyon_id: int) -> dict | None
 ```
 
 **Önemli**: `LokasyonService` sınıfı YOK. Her use-case bağımsız bir

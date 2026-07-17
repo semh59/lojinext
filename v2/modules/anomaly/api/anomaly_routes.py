@@ -12,6 +12,9 @@ from v2.modules.anomaly.application.detect_anomaly import (
     SeverityEnum,
     get_anomaly_detector,
 )
+from v2.modules.anomaly.application.generate_cluster_insight import (
+    generate_cluster_insight,
+)
 from v2.modules.anomaly.application.get_fleet_insights import (
     get_fleet_insights as get_fleet_insights_usecase,
 )
@@ -20,18 +23,6 @@ from v2.modules.anomaly.domain.clustering import cluster_anomalies
 logger = get_logger(__name__)
 
 router = APIRouter()
-
-
-async def _cluster_insight(cluster: dict) -> str:
-    """Groq ile küme için kısa Türkçe insight. Hata → caller yutar."""
-    from app.core.ai.groq_service import GroqService
-
-    prompt = (
-        f"Filo anomali kümesi: {cluster['label']}. "
-        f"Severity dağılımı: {cluster['severity_dagilim']}. "
-        "Tek cümlede olası kök neden ve önerilen aksiyonu Türkçe yaz."
-    )
-    return await GroqService().chat(prompt, system_prompt="Sen bir filo analistisin.")
 
 
 @router.get("/clusters", response_model=Dict[str, Any])
@@ -51,7 +42,7 @@ async def get_anomaly_clusters(
         c["insight"] = None
         if settings.ANOMALY_CLUSTER_LLM_ENABLED:
             try:
-                c["insight"] = await _cluster_insight(c)
+                c["insight"] = await generate_cluster_insight(c)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("cluster insight (groq) başarısız: %s", exc)
     return {"clusters": clusters, "period_days": days}

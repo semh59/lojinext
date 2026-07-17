@@ -36,7 +36,6 @@ from v2.modules.reports.application.get_daily_consumption_trend import (
 )
 from v2.modules.reports.application.get_dashboard_summary import get_dashboard_summary
 from v2.modules.reports.application.get_monthly_comparison import get_monthly_comparison
-from v2.modules.reports.domain.report_metrics import TrendReport
 from v2.modules.reports.infrastructure.pdf_export import (
     PDFReportGenerator,
     get_report_generator,
@@ -53,7 +52,6 @@ __all__ = [
     "get_daily_consumption_trend",
     "ReportRepos",
     "resolve_repos",
-    "TrendReport",
     "aggregate_today_triage",
     "TodayTriage",
     "TriageItem",

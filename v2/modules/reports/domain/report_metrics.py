@@ -2,24 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import date
 from typing import Dict, Optional
-
-
-@dataclass
-class TrendReport:
-    """Trend report model."""
-
-    period: str
-    start_date: date
-    end_date: date
-    toplam_sefer: int
-    toplam_km: int
-    toplam_yakit: float
-    ortalama_tuketim: float
-    onceki_tuketim: Optional[float] = None
-    tuketim_degisim: Optional[float] = None
 
 
 def calculate_performance_score(

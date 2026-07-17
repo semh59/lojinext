@@ -163,7 +163,9 @@ async def test_yakit_import_multi_arac_persists_and_recalcs(db_session):
     periods_count = (
         await db_session.execute(select(func.count()).select_from(YakitPeriyot))
     ).scalar_one()
-    assert periods_count >= 0  # pipeline crash etmedi (hata yutuldu)
+    # Bilinen bug'ın gerçek sonucu: recalculate_vehicle_periods sessizce
+    # başarısız olduğu için HİÇBİR periyot satırı oluşmuyor (0, >=0 değil).
+    assert periods_count == 0
 
 
 @pytest.mark.integration

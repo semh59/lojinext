@@ -15,17 +15,85 @@ DOĞRUDAN kullanılır, tekrar ``async with`` edilmez.
 """
 
 import asyncio
+import json
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Tuple
 
 from fastapi import HTTPException, Request, status
 
+from app.config import settings
 from app.database.models import KullaniciOturumu
 from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.audit.audit_logger import audit_logger
 from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
 from v2.modules.auth_rbac.domain import jwt_handler
 
 logger = get_logger(__name__)
+
+
+async def authenticate_super_admin(
+    username: str, password: str, request: Request
+) -> Optional[Tuple[str, str]]:
+    """Break-glass super-admin authentication (`SUPER_ADMIN_PASSWORD` env).
+
+    Returns (access_token, refresh_token) on success, None if the super-admin
+    path doesn't apply (wrong username, unconfigured, or wrong password) — the
+    caller falls through to regular `authenticate()`.
+
+    2026-07-01 prod-grade denetimi P1: genel `auth_token` bucket'ından ayrı,
+    IP-scoped, çok daha sıkı bir rate-limit bucket (`super_admin_login:{ip}`)
+    kullanır — hem başarılı hem başarısız denemeleri sayar.
+    """
+    super_admin_user = settings.SUPER_ADMIN_USERNAME
+    if username != super_admin_user:
+        return None
+
+    super_admin_pass = (
+        settings.SUPER_ADMIN_PASSWORD.get_secret_value()
+        if settings.SUPER_ADMIN_PASSWORD
+        else None
+    )
+    if not super_admin_pass:
+        logger.warning(
+            "SUPER_ADMIN_PASSWORD is not configured; bypass auth is disabled."
+        )
+        return None
+
+    _login_ip = request.client.host if request.client else "unknown"
+    super_admin_limiter = await RateLimiterRegistry.get(
+        f"super_admin_login:{_login_ip}",
+        rate=settings.SUPER_ADMIN_LOGIN_RATE,
+        period=settings.SUPER_ADMIN_LOGIN_PERIOD,
+    )
+    await super_admin_limiter.acquire()
+
+    if not secrets.compare_digest(password, super_admin_pass):
+        return None
+
+    access_token = jwt_handler.create_access_token(
+        data={"sub": super_admin_user, "role": "super_admin", "is_super": True}
+    )
+    refresh_token = jwt_handler.create_refresh_token(
+        data={"sub": super_admin_user, "is_super": True}
+    )
+    _client_ip = request.client.host if request.client else "unknown"
+    audit_logger.warning(
+        json.dumps(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "action": "super_admin_login",
+                "actor": super_admin_user,
+                "role": "super_admin",
+                "ip": _client_ip,
+                "user_agent": request.headers.get("user-agent", ""),
+                "path": str(request.url.path),
+                "status": "success",
+            }
+        )
+    )
+    return access_token, refresh_token
 
 
 async def authenticate(

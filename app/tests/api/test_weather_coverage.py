@@ -354,9 +354,7 @@ class TestDashboardWeatherSummary:
         # get_lokasyon_repo is imported inline inside the endpoint function;
         # patch it in its defining module.
         mock_db = AsyncMock()
-        with patch(
-            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
-        ) as mock_get_repo:
+        with patch("v2.modules.location.public.get_lokasyon_repo") as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
                 return_value=[
@@ -399,9 +397,7 @@ class TestDashboardWeatherSummary:
         sefer_svc.get_all_paged = AsyncMock(return_value={"items": [trip]})
 
         mock_db = AsyncMock()
-        with patch(
-            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
-        ) as mock_get_repo:
+        with patch("v2.modules.location.public.get_lokasyon_repo") as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
                 return_value=[
@@ -444,9 +440,7 @@ class TestDashboardWeatherSummary:
         sefer_svc.get_all_paged = AsyncMock(return_value={"items": [trip]})
 
         mock_db = AsyncMock()
-        with patch(
-            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
-        ) as mock_get_repo:
+        with patch("v2.modules.location.public.get_lokasyon_repo") as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
                 return_value=[
@@ -488,9 +482,7 @@ class TestDashboardWeatherSummary:
         sefer_svc.get_all_paged = AsyncMock(return_value={"items": [trip]})
 
         mock_db = AsyncMock()
-        with patch(
-            "v2.modules.location.infrastructure.repository.get_lokasyon_repo"
-        ) as mock_get_repo:
+        with patch("v2.modules.location.public.get_lokasyon_repo") as mock_get_repo:
             mock_repo = MagicMock()
             mock_repo.get_all = AsyncMock(
                 return_value=[

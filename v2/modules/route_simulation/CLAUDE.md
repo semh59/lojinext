@@ -29,9 +29,6 @@ get_route_details(start_coords, end_coords, use_cache=True, include_details=Fals
 # application/get_route_difficulty.py
 get_route_difficulty(ascent, descent, distance_km) -> str
 
-# application/get_base_location.py
-get_base_location() -> str
-
 # application/simulate_route.py
 RouteSimulator, get_route_simulator()
   .simulate(cikis_lon, cikis_lat, varis_lon, varis_lat, ton=15.0, arac_yasi=5,
@@ -83,6 +80,23 @@ property'leri de hiçbir prod kod tarafından çağrılmadığı için kaldırı
    constructor-injected client bağımlılığı (Mapbox/Open-Meteo client'ları).
    CRUD-benzeri bir servis değil, `LokasyonHydrator`/`DriverCoachingEngine`
    ile aynı gerekçe kategorisi.
+2. **`OpenRouteClient`** (`infrastructure/openroute_client.py`, 2026-07-17
+   dedektif denetiminde bulundu) — **DOKÜMANTE EDİLMEMİŞ, DÜZELTİLMEMİŞ
+   B.1 ihlali**: routing mesafe hesabı + geocoding + `lokasyonlar`
+   tablosuna ham SQL cache-persist (`_get_from_cache`/`_save_to_cache`/
+   `update_route_distance`, satır ~367-616) tek sınıfta birleşmiş, üç
+   ayrı sorumluluk. Düzeltme (cache-persist'i ayrı bir sınıfa çıkarma)
+   BİLİNÇLİ OLARAK ERTELENDİ: `app/tests/unit/test_openroute_client_
+   coverage.py` + `test_openroute_client_more.py`'de 20+ test
+   `client._get_from_cache`/`client._save_to_cache`'i doğrudan instance
+   metodu olarak patch'liyor — güvenli bir split bu testlerin de
+   yeniden yazılmasını gerektirir, düşük-trafikli bir yol için (canlı
+   `/analyze` akışı bu sınıfı hiç çağırmıyor — grep doğrulandı, tek
+   gerçek çağıran `scripts/enrich_existing_data.py`'nin bağımsız
+   zenginleştirme script'i) orantısız risk. Gelecekte ele alınacaksa:
+   cache-persist metotlarını `RouteDistanceCache` sınıfına taşı,
+   `OpenRouteClient` yalnız proxy tutsun (testler bozulmaz), ayrıca
+   geocode'u da ayrı bir `NominatimGeocoder`-benzeri yapıya çıkar.
 
 ## Yayınladığı / dinlediği event'ler
 
@@ -91,7 +105,7 @@ Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **location** (senkron): `LokasyonHydrator` (location/domain/hydration.py)
+- **location** (senkron): `LokasyonHydrator` (location/application/hydration.py)
   bu modülün `MapboxClient`/`OpenMeteoElevationClient`/`resample_segments`'ini
   doğrudan import eder — sefer create anında güncel trafik/elevation lazım,
   event-gecikmesi kabul edilemez.

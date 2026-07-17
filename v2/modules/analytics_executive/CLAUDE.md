@@ -130,12 +130,22 @@ infrastructure/analytics_tasks.py, api/page_view_routes.py}` +
 yanlıştı (`executive.py`(8)+`analytics.py`(2)) — gerçek analytics_executive
 route sayısı **8**.
 
-## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 1 adet)
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 2 adet)
 
-**`AnalizRepository`** (`infrastructure/executive_read_models.py`) — her
-modüldeki repository sınıfı gibi (`AracRepository`, `YakitRepository`, vb.)
-`BaseRepository[Sefer]`'den türeyen bir CRUD/query sınıfı; repo katmanı
-zaten B.1'in istisnası (bkz. root CLAUDE.md "Repository pattern").
+**DÜZELTME (2026-07-17 ikinci-tur dedektif denetimi):** bu bölüm önceden
+"1 adet" diyordu ve yalnız `AnalizRepository`'yi sayıyordu —
+`application/generate_insights.py::_UnitOfWorkContext` de gerçek bir sınıf
+olarak var, sayım eksikti.
+
+1. **`AnalizRepository`** (`infrastructure/executive_read_models.py`) — her
+   modüldeki repository sınıfı gibi (`AracRepository`, `YakitRepository`, vb.)
+   `BaseRepository[Sefer]`'den türeyen bir CRUD/query sınıfı; repo katmanı
+   zaten B.1'in istisnası (bkz. root CLAUDE.md "Repository pattern").
+2. **`_UnitOfWorkContext`** (`application/generate_insights.py`) — tek
+   metodu `get_uow()`'un mock'lanabilir olmasını sağlayan async
+   context-manager adaptörü; iş mantığı taşımıyor, zararsız ama
+   `AnalizRepository` gibi repo-istisnası kapsamına girmediği için ayrı
+   bir madde olarak sayılması gerekiyordu.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 

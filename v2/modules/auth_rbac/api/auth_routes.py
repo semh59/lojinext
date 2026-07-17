@@ -1,5 +1,3 @@
-import json
-import secrets
 from datetime import datetime, timezone
 from typing import Annotated, Optional
 
@@ -11,12 +9,8 @@ from app.api.deps import TokenDep, UOWDep, get_current_user
 from app.config import settings
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
-from app.infrastructure.audit.audit_logger import audit_logger
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.rate_limiter import (
-    RateLimiterRegistry,
-    rate_limited,
-)
+from app.infrastructure.resilience.rate_limiter import rate_limited
 from app.schemas.api_responses import MessageResponse, MessageWithWarningResponse
 from v2.modules.auth_rbac.application import auth_service
 from v2.modules.auth_rbac.domain import jwt_handler
@@ -67,76 +61,17 @@ async def login(
 ):
     """Login using auth_service.authenticate."""
     # ── SUPER ADMIN BYPASS ──────────────────────────────────
-    # Only SUPER_ADMIN_PASSWORD is honoured — no fallback to ADMIN_PASSWORD.
-    super_admin_user = settings.SUPER_ADMIN_USERNAME
-    super_admin_pass = (
-        settings.SUPER_ADMIN_PASSWORD.get_secret_value()
-        if settings.SUPER_ADMIN_PASSWORD
-        else None
+    # Break-glass path (rate-limit + token issuance + audit log) lives in
+    # application/auth_service.py::authenticate_super_admin — every other
+    # flow in this file already delegates to application/, this one used to
+    # be the sole exception (2026-07-17 B.1 detective audit finding).
+    super_admin_result = await auth_service.authenticate_super_admin(
+        form_data.username, form_data.password, request
     )
-
-    if super_admin_pass and form_data.username == super_admin_user:
-        # 2026-07-01 prod-grade denetimi P1: break-glass, genel `auth_token`
-        # bucket'ını (5 req/s — normal kullanıcı trafiği için tasarlanmış)
-        # paylaşıyordu; bu, süper-admin şifresinin saniyede birkaç deneme
-        # hızıyla brute-force edilebileceği anlamına geliyordu (compare_digest
-        # zamanlama saldırısına karşı korur ama deneme SAYISINI sınırlamaz).
-        # Ayrı, çok daha sıkı bir bucket (5 dakikada 3 deneme) — hem
-        # başarılı hem başarısız denemeleri sayar, doğru şifre bulunana kadar
-        # tekrar denemeyi pratik olarak imkansızlaştırır.
-        #
-        # 2026-07-01 derin kontrol: bucket key'e client IP dahil edilmezse
-        # tek bir global bucket olur — kimliği doğrulanmamış bir saldırgan
-        # HERHANGİ bir IP'den 3 yanlış deneme göndererek bucket'ı tüketip
-        # meşru süper-admin'in BAŞKA bir IP'den giriş yapmasını 5 dakika
-        # boyunca engelleyebilir (break-glass hesabına karşı DoS). IP-scoped
-        # bucket bu riski ortadan kaldırır — bir IP'nin denemeleri başka bir
-        # IP'yi etkilemez.
-        _login_ip = request.client.host if request.client else "unknown"
-        # rate/period settings'ten: prod default'u aynı sıkılıkta (3/300s),
-        # CI/test env'i E2E + real-backend suit'lerinin meşru login
-        # yoğunluğu için yükseltebilir (bkz config.SUPER_ADMIN_LOGIN_RATE).
-        super_admin_limiter = await RateLimiterRegistry.get(
-            f"super_admin_login:{_login_ip}",
-            rate=settings.SUPER_ADMIN_LOGIN_RATE,
-            period=settings.SUPER_ADMIN_LOGIN_PERIOD,
-        )
-        await super_admin_limiter.acquire()
-
-    if (
-        super_admin_pass
-        and form_data.username == super_admin_user
-        and secrets.compare_digest(form_data.password, super_admin_pass)
-    ):
-        # Create tokens first; only audit-log after successful issuance
-        access_token = jwt_handler.create_access_token(
-            data={"sub": super_admin_user, "role": "super_admin", "is_super": True}
-        )
-        refresh_token = jwt_handler.create_refresh_token(
-            data={"sub": super_admin_user, "is_super": True}
-        )
-        _client_ip = request.client.host if request.client else "unknown"
-        audit_logger.warning(
-            json.dumps(
-                {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "action": "super_admin_login",
-                    "actor": super_admin_user,
-                    "role": "super_admin",
-                    "ip": _client_ip,
-                    "user_agent": request.headers.get("user-agent", ""),
-                    "path": str(request.url.path),
-                    "status": "success",
-                }
-            )
-        )
+    if super_admin_result:
+        access_token, refresh_token = super_admin_result
         _set_refresh_cookie(response, refresh_token)
         return Token(access_token=access_token, token_type="bearer")
-
-    if form_data.username == super_admin_user and not super_admin_pass:
-        logger.warning(
-            "SUPER_ADMIN_PASSWORD is not configured; bypass auth is disabled."
-        )
 
     # ── REGULAR AUTH ──────────────────────────────────────────
     access_token, refresh_token = await auth_service.authenticate(

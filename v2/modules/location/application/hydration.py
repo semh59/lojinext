@@ -11,13 +11,15 @@ Pipeline (RouteSimulator'dan simulate_route adımı çıkarılmış sürümü):
     boundary elevations
         ↓ grade_pct = delta_h / length × 100
     enriched static segments (length, grade, road_class, maxspeed,
-                              traffic snapshot, congestion snapshot,
                               mid_lon/lat)
         ↓ DB persist
     Lokasyon.segments + Lokasyon.hydrated_at güncellenir
 
 Idempotent: yeniden çağrılırsa Lokasyon.segments silinir + yeniden insert.
-Sefer simülasyonu (Phase 3.3'te eklenecek) bu hidrasyondan beslenir.
+NOT: traffic/congestion snapshot BURADA yazılmıyor — bunlar sefer
+simülasyonu anında Mapbox cache'inden o anki trafik çekilerek
+route_segments tablosuna yazılır (bkz. inline yorum, satır ~152).
+Sefer simülasyonu bu hidrasyondan beslenir.
 """
 
 from __future__ import annotations

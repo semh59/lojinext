@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, Up
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.api.deps import (
-    SessionDep,
     UOWDep,
     get_current_active_admin,
     get_current_active_user,
@@ -60,7 +59,6 @@ router = APIRouter()
 
 @router.get("/", response_model=StandardResponse[List[AracResponse]])
 async def read_araclar(
-    db: SessionDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),

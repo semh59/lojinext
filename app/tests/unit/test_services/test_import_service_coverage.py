@@ -689,8 +689,11 @@ class TestProcessSeferImportExtra:
         ]
 
         count, errors = await process_sefer_import(b"fake")
-        # The ImportValidationError for numeric → errors list
-        assert len(errors) >= 0  # may or may not error depending on parse
+        # Non-numeric mesafe_km raises ImportValidationError(reason="INVALID_NUMERIC"),
+        # which maps to field="net_kg" (see sefer_importer.py's reason_code branch) —
+        # the row is dropped, so count stays 0 and errors carries exactly this entry.
+        assert count == 0
+        assert errors == [{"row": 1, "field": "net_kg", "reason": "Mesafe sayı olmalı"}]
 
 
 # ---------------------------------------------------------------------------
@@ -1099,8 +1102,10 @@ class TestProcessSeferImportErrorBranches:
         )
 
         count, errors = await process_sefer_import(b"fake")
-        # Error from outer try/except
-        assert "Sistem hatası" in errors[0] or count == 0
+        # bulk_add_sefer raising after validation passes is caught by the
+        # function's outer try/except → (0, ["Sistem hatası: <msg>"]).
+        assert count == 0
+        assert errors == ["Sistem hatası: DB crash"]
 
     @patch(
         "v2.modules.import_excel.application.sefer_importer.parse_sefer_excel",
@@ -1266,9 +1271,15 @@ class TestImportRoutesExtra:
         )
 
         count, errors = await import_routes(b"fake")
-        # At least the first row should succeed or an error should be reported
-        assert count >= 0
-        assert isinstance(errors, list)
+        # Row 1 (valid) succeeds; row 2 has cikis_yeri/varis_yeri=None +
+        # mesafe_km="bad" — LokasyonCreate(**item) raises a pydantic
+        # ValidationError before create_location is ever called, so the
+        # fake's ValueError branch is unreachable here (only 1 real call
+        # happens). Import loop is 1-indexed (enumerate(items, 1)).
+        assert count == 1
+        assert call_count[0] == 1
+        assert len(errors) == 1
+        assert errors[0].startswith("Satır 2:")
 
 
 # ---------------------------------------------------------------------------

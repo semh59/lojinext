@@ -185,7 +185,9 @@ class TestBuildTheftAlarmText:
 
 class TestResolveAlarmContext:
     async def test_row_none_returns_none_tuple(self):
-        from v2.modules.anomaly.api.investigation_routes import _resolve_alarm_context
+        from v2.modules.anomaly.application.manage_investigations import (
+            resolve_alarm_context,
+        )
 
         anomaly = MagicMock()
         anomaly.id = 99
@@ -197,12 +199,14 @@ class TestResolveAlarmContext:
         result.mappings.return_value = mapping
         db.execute = AsyncMock(return_value=result)
 
-        plaka, sofor_adi = await _resolve_alarm_context(db, anomaly)
+        plaka, sofor_adi = await resolve_alarm_context(db, anomaly)
         assert plaka is None
         assert sofor_adi is None
 
     async def test_row_present_returns_values(self):
-        from v2.modules.anomaly.api.investigation_routes import _resolve_alarm_context
+        from v2.modules.anomaly.application.manage_investigations import (
+            resolve_alarm_context,
+        )
 
         anomaly = MagicMock()
         anomaly.id = 5
@@ -216,7 +220,7 @@ class TestResolveAlarmContext:
         result.mappings.return_value = mapping
         db.execute = AsyncMock(return_value=result)
 
-        plaka, sofor_adi = await _resolve_alarm_context(db, anomaly)
+        plaka, sofor_adi = await resolve_alarm_context(db, anomaly)
         assert plaka == "34XYZ"
         assert sofor_adi == "Mehmet"
 

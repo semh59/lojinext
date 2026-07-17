@@ -60,7 +60,7 @@ async def test_clusters_llm_failure_does_not_block(
     with (
         patch("v2.modules.anomaly.api.anomaly_routes.get_anomaly_detector") as mock_det,
         patch(
-            "v2.modules.anomaly.api.anomaly_routes._cluster_insight",
+            "v2.modules.anomaly.api.anomaly_routes.generate_cluster_insight",
             new=AsyncMock(side_effect=RuntimeError("groq down")),
         ),
     ):

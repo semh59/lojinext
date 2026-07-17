@@ -22,9 +22,7 @@ _ZORLUK_MAP = {"Normal": 0, "Orta": 1, "Zor": 2}
 
 async def train_model(arac_id: int) -> Dict:
     """Belirtilen araç için modeli eğitir (Async)"""
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
+    from v2.modules.analytics_executive.public import get_analiz_repo
 
     analiz_repo = get_analiz_repo()
     seferler = await analiz_repo.get_training_seferler(arac_id, limit=200)
@@ -82,9 +80,7 @@ async def predict(
     sofor_id: int = None,
 ) -> Dict:
     """Yeni bir sefer için yakıt tahmini yapar (Async)"""
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
+    from v2.modules.analytics_executive.public import get_analiz_repo
 
     analiz_repo = get_analiz_repo()
     params = await analiz_repo.get_model_params(arac_id)
@@ -170,7 +166,7 @@ async def retrain_all_models() -> Dict:
     """Sistemdeki tüm araçlar için modelleri günceller (Async & Parallel)"""
     import asyncio
 
-    from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
+    from v2.modules.fleet.public import get_arac_repo
 
     arac_repo = get_arac_repo()
     araclar = await arac_repo.get_all(sadece_aktif=True)

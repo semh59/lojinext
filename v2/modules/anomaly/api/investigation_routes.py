@@ -158,13 +158,6 @@ def _build_theft_alarm_text(
     )
 
 
-async def _resolve_alarm_context(
-    db, anomaly: Anomaly
-) -> "tuple[Optional[str], Optional[str]]":
-    """Anomaly → (plaka, sofor_adi). Yoksa (None, None)."""
-    return await resolve_alarm_context(db, anomaly)
-
-
 async def _maybe_broadcast_alarm(
     inv_id: int,
     classification: TheftClassification,
@@ -193,7 +186,7 @@ async def _maybe_broadcast_alarm(
         )
         return
 
-    plaka, sofor_adi = await _resolve_alarm_context(db, anomaly)
+    plaka, sofor_adi = await resolve_alarm_context(db, anomaly)
     text_body = _build_theft_alarm_text(
         inv_id, classification, anomaly, plaka, sofor_adi
     )

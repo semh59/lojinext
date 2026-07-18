@@ -9,13 +9,13 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.core.ml.vehicle_health_factor import (
-    HealthInput,
-    compute_maintenance_factor,
-)
 from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
 from app.database.models import AracBakim, BakimTipi
 from app.tests._helpers.seed import seed_arac
+from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+    HealthInput,
+    compute_maintenance_factor,
+)
 
 pytestmark = pytest.mark.integration
 # --- pure: neutralization logic -------------------------------------------

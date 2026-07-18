@@ -3,10 +3,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from app.core.ml.benchmark import MLBenchmark
 from app.core.ml.ensemble_predictor import EnsembleFuelPredictor, SecurityError
-from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
-from app.core.ml.time_series_predictor import TimeSeriesPredictor
+from v2.modules.prediction_ml.domain.benchmark import MLBenchmark
+from v2.modules.prediction_ml.domain.lightgbm_predictor import LightGBMFuelPredictor
+from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
 
 
 def test_benchmark_nan_inf_safety():

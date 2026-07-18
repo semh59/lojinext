@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, ".")
 
-from app.core.ml.lightgbm_predictor import (
+from v2.modules.prediction_ml.domain.lightgbm_predictor import (
     LIGHTGBM_AVAILABLE,
     LGBMPredictionResult,
     LightGBMFuelPredictor,
@@ -163,7 +163,9 @@ class TestIntegration:
     @pytest.mark.skipif(not LIGHTGBM_AVAILABLE, reason="LightGBM not installed")
     def test_full_pipeline(self):
         """Tam pipeline testi"""
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         predictor = LightGBMFuelPredictor()
 

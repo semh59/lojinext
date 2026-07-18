@@ -18,7 +18,8 @@ from app.schemas.api_responses import (
     TimeSeriesStatusResponse,
     TrendAnalysisResponse,
 )
-from app.schemas.prediction import (
+from v2.modules.prediction_ml.application.prediction_service import PredictionService
+from v2.modules.prediction_ml.schemas import (
     AccuracyDistribution,
     ForecastResponseModel,
     PredictionComparisonPoint,
@@ -30,7 +31,6 @@ from app.schemas.prediction import (
     PredictionStatusResponse,
     TrainingResponse,
 )
-from app.services.prediction_service import PredictionService
 
 router = APIRouter()
 
@@ -258,7 +258,9 @@ async def forecast_consumption(
     days: int = Query(7, ge=1, le=30),
 ):
     """Return a real weekly consumption forecast when prerequisites are met."""
-    from app.services.time_series_service import get_time_series_service
+    from v2.modules.prediction_ml.application.time_series_service import (
+        get_time_series_service,
+    )
 
     service = get_time_series_service()
     res = await service.predict_weekly(arac_id)
@@ -300,7 +302,9 @@ async def get_trend_analysis(
     days: int = Query(30, ge=1, le=365),
 ):
     """Return historical consumption trend analysis based on real aggregates."""
-    from app.services.time_series_service import get_time_series_service
+    from v2.modules.prediction_ml.application.time_series_service import (
+        get_time_series_service,
+    )
 
     service = get_time_series_service()
     result = await service.get_trend_analysis(arac_id, days)
@@ -316,7 +320,9 @@ async def get_time_series_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Zaman serisi model durumu."""
-    from app.services.time_series_service import get_time_series_service
+    from v2.modules.prediction_ml.application.time_series_service import (
+        get_time_series_service,
+    )
 
     service = get_time_series_service()
     return service.get_model_status()
@@ -327,7 +333,7 @@ async def get_ensemble_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Ensemble model durumu."""
-    from app.core.ml.ensemble_predictor import (
+    from v2.modules.prediction_ml.domain.ensemble_core import (
         LIGHTGBM_AVAILABLE,
         SKLEARN_AVAILABLE,
         XGBOOST_AVAILABLE,

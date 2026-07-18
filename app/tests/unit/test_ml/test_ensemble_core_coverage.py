@@ -81,7 +81,7 @@ def _training_batch(n: int = 20, base_tuketim: float = 32.0) -> List[Dict]:
 
 class TestExtractRouteAnalysis:
     def test_returns_none_for_non_dict_rota_detay(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = {"rota_detay": "not_a_dict"}
@@ -89,14 +89,14 @@ class TestExtractRouteAnalysis:
         assert result is None
 
     def test_returns_none_if_no_rota_detay(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         result = p._extract_route_analysis({})
         assert result is None
 
     def test_returns_route_analysis_nested(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         inner = {"motorway": {"flat": 100, "up": 0, "down": 0}}
@@ -105,7 +105,7 @@ class TestExtractRouteAnalysis:
         assert result is inner
 
     def test_falls_back_to_rota_detay_if_no_route_analysis(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         flat_analysis = {"motorway": {"flat": 50, "up": 0, "down": 0}}
@@ -121,7 +121,7 @@ class TestExtractRouteAnalysis:
 
 class TestPrepareFeaturesBranches:
     def test_route_analysis_populates_ratios(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -138,7 +138,7 @@ class TestPrepareFeaturesBranches:
         assert motorway_ratio > 0.0
 
     def test_grade_histogram_computed(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -158,7 +158,7 @@ class TestPrepareFeaturesBranches:
         assert 0.0 <= grade_steep <= 1.0
 
     def test_speed_profile_features_computed(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -175,7 +175,7 @@ class TestPrepareFeaturesBranches:
         assert expected_avg_speed > 0.0
 
     def test_no_rota_detay_defaults_zeros(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer()  # no rota_detay
@@ -184,7 +184,7 @@ class TestPrepareFeaturesBranches:
         assert np.all(np.isfinite(X))
 
     def test_stopgo_proxy_zero_on_zero_mesafe(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(mesafe_km=0.0)
@@ -193,7 +193,7 @@ class TestPrepareFeaturesBranches:
         assert stopgo == pytest.approx(0.0, abs=1e-6)
 
     def test_dorse_fields_extracted(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(dorse_bos_agirlik=7000.0, dorse_lastik_sayisi=8)
@@ -204,7 +204,7 @@ class TestPrepareFeaturesBranches:
         assert dorse_lastik == pytest.approx(8.0)
 
     def test_zorluk_cok_zor(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(zorluk="Çok Zor")
@@ -212,7 +212,7 @@ class TestPrepareFeaturesBranches:
         assert X[0, 5] == 4  # zorluk_map["Çok Zor"] = 4
 
     def test_duration_min_field_used(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(duration_min=300)
@@ -228,7 +228,7 @@ class TestPrepareFeaturesBranches:
 
 class TestResolveExpectedFeatureCount:
     def test_returns_none_all_none_attributes(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         # Before fitting, all n_features_in_ are None
@@ -236,7 +236,10 @@ class TestResolveExpectedFeatureCount:
         assert result is None
 
     def test_returns_value_from_scaler(self):
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -247,7 +250,7 @@ class TestResolveExpectedFeatureCount:
         assert result == 29
 
     def test_rejects_mock_object(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         p.scaler = MagicMock()
@@ -267,7 +270,7 @@ class TestResolveExpectedFeatureCount:
 
 class TestAlignFeatureMatrix:
     def test_no_mismatch_returns_x(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         X = np.zeros((3, 29))
@@ -277,7 +280,7 @@ class TestAlignFeatureMatrix:
         assert result is X
 
     def test_too_many_features_raises_and_marks_untrained(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         p.is_trained = True
@@ -288,7 +291,7 @@ class TestAlignFeatureMatrix:
         assert p.is_trained is False
 
     def test_too_few_features_raises(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         X = np.zeros((3, 28))  # 28 cols
@@ -297,7 +300,7 @@ class TestAlignFeatureMatrix:
                 p._align_feature_matrix(X)
 
     def test_expected_none_returns_x_unchanged(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         X = np.zeros((3, 99))  # any size
@@ -313,7 +316,7 @@ class TestAlignFeatureMatrix:
 
 class TestGetPhysicsPredictions:
     def test_dorse_fields_applied_to_model(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -326,7 +329,7 @@ class TestGetPhysicsPredictions:
         assert preds[0] > 0
 
     def test_basic_predictions_positive(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         preds = p._get_physics_predictions(_training_batch(5))
@@ -341,7 +344,10 @@ class TestGetPhysicsPredictions:
 class TestFitBranches:
     def test_y_actual_none_extracted_from_seferler(self):
         """y_actual=None → extracted from sefer['tuketim']."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -353,7 +359,10 @@ class TestFitBranches:
 
     def test_outlier_guard_removes_extreme_values(self):
         """Z-score > 3 triggers outlier removal when n > 20."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -370,7 +379,10 @@ class TestFitBranches:
 
     def test_fit_date_object_tarih(self):
         """Sefer with date object (not string) for tarih field."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -391,7 +403,10 @@ class TestFitBranches:
 
     def test_fit_invalid_tarih_string_defaults(self):
         """Sefer with unparseable tarih string falls back without crashing."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -412,7 +427,10 @@ class TestFitBranches:
 
     def test_fit_no_tarih_field(self):
         """Sefer without 'tarih' field gets weight=0.5."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -438,7 +456,7 @@ class TestFitBranches:
         assert "success" in result
 
     def test_fit_sklearn_not_available(self):
-        from app.core.ml import ensemble_core
+        from v2.modules.prediction_ml.domain import ensemble_core
 
         original = ensemble_core.SKLEARN_AVAILABLE
         try:
@@ -454,7 +472,10 @@ class TestFitBranches:
 
     def test_lgb_oom_skipped(self):
         """LightGBM MemoryError during fit must be caught and skipped."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -485,7 +506,10 @@ class TestFitBranches:
 
 class TestPredictExtended:
     def test_predict_after_fit_returns_result(self):
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -499,7 +523,10 @@ class TestPredictExtended:
 
     def test_predict_runtime_error_returns_physics_fallback(self):
         """RuntimeError from _align_feature_matrix → physics-only fallback."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -516,7 +543,10 @@ class TestPredictExtended:
 
     def test_predict_nan_result_falls_back(self):
         """When the weighted sum is NaN, predict() returns physics fallback."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not available")
@@ -539,7 +569,7 @@ class TestPredictExtended:
         assert result.physics_weight == 1.0  # fell back to physics
 
     def test_predict_with_dorse_fields(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -558,7 +588,7 @@ class TestPredictExtended:
 
 class TestExplainPrediction:
     def test_returns_expected_keys(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         sefer = _make_sefer(
@@ -576,14 +606,14 @@ class TestExplainPrediction:
         assert result["unit"] == "L/100km"
 
     def test_contributions_contain_ml_correction(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         result = p.explain_prediction(_make_sefer())
         assert "ML Düzeltmesi" in result["contributions"]
 
     def test_confidence_is_non_negative(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         result = p.explain_prediction(_make_sefer())
@@ -597,21 +627,21 @@ class TestExplainPrediction:
 
 class TestSaveLoadGuards:
     def test_save_raises_when_not_trained(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         with pytest.raises(RuntimeError, match="eğitilmedi"):
             p.save_model("/tmp/test_ensemble")
 
     def test_load_raises_meta_not_found(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         with pytest.raises(FileNotFoundError):
             p.load_model("/tmp/nonexistent_ensemble")
 
     def test_load_reads_metadata_fields(self, tmp_path):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         # Write minimal metadata file
@@ -639,7 +669,7 @@ class TestSaveLoadGuards:
         — sadece feature SAYISI kontrol ediliyordu, isim/sıra drift'i
         sessizce geçiyordu. Artık _meta.json'da saklanıyor ve load_model
         bunu `_loaded_feature_schema_hash` attribute'una okuyor."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         meta = {
@@ -664,7 +694,7 @@ class TestSaveLoadGuards:
         """save_model'in yazdığı _meta.json artık feature_schema_hash içeriyor
         (FEATURE_NAMES'in sırayla hash'i — isim/sıra drift'ini yakalar,
         sadece sayı değil)."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         p.is_trained = True
@@ -683,7 +713,10 @@ class TestSaveLoadGuards:
         assert meta["feature_schema_hash"] == p._feature_hash
 
     def test_load_checksum_mismatch_raises_security_error(self, tmp_path):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor, SecurityError
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            EnsembleFuelPredictor,
+            SecurityError,
+        )
 
         p = EnsembleFuelPredictor()
         base_path = tmp_path / "model"
@@ -705,7 +738,10 @@ class TestSaveLoadGuards:
             p.load_model(str(base_path))
 
     def test_load_sklearn_too_large_raises(self, tmp_path):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor, SecurityError
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            EnsembleFuelPredictor,
+            SecurityError,
+        )
 
         p = EnsembleFuelPredictor()
         base_path = tmp_path / "model"
@@ -736,7 +772,7 @@ class TestSaveLoadGuards:
 
 class TestWeightsAlias:
     def test_weights_property_equals_instance_weights(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         p = EnsembleFuelPredictor()
         assert p.WEIGHTS is p.weights
@@ -749,12 +785,12 @@ class TestWeightsAlias:
 
 class TestSecurityError:
     def test_security_error_is_exception_subclass(self):
-        from app.core.ml.ensemble_core import SecurityError
+        from v2.modules.prediction_ml.domain.ensemble_core import SecurityError
 
         assert issubclass(SecurityError, Exception)
 
     def test_raise_security_error(self):
-        from app.core.ml.ensemble_core import SecurityError
+        from v2.modules.prediction_ml.domain.ensemble_core import SecurityError
 
         with pytest.raises(SecurityError, match="test"):
             raise SecurityError("test")

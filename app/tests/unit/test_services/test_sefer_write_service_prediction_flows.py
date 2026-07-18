@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import app.core.services.weather_service as weather_module
-import app.services.prediction_service as prediction_module
+import v2.modules.prediction_ml.public as prediction_module
 from app.core.entities.models import SeferCreate, SeferUpdate
 from app.core.services.sefer_write_service import SeferWriteService
 from app.database.unit_of_work import UnitOfWork

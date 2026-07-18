@@ -5,16 +5,12 @@ from app.api.v1.endpoints import (
     admin_config,
     admin_health,
     admin_integrations,
-    admin_ml,
-    admin_pilot,
-    admin_predictions,
     admin_ws,
     ai,
     error_stream,
     feedback,
     health,
     internal,
-    predictions,
     system,
     trips,
     weather,
@@ -54,6 +50,12 @@ from v2.modules.notification.api.notification_routes import (
     router as notification_router,
 )
 from v2.modules.notification.api.push_routes import router as push_router
+from v2.modules.prediction_ml.api.admin_ml import router as admin_ml_router
+from v2.modules.prediction_ml.api.admin_pilot import router as admin_pilot_router
+from v2.modules.prediction_ml.api.admin_predictions import (
+    router as admin_predictions_router,
+)
+from v2.modules.prediction_ml.api.predictions import router as predictions_router
 from v2.modules.reports.api.advanced_reports_routes import (
     router as advanced_reports_router,
 )
@@ -96,7 +98,7 @@ api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
 api_router.include_router(trips.router, prefix="/trips", tags=["trips"])
 api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
-    predictions.router, prefix="/predictions", tags=["predictions"]
+    predictions_router, prefix="/predictions", tags=["predictions"]
 )
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
@@ -123,7 +125,7 @@ api_router.include_router(
 api_router.include_router(
     import_router, prefix="/admin/imports", tags=["admin-imports"]
 )
-api_router.include_router(admin_ml.router, prefix="/admin/ml", tags=["admin-ml"])
+api_router.include_router(admin_ml_router, prefix="/admin/ml", tags=["admin-ml"])
 api_router.include_router(
     admin_attribution_router, prefix="/admin/attribution", tags=["admin-attribution"]
 )
@@ -133,9 +135,9 @@ api_router.include_router(
 api_router.include_router(
     admin_fuel_accuracy, prefix="/admin", tags=["admin-fuel-accuracy"]
 )
-api_router.include_router(admin_pilot.router, prefix="/admin", tags=["admin-pilot"])
+api_router.include_router(admin_pilot_router, prefix="/admin", tags=["admin-pilot"])
 api_router.include_router(
-    admin_predictions.router, prefix="/admin", tags=["admin-predictions"]
+    admin_predictions_router, prefix="/admin", tags=["admin-predictions"]
 )
 api_router.include_router(page_view_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(

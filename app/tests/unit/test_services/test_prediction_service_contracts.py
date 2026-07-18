@@ -3,9 +3,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import app.services.prediction_service as prediction_service_module
+import v2.modules.prediction_ml.domain.physics_model as physics_model_module
 from app.database.unit_of_work import UnitOfWork
-from app.services.prediction_service import PredictionService
+from v2.modules.prediction_ml.application.prediction_service import PredictionService
 
 
 class DummyUnitOfWork:
@@ -70,7 +70,7 @@ async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch)
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
-        prediction_service_module,
+        physics_model_module,
         "PhysicsBasedFuelPredictor",
         FakePhysicsPredictor,
     )
@@ -126,7 +126,7 @@ async def test_predict_consumption_missing_confidence_fails_closed(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
-        prediction_service_module,
+        physics_model_module,
         "PhysicsBasedFuelPredictor",
         FakePhysicsPredictor,
     )

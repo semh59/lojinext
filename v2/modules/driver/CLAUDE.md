@@ -160,9 +160,9 @@ path'ini kullanacak şekilde refactor).
   modülüne gelecek, `TASKS/modules/driver.md` §4'te zaten not düşülmüştü).
   Ayrıca `sefer_write_service.py` (trip) `uow.sofor_repo.get_by_id`/
   `get_by_ids`/`get_all` çağırır (aktif şoför kontrolü, N+1 önleme).
-- **prediction_ml (senkron, henüz taşınmadı)**: `application/driver_stats.py`
+- **prediction_ml (taşındı, dalga 13)**: `application/driver_stats.py`
   `_calc_elite_from_trips`/`calculate_elite_performance_score`
-  `app.services.prediction_service.get_prediction_service()` çağırır
+  `v2.modules.prediction_ml.public.get_prediction_service()` çağırır
   (ML tahmin ile gerçek tüketim farkına dayalı elite skor).
 - **analytics_executive (taşındı, dalga 11)**: `application/driver_stats.py`
   ve `application/evaluation.py` `v2.modules.analytics_executive.public.

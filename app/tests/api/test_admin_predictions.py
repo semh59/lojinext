@@ -9,7 +9,7 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 async def test_backfill_trigger_returns_summary(async_client, admin_auth_headers):
     with patch(
-        "app.core.services.prediction_backfill_service.PredictionBackfillService.backfill",
+        "v2.modules.prediction_ml.application.prediction_backfill_service.PredictionBackfillService.backfill",
         new=AsyncMock(
             return_value={"processed": 3, "filled": 3, "failed": 0, "skipped": 0}
         ),

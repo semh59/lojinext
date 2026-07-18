@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.workers.tasks.prediction_tasks import run_prediction_task
+from v2.modules.prediction_ml.infrastructure.prediction_tasks import run_prediction_task
 
 pytestmark = pytest.mark.unit
 
@@ -30,13 +30,13 @@ def test_run_prediction_task_returns_completed():
     mock_llm.chat = AsyncMock(return_value="Yakıt tahmini: 45L/100km")
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=_make_redis_mock(),
         ):
-            with patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()):
+            with patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()):
                 result = run_prediction_task.apply(
                     args=["Ankara-İstanbul için yakıt tahmini?"]
                 ).get()
@@ -57,10 +57,10 @@ def test_run_prediction_task_idempotent():
     mock_llm = AsyncMock()
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=mock_redis,
         ):
             result = run_prediction_task.apply(args=["any question"]).get()
@@ -76,13 +76,13 @@ def test_run_prediction_task_with_context():
     mock_llm.chat = AsyncMock(return_value="Yanıt")
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=_make_redis_mock(),
         ):
-            with patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()):
+            with patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()):
                 result = run_prediction_task.apply(
                     args=["Soru?", "Sistem bağlamı"]
                 ).get()
@@ -99,13 +99,13 @@ def test_run_prediction_task_llm_error_propagates():
     mock_llm.chat = AsyncMock(side_effect=Exception("Groq timeout"))
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=_make_redis_mock(),
         ):
-            with patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()):
+            with patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()):
                 with pytest.raises(Exception, match="Groq timeout"):
                     run_prediction_task.apply(args=["soru"]).get(propagate=True)
 
@@ -121,13 +121,13 @@ def test_run_prediction_task_redis_error_ignored():
     mock_llm.chat = AsyncMock(return_value="Yanıt")
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=mock_redis,
         ):
-            with patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()):
+            with patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()):
                 result = run_prediction_task.apply(args=["soru"]).get()
 
     assert result["status"] == "completed"
@@ -139,13 +139,13 @@ def test_run_prediction_task_no_context():
     mock_llm.chat = AsyncMock(return_value="")
 
     with patch(
-        "app.workers.tasks.prediction_tasks.get_llm_client", return_value=mock_llm
+        "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client", return_value=mock_llm
     ):
         with patch(
-            "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
             return_value=_make_redis_mock(),
         ):
-            with patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()):
+            with patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()):
                 run_prediction_task.apply(args=[""]).get()
 
     call_kwargs = mock_llm.chat.call_args

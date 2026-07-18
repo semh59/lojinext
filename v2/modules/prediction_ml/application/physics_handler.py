@@ -1,14 +1,14 @@
 import asyncio
 from datetime import date
 
-from app.core.ml.physics_fuel_predictor import (
+from app.database.unit_of_work import UnitOfWork
+from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
+from app.infrastructure.logging.logger import get_logger
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
     VehicleSpecs,
 )
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
-from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

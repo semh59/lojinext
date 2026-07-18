@@ -160,7 +160,7 @@ async def test_bulk_add_sefer_enriches_bos_and_dolu_from_arac_master(
     mock_pred_service = MagicMock()
     mock_pred_service.predict_consumption = AsyncMock(return_value=(30.0, {}))
     monkeypatch.setattr(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.application.prediction_service.get_prediction_service",
         lambda: mock_pred_service,
     )
 
@@ -237,7 +237,7 @@ async def test_bulk_add_sefer_fallback_when_arac_bos_unknown(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.application.prediction_service.get_prediction_service",
         lambda: AsyncMock(),
     )
 

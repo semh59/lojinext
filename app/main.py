@@ -313,16 +313,14 @@ async def lifespan(app: FastAPI):
         logger.warning("Cache invalidation listener setup failed: %s", exc)
 
     try:
-        from app.core.handlers.model_training_handler import (
-            get_model_training_handler,
-        )
+        from v2.modules.prediction_ml.public import get_model_training_handler
 
         get_model_training_handler().setup()
     except Exception as exc:  # pragma: no cover
         logger.warning("ModelTrainingHandler setup failed: %s", exc)
 
     try:
-        from app.core.handlers.physics_handler import get_physics_handler
+        from v2.modules.prediction_ml.public import get_physics_handler
 
         get_physics_handler().register()
     except Exception as exc:  # pragma: no cover
@@ -348,7 +346,7 @@ async def lifespan(app: FastAPI):
     try:
         import asyncio as _asyncio
 
-        from app.core.ml.ensemble_predictor import get_ensemble_service
+        from v2.modules.prediction_ml.public import get_ensemble_service
 
         async def _warmup_all_predictors() -> None:
             ids: list[int] = [0]  # general/fallback

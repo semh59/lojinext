@@ -151,7 +151,7 @@ async def test_analyze_location_route_success(db_session):
     mock_physics_module.PhysicsBasedFuelPredictor.return_value = mock_physics_predictor
     mock_physics_module.RouteConditions = MagicMock(return_value=MagicMock())
 
-    with patch.dict("sys.modules", {"app.core.ml.physics_fuel_predictor": mock_physics_module}):
+    with patch.dict("sys.modules", {"v2.modules.prediction_ml.domain.physics_fuel_predictor": mock_physics_module}):
         with patch(
             "v2.modules.route_simulation.public.get_route_details",
             mock_route_service_module.get_route_details,
@@ -206,7 +206,7 @@ async def test_analyze_location_route_success_no_fuel_predictor(db_session):
     )
     mock_physics_module.RouteConditions = MagicMock()
 
-    with patch.dict("sys.modules", {"app.core.ml.physics_fuel_predictor": mock_physics_module}):
+    with patch.dict("sys.modules", {"v2.modules.prediction_ml.domain.physics_fuel_predictor": mock_physics_module}):
         with patch(
             "v2.modules.route_simulation.public.get_route_details",
             mock_route_service_module.get_route_details,

@@ -71,7 +71,7 @@ class ModelTrainingHandler:
 
             try:
                 # Circular dependency'i engellemek için fonksiyon içinde import alıyoruz
-                from app.core.ml.ensemble_predictor import (
+                from v2.modules.prediction_ml.application.ensemble_service import (
                     get_ensemble_service,
                 )
 

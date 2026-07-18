@@ -273,7 +273,7 @@ async def test_predict_outbound_no_guzergah_id_skips_weather():
 
     with (
         patch(
-            "app.services.prediction_service.get_prediction_service",
+            "v2.modules.prediction_ml.public.get_prediction_service",
             return_value=mock_pred,
         ),
         patch(
@@ -309,7 +309,7 @@ async def test_predict_outbound_weather_no_lat_skips_call():
 
     with (
         patch(
-            "app.services.prediction_service.get_prediction_service",
+            "v2.modules.prediction_ml.public.get_prediction_service",
             return_value=mock_pred,
         ),
         patch(
@@ -341,7 +341,7 @@ async def test_predict_outbound_timeout_returns_none_triple():
 
     with (
         patch(
-            "app.services.prediction_service.get_prediction_service",
+            "v2.modules.prediction_ml.public.get_prediction_service",
             return_value=mock_pred,
         ),
         patch(
@@ -400,7 +400,7 @@ async def test_predict_outbound_general_exception_returns_none_triple():
 
     with (
         patch(
-            "app.services.prediction_service.get_prediction_service",
+            "v2.modules.prediction_ml.public.get_prediction_service",
             return_value=mock_pred,
         ),
         patch(
@@ -451,7 +451,7 @@ async def test_repredikt_for_update_bos_sefer_forces_ton_zero():
     mock_pred.predict_consumption = _capture_predict
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         svc, _ = _make_service()
@@ -497,7 +497,7 @@ async def test_repredikt_for_update_with_new_guzergah_enriches_route(monkeypatch
     )
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         svc, _ = _make_service()
@@ -535,7 +535,7 @@ async def test_repredikt_for_update_prediction_returns_none():
     )
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         svc, _ = _make_service()
@@ -702,7 +702,7 @@ async def test_bulk_add_sefer_skips_prediction_for_large_batches(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
-    import app.services.prediction_service as pred_module
+    import v2.modules.prediction_ml.public as pred_module
 
     mock_pred = MagicMock()
     mock_pred.predict_consumption = AsyncMock(return_value=None)

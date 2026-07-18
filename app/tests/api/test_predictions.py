@@ -12,7 +12,7 @@ async def test_predict_fuel_consumption_success(
     The endpoint is POST /predictions/predict (not /predictions/fuel).
     PredictionService is instantiated inline; patch its predict_consumption method.
     """
-    from app.services import prediction_service as pred_svc_mod
+    from v2.modules.prediction_ml.application import prediction_service as pred_svc_mod
 
     async def _fake_predict(self, **kwargs):
         return {
@@ -58,7 +58,7 @@ async def test_explain_prediction_success(
 
     The endpoint is POST /predictions/explain and takes a PredictionRequest body.
     """
-    from app.services import prediction_service as pred_svc_mod
+    from v2.modules.prediction_ml.application import prediction_service as pred_svc_mod
 
     async def _fake_explain(self, **kwargs):
         # Tier E madde 33: shape matches ensemble_core.explain_prediction's

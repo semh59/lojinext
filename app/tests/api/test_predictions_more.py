@@ -66,7 +66,7 @@ def _mock_prediction_service(**overrides):
         }
     )
 
-    with patch("app.api.v1.endpoints.predictions.PredictionService", return_value=svc):
+    with patch("v2.modules.prediction_ml.api.predictions.PredictionService", return_value=svc):
         yield svc
 
 
@@ -323,7 +323,7 @@ async def test_stream_terminates_on_failure_state(async_client, admin_auth_heade
     fake_result.result = {"error": "something failed", "finished_at": None}
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/failing-task/stream",
@@ -341,7 +341,7 @@ async def test_stream_terminates_on_revoked_state(async_client, admin_auth_heade
     fake_result.result = {}
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/revoked-task/stream",
@@ -363,7 +363,7 @@ async def test_stream_result_not_dict(async_client, admin_auth_headers):
     fake_result.result = "some_string_result"  # not a dict
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/str-result-task/stream",
@@ -385,7 +385,7 @@ async def test_prediction_status_result_not_dict(async_client, admin_auth_header
     fake_result.result = Exception("something went wrong")  # not a dict
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/failed-task",
@@ -503,7 +503,7 @@ async def test_forecast_with_arac_id(async_client, admin_auth_headers):
     )
 
     with patch(
-        "app.services.time_series_service.get_time_series_service",
+        "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
         return_value=fake_ts_service,
     ):
         resp = await async_client.post(

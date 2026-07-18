@@ -33,7 +33,9 @@ class Trainer:
     def service(self) -> Any:
         """Lazy: ``EnsemblePredictorService`` singleton."""
         if self._service is None:
-            from app.core.ml.ensemble_service import get_ensemble_service
+            from v2.modules.prediction_ml.application.ensemble_service import (
+                get_ensemble_service,
+            )
 
             self._service = get_ensemble_service()
         return self._service

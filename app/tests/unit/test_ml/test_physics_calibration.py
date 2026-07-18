@@ -8,7 +8,9 @@ gerektirir). Bu testler DB-bağımsız sağlık kontrolü.
 
 import pytest
 
-from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+    PhysicsBasedFuelPredictor,
+)
 
 pytestmark = pytest.mark.unit
 

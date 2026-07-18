@@ -1,19 +1,19 @@
 """
 Backward-compat re-export shim.
-Yeni kod ensemble_core ve ensemble_service'i doğrudan import etmeli.
+Yeni kod v2.modules.prediction_ml.public'i doğrudan import etmeli.
 """
 
-from app.core.ml.ensemble_core import (  # noqa: F401
+from v2.modules.prediction_ml.application.ensemble_service import (  # noqa: F401
+    EnsemblePredictorService,
+    get_ensemble_service,
+)
+from v2.modules.prediction_ml.domain.ensemble_core import (  # noqa: F401
     LIGHTGBM_AVAILABLE,
     SKLEARN_AVAILABLE,
     XGBOOST_AVAILABLE,
     EnsembleFuelPredictor,
     PredictionResult,
     SecurityError,
-)
-from app.core.ml.ensemble_service import (  # noqa: F401
-    EnsemblePredictorService,
-    get_ensemble_service,
 )
 
 __all__ = [

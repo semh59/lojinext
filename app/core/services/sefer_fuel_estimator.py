@@ -27,12 +27,6 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from app.config import settings
-from app.core.ml.adjustment_factors import (
-    combine_factors,
-    weather_precipitation_factor,
-    weather_temperature_factor,
-    weather_wind_factor,
-)
 from app.core.services.weather_service import (
     WeatherSample,
     WeatherService,
@@ -47,6 +41,12 @@ from app.database.models import (
     Sofor,
 )
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.prediction_ml.public import (
+    combine_factors,
+    weather_precipitation_factor,
+    weather_temperature_factor,
+    weather_wind_factor,
+)
 from v2.modules.route_simulation.public import (
     RouteSimulator,
     SimulationResult,
@@ -384,7 +384,7 @@ class SeferFuelEstimator:
         try:
             from types import SimpleNamespace
 
-            from app.core.ml.vehicle_health_factor import (
+            from v2.modules.prediction_ml.public import (
                 compute_maintenance_factor,
                 fetch_health_input,
             )

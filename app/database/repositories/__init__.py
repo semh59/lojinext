@@ -13,8 +13,6 @@ from app.database.repositories.admin_config_repo import (
 )
 from app.database.repositories.audit_repo import AuditRepository
 from app.database.repositories.config_repo import ConfigRepository
-from app.database.repositories.ml_training_repo import MLTrainingRepository
-from app.database.repositories.model_versiyon_repo import ModelVersiyonRepository
 from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.setting_repository import SettingRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
@@ -42,6 +40,12 @@ from v2.modules.fuel.infrastructure.repository import YakitRepository
 from v2.modules.import_excel.infrastructure.repository import ImportHistoryRepository
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.notification.infrastructure.repository import NotificationRepository
+from v2.modules.prediction_ml.infrastructure.ml_training_repo import (
+    MLTrainingRepository,
+)
+from v2.modules.prediction_ml.infrastructure.model_versiyon_repo import (
+    ModelVersiyonRepository,
+)
 from v2.modules.route_simulation.infrastructure.repository import RouteRepository
 
 __all__ = [

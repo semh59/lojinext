@@ -6,7 +6,9 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.services.prediction_backfill_service import PredictionBackfillService
+from v2.modules.prediction_ml.application.prediction_backfill_service import (
+    PredictionBackfillService,
+)
 
 pytestmark = pytest.mark.unit
 

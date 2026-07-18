@@ -30,7 +30,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | # | Modül/kalem | Görev dosyası | Durum |
 |---|---|---|---|
 | — | Registry+iskelet+shim deseni (çatı) | `faz1-registry-iskelet-ve-shim.md` | 🔲 |
-| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 12/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 14 kept, 1 broken[kapsam dışı — pre-existing app.services↔app.core.services, migrasyonla ilgisiz]`, 2026-07-18 tam-denetim turunda 7 bayat ignore girdisi temizlenip 5 gerçek ihlal düzeltildikten sonraki gerçek sayı); gate (continue-on-error kaldırma) kalan 5 dalga sonrası ayrı onayla |
+| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 13/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 15 kept, 1 broken[kapsam dışı — pre-existing app.services↔app.core.services, migrasyonla ilgisiz]`, dalga 13 sonrası gerçek sayı — 13. `public-surface-only-prediction_ml` kontratı eklendi); gate (continue-on-error kaldırma) kalan 4 dalga sonrası ayrı onayla |
 | — | Davranışsal mimari testleri (çatı) | `faz1-davranissal-mimari-testler.md` | 🔲 |
 | — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | 🔲 |
 | — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |
@@ -46,7 +46,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
 | 12 | ai-assistant | `modules/ai-assistant.md` | ✅ main'de yeşil (commit `928de51`, bkz. DALGA 12 bölümü) |
-| 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
+| 13 | prediction-ml | `modules/prediction-ml.md` | ✅ main'de yeşil (bkz. DALGA 13 bölümü) |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
 | 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
 | 16 | shared-kernel (erime) | `modules/shared-kernel.md` | 🔲 |
@@ -1214,6 +1214,174 @@ sıfır hata bulundu). Ayrı bir bağımsız temizlik görevi açılabilir.
 **Değişen dosya sayısı:** 22 mevcut dosya düzenlendi (shim'ler dahil) + 20
 yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
 taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
+
+## DALGA 13 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-18)
+
+**Kapsam:** prediction_ml modülü — 5-model ensemble (fizik+LightGBM+XGBoost+
+GB+RF), fizik-tabanlı fallback motoru, Kalman online-learning, ARIMA zaman
+serisi tahmini, model eğitim/versiyonlama, admin ML endpoint'leri, XAI
+açıklama. `egitim_kuyrugu`/`model_versiyonlar`/`prediction_results`
+tablolarının tek sahibi. En büyük modül (10.375 LOC, 36 dosya — task
+dosyasının 35-dosya envanteri `app/core/ml/route_similarity.py`'yi
+atlıyordu, gerçek envanter FAZ0'da doğrulandı).
+
+**Envanter/plan düzeltmeleri (dedektif ön-denetiminde bulundu, kullanıcı
+onayıyla uygulandı):**
+1. `app/core/ml/route_similarity.py` task dosyasının 35-dosya listesinde
+   YOK ama gerçekte prediction_ml'e ait (`find_similar_trips`, ai_assistant'ın
+   `plan_trip.py`'si kullanıyor) — taşındı (`domain/route_similarity.py`).
+2. `app/scripts/benchmark.py` task dosyasında listeliydi ama içeriği
+   ML/prediction ile HİÇ ilgili değil (generic DB/fleet/reports perf
+   benchmark script'i) — TAŞINMADI, task dosyasının bu satırı stale.
+3. `app/core/ml/model_manager.py` — FAZ0'da dead code olarak doğrulandı:
+   `save_version()`'ın yazdığı `model_versions` tablosu alembic geçmişinde
+   HİÇ var olmadı (yalnızca bir INDEX adı kısa süre bu ismi taşıyıp
+   `model_versiyonlar`'a yeniden adlandırıldı — `alembic/legacy_versions_
+   archive/ef8abc3ede67_017_ml_versions_queue.py` ile doğrulandı). 3 çağıran
+   sitesi (`ensemble_service.py`) bu hatayı sessizce yutuyordu. Kullanıcı
+   kararı: **tamamen sil** — `model_manager.py` + deprecated rogue script
+   `scripts/init_ml_db.py` (kendi docstring'i "bunu çalıştırma, alembic
+   kullan" diyordu, yine de `model_versions`'ı eksik şemayla manuel
+   oluşturuyordu) + `test_model_manager_coverage.py` SİLİNDİ.
+4. **Gerçek yazım yolu bağlandı**: `MLService.register_model_version()`
+   (`model_versiyonlar`'a doğru ORM INSERT) daha önce SIFIR prod çağıranı
+   vardı (`GET /admin/ml/versions/{arac_id}` hep boş dönüyordu). Kullanıcı
+   kararı: **doğru yere bağla** — yeni `_register_model_version()` free
+   function (kendi `UnitOfWork` + `MLService` + `model_versiyon_repo.
+   get_latest_version()`) eklendi, 3 eski `model_manager` çağıran sitesi
+   buna yönlendirildi. Kendi try/except'i içinde TÜM hataları yutuyor —
+   bu ayrıca `train_general_model`'daki gerçek bir davranış hatasını da
+   düzeltti: eskiden `save_version()` istisnası dış `try`'a düşüp
+   fonksiyonun geri kalanını (legacy kayıt, disk serialize, heavy/medium/
+   light class-model döngüsü) iptal ediyordu; artık izole.
+5. `app/core/ml/predictors/` paketi (`EnsemblePredictor` inference-only
+   wrapper) — grep ile sıfır prod çağıran doğrulandı (yalnız kendi özel
+   test dosyası). Kullanıcı kararı ("ölü kod yasak" tutarlılığı):
+   **sil** — paket + `test_phase4_ml_predictors_training_split.py` silindi.
+6. `analytics_executive`'in 4 ML-parametre metodundan yalnız
+   `get_training_seferler` (sıfır prod çağıran) SİLİNDİ; diğer 3
+   (`save_model_params`/`get_model_params`/`get_daily_summary_for_ml`)
+   kullanıcı kararıyla BİLİNÇLİ OLARAK `analytics_executive`'te bırakıldı
+   (çapraz-modül repo-metod taşıma davranış-değişikliği riski taşıyor,
+   mekanik-taşıma kapsamının dışında).
+
+**Yapı:** `v2/modules/prediction_ml/{api,application,domain,infrastructure,
+schemas.py,events.py,public.py,CLAUDE.md}`. `predict_consumption`
+(eskiden CC=50, 257 satır) ZATEN yardımcı metotlara bölünmüştü (taşımadan
+önce) — task dosyası §5'in 4 kümesi uygulandı ama 2 kümenin YERİ kök
+CLAUDE.md'nin domain-saflık kuralı gereği düzeltildi: `_run_physics_fallback`
+(response_builder'a bağımlı olduğu için domain/'de KALAMAZDI —
+`application/prediction_service.py`'de instance metodu olarak kaldı) ve
+"ensemble kümesi" (`run_ensemble_prediction`/`process_ensemble_result` —
+gerçek DB I/O yaptığı ve response_builder'a bağımlı olduğu için task
+dosyasının önerdiği `domain/ensemble.py` DEĞİL, yeni
+`application/ensemble_orchestration.py`'de). `ensemble_core.py::fit`
+(CC=61) task dosyasının kararı gereği bölünmedi (baseline'da kaldı).
+Prefetch-N+1 koruması (`_arac_obj`/`_sofor_obj`/`_dorse_obj`) birebir
+korundu.
+
+**10 sınıf istisnası** (hepsi gerçek mutable state/DI gerekçeli, detay
+`v2/modules/prediction_ml/CLAUDE.md`): `PredictionService`,
+`EnsemblePredictorService`, `EnsembleFuelPredictor`,
+`PhysicsBasedFuelPredictor`/`HybridFuelPredictor`, `KalmanFuelEstimator`/
+`KalmanEstimatorService`, `LightGBMFuelPredictor`/`LightGBMAnomalyClassifier`,
+`ARIMATimeSeriesPredictor`+legacy LSTM sınıfları, `Trainer`,
+`ModelTrainingHandler`/`PhysicsRecalculationHandler`, `TimeSeriesService`.
+
+**Bağlaşıklık karnesi doğrulandı** (out=27 en dolaşık tüketici) — TÜM
+çapraz-modül erişimler zaten `public.py`/`uow.<repo>` üzerinden gidiyordu,
+bu dalgada YENİ bir bypass-import düzeltmesi GEREKMEDİ (önceki 12 dalganın
+aksine). 9 modülün (fleet, driver, route_simulation, analytics_executive,
+ai_assistant, auth_rbac, fuel, reports, location) `public.py`'leri zaten
+yeterliydi. Geriye kalan işler: 8 tüketen dosyanın import path'i eski
+`app.core.ml.*`/`app.services.prediction_service`'ten
+`v2.modules.prediction_ml.public`'e güncellendi (`location/
+analyze_location_route.py`, `route_simulation/{simulate_route,
+create_route_simulation,get_route_details}.py` + `domain/segment_
+simulator.py`, `ai_assistant/plan_trip.py`, `analytics_executive/
+aggregate_cross_feature.py`, `sefer_fuel_estimator.py`, `sefer_write_
+service.py` [4 site], `driver/driver_stats.py`, `anomaly/detect_anomaly.py`,
+`trips.py`, `container.py`, `scripts/p51_real_world_validation.py`) —
+hepsi bu modüllerin kendi CLAUDE.md'sinde "prediction_ml henüz taşınmadı,
+geçici" olarak zaten dokümante edilmiş bekleyen işlerdi, bu dalgada
+kapatıldı.
+
+**Shim stratejisi:** `app/core/ml/ensemble_predictor.py` (28 satırlık eski
+backward-compat shim, ensemble_core+ensemble_service'ten re-export ediyordu)
+YENİ hedeflere (`v2.modules.prediction_ml.domain.ensemble_core` +
+`.application.ensemble_service`) işaret edecek şekilde güncellendi (19
+kalan çağıranı — script'ler + testler — tek seferde kapsıyor, hepsi tek
+tek düzeltilmedi). Diğer tüm eski `app/` dosyaları (prediction_service.py,
+ensemble_service.py, ml_service.py, vb.) doğrudan taşındı (shim YOK, tüm
+gerçek çağıranlar tek tek güncellendi — az sayıda üretim çağıranı olduğu
+için ai_assistant/driver/fleet gibi modüllerin izlediği "az çağıran →
+doğrudan güncelle" deseni izlendi).
+
+**`.importlinter` güncellemesi:** 13. `public-surface-only-prediction_ml`
+kontratı eklendi; diğer 12 modülün her birinin `forbidden_modules`'üne
+`prediction_ml.{api,application,domain,infrastructure}` eklendi;
+`12 modulun domain/infrastructure...` ve `Modul-ici katman sirasi`
+kontratlarına `prediction_ml` eklendi (ikincisi `infrastructure.** ->
+application.**` ignore'u gerektirdi — Celery task'ları `Trainer`/
+`PredictionBackfillService`'i application'dan import ediyor, diğer
+modüllerde de aynı desen var, örn. `anomaly.infrastructure.** ->
+anomaly.application.**`). Tüm 16 kontrat KEPT (yalnız pre-existing
+report-only `app.services`↔`app.core.services` FAZ0 kontratı BROKEN
+kaldı — bu dalgadan önce de böyleydi, ilgisiz).
+
+**Test taşıması (~35 dosya, mekanik + birkaç patch-target/davranış
+düzeltmesi):**
+- Toplu sed ile import path güncellemesi (`app.core.ml.*` →
+  `v2.modules.prediction_ml.{domain,application}.*`, vb.) — 61 dosya.
+- `test_ensemble_service_coverage.py`/`test_ensemble_service_more.py`/
+  `test_ml_prediction_safety.py`/`test_ml_training_contracts.py` — eski
+  `app.core.ml.model_manager.get_model_manager` patch hedefleri
+  `_register_model_version`'a çevrildi (yeni fonksiyon kendi try/except'i
+  içinde tüm hataları yuttuğu için "manager exception → hâlâ devam eder"
+  testleri artık davranışı doğrudan doğruluyor, ModelManager'ın eski
+  kwarg şeklini simüle etmiyor).
+- `test_prediction_service_coverage.py`/`test_prediction_service_more.py`/
+  `test_prediction_with_health.py`/`test_services/test_prediction_service_
+  contracts.py`/`test_services/test_runtime_config.py` — `PredictionService.
+  _build_explanation_summary` gibi eski staticmethod çağrıları
+  `response_builder.build_explanation_summary` gibi free-function
+  çağrılarına, `patch.object(svc, "_run_physics_model", ...)` gibi eski
+  instance-method patch'leri `patch("...prediction_service.run_physics_
+  model", ...)` module-level patch'lerine çevrildi (fonksiyonlar artık
+  domain/application'a taşınan serbest fonksiyonlar).
+- `test_sefer_write_more.py`/`test_sefer_write_more2.py`/
+  `test_sefer_write_service_coverage.py`/`test_sefer_write_service_
+  prediction_flows.py` — `sefer_write_service.py`'nin inline import'u
+  (`from v2.modules.prediction_ml.public import get_prediction_service`)
+  `public.py` üzerinden geldiği için patch hedefi ilk denemede yanlışlıkla
+  `application.prediction_service.get_prediction_service`'e verilmişti
+  (frozen import nedeniyle etkisizdi) — `v2.modules.prediction_ml.public.
+  get_prediction_service`'e düzeltildi (inline-import gotcha'sı, KAYNAK
+  modül = fiilen import edilen modül, ara-katman değil).
+- `test_ml_audit.py` — 2 hardcoded dosya-yolu kontrolü (`app/core/ml/
+  time_series_predictor.py` var mı, `pickle.load` taraması) yeni
+  `v2/modules/prediction_ml/domain/` konumuna güncellendi (aksi halde
+  boş eski dizini tarayıp testler sessizce anlamsız-yeşil olurdu).
+- `mypy.ini`'deki 3 modül-özel override (`app.core.ml.{lightgbm_predictor,
+  time_series_predictor,advanced_lstm}`) yeni `v2.modules.prediction_ml.
+  domain.*` yollarına taşındı (aksi halde ML kütüphanesi tip-stub eksikliği
+  suppress'leri sessizce devre dışı kalırdı).
+
+**Doğrulama:** `ruff check app v2 scripts tests --select E,F,W,I` temiz;
+`mypy app`/`mypy v2` sıfır hata; `lint-imports` 16 kontrat (15 KEPT + 1
+pre-existing report-only BROKEN); tüm prediction_ml + dokunulan
+sefer_write_service/route_simulation/location/ai_assistant/driver/anomaly
+testleri yeşil (700+ test).
+
+**Değişen dosya sayısı:** 36 dosya taşındı (`app/`→`v2/modules/
+prediction_ml/`), 3 dosya silindi (`model_manager.py`,
+`predictors/{__init__,ensemble_predictor}.py` paketi, `scripts/
+init_ml_db.py`), 1 dosya schemas.py'ye birleşti (`ml_schemas.py` →
+`schemas.py`), ~15 üretim tüketici dosyası import-path güncellendi,
+~35 test dosyası taşındı/güncellendi, `.importlinter` (+90 satır, 1 yeni
+kontrat), `mypy.ini` (3 override yolu güncellendi), kök `CLAUDE.md` +
+6 modülün kendi `CLAUDE.md`'si (location, route_simulation, ai_assistant,
+driver, analytics_executive + prediction_ml'in kendi yeni dosyası).
 
 ## Son güncelleme
 

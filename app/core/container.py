@@ -26,8 +26,6 @@ if TYPE_CHECKING:
     from app.core.services.sefer_service import SeferService
     from app.database.repositories.sefer_repo import SeferRepository
     from app.infrastructure.events.event_bus import EventBus
-    from app.services.prediction_service import PredictionService
-    from app.services.time_series_service import TimeSeriesService
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.analytics_executive.infrastructure.executive_read_models import (
         AnalizRepository,
@@ -39,6 +37,12 @@ if TYPE_CHECKING:
     from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
     from v2.modules.fuel.infrastructure.repository import YakitRepository
     from v2.modules.location.infrastructure.repository import LokasyonRepository
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
+    from v2.modules.prediction_ml.application.time_series_service import (
+        TimeSeriesService,
+    )
 
 
 class Container:
@@ -221,7 +225,9 @@ class Container:
         if self._prediction_service is None:
             with self._lock:
                 if self._prediction_service is None:
-                    from app.services.prediction_service import PredictionService
+                    from v2.modules.prediction_ml.application.prediction_service import (
+                        PredictionService,
+                    )
 
                     self._prediction_service = PredictionService()
         return self._prediction_service
@@ -243,7 +249,9 @@ class Container:
         if self._time_series_service is None:
             with self._lock:
                 if self._time_series_service is None:
-                    from app.services.time_series_service import TimeSeriesService
+                    from v2.modules.prediction_ml.application.time_series_service import (
+                        TimeSeriesService,
+                    )
 
                     self._time_series_service = TimeSeriesService()
         return self._time_series_service

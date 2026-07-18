@@ -66,7 +66,9 @@ async def test_prediction_service_returns_tahmini_tuketim(db_session):
     'tahmini_tuketim' as the primary L/100km key (not 'prediction_l_100km').
     Also asserts 'confidence_score' is present (fixed in ensemble_service).
     """
-    from app.services.prediction_service import get_prediction_service
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     arac_id = await _create_arac(db_session)
     svc = get_prediction_service()
@@ -118,7 +120,9 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
     sofor_id = await _create_sofor(db_session)
 
     # First get the real prediction to know what the model returns
-    from app.services.prediction_service import get_prediction_service
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     pred = await get_prediction_service().predict_consumption(
         arac_id=arac_id,
@@ -154,8 +158,10 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
 
 async def test_anomaly_detector_hybrid_reads_tahmini_tuketim_key(db_session):
     """Same contract check for detect_anomaly_hybrid (the ML-assisted path)."""
-    from app.services.prediction_service import get_prediction_service
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)

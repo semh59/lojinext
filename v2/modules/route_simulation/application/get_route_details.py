@@ -4,9 +4,10 @@ Production rule: provider failures must surface as provider failures. The
 service must not fabricate route geometry, road-class breakdowns, or segment
 analysis when live routing is unavailable.
 
-NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) ve
-``prediction_service`` (prediction_ml modülü) henüz v2'ye taşınmadı — eski
-yoldan import ediliyor, dokümante edilmiş geçici bağımlılık.
+NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) henüz
+v2'ye taşınmadı — eski yoldan import ediliyor, dokümante edilmiş geçici
+bağımlılık. ``get_prediction_service`` (prediction_ml) 2026-07-18'de
+``v2.modules.prediction_ml.public`` üzerinden erişecek şekilde güncellendi.
 """
 
 import os
@@ -297,7 +298,7 @@ async def get_route_details(
         )
 
         try:
-            from app.services.prediction_service import get_prediction_service
+            from v2.modules.prediction_ml.public import get_prediction_service
 
             pred_service = get_prediction_service()
             fuel_estimate = await pred_service.predict_consumption(

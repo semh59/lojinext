@@ -1,1 +1,3 @@
-from app.workers.tasks.prediction_tasks import run_prediction_task  # noqa: F401
+from v2.modules.prediction_ml.infrastructure.prediction_tasks import (  # noqa: F401
+    run_prediction_task,
+)

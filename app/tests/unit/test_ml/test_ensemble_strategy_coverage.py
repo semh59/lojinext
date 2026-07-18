@@ -12,7 +12,9 @@ pytestmark = pytest.mark.unit
 
 class TestDynamicWeightStrategy:
     def _strategy(self):
-        from app.core.ml.ensemble_strategy import DynamicWeightStrategy
+        from v2.modules.prediction_ml.domain.ensemble_strategy import (
+            DynamicWeightStrategy,
+        )
 
         return DynamicWeightStrategy()
 
@@ -82,7 +84,9 @@ class TestDynamicWeightStrategy:
 
 class TestEqualWeightStrategy:
     def _strategy(self):
-        from app.core.ml.ensemble_strategy import EqualWeightStrategy
+        from v2.modules.prediction_ml.domain.ensemble_strategy import (
+            EqualWeightStrategy,
+        )
 
         return EqualWeightStrategy()
 
@@ -135,7 +139,9 @@ class TestEqualWeightStrategy:
 
 class TestPhysicsFirstStrategy:
     def _strategy(self):
-        from app.core.ml.ensemble_strategy import PhysicsFirstStrategy
+        from v2.modules.prediction_ml.domain.ensemble_strategy import (
+            PhysicsFirstStrategy,
+        )
 
         return PhysicsFirstStrategy()
 
@@ -211,13 +217,13 @@ class TestPhysicsFirstStrategy:
 
 class TestEnsembleStrategyABC:
     def test_cannot_instantiate_directly(self):
-        from app.core.ml.ensemble_strategy import EnsembleStrategy
+        from v2.modules.prediction_ml.domain.ensemble_strategy import EnsembleStrategy
 
         with pytest.raises(TypeError):
             EnsembleStrategy()
 
     def test_concrete_strategies_are_subclasses(self):
-        from app.core.ml.ensemble_strategy import (
+        from v2.modules.prediction_ml.domain.ensemble_strategy import (
             DynamicWeightStrategy,
             EnsembleStrategy,
             EqualWeightStrategy,

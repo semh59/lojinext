@@ -15,7 +15,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from app.core.ml.route_similarity import find_similar_trips
 from v2.modules.ai_assistant.domain.planner_scoring import (
     ARAC_WEIGHTS,
     DEFAULT_TOP_N,
@@ -36,6 +35,7 @@ from v2.modules.ai_assistant.domain.planner_scoring import (
     _vehicle_reasons,
 )
 from v2.modules.driver.public import classify_route
+from v2.modules.prediction_ml.public import find_similar_trips
 
 logger = logging.getLogger(__name__)
 

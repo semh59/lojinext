@@ -9,10 +9,65 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from app.core.ml.ensemble_core import EnsembleFuelPredictor
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
 logger = get_logger(__name__)
+
+
+async def _register_model_version(
+    *,
+    arac_id: int,
+    predictor: EnsembleFuelPredictor,
+    result: Dict,
+    model_path: str,
+) -> None:
+    """`model_versiyonlar` tablosuna gerçek versiyon kaydı yaz.
+
+    Eskiden burada `app.core.ml.model_manager.ModelManager.save_version()`
+    çağrılıyordu — o sınıf var olmayan bir `model_versions` tablosuna raw
+    SQL yazıyordu (FAZ0 tespiti, 2026-07-18: alembic geçmişinde bu tablo
+    hiç bulunmuyor, sadece bir index adı kısa süre bu ismi taşımış).
+    Gerçek yazım yolu `MLService.register_model_version()` — ORM ile
+    `model_versiyonlar`'a yazar; `GET /admin/ml/versions/{arac_id}` bu
+    veriyi okur ama hiçbir prod çağrısı bu metodu tetiklemiyordu (dead
+    write path). Bu fonksiyon 3 çağıran sitesinde (`_persist_fallback_model`,
+    `train_for_vehicle`, `train_general_model`) ortak kullanılır — hem
+    doğru tabloya yazar hem de kendi try/except'i sayesinde `train_general_
+    model`'in eski davranışını düzeltir (versiyon kaydı hatası artık
+    zaten hesaplanmış eğitim sonucunu / disk kaydını / class-model
+    döngüsünü iptal etmiyor).
+    """
+    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.prediction_ml.application.ml_service import MLService
+
+    try:
+        measurements = result.get("measurements", {})
+        metrics_payload = result.get("metrics", {})
+        r2 = (
+            metrics_payload.get("gb_test_r2")
+            or result.get("ensemble_r2")
+            or metrics_payload.get("gb_cv_mean")
+        )
+        async with UnitOfWork() as uow:
+            ml_service = MLService(uow)
+            latest = await uow.model_versiyon_repo.get_latest_version(arac_id)
+            next_version = 1 if latest is None else latest.versiyon + 1
+            await ml_service.register_model_version(
+                arac_id=arac_id,
+                versiyon=next_version,
+                metrics={
+                    "r2_skoru": r2,
+                    "mae": measurements.get("mae"),
+                    "mape": measurements.get("mape"),
+                    "rmse": measurements.get("rmse"),
+                },
+                model_dosya_yolu=model_path,
+                kullanilan_ozellikler=result.get("feature_importance", {}),
+                veri_sayisi=int(result.get("sample_count") or 0),
+            )
+    except Exception as e:
+        logger.error(f"Failed to register model version for arac_id={arac_id}: {e}")
 
 
 class EnsemblePredictorService:
@@ -104,30 +159,13 @@ class EnsemblePredictorService:
         notes: str,
         legacy_repo,
     ) -> None:
-        try:
-            from app.core.ml.model_manager import ModelType, get_model_manager
-
-            manager = get_model_manager()
-            measurements = result.get("measurements", {})
-            metrics_payload = result.get("metrics", {})
-            metrics = {
-                "r2": metrics_payload.get("gb_test_r2") or result.get("ensemble_r2"),
-                "mae": measurements.get("mae"),
-                "rmse": measurements.get("rmse"),
-                "sample_count": result.get("sample_count"),
-            }
-            await manager.save_version(
-                arac_id=model_id,
-                model_type=ModelType.ENSEMBLE,
-                params=result,
-                metrics=metrics,
-                notes=notes,
-                feature_schema_hash=getattr(predictor, "_feature_hash", None),
-                training_data_hash=self._calculate_training_hash(seferler),
-                physics_version=getattr(predictor, "_physics_version", None),
-            )
-        except Exception as e:
-            logger.error(f"Failed to save fallback model version {model_id}: {e}")
+        model_path = str(Path("app/models") / f"ensemble_v2_{model_id}.pkl")
+        await _register_model_version(
+            arac_id=model_id,
+            predictor=predictor,
+            result=result,
+            model_path=model_path,
+        )
 
         try:
             await legacy_repo.save_model_params(model_id, result)
@@ -137,9 +175,7 @@ class EnsemblePredictorService:
         try:
             model_dir = Path("app/models")
             model_dir.mkdir(parents=True, exist_ok=True)
-            await asyncio.to_thread(
-                predictor.save_model, str(model_dir / f"ensemble_v2_{model_id}.pkl")
-            )
+            await asyncio.to_thread(predictor.save_model, model_path)
         except Exception as e:
             logger.error(f"Failed to serialize fallback model {model_id}: {e}")
 
@@ -330,47 +366,16 @@ class EnsemblePredictorService:
         if result["success"]:
             logger.info(f"Ensemble model trained for vehicle {arac_id}: {result}")
 
-            # 1. ModelManager ile Versiyonlama
-            try:
-                from app.core.ml.model_manager import ModelType, get_model_manager
+            model_path = str(Path("app/models") / f"ensemble_v2_{arac_id}.pkl")
 
-                manager = get_model_manager()
-
-                # En iyi R2 skorunu bul
-                # Phase 5A: Metrics are nested in 'metrics' dictionary
-                m = result.get("metrics", {})
-                r2_scores = [
-                    result.get("ensemble_r2"),
-                    m.get("gb_test_r2"),
-                    m.get("rf_test_r2"),
-                    m.get("xgb_test_r2"),
-                    m.get("lgb_test_r2"),
-                    m.get("gb_cv_mean"),
-                ]
-                valid_scores = [float(s) for s in r2_scores if s is not None]
-                best_r2 = max(valid_scores) if valid_scores else 0.0
-                measurements = result.get("measurements", {})
-
-                metrics = {
-                    "r2_score": best_r2,
-                    "mae": measurements.get("mae"),
-                    "rmse": measurements.get("rmse"),
-                    "sample_count": result.get("sample_count"),
-                }
-
-                await manager.save_version(
-                    arac_id=arac_id,
-                    model_type=ModelType.ENSEMBLE,
-                    params=result,
-                    metrics=metrics,
-                    notes="Auto-trained via EnsembleService (Phase 5)",
-                    feature_schema_hash=getattr(predictor, "_feature_hash", None),
-                    training_data_hash=self._calculate_training_hash(seferler),
-                    physics_version=getattr(predictor, "_physics_version", None),
-                )
-                logger.info(f"Model version saved for vehicle {arac_id}")
-            except Exception as e:
-                logger.error(f"Failed to save model version: {e}")
+            # 1. model_versiyonlar tablosuna gerçek versiyon kaydı
+            await _register_model_version(
+                arac_id=arac_id,
+                predictor=predictor,
+                result=result,
+                model_path=model_path,
+            )
+            logger.info(f"Model version registered for vehicle {arac_id}")
 
             # 2. AnalizRepo ile Legacy Kayıt (YakitFormul)
             try:
@@ -386,10 +391,9 @@ class EnsemblePredictorService:
             try:
                 model_dir = Path("app/models")
                 model_dir.mkdir(parents=True, exist_ok=True)
-                model_path = model_dir / f"ensemble_v2_{arac_id}.pkl"
 
                 # Save the trained model
-                await asyncio.to_thread(predictor.save_model, str(model_path))
+                await asyncio.to_thread(predictor.save_model, model_path)
                 logger.info(f"Serialized ensemble model saved for vehicle {arac_id}")
             except Exception as e:
                 logger.error(f"Failed to serialize model for vehicle {arac_id}: {e}")
@@ -421,30 +425,20 @@ class EnsemblePredictorService:
             result = await asyncio.to_thread(predictor.fit, seferler, y_actual)
 
             if result.get("success"):
-                # 3. Kaydet
-                from app.core.ml.model_manager import ModelType, get_model_manager
-
-                manager = get_model_manager()
-                measurements = result.get("measurements", {})
-                metrics_payload = result.get("metrics", {})
-
-                metrics = {
-                    "r2": metrics_payload.get("gb_test_r2")
-                    or result.get("ensemble_r2"),
-                    "mae": measurements.get("mae"),
-                    "rmse": measurements.get("rmse"),
-                    "sample_count": result.get("sample_count"),
-                }
-
-                await manager.save_version(
+                # 3. model_versiyonlar tablosuna gerçek versiyon kaydı.
+                # Kendi try/except'i _register_model_version içinde — burada
+                # ARTIK bir istisna çağrının geri kalanını (legacy kayıt,
+                # disk serialize, class-model döngüsü) iptal edemez. Eskiden
+                # bu blok dış `try` içindeydi ve save_version() (dead
+                # model_versions tablosu) her seferinde patlayıp fonksiyonu
+                # erken `except Exception` dalına düşürüyordu — general
+                # model zaten eğitilmiş olsa bile diske hiç yazılmıyordu.
+                model_path = str(Path("app/models") / "ensemble_v2_0.pkl")
+                await _register_model_version(
                     arac_id=0,
-                    model_type=ModelType.ENSEMBLE,
-                    params=result,
-                    metrics=metrics,
-                    notes="General Fallback Model (All vehicles) - Phase 5",
-                    feature_schema_hash=getattr(predictor, "_feature_hash", None),
-                    training_data_hash=self._calculate_training_hash(seferler),
-                    physics_version=getattr(predictor, "_physics_version", None),
+                    predictor=predictor,
+                    result=result,
+                    model_path=model_path,
                 )
                 await analiz_repo.save_model_params(0, result)
 
@@ -452,8 +446,7 @@ class EnsemblePredictorService:
                 try:
                     model_dir = Path("app/models")
                     model_dir.mkdir(parents=True, exist_ok=True)
-                    model_path = model_dir / "ensemble_v2_0.pkl"
-                    await asyncio.to_thread(predictor.save_model, str(model_path))
+                    await asyncio.to_thread(predictor.save_model, model_path)
                     logger.info("Serialized General Fallback Model saved to disk.")
                 except Exception as e:
                     logger.error(f"Failed to serialize general model: {e}")

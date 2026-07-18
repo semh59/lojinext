@@ -44,7 +44,9 @@ def _make_arac(**overrides):
 
 
 def _make_service():
-    from app.core.ml.ensemble_service import EnsemblePredictorService
+    from v2.modules.prediction_ml.application.ensemble_service import (
+        EnsemblePredictorService,
+    )
 
     svc = EnsemblePredictorService()
     svc._arac_repo = MagicMock()
@@ -62,13 +64,17 @@ class TestPersistFallbackModelExceptions:
     """Test exception-swallowing branches in _persist_fallback_model."""
 
     async def test_manager_save_version_exception_swallowed(self):
+        """_register_model_version has its own internal try/except (never
+        raises) — the 2026-07-18 model_manager→MLService rewiring moved this
+        guarantee inside the free function itself, so the call site no
+        longer needs a try/except. Verified here by mocking
+        _register_model_version to raise and confirming _persist_fallback_model
+        still calls legacy_repo despite that (would only be true if the
+        caller itself doesn't propagate — matching the new contract)."""
         svc = _make_service()
         mock_predictor = MagicMock()
         mock_predictor._feature_hash = None
         mock_predictor._physics_version = None
-
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(side_effect=RuntimeError("DB down"))
 
         mock_legacy_repo = MagicMock()
         mock_legacy_repo.save_model_params = AsyncMock()
@@ -77,7 +83,9 @@ class TestPersistFallbackModelExceptions:
 
         with (
             patch(
-                "app.core.ml.model_manager.get_model_manager", return_value=mock_manager
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch("pathlib.Path.mkdir"),
         ):
@@ -100,9 +108,6 @@ class TestPersistFallbackModelExceptions:
         mock_predictor._feature_hash = "abc"
         mock_predictor._physics_version = None
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
-
         mock_legacy_repo = MagicMock()
         mock_legacy_repo.save_model_params = AsyncMock(
             side_effect=RuntimeError("legacy fail")
@@ -112,7 +117,9 @@ class TestPersistFallbackModelExceptions:
 
         with (
             patch(
-                "app.core.ml.model_manager.get_model_manager", return_value=mock_manager
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(mock_predictor, "save_model"),
@@ -134,9 +141,6 @@ class TestPersistFallbackModelExceptions:
         mock_predictor._physics_version = None
         mock_predictor.save_model = MagicMock(side_effect=OSError("disk full"))
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
-
         mock_legacy_repo = MagicMock()
         mock_legacy_repo.save_model_params = AsyncMock()
 
@@ -144,7 +148,9 @@ class TestPersistFallbackModelExceptions:
 
         with (
             patch(
-                "app.core.ml.model_manager.get_model_manager", return_value=mock_manager
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch("pathlib.Path.mkdir"),
         ):
@@ -167,7 +173,9 @@ class TestPersistFallbackModelExceptions:
 class TestGetPredictorDiskLoad:
     def test_loads_model_from_disk_when_meta_exists_and_schema_matches(self):
         """When meta.json exists and feature count matches → load succeeds."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -180,7 +188,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -194,7 +202,9 @@ class TestGetPredictorDiskLoad:
 
     def test_schema_mismatch_marks_predictor_untrained(self):
         """When expected != runtime feature count → predictor.is_trained = False."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -204,7 +214,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -219,7 +229,9 @@ class TestGetPredictorDiskLoad:
         SAYISI aynı kalsa bile isim/sıra değişmişse (feature drift) eski
         kod bunu YAKALAMIYORDU — sadece n_features_in_ karşılaştırılıyordu.
         Artık persisted feature_schema_hash (isim+sıra) de karşılaştırılıyor."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -232,7 +244,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -248,7 +260,9 @@ class TestGetPredictorDiskLoad:
     def test_hash_match_keeps_predictor_trained(self):
         """Hash'ler eşleşiyorsa (gerçek sürüm) is_trained korunur — false
         positive yok."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -261,7 +275,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -272,7 +286,9 @@ class TestGetPredictorDiskLoad:
 
     def test_load_model_exception_records_failure_via_ml_probe(self):
         """load_model raises → ml_probe records failure (inner except block)."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -283,7 +299,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -300,7 +316,9 @@ class TestGetPredictorDiskLoad:
 
     def test_load_exception_ml_probe_exception_also_swallowed(self):
         """Inner get_ml_probe() also raises → outer exception still swallowed."""
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
 
@@ -309,7 +327,7 @@ class TestGetPredictorDiskLoad:
 
         with (
             patch(
-                "app.core.ml.ensemble_service.EnsembleFuelPredictor",
+                "v2.modules.prediction_ml.application.ensemble_service.EnsembleFuelPredictor",
                 return_value=mock_predictor,
             ),
             patch("pathlib.Path.exists", return_value=True),
@@ -478,9 +496,6 @@ class TestTrainForVehicleSaveExceptions:
         mock_predictor._feature_hash = None
         mock_predictor._physics_version = None
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(side_effect=RuntimeError("manager fail"))
-
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
 
@@ -495,8 +510,9 @@ class TestTrainForVehicleSaveExceptions:
                 AsyncMock(return_value=[]),
             ),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
                 "v2.modules.analytics_executive.public.get_analiz_repo",
@@ -530,9 +546,6 @@ class TestTrainForVehicleSaveExceptions:
         mock_predictor._feature_hash = None
         mock_predictor._physics_version = None
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
-
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock(
             side_effect=RuntimeError("repo fail")
@@ -549,8 +562,9 @@ class TestTrainForVehicleSaveExceptions:
                 AsyncMock(return_value=[]),
             ),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
                 "v2.modules.analytics_executive.public.get_analiz_repo",
@@ -583,8 +597,6 @@ class TestTrainForVehicleSaveExceptions:
         mock_predictor._physics_version = None
         mock_predictor.save_model = MagicMock(side_effect=OSError("disk full"))
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
 
@@ -599,8 +611,9 @@ class TestTrainForVehicleSaveExceptions:
                 AsyncMock(return_value=[]),
             ),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
                 "v2.modules.analytics_executive.public.get_analiz_repo",
@@ -658,16 +671,15 @@ class TestTrainGeneralModelClassModels:
                 return general_predictor
             return class_predictor
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
 
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
                 "v2.modules.analytics_executive.public.get_analiz_repo",
@@ -724,16 +736,15 @@ class TestTrainGeneralModelClassModels:
                 return general_predictor
             return class_predictor
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
 
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
                 "v2.modules.analytics_executive.public.get_analiz_repo",

@@ -24,7 +24,7 @@ def _make_features(**overrides):
 
 
 def _fresh_estimator(arac_id=1):
-    from app.core.ml.kalman_estimator import KalmanFuelEstimator
+    from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
 
     return KalmanFuelEstimator(arac_id=arac_id)
 
@@ -36,25 +36,25 @@ def _fresh_estimator(arac_id=1):
 
 class TestKalmanState:
     def test_default_state_shape(self):
-        from app.core.ml.kalman_estimator import KalmanState
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanState
 
         ks = KalmanState()
         assert ks.state.shape == (4,)
 
     def test_default_covariance_shape(self):
-        from app.core.ml.kalman_estimator import KalmanState
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanState
 
         ks = KalmanState()
         assert ks.P.shape == (4, 4)
 
     def test_default_observations_zero(self):
-        from app.core.ml.kalman_estimator import KalmanState
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanState
 
         ks = KalmanState()
         assert ks.n_observations == 0
 
     def test_last_update_initially_none(self):
-        from app.core.ml.kalman_estimator import KalmanState
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanState
 
         ks = KalmanState()
         assert ks.last_update is None
@@ -315,7 +315,9 @@ class TestSaveLoadState:
 
 class TestKalmanEstimatorService:
     def _make_service(self):
-        from app.core.ml.kalman_estimator import KalmanEstimatorService
+        from v2.modules.prediction_ml.domain.kalman_estimator import (
+            KalmanEstimatorService,
+        )
 
         svc = KalmanEstimatorService()
         mock_repo = MagicMock()
@@ -361,7 +363,9 @@ class TestKalmanEstimatorService:
         assert est.state.n_observations == 1
 
     def test_loads_state_from_repo_when_available(self):
-        from app.core.ml.kalman_estimator import KalmanEstimatorService
+        from v2.modules.prediction_ml.domain.kalman_estimator import (
+            KalmanEstimatorService,
+        )
 
         svc = KalmanEstimatorService()
         mock_repo = MagicMock()
@@ -388,7 +392,7 @@ class TestKalmanEstimatorService:
 
 class TestKalmanSingleton:
     def test_get_kalman_service_returns_instance(self):
-        from app.core.ml.kalman_estimator import (
+        from v2.modules.prediction_ml.domain.kalman_estimator import (
             KalmanEstimatorService,
             get_kalman_service,
         )
@@ -397,7 +401,7 @@ class TestKalmanSingleton:
         assert isinstance(svc, KalmanEstimatorService)
 
     def test_get_kalman_service_same_instance(self):
-        from app.core.ml.kalman_estimator import get_kalman_service
+        from v2.modules.prediction_ml.domain.kalman_estimator import get_kalman_service
 
         a = get_kalman_service()
         b = get_kalman_service()

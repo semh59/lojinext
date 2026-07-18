@@ -245,7 +245,7 @@ class TestPhysicsFuelPredictor:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             PhysicsBasedFuelPredictor,
             VehicleSpecs,
         )
@@ -261,7 +261,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_basic_scenario(self, predictor):
         """Temel tahmin senaryosu"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -275,7 +277,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_with_elevation_gain(self, predictor):
         """Yokuş yukarı senaryo - daha fazla yakıt"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         flat_conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -293,7 +297,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_with_elevation_loss(self, predictor):
         """Yokuş aşağı senaryo - daha az yakıt"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         flat_conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -311,7 +317,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_heavier_load_consumes_more(self, predictor):
         """Ağır yük daha fazla yakıt tüketir"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         light_load = RouteConditions(distance_km=100, load_ton=10.0, avg_speed_kmh=80)
 
@@ -324,7 +332,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_higher_speed_consumes_more(self, predictor):
         """Yüksek hız daha fazla yakıt tüketir (hava direnci)"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         slow_speed = RouteConditions(distance_km=100, load_ton=20.0, avg_speed_kmh=60)
 
@@ -338,7 +348,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_edge_case_zero_distance(self, predictor):
         """Sıfır mesafe edge case"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         zero_distance = RouteConditions(distance_km=0, load_ton=20.0, avg_speed_kmh=80)
 
@@ -349,7 +361,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_edge_case_zero_load(self, predictor):
         """Boş araç (yük yok) edge case"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         empty_truck = RouteConditions(distance_km=100, load_ton=0.0, avg_speed_kmh=80)
 
@@ -370,7 +384,7 @@ class TestKalmanEstimator:
 
     @pytest.fixture
     def estimator(self):
-        from app.core.ml.kalman_estimator import KalmanFuelEstimator
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
 
         return KalmanFuelEstimator()
 
@@ -922,7 +936,9 @@ class TestTimeSeriesService:
 
     @pytest.fixture
     def ts_service(self):
-        from app.services.time_series_service import get_time_series_service
+        from v2.modules.prediction_ml.application.time_series_service import (
+            get_time_series_service,
+        )
 
         return get_time_series_service()
 
@@ -1054,7 +1070,7 @@ class TestEdgeCases:
 
     def test_physics_predictor_extreme_values(self):
         """Fizik modeli - aşırı değerler"""
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             PhysicsBasedFuelPredictor,
             RouteConditions,
             VehicleSpecs,

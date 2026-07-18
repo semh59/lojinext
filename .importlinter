@@ -11,7 +11,7 @@ modules =
     app.services
 
 [importlinter:contract:module-cross-domain-infra-independence]
-name = 11 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
+name = 12 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
 type = independence
 modules =
     v2.modules.location.domain
@@ -38,6 +38,8 @@ modules =
     v2.modules.analytics_executive.infrastructure
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -48,9 +50,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -71,6 +73,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.domain.**
     v2.modules.auth_rbac.infrastructure.** -> v2.modules.auth_rbac.domain.**
@@ -79,6 +82,7 @@ ignore_imports =
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
+    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:module-internal-layers]
@@ -102,6 +106,7 @@ containers =
     v2.modules.reports
     v2.modules.analytics_executive
     v2.modules.ai_assistant
+    v2.modules.prediction_ml
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -112,9 +117,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -135,11 +140,13 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.application.**
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
+    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-location]
@@ -192,6 +199,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -202,9 +213,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -225,6 +236,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-route_simulation]
@@ -277,6 +289,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -287,9 +303,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -310,6 +326,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-notification]
@@ -362,6 +379,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -372,9 +393,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -395,6 +416,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fleet]
@@ -447,6 +469,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -457,9 +483,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -480,6 +506,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fuel]
@@ -532,6 +559,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -542,9 +573,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -565,6 +596,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-driver]
@@ -617,6 +649,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -627,9 +663,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -650,6 +686,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-auth_rbac]
@@ -702,6 +739,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -712,9 +753,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -735,6 +776,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-anomaly]
@@ -787,6 +829,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -797,9 +843,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -820,6 +866,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-import_excel]
@@ -872,6 +919,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -882,9 +933,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -905,6 +956,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-reports]
@@ -957,6 +1009,10 @@ forbidden_modules =
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -967,9 +1023,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -990,6 +1046,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-analytics_executive]
@@ -1037,7 +1094,10 @@ forbidden_modules =
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
-    v2.modules.reports.infrastructure
+    v2.modules.reports.infrastructure    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -1048,9 +1108,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -1071,6 +1131,7 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-ai_assistant]
@@ -1122,7 +1183,10 @@ forbidden_modules =
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
-    v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.infrastructure    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
 ignore_imports =
     app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
@@ -1133,9 +1197,9 @@ ignore_imports =
     app.core.container -> app.database.repositories.sefer_repo
     app.core.container -> app.infrastructure.events.event_bus
     app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
     app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
@@ -1156,4 +1220,95 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-prediction_ml]
+name = prediction_ml application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.prediction_ml.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+    v2.modules.ai_assistant.api
+    v2.modules.ai_assistant.application
+    v2.modules.ai_assistant.domain
+    v2.modules.ai_assistant.infrastructure
+ignore_imports =
+    app.database.unit_of_work -> app.database.repositories
+    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    app.core.container -> app.core.services.health_service
+    app.core.container -> app.core.services.internal_service
+    app.core.container -> app.core.services.sefer_service
+    app.core.container -> app.core.services.weather_service
+    app.core.container -> app.database.repositories.sefer_repo
+    app.core.container -> app.infrastructure.events.event_bus
+    app.core.container -> app.services.external_service
+    app.core.container -> v2.modules.prediction_ml.application.prediction_service
+    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
+    app.core.container -> v2.modules.prediction_ml.application.time_series_service
+    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.core.container -> v2.modules.anomaly.application.detect_anomaly
+    app.core.container -> v2.modules.auth_rbac.application.license_service
+    app.core.container -> v2.modules.driver.infrastructure.repository
+    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
+    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.core.container -> v2.modules.fuel.infrastructure.repository
+    app.core.container -> v2.modules.location.infrastructure.repository
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
 unmatched_ignore_imports_alerting = error

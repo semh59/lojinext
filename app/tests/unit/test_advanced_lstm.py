@@ -5,7 +5,7 @@ from typing import List
 
 import numpy as np
 
-from app.core.ml.advanced_lstm import (
+from v2.modules.prediction_ml.domain.advanced_lstm import (
     N_FEATURES,
     AdvancedTSEngine,
     FeatureEngine,
@@ -269,7 +269,9 @@ class TestTimeSeriesServiceUnit:
     """Tests for TimeSeriesService._to_engine_records and related helpers."""
 
     def test_to_engine_records_mapping(self):
-        from app.services.time_series_service import TimeSeriesService
+        from v2.modules.prediction_ml.application.time_series_service import (
+            TimeSeriesService,
+        )
 
         daily = [
             {
@@ -290,7 +292,9 @@ class TestTimeSeriesServiceUnit:
         assert r["trips"] == 2
 
     def test_to_engine_records_none_values(self):
-        from app.services.time_series_service import TimeSeriesService
+        from v2.modules.prediction_ml.application.time_series_service import (
+            TimeSeriesService,
+        )
 
         daily = [
             {
@@ -307,7 +311,9 @@ class TestTimeSeriesServiceUnit:
         assert records[0]["trips"] == 0
 
     def test_filter_outliers_removes_extremes(self):
-        from app.services.time_series_service import TimeSeriesService
+        from v2.modules.prediction_ml.application.time_series_service import (
+            TimeSeriesService,
+        )
 
         svc = TimeSeriesService()
         data = [{"ort_tuketim": 32.0} for _ in range(18)]
@@ -317,7 +323,9 @@ class TestTimeSeriesServiceUnit:
         assert 1000.0 not in consumptions
 
     def test_filter_outliers_passthrough_short_data(self):
-        from app.services.time_series_service import TimeSeriesService
+        from v2.modules.prediction_ml.application.time_series_service import (
+            TimeSeriesService,
+        )
 
         svc = TimeSeriesService()
         data = [{"ort_tuketim": v} for v in [30, 31, 32, 1000]]

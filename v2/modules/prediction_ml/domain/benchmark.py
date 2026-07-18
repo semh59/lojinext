@@ -483,7 +483,7 @@ class EnsembleBenchmark:
         Returns:
             Dict: Benchmark sonuçları
         """
-        from app.core.ml.ensemble_predictor import (
+        from v2.modules.prediction_ml.domain.ensemble_core import (
             LIGHTGBM_AVAILABLE,
             EnsembleFuelPredictor,
         )

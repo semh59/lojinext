@@ -109,7 +109,7 @@ def _patch_dependencies(
     flag_enabled: bool = True,
 ):
     """PredictionService'in indirect bağımlılıklarını mocka tabi tutar."""
-    import app.services.prediction_service as ps_mod
+    import v2.modules.prediction_ml.application.prediction_service as ps_mod
 
     uow_inst = uow_factory()
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst))
@@ -127,8 +127,8 @@ def _patch_dependencies(
         return None
 
     monkeypatch.setattr(
-        ps_mod.PredictionService,
-        "_run_ensemble_prediction",
+        ps_mod,
+        "run_ensemble_prediction",
         _no_ensemble,
     )
 
@@ -147,7 +147,9 @@ async def test_predict_with_fresh_periyodik_applies_low_factor(monkeypatch, _ara
 
     _patch_dependencies(monkeypatch, _uow_factory)
 
-    from app.services.prediction_service import PredictionService
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
 
     svc = PredictionService()
     result = await svc.predict_consumption(
@@ -181,7 +183,9 @@ async def test_predict_with_overdue_periyodik_increases_prediction(
 
     _patch_dependencies(monkeypatch, _uow_factory)
 
-    from app.services.prediction_service import PredictionService
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
 
     svc = PredictionService()
     result = await svc.predict_consumption(
@@ -211,7 +215,9 @@ async def test_predict_with_flag_off_no_factor_applied(monkeypatch, _arac_dict):
 
     _patch_dependencies(monkeypatch, _uow_factory, flag_enabled=False)
 
-    from app.services.prediction_service import PredictionService
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
 
     svc = PredictionService()
     result = await svc.predict_consumption(
@@ -243,7 +249,9 @@ async def test_predict_with_open_acil_applies_higher_factor(monkeypatch, _arac_d
 
     _patch_dependencies(monkeypatch, _uow_factory)
 
-    from app.services.prediction_service import PredictionService
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
 
     svc = PredictionService()
     result = await svc.predict_consumption(

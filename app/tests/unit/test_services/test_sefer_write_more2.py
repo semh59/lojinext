@@ -263,7 +263,7 @@ async def test_create_return_trip_sefer_no_ends_with_d_gets_r_suffix():
     mock_pred.predict_consumption = AsyncMock(return_value={"tahmini_tuketim": 130.0})
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         await svc._create_return_trip(uow, data, date(2026, 3, 15), ref_sefer_id=50)
@@ -294,7 +294,7 @@ async def test_create_return_trip_with_explicit_return_sefer_no():
     mock_pred.predict_consumption = AsyncMock(return_value={"tahmini_tuketim": 95.0})
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         await svc._create_return_trip(uow, data, date(2026, 3, 15), ref_sefer_id=55)
@@ -342,7 +342,7 @@ async def test_create_return_trip_prediction_exception_handled():
     mock_pred.predict_consumption = AsyncMock(side_effect=RuntimeError("pred fail"))
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         await svc._create_return_trip(uow, data, date(2026, 3, 15), ref_sefer_id=61)
@@ -507,7 +507,7 @@ async def test_bulk_add_sefer_exception_rollbacks(monkeypatch):
     ]
 
     with patch(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
         with pytest.raises(RuntimeError, match="insert fail"):

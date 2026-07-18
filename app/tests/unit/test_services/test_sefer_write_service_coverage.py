@@ -872,7 +872,7 @@ async def test_repredikt_for_update_ignores_soft_deleted_guzergah(monkeypatch):
             return {"tahmini_tuketim": 42.0, "tahmini_litre": 42.0}
 
     monkeypatch.setattr(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         lambda: _FakePredictionService(),
     )
 

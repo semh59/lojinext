@@ -956,8 +956,8 @@ async def plan_wizard(
     """
     from app.config import settings
     from app.infrastructure.audit.audit_logger import log_audit_event
-    from app.services.prediction_service import PredictionService
     from v2.modules.ai_assistant.public import PlanInput, TripPlannerEngine
+    from v2.modules.prediction_ml.public import PredictionService
 
     if not settings.TRIP_PLANNER_ENABLED:
         raise HTTPException(status_code=503, detail="Sefer planlama sihirbazı kapalı")

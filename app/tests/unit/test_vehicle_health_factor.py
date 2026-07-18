@@ -29,7 +29,9 @@ import pytest
     ],
 )
 def test_periyodik_age_factor_tiers(days_ago, expected_factor):
-    from app.core.ml.vehicle_health_factor import _periyodik_age_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        _periyodik_age_factor,
+    )
 
     now = datetime(2026, 6, 1, tzinfo=timezone.utc)
     last = now - timedelta(days=days_ago)
@@ -39,7 +41,7 @@ def test_periyodik_age_factor_tiers(days_ago, expected_factor):
 
 
 def test_periyodik_age_factor_none_returns_no_history():
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         NO_HISTORY_FACTOR,
         _periyodik_age_factor,
     )
@@ -51,7 +53,9 @@ def test_periyodik_age_factor_none_returns_no_history():
 
 def test_periyodik_age_factor_future_date_treated_as_fresh():
     """Clock skew / gelecek tarihli kayıt → fresh tier (negatif gün → 0)."""
-    from app.core.ml.vehicle_health_factor import _periyodik_age_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        _periyodik_age_factor,
+    )
 
     now = datetime(2026, 6, 1, tzinfo=timezone.utc)
     future_dt = now + timedelta(days=5)
@@ -62,7 +66,9 @@ def test_periyodik_age_factor_future_date_treated_as_fresh():
 
 
 def test_periyodik_age_factor_naive_datetime_treated_as_utc():
-    from app.core.ml.vehicle_health_factor import _periyodik_age_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        _periyodik_age_factor,
+    )
 
     now = datetime(2026, 6, 1, tzinfo=timezone.utc)
     naive_last = datetime(2026, 5, 1)  # no tzinfo
@@ -73,7 +79,7 @@ def test_periyodik_age_factor_naive_datetime_treated_as_utc():
 
 # ── compute_maintenance_factor ────────────────────────────────────────
 def test_compute_no_history_no_open():
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         NO_HISTORY_FACTOR,
         HealthInput,
         compute_maintenance_factor,
@@ -87,7 +93,7 @@ def test_compute_no_history_no_open():
 
 def test_compute_fresh_periyodik_with_open_acil():
     """Taze PERIYODIK (0.96) + açık ACIL (×1.10) → 0.96 × 1.10 = 1.056."""
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         HealthInput,
         compute_maintenance_factor,
     )
@@ -105,7 +111,7 @@ def test_compute_fresh_periyodik_with_open_acil():
 
 def test_compute_severely_overdue_with_ariza_and_acil_clamped():
     """600+ gün + ARIZA + ACIL → 1.15 × 1.05 × 1.10 = 1.328 → clamp 1.25."""
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         FACTOR_CAP,
         HealthInput,
         compute_maintenance_factor,
@@ -126,7 +132,7 @@ def test_compute_severely_overdue_with_ariza_and_acil_clamped():
 
 def test_compute_factor_never_below_floor():
     """Floor = 0.95; tüm kombinasyonlarda altına düşmez."""
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         FACTOR_FLOOR,
         HealthInput,
         compute_maintenance_factor,
@@ -139,7 +145,7 @@ def test_compute_factor_never_below_floor():
 
 
 def test_compute_reason_contains_days():
-    from app.core.ml.vehicle_health_factor import (
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
         HealthInput,
         compute_maintenance_factor,
     )
@@ -153,7 +159,9 @@ def test_compute_reason_contains_days():
 
 # ── apply_maintenance_factor ───────────────────────────────────────────
 def test_apply_factor_one_is_noop():
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {"prediction_liters": 100.0, "faktorler": {}}
     out = apply_maintenance_factor(payload, 1.0, "reason")
@@ -162,7 +170,9 @@ def test_apply_factor_one_is_noop():
 
 
 def test_apply_factor_multiplies_all_primary_keys():
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {
         "tahmini_tuketim": 30.0,
@@ -180,7 +190,9 @@ def test_apply_factor_multiplies_all_primary_keys():
 
 def test_apply_factor_no_faktorler_creates_dict():
     """Payload'da faktorler dict'i yoksa eklenir."""
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {"prediction_liters": 50.0}
     out = apply_maintenance_factor(payload, 1.10, "test")
@@ -189,7 +201,9 @@ def test_apply_factor_no_faktorler_creates_dict():
 
 
 def test_apply_factor_explanation_not_duplicated():
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {
         "prediction_liters": 100.0,
@@ -208,7 +222,9 @@ def test_apply_factor_handles_missing_prediction_liters():
     Eksik bir alanı 0.0 olarak UYDURMAK yanlış olur — "0 litre tahmin" gibi sahte
     bir veri üretirdi. Doğru davranış: yokken yok kalsın, faktör yine de yazılsın.
     """
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload: dict = {"faktorler": {}}
     out = apply_maintenance_factor(payload, 1.10, "x")

@@ -31,7 +31,7 @@ def backfill_missing(self, limit: int = 50) -> dict[str, Any]:
     bağlantı sorunları) retry ediliyor, diğerleri log'lanıp yeniden
     fırlatılıyor (task gerçekten FAILED olarak işaretlenir, izlenebilir).
     """
-    from app.core.services.prediction_backfill_service import (
+    from v2.modules.prediction_ml.application.prediction_backfill_service import (
         PredictionBackfillService,
     )
 

@@ -21,13 +21,16 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from app.core.ml.ensemble_strategy import DynamicWeightStrategy, EnsembleStrategy
-from app.core.ml.physics_fuel_predictor import (
+from app.infrastructure.logging.logger import get_logger
+from v2.modules.prediction_ml.domain.ensemble_strategy import (
+    DynamicWeightStrategy,
+    EnsembleStrategy,
+)
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
     VehicleSpecs,
 )
-from app.infrastructure.logging.logger import get_logger
 
 
 class SecurityError(Exception):

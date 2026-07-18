@@ -31,13 +31,17 @@ class TestCeleryTasks:
 
     def test_prediction_task_is_registered(self):
         """run_prediction_task is registered with correct name."""
-        from app.workers.tasks.prediction_tasks import run_prediction_task
+        from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+            run_prediction_task,
+        )
 
         assert run_prediction_task.name == "prediction.generate"
 
     def test_prediction_task_max_retries(self):
         """run_prediction_task has max_retries=3."""
-        from app.workers.tasks.prediction_tasks import run_prediction_task
+        from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+            run_prediction_task,
+        )
 
         assert run_prediction_task.max_retries == 3
 

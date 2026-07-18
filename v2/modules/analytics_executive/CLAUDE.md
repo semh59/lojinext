@@ -17,8 +17,10 @@ dosya bazında sistemin en yoğun raw-SQL kaynağı.
 NE YAPMAZ: sayfa-görüntüleme analitiği (`page_views` — reports'un işi,
 aşağıdaki "page_views tutarsızlığı çözüldü" notuna bakın), driver bulk
 metrikleri (`get_bulk_driver_metrics` — driver'ın işi, aşağıya bakın),
-ML model parametreleri (prediction_ml dalga 13'e
-kadar burada geçici kalıyor).
+gerçek ML tahmin pipeline'ı (prediction_ml, dalga 13'te taşındı — bu
+modülün `get_training_seferler` (dead) SİLİNDİ; `save_model_params`/
+`get_model_params`/`get_daily_summary_for_ml` bilinçli olarak BURADA
+KALDI, aşağıya bakın).
 
 ## Public API (public.py imzaları)
 
@@ -158,9 +160,15 @@ dokümante edildi).
 çok-CTE cross-domain JOIN (yakit_alimlari+seferler), servis-çağrısına
 çevirmek N+1 üretir (heavy-split ajanının ölçülü uyarısı, task dosyası §5.6).
 
-ML-parametre metodları (`get_training_seferler`/`save_model_params`/
-`get_model_params`/`get_daily_summary_for_ml`) prediction_ml (dalga 13)
-taşınana kadar burada kalıyor (task dosyasının kararı).
+✅ **KISMEN ÇÖZÜLDÜ (2026-07-18, prediction_ml dalga 13)**: 4 ML-parametre
+metodundan `get_training_seferler` (sıfır prod çağıran, grep ile doğrulandı)
+kullanıcı onayıyla SİLİNDİ. Diğer 3'ü (`save_model_params`/`get_model_params`/
+`get_daily_summary_for_ml`) BİLİNÇLİ OLARAK burada kaldı — prediction_ml'in
+kendi task dosyası bunları taşımayı öneriyordu ama gerçek taşıma (çapraz-modül
+repo-metod relocasyonu) davranış-değişikliği riski taşıdığından bu dalganın
+"mekanik taşıma" kapsamının dışında bırakıldı; `ensemble_service.py`/
+`kalman_estimator.py` bu 3 metodu hâlâ `v2.modules.analytics_executive.public.
+get_analiz_repo()` üzerinden çağırıyor.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 

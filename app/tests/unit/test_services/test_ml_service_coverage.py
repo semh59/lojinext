@@ -40,7 +40,7 @@ def _make_uow():
 
 def _make_service(uow=None):
     """Return MLService with a mocked UnitOfWork."""
-    from app.core.services.ml_service import MLService
+    from v2.modules.prediction_ml.application.ml_service import MLService
 
     if uow is None:
         uow = _make_uow()
@@ -90,7 +90,7 @@ class TestScheduleTraining:
         fake_task.durum = "WAITING"
 
         with patch(
-            "app.core.services.ml_service.EgitimKuyrugu",
+            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
             return_value=fake_task,
         ):
             result = await svc.schedule_training(arac_id=1, user_id=None)
@@ -116,7 +116,7 @@ class TestScheduleTraining:
             return task
 
         with patch(
-            "app.core.services.ml_service.EgitimKuyrugu",
+            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=2, user_id=10)
@@ -139,7 +139,7 @@ class TestScheduleTraining:
             return MagicMock(spec=EgitimKuyrugu)
 
         with patch(
-            "app.core.services.ml_service.EgitimKuyrugu",
+            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=5, user_id=99)
@@ -161,7 +161,7 @@ class TestScheduleTraining:
             return MagicMock(spec=EgitimKuyrugu)
 
         with patch(
-            "app.core.services.ml_service.EgitimKuyrugu",
+            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=3)
@@ -180,7 +180,7 @@ class TestUpdateTaskProgress:
         svc, uow = _make_service()
         uow.session.get = AsyncMock(return_value=None)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             with pytest.raises(HTTPException) as exc_info:
                 await svc.update_task_progress(
@@ -199,7 +199,7 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = None  # not yet set
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             await svc.update_task_progress(task_id=1, ilerleme=10.0, durum="RUNNING")
 
@@ -214,7 +214,7 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = datetime.now(timezone.utc)
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             await svc.update_task_progress(task_id=1, ilerleme=100.0, durum="COMPLETED")
 
@@ -227,7 +227,7 @@ class TestUpdateTaskProgress:
         task.arac_id = 3
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             await svc.update_task_progress(
                 task_id=1,
@@ -248,7 +248,7 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = datetime.now(timezone.utc)
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             await svc.update_task_progress(task_id=5, ilerleme=75.0, durum="RUNNING")
 
@@ -265,7 +265,7 @@ class TestUpdateTaskProgress:
         task.arac_id = 4
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("app.core.services.ml_service.training_ws_manager") as mock_ws:
+        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
             mock_ws.broadcast = AsyncMock()
             # "WAITING" is not in ["RUNNING", "COMPLETED", "FAILED"]
             await svc.update_task_progress(task_id=1, ilerleme=0.0, durum="WAITING")
@@ -350,7 +350,7 @@ class TestRegisterModelVersion:
         fake_mv.arac_id = 1
 
         with patch(
-            "app.core.services.ml_service.ModelVersiyon",
+            "v2.modules.prediction_ml.application.ml_service.ModelVersiyon",
             return_value=fake_mv,
         ) as MockMV:
             result = await svc.register_model_version(
@@ -386,7 +386,7 @@ class TestRegisterModelVersion:
             return MagicMock(spec=ModelVersiyon)
 
         with patch(
-            "app.core.services.ml_service.ModelVersiyon",
+            "v2.modules.prediction_ml.application.ml_service.ModelVersiyon",
             side_effect=fake_mv,
         ):
             await svc.register_model_version(

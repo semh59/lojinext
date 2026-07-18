@@ -16,7 +16,7 @@ pytestmark = pytest.mark.unit
 
 
 def _flat_route(distance_km=500.0, load_ton=20.0):
-    from app.core.ml.physics_fuel_predictor import RouteConditions
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import RouteConditions
 
     return RouteConditions(
         distance_km=distance_km,
@@ -26,7 +26,7 @@ def _flat_route(distance_km=500.0, load_ton=20.0):
 
 
 def _mountain_route(distance_km=300.0, load_ton=25.0, ascent_m=2000, descent_m=1800):
-    from app.core.ml.physics_fuel_predictor import RouteConditions
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import RouteConditions
 
     return RouteConditions(
         distance_km=distance_km,
@@ -44,7 +44,7 @@ def _mountain_route(distance_km=300.0, load_ton=25.0, ascent_m=2000, descent_m=1
 
 class TestVehicleSpecs:
     def test_default_specs_are_valid(self):
-        from app.core.ml.physics_fuel_predictor import VehicleSpecs
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
 
         specs = VehicleSpecs()
         assert specs.engine_efficiency > 0
@@ -52,13 +52,13 @@ class TestVehicleSpecs:
         assert specs.empty_weight_kg > 0
 
     def test_invalid_engine_efficiency_raises(self):
-        from app.core.ml.physics_fuel_predictor import VehicleSpecs
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
 
         with pytest.raises(ValueError, match="efficiency"):
             VehicleSpecs(engine_efficiency=0)
 
     def test_invalid_fuel_density_raises(self):
-        from app.core.ml.physics_fuel_predictor import VehicleSpecs
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
 
         with pytest.raises(ValueError, match="density"):
             VehicleSpecs(fuel_density_kg_l=0)
@@ -71,7 +71,9 @@ class TestVehicleSpecs:
 
 class TestPhysicsPredict:
     def test_flat_route_returns_positive_fuel(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         result = predictor.predict(_flat_route())
@@ -80,7 +82,9 @@ class TestPhysicsPredict:
 
     def test_mountain_route_higher_than_flat(self):
         """Mountain route must consume more than a flat route of equal distance."""
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         flat = predictor.predict(_flat_route(distance_km=300, load_ton=20))
@@ -88,7 +92,9 @@ class TestPhysicsPredict:
         assert mountain.consumption_l_100km > flat.consumption_l_100km
 
     def test_heavier_load_higher_consumption(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         light = predictor.predict(_flat_route(load_ton=5))
@@ -96,7 +102,7 @@ class TestPhysicsPredict:
         assert heavy.consumption_l_100km > light.consumption_l_100km
 
     def test_empty_trip_lower_consumption(self):
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             PhysicsBasedFuelPredictor,
             RouteConditions,
         )
@@ -112,7 +118,9 @@ class TestPhysicsPredict:
         )
 
     def test_result_within_realistic_bounds(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         result = predictor.predict(_flat_route())
@@ -123,7 +131,9 @@ class TestPhysicsPredict:
         )
 
     def test_energy_breakdown_present(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         result = predictor.predict(_flat_route())
@@ -132,7 +142,9 @@ class TestPhysicsPredict:
         assert "tirmanis" in result.energy_breakdown
 
     def test_confidence_range_ordered(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         result = predictor.predict(_flat_route())
@@ -142,7 +154,9 @@ class TestPhysicsPredict:
 
     def test_outlier_clamp_at_max_realistic(self):
         """An extremely steep short route should be clamped to MAX_REALISTIC."""
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         # 1 km, 25 ton, 5000 m ascent → enormous raw value
@@ -156,14 +170,18 @@ class TestPhysicsPredict:
 
 class TestPhysicsGravityRecovery:
     def test_young_vehicle_higher_recovery(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         young = PhysicsBasedFuelPredictor._get_gravity_recovery(2)
         old = PhysicsBasedFuelPredictor._get_gravity_recovery(12)
         assert young > old
 
     def test_recovery_brackets(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         assert PhysicsBasedFuelPredictor._get_gravity_recovery(1) == 0.90
         assert PhysicsBasedFuelPredictor._get_gravity_recovery(5) == 0.80
@@ -173,14 +191,18 @@ class TestPhysicsGravityRecovery:
 
 class TestPhysicsCalibrate:
     def test_calibrate_insufficient_data(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         result = predictor.calibrate_with_historical([30.0] * 3, [31.0] * 3)
         assert "error" in result
 
     def test_calibrate_with_valid_data(self):
-        from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            PhysicsBasedFuelPredictor,
+        )
 
         predictor = PhysicsBasedFuelPredictor()
         preds = [30.0] * 10
@@ -198,7 +220,7 @@ class TestPhysicsCalibrate:
 
 class TestHybridFuelPredictor:
     def test_predict_returns_fuel_prediction(self):
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             FuelPrediction,
             HybridFuelPredictor,
         )
@@ -209,7 +231,9 @@ class TestHybridFuelPredictor:
         assert result.total_liters > 0
 
     def test_learn_from_actual_updates_correction(self):
-        from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            HybridFuelPredictor,
+        )
 
         hybrid = HybridFuelPredictor()
         for _ in range(5):
@@ -219,7 +243,9 @@ class TestHybridFuelPredictor:
 
     def test_outlier_ignored_by_learn(self):
         """Ratios outside (0.5, 1.5) must be ignored."""
-        from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            HybridFuelPredictor,
+        )
 
         hybrid = HybridFuelPredictor()
         initial_factor = hybrid.correction_factor
@@ -227,7 +253,9 @@ class TestHybridFuelPredictor:
         assert hybrid.correction_factor == initial_factor
 
     def test_correction_factor_applied_to_prediction(self):
-        from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            HybridFuelPredictor,
+        )
 
         hybrid = HybridFuelPredictor()
         base_result = hybrid.predict(_flat_route(load_ton=20))

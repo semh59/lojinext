@@ -341,13 +341,13 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
     saved_versions = []
     legacy_saves = []
 
+    async def _fake_register(*, arac_id, predictor, result, model_path):
+        saved_versions.append({"arac_id": arac_id})
+
     monkeypatch.setattr(
-        "app.core.ml.model_manager.get_model_manager",
-        lambda: SimpleNamespace(
-            save_version=AsyncMock(
-                side_effect=lambda **kwargs: saved_versions.append(kwargs)
-            )
-        ),
+        "v2.modules.prediction_ml.application.ensemble_service."
+        "_register_model_version",
+        _fake_register,
     )
     monkeypatch.setattr(
         "v2.modules.analytics_executive.public.get_analiz_repo",

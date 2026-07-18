@@ -8,8 +8,9 @@ Directions (hibrit fallback + segment-mode kaynağı). `route_paths`,
 `route_simulations`, `route_segments` tablolarının tek sahibi.
 
 NE YAPMAZ: lokasyon CRUD'u (location modülünün işi), yakıt tahmin ML
-modeli (prediction_ml — bu modül yalnız `PhysicsBasedFuelPredictor`'ı
-tüketir), hava durumu (weather_service.py henüz bu modüle taşınmadı).
+modeli (prediction_ml — bu modül yalnız `v2.modules.prediction_ml.public.
+PhysicsBasedFuelPredictor`'ı tüketir), hava durumu (weather_service.py
+henüz bu modüle taşınmadı).
 
 **DURUM (dürüst, 2026-07-18 tam-denetim düzeltmesi sonrası)**:
 `application/`+`api/`+`domain/`+`infrastructure/` dolu; `public.py` ve
@@ -20,8 +21,11 @@ hâlâ yok (route şemaları api/route_routes.py içinde — modülün dış şe
 tüketicisi yok).
 `weather_service.py`, `route_validator.py`, `openroute_service.py`
 (geocode wrapper), `route_calibration_service.py`, `admin_calibration.py`
-endpoint'i, `route_similarity.py` henüz v2'ye taşınmadı — eski `app/`
-yolunda kalıyor.
+endpoint'i henüz v2'ye taşınmadı — eski `app/` yolunda kalıyor.
+`route_similarity.py` bu modüle AİT DEĞİLDİ — task dosyasının stale
+envanterinde route_simulation'a bağlıymış gibi görünse de gerçekte
+prediction_ml'in bir parçası (`domain/route_similarity.py`, dalga 13'te
+taşındı, ai_assistant'ın `plan_trip.py`'si kullanıyor).
 
 ## Public API (public.py imzaları — 2026-07-18'den beri VAR)
 
@@ -105,10 +109,12 @@ Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor
   bu modülün `MapboxClient`/`OpenMeteoElevationClient`/`resample_segments`'ini
   doğrudan import eder — sefer create anında güncel trafik/elevation lazım,
   event-gecikmesi kabul edilemez.
-- **prediction_ml** (senkron, geçici): `segment_simulator.py` ve
-  `simulate_route.py` `app.core.ml.physics_fuel_predictor`'ı (VehicleSpecs,
-  PhysicsBasedFuelPredictor) henüz eski yoldan import ediyor — prediction_ml
-  v2'ye taşınınca güncellenecek.
+- **prediction_ml** (taşındı, dalga 13): `domain/segment_simulator.py` ve
+  `application/simulate_route.py`/`create_route_simulation.py`
+  `v2.modules.prediction_ml.public`'ten `VehicleSpecs`/`PhysicsBasedFuelPredictor`/
+  `FuelPrediction` alır (2026-07-18: eski `app.core.ml.physics_fuel_predictor`
+  bypass'ı kapandı). `get_route_details.py` de `public.get_prediction_service`
+  kullanıyor.
 - **route_validator/openroute_service** (senkron, geçici): `RouteService`
   ve `OpenRouteClient` `app.core.services.route_validator.RouteValidator`'ı
   ve `app.core.services.integration_secrets`'i eski yoldan kullanıyor.
@@ -181,8 +187,9 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
 `application/` katmanı diğer modüllerin yalnız `public`/`events`'ini
 import edebilir (2026-07-18'den beri KEPT). Diğer modüller bu modüle
 yalnız `v2.modules.route_simulation.public` üzerinden erişir. Geçici
-istisnalar (eski `app/` yolları — `weather_service`, `openroute_service`,
-`route_similarity`, prediction_ml) kontratın ignore listesinde dokümante.
+istisnalar (eski `app/` yolları — `weather_service`, `openroute_service`)
+kontratın ignore listesinde dokümante; `prediction_ml` 2026-07-18'de
+taşındı, bu modül artık ona `public.py` üzerinden erişiyor (istisna değil).
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 

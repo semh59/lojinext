@@ -8,9 +8,9 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
-from app.core.ml.benchmark import ABTestFramework
-from app.core.ml.kalman_estimator import KalmanFuelEstimator
-from app.core.ml.physics_fuel_predictor import VehicleSpecs
+from v2.modules.prediction_ml.domain.benchmark import ABTestFramework
+from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
 
 
 class TestModelSerialization:
@@ -18,8 +18,14 @@ class TestModelSerialization:
 
     def test_no_pickle_in_codebase(self):
         """pickle.load kullanılmamalı (joblib hariç)"""
-        # scan entire app/core/ml directory
-        ml_dir = Path(__file__).parent.parent.parent.parent / "app" / "core" / "ml"
+        # scan entire prediction_ml domain directory
+        ml_dir = (
+            Path(__file__).parent.parent.parent.parent
+            / "v2"
+            / "modules"
+            / "prediction_ml"
+            / "domain"
+        )
 
         for file in ml_dir.glob("*.py"):
             with open(file, "r", encoding="utf-8") as f:
@@ -61,9 +67,10 @@ class TestModelSerialization:
         # time_series_predictor.py içinde weights_only=True kullanılıyor mu?
         ts_file = (
             Path(__file__).parent.parent.parent.parent
-            / "app"
-            / "core"
-            / "ml"
+            / "v2"
+            / "modules"
+            / "prediction_ml"
+            / "domain"
             / "time_series_predictor.py"
         )
         with open(ts_file, "r", encoding="utf-8") as f:

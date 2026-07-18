@@ -65,10 +65,10 @@ regresyon değil — pre-existing bir davranış boşluğu, dokümante edildi.
   `resample_segments`, `MapboxClient`, `OpenMeteoElevationClient`).
   2026-07-18: route_simulation'a public.py eklendi — eski "public'i yok,
   application/'dan doğrudan import" borcu kapandı.
-- **prediction_ml** (senkron, geçici): `analyze_location_route`'un
-  `_apply_baseline_fuel_estimate` yardımcı fonksiyonu
-  `app.core.ml.physics_fuel_predictor.PhysicsBasedFuelPredictor`'ı
-  doğrudan import eder (henüz v2'ye taşınmadı).
+- **prediction_ml** (taşındı, dalga 13): `analyze_location_route`'un
+  `_apply_baseline_fuel_estimate` yardımcı fonksiyonu 2026-07-18'den beri
+  `v2.modules.prediction_ml.public.PhysicsBasedFuelPredictor`/`RouteConditions`
+  üzerinden erişir (eski `app.core.ml.physics_fuel_predictor` bypass'ı kapandı).
 
 ## Şema & tablo sahipliği + çapraz-şema FK kontratları
 

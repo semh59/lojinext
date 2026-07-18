@@ -326,7 +326,7 @@ class SeferWriteService:
                 pred_ton,
                 pred_bos_sefer,
             )
-            from app.services.prediction_service import get_prediction_service
+            from v2.modules.prediction_ml.public import get_prediction_service
 
             pred_service = get_prediction_service()
 
@@ -531,7 +531,7 @@ class SeferWriteService:
             return await self._predict_via_estimator(uow, data, trip_date, route_dict)
         try:
             from app.core.services.weather_service import get_weather_service
-            from app.services.prediction_service import get_prediction_service
+            from v2.modules.prediction_ml.public import get_prediction_service
 
             pred_service = get_prediction_service()
             weather_service = get_weather_service()
@@ -766,7 +766,7 @@ class SeferWriteService:
         return_tahmin_meta = None
         if data.arac_id and data.mesafe_km:
             try:
-                from app.services.prediction_service import get_prediction_service
+                from v2.modules.prediction_ml.public import get_prediction_service
 
                 pred_service = get_prediction_service()
                 prediction_quality = self._build_prediction_quality_flags(
@@ -1291,7 +1291,7 @@ class SeferWriteService:
             return 0
 
         count = 0
-        from app.services.prediction_service import get_prediction_service
+        from v2.modules.prediction_ml.public import get_prediction_service
 
         pred_service = get_prediction_service()
 

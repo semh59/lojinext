@@ -13,9 +13,8 @@ Phase 0.4 kapsamı:
 
 NOT (DB/endpoint yok): bu modül in-memory, salt fonksiyonel.
 
-NOT (cross-module, geçici): ``PhysicsBasedFuelPredictor`` prediction_ml
-modülüne ait, henüz taşınmadı — eski yoldan import ediliyor, dokümante
-edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar kaydı).
+NOT (cross-module): ``PhysicsBasedFuelPredictor`` prediction_ml modülüne
+ait — ``v2.modules.prediction_ml.public`` üzerinden import edilir.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, List, Optional
 
-from app.core.ml.physics_fuel_predictor import (
+from v2.modules.prediction_ml.public import (
     FuelPrediction,
     PhysicsBasedFuelPredictor,
     VehicleSpecs,

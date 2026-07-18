@@ -318,7 +318,7 @@ def neutral_estimate(breakdown) -> float:
     """Faz 7 — koşul-nötr tahmin: çevresel/mevsimsel çarpanlar HARİÇ
     (physics × araç/şoför faktörleri). Literatür bandları koşul-nötr
     olduğundan birincil GREEN/RED kararı bununla verilir (like-for-like)."""
-    from app.core.ml.adjustment_factors import combine_factors
+    from v2.modules.prediction_ml.public import combine_factors
 
     return round(
         breakdown.physics_baseline

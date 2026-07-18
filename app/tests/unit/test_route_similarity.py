@@ -9,7 +9,7 @@ pytestmark = pytest.mark.integration
 
 
 def test_encode_route_returns_8d_vector():
-    from app.core.ml.route_similarity import encode_route
+    from v2.modules.prediction_ml.domain.route_similarity import encode_route
 
     analysis = {
         "motorway": {"flat": 100.0, "up": 10.0, "down": 10.0},
@@ -27,14 +27,14 @@ def test_encode_route_returns_8d_vector():
 
 
 def test_cosine_similarity_identical():
-    from app.core.ml.route_similarity import cosine_similarity
+    from v2.modules.prediction_ml.domain.route_similarity import cosine_similarity
 
     v = np.array([1.0, 0.5, 0.3, 0.0, 0.2, 0.0, 500.0, 300.0], dtype=np.float32)
     assert cosine_similarity(v, v) == pytest.approx(1.0)
 
 
 def test_cosine_similarity_orthogonal():
-    from app.core.ml.route_similarity import cosine_similarity
+    from v2.modules.prediction_ml.domain.route_similarity import cosine_similarity
 
     a = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
     b = np.array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
@@ -42,7 +42,7 @@ def test_cosine_similarity_orthogonal():
 
 
 def test_cosine_similarity_zero_vectors():
-    from app.core.ml.route_similarity import cosine_similarity
+    from v2.modules.prediction_ml.domain.route_similarity import cosine_similarity
 
     z = np.zeros(8, dtype=np.float32)
     assert cosine_similarity(z, z) == 0.0
@@ -50,7 +50,7 @@ def test_cosine_similarity_zero_vectors():
 
 async def test_find_similar_trips_distance_filter(db_session):
     """Trips with >20% distance difference must be filtered out."""
-    from app.core.ml.route_similarity import find_similar_trips
+    from v2.modules.prediction_ml.domain.route_similarity import find_similar_trips
 
     arac = await seed_arac(db_session)
     sofor = await seed_sofor(db_session)
@@ -70,7 +70,7 @@ async def test_find_similar_trips_distance_filter(db_session):
 
 async def test_find_similar_trips_returns_sorted_by_similarity(db_session):
     """Results must be sorted by similarity descending."""
-    from app.core.ml.route_similarity import find_similar_trips
+    from v2.modules.prediction_ml.domain.route_similarity import find_similar_trips
 
     vec = {"motorway": {"flat": 100.0}, "ascent_m": 500.0, "descent_m": 400.0}
     arac = await seed_arac(db_session)

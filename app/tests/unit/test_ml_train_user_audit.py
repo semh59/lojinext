@@ -5,7 +5,7 @@ async def test_ml_train_passes_user_id_to_service():
     """
     Train endpoint, current_admin.id'yi servis çağrısına iletmeli.
     """
-    from app.api.v1.endpoints import predictions as pred_mod
+    from v2.modules.prediction_ml.api import predictions as pred_mod
 
     mock_admin = MagicMock()
     mock_admin.id = 42

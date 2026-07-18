@@ -32,7 +32,9 @@ def _daily_consumptions(n: int, base: float = 32.0) -> list:
 
 class TestARIMATimeSeries:
     def test_basic_initialization(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         assert predictor is not None
@@ -40,7 +42,9 @@ class TestARIMATimeSeries:
         assert predictor.FORECAST_DAYS == 7
 
     def test_empty_data_returns_failure(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([])
@@ -49,7 +53,9 @@ class TestARIMATimeSeries:
 
     def test_too_few_observations_uses_moving_average(self):
         """Less than MIN_OBSERVATIONS triggers moving_average fallback."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([32.0, 33.0, 31.0])  # only 3 points
@@ -63,7 +69,9 @@ class TestARIMATimeSeries:
         tek başına gerçek bir ARIMA fit ile hareketli-ortalama fallback'i ayırt
         etmiyordu — sadece `method` alanına bakmayan bir çağıran "sahte başarı"
         görebilirdi. Artık `degraded: bool` alanı bunu açıkça işaretliyor."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([32.0, 33.0, 31.0])
@@ -71,7 +79,9 @@ class TestARIMATimeSeries:
 
     def test_moving_average_fallback_value(self):
         """Moving average should equal mean of last 5 values."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         data = [30.0, 32.0, 34.0, 36.0, 38.0]  # window = data[-5:]
         expected_avg = round(sum(data[-5:]) / 5, 2)
@@ -86,7 +96,9 @@ class TestARIMATimeSeries:
         """If ARIMA.fit raises (or statsmodels absent), predict() returns moving_average."""
         import sys
 
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = _daily_consumptions(12)
@@ -113,7 +125,7 @@ class TestARIMATimeSeries:
         mock_result.forecast.return_value = [33.0, 33.1, 32.9, 33.2, 33.0, 32.8, 33.1]
 
         with patch(
-            "app.core.ml.time_series_predictor.ARIMATimeSeriesPredictor.predict"
+            "v2.modules.prediction_ml.domain.time_series_predictor.ARIMATimeSeriesPredictor.predict"
         ) as mock_predict:
             mock_predict.return_value = {
                 "success": True,
@@ -123,7 +135,9 @@ class TestARIMATimeSeries:
                 "input_days": 30,
                 "forecast_days": 7,
             }
-            from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+            from v2.modules.prediction_ml.domain.time_series_predictor import (
+                ARIMATimeSeriesPredictor,
+            )
 
             predictor = ARIMATimeSeriesPredictor()
             result = predictor.predict(_daily_consumptions(30))
@@ -133,7 +147,9 @@ class TestARIMATimeSeries:
 
     def test_forecast_days_respected(self):
         """Custom forecast_days parameter must control output length in fallback."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([32.0, 33.0], forecast_days=3)
@@ -141,7 +157,9 @@ class TestARIMATimeSeries:
         assert len(result["forecast"]) == 3
 
     def test_detect_trend_increasing(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         history = [30.0] * 5
         forecast = [35.0] * 5  # > 5 % above last_avg
@@ -149,7 +167,9 @@ class TestARIMATimeSeries:
         assert trend == "increasing"
 
     def test_detect_trend_decreasing(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         history = [35.0] * 5
         forecast = [30.0] * 5  # < 5 % below last_avg
@@ -157,7 +177,9 @@ class TestARIMATimeSeries:
         assert trend == "decreasing"
 
     def test_detect_trend_stable(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         history = [32.0] * 5
         forecast = [32.0] * 5
@@ -165,7 +187,9 @@ class TestARIMATimeSeries:
         assert trend == "stable"
 
     def test_input_days_recorded_in_result(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = _daily_consumptions(5)
@@ -175,7 +199,7 @@ class TestARIMATimeSeries:
 
 class TestGetArimaPredictor:
     def test_get_arima_predictor_returns_instance(self):
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             ARIMATimeSeriesPredictor,
             get_arima_predictor,
         )
@@ -185,7 +209,7 @@ class TestGetArimaPredictor:
 
     def test_get_time_series_predictor_is_arima(self):
         """get_time_series_predictor() must return the ARIMA variant."""
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             ARIMATimeSeriesPredictor,
             get_time_series_predictor,
         )
@@ -194,7 +218,9 @@ class TestGetArimaPredictor:
         assert isinstance(pred, ARIMATimeSeriesPredictor)
 
     def test_is_lstm_available_is_false(self):
-        from app.core.ml.time_series_predictor import is_lstm_available
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            is_lstm_available,
+        )
 
         assert is_lstm_available() is False
 
@@ -202,7 +228,7 @@ class TestGetArimaPredictor:
 class TestTimeSeriesPredictorLSTMLegacy:
     def test_legacy_predictor_instantiates_without_torch(self):
         """TimeSeriesPredictor (LSTM) should instantiate even when PyTorch absent."""
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             TORCH_AVAILABLE,
             TimeSeriesPredictor,
         )
@@ -215,7 +241,7 @@ class TestTimeSeriesPredictorLSTMLegacy:
 
     def test_prepare_features_shape(self):
         """prepare_features always returns correct column count."""
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             TORCH_AVAILABLE,
             TimeSeriesPredictor,
         )

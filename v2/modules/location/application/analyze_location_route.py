@@ -72,13 +72,13 @@ async def _apply_baseline_fuel_estimate(
 ) -> None:
     """Baseline yakıt tahmini (standart TIR, 13t yük — güzergah kartında göstermek için).
 
-    NOT: prediction_ml modülüne bağımlı (henüz v2'ye taşınmadı) — eski
-    yoldan, dokümante edilmiş geçici bağımlılık.
+    2026-07-18: prediction_ml taşındı — artık `v2.modules.prediction_ml.public`
+    üzerinden erişiyor (eski `app.core.ml.physics_fuel_predictor` bypass'ı kapandı).
     """
     try:
         import asyncio
 
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.public import (
             PhysicsBasedFuelPredictor,
             RouteConditions,
         )

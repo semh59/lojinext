@@ -86,7 +86,7 @@ class TestTimeSeriesPredictorGuards:
 
     def test_train_returns_error_when_no_torch(self):
         """Without PyTorch, train() returns success=False immediately."""
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             TORCH_AVAILABLE,
             TimeSeriesPredictor,
         )
@@ -100,7 +100,9 @@ class TestTimeSeriesPredictorGuards:
 
     def test_predict_raises_when_not_trained(self):
         """predict() raises RuntimeError when model not trained."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         # Don't train — is_trained defaults to False
@@ -108,14 +110,16 @@ class TestTimeSeriesPredictorGuards:
             predictor.predict(_daily_data(30))
 
     def test_save_model_raises_when_not_trained(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         with pytest.raises(RuntimeError, match="eğitilmedi"):
             predictor.save_model("/tmp/test_lstm")
 
     def test_load_model_raises_when_no_torch(self):
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             TORCH_AVAILABLE,
             TimeSeriesPredictor,
         )
@@ -129,7 +133,9 @@ class TestTimeSeriesPredictorGuards:
 
     def test_train_insufficient_data_when_torch(self):
         """Fewer records than SEQUENCE_LENGTH + FORECAST_DAYS + 10 → error."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         # 5 records is far below the 47 needed (30+7+10)
@@ -139,7 +145,7 @@ class TestTimeSeriesPredictorGuards:
 
     def test_predictor_init_with_torch(self):
         """When torch is available, model is created successfully."""
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             TORCH_AVAILABLE,
             TimeSeriesPredictor,
         )
@@ -160,12 +166,16 @@ class TestTimeSeriesPredictorGuards:
 class TestPrepareFeatures:
     def _make_predictor(self):
         """Return a TimeSeriesPredictor regardless of TORCH_AVAILABLE."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         return TimeSeriesPredictor()
 
     def test_basic_shape(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         data = _daily_data(20)
@@ -173,7 +183,9 @@ class TestPrepareFeatures:
         assert features.shape == (20, TimeSeriesPredictor.FEATURE_COUNT)
 
     def test_string_dates(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         data = _daily_data_str_dates(15)
@@ -183,7 +195,9 @@ class TestPrepareFeatures:
 
     def test_none_tarih(self):
         """None tarih falls back to weekday=0, day=15, month=6 defaults."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         data = _daily_data_none_tarih(10)
@@ -192,7 +206,9 @@ class TestPrepareFeatures:
 
     def test_trend_feature_computed_after_7_records(self):
         """Trend (col 10) should be 0 for i < 7 and potentially non-zero after."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         # Create data with a monotonically increasing trend
@@ -216,7 +232,9 @@ class TestPrepareFeatures:
 
     def test_zero_sefer_sayisi_handled(self):
         """sefer_sayisi=0 and toplam_km=0 must not cause errors."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         today = date.today()
@@ -234,7 +252,9 @@ class TestPrepareFeatures:
         assert np.all(np.isfinite(features))
 
     def test_dtype_float32(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         features = predictor.prepare_features(_daily_data(5))
@@ -249,7 +269,9 @@ class TestPrepareFeatures:
 class TestCreateSequences:
     def test_normal_path(self):
         """Enough data → sequences created without padding."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         n = predictor.SEQUENCE_LENGTH + predictor.FORECAST_DAYS + 5
@@ -262,7 +284,9 @@ class TestCreateSequences:
 
     def test_padding_path(self):
         """Fewer records than required → padding is applied."""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
         n = 5  # well below required
@@ -281,7 +305,9 @@ class TestCreateSequences:
 
 class TestNormalize:
     def _fresh_predictor(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         return TimeSeriesPredictor()
 
@@ -339,7 +365,9 @@ class TestNormalize:
 
 class TestARIMAComprehensive:
     def test_single_item_list(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([32.0])
@@ -348,7 +376,9 @@ class TestARIMAComprehensive:
 
     def test_moving_average_uses_last_5(self):
         """MA window is last 5 elements."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]  # last 5: [20..60], avg = 40
@@ -359,7 +389,9 @@ class TestARIMAComprehensive:
 
     def test_moving_average_short_window(self):
         """With fewer than 5 items, use all items as window."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = [30.0, 32.0, 34.0]
@@ -368,7 +400,9 @@ class TestARIMAComprehensive:
         assert result["forecast"][0] == expected
 
     def test_forecast_days_parameter(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         result = predictor.predict([32.0] * 3, forecast_days=14)
@@ -378,7 +412,9 @@ class TestARIMAComprehensive:
     def test_arima_success_path_mocked(self):
         """Patch ARIMA inside the module to simulate successful fit + forecast."""
 
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = [32.0 + i * 0.1 for i in range(15)]
@@ -397,7 +433,7 @@ class TestARIMAComprehensive:
             {"statsmodels.tsa.arima.model": MagicMock(ARIMA=mock_arima_cls)},
         ):
             with patch(
-                "app.core.ml.time_series_predictor.ARIMATimeSeriesPredictor.predict"
+                "v2.modules.prediction_ml.domain.time_series_predictor.ARIMATimeSeriesPredictor.predict"
             ) as mock_pred:
                 mock_pred.return_value = {
                     "success": True,
@@ -414,7 +450,9 @@ class TestARIMAComprehensive:
 
     def test_detect_trend_boundary_plus5pct(self):
         """Exactly +5% → stable (not > 0.05)."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         history = [100.0] * 5
         forecast = [105.0] * 7  # exactly 5% → NOT > 5% → stable
@@ -423,7 +461,9 @@ class TestARIMAComprehensive:
 
     def test_detect_trend_minus_5_pct(self):
         """Exactly -5% → stable (not < 0.95 × last_avg)."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         history = [100.0] * 5
         forecast = [95.0] * 7  # 95 / 100 = 0.95 → NOT < 0.95 → stable
@@ -431,7 +471,9 @@ class TestARIMAComprehensive:
         assert trend == "stable"
 
     def test_input_days_in_output(self):
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = [30.0] * 7
@@ -440,13 +482,15 @@ class TestARIMAComprehensive:
 
     def test_arima_falls_back_on_exception(self):
         """Patch ARIMA to raise → should fall back to moving_average."""
-        from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            ARIMATimeSeriesPredictor,
+        )
 
         predictor = ARIMATimeSeriesPredictor()
         data = [32.0 + (i % 3) * 0.5 for i in range(20)]
 
         with patch(
-            "app.core.ml.time_series_predictor.ARIMATimeSeriesPredictor.predict"
+            "v2.modules.prediction_ml.domain.time_series_predictor.ARIMATimeSeriesPredictor.predict"
         ) as mock:
             mock.side_effect = None
             mock.return_value = {
@@ -468,7 +512,7 @@ class TestARIMAComprehensive:
 
 class TestARIMASingletonThreadSafety:
     def test_singleton_same_object_concurrent(self):
-        import app.core.ml.time_series_predictor as mod
+        import v2.modules.prediction_ml.domain.time_series_predictor as mod
 
         original = mod._arima_predictor
         mod._arima_predictor = None
@@ -492,7 +536,7 @@ class TestARIMASingletonThreadSafety:
             mod._arima_predictor = original
 
     def test_get_time_series_predictor_is_arima(self):
-        from app.core.ml.time_series_predictor import (
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
             ARIMATimeSeriesPredictor,
             get_time_series_predictor,
         )
@@ -501,7 +545,9 @@ class TestARIMASingletonThreadSafety:
         assert isinstance(pred, ARIMATimeSeriesPredictor)
 
     def test_is_lstm_available_false(self):
-        from app.core.ml.time_series_predictor import is_lstm_available
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            is_lstm_available,
+        )
 
         assert is_lstm_available() is False
 
@@ -513,7 +559,9 @@ class TestARIMASingletonThreadSafety:
 
 class TestTimeSeriesPrediction:
     def test_basic_fields(self):
-        from app.core.ml.time_series_predictor import TimeSeriesPrediction
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPrediction,
+        )
 
         pred = TimeSeriesPrediction(
             forecast=[32.0] * 7,

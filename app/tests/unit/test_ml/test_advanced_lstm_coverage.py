@@ -76,7 +76,7 @@ def _make_records_no_date(n: int) -> List[dict]:
 class TestFeatureEngineEdgeCases:
     def test_string_dates_processed(self):
         """ISO-string dates must be parsed; no exception or NaN."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         records = _make_records_string_dates(20)
@@ -85,7 +85,7 @@ class TestFeatureEngineEdgeCases:
         assert not np.any(np.isnan(X))
 
     def test_missing_date_falls_back_to_today(self):
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         records = _make_records_no_date(15)
@@ -95,7 +95,7 @@ class TestFeatureEngineEdgeCases:
 
     def test_transform_after_fit_normalises_correctly(self):
         """transform() after fit_transform() must apply stored stats."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         train = _make_records(60)
@@ -107,7 +107,7 @@ class TestFeatureEngineEdgeCases:
 
     def test_inverse_target_unfitted_returns_input(self):
         """inverse_target on an unfitted engine must return the input unchanged."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         y = np.array([1.0, 2.0, 3.0], dtype=np.float32)
@@ -115,7 +115,7 @@ class TestFeatureEngineEdgeCases:
         np.testing.assert_array_equal(result, y)
 
     def test_transform_unfitted_returns_raw(self):
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         records = _make_records(5)
@@ -124,7 +124,7 @@ class TestFeatureEngineEdgeCases:
 
     def test_short_records_no_lag_features_zero(self):
         """With only 2 records, lag-14 and lag-7 must be 0."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         records = _make_records(2)
@@ -135,7 +135,7 @@ class TestFeatureEngineEdgeCases:
 
     def test_weekend_flag(self):
         """Confirm is_weekend (column 6) triggers for a Saturday."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         # Find a Saturday
@@ -158,7 +158,7 @@ class TestFeatureEngineEdgeCases:
 
     def test_trend_slope_computed_for_longer_series(self):
         """Trend slope (col 23) must be non-zero for index >= 3."""
-        from app.core.ml.advanced_lstm import FeatureEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import FeatureEngine
 
         engine = FeatureEngine()
         records = _make_records(20)
@@ -175,14 +175,14 @@ class TestFeatureEngineEdgeCases:
 
 class TestSarimaFallback:
     def test_sarima_returns_none_on_short_data(self):
-        from app.core.ml.advanced_lstm import _sarima
+        from v2.modules.prediction_ml.domain.advanced_lstm import _sarima
 
         result = _sarima([32.0] * 10, 7)
         assert result is None
 
     def test_sarima_exception_returns_none(self):
         """If SARIMAX import raises inside the function, _sarima returns None."""
-        from app.core.ml.advanced_lstm import _sarima
+        from v2.modules.prediction_ml.domain.advanced_lstm import _sarima
 
         data = [32.0 + i * 0.1 for i in range(35)]
         # Patch inside advanced_lstm's local import scope
@@ -196,7 +196,7 @@ class TestSarimaFallback:
 
     def test_sarima_returns_dict_on_enough_data(self):
         """With 35 observations, _sarima should either succeed or return None (statsmodels optional)."""
-        from app.core.ml.advanced_lstm import _sarima
+        from v2.modules.prediction_ml.domain.advanced_lstm import _sarima
 
         data = [32.0 + np.sin(i / 7) * 2 for i in range(35)]
         result = _sarima(data, 7)
@@ -209,7 +209,7 @@ class TestSarimaFallback:
 class TestHoltWintersFallback:
     def test_holt_winters_exception_returns_none(self):
         """If ExponentialSmoothing raises, _holt_winters returns None."""
-        from app.core.ml.advanced_lstm import _holt_winters
+        from v2.modules.prediction_ml.domain.advanced_lstm import _holt_winters
 
         data = [32.0] * 25
         fake_mod = MagicMock()
@@ -220,7 +220,7 @@ class TestHoltWintersFallback:
 
     def test_holt_winters_below_21_no_seasonal(self):
         """With 14-20 obs, seasonal should be None (short path)."""
-        from app.core.ml.advanced_lstm import _holt_winters
+        from v2.modules.prediction_ml.domain.advanced_lstm import _holt_winters
 
         data = [32.0 + (i % 3) * 0.5 for i in range(14)]
         result = _holt_winters(data, 5)
@@ -232,7 +232,7 @@ class TestHoltWintersFallback:
 class TestEnsembleStatFallback:
     def test_ensemble_stat_only_hw_succeeds(self):
         """When HW succeeds but SARIMA returns None, blend still works."""
-        from app.core.ml.advanced_lstm import _ensemble_stat
+        from v2.modules.prediction_ml.domain.advanced_lstm import _ensemble_stat
 
         mock_hw = {
             "forecast": [32.0] * 7,
@@ -240,15 +240,15 @@ class TestEnsembleStatFallback:
             "upper": [34.0] * 7,
             "method": "holt_winters",
         }
-        with patch("app.core.ml.advanced_lstm._holt_winters", return_value=mock_hw):
-            with patch("app.core.ml.advanced_lstm._sarima", return_value=None):
+        with patch("v2.modules.prediction_ml.domain.advanced_lstm._holt_winters", return_value=mock_hw):
+            with patch("v2.modules.prediction_ml.domain.advanced_lstm._sarima", return_value=None):
                 result = _ensemble_stat([32.0] * 20, 7)
         assert result["forecast"] == [32.0] * 7
         assert "holt_winters" in result["method"]
 
     def test_ensemble_stat_only_sarima_succeeds(self):
         """When SARIMA succeeds but HW returns None, blend still works."""
-        from app.core.ml.advanced_lstm import _ensemble_stat
+        from v2.modules.prediction_ml.domain.advanced_lstm import _ensemble_stat
 
         mock_sar = {
             "forecast": [33.0] * 7,
@@ -256,14 +256,14 @@ class TestEnsembleStatFallback:
             "upper": [35.0] * 7,
             "method": "sarima",
         }
-        with patch("app.core.ml.advanced_lstm._holt_winters", return_value=None):
-            with patch("app.core.ml.advanced_lstm._sarima", return_value=mock_sar):
+        with patch("v2.modules.prediction_ml.domain.advanced_lstm._holt_winters", return_value=None):
+            with patch("v2.modules.prediction_ml.domain.advanced_lstm._sarima", return_value=mock_sar):
                 result = _ensemble_stat([32.0] * 35, 7)
         assert result["forecast"] == [33.0] * 7
 
     def test_ensemble_stat_both_succeed_blends(self):
         """When both HW and SARIMA succeed, blended result should be their average."""
-        from app.core.ml.advanced_lstm import _ensemble_stat
+        from v2.modules.prediction_ml.domain.advanced_lstm import _ensemble_stat
 
         mock_hw = {
             "forecast": [32.0] * 7,
@@ -277,8 +277,8 @@ class TestEnsembleStatFallback:
             "upper": [36.0] * 7,
             "method": "sarima",
         }
-        with patch("app.core.ml.advanced_lstm._holt_winters", return_value=mock_hw):
-            with patch("app.core.ml.advanced_lstm._sarima", return_value=mock_sar):
+        with patch("v2.modules.prediction_ml.domain.advanced_lstm._holt_winters", return_value=mock_hw):
+            with patch("v2.modules.prediction_ml.domain.advanced_lstm._sarima", return_value=mock_sar):
                 result = _ensemble_stat([32.0] * 35, 7)
         # Blended: (0.5 * 32 + 0.5 * 34) = 33.0
         assert result["forecast"][0] == pytest.approx(33.0, abs=0.01)
@@ -286,7 +286,7 @@ class TestEnsembleStatFallback:
 
     def test_ema_fallback_on_constant_data(self):
         """Constant data should produce a flat EMA forecast."""
-        from app.core.ml.advanced_lstm import _ema_fallback
+        from v2.modules.prediction_ml.domain.advanced_lstm import _ema_fallback
 
         result = _ema_fallback([30.0] * 10, 7)
         assert all(v == 30.0 for v in result["forecast"])
@@ -302,7 +302,7 @@ class TestEnsembleStatFallback:
 class TestAdvancedTSEngineStatPaths:
     def test_stat_forecast_ema_path_with_1_record(self):
         """n=1 < MIN_EMA(3) → INSUFFICIENT_DATA."""
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         result = engine.forecast(_make_records(1), steps=7)
@@ -311,7 +311,7 @@ class TestAdvancedTSEngineStatPaths:
 
     def test_stat_forecast_exactly_at_min_ema(self):
         """n=3 == MIN_EMA → must succeed via EMA."""
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         result = engine.forecast(_make_records(3), steps=7)
@@ -319,7 +319,7 @@ class TestAdvancedTSEngineStatPaths:
         assert "ema" in result.method
 
     def test_stat_forecast_custom_steps(self):
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         result = engine.forecast(_make_records(10), steps=14)
@@ -328,7 +328,7 @@ class TestAdvancedTSEngineStatPaths:
         assert result.forecast_days == 14
 
     def test_stat_forecast_lower_lt_upper(self):
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         result = engine.forecast(_make_records(15), steps=7)
@@ -336,7 +336,11 @@ class TestAdvancedTSEngineStatPaths:
             assert lo <= hi
 
     def test_train_insufficient_data_below_minimum(self):
-        from app.core.ml.advanced_lstm import FORECAST_DAYS, SEQ_LEN, AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import (
+            FORECAST_DAYS,
+            SEQ_LEN,
+            AdvancedTSEngine,
+        )
 
         engine = AdvancedTSEngine()
         min_days = SEQ_LEN + FORECAST_DAYS + 5
@@ -346,7 +350,7 @@ class TestAdvancedTSEngineStatPaths:
 
     def test_train_statistical_only_lt_min_deep(self):
         """Between min_days and MIN_DEEP(90), training returns statistical_only."""
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         # 45 days is ≥ min_days (42) but < MIN_DEEP (90)
@@ -357,7 +361,7 @@ class TestAdvancedTSEngineStatPaths:
             assert "method" in result or "n_sequences" in result
 
     def test_status_fields_present_after_init(self):
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         s = engine.status()
@@ -376,7 +380,7 @@ class TestAdvancedTSEngineStatPaths:
             assert key in s
 
     def test_status_bilstm_mae_none_when_untrained(self):
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         s = engine.status()
@@ -394,7 +398,7 @@ class TestAdvancedTSEngineDeepMocked:
 
     def test_deep_forecast_fallback_on_exception(self):
         """If deep forecast raises, engine must fall back to statistical path."""
-        from app.core.ml.advanced_lstm import AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import AdvancedTSEngine
 
         engine = AdvancedTSEngine()
         engine._trained = True  # pretend trained
@@ -409,7 +413,7 @@ class TestAdvancedTSEngineDeepMocked:
 
     def test_make_sequences_output_shape(self):
         """_make_sequences must produce correct sequence/label arrays."""
-        from app.core.ml.advanced_lstm import (
+        from v2.modules.prediction_ml.domain.advanced_lstm import (
             FORECAST_DAYS,
             SEQ_LEN,
             AdvancedTSEngine,
@@ -427,7 +431,10 @@ class TestAdvancedTSEngineDeepMocked:
 
     def test_deep_forecast_bilstm_only(self):
         """When only bilstm is set, deep forecast uses bilstm method."""
-        from app.core.ml.advanced_lstm import TORCH_AVAILABLE, AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import (
+            TORCH_AVAILABLE,
+            AdvancedTSEngine,
+        )
 
         if not TORCH_AVAILABLE:
             pytest.skip("torch not available")
@@ -455,7 +462,10 @@ class TestAdvancedTSEngineDeepMocked:
 
     def test_deep_forecast_tcn_only(self):
         """When only tcn is set, deep forecast uses tcn method."""
-        from app.core.ml.advanced_lstm import TORCH_AVAILABLE, AdvancedTSEngine
+        from v2.modules.prediction_ml.domain.advanced_lstm import (
+            TORCH_AVAILABLE,
+            AdvancedTSEngine,
+        )
 
         if not TORCH_AVAILABLE:
             pytest.skip("torch not available")
@@ -488,7 +498,7 @@ class TestAdvancedTSEngineDeepMocked:
 
 class TestWalkForwardCV:
     def test_no_torch_returns_inf(self):
-        from app.core.ml import advanced_lstm
+        from v2.modules.prediction_ml.domain import advanced_lstm
 
         original = advanced_lstm.TORCH_AVAILABLE
         try:
@@ -506,7 +516,7 @@ class TestWalkForwardCV:
 
 class TestTrainModel:
     def test_no_torch_returns_empty_dict(self):
-        from app.core.ml import advanced_lstm
+        from v2.modules.prediction_ml.domain import advanced_lstm
 
         original = advanced_lstm.TORCH_AVAILABLE
         try:
@@ -525,7 +535,7 @@ class TestTrainModel:
 class TestSingletonThreadSafety:
     def test_singleton_is_same_object_concurrent(self):
         """Two threads calling get_advanced_ts_engine() must get the same instance."""
-        import app.core.ml.advanced_lstm as mod
+        import v2.modules.prediction_ml.domain.advanced_lstm as mod
 
         # Reset singleton for a clean test
         original = mod._engine
@@ -550,7 +560,10 @@ class TestSingletonThreadSafety:
             mod._engine = original
 
     def test_get_engine_returns_advanced_ts_engine(self):
-        from app.core.ml.advanced_lstm import AdvancedTSEngine, get_advanced_ts_engine
+        from v2.modules.prediction_ml.domain.advanced_lstm import (
+            AdvancedTSEngine,
+            get_advanced_ts_engine,
+        )
 
         engine = get_advanced_ts_engine()
         assert isinstance(engine, AdvancedTSEngine)
@@ -564,7 +577,7 @@ class TestSingletonThreadSafety:
 class TestDetectTrendEdge:
     def test_exactly_5_pct_increase_is_stable(self):
         """Exactly +5% delta is NOT > 0.05, so it must be 'stable'."""
-        from app.core.ml.advanced_lstm import _detect_trend
+        from v2.modules.prediction_ml.domain.advanced_lstm import _detect_trend
 
         # last_avg = 100, fc_avg = 105 → delta = 0.05 → NOT > 0.05
         history = [100.0] * 5
@@ -573,7 +586,7 @@ class TestDetectTrendEdge:
         assert trend == "stable"
 
     def test_slightly_above_5_pct_is_increasing(self):
-        from app.core.ml.advanced_lstm import _detect_trend
+        from v2.modules.prediction_ml.domain.advanced_lstm import _detect_trend
 
         history = [100.0] * 5
         forecast = [106.0] * 7  # delta ≈ 0.059 > 0.05
@@ -581,13 +594,13 @@ class TestDetectTrendEdge:
         assert trend == "increasing"
 
     def test_only_history_no_forecast(self):
-        from app.core.ml.advanced_lstm import _detect_trend
+        from v2.modules.prediction_ml.domain.advanced_lstm import _detect_trend
 
         result = _detect_trend([32.0, 33.0], [])
         assert result == "stable"
 
     def test_only_forecast_no_history(self):
-        from app.core.ml.advanced_lstm import _detect_trend
+        from v2.modules.prediction_ml.domain.advanced_lstm import _detect_trend
 
         result = _detect_trend([], [32.0, 33.0])
         assert result == "stable"
@@ -600,7 +613,7 @@ class TestDetectTrendEdge:
 
 class TestForecastResultExtended:
     def test_all_fields_settable(self):
-        from app.core.ml.advanced_lstm import ForecastResult
+        from v2.modules.prediction_ml.domain.advanced_lstm import ForecastResult
 
         r = ForecastResult(
             success=True,
@@ -622,7 +635,7 @@ class TestForecastResultExtended:
         assert r.is_trained is False
 
     def test_error_code_and_message(self):
-        from app.core.ml.advanced_lstm import ForecastResult
+        from v2.modules.prediction_ml.domain.advanced_lstm import ForecastResult
 
         r = ForecastResult(
             success=False,

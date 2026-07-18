@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 
 from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
-from app.core.ml.kalman_estimator import KalmanFuelEstimator
-from app.core.ml.time_series_predictor import TimeSeriesPredictor
 from v2.modules.driver.domain.performance_ml import DriverPerformanceML
+from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
+from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
 
 
 def test_ensemble_race_condition_protection():

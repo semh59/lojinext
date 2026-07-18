@@ -153,16 +153,11 @@ celery_app = get_celery_app()
 # Ensure tasks are registered
 from celery.signals import worker_process_init  # noqa: E402
 
-# Phase 4.0 — ML weekly retrain Celery task
-import app.core.ml.training.scheduler_task  # noqa: E402,F401
-
 # OPS-002 — Nightly DB backup task
 import app.workers.tasks.backup_tasks  # noqa: E402,F401
 import app.workers.tasks.dlq_tasks  # noqa: E402,F401
 import app.workers.tasks.error_digest  # noqa: E402,F401
 import app.workers.tasks.outbox_tasks  # noqa: E402,F401
-import app.workers.tasks.prediction_backfill_tasks  # noqa: E402,F401
-import app.workers.tasks.prediction_tasks  # noqa: E402,F401
 import v2.modules.analytics_executive.infrastructure.compliance_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.cluster_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.theft_tasks  # noqa: E402,F401
@@ -170,6 +165,11 @@ import v2.modules.driver.infrastructure.coaching_tasks  # noqa: E402,F401
 import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.import_excel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
+import v2.modules.prediction_ml.infrastructure.prediction_backfill_tasks  # noqa: E402,F401
+import v2.modules.prediction_ml.infrastructure.prediction_tasks  # noqa: E402,F401
+
+# Phase 4.0 — ML weekly retrain Celery task
+import v2.modules.prediction_ml.infrastructure.scheduler_task  # noqa: E402,F401
 import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
 
 # NOT: driver.calculate_performance_score orphan Celery task'ı (hiç kayıtlı

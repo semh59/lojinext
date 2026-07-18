@@ -10,12 +10,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.ml.advanced_lstm import ForecastResult
 from app.database.unit_of_work import UnitOfWork
-from app.services.time_series_service import (
+from v2.modules.prediction_ml.application.time_series_service import (
     TimeSeriesDataUnavailable,
     TimeSeriesService,
 )
+from v2.modules.prediction_ml.domain.advanced_lstm import ForecastResult
 
 pytestmark = pytest.mark.unit
 

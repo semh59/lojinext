@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from starlette.responses import JSONResponse
 
 from app.api.deps import get_background_job_manager, get_current_active_admin
-from app.core.services.prediction_backfill_service import PredictionBackfillService
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.background.job_manager import (
@@ -15,6 +14,9 @@ from app.infrastructure.background.job_manager import (
 )
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import BackfillTriggerResponse
+from v2.modules.prediction_ml.application.prediction_backfill_service import (
+    PredictionBackfillService,
+)
 
 logger = get_logger(__name__)
 router = APIRouter()

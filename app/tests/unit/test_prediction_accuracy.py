@@ -7,11 +7,13 @@ Bir ağırlık değişikliği veya feature engineering regresyonu bu testleri k�
 
 import pytest
 
-from app.core.ml.physics_fuel_predictor import (
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
 )
-from app.core.ml.time_series_predictor import ARIMATimeSeriesPredictor
+from v2.modules.prediction_ml.domain.time_series_predictor import (
+    ARIMATimeSeriesPredictor,
+)
 
 # ---------------------------------------------------------------------------
 # Fizik Tahmincisi — Bilinen Girdi → Beklenen Aralık

@@ -141,15 +141,17 @@ class TestRunPredictionTask:
 
         with (
             patch(
-                "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
                 return_value=mock_redis,
             ),
             patch(
-                "app.workers.tasks.prediction_tasks.get_llm_client",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client",
                 return_value=mock_llm,
             ),
         ):
-            from app.workers.tasks.prediction_tasks import run_prediction_task
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                run_prediction_task,
+            )
 
             result = run_prediction_task.run("test question")
 
@@ -171,16 +173,18 @@ class TestRunPredictionTask:
 
         with (
             patch(
-                "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
                 return_value=mock_redis,
             ),
             patch(
-                "app.workers.tasks.prediction_tasks.get_llm_client",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client",
                 return_value=mock_llm,
             ),
-            patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()),
+            patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()),
         ):
-            from app.workers.tasks.prediction_tasks import run_prediction_task
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                run_prediction_task,
+            )
 
             result = run_prediction_task.run(
                 "Yakıt neden yüksek?", context="TIR takip sistemi"
@@ -201,10 +205,12 @@ class TestRunPredictionTask:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch(
-            "app.workers.tasks.prediction_tasks.AsyncSessionLocal",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.AsyncSessionLocal",
             return_value=mock_session,
         ):
-            from app.workers.tasks.prediction_tasks import _persist
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                _persist,
+            )
 
             loop = asyncio.new_event_loop()
             loop.run_until_complete(
@@ -217,14 +223,16 @@ class TestRunPredictionTask:
     def test_persist_best_effort_db_failure(self):
         """DB yazımı başarısız olursa _persist sessizce geçer."""
         with patch(
-            "app.workers.tasks.prediction_tasks.AsyncSessionLocal"
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_session = MagicMock()
             mock_session.__aenter__ = AsyncMock(side_effect=Exception("DB conn failed"))
             mock_session.__aexit__ = AsyncMock(return_value=False)
             mock_session_cls.return_value = mock_session
 
-            from app.workers.tasks.prediction_tasks import _persist
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                _persist,
+            )
 
             # Should not raise. asyncio.run() — get_event_loop() Py3.12+'da çalışan
             # loop yokken RuntimeError verir (üretim kodu zaten asyncio.run kullanır).

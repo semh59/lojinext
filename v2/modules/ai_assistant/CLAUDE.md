@@ -192,11 +192,12 @@ istisnaları #2/#7).
 - **driver (taşındı, ters yön)**: `generate_coaching.py` →
   `v2.modules.ai_assistant.public.get_groq_service` (2026-07-18: public'e
   çevrildi, lazy import — döngü notu driver/CLAUDE.md'de).
-- **prediction_ml (taşınmadı, dalga 13, ters yön)**:
-  `app/services/prediction_service.py::_log_prediction_to_ai` bu modülün
-  `get_smart_ai().teach()`'ini best-effort arka plan görevi olarak
-  çağırıyor. `app/workers/tasks/prediction_tasks.py` bu modülün
-  `public.get_llm_client()`'ını çağırıyor (2026-07-18: public'e çevrildi).
+- **prediction_ml (taşındı, dalga 13, ters yön)**:
+  `v2.modules.prediction_ml.application.prediction_service.py::
+  _log_prediction_to_ai` bu modülün `get_smart_ai().teach()`'ini
+  best-effort arka plan görevi olarak çağırıyor.
+  `v2.modules.prediction_ml.infrastructure.prediction_tasks.py` bu modülün
+  `public.get_llm_client()`'ını çağırıyor.
 - **trip (taşınmadı, dalga 14, geçici bağımlılık)**:
   `plan_trip.py` `app.database.unit_of_work.UnitOfWork` üzerinden
   `lokasyon_repo`/`arac_repo`/`sofor_repo`/`sefer_repo`'ya (route_analysis/
@@ -209,8 +210,8 @@ istisnaları #2/#7).
   2026-07-18'de public'e eklendi) import ediyor.
 - **route_simulation (taşınmadı kısım, geçici)**: `plan_trip.py`
   `app.core.container.get_container().weather_service` (henüz taşınmayan
-  `weather_service.py`) ve `app.core.ml.route_similarity.find_similar_trips`
-  (henüz taşınmayan prediction_ml/route_similarity) çağırıyor.
+  `weather_service.py`) çağırıyor. `find_similar_trips` artık (dalga 13)
+  `v2.modules.prediction_ml.public`'ten import ediliyor (taşındı).
 - **fuel (taşındı)**: ✅ **DÜZELTİLDİ (2026-07-17, aynı gün ikinci tur)** —
   `api/ai_routes.py::_fuel_trend_chart` fuel'in `yakit_alimlari`
   tablosuna API katmanından doğrudan ham SQL atıyordu (dalga-12-öncesinden

@@ -9,7 +9,7 @@ pytestmark = pytest.mark.unit
 
 def test_wind_factor_capped_at_max(monkeypatch):
     from app.config import settings as s
-    from app.core.ml import adjustment_factors as af
+    from v2.modules.prediction_ml.domain import adjustment_factors as af
 
     monkeypatch.setattr(s, "WEATHER_WIND_FACTOR_MAX", 1.10)
     # Güçlü headwind (relative 180°): cap olmadan 1.0 + 60×0.010 = 1.60 → 1.10'a clamp
@@ -20,7 +20,7 @@ def test_wind_factor_capped_at_max(monkeypatch):
 
 
 def test_wind_factor_below_cap_unchanged():
-    from app.core.ml import adjustment_factors as af
+    from v2.modules.prediction_ml.domain import adjustment_factors as af
 
     # Rüzgârsız → 1.0; cap'in altında, alt clamp (0.85) üst clamp (1.10) arasında
     f = af.weather_wind_factor(

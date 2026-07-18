@@ -1,7 +1,7 @@
 """Repo resolution shared by the report-generation use-cases.
 
 Mirrors the ``uow: Optional[UnitOfWork] = None`` fallback shape used
-throughout v2 (e.g. ``v2.modules.driver.domain.driver_stats._repos``): when a
+throughout v2 (e.g. ``v2.modules.driver.application.driver_stats._repos``): when a
 ``UnitOfWork`` is supplied its repos are reused (single shared session,
 required inside an already-open transaction); otherwise each repo's
 module-level singleton getter is used. ``analiz_repo`` is a cross-module,
@@ -38,12 +38,10 @@ def resolve_repos(uow: Optional[UnitOfWork] = None) -> ReportRepos:
             session=uow.session,
         )
 
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
-    from v2.modules.driver.infrastructure.repository import get_sofor_repo
-    from v2.modules.fleet.infrastructure.vehicle_repository import get_arac_repo
-    from v2.modules.fuel.infrastructure.repository import get_yakit_repo
+    from v2.modules.analytics_executive.public import get_analiz_repo
+    from v2.modules.driver.public import get_sofor_repo
+    from v2.modules.fleet.public import get_arac_repo
+    from v2.modules.fuel.public import get_yakit_repo
 
     return ReportRepos(
         analiz_repo=get_analiz_repo(),

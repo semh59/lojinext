@@ -26,7 +26,7 @@ from sqlalchemy import text
 
 import app.config as cfg
 from app.database.connection import AsyncSessionLocal
-from v2.modules.route_simulation.domain.segment_simulator import (
+from v2.modules.route_simulation.public import (
     SegmentInput,
     simulate_route,
 )

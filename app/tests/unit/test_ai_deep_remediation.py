@@ -47,15 +47,3 @@ async def test_anomaly_bulk_insert(db_session):
     assert len(rows) == 2
     assert [r.kaynak_id for r in rows] == [1, 2]
     assert [r.deger for r in rows] == [35.0, 45.0]
-
-
-@pytest.mark.asyncio
-async def test_recommendation_cache_thread_safety():
-    """Cache lock'unun varlığını doğrula"""
-    from v2.modules.ai_assistant.application.recommendation_engine import (
-        get_recommendation_engine,
-    )
-
-    engine = get_recommendation_engine()
-    assert hasattr(engine, "_lock")
-    assert engine._lock is not None

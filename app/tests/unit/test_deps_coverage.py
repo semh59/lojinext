@@ -93,7 +93,10 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
     from fastapi import HTTPException
 
     from app.api import deps
-    from v2.modules.auth_rbac.domain.token_blacklist import TokenBlacklist, blacklist
+    from v2.modules.auth_rbac.infrastructure.token_blacklist import (
+        TokenBlacklist,
+        blacklist,
+    )
 
     # Undo the autouse bypass for THIS test → real is_blacklisted.
     monkeypatch.setattr(

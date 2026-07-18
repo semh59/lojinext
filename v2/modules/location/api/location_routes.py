@@ -117,9 +117,7 @@ async def get_route_info(
     varis_lon: float = Query(..., description="Varış boylamı"),
 ) -> RouteInfoResponse:
     """Return live route details for a coordinate pair."""
-    from v2.modules.route_simulation.application.get_route_details import (
-        get_route_details,
-    )
+    from v2.modules.route_simulation.public import get_route_details
 
     route_details = await get_route_details(
         start_coords=(cikis_lon, cikis_lat),

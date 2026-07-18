@@ -182,3 +182,43 @@ bkz. dalga 8 doğrulama notu STATUS.md'de).
 - `public.py`/`events.py`/`schemas.py` var (diğer dalgalardan farklı olarak
   bu modülde şema dosyası tek dosyada — investigation+attribution şemaları
   küçük ve iç içe geçmiş, ayrı dosyalara bölünmedi).
+
+## Yayınladığı / dinlediği event'ler (events.py)
+
+Bu modül ne publisher ne subscriber'dır (bkz. `events.py` docstring'i):
+`ANOMALY_DETECTED` event'ini fuel modülünün rolling-outlier check'i
+yayınlar, notification modülü tüketir — anomaly yalnız adı geçen domain
+sahibidir. `acknowledge`/`resolve` akışları event yayınlamaz (senkron
+DB-güncellemesi).
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-anomaly` kontratı: `application/`
+diğer modüllerin yalnız `public`/`events`'ini import edebilir
+(2026-07-18'den beri KEPT — `generate_cluster_insight.py`'nin
+`ai_assistant.infrastructure.llm.groq_client` doğrudan importu aynı gün
+`ai_assistant.public.GroqService`'e çevrildi). Diğer modüller bu modüle
+yalnız `v2.modules.anomaly.public` üzerinden erişir (driver'ın
+`get_anomaly_detector` kullanımı zaten böyle).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`anomali`=anomaly, `sapma`=deviation, `şiddet`=severity,
+`soruşturma`=investigation, `hırsızlık`=theft, `kümeleme`=clustering,
+`eşik`=threshold, `onayla (ack)`=acknowledge, `çöz`=resolve,
+`kayıp ilişkilendirme`=loss attribution.
+
+## Test stratejisi (slice/entegrasyon koşumu)
+
+- `app/tests/unit/test_services/test_anomaly_detector_coverage.py` /
+  `test_anomaly_detector_more.py` — dedektör birimi (gerçek DB'li
+  `db_session` + dar mock).
+- `app/tests/unit/test_fuel_theft_classifier.py`,
+  `test_anomaly_clustering.py`, `test_anomaly_cluster_task.py`,
+  `test_theft_alarm_text.py`, `test_theft_pattern_pii.py`,
+  `app/tests/unit/test_workers/test_theft_tasks.py` — sınıflandırıcı/
+  kümeleme/Celery task testleri.
+- `app/tests/api/test_investigations_coverage.py` / `_more.py` +
+  `app/tests/integration/test_investigations_crud.py` /
+  `test_investigations_patch_race.py` (FOR-UPDATE concurrency invariantı,
+  0-mock) — endpoint + yarış senaryoları (`TEST_DATABASE_URL` zorunlu).

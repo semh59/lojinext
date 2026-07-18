@@ -1,5 +1,5 @@
 """
-Unit tests for v2.modules.driver.domain.evaluation — pure logic, no DB.
+Unit tests for v2.modules.driver.application.evaluation — pure logic, no DB.
 Targeting ≥80% coverage.
 
 NOT: eski ``SoforDegerlendirmeService`` sınıfı silindi (B.1 free-function
@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from v2.modules.driver.domain.evaluation import (
+from v2.modules.driver.application.evaluation import (
     DereceEnum,
     GuzergahPerformans,
     SoforDegerlendirme,

@@ -77,9 +77,7 @@ class HealthService:
         """AI modellerinin yüklenme durumu"""
         try:
             from app.core.container import get_container
-            from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
-                get_rag_engine,
-            )
+            from v2.modules.ai_assistant.public import get_rag_engine
 
             rag = get_rag_engine()
             rag_stats = rag.get_stats()

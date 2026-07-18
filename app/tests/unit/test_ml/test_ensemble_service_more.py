@@ -499,7 +499,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -553,7 +553,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -603,7 +603,7 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -670,7 +670,7 @@ class TestTrainGeneralModelClassModels:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -736,7 +736,7 @@ class TestTrainGeneralModelClassModels:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),

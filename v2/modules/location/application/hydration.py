@@ -30,11 +30,11 @@ from typing import Optional
 
 from app.database.models import Lokasyon, LokasyonSegment
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.route_simulation.domain.segment_resampler import resample_segments
-from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
-from v2.modules.route_simulation.infrastructure.open_meteo_client import (
+from v2.modules.route_simulation.public import (
+    MapboxClient,
     OpenMeteoElevationClient,
     get_elevation_client,
+    resample_segments,
 )
 
 logger = get_logger(__name__)

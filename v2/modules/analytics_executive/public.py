@@ -23,10 +23,6 @@ from v2.modules.analytics_executive.application.analyze_costs import (
     get_monthly_trend,
     get_vehicle_cost_comparison,
 )
-from v2.modules.analytics_executive.application.generate_insights import (
-    Insight,
-    generate_all_and_save,
-)
 from v2.modules.analytics_executive.application.get_bus_factor import (
     compute_bus_factor,
 )
@@ -68,7 +64,6 @@ __all__ = [
     "CrossFeatureImpact",
     "FleetCarbonReport",
     "FleetEfficiencyBreakdown",
-    "Insight",
     "WhatIfResult",
     "aggregate_cross_feature",
     "calculate_period_cost",
@@ -78,7 +73,6 @@ __all__ = [
     "compute_fleet_carbon",
     "compute_fvi",
     "gather_fvi_inputs",
-    "generate_all_and_save",
     "get_analiz_repo",
     "get_monthly_trend",
     "get_vehicle_cost_comparison",

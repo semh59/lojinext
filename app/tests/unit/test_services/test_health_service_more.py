@@ -116,7 +116,7 @@ async def test_check_redis_unhealthy(monkeypatch):
 async def test_check_ai_readiness_error_path():
     svc = _make_service()
     with patch(
-        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine",
+        "v2.modules.ai_assistant.public.get_rag_engine",
         side_effect=Exception("rag init fail"),
     ):
         result = await svc.check_ai_readiness()

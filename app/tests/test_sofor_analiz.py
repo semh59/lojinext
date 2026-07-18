@@ -1,6 +1,6 @@
 """
 TIR Yakıt Takip Sistemi - Faz 3 Şoför Analiz Testleri (Async & Pytest)
-v2.modules.driver.domain.driver_stats free function'ları için entegrasyon
+v2.modules.driver.application.driver_stats free function'ları için entegrasyon
 ve birim testleri.
 
 NOT: eski ``SoforAnalizService`` sınıfı silindi (B.1 free-function split,
@@ -13,8 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.entities.models import DriverStats
-from v2.modules.driver.domain import driver_stats as driver_stats_mod
-from v2.modules.driver.domain.driver_stats import (
+from v2.modules.driver.application import driver_stats as driver_stats_mod
+from v2.modules.driver.application.driver_stats import (
     calculate_performance_score,
     calculate_trend,
     compare_drivers,
@@ -67,7 +67,7 @@ class TestDriverStatsEntity:
 
 
 class TestDriverStatsFreeFunctions:
-    """v2.modules.driver.domain.driver_stats birim testleri"""
+    """v2.modules.driver.application.driver_stats birim testleri"""
 
     @pytest.fixture
     def mock_uow(self):

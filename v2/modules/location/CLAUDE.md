@@ -59,11 +59,12 @@ regresyon değil — pre-existing bir davranış boşluğu, dokümante edildi.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **route_simulation** (senkron, geçici doğrudan import): `analyze_location_route`
-  ve `/route-info` endpoint'i `v2.modules.route_simulation.application.get_route_details.get_route_service`'i
-  çağırır. route_simulation'ın henüz `public.py`'si yok — bu import
-  `application/`'dan doğrudan yapılıyor (mimari borç, route_simulation
-  tamamlanınca `public.py`'ye geçecek).
+- **route_simulation** (senkron): `analyze_location_route`, `/route-info`
+  endpoint'i ve `application/hydration.py` route_simulation'a artık
+  `v2.modules.route_simulation.public` üzerinden erişir (`get_route_details`,
+  `resample_segments`, `MapboxClient`, `OpenMeteoElevationClient`).
+  2026-07-18: route_simulation'a public.py eklendi — eski "public'i yok,
+  application/'dan doğrudan import" borcu kapandı.
 - **prediction_ml** (senkron, geçici): `analyze_location_route`'un
   `_apply_baseline_fuel_estimate` yardımcı fonksiyonu
   `app.core.ml.physics_fuel_predictor.PhysicsBasedFuelPredictor`'ı

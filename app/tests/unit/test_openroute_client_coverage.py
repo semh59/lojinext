@@ -31,7 +31,6 @@ _STUB_BASE_URL = "http://localhost:9000/v2"
 def _make_client(api_key: str = "test-key") -> OpenRouteClient:
     client = OpenRouteClient(api_key=api_key)
     client.base_url = _STUB_BASE_URL
-    client.geocode_url = "http://localhost:9000/geocode/search"
     return client
 
 
@@ -273,47 +272,6 @@ async def test_call_api_timeout_raises_route_processing_error():
     client._client = httpx.AsyncClient(timeout=1.0)
     with pytest.raises(RouteProcessingError):
         await client._call_api((0.0, 0.0), (0.0, 408.0))
-
-
-# ---------------------------------------------------------------------------
-# geocode
-# ---------------------------------------------------------------------------
-
-
-async def test_geocode_empty_text_returns_none():
-    client = _make_client()
-    result = await client.geocode("")
-    assert result is None
-
-
-async def test_geocode_no_api_key_returns_none():
-    client = _make_client(api_key="dummy")
-    client.api_key = None  # Force None after construction
-    result = await client.geocode("Ankara")
-    assert result is None
-
-
-async def test_geocode_success_returns_lat_lon():
-    client = _make_client()
-    result = await client.geocode("Ankara")
-
-    assert result is not None
-    lat, lon = result
-    # api_stub'ın deterministik canned response'u.
-    assert lat == pytest.approx(39.93, abs=0.001)
-    assert lon == pytest.approx(32.85, abs=0.001)
-
-
-async def test_geocode_no_features_returns_none():
-    client = _make_client()
-    result = await client.geocode("__EMPTY__")
-    assert result is None
-
-
-async def test_geocode_api_error_status_returns_none():
-    client = _make_client()
-    result = await client.geocode("__ERROR401__")
-    assert result is None
 
 
 # ---------------------------------------------------------------------------

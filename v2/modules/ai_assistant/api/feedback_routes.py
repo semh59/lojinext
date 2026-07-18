@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.notification.infrastructure.telegram_client import notify_feedback
+from v2.modules.notification.public import notify_feedback
 
 logger = get_logger(__name__)
 

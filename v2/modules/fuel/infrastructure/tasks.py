@@ -92,7 +92,7 @@ async def compute_coverage(db: AsyncSession, days: int) -> CoverageResult:
 async def _run_fuel_coverage_check() -> None:
     from app.core.services.runtime_config import get_runtime_float
     from app.database.unit_of_work import UnitOfWork
-    from v2.modules.notification.infrastructure.telegram_client import notify_error
+    from v2.modules.notification.public import notify_error
 
     async with UnitOfWork() as uow:
         result = await compute_coverage(uow.session, _COVERAGE_WINDOW_DAYS)

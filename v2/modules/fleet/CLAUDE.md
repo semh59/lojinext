@@ -30,6 +30,7 @@ get_vehicle_stats(arac_id: int) -> VehicleStats | None
 get_vehicle_fleet_stats() -> dict            # {total, active, inspection_expiring, inspection_overdue}
 get_vehicle_inspection_alerts(within_days: int) -> dict   # {expiring: [...], overdue: [...]}
 get_vehicle_events(arac_id: int, limit=20) -> list[dict]  # vehicle_event_log, son N kayıt
+# log_vehicle_event artık application/vehicle_event_log.py'de (2026-07-18: DB'ye yazan yardımcı domain/'den taşındı — domain saf/I/O'suz kuralı)
 
 # Trailer — repo parametresi caller'ın UoW'undan geçirilir (uow.dorse_repo)
 create_trailer(repo, **data) -> int

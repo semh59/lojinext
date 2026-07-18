@@ -185,7 +185,7 @@ async def test_aggregate_empty_returns_zero_counts(monkeypatch):
             return []
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _EmptyPredictor,
     )
 
@@ -208,7 +208,7 @@ async def test_aggregate_anomaly_critical_first(monkeypatch):
             return []
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _EmptyPredictor,
     )
 
@@ -269,7 +269,7 @@ async def test_aggregate_maintenance_filters_far_future(monkeypatch):
             ]
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _PredictorWith2,
     )
 
@@ -288,7 +288,7 @@ async def test_aggregate_investigation_severity_mapping(monkeypatch):
             return []
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _EmptyPredictor,
     )
 
@@ -320,7 +320,7 @@ async def test_aggregate_active_trips_counter(monkeypatch):
             return []
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _EmptyPredictor,
     )
 
@@ -340,7 +340,7 @@ async def test_aggregate_limit_respected(monkeypatch):
             return []
 
     monkeypatch.setattr(
-        "v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor",
+        "v2.modules.fleet.public.MaintenancePredictor",
         _EmptyPredictor,
     )
 

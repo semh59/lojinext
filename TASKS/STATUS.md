@@ -1216,6 +1216,93 @@ yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
 taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
 
 ## Son güncelleme
+
+2026-07-18 (ikinci oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME TURU
+(kullanıcı talebi: "ilk 12 dalgayı detaylı ve derin incele... eksikleri
+düzelt, arkada borç ve hata kalmasın"). Önceki dedektif denetimlerin
+kaçırdığı yeni bulgular tek oturumda kapatıldı:
+
+- **import-linter gerçek durumu bilinenden kötüydü**: STATUS'un "3 bayat
+  ignore" iddiası yanlıştı — gerçekte 7 bayat girdi vardı (4'ü dalga 12'nin
+  kendi arkasını temizlememesinden, 1'i hiç var olmamış bir dosyaya
+  referanstı). Temizlik sonrası kontratlar ilk kez gerçekten değerlendirildi:
+  **10 kept, 5 broken** çıktı (rapor modunda CI bunu hiç görmüyordu).
+  5 gerçek ihlal (`driver`/`anomaly`→`ai_assistant.infrastructure`
+  doğrudan erişim + `app.services.prediction_service` üzerinden 3 dolaylı
+  zincir) düzeltildi. Sonuç: **14 kept, 1 broken** (kalan tek broken —
+  "report-only FAZ0" kontratı — `app.services`↔`app.core.services` eski
+  dosyalar arası, migrasyonla ilgisiz, `git stash` ile önceden de kırık
+  olduğu doğrulandı, CI'da zaten continue-on-error).
+- **public.py sınır ihlalleri**: v2 içi 28 satır + app-tarafı ~15 dosya
+  hâlâ hedef modülün `public.py`'sini atlayıp `infrastructure`/`application`
+  içinden doğrudan import ediyordu (anomaly/driver→ai_assistant.groq_client,
+  auth_rbac→notification.email_client, fuel→notification.telegram_client,
+  vb.). Hepsi `public.py` üzerinden geçecek şekilde düzeltildi.
+  `route_simulation` modülüne (dalga 1'den beri hiç yoktu) `public.py` +
+  `events.py` eklendi.
+- **Domain-katmanı I/O ihlali**: `driver/domain/{driver_stats,evaluation,
+  route_profile}.py` (UoW/DB erişimi) ve `fleet/domain/vehicle_event_log.py`
+  (DB yazıyor) `application/`'a taşındı; `auth_rbac/domain/token_blacklist.py`
+  (Redis I/O) `infrastructure/`'a taşındı — domain saf/I/O'suz kuralı.
+- **🔴 Kritik keşif (rewire sırasında, gerçek Python import-mekaniği
+  incelemesiyle bulundu)**: bir fonksiyonun eski yolda (`X.infrastructure.Y`)
+  patch'lenen bir test, kod `X.public`'ten lazy-import yapacak şekilde
+  değiştirildiğinde, EĞER `X.public` o test-sürecinde henüz hiç import
+  edilmemişse, patch aktifken `X.public`'in ilk kez import edilmesi
+  `X.public`'in kendi ad-alanını mock ile "zehirliyor" (module-cache tek
+  seferlik) — sonraki testler etkileniyor, sonuç import sırasına göre
+  deterministik ama yanıltıcı geçme/kalma. `ensemble_service.py`/
+  `driver_stats.py`/`kalman_estimator.py`'nin `get_analiz_repo`/
+  `get_arac_repo`/`get_dorse_repo` rewire'ları bu şekilde ~8 testi
+  (`test_ensemble_service_coverage.py` vb.) bozdu — tüm eski-yol patch
+  hedefleri `*.public`'e çevrilerek düzeltildi (aynı desen `route_simulation.
+  application.get_route_details`'in `sys.modules` patch'i için de
+  `test_lokasyon_service_more.py`'de tekrarlandı, aynı şekilde düzeltildi).
+  **Ders**: bir fonksiyonu `X.internal` → `X.public` re-export'una taşırken,
+  o fonksiyonu patch'leyen HER test'in hedefi de `X.public`'e taşınmalı —
+  aksi halde silent-wrong-pass veya cross-test-pollution riski var.
+- **Orphan Celery task testi kaçırılmıştı**: `driver.calculate_performance_score`
+  (hiç worker'a kayıtlı olmayan, dalga 5'ten beri bilinen ölü task) dosyasıyla
+  silinince, AYRI bir test dosyası (`test_worker_tasks.py` — tekil "worker",
+  `test_workers/test_driver_tasks.py`'den farklı) de aynı task'ı test
+  ediyordu — bulunup düzeltildi.
+- **Ölü kod silindi (kullanıcı kararı: "ölü kod yasak")**: `ai_assistant`'ın
+  4 kümesi (`RecommendationEngine`, `PromptTuner`, `build_context.py`'nin 5
+  fonksiyonu, `AIService.predict_trip_fuel`/`detect_anomalies`/
+  `_get_predictor_for_vehicle`, `RAGEngine.index_log`/`index_event`/
+  `bulk_index`/`index_alert`), `analytics_executive.generate_insights.py`
+  (InsightEngine free-function hali) + `driver.get_driver_comparison`,
+  `fuel.domain.{consumption_prediction,local_regression}.py`, orphan driver
+  Celery task'ı — hepsi silinmeden önce grep ile sıfır-prod-çağıran TEKRAR
+  doğrulandı, testleriyle birlikte kaldırıldı.
+- **`OpenRouteClient` cerrahisi** (`TASKS/bug-openroute-client-
+  architectural-leak.md`, önceden açık bekleyen görev): ölü `geocode`/
+  `_call_geocode_api` (location'ın geocode zincirinin DRY-ihlalli kopyası)
+  ve `update_route_distance` (`lokasyonlar` tablosuna ham SQL UPDATE atan,
+  sıfır prod çağıranlı legacy metot) silindi; `scripts/enrich_existing_data.py`
+  artık `location.public.geocode_location` kullanıyor. Sınıf artık yalnız
+  ORS distance+cache sorumluluğu taşıyor. Görev dosyası kapatıldı.
+- **8 modülün CLAUDE.md şablon boşlukları** (İzin/yasak importlar, Domain
+  terimleri, Event'ler, Test stratejisi eksikleri — anomaly en zayıftı, 4
+  başlık eksikti) dolduruldu; kök `CLAUDE.md`'nin modül tablosu 2'den
+  12 modüle güncellendi; driver/import_excel/fuel/route_simulation/
+  auth_rbac'ın bayat satırları (taşınmamış-sanılan ama taşınmış modüller,
+  eski import yolu iddiaları) düzeltildi.
+
+**Doğrulama (bu ortamda gerçek Postgres 16 + Redis + api-stub kurulup):**
+`ruff check app v2 scripts` temiz, `mypy app` temiz (675 dosya),
+`lint-imports` 14/15 kept (1 broken = pre-existing, migrasyonla ilgisiz),
+`compileall` temiz, `pytest --collect-only app/tests tests` 6779 test/0
+hata. **Tam pytest suite'i (`app/tests/unit app/tests/api tests`, gerçek
+DB'ye karşı, 2 tam koşum + ~15 hedefli koşum boyunca bulunan regresyonlar
+düzeltilerek): 6304 passed, 23 failed, 26 skipped.** 23 fail'in TAMAMI
+`git stash` ile pre-session koda karşı birebir doğrulandı — hepsi bu ad-hoc
+ortamın api-stub/gerçek-ağ topoloji farkından (mapbox/openroute/
+route_service/lokasyon_service gerçek ORS/Nominatim/Mapbox host'larına
+düşüyor, ilk full-run'da da AYNI isimlerle zaten kırıktı) — **net-yeni
+regresyon SIFIR**. Commit/push bu turda yapıldı (branch
+`claude/son-durum-ltxexy`).
+
 2026-07-18 — Dalga 12 (ai_assistant) main'de TAM YEŞİL (commit `928de51`,
 `gh run view 29611326223` → `success`). İki turlu dedektif denetim: 1.
 tur (taşıma sırasında) 3 ölü-kod kümesi + RAGSyncService'in canlılığı

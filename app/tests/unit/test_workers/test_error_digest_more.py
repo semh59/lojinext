@@ -451,7 +451,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
         mock_mgr.return_value.redis = redis_mock
         with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
             with patch(
-                "v2.modules.notification.infrastructure.telegram_client.notify_error",
+                "v2.modules.notification.public.notify_error",
                 new_callable=AsyncMock,
             ):
                 with patch(

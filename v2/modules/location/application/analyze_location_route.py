@@ -16,9 +16,7 @@ logger = get_logger(__name__)
 
 async def analyze_location_route(repo: LokasyonRepository, lokasyon_id: int) -> dict:
     """Hibrit rota tespit use-case'i kullanarak güzergahı analiz et ve güncelle"""
-    from v2.modules.route_simulation.application.get_route_details import (
-        get_route_details,
-    )
+    from v2.modules.route_simulation.public import get_route_details
 
     loc = await repo.get_by_id(lokasyon_id)
     if not loc or not all(

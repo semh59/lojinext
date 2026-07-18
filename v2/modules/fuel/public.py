@@ -35,16 +35,6 @@ from v2.modules.fuel.application.recalculate_vehicle_periods import (
     recalculate_vehicle_periods,
 )
 from v2.modules.fuel.application.update_yakit import update_yakit
-from v2.modules.fuel.domain.consumption_prediction import (
-    predict as predict_consumption,
-)
-from v2.modules.fuel.domain.consumption_prediction import (
-    retrain_all_models,
-)
-from v2.modules.fuel.domain.consumption_prediction import (
-    train_model as train_consumption_model,
-)
-from v2.modules.fuel.domain.local_regression import LinearRegressionModel
 from v2.modules.fuel.domain.period_matcher import PeriyotSeferMatch
 from v2.modules.fuel.infrastructure.integrations.opet_client import (
     FuelCardProvider,
@@ -88,10 +78,6 @@ __all__ = [
     "recalculate_vehicle_periods",
     "PeriyotSeferMatch",
     # consumption prediction (module-internal, distinct from prediction_ml)
-    "train_consumption_model",
-    "predict_consumption",
-    "retrain_all_models",
-    "LinearRegressionModel",
     # fuel-card integrations
     "FuelCardProvider",
     "FuelTransaction",

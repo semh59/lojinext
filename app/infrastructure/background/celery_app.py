@@ -172,10 +172,9 @@ import v2.modules.import_excel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
 
-# NOT: v2.modules.driver.infrastructure.driver_tasks (driver.calculate_performance_score)
-# taşımadan ÖNCE de burada import edilmiyordu — Celery worker'a hiç
-# kaydedilmemiş, dolayısıyla prod'da hiç çalışmamış bir görev (dead task,
-# regresyon değil; bkz. v2/modules/driver/CLAUDE.md).
+# NOT: driver.calculate_performance_score orphan Celery task'ı (hiç kayıtlı
+# olmamış, hiçbir .delay() çağıranı yoktu) 2026-07-18 ölü-kod temizliğinde
+# dosyasıyla birlikte silindi (v2/modules/driver/infrastructure/driver_tasks.py).
 from app.infrastructure.resilience.shutdown import (  # noqa: E402
     register_shutdown_handlers,
 )

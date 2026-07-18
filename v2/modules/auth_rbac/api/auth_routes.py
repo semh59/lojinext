@@ -14,7 +14,7 @@ from app.infrastructure.resilience.rate_limiter import rate_limited
 from app.schemas.api_responses import MessageResponse, MessageWithWarningResponse
 from v2.modules.auth_rbac.application import auth_service
 from v2.modules.auth_rbac.domain import jwt_handler
-from v2.modules.auth_rbac.domain.token_blacklist import blacklist
+from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 from v2.modules.auth_rbac.schemas import KullaniciRead
 
 router = APIRouter()
@@ -163,9 +163,7 @@ async def read_users_me(
 @rate_limited("pw_reset_req", rate=2.0, period=60.0)
 async def request_password_reset(data: PasswordResetRequest, uow: UOWDep):
     """Password reset token generation logic."""
-    from v2.modules.notification.infrastructure.email_client import (
-        send_password_reset,
-    )
+    from v2.modules.notification.public import send_password_reset
 
     token = await auth_service.request_password_reset(data.email, uow=uow)
 

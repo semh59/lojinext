@@ -347,7 +347,7 @@ async def test_logout_blacklist_failure_returns_warning(
         raise RuntimeError("Redis down")
 
     monkeypatch.setattr(
-        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.add",
+        "v2.modules.auth_rbac.infrastructure.token_blacklist.blacklist.add",
         _bad_add,
     )
 

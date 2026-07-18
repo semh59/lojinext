@@ -4,7 +4,7 @@ import pytest
 
 from app.core.unit_of_work import get_uow
 from app.database.models import VehicleEventLog
-from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
+from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 
 
 @pytest.mark.asyncio

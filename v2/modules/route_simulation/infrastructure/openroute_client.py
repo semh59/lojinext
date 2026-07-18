@@ -8,7 +8,7 @@ dokümante edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar kaydı).
 import asyncio
 import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
@@ -166,65 +166,10 @@ class OpenRouteClient:
 
         return None
 
-    async def geocode(self, text: str) -> Optional[Tuple[float, float]]:
-        """
-        Adresi koordinata (lat, lon) dönüştürür (async).
-
-        Args:
-            text: Adres veya şehir ismi (örn: 'Ankara, Türkiye')
-
-        Returns:
-            (latitude, longitude) veya hata durumunda None
-        """
-        if not text:
-            return None
-
-        # Circuit Breaker kontrolü
-        breaker = CircuitBreakerRegistry.get_sync("openroute_geo")
-
-        try:
-            return await breaker.call(self._call_geocode_api, text)
-        except CircuitBreakerError:
-            logger.warning("Geocode circuit breaker is OPEN.")
-        except Exception as e:
-            logger.error(f"Geocoding error: {e}")
-
-        return None
-
-    async def _call_geocode_api(self, text: str) -> Optional[Tuple[float, float]]:
-        """ORS Geocoding API çağrısı (async)"""
-        api_key = await self._resolve_api_key()
-        if not api_key:
-            logger.error("API key eksik, geocode yapılamadı")
-            return None
-        params: Dict[str, Any] = {
-            "text": text,
-            "size": 1,
-            "boundary.country": "TUR",  # Türkiye dışı aramaları kısıtla
-        }
-        headers = {"Authorization": f"api-key {api_key}"}
-
-        try:
-            if self._client is None:
-                self._client = httpx.AsyncClient(timeout=20.0)
-
-            response = await self._client.get(
-                self.geocode_url, params=params, headers=headers
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if "features" in data and len(data["features"]) > 0:
-                    # ORS [lon, lat] döner
-                    coords = data["features"][0]["geometry"]["coordinates"]
-                    return (float(coords[1]), float(coords[0]))  # Convert to [lat, lon]
-            else:
-                logger.error(
-                    f"Geocode API error: {response.status_code} - {response.text}"
-                )
-        except Exception as e:
-            logger.error(f"Geocode request failed: {e}")
-
-        return None
+    # 2026-07-18: geocode/_call_geocode_api silindi — location modülünün
+    # geocode zincirinin (geocode_providers.py) DRY-ihlalli kopyasıydı,
+    # hiçbir prod route çağırmıyordu (bkz.
+    # TASKS/bug-openroute-client-architectural-leak.md).
 
     def _validate_coordinates(
         self, origin: Tuple[float, float], destination: Tuple[float, float]
@@ -506,114 +451,9 @@ class OpenRouteClient:
         except Exception as e:
             logger.error(f"Cache kayıt hatası: {e}")
 
-    async def update_route_distance(self, lokasyon_id: int) -> Optional[Dict]:
-        """
-        Mevcut bir güzergahın mesafesini API'den güncelle (async).
-        """
-        from sqlalchemy import text
-
-        from app.database.connection import AsyncSessionLocal
-
-        try:
-            async with AsyncSessionLocal() as session:
-                row = (
-                    await session.execute(
-                        text("""
-                        SELECT cikis_lat, cikis_lon, varis_lat, varis_lon
-                        FROM lokasyonlar WHERE id = :id
-                    """),
-                        {"id": lokasyon_id},
-                    )
-                ).fetchone()
-
-                if not row or not all(
-                    [row.cikis_lat, row.cikis_lon, row.varis_lat, row.varis_lon]
-                ):
-                    logger.warning(f"Lokasyon {lokasyon_id} koordinat bilgisi eksik")
-                    return None
-
-                origin = (row.cikis_lat, row.cikis_lon)
-                destination = (row.varis_lat, row.varis_lon)
-
-            # API çağrısı
-            result = await self.get_distance(
-                origin, destination, use_cache=False, include_details=True
-            )
-
-            if not result:
-                logger.error(f"Güzergah {lokasyon_id} için API sonucu alınamadı.")
-                return None
-
-            # Extract detailed breakdown
-            details = result.get("details", {})
-            otoban_km = 0.0
-            sehir_ici_km = 0.0
-
-            if details:
-                if "highway" in details:
-                    otoban_km = sum(details["highway"].values())
-                    # Convert stats to KM if they are in meters?
-                    # route_analyzer returns in KM already (lines 138-141)
-                if "other" in details:
-                    sehir_ici_km = sum(details["other"].values())
-
-            if result:
-                now = datetime.now(timezone.utc)
-                # details is already a dict from analyze_segments
-
-                from app.database.connection import AsyncSessionLocal
-
-                async with AsyncSessionLocal() as session:
-                    query = text("""
-                        UPDATE lokasyonlar
-                        SET api_mesafe_km = :dist,
-                            api_sure_saat = :dur,
-                            ascent_m = :asc,
-                            descent_m = :desc,
-                            mesafe_km = :dist_km,
-                            tahmini_sure_saat = :dur_h,
-                            last_api_call = :now,
-                            route_analysis = :details,
-                            otoban_mesafe_km = :otoban,
-                            sehir_ici_mesafe_km = :sehir
-                        WHERE id = :id
-                    """)
-
-                    import json
-
-                    await session.execute(
-                        query,
-                        {
-                            "dist": result["distance_km"],
-                            "dur": result["duration_hours"],
-                            "asc": result.get("ascent_m", 0),
-                            "desc": result.get("descent_m", 0),
-                            "dist_km": result["distance_km"],  # Sync user-visible field
-                            "dur_h": result[
-                                "duration_hours"
-                            ],  # Sync user-visible field
-                            "now": now,
-                            "details": json.dumps(
-                                details
-                            ),  # Serialize dict to JSON string
-                            "otoban": otoban_km,
-                            "sehir": sehir_ici_km,  # Corrected from sehir_km to sehir_ici_km
-                            "id": lokasyon_id,
-                        },
-                    )
-                    await session.commit()
-
-                    logger.info(
-                        f"Güzergah {lokasyon_id} güncellendi: {result['distance_km']} km, "
-                        f"Otoban: {otoban_km} km, Şehiriçi: {sehir_ici_km} km, "
-                        f"↑{result.get('ascent_m', 0)}m ↓{result.get('descent_m', 0)}m"
-                    )
-                    return result
-
-        except Exception as e:
-            logger.error(f"Güzergah güncelleme hatası: {e}", exc_info=True)
-
-        return None
+    # 2026-07-18: update_route_distance silindi — lokasyonlar tablosuna
+    # (location modülünün tek sahipliği) ham SQL UPDATE atan, hiçbir prod
+    # çağıranı olmayan legacy koddu (aynı görev dosyası).
 
 
 # Singleton instance

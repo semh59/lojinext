@@ -25,9 +25,7 @@ def _repos(uow: Optional[UnitOfWork]):
         return uow.analiz_repo, uow.sofor_repo, uow.sefer_repo
 
     from app.database.repositories.sefer_repo import get_sefer_repo
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
+    from v2.modules.analytics_executive.public import get_analiz_repo
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
 
     return get_analiz_repo(), get_sofor_repo(), get_sefer_repo()

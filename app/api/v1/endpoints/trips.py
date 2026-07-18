@@ -59,7 +59,7 @@ from app.schemas.sefer import (
     SeferUpdate,
 )
 from app.schemas.telegram import SeferOnayRequest
-from v2.modules.ai_assistant.schemas import (
+from v2.modules.ai_assistant.public import (
     DriverSuggestion,
     PlanWizardRequest,
     PlanWizardResponse,

@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 
 async def process_yakit_import(content: bytes) -> Tuple[int, list]:
-    from v2.modules.fuel.schemas import YakitCreate
+    from v2.modules.fuel.public import YakitCreate
 
     try:
         items = await parse_yakit_excel(content)

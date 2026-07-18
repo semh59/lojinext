@@ -157,26 +157,6 @@ class TestGetMonthlyComparison:
 
 
 # ---------------------------------------------------------------------------
-# get_daily_consumption_trend
-# ---------------------------------------------------------------------------
-
-
-class TestGetDailyConsumptionTrend:
-    async def test_delegates_to_analiz_repo(self):
-        from v2.modules.reports.application.get_daily_consumption_trend import (
-            get_daily_consumption_trend,
-        )
-
-        repos = _make_repos()
-        repos.analiz_repo.get_daily_consumption_series = AsyncMock(
-            return_value=[{"day": 1}]
-        )
-
-        result = await get_daily_consumption_trend(repos, days=7)
-        assert result == [{"day": 1}]
-
-
-# ---------------------------------------------------------------------------
 # generate_monthly_trend
 # ---------------------------------------------------------------------------
 

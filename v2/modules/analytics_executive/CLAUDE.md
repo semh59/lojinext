@@ -179,8 +179,10 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
 - **fleet (taşındı, geçici)**: `project_cashflow`
   `v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor`'ı
   çağırır.
-- **notification (taşındı)**: `generate_insights.py`/`compliance_tasks.py`
-  `v2.modules.notification.application.send_push_broadcast`'i çağırır.
+- **notification (taşındı)**: `compliance_tasks.py`
+  `v2.modules.notification.public.send_push_broadcast`'i çağırır
+  (2026-07-18: public'e çevrildi; `generate_insights.py` aynı gün ölü kod
+  olarak silindi).
 - **auth_rbac (taşındı)**: `api/executive_routes.py`
   `v2.modules.auth_rbac.domain.permission_checker.require_yetki` kullanır.
 - **anomaly (taşındı, geçici)**: `aggregate_cross_feature`'ın D.4 kalemi
@@ -201,3 +203,42 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
 - `AnalizService`/`DashboardService`'e özgü test dosyaları (`test_analiz_
   service*.py`, `test_service_optimizations.py`'nin dashboard kısmı)
   kaldırıldı (sınıflar silindi).
+
+## ✅ 2026-07-18 ölü-kod temizliği (tam-denetim düzeltme turu)
+
+- `application/generate_insights.py` (InsightEngine'in free-function
+  hali — "bilinçli tutuldu" notuyla bekliyordu) kullanıcı kararıyla
+  SİLİNDİ: `Insight`/`generate_all_and_save` public export'ları,
+  `executive_read_models.bulk_create_alerts` (tek çağıranı buydu) ve
+  testleri (`test_insight_engine_coverage.py`, `test_insight_serious_push.py`)
+  birlikte kaldırıldı. `get_recent_unread_alerts` CANLI kalıyor
+  (AIService._build_context okuyor).
+- driver'daki aynı-sınıf ölü `get_driver_comparison`
+  (`driver/infrastructure/driver_metrics_queries.py`) da silindi.
+- `infrastructure/pdf_export.py` artık `PDFReportGenerator`'ı
+  `reports.public`'ten alıyor.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-analytics_executive` kontratı:
+`application/` diğer modüllerin yalnız `public`/`events`'ini import
+edebilir (2026-07-18'den beri KEPT). Diğer modüller bu modüle yalnız
+`v2.modules.analytics_executive.public` üzerinden erişir (`get_analiz_repo`
+dahil — container.py/repositories/__init__.py composition-root istisnası
+hariç, proje-geneli desen).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`filo verimlilik endeksi`=fleet efficiency index, `nakit akışı`=cashflow,
+`karbon ayak izi`=carbon footprint, `uyum/denetim`=compliance,
+`ne-olur-eğer`=what-if, `otobüs faktörü`=bus factor,
+`maliyet kırılımı`=cost breakdown, `içgörü`=insight (silindi),
+`yönetici kokpiti`=executive cockpit.
+
+## Modüle özel iş kuralları & gotcha'lar
+
+- Read-model modülüdür: `AnalizRepository` cross-domain SELECT'lerin tek
+  meşru evi (seferler/araclar/yakit_alimlari üzerinde raw-SQL agregasyon)
+  — FAZ2'de SELECT-only grant'lerle şemalara bölünecek.
+- `_UnitOfWorkContext` (application/generate_insights.py'deydi) dosyayla
+  birlikte silindi — artık 1 sınıf istisnası var (`AnalizRepository`).

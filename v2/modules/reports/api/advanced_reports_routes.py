@@ -24,13 +24,13 @@ from app.schemas.api_responses import (
     CostTrendPoint,
     VehicleCostComparisonItem,
 )
-from v2.modules.analytics_executive.application.analyze_costs import (
+from v2.modules.analytics_executive.public import (
     calculate_period_cost,
     calculate_roi,
     calculate_savings_potential,
     get_monthly_trend,
 )
-from v2.modules.analytics_executive.application.analyze_costs import (
+from v2.modules.analytics_executive.public import (
     get_vehicle_cost_comparison as analyze_vehicle_cost_comparison,
 )
 from v2.modules.import_excel.public import export_data, get_export_service

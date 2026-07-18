@@ -17,7 +17,7 @@ async def process_vehicle_import(content: bytes) -> Tuple[int, list]:
         if not items:
             return 0, ["Excel dosyasında veri bulunamadı."]
 
-        from v2.modules.fleet.schemas import AracCreate
+        from v2.modules.fleet.public import AracCreate
 
         errors: list[str] = []
         count = 0
@@ -59,9 +59,7 @@ async def process_vehicle_import(content: bytes) -> Tuple[int, list]:
 
         # Phase 2: create new vehicles in bulk_add_vehicles's own UoW.
         if to_add:
-            from v2.modules.fleet.application.bulk_add_vehicles import (
-                bulk_add_vehicles,
-            )
+            from v2.modules.fleet.public import bulk_add_vehicles
 
             count = await bulk_add_vehicles(to_add)
 

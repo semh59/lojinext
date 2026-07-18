@@ -263,9 +263,7 @@ class KalmanEstimatorService:
     @property
     def analiz_repo(self):
         if self._analiz_repo is None:
-            from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-                get_analiz_repo,
-            )
+            from v2.modules.analytics_executive.public import get_analiz_repo
 
             self._analiz_repo = get_analiz_repo()
         return self._analiz_repo

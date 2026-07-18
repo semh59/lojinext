@@ -87,9 +87,10 @@ doğrudan çağrılan bir yol).
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
 - **auth_rbac** (senkron, in-edge): `auth_routes.py`'nin
-  `/password-reset-request` endpoint'i `send_password_reset`'i public.py'yi
-  ATLAYIP `v2.modules.notification.infrastructure.email_client`'tan
-  doğrudan import edip çağırır (public.py de aynı fonksiyonu re-export
+  `/password-reset-request` endpoint'i `send_password_reset`'i artık
+  `v2.modules.notification.public`'ten çağırır (2026-07-18 düzeltmesi —
+  eskiden public.py'yi atlayıp infrastructure/email_client'tan doğrudan
+  import ediyordu; public.py aynı fonksiyonu zaten re-export
   eder ama bu çağıran onu kullanmıyor — düzeltildi, 2026-07-17
   dedektif denetimi bulgusu, bkz. `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
   madde 3).

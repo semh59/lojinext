@@ -1,5 +1,19 @@
 # BUG — `OpenRouteClient` mimari sızıntısı: 3 ilgisiz sorumluluk + tablo-sahipliği ihlali
 
+> ✅ **ÇÖZÜLDÜ (2026-07-18, tam-denetim düzeltme turu).** Aşağıdaki
+> "Önerilen çözüm"ün 1-2. maddeleri uygulandı: `geocode`/`_call_geocode_api`
+> ve `update_route_distance` silindi (3. implementasyon — `app.core.services.
+> openroute_service` — ayrı, henüz taşınmamış bir görev, bu kapsamda
+> DOKUNULMADI, madde 3'ün dediği gibi ayrı bırakıldı). `scripts/
+> enrich_existing_data.py` `location.public.geocode_location` kullanacak
+> şekilde güncellendi. Test dosyaları (`test_openroute_client_coverage.py`/
+> `_more.py`, `test_infrastructure/test_openroute_client.py`,
+> `test_route_api.py`) ilgili ölü-kod testleri kaldırılarak güncellendi.
+> `OpenRouteClient` artık yalnız ORS distance+cache sorumluluğu taşıyor.
+> Kabul kriterlerinin 1-2-4-5-6. maddeleri karşılandı; 3. madde (üçüncü
+> geocode implementasyonunun da birleştirilmesi) bilinçli olarak kapsam
+> dışı bırakıldı — ayrı bir görev gerektirir.
+
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
 **Bu bir modül taşıma görevi DEĞİL.** FAZ1'in 17 dalga sırasının dışında,

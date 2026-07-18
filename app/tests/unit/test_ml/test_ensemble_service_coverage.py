@@ -97,7 +97,7 @@ class TestLazyRepoProperties:
         mock_repo = MagicMock()
 
         with patch(
-            "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
+            "v2.modules.fleet.public.get_arac_repo",
             return_value=mock_repo,
         ):
             repo = svc.arac_repo
@@ -125,7 +125,7 @@ class TestLazyRepoProperties:
         mock_repo = MagicMock()
 
         with patch(
-            "v2.modules.fleet.infrastructure.trailer_repository.get_dorse_repo",
+            "v2.modules.fleet.public.get_dorse_repo",
             return_value=mock_repo,
         ):
             repo = svc.dorse_repo
@@ -565,7 +565,7 @@ class TestTrainForVehicle:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -594,7 +594,7 @@ class TestTrainGeneralModel:
 
         mock_analiz_repo = MagicMock()
         with patch(
-            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+            "v2.modules.analytics_executive.public.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()
@@ -638,7 +638,7 @@ class TestTrainGeneralModel:
                 return_value=mock_manager,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -654,7 +654,7 @@ class TestTrainGeneralModel:
         )
         mock_analiz_repo = MagicMock()
         with patch(
-            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+            "v2.modules.analytics_executive.public.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()

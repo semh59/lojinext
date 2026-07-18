@@ -225,17 +225,6 @@ class TestRAGEngine:
 
         assert result
 
-    @pytest.mark.asyncio
-    async def test_bulk_index(self, engine):
-        """Toplu indeksleme testi"""
-        vehicles = [{"id": i, "plaka": f"34ABC{i:03d}"} for i in range(3)]
-        drivers = [{"id": i, "ad_soyad": f"Şoför {i}"} for i in range(2)]
-
-        result = await engine.bulk_index(vehicles=vehicles, drivers=drivers)
-
-        assert result["vehicles"] == 3
-        assert result["drivers"] == 2
-        assert result["total"] == 5
 
     @pytest.mark.asyncio
     async def test_search(self, engine):
@@ -355,7 +344,10 @@ class TestIntegration:
             {"id": 2, "ad_soyad": "Mehmet Yılmaz", "score": 0.88},
         ]
 
-        await engine.bulk_index(vehicles=vehicles, drivers=drivers)
+        for v in vehicles:
+            await engine.index_vehicle(v)
+        for d in drivers:
+            await engine.index_driver(d)
 
         # Farklı sorgular test et
         queries = [

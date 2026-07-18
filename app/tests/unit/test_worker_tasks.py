@@ -114,65 +114,10 @@ class TestRelayOutboxEvents:
             relay_outbox_events.run()
 
 
-# ── driver_tasks ──────────────────────────────────────────────────────────────
-
-
-class TestCalculatePerformanceScore:
-    def test_with_qualifying_trips(self):
-        """Sürücü verileri varsa hata yok."""
-        from app.database.unit_of_work import UnitOfWork
-
-        mock_row = MagicMock()
-        mock_row.trip_count = 10
-        mock_row.avg_tuketim = 32.5
-
-        mock_result = MagicMock()
-        mock_result.one_or_none.return_value = mock_row
-
-        mock_session = MagicMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        mock_uow = MagicMock()
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-
-        with (
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        ):
-            from v2.modules.driver.infrastructure.driver_tasks import (
-                calculate_performance_score,
-            )
-
-            calculate_performance_score.run(driver_id=1)  # no exception
-
-        mock_uow.commit.assert_awaited_once()
-
-    def test_no_qualifying_trips(self):
-        """Sürücü için trip yoksa da hata olmaz."""
-        from app.database.unit_of_work import UnitOfWork
-
-        mock_result = MagicMock()
-        mock_result.one_or_none.return_value = None
-
-        mock_session = MagicMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        mock_uow = MagicMock()
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-
-        with (
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        ):
-            from v2.modules.driver.infrastructure.driver_tasks import (
-                calculate_performance_score,
-            )
-
-            calculate_performance_score.run(driver_id=99)
-
-        mock_uow.commit.assert_awaited_once()
+# ── driver_tasks: orphan Celery task (v2.modules.driver.infrastructure.
+# driver_tasks) SİLİNDİ 2026-07-18 — hiçbir zaman worker'a kayıtlı olmayan,
+# hiçbir .delay()/.apply_async() çağıranı olmayan dead code'du (bkz.
+# v2/modules/driver/CLAUDE.md). Bu testler dosyasıyla birlikte kaldırıldı.
 
 
 # ── prediction_tasks ──────────────────────────────────────────────────────────

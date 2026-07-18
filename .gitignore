@@ -205,8 +205,14 @@ bundle-stats.html
 # RAG runtime cache — backend her başlangıçta seed eder, sefer/yakıt
 # verisi eklendikçe büyür. Repo'da snapshot tutmak commit gürültüsü
 # yaratıyordu. Yoksa otomatik recreate edilir.
+# 2026-07-17 path düzeltmesi: gerçek Docker app_data mount hedefi
+# app/app/data/* (bkz. v2/modules/ai_assistant/CLAUDE.md) — eski
+# data/ai_kb/* girdileri bayattı, ikisi de bırakıldı (host-lokal
+# koşumlar hâlâ eski repo-kökü yolunu kullanabilir).
 data/ai_kb/faiss.index
 data/ai_kb/metadata.json
+app/data/ai_kb/
+app/data/vector_store/
 
 # Orval generated — npm run codegen ile yeniden üretilir
 frontend/src/generated/

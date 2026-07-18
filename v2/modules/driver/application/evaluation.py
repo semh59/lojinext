@@ -10,7 +10,7 @@ pre-migration class's constructor required ``analiz_repo``/``sofor_repo``
 import math
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
 from pydantic import BaseModel, Field, computed_field
 
@@ -162,9 +162,7 @@ class SoforDegerlendirme(BaseModel):
 def _analiz_repo(uow: Optional["_HasAnalizRepo"]):
     if uow is not None:
         return uow.analiz_repo
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        get_analiz_repo,
-    )
+    from v2.modules.analytics_executive.public import get_analiz_repo
 
     return get_analiz_repo()
 
@@ -287,13 +285,29 @@ def generate_suggestions(degerlendirme: SoforDegerlendirme) -> SoforDegerlendirm
 
 
 async def _add_guzergah_performansi(
-    degerlendirme: SoforDegerlendirme, sofor_id: int
+    degerlendirme: SoforDegerlendirme, sofor_id: int, uow: Optional[Any] = None
 ) -> SoforDegerlendirme:
-    """Güzergah bazlı performans ekle"""
-    from v2.modules.driver.infrastructure.repository import get_sofor_repo
+    """Güzergah bazlı performans ekle.
 
+    2026-07-18 düzeltmesi (2026-07-14 denetim bulgusu): eskiden
+    session'sız modül-singleton `get_sofor_repo()` çağrılıyordu —
+    `get_guzergah_performansi` raw-SQL olduğu için her çağrı "Database
+    session not initialized" ile patlayıp aşağıdaki `except` tarafından
+    yutuluyordu; karnenin güzergah alanları hiç dolmuyordu. Artık
+    session-bound `uow.sofor_repo` (varsa) ya da kendi `UnitOfWork`'ü
+    kullanılıyor (9206e3f'teki score-breakdown düzeltmesiyle aynı desen).
+    """
     try:
-        guzergah_data = await get_sofor_repo().get_guzergah_performansi(sofor_id)
+        sofor_repo = getattr(uow, "sofor_repo", None)
+        if sofor_repo is not None:
+            guzergah_data = await sofor_repo.get_guzergah_performansi(sofor_id)
+        else:
+            from app.database.unit_of_work import UnitOfWork
+
+            async with UnitOfWork() as own_uow:
+                guzergah_data = await own_uow.sofor_repo.get_guzergah_performansi(
+                    sofor_id
+                )
 
         if guzergah_data:
             guzergah_list = [
@@ -396,7 +410,9 @@ async def evaluate_driver(
     degerlendirme = generate_suggestions(degerlendirme)
 
     if include_routes:
-        degerlendirme = await _add_guzergah_performansi(degerlendirme, sofor_id)
+        degerlendirme = await _add_guzergah_performansi(
+            degerlendirme, sofor_id, uow=uow
+        )
 
     return degerlendirme
 

@@ -122,9 +122,9 @@ kendi SELECT'ini atsaydı N+1 regresyonu olurdu.
   publish eder (trip'in event'i, bu modülün sahibi olmadığı — events.py'de not).
 - **fuel (taşındı)**: `process_yakit_import` → `bulk_add_yakit` +
   `recalculate_vehicle_periods`.
-- **fleet (taşındı)**: `process_vehicle_import` → `bulk_add_vehicles`
-  (hâlâ `v2.modules.fleet.application.bulk_add_vehicles`'tan doğrudan —
-  fleet'in kendi public.py sınır düzeltmesi bu dalganın kapsamı dışında);
+- **fleet (taşındı)**: `process_vehicle_import` → `v2.modules.fleet.public.
+  bulk_add_vehicles` + `AracCreate` (2026-07-18 düzeltmesi — eskiden
+  `application`/`schemas`'tan doğrudandı);
   `export_trailers.py::import_trailers`/`get_trailer_template`/
   `export_all_trailers` bu modülün `public.py`'sini (`parse_dorse_excel`/
   `generate_template`/`export_data`) çağırır (YÖN TERSİ: fleet tüketici).
@@ -202,3 +202,28 @@ import ihtiyaçları için bu modülün `public.py`'sini çağırır (`export_da
 - `app/tests/unit/test_workers/test_ocr_tasks_coverage.py` → import path güncellendi.
 - Kök `tests/` klasörü (dalga 1/3/4/8 gotcha'sı) — `test_import_pipeline.py`,
   `test_excel_export*.py`, `test_export.py` tarandı ve dönüştürüldü.
+
+## Yayınladığı / dinlediği event'ler (events.py)
+
+Kendi event'i yok (`events.py` docstring'i): `execute_import`'un sefer
+dalı trip'in sahibi olduğu `EventType.SEFER_UPDATED`'ı publish eder
+(orada dokümante); OCR Celery task'ı event-bus kullanmaz (Celery
+`.delay()` senkron kuyruğu).
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-import_excel` kontratı:
+`application/` diğer modüllerin yalnız `public`/`events`'ini import
+edebilir (2026-07-18'den beri KEPT — `vehicle_importer.py`'nin
+`fleet.schemas`+`fleet.application.bulk_add_vehicles` ve
+`yakit_importer.py`'nin `fuel.schemas` doğrudan importları aynı gün
+`fleet.public`/`fuel.public`'e çevrildi; `infrastructure/
+report_export.py`'nin `reports.infrastructure.pdf_export` importu da
+`reports.public.get_report_generator` oldu). Trip'e erişim container
+üzerinden (geçici, trip taşınınca `trip.public`).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`içeri aktarma`=import, `dışa aktarma`=export, `önizleme`=preview,
+`geri alma`=rollback, `sütun eşleme`=column mapping, `şablon`=template,
+`satır doğrulama`=row validation, `belge`=document (OCR).

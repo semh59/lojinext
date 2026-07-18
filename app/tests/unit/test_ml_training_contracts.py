@@ -350,7 +350,7 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
         ),
     )
     monkeypatch.setattr(
-        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+        "v2.modules.analytics_executive.public.get_analiz_repo",
         lambda: SimpleNamespace(
             execute_query=AsyncMock(
                 side_effect=AssertionError(

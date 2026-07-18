@@ -144,7 +144,7 @@ class TestFuelCoverageCheckTask:
             calls.append({"level": level, "message": message, "path": path})
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -171,7 +171,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -195,7 +195,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -221,7 +221,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 

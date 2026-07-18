@@ -47,7 +47,7 @@ async def test_health_service_check_ai_readiness_failure():
     service = HealthService()
     # Path changed to where it's actually imported in the service method or where it resides
     with patch(
-        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine"
+        "v2.modules.ai_assistant.public.get_rag_engine"
     ) as mock_get_rag:
         mock_rag = MagicMock()
         mock_rag.get_stats.return_value = {"initialized": False}

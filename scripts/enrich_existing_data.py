@@ -18,9 +18,22 @@ from sqlalchemy import select, update  # noqa: E402
 from app.database.connection import AsyncSessionLocal  # noqa: E402
 from app.database.models import Lokasyon, Sefer  # noqa: E402
 from app.infrastructure.logging.logger import get_logger  # noqa: E402
-from v2.modules.route_simulation.infrastructure.openroute_client import (  # noqa: E402
-    OpenRouteClient,
-)
+from v2.modules.location.public import geocode_location  # noqa: E402
+from v2.modules.route_simulation.public import OpenRouteClient  # noqa: E402
+
+
+async def _geocode(q: str):
+    """location modülünün kanonik geocode zinciri (ORS -> Nominatim -> offline).
+
+    2026-07-18: OpenRouteClient.geocode() silindi (üç kopya ORS-geocode
+    implementasyonundan biriydi, bkz.
+    TASKS/bug-openroute-client-architectural-leak.md) — script artık
+    location.public.geocode_location kullanıyor.
+    """
+    results = await geocode_location(q, limit=1)
+    if results:
+        return (results[0]["lat"], results[0]["lon"])
+    return None
 
 logger = get_logger(__name__)
 
@@ -85,7 +98,7 @@ async def enrich_data():
                 # 2. Koordinat yoksa Geocoding ile bulmaya çalış
                 if not origin:
                     logger.info(f"Geocoding origin: {sefer.cikis_yeri}")
-                    origin = await client.geocode(sefer.cikis_yeri)
+                    origin = await _geocode(sefer.cikis_yeri)
                     if origin and sefer.guzergah_id:
                         await session.execute(
                             update(Lokasyon)
@@ -95,7 +108,7 @@ async def enrich_data():
 
                 if not destination:
                     logger.info(f"Geocoding destination: {sefer.varis_yeri}")
-                    destination = await client.geocode(sefer.varis_yeri)
+                    destination = await _geocode(sefer.varis_yeri)
                     if destination and sefer.guzergah_id:
                         await session.execute(
                             update(Lokasyon)

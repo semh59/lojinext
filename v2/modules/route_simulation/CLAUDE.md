@@ -11,16 +11,19 @@ NE YAPMAZ: lokasyon CRUD'u (location modülünün işi), yakıt tahmin ML
 modeli (prediction_ml — bu modül yalnız `PhysicsBasedFuelPredictor`'ı
 tüketir), hava durumu (weather_service.py henüz bu modüle taşınmadı).
 
-**DURUM (dürüst, dalga 1 sonu itibarıyla)**: modül kod-tarafında TAM
-değil. `application/`+`api/`+`domain/`+`infrastructure/` dolu ama
-`public.py`/`events.py`/`schemas.py` YOK — diğer modüller (location) şu an
-`application/`'dan doğrudan import ediyor (mimari borç, dokümante).
+**DURUM (dürüst, 2026-07-18 tam-denetim düzeltmesi sonrası)**:
+`application/`+`api/`+`domain/`+`infrastructure/` dolu; `public.py` ve
+`events.py` 2026-07-18'de eklendi — diğer modüller (location) ve app-tarafı
+tüketiciler (`sefer_fuel_estimator.py`, scriptler) artık `public.py`
+üzerinden import ediyor (eski "public'i yok" borcu kapandı). `schemas.py`
+hâlâ yok (route şemaları api/route_routes.py içinde — modülün dış şema
+tüketicisi yok).
 `weather_service.py`, `route_validator.py`, `openroute_service.py`
 (geocode wrapper), `route_calibration_service.py`, `admin_calibration.py`
 endpoint'i, `route_similarity.py` henüz v2'ye taşınmadı — eski `app/`
 yolunda kalıyor.
 
-## Public API (henüz public.py YOK — application/ dosyalarından doğrudan import)
+## Public API (public.py imzaları — 2026-07-18'den beri VAR)
 
 ```python
 # application/get_route_details.py — TEK use-case, free function (B.1 uyumlu)
@@ -80,23 +83,16 @@ property'leri de hiçbir prod kod tarafından çağrılmadığı için kaldırı
    constructor-injected client bağımlılığı (Mapbox/Open-Meteo client'ları).
    CRUD-benzeri bir servis değil, `LokasyonHydrator`/`DriverCoachingEngine`
    ile aynı gerekçe kategorisi.
-2. **`OpenRouteClient`** (`infrastructure/openroute_client.py`, 2026-07-17
-   dedektif denetiminde bulundu) — **DOKÜMANTE EDİLMEMİŞ, DÜZELTİLMEMİŞ
-   B.1 ihlali**: routing mesafe hesabı + geocoding + `lokasyonlar`
-   tablosuna ham SQL cache-persist (`_get_from_cache`/`_save_to_cache`/
-   `update_route_distance`, satır ~367-616) tek sınıfta birleşmiş, üç
-   ayrı sorumluluk. Düzeltme (cache-persist'i ayrı bir sınıfa çıkarma)
-   BİLİNÇLİ OLARAK ERTELENDİ: `app/tests/unit/test_openroute_client_
-   coverage.py` + `test_openroute_client_more.py`'de 20+ test
-   `client._get_from_cache`/`client._save_to_cache`'i doğrudan instance
-   metodu olarak patch'liyor — güvenli bir split bu testlerin de
-   yeniden yazılmasını gerektirir, düşük-trafikli bir yol için (canlı
-   `/analyze` akışı bu sınıfı hiç çağırmıyor — grep doğrulandı, tek
-   gerçek çağıran `scripts/enrich_existing_data.py`'nin bağımsız
-   zenginleştirme script'i) orantısız risk. Gelecekte ele alınacaksa:
-   cache-persist metotlarını `RouteDistanceCache` sınıfına taşı,
-   `OpenRouteClient` yalnız proxy tutsun (testler bozulmaz), ayrıca
-   geocode'u da ayrı bir `NominatimGeocoder`-benzeri yapıya çıkar.
+2. **`OpenRouteClient`** (`infrastructure/openroute_client.py`) —
+   ✅ **2026-07-18'de temizlendi** (`TASKS/
+   bug-openroute-client-architectural-leak.md`): ölü `geocode`/
+   `_call_geocode_api` (location'ın geocode zincirinin DRY-ihlalli
+   kopyası) ve `update_route_distance` (`lokasyonlar` tablosuna —
+   location'ın tek sahipliği — ham SQL UPDATE atan, sıfır prod çağıranlı
+   legacy metot) SİLİNDİ; `scripts/enrich_existing_data.py` artık
+   `location.public.geocode_location`'ı kullanıyor. Sınıf artık yalnız
+   ORS distance + cache sorumluluğu taşıyor (Redis/in-memory cache
+   metotları `get_distance`'ın parçası, ayrı sorumluluk değil).
 
 ## Yayınladığı / dinlediği event'ler
 
@@ -178,3 +174,19 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
   gibi); fonksiyon-içi (inline) importlar için KAYNAK modül
   (`v2.modules.route_simulation.application.get_route_details.get_prediction_service`
   gibi — `get_prediction_service` orada her çağrıda taze import edilir).
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-route_simulation` kontratı:
+`application/` katmanı diğer modüllerin yalnız `public`/`events`'ini
+import edebilir (2026-07-18'den beri KEPT). Diğer modüller bu modüle
+yalnız `v2.modules.route_simulation.public` üzerinden erişir. Geçici
+istisnalar (eski `app/` yolları — `weather_service`, `openroute_service`,
+`route_similarity`, prediction_ml) kontratın ignore listesinde dokümante.
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`rota`=route, `güzergah`=route/itinerary, `eğim`=grade/slope,
+`tırmanış`=ascent, `iniş`=descent, `kesim/segment`=segment,
+`benzetim`=simulation, `rakım`=elevation, `mesafe`=distance,
+`zorluk`=difficulty.

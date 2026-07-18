@@ -137,7 +137,8 @@ edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
    lazy-property singleton'ı olarak yaşayan bir motor. Driver'ın
    `DriverPerformanceML`'iyle aynı gerekçe sınıfı (mutable durum, yeniden
    hesaplaması pahalı/anlamsız).
-3. **`TokenBlacklist`** (`domain/token_blacklist.py`) — `__new__`'de
+3. **`TokenBlacklist`** (`infrastructure/token_blacklist.py` — 2026-07-18'de
+   `domain/`'den taşındı: Redis I/O yapan bir sınıf domain'de duramaz) — `__new__`'de
    thread-safe singleton deseni (`_instance`/`_lock`), Redis-backed. Zaten
    stateless bir wrapper ama sınıf-tabanlı singleton deseni pre-migration'dan
    korundu (davranış değişikliği gerektirmiyor, dokunulmadı).
@@ -210,8 +211,8 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   istisnası, aşağıya bkz.).
 - **notification (senkron, zaten taşınmış)**: iki yönlü —
   `auth_rbac→notification`: `auth_routes.py::request_password_reset`
-  `v2.modules.notification.infrastructure.email_client.send_password_reset`
-  çağırır. `notification→auth_rbac`: `notification_routes.py`
+  `v2.modules.notification.public.send_password_reset` çağırır
+  (2026-07-18: public'e çevrildi). `notification→auth_rbac`: `notification_routes.py`
   (`require_yetki`) ve `application/quiet_hours.py` (`get_preferences`)
   artık `auth_rbac.public` üzerinden.
 - **fleet, anomaly, import_excel, analytics_executive, reports** —
@@ -241,8 +242,12 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 - **`app/api/deps.py` taşınmadı** — FastAPI-wiring katmanı (driver/fleet
   dalgalarındaki kararla aynı), yalnızca import kaynakları
   `v2.modules.auth_rbac.domain.security_service`/`v2.modules.auth_rbac.domain.token_blacklist`
-  olarak güncellendi. `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı
-  bakınız).
+  olarak güncellendi (2026-07-18: `token_blacklist` importu
+  `infrastructure/`'a taşınan yeni yolu gösteriyor; deps.py'nin public.py
+  YERİNE domain-leaf import etmesi bilinçli — public, `PermissionChecker`
+  üzerinden deps.py'nin kendisini import ettiği için döngü oluşur, deps.py
+  içinde yorumla dokümante). `get_auth_service`/`AuthServiceDep`
+  KALDIRILDI (yukarı bakınız).
 - **Super-admin break-glass bypass** (`api/auth_routes.py::login`) —
   `SUPER_ADMIN_PASSWORD` env değişkeni + IP-scoped rate-limit bucket
   (`super_admin_login:{ip}`, 5dk'da 3 deneme) — genel `auth_token` bucket'ından
@@ -251,7 +256,7 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   `asyncio.to_thread(jwt_handler.verify_password, ...)` — connection-pool-leak
   bug'ının 2. kök nedeniydi (`TASKS/bug-connection-pool-leak-under-load.md`),
   taşımayla KORUNDU.
-- **Fail-secure token blacklist** (`domain/token_blacklist.py::is_blacklisted`) —
+- **Fail-secure token blacklist** (`infrastructure/token_blacklist.py::is_blacklisted`) —
   Redis erişilemezse token'ı REVOKED say (SEC-004), taşımayla değişmedi.
 - **Privilege-escalation guard'ı** (`application/role_service.py::assert_no_privilege_escalation`)
   — çağıran, kendisinde olmayan bir yetkiyi başka role veremez
@@ -290,3 +295,21 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   `tests/test_admin_ws.py`, `tests/test_auth_brute_force.py`,
   `tests/test_user_admin.py`, `tests/api/test_api_integration.py`,
   `tests/conftest.py` dönüştürüldü.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-auth_rbac` kontratı: `application/`
+diğer modüllerin yalnız `public`/`events`'ini import edebilir (KEPT).
+Diğer modüller bu modüle yalnız `v2.modules.auth_rbac.public` üzerinden
+erişir; istisnalar (kontrat ignore listesinde dokümante): `app/api/deps.py`
+(composition-root — public'e geçmek `PermissionChecker` üzerinden döngü
+üretir), `app/core/container.py`/`app/database/repositories/__init__.py`
+(proje-geneli DI-wiring istisnası), `app/main.py`/`app/infrastructure/
+websocket/ws_auth.py` (2026-07-18'den beri public üzerinden).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`kullanıcı`=user, `rol`=role, `yetki`=permission, `oturum`=session,
+`kara liste`=blacklist, `şifre sıfırlama`=password reset,
+`ayrıcalık yükseltme`=privilege escalation, `lisans`=license,
+`tercih`=preference.

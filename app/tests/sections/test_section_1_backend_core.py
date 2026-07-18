@@ -5,8 +5,8 @@ Bu dosya, Backend Core bileşenlerini (Services, AI, ML) kapsamlı şekilde test
 
 Kapsam:
 - Servisler: ai_service, analiz_service, anomaly_detector, cost_analyzer,
-             insight_engine, weather_service, yakit_tahmin_service
-- AI: rag_engine, recommendation_engine, context_builder, prompt_tuner
+             weather_service (insight_engine/yakit_tahmin 2026-07-18 temizliğinde silindi)
+- AI: rag_engine (recommendation_engine/context_builder/prompt_tuner 2026-07-18 ölü-kod temizliğinde silindi)
 - ML: ensemble_predictor, kalman_estimator, physics_fuel_predictor, time_series_predictor
 
 Test Yaklaşımı:
@@ -20,7 +20,7 @@ Test Yaklaşımı:
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import numpy as np
 import pytest
@@ -868,68 +868,6 @@ class TestWeatherService:
 # 9. INSIGHT ENGINE TESTS
 # =============================================================================
 
-
-class TestInsightEngine:
-    """Insight (içgörü) motoru testleri (dalga 11 — free function, eski
-    InsightEngine sınıfı kaldırıldı)."""
-
-    @pytest.mark.asyncio
-    async def test_generate_insights_empty_data(self):
-        """Boş veri ile insight üretimi"""
-        from app.database.unit_of_work import UnitOfWork
-        from v2.modules.analytics_executive.application.generate_insights import (
-            generate_vehicle_insights_bulk,
-        )
-
-        with patch(
-            "v2.modules.analytics_executive.application.generate_insights.get_uow"
-        ) as mock_uow_func:
-            mock_uow = MagicMock(spec=UnitOfWork)
-            mock_uow.__aenter__.return_value = mock_uow
-            mock_uow.analiz_repo = AsyncMock()
-            mock_uow.analiz_repo.get_all_vehicles_consumption_stats.return_value = []
-            mock_uow_func.return_value = mock_uow
-
-            insights = await generate_vehicle_insights_bulk()
-
-            assert isinstance(insights, list)
-            assert len(insights) == 0
-
-    @pytest.mark.asyncio
-    async def test_insight_structure(self):
-        """Insight yapısı kontrolü"""
-        from app.database.unit_of_work import UnitOfWork
-        from v2.modules.analytics_executive.application.generate_insights import (
-            generate_vehicle_insights_bulk,
-        )
-
-        with patch(
-            "v2.modules.analytics_executive.application.generate_insights.get_uow"
-        ) as mock_uow_func:
-            mock_uow = MagicMock(spec=UnitOfWork)
-            mock_uow.__aenter__.return_value = mock_uow
-            mock_uow.analiz_repo = AsyncMock()
-            mock_uow.analiz_repo.get_all_vehicles_consumption_stats.return_value = [
-                {
-                    "arac_id": 1,
-                    "plaka": "34 ABC 123",
-                    "hedef_tuketim": 32.0,
-                    "ort_tuketim": 40.0,
-                }
-            ]
-            mock_uow_func.return_value = mock_uow
-
-            insights = await generate_vehicle_insights_bulk()
-
-            if insights:
-                insight = insights[0]
-                assert hasattr(insight, "tip")
-                assert hasattr(insight, "mesaj")
-
-
-# =============================================================================
-# 10. COST ANALYZER TESTS
-# =============================================================================
 
 
 class TestCostAnalyzer:

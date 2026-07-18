@@ -125,9 +125,7 @@ class InternalService:
         seferi yok / son seferde araç tanımsız — endpoint bunları 404'e çevirir.
         """
         from app.database.models import BakimTipi
-        from v2.modules.fleet.application.create_maintenance_record import (
-            create_breakdown,
-        )
+        from v2.modules.fleet.public import create_breakdown
 
         sofor = await self._sofor_repo.get_by_telegram_id(telegram_id)
         if sofor is None:

@@ -9,7 +9,7 @@ from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
 from v2.modules.fleet.application.create_vehicle import plaka_lock
-from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
+from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 from v2.modules.fleet.schemas import AracUpdate
 
 logger = get_logger(__name__)

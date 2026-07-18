@@ -1,61 +1,9 @@
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
 from app.core.services.weather_service import WeatherService
-from v2.modules.analytics_executive.application.generate_insights import (
-    Insight,
-    InsightType,
-)
-
-
-@pytest.mark.asyncio
-async def test_insight_engine_bulk_insert():
-    """Verify generate_all_and_save uses bulk insert (dalga 11 — free function,
-    eski InsightEngine sınıfı kaldırıldı)."""
-    with (
-        patch(
-            "v2.modules.analytics_executive.application.generate_insights.generate_fleet_insights",
-            AsyncMock(
-                return_value=[Insight(InsightType.UYARI, "filo", None, "Test Fleet")]
-            ),
-        ),
-        patch(
-            "v2.modules.analytics_executive.application.generate_insights.generate_vehicle_insights_bulk",
-            AsyncMock(
-                return_value=[Insight(InsightType.UYARI, "arac", 1, "Test Vehicle")]
-            ),
-        ),
-        patch(
-            "v2.modules.analytics_executive.application.generate_insights.generate_driver_insights_bulk",
-            AsyncMock(return_value=[]),
-        ),
-    ):
-        # AUDIT-094: generate_all_and_save kaydetme yolu get_uow().analiz_repo kullanır.
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.analiz_repo = MagicMock()
-        mock_uow.analiz_repo.bulk_create_alerts = AsyncMock(return_value=2)
-        mock_uow.commit = AsyncMock()
-
-        with patch(
-            "v2.modules.analytics_executive.application.generate_insights.get_uow",
-            return_value=mock_uow,
-        ):
-            from v2.modules.analytics_executive.application.generate_insights import (
-                generate_all_and_save,
-            )
-
-            count = await generate_all_and_save()
-
-            assert count == 2
-            # Verify bulk_create_alerts was called instead of create_insight_alert
-            mock_uow.analiz_repo.bulk_create_alerts.assert_called_once()
-            args = mock_uow.analiz_repo.bulk_create_alerts.call_args[0][0]
-            assert len(args) == 2
-            assert args[0]["title"] == "Sistem Analizi: Uyari"
 
 
 @pytest.mark.asyncio

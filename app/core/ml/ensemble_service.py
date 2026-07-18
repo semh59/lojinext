@@ -44,9 +44,7 @@ class EnsemblePredictorService:
     @property
     def arac_repo(self):
         if self._arac_repo is None:
-            from v2.modules.fleet.infrastructure.vehicle_repository import (
-                get_arac_repo,
-            )
+            from v2.modules.fleet.public import get_arac_repo
 
             self._arac_repo = get_arac_repo()
         return self._arac_repo
@@ -62,9 +60,7 @@ class EnsemblePredictorService:
     @property
     def dorse_repo(self):
         if self._dorse_repo is None:
-            from v2.modules.fleet.infrastructure.trailer_repository import (
-                get_dorse_repo,
-            )
+            from v2.modules.fleet.public import get_dorse_repo
 
             self._dorse_repo = get_dorse_repo()
         return self._dorse_repo
@@ -378,9 +374,7 @@ class EnsemblePredictorService:
 
             # 2. AnalizRepo ile Legacy Kayıt (YakitFormul)
             try:
-                from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-                    get_analiz_repo,
-                )
+                from v2.modules.analytics_executive.public import get_analiz_repo
 
                 analiz_repo = get_analiz_repo()
                 await analiz_repo.save_model_params(arac_id, result)
@@ -409,9 +403,7 @@ class EnsemblePredictorService:
         """
         logger.info("Training General Fallback Model (Vehicle ID: 0).")
         try:
-            from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-                get_analiz_repo,
-            )
+            from v2.modules.analytics_executive.public import get_analiz_repo
 
             analiz_repo = get_analiz_repo()
 

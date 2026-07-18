@@ -165,7 +165,7 @@ def bypass_token_blacklist(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.is_blacklisted",
+        "v2.modules.auth_rbac.infrastructure.token_blacklist.blacklist.is_blacklisted",
         _not_blacklisted,
     )
 

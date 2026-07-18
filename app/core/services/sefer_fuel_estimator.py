@@ -47,7 +47,7 @@ from app.database.models import (
     Sofor,
 )
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.route_simulation.application.simulate_route import (
+from v2.modules.route_simulation.public import (
     RouteSimulator,
     SimulationResult,
     get_route_simulator,

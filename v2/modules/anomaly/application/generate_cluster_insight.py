@@ -3,7 +3,7 @@
 
 async def generate_cluster_insight(cluster: dict) -> str:
     """Groq ile küme için kısa Türkçe insight. Hata → caller yutar."""
-    from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
+    from v2.modules.ai_assistant.public import GroqService
 
     prompt = (
         f"Filo anomali kümesi: {cluster['label']}. "

@@ -336,9 +336,7 @@ async def lifespan(app: FastAPI):
         logger.warning("Notification event handlers registration failed: %s", exc)
 
     try:
-        from v2.modules.ai_assistant.infrastructure.rag.rag_sync_service import (
-            get_rag_sync_service,
-        )
+        from v2.modules.ai_assistant.public import get_rag_sync_service
 
         await get_rag_sync_service().initialize()
     except Exception as exc:  # pragma: no cover
@@ -497,7 +495,7 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         # asla bloklamaz/bozmaz.
         try:
             from app.infrastructure.audit.audit_logger import log_audit_event
-            from v2.modules.auth_rbac.domain import jwt_handler
+            from v2.modules.auth_rbac.public import jwt_handler
 
             sub = None
             auth_header = request.headers.get("authorization", "")
@@ -852,6 +850,6 @@ async def readiness() -> JSONResponse:
 @app.get("/.well-known/jwks.json", include_in_schema=False)
 async def jwks() -> dict[str, Any]:
     """RS256 JWKS endpoint (only meaningful when ALGORITHM=RS256)."""
-    from v2.modules.auth_rbac.domain.security import get_jwks
+    from v2.modules.auth_rbac.public import get_jwks
 
     return get_jwks()

@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
 from app.database.base_repository import BaseRepository
-from app.database.models import Anomaly, Sefer, YakitFormul
+from app.database.models import Sefer, YakitFormul
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -380,53 +380,16 @@ class AnalizRepository(BaseRepository[Sefer]):
             logger.error("Recent alerts query failed", exc_info=True)
             return []
 
-    async def bulk_create_alerts(self, payloads: List[Dict[str, Any]]) -> int:
-        """Sistem insight'larını alert deposuna (anomalies tablosu) toplu yazar.
-
-        ``insight_engine.generate_all_and_save`` için yazma tarafı.
-        ``anomalies`` sistemin alert deposudur (``get_recent_unread_alerts``
-        oradan okur). Insight'lar numerik sapma içermediği için
-        ``deger/beklenen_deger/sapma_yuzde`` 0.0 sentinel ile, ``tip='insight'``
-        olarak yazılır; payload'un title+message'ı ``aciklama``da birleştirilir.
-        Eklenen satır sayısını döner.
-        """
-        if not payloads:
-            return 0
-
-        session = self.session
-        today = datetime.now(timezone.utc).date()
-        rows = [
-            {
-                "tarih": today,
-                "tip": "insight",
-                "kaynak_tip": p.get("kaynak_tur") or "sistem",
-                "kaynak_id": p.get("kaynak_id") or 0,
-                "deger": 0.0,
-                "beklenen_deger": 0.0,
-                "sapma_yuzde": 0.0,
-                "severity": p.get("severity") or "low",
-                "aciklama": f"{p.get('title', '')}: {p.get('message', '')}".strip(": "),
-            }
-            for p in payloads
-        ]
-        try:
-            await session.execute(insert(Anomaly), rows)
-            if self._session is None:
-                await session.commit()
-            return len(rows)
-        except Exception as e:
-            if self._session is None:
-                await session.rollback()
-            logger.error(f"Error bulk-creating insight alerts: {e}")
-            raise e
-
+    # 2026-07-18 ölü-kod temizliği: bulk_create_alerts silindi — tek
+    # çağıranı generate_all_and_save (insight motoru) idi, o da ölü kod
+    # olarak silindi. get_recent_unread_alerts (aşağıda) CANLI kalıyor
+    # (AIService._build_context okuyor).
     # NOT: bulk_create_anomalies/get_anomalies_filtered/get_anomaly_by_id/
     # update_anomaly dalga 8'de v2/modules/anomaly/infrastructure/
-    # anomaly_repository.py'ye taşındı (uow.anomaly_repo). bulk_create_alerts
-    # (yukarıda) ve get_recent_unread_alerts (aşağıda) taşınmadı — bunlar
-    # ``anomalies`` tablosuna insight-alert yazan/okuyan AYRI bir yol
-    # (task dosyasının 15 metodluk listesinde yok), analytics_executive'in
-    # kendi sorumluluğu olarak burada kalıyor.
+    # anomaly_repository.py'ye taşındı (uow.anomaly_repo).
+    # get_recent_unread_alerts ``anomalies`` tablosundan insight-alert okuyan
+    # AYRI bir yol (task dosyasının 15 metodluk listesinde yok),
+    # analytics_executive'in kendi sorumluluğu olarak burada kalıyor.
 
     async def get_period_stats(self, start: date, end: date) -> Dict:
         """Dönem bazlı yakıt ve sefer özeti (ReportService için)"""

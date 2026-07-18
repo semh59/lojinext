@@ -200,7 +200,7 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
     → returns None for every trip → final score is None even with valid data.
     """
     from app.database.unit_of_work import UnitOfWork
-    from v2.modules.driver.domain.driver_stats import _calc_elite_from_trips
+    from v2.modules.driver.application.driver_stats import _calc_elite_from_trips
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
@@ -243,7 +243,7 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
     prediction_service — no mocks anywhere in the call chain.
     """
     from app.database.unit_of_work import UnitOfWork
-    from v2.modules.driver.domain.driver_stats import (
+    from v2.modules.driver.application.driver_stats import (
         calculate_elite_performance_score,
     )
 

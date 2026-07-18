@@ -46,9 +46,15 @@ from app.infrastructure.background.job_manager import (
     get_job_manager,
 )
 from app.infrastructure.logging.logger import get_logger
+
+# NOT (2026-07-18 denetimi): bu üç import auth_rbac.public YERİNE bilinçli
+# olarak domain-leaf yollarından yapılır — public.py, `PermissionChecker`
+# üzerinden bu dosyanın kendisini (get_current_user) import eder; public'e
+# geçmek döngüsel import üretir. deps.py auth_rbac/CLAUDE.md'de dokümante
+# composition-root istisnasıdır.
 from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
-from v2.modules.auth_rbac.domain.token_blacklist import blacklist
+from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 
 logger = get_logger(__name__)
 

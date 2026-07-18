@@ -7,7 +7,7 @@ There is no ``ReportService`` class — each use-case is a standalone
 function taking an explicit ``ReportRepos`` bundle (built via
 ``resolve_repos(uow)``, mirroring the ``uow: Optional[UnitOfWork] = None``
 fallback shape used throughout v2, e.g.
-``v2.modules.driver.domain.driver_stats``). This avoids hiding shared
+``v2.modules.driver.application.driver_stats``). This avoids hiding shared
 repo state behind a stateful facade for seven otherwise-unrelated
 use-cases (fleet summary / vehicle report / driver report / monthly trend /
 dashboard summary / monthly comparison / daily consumption trend).
@@ -31,9 +31,6 @@ from v2.modules.reports.application.generate_monthly_trend import generate_month
 from v2.modules.reports.application.generate_vehicle_report import (
     generate_vehicle_report,
 )
-from v2.modules.reports.application.get_daily_consumption_trend import (
-    get_daily_consumption_trend,
-)
 from v2.modules.reports.application.get_dashboard_summary import get_dashboard_summary
 from v2.modules.reports.application.get_monthly_comparison import get_monthly_comparison
 from v2.modules.reports.infrastructure.pdf_export import (
@@ -49,7 +46,6 @@ __all__ = [
     "generate_monthly_trend",
     "get_dashboard_summary",
     "get_monthly_comparison",
-    "get_daily_consumption_trend",
     "ReportRepos",
     "resolve_repos",
     "aggregate_today_triage",

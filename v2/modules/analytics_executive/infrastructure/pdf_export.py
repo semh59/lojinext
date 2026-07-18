@@ -80,7 +80,7 @@ def generate_executive_pdf(
     # "DocFont" + "DocFontBold" pdfmetrics'e kayıt yapar. Generator
     # fallback yaptıysa (Helvetica) onun gerçek font_name/bold'unu kullan.
     try:
-        from v2.modules.reports.infrastructure.pdf_export import PDFReportGenerator
+        from v2.modules.reports.public import PDFReportGenerator
 
         gen = PDFReportGenerator()  # __init__ font kaydı yapar
         font_name = gen.font_name

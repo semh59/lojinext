@@ -131,9 +131,20 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 | Module | Status | CLAUDE.md |
 |---|---|---|
 | `location` | Done (code) — CRUD, geocoding, route hydration | `v2/modules/location/CLAUDE.md` |
-| `route_simulation` | Partial — ORS/Mapbox/Open-Meteo clients + segment simulator + `/routes` endpoints done; `weather_service.py`/`route_validator.py`/`openroute_service.py`/`route_calibration_service.py`/`admin_calibration.py` endpoint still on old `app/` paths; module has no `public.py`/`events.py` yet | `v2/modules/route_simulation/CLAUDE.md` |
+| `route_simulation` | Done (code) — ORS/Mapbox/Open-Meteo clients + segment simulator + `/routes` endpoints + `public.py`/`events.py` (added 2026-07-18); `weather_service.py`/`route_validator.py`/`openroute_service.py`/`route_calibration_service.py`/`admin_calibration.py` endpoint still on old `app/` paths | `v2/modules/route_simulation/CLAUDE.md` |
+| `notification` | Done (code) | `v2/modules/notification/CLAUDE.md` |
+| `fleet` | Done (code) | `v2/modules/fleet/CLAUDE.md` |
+| `fuel` | Done (code) | `v2/modules/fuel/CLAUDE.md` |
+| `driver` | Done (code) | `v2/modules/driver/CLAUDE.md` |
+| `auth_rbac` | Done (code) | `v2/modules/auth_rbac/CLAUDE.md` |
+| `anomaly` | Done (code) — fraud/investigation/attribution merged in (not a separate module) | `v2/modules/anomaly/CLAUDE.md` |
+| `import_excel` | Done (code) | `v2/modules/import_excel/CLAUDE.md` |
+| `reports` | Done (code) | `v2/modules/reports/CLAUDE.md` |
+| `analytics_executive` | Done (code) — Feature-E strategic cockpit | `v2/modules/analytics_executive/CLAUDE.md` |
+| `ai_assistant` | Done (code) — LLM chat, RAG, trip-planner wizard | `v2/modules/ai_assistant/CLAUDE.md` |
+| `prediction_ml`, `trip`, `admin_platform`, `shared_kernel`, `platform_infra` | Not started | see `TASKS/STATUS.md` |
 
-There is no `LokasyonService`/`RouteService`-as-DI-singleton-only pattern inside these modules for CRUD-style use-cases — each use-case in `location` and `route_simulation` is a standalone function (`get_route_details`, `get_route_difficulty`, etc. — see each module's `public.py`/`CLAUDE.md`). `route_simulation`'s `RouteSimulator` is the one exception: it stays a class because it's a single cohesive pipeline (mapbox → resample → elevation → simulate) needing constructor-injected client dependencies for testability — same rationale as `LokasyonHydrator`, not a multi-use-case service object.
+There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `LicenseEngine`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
 
 ### Route grade/segment analysis
 

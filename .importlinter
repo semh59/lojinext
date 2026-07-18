@@ -58,9 +58,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -75,24 +74,11 @@ ignore_imports =
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.domain.**
     v2.modules.auth_rbac.infrastructure.** -> v2.modules.auth_rbac.domain.**
-    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
-    v2.modules.analytics_executive.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.driver.domain.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.driver.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.fuel.domain.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.fuel.domain.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.fuel.infrastructure.** -> v2.modules.notification.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.driver.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.fuel.infrastructure.**
-    v2.modules.import_excel.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.analytics_executive.infrastructure.** -> v2.modules.notification.application.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:module-internal-layers]
@@ -136,9 +122,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -152,7 +137,6 @@ ignore_imports =
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.application.**
-    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
@@ -228,9 +212,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -242,9 +225,6 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.application.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.domain.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.infrastructure.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-route_simulation]
@@ -317,9 +297,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -403,9 +382,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -417,7 +395,6 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.notification.application.** -> v2.modules.auth_rbac.application.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fleet]
@@ -490,9 +467,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -576,9 +552,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -662,9 +637,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -748,9 +722,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -834,9 +807,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -920,9 +892,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -934,9 +905,6 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.import_excel.application.** -> v2.modules.fleet.application.**
-    v2.modules.import_excel.application.** -> v2.modules.fleet.schemas
-    v2.modules.import_excel.application.** -> v2.modules.fuel.schemas
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-reports]
@@ -1009,9 +977,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -1023,11 +990,6 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.reports.application.** -> v2.modules.fleet.application.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.driver.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.fleet.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.fuel.infrastructure.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-analytics_executive]
@@ -1096,9 +1058,8 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -1110,8 +1071,6 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.analytics_executive.application.** -> v2.modules.fleet.application.**
-    v2.modules.analytics_executive.application.** -> v2.modules.notification.application.**
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-ai_assistant]
@@ -1184,9 +1143,7 @@ ignore_imports =
     app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
     app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
     app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
     app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1199,7 +1156,4 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.ai_assistant.application.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.ai_assistant.application.** -> v2.modules.fuel.infrastructure.**
-    v2.modules.ai_assistant.application.** -> v2.modules.analytics_executive.infrastructure.**
 unmatched_ignore_imports_alerting = error

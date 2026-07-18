@@ -6,19 +6,16 @@ This module owns no DB table (FAISS dosya-tabanlı indeks, `app/data/ai_kb/`
 + `data/vector_store/`, Docker `app_data` named volume üzerinden persist).
 
 `trip` (dalga 14, henüz taşınmadı) `TripPlannerEngine`/`PlanInput`/
-`PlanResult` için doğrudan bu public surface'i kullanır
-(`app/api/v1/endpoints/trips.py`). `anomaly`/`driver` (taşındı)
-`get_groq_service()`'i doğrudan `infrastructure/llm/groq_client.py`'den
-import ediyor (bkz. CLAUDE.md "senkron konuştuğu modüller").
+`PlanResult`/sihirbaz şemaları için doğrudan bu public surface'i kullanır
+(`app/api/v1/endpoints/trips.py`). `anomaly`/`driver` (taşındı) da
+`GroqService`/`get_groq_service`'e buradan erişir (2026-07-18 denetiminde
+public'e çevrildi).
+
+2026-07-18 ölü-kod temizliği: `RecommendationEngine`/`PromptTuner`/
+`build_context.py` (5 fonksiyon) hiçbir prod yolundan çağrılmadığı
+doğrulanarak SİLİNDİ — export'ları da kaldırıldı.
 """
 
-from v2.modules.ai_assistant.application.build_context import (
-    build_analysis_context,
-    build_driver_context,
-    build_full_context,
-    build_system_context,
-    build_vehicle_context,
-)
 from v2.modules.ai_assistant.application.knowledge_base import (
     KnowledgeBase,
     SmartAIService,
@@ -29,15 +26,6 @@ from v2.modules.ai_assistant.application.orchestrate_ai_response import (
     get_ai_service,
 )
 from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
-from v2.modules.ai_assistant.application.prompt_tuner import (
-    PromptTuner,
-    get_prompt_tuner,
-)
-from v2.modules.ai_assistant.application.recommendation_engine import (
-    Recommendation,
-    RecommendationEngine,
-    get_recommendation_engine,
-)
 from v2.modules.ai_assistant.domain.planner_scoring import (
     DriverCandidate,
     PlanInput,
@@ -50,6 +38,7 @@ from v2.modules.ai_assistant.infrastructure.llm.groq_client import (
 )
 from v2.modules.ai_assistant.infrastructure.llm.raw_client import (
     LLMClient,
+    LLMMessage,
     get_llm_client,
 )
 from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
@@ -60,6 +49,12 @@ from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
 from v2.modules.ai_assistant.infrastructure.rag.rag_sync_service import (
     RAGSyncService,
     get_rag_sync_service,
+)
+from v2.modules.ai_assistant.schemas import (
+    DriverSuggestion,
+    PlanWizardRequest,
+    PlanWizardResponse,
+    VehicleSuggestion,
 )
 
 __all__ = [
@@ -73,23 +68,18 @@ __all__ = [
     "PlanResult",
     "VehicleCandidate",
     "DriverCandidate",
-    "RecommendationEngine",
-    "Recommendation",
-    "get_recommendation_engine",
-    "PromptTuner",
-    "get_prompt_tuner",
     "GroqService",
     "get_groq_service",
     "LLMClient",
+    "LLMMessage",
+    "DriverSuggestion",
+    "PlanWizardRequest",
+    "PlanWizardResponse",
+    "VehicleSuggestion",
     "get_llm_client",
     "RAGEngine",
     "get_rag_engine",
     "is_rag_available",
     "RAGSyncService",
     "get_rag_sync_service",
-    "build_system_context",
-    "build_vehicle_context",
-    "build_driver_context",
-    "build_analysis_context",
-    "build_full_context",
 ]

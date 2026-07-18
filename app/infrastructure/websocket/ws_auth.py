@@ -17,8 +17,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.database.connection import AsyncSessionLocal
 from app.database.models import Kullanici
-from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
-from v2.modules.auth_rbac.domain.token_blacklist import blacklist
+from v2.modules.auth_rbac.public import Permission, SecurityService, blacklist
 
 
 async def verify_ws_ticket(ticket: str) -> Optional[str]:
@@ -34,7 +33,7 @@ async def verify_ws_token(token: str) -> Optional[str]:
     if await blacklist.is_blacklisted(token):
         return None
     try:
-        from v2.modules.auth_rbac.domain.jwt_handler import get_decode_key
+        from v2.modules.auth_rbac.public import get_decode_key
 
         payload = jwt.decode(
             token,

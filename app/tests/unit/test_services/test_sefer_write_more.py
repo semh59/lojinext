@@ -1,24 +1,23 @@
 """
-Additional coverage tests for SeferWriteService.
+Additional coverage tests for trip write use-cases (eski SeferWriteService).
 
 Targets uncovered branches not hit by existing test files:
-- _build_prediction_route_analysis: distributions already in analysis (no duplicate)
-- _extract_prediction_values: explanation_summary, warning_level, insight, model_version
-- _resolve_route: route found but data.mesafe_km already set (no override)
-- _resolve_route: route found but data.ascent_m / descent_m already set
-- _predict_outbound: USE_SEFER_FUEL_ESTIMATOR=False, no guzergah_id (no weather call)
-- _predict_outbound: weather call returns c_lat=None (skip weather)
-- _predict_outbound: timeout path (asyncio.TimeoutError)
-- _predict_outbound: general exception path
-- _repredikt_for_update: guzergah_id present in update_data (route enrichment path)
-- _repredikt_for_update: pred_bos_sefer=True → ton forced to 0
-- _repredikt_for_update: prediction returns None (no update)
-- _handle_round_trip_on_update: sefer not found → early return
-- _handle_round_trip_on_update: existing return trip found → skip creation
+- build_prediction_route_analysis: distributions already in analysis (no duplicate)
+- extract_prediction_values: explanation_summary, warning_level, insight, model_version
+- resolve_route: route found but data.mesafe_km already set (no override)
+- resolve_route: route found but data.ascent_m / descent_m already set
+- predict_outbound: USE_SEFER_FUEL_ESTIMATOR=False, no guzergah_id (no weather call)
+- predict_outbound: weather call returns c_lat=None (skip weather)
+- predict_outbound: timeout path (asyncio.TimeoutError)
+- predict_outbound: general exception path
+- repredikt_for_update: guzergah_id present in update_data (route enrichment path)
+- repredikt_for_update: pred_bos_sefer=True → ton forced to 0
+- repredikt_for_update: prediction returns None (no update)
+- handle_round_trip_on_update: sefer not found → early return
+- handle_round_trip_on_update: existing return trip found → skip creation
 - create_return_trip: sefer_no is None → return_sefer_no is None
 - add_sefer: route_dict elevation correction applied (RouteValidator.validate_and_correct)
-- _refresh_stats: non-pytest path (production bg task)
-- _delete_sefer_uow: exception propagates
+- refresh_stats: non-pytest path (production bg task)
 - bulk_update_status: all fail → no commit
 - bulk_cancel: all fail → no commit
 - bulk_add_sefer: >20 items → skip_prediction=True
@@ -30,10 +29,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-import app.core.services.sefer_write_service as sefer_write_module
-from app.core.services.sefer_write_service import SeferWriteService
 from app.database.unit_of_work import UnitOfWork
-from app.schemas.sefer import SeferCreate, SeferUpdate
+from v2.modules.trip.application import add_trip, return_trip
+from v2.modules.trip.application.add_trip import add_sefer
+from v2.modules.trip.application.bulk_add_trips import bulk_add_sefer
+from v2.modules.trip.application.bulk_trip_ops import bulk_cancel, bulk_update_status
+from v2.modules.trip.application.return_trip import (
+    create_return_trip,
+    handle_round_trip_on_update,
+)
+from v2.modules.trip.application.sla import check_sla_delay
+from v2.modules.trip.application.stats_refresh import refresh_stats
+from v2.modules.trip.application.trip_prediction_enrichment import (
+    build_prediction_route_analysis,
+    extract_prediction_values,
+    predict_outbound,
+    predict_via_estimator,
+    repredikt_for_update,
+    resolve_route,
+)
+from v2.modules.trip.application.update_trip import update_sefer_uow
+from v2.modules.trip.schemas import SeferCreate, SeferUpdate
 
 pytestmark = pytest.mark.unit
 
@@ -86,13 +102,6 @@ class DummyUoW:
         return False
 
 
-def _make_service(event_bus=None):
-    bus = event_bus or MagicMock()
-    bus.publish_async = AsyncMock()
-    svc = SeferWriteService(event_bus=bus)
-    return svc, bus
-
-
 def _sefer_create(**overrides) -> SeferCreate:
     defaults = dict(
         tarih=date(2026, 3, 15),
@@ -140,7 +149,7 @@ def _current_sefer(**overrides) -> dict:
 
 
 # ============================================================
-# 1. _build_prediction_route_analysis — distributions edge cases
+# 1. build_prediction_route_analysis — distributions edge cases
 # ============================================================
 
 
@@ -150,7 +159,7 @@ def test_build_prediction_route_analysis_no_duplicate_distributions():
         "route_analysis": {"distributions": {"type": "from_analysis"}},
         "distributions": {"type": "standalone"},
     }
-    result = SeferWriteService._build_prediction_route_analysis(route_details=route)
+    result = build_prediction_route_analysis(route_details=route)
     # "distributions" already set in analysis — standalone should NOT overwrite
     assert result["distributions"]["type"] == "from_analysis"
 
@@ -161,12 +170,12 @@ def test_build_prediction_route_analysis_standalone_distributions_added():
         "route_analysis": {"ratios": {"otoyol": 0.7}},
         "distributions": {"type": "standalone"},
     }
-    result = SeferWriteService._build_prediction_route_analysis(route_details=route)
+    result = build_prediction_route_analysis(route_details=route)
     assert result["distributions"]["type"] == "standalone"
 
 
 # ============================================================
-# 2. _extract_prediction_values — extra meta fields
+# 2. extract_prediction_values — extra meta fields
 # ============================================================
 
 
@@ -178,7 +187,7 @@ def test_extract_prediction_values_explanation_summary():
         "warning_level": "GREEN",
         "model_version": "v2.1",
     }
-    val, meta = SeferWriteService._extract_prediction_values(payload)
+    val, meta = extract_prediction_values(payload)
     assert val == 32.0
     assert meta["explanation_summary"] == "Physics-dominant"
     assert meta["insight"] == "No anomalies"
@@ -194,7 +203,7 @@ def test_extract_prediction_values_none_fields_skipped():
         "status": None,
         "confidence_score": None,
     }
-    val, meta = SeferWriteService._extract_prediction_values(payload)
+    val, meta = extract_prediction_values(payload)
     assert "model_used" not in meta
     assert "confidence_score" not in meta
 
@@ -206,12 +215,12 @@ def test_extract_prediction_values_tahmini_litre_falls_back_to_prediction_liters
         "tahmini_litre": None,
         "prediction_liters": 135.0,
     }
-    val, meta = SeferWriteService._extract_prediction_values(payload)
+    val, meta = extract_prediction_values(payload)
     assert meta.get("tahmini_litre") == 135.0
 
 
 # ============================================================
-# 3. _resolve_route — various branches
+# 3. resolve_route — various branches
 # ============================================================
 
 
@@ -221,20 +230,18 @@ async def test_resolve_route_does_not_override_existing_mesafe():
     uow.lokasyon_repo.get_by_id = AsyncMock(
         return_value={"mesafe_km": 999.0, "ascent_m": 400.0, "descent_m": 300.0}
     )
-    svc, _ = _make_service()
     data = _sefer_create(guzergah_id=7, mesafe_km=450.0)  # mesafe_km already set
-    await svc._resolve_route(uow, data)
+    await resolve_route(uow, data)
     # mesafe_km should remain as 450.0 (truthy → no override)
     assert data.mesafe_km == 450.0
 
 
 async def test_resolve_route_returns_none_when_route_not_found():
-    """If lokasyon_repo returns None, _resolve_route returns None."""
+    """If lokasyon_repo returns None, resolve_route returns None."""
     uow = DummyUoW()
     uow.lokasyon_repo.get_by_id = AsyncMock(return_value=None)
-    svc, _ = _make_service()
     data = _sefer_create(guzergah_id=99)
-    result = await svc._resolve_route(uow, data)
+    result = await resolve_route(uow, data)
     assert result is None
 
 
@@ -244,23 +251,21 @@ async def test_resolve_route_fills_ascent_when_not_set():
     uow.lokasyon_repo.get_by_id = AsyncMock(
         return_value={"mesafe_km": 450.0, "ascent_m": 800.0, "descent_m": 600.0}
     )
-    svc, _ = _make_service()
     data = _sefer_create(guzergah_id=7, mesafe_km=450.0)
     data.ascent_m = 0.0
     data.descent_m = 0.0
-    await svc._resolve_route(uow, data)
+    await resolve_route(uow, data)
     assert data.ascent_m == 800.0
     assert data.descent_m == 600.0
 
 
 # ============================================================
-# 4. _predict_outbound — various paths
+# 4. predict_outbound — various paths
 # ============================================================
 
 
 async def test_predict_outbound_no_guzergah_id_skips_weather():
     """When no guzergah_id, weather call is skipped — prediction still called."""
-    svc, _ = _make_service()
     uow = DummyUoW()
     data = _sefer_create(guzergah_id=None)
 
@@ -282,9 +287,7 @@ async def test_predict_outbound_no_guzergah_id_skips_weather():
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
     ):
-        tuk, meta, sim_id = await svc._predict_outbound(
-            uow, data, date(2026, 3, 15), None
-        )
+        tuk, meta, sim_id = await predict_outbound(uow, data, date(2026, 3, 15), None)
 
     assert tuk == 28.0
     mock_weather.get_trip_impact_analysis.assert_not_called()
@@ -292,7 +295,6 @@ async def test_predict_outbound_no_guzergah_id_skips_weather():
 
 async def test_predict_outbound_weather_no_lat_skips_call():
     """When route has no cikis_lat, weather call is skipped."""
-    svc, _ = _make_service()
     uow = DummyUoW()
     data = _sefer_create(guzergah_id=5)
     route_dict = {
@@ -318,7 +320,7 @@ async def test_predict_outbound_weather_no_lat_skips_call():
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
     ):
-        tuk, meta, sim_id = await svc._predict_outbound(
+        tuk, meta, sim_id = await predict_outbound(
             uow, data, date(2026, 3, 15), route_dict
         )
 
@@ -327,7 +329,6 @@ async def test_predict_outbound_weather_no_lat_skips_call():
 
 async def test_predict_outbound_timeout_returns_none_triple():
     """asyncio.TimeoutError in prediction → returns (None, None, None)."""
-    svc, _ = _make_service()
     uow = DummyUoW()
     data = _sefer_create()
 
@@ -350,9 +351,7 @@ async def test_predict_outbound_timeout_returns_none_triple():
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
     ):
-        tuk, meta, sim_id = await svc._predict_outbound(
-            uow, data, date(2026, 3, 15), None
-        )
+        tuk, meta, sim_id = await predict_outbound(uow, data, date(2026, 3, 15), None)
 
     assert tuk is None
     assert meta is None
@@ -361,29 +360,27 @@ async def test_predict_outbound_timeout_returns_none_triple():
 
 def test_prediction_timeout_is_a_single_shared_constant():
     """2026-07-02 prod-grade denetimi P2 (Tier B madde 8): aynı 2.5s timeout
-    literal 3 yerde (_predict_via_estimator, _predict_outbound legacy yolu,
+    literal 3 yerde (predict_via_estimator, predict_outbound legacy yolu,
     bulk_add_sefer) tekrarlanmıştı — biri güncellenip diğerleri unutulursa
     coverage_pct sessizce sapabilirdi. Artık tek bir modül-seviyesi sabite
-    (`_PREDICTION_TIMEOUT_SECONDS`) indirgendi; bu test hem sabitin var
-    olduğunu hem de dosyada başka bir `timeout=<literal>` kalmadığını
-    doğrular (regresyon guard'ı — gelecekte tekrar 3 ayrı literale
-    bölünürse bu test kırmızı olur)."""
+    (`PREDICTION_TIMEOUT_SECONDS`, trip_prediction_enrichment.py) indirgendi;
+    bu test hem sabitin var olduğunu hem de dosyada başka bir
+    `timeout=<literal>` kalmadığını doğrular (regresyon guard'ı — gelecekte
+    tekrar ayrı literallere bölünürse bu test kırmızı olur)."""
     import inspect
     import re
 
-    from app.core.services import sefer_write_service as mod
+    from v2.modules.trip.application import trip_prediction_enrichment as mod
 
-    assert mod._PREDICTION_TIMEOUT_SECONDS == 2.5
+    assert mod.PREDICTION_TIMEOUT_SECONDS == 2.5
 
     source = inspect.getsource(mod)
-    # Her "timeout=" ataması modül sabitini referans almalı, ham bir sayı
-    # literali değil (örn. "timeout=2.5" yasak, "timeout=_PREDICTION_TIMEOUT_SECONDS" serbest).
     timeout_assignments = re.findall(r"timeout=([^\s,)]+)", source)
-    assert len(timeout_assignments) >= 3, (
-        f"Beklenen en az 3 'timeout=' kullanımı bulundu: {len(timeout_assignments)}"
+    assert len(timeout_assignments) >= 2, (
+        f"Beklenen en az 2 'timeout=' kullanımı bulundu: {len(timeout_assignments)}"
     )
     for value in timeout_assignments:
-        assert value == "_PREDICTION_TIMEOUT_SECONDS", (
+        assert value == "PREDICTION_TIMEOUT_SECONDS", (
             f"'timeout={value}' ham literal kullanıyor, paylaşılan sabiti değil "
             "— madde 8'in önlemeye çalıştığı tam drift senaryosu."
         )
@@ -391,7 +388,6 @@ def test_prediction_timeout_is_a_single_shared_constant():
 
 async def test_predict_outbound_general_exception_returns_none_triple():
     """General exception in prediction → returns (None, None, None)."""
-    svc, _ = _make_service()
     uow = DummyUoW()
     data = _sefer_create()
 
@@ -409,15 +405,13 @@ async def test_predict_outbound_general_exception_returns_none_triple():
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
     ):
-        tuk, meta, sim_id = await svc._predict_outbound(
-            uow, data, date(2026, 3, 15), None
-        )
+        tuk, meta, sim_id = await predict_outbound(uow, data, date(2026, 3, 15), None)
 
     assert tuk is None
 
 
 # ============================================================
-# 5. _repredikt_for_update — edge cases
+# 5. repredikt_for_update — edge cases
 # ============================================================
 
 
@@ -454,8 +448,7 @@ async def test_repredikt_for_update_bos_sefer_forces_ton_zero():
         "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
-        svc, _ = _make_service()
-        await svc._repredikt_for_update(uow, current_sefer, update_data)
+        await repredikt_for_update(uow, current_sefer, update_data)
 
     assert call_kwargs["ton"] == 0.0
 
@@ -500,8 +493,7 @@ async def test_repredikt_for_update_with_new_guzergah_enriches_route(monkeypatch
         "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
-        svc, _ = _make_service()
-        await svc._repredikt_for_update(uow, current_sefer, update_data)
+        await repredikt_for_update(uow, current_sefer, update_data)
 
     # Route fields should have been written into update_data
     assert update_data["mesafe_km"] == 600.0
@@ -538,31 +530,29 @@ async def test_repredikt_for_update_prediction_returns_none():
         "v2.modules.prediction_ml.public.get_prediction_service",
         return_value=mock_pred,
     ):
-        svc, _ = _make_service()
-        await svc._repredikt_for_update(uow, current_sefer, update_data)
+        await repredikt_for_update(uow, current_sefer, update_data)
 
     # No tahmini_tuketim should have been added
     assert "tahmini_tuketim" not in update_data
 
 
 # ============================================================
-# 6. _handle_round_trip_on_update — edge cases
+# 6. handle_round_trip_on_update — edge cases
 # ============================================================
 
 
 async def test_handle_round_trip_on_update_sefer_not_found():
-    """When current sefer not found, method returns early without creating return."""
+    """When current sefer not found, function returns early without creating return."""
     uow = DummyUoW()
     uow.sefer_repo.get_by_id = AsyncMock(return_value=None)
 
-    svc, _ = _make_service()
     # Should not raise
-    await svc._handle_round_trip_on_update(uow, 999, {"return_net_kg": 0})
+    await handle_round_trip_on_update(uow, 999, {"return_net_kg": 0})
     uow.sefer_repo.add.assert_not_called()
 
 
 async def test_handle_round_trip_on_update_existing_return_skips_creation():
-    """When return trip already exists, _create_return_trip should NOT be called."""
+    """When return trip already exists, build_return_trip should NOT be called."""
     uow = DummyUoW()
     uow.sefer_repo.get_by_id = AsyncMock(
         return_value={
@@ -588,24 +578,24 @@ async def test_handle_round_trip_on_update_existing_return_skips_creation():
     # Return trip already exists
     uow.sefer_repo.get_by_sefer_no = AsyncMock(return_value={"id": 11})
 
-    svc, _ = _make_service()
-    with patch.object(svc, "_create_return_trip", new=AsyncMock()) as mock_create:
-        await svc._handle_round_trip_on_update(uow, 10, {"return_net_kg": 0})
+    with patch.object(
+        return_trip, "build_return_trip", new=AsyncMock()
+    ) as mock_create:
+        await handle_round_trip_on_update(uow, 10, {"return_net_kg": 0})
     mock_create.assert_not_called()
 
 
 # ============================================================
-# 7. _refresh_stats — production (non-pytest) path
+# 7. refresh_stats — production (non-pytest) path
 # ============================================================
 
 
 async def test_refresh_stats_production_path_creates_bg_task(monkeypatch):
-    """In non-pytest env, _refresh_stats creates an asyncio background task."""
+    """In non-pytest env, refresh_stats creates an asyncio background task."""
     # Temporarily remove PYTEST_CURRENT_TEST so the production code path runs
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
 
     uow = DummyUoW()
-    svc, _ = _make_service()
 
     created_tasks = []
     original_create_task = asyncio.create_task
@@ -630,11 +620,11 @@ async def test_refresh_stats_production_path_creates_bg_task(monkeypatch):
             return_value=fake_session,
         ),
         patch(
-            "app.database.repositories.sefer_repo.SeferRepository",
+            "v2.modules.trip.infrastructure.repository.SeferRepository",
             return_value=fake_repo,
         ),
     ):
-        await svc._refresh_stats(uow)
+        await refresh_stats(uow)
         # Give bg task a chance to run
         await asyncio.sleep(0)
 
@@ -654,8 +644,7 @@ async def test_bulk_update_status_all_fail_no_commit(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
-    svc, _ = _make_service()
-    result = await svc.bulk_update_status([1, 2], "Completed")
+    result = await bulk_update_status([1, 2], "Completed")
 
     assert result["success_count"] == 0
     assert result["failed_count"] == 2
@@ -675,8 +664,7 @@ async def test_bulk_cancel_all_fail_no_commit(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
-    svc, _ = _make_service()
-    result = await svc.bulk_cancel([1, 2], iptal_nedeni="Test")
+    result = await bulk_cancel([1, 2], iptal_nedeni="Test")
 
     assert result["success_count"] == 0
     uow.commit.assert_not_called()
@@ -708,7 +696,6 @@ async def test_bulk_add_sefer_skips_prediction_for_large_batches(monkeypatch):
     mock_pred.predict_consumption = AsyncMock(return_value=None)
     monkeypatch.setattr(pred_module, "get_prediction_service", lambda: mock_pred)
 
-    svc, _ = _make_service()
     # Create 21 items — threshold is >20
     items = [
         _sefer_create(
@@ -718,7 +705,7 @@ async def test_bulk_add_sefer_skips_prediction_for_large_batches(monkeypatch):
         )
         for i in range(21)
     ]
-    count = await svc.bulk_add_sefer(items)
+    count = await bulk_add_sefer(items)
 
     # All 21 items should be processed (prediction skipped, but items added)
     assert count == 21
@@ -754,10 +741,9 @@ async def test_create_return_trip_no_sefer_no(monkeypatch):
         }
     )
     uow.sefer_repo.add = AsyncMock(return_value=31)
-    monkeypatch.setattr(sefer_write_module, "get_uow", lambda: uow)
+    monkeypatch.setattr(return_trip, "get_uow", lambda: uow)
 
-    svc, _ = _make_service()
-    new_id = await svc.create_return_trip(30)
+    new_id = await create_return_trip(30)
     assert new_id == 31
 
     add_kwargs = uow.sefer_repo.add.await_args.kwargs
@@ -765,7 +751,7 @@ async def test_create_return_trip_no_sefer_no(monkeypatch):
 
 
 # ============================================================
-# 12. _update_sefer_uow — round_trip flag triggers _handle_round_trip
+# 12. update_sefer_uow — round_trip flag triggers handle_round_trip
 # ============================================================
 
 
@@ -774,14 +760,17 @@ async def test_update_sefer_round_trip_flag_calls_handler():
     uow.sefer_repo.get_by_id = AsyncMock(return_value=_current_sefer(durum="Planned"))
     uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
 
-    svc, _ = _make_service()
-    with patch.object(svc, "_handle_round_trip_on_update", new=AsyncMock()) as mock_rt:
-        await svc._update_sefer_uow(uow, 99, SeferUpdate(is_round_trip=True))
+    from v2.modules.trip.application import update_trip
+
+    with patch.object(
+        update_trip, "handle_round_trip_on_update", new=AsyncMock()
+    ) as mock_rt:
+        await update_sefer_uow(uow, 99, SeferUpdate(is_round_trip=True))
     mock_rt.assert_awaited_once()
 
 
 # ============================================================
-# 13. _check_sla_delay — actual_duration is None → no outbox
+# 13. check_sla_delay — actual_duration is None → no outbox
 # ============================================================
 
 
@@ -798,15 +787,16 @@ async def test_check_sla_delay_skips_when_no_duration(monkeypatch):
 
     mock_outbox = MagicMock()
     mock_outbox.save_event = AsyncMock()
-    monkeypatch.setattr(sefer_write_module, "get_outbox_service", lambda: mock_outbox)
+    from v2.modules.trip.application import sla as sla_module
 
-    svc, _ = _make_service()
-    await svc._check_sla_delay(uow, 99, 1, {})
+    monkeypatch.setattr(sla_module, "get_outbox_service", lambda: mock_outbox)
+
+    await check_sla_delay(uow, 99, 1, {})
     mock_outbox.save_event.assert_not_awaited()
 
 
 # ============================================================
-# 14. _update_sefer_uow — tarih string conversion
+# 14. update_sefer_uow — tarih string conversion
 # ============================================================
 
 
@@ -816,8 +806,7 @@ async def test_update_sefer_tarih_string_converted_to_date():
     uow.sefer_repo.get_by_id = AsyncMock(return_value=_current_sefer(durum="Planned"))
     uow.sefer_repo.update_sefer = AsyncMock(return_value=True)
 
-    svc, _ = _make_service()
-    await svc._update_sefer_uow(uow, 99, SeferUpdate(tarih=date(2026, 4, 1)))
+    await update_sefer_uow(uow, 99, SeferUpdate(tarih=date(2026, 4, 1)))
 
     call_kwargs = uow.sefer_repo.update_sefer.await_args.kwargs
     # tarih should be a date object (not string) after conversion
@@ -825,7 +814,7 @@ async def test_update_sefer_tarih_string_converted_to_date():
 
 
 # ============================================================
-# 15. _predict_via_estimator — estimate is None
+# 15. predict_via_estimator — estimate is None
 # ============================================================
 
 
@@ -835,13 +824,12 @@ async def test_predict_via_estimator_returns_none_when_estimate_is_none():
     mock_estimator.predict = AsyncMock(return_value=None)
 
     with patch(
-        "app.core.services.sefer_fuel_estimator.get_sefer_fuel_estimator",
+        "v2.modules.trip.application.sefer_fuel_estimator.get_sefer_fuel_estimator",
         return_value=mock_estimator,
     ):
-        svc, _ = _make_service()
         uow = DummyUoW()
         data = _sefer_create()
-        tuk, meta, sim_id = await svc._predict_via_estimator(
+        tuk, meta, sim_id = await predict_via_estimator(
             uow, data, date(2026, 3, 15), None
         )
 
@@ -856,7 +844,7 @@ async def test_predict_via_estimator_returns_none_when_estimate_is_none():
 
 
 async def test_add_sefer_round_trip_invokes_create_return(monkeypatch):
-    """When is_round_trip=True, _create_return_trip is called."""
+    """When is_round_trip=True, build_return_trip is called."""
     uow = DummyUoW()
     uow.sefer_repo.add = AsyncMock(return_value=55)
     uow.arac_repo.get_by_id = AsyncMock(
@@ -869,20 +857,19 @@ async def test_add_sefer_round_trip_invokes_create_return(monkeypatch):
 
     mock_outbox = MagicMock()
     mock_outbox.save_event = AsyncMock()
-    monkeypatch.setattr(sefer_write_module, "get_outbox_service", lambda: mock_outbox)
+    monkeypatch.setattr(add_trip, "get_outbox_service", lambda: mock_outbox)
 
     with patch.object(
-        SeferWriteService,
-        "_predict_outbound",
+        add_trip,
+        "predict_outbound",
         new=AsyncMock(return_value=(None, None, None)),
     ):
         with patch.object(
-            SeferWriteService,
-            "_create_return_trip",
+            add_trip,
+            "build_return_trip",
             new=AsyncMock(),
         ) as mock_return:
-            svc, _ = _make_service()
             data = _sefer_create(is_round_trip=True, return_net_kg=0)
-            await svc.add_sefer(data)
+            await add_sefer(data)
 
     mock_return.assert_awaited_once()

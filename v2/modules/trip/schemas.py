@@ -15,13 +15,13 @@ from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.core.utils.sefer_status import (
+from app.schemas.validators import validate_safe_string
+from v2.modules.trip.sefer_status import (
     CANONICAL_SEFER_STATUS_SET,
     SEFER_STATUS_PLANLANDI,
     ensure_canonical_sefer_status,
     normalize_sefer_status,
 )
-from app.schemas.validators import validate_safe_string
 
 _schema_logger = logging.getLogger(__name__)
 

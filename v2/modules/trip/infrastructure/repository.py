@@ -6,16 +6,16 @@ from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
 from sqlalchemy.orm import joinedload
 
-from app.core.utils.sefer_status import (
+from app.database.base_repository import BaseRepository
+from app.database.models import Arac, Sefer
+from app.infrastructure.logging.logger import get_logger
+from v2.modules.trip.sefer_status import (
     CANONICAL_SEFER_STATUS_SET,
     SEFER_STATUS_IPTAL,
     SEFER_STATUS_TAMAMLANDI,
     ensure_canonical_sefer_status,
     normalize_sefer_status,
 )
-from app.database.base_repository import BaseRepository
-from app.database.models import Arac, Sefer, Sofor, SoforAdSoyadTrigram
-from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -24,9 +24,41 @@ class SeferRepository(BaseRepository[Sefer]):
     """
     Asynchronous repository for Trip (Sefer) operations.
     Handles complex joins for vehicle, driver, and route analysis data.
+
+    NOT: Şofore özel 6 sorgu (``get_by_sofor_id``, ``get_with_route_analysis``,
+    ``get_driver_trips_with_route_analysis``, ``get_driver_trips_by_route_type``,
+    ``get_recent_trips_batch``, ``_search_driver_ids_by_name``) buradan
+    ``v2/modules/driver/infrastructure/driver_trip_queries.py``'ye taşındı
+    (task dosyası madde 1/4 kararı). ``get_all``'ın genel arama özelliği artık
+    ``v2.modules.driver.public.search_driver_ids_by_name``'i çağırıyor.
     """
 
     model = Sefer
+
+    @staticmethod
+    def _with_relations(stmt):
+        """3 kopya ``joinedload(arac,sofor,dorse,guzergah)`` zincirini tek
+        yerde toplar (models.py bölünmesinden ÖNCEKİ ara adım — D.1/1
+        riskinin mitigasyonu, task dosyası madde 5.5)."""
+        return stmt.options(
+            joinedload(Sefer.arac),
+            joinedload(Sefer.sofor),
+            joinedload(Sefer.dorse),
+            joinedload(Sefer.guzergah),
+        )
+
+    @staticmethod
+    def _row_to_dict(s: Sefer) -> Dict[str, Any]:
+        d = s.__dict__.copy()
+        d.pop("_sa_instance_state", None)
+        d["plaka"] = s.arac.plaka if s.arac else None
+        d["sofor_adi"] = s.sofor.ad_soyad if s.sofor else None
+        d["dorse_plakasi"] = s.dorse.plaka if s.dorse else None
+        if s.guzergah:
+            d["guzergah_adi"] = f"{s.guzergah.cikis_yeri} - {s.guzergah.varis_yeri}"
+        else:
+            d["guzergah_adi"] = f"{s.cikis_yeri} - {s.varis_yeri}"
+        return d
 
     async def get_all(  # type: ignore[override]
         self,
@@ -77,15 +109,8 @@ class SeferRepository(BaseRepository[Sefer]):
         offset = max(0, int(offset or 0))
 
         # Build Query
-        stmt = (
-            select(Sefer)
-            .options(
-                joinedload(Sefer.arac),
-                joinedload(Sefer.sofor),
-                joinedload(Sefer.dorse),
-                joinedload(Sefer.guzergah),
-            )
-            .where(Sefer.is_deleted == False)  # noqa: E712  [Integrity] Soft delete check
+        stmt = self._with_relations(select(Sefer)).where(
+            Sefer.is_deleted == False  # noqa: E712  [Integrity] Soft delete check
         )
 
         # Apply Filters
@@ -109,8 +134,10 @@ class SeferRepository(BaseRepository[Sefer]):
             stmt = stmt.where(Sefer.durum != SEFER_STATUS_IPTAL)
 
         if search:
+            from v2.modules.driver.public import search_driver_ids_by_name
+
             search_like = f"%{search}%"
-            driver_ids = await self._search_driver_ids_by_name(search)
+            driver_ids = await search_driver_ids_by_name(search)
             stmt = stmt.where(
                 or_(
                     Sefer.arac.has(Arac.plaka.ilike(search_like)),
@@ -134,21 +161,7 @@ class SeferRepository(BaseRepository[Sefer]):
         result = await self.session.execute(stmt)
         trips = result.scalars().unique().all()
 
-        data = []
-        for s in trips:
-            d = s.__dict__.copy()
-            d.pop("_sa_instance_state", None)
-            # Flatten joined data for frontend
-            d["plaka"] = s.arac.plaka if s.arac else None
-            d["sofor_adi"] = s.sofor.ad_soyad if s.sofor else None
-            d["dorse_plakasi"] = s.dorse.plaka if s.dorse else None
-            if s.guzergah:
-                d["guzergah_adi"] = f"{s.guzergah.cikis_yeri} - {s.guzergah.varis_yeri}"
-            else:
-                d["guzergah_adi"] = f"{s.cikis_yeri} - {s.varis_yeri}"
-            data.append(d)
-
-        return data
+        return [self._row_to_dict(s) for s in trips]
 
     async def get_for_training(self, arac_id: int, limit: int = 200) -> List[Dict]:
         """
@@ -281,30 +294,12 @@ class SeferRepository(BaseRepository[Sefer]):
         conditions = [Sefer.id == sefer_id]
         if not include_inactive:
             conditions.append(Sefer.is_deleted == False)  # noqa: E712
-        stmt = (
-            select(Sefer)
-            .options(
-                joinedload(Sefer.arac),
-                joinedload(Sefer.sofor),
-                joinedload(Sefer.dorse),
-                joinedload(Sefer.guzergah),
-            )
-            .where(*conditions)
-        )
+        stmt = self._with_relations(select(Sefer)).where(*conditions)
         result = await self.session.execute(stmt)
         s = result.scalars().first()
         if not s:
             return None
-        d = s.__dict__.copy()
-        d.pop("_sa_instance_state", None)
-        d["plaka"] = s.arac.plaka if s.arac else None
-        d["sofor_adi"] = s.sofor.ad_soyad if s.sofor else None
-        d["dorse_plakasi"] = s.dorse.plaka if s.dorse else None
-        if s.guzergah:
-            d["guzergah_adi"] = f"{s.guzergah.cikis_yeri} - {s.guzergah.varis_yeri}"
-        else:
-            d["guzergah_adi"] = f"{s.cikis_yeri} - {s.varis_yeri}"
-        return d
+        return self._row_to_dict(s)
 
     # Alias used by sefer_read_service
     async def get_by_id_with_details(self, sefer_id: int) -> dict | None:
@@ -380,7 +375,7 @@ class SeferRepository(BaseRepository[Sefer]):
         return int(result.scalar() or 0)
 
     async def update_sefer(self, id: int, **kwargs) -> bool:
-        """Alias used by SeferWriteService._update_sefer_uow."""
+        """Alias used by update_trip.py::update_sefer_uow."""
         return await self.update(id, **kwargs)
 
     async def delete(self, id: int) -> bool:
@@ -745,6 +740,12 @@ class SeferRepository(BaseRepository[Sefer]):
         text().execution_options(autocommit=True) asyncpg üzerinde etkisizdir;
         gerçek autocommit için engine düzeyinde isolation_level='AUTOCOMMIT'
         ile açılan bağımsız bir bağlantı kullanılır.
+
+        NOT: Bu metot mantıken sistem-geneli (yalnız trip'e özel değil) —
+        task dosyası ``shared_kernel/infrastructure/mv_refresh.py``'ye
+        taşınmasını öneriyordu ama shared_kernel modülü (dalga 16) henüz
+        oluşturulmadı. O dalga gelene kadar burada kalıyor (bkz.
+        ``application/stats_refresh.py``'nin docstring'i).
         """
         from app.database.connection import engine
 
@@ -839,236 +840,14 @@ class SeferRepository(BaseRepository[Sefer]):
         """Onay durumuna göre sefer listesi (en yeni önce)."""
         async with self._get_session() as session:
             stmt = (
-                select(Sefer)
-                .options(
-                    joinedload(Sefer.arac),
-                    joinedload(Sefer.sofor),
-                    joinedload(Sefer.dorse),
-                    joinedload(Sefer.guzergah),
-                )
+                self._with_relations(select(Sefer))
                 .where(Sefer.onay_durumu == onay_durumu, ~Sefer.is_deleted)
                 .order_by(Sefer.created_at.desc())
                 .offset(skip)
                 .limit(min(limit, self.MAX_LIMIT))
             )
             result = await session.execute(stmt)
-            rows = []
-            for s in result.unique().scalars().all():
-                d = s.__dict__.copy()
-                d.pop("_sa_instance_state", None)
-                d["plaka"] = s.arac.plaka if s.arac else None
-                d["sofor_adi"] = s.sofor.ad_soyad if s.sofor else None
-                d["dorse_plakasi"] = s.dorse.plaka if s.dorse else None
-                if s.guzergah:
-                    d["guzergah_adi"] = (
-                        f"{s.guzergah.cikis_yeri} - {s.guzergah.varis_yeri}"
-                    )
-                else:
-                    d["guzergah_adi"] = f"{s.cikis_yeri} - {s.varis_yeri}"
-                rows.append(d)
-            return rows
-
-    async def get_by_sofor_id(
-        self,
-        sofor_id: int,
-        limit: int = 10,
-        onay_durumu: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """Şofore ait sefer listesi (en yeni önce). Opsiyonel onay_durumu filtresi."""
-        async with self._get_session() as session:
-            stmt = select(Sefer).where(Sefer.sofor_id == sofor_id, ~Sefer.is_deleted)
-            if onay_durumu:
-                stmt = stmt.where(Sefer.onay_durumu == onay_durumu)
-            stmt = stmt.order_by(Sefer.tarih.desc()).limit(min(limit, self.MAX_LIMIT))
-            result = await session.execute(stmt)
-            return [self._to_dict(s) for s in result.scalars().all()]
-
-    async def get_with_route_analysis(
-        self, days: int = 90, limit: int = 200
-    ) -> List[Dict[str, Any]]:
-        """Son N günün route_analysis ve gercek_tuketim dolu seferlerini döndürür."""
-        from datetime import datetime, timedelta, timezone
-
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        async with self._get_session() as session:
-            result = await session.execute(
-                select(Sefer)
-                .where(
-                    Sefer.created_at >= cutoff,
-                    Sefer.rota_detay.isnot(None),
-                    Sefer.tuketim.isnot(None),
-                    ~Sefer.is_deleted,
-                )
-                .limit(limit)
-            )
-            return [
-                {
-                    "id": s.id,
-                    "mesafe_km": s.mesafe_km,
-                    "route_analysis": (s.rota_detay or {}).get("route_analysis")
-                    or s.rota_detay
-                    or {},
-                    "gercek_tuketim": s.tuketim,
-                }
-                for s in result.scalars().all()
-            ]
-
-    async def get_driver_trips_with_route_analysis(
-        self,
-        sofor_id: int,
-        limit: int = 200,
-        days: int = 365,
-    ) -> List[Dict[str, Any]]:
-        """Şoförün rota analizi olan tamamlanmış seferlerini ham olarak döner.
-
-        Route-type bucketing service katmanında tek geçişle yapılır — 4 ayrı
-        sorgu yerine 1 sorgu (N+1 önlenir).
-        """
-        from datetime import datetime, timedelta, timezone
-
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        async with self._get_session() as session:
-            result = await session.execute(
-                select(Sefer)
-                .where(
-                    Sefer.sofor_id == sofor_id,
-                    Sefer.tuketim.isnot(None),
-                    Sefer.tahmini_tuketim.isnot(None),
-                    Sefer.rota_detay.isnot(None),
-                    Sefer.created_at >= cutoff,
-                    ~Sefer.is_deleted,
-                )
-                .order_by(Sefer.created_at.desc())
-                .limit(limit)
-            )
-            return [
-                {
-                    "id": s.id,
-                    "gercek_tuketim": float(s.tuketim or 0),
-                    "tahmini_tuketim": float(s.tahmini_tuketim or 0),
-                    "rota_detay": s.rota_detay or {},
-                }
-                for s in result.scalars().all()
-            ]
-
-    async def get_driver_trips_by_route_type(
-        self,
-        sofor_id: int,
-        route_type: str,
-        limit: int = 50,
-    ) -> List[Dict[str, Any]]:
-        """Şofore ait tamamlanmış seferleri döndürür; route_type'a göre Python tarafında filtreler."""
-        from datetime import datetime, timedelta, timezone
-
-        cutoff = datetime.now(timezone.utc) - timedelta(days=365)
-        async with self._get_session() as session:
-            result = await session.execute(
-                select(Sefer)
-                .where(
-                    Sefer.sofor_id == sofor_id,
-                    Sefer.tuketim.isnot(None),
-                    Sefer.tahmini_tuketim.isnot(None),
-                    Sefer.rota_detay.isnot(None),
-                    Sefer.created_at >= cutoff,
-                    ~Sefer.is_deleted,
-                )
-                .order_by(Sefer.created_at.desc())
-                .limit(limit)
-            )
-            from v2.modules.driver.public import classify_route
-
-            return [
-                {
-                    "id": s.id,
-                    "gercek_tuketim": s.tuketim,
-                    "tahmini_tuketim": s.tahmini_tuketim,
-                }
-                for s in result.scalars().all()
-                if classify_route(
-                    (s.rota_detay or {}).get("route_analysis") or s.rota_detay or {}
-                )
-                == route_type
-            ]
-
-    async def get_recent_trips_batch(
-        self,
-        sofor_ids: List[int],
-        limit_per_driver: int = 10,
-    ) -> Dict[int, List[Dict[str, Any]]]:
-        """N şoförün son limit_per_driver seferini tek sorguda çeker.
-
-        Window function (ROW_NUMBER) ile her şoför için ayrı sıralama yapar;
-        N şoför için N ayrı get_all çağrısını (N+1) elimine eder.
-        Sonucu {sofor_id: [trip_dict, ...]} olarak döner.
-        """
-        if not sofor_ids:
-            return {}
-        async with self._get_session() as session:
-            rows = (
-                (
-                    await session.execute(
-                        text("""
-                        WITH ranked AS (
-                            SELECT
-                                id, sofor_id, arac_id, tarih, mesafe_km,
-                                tuketim, tahmini_tuketim, net_kg, ton,
-                                ascent_m, descent_m,
-                                ROW_NUMBER() OVER (
-                                    PARTITION BY sofor_id
-                                    ORDER BY tarih DESC
-                                ) AS rn
-                            FROM seferler
-                            WHERE sofor_id = ANY(:ids)
-                              AND is_deleted = FALSE
-                        )
-                        SELECT * FROM ranked WHERE rn <= :lim
-                    """),
-                        {"ids": sofor_ids, "lim": limit_per_driver},
-                    )
-                )
-                .mappings()
-                .all()
-            )
-        result: Dict[int, List[Dict[str, Any]]] = {}
-        for r in rows:
-            sid = int(r["sofor_id"])
-            result.setdefault(sid, []).append(dict(r))
-        return result
-
-    async def _search_driver_ids_by_name(self, search: str) -> List[int]:
-        """Substring-search candidate driver IDs (Tier E madde 26).
-
-        Sofor.ad_soyad is encrypted at rest, so the general trip search box
-        can't ILIKE it directly. Trigram-hash membership gives a candidate
-        superset (collisions possible); each candidate's real name is then
-        decrypted and re-checked for the actual substring before it's used
-        to filter Sefer.sofor_id.
-        """
-        from app.infrastructure.security.pii_encryption import trigram_blind_indexes
-
-        hashes = trigram_blind_indexes(search)
-        if not hashes:
-            return []
-        candidate_ids = (
-            (
-                await self.session.execute(
-                    select(SoforAdSoyadTrigram.sofor_id)
-                    .where(SoforAdSoyadTrigram.trigram_hash.in_(hashes))
-                    .distinct()
-                )
-            )
-            .scalars()
-            .all()
-        )
-        if not candidate_ids:
-            return []
-        needle = search.strip().upper()
-        drivers = (
-            await self.session.execute(
-                select(Sofor.id, Sofor.ad_soyad).where(Sofor.id.in_(candidate_ids))
-            )
-        ).all()
-        return [d.id for d in drivers if needle in (d.ad_soyad or "").upper()]
+            return [self._row_to_dict(s) for s in result.unique().scalars().all()]
 
 
 def get_sefer_repo(session=None) -> "SeferRepository":

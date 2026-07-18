@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.core.utils.sefer_status import ensure_canonical_sefer_status
+from v2.modules.trip.sefer_status import ensure_canonical_sefer_status
 
 
 class DurumEnum(str, Enum):

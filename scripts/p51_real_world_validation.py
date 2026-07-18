@@ -22,12 +22,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from app.config import settings
-from app.core.services.sefer_fuel_estimator import (
+from app.database.unit_of_work import UnitOfWork
+from v2.modules.location.public import LokasyonCreate, create_location
+from v2.modules.trip.application.sefer_fuel_estimator import (
     SeferFuelEstimator,
     SeferFuelInput,
 )
-from app.database.unit_of_work import UnitOfWork
-from v2.modules.location.public import LokasyonCreate, create_location
 
 # ---------------------------------------------------------------------------
 # Test verisi

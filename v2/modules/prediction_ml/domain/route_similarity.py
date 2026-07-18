@@ -34,12 +34,11 @@ async def find_similar_trips(
     limit: int = 5,
 ) -> List[Dict]:
     """Son 90 günden benzer güzergahlı seferleri döndürür."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.public import get_with_route_analysis
 
     query_vec = encode_route(route_analysis)
 
-    async with UnitOfWork() as uow:
-        recent = await uow.sefer_repo.get_with_route_analysis(days=90, limit=200)
+    recent = await get_with_route_analysis(days=90, limit=200)
 
     similar = []
     for sefer in recent:

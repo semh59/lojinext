@@ -13,7 +13,6 @@ from app.database.repositories.admin_config_repo import (
 )
 from app.database.repositories.audit_repo import AuditRepository
 from app.database.repositories.config_repo import ConfigRepository
-from app.database.repositories.sefer_repo import SeferRepository
 from app.database.repositories.setting_repository import SettingRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
@@ -47,6 +46,7 @@ from v2.modules.prediction_ml.infrastructure.model_versiyon_repo import (
     ModelVersiyonRepository,
 )
 from v2.modules.route_simulation.infrastructure.repository import RouteRepository
+from v2.modules.trip.infrastructure.repository import SeferRepository
 
 __all__ = [
     "AdminConfigRepository",

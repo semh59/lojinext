@@ -107,7 +107,7 @@ class EnsemblePredictorService:
     @property
     def sefer_repo(self):
         if self._sefer_repo is None:
-            from app.database.repositories.sefer_repo import get_sefer_repo
+            from v2.modules.trip.public import get_sefer_repo
 
             self._sefer_repo = get_sefer_repo()
         return self._sefer_repo

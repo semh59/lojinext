@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.services.sefer_service import SeferService
+from v2.modules.trip.application.trip_service import SeferService
 
 pytestmark = pytest.mark.unit
 
@@ -332,7 +332,7 @@ class TestGetSeferServiceFactory:
         mock_container.sefer_service = MagicMock(spec=SeferService)
 
         with patch.object(container_mod, "get_container", return_value=mock_container):
-            from app.core.services.sefer_service import get_sefer_service
+            from v2.modules.trip.application.trip_service import get_sefer_service
 
             result = get_sefer_service()
 

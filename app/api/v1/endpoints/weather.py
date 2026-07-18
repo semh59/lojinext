@@ -10,13 +10,13 @@ from app.api.deps import (
     get_current_active_user,
     get_sefer_service,
 )
-from app.core.services.sefer_service import SeferService
-from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
 from app.database.models import Kullanici
 from app.schemas.api_responses import (
     TripWeatherImpactResponse,
     WeatherDashboardResponse,
 )
+from v2.modules.trip.application.trip_service import SeferService
+from v2.modules.trip.sefer_status import SEFER_STATUS_PLANLANDI
 
 router = APIRouter()
 

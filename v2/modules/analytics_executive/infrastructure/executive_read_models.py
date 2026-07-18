@@ -20,7 +20,6 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
 from app.database.base_repository import BaseRepository
 from app.database.models import Sefer, YakitFormul
 from app.infrastructure.logging.logger import get_logger
@@ -50,6 +49,11 @@ class AnalizRepository(BaseRepository[Sefer]):
         [v2.1] FK join on guzergah_id — text-match join removed to avoid
         false positives and to stay consistent with get_for_training.
         """
+        # Lazy import: trip.public'in kendisi (dolaylı olarak) bu modülün
+        # AnalizRepository'sini import eden app.database.repositories
+        # aggregation'ına bağımlı — top-level import döngüsel olur.
+        from v2.modules.trip.public import SEFER_STATUS_TAMAMLANDI
+
         # Input validation
         limit = max(1, min(int(limit or 200), 1000))
         offset = max(0, int(offset or 0))

@@ -42,7 +42,9 @@ class PredictionBackfillService:
     def _get_estimator(self) -> Any:
         if self._estimator is not None:
             return self._estimator
-        from app.core.services.sefer_fuel_estimator import get_sefer_fuel_estimator
+        from v2.modules.trip.public import (
+            get_sefer_fuel_estimator,
+        )
 
         return get_sefer_fuel_estimator()
 
@@ -55,7 +57,7 @@ class PredictionBackfillService:
         - estimator exception atarsa -> failed (batch devam eder).
         - Başarılı -> sefer.tahmini_tuketim + route_simulation_id + tahmin_meta yazılır.
         """
-        from app.core.services.sefer_fuel_estimator import SeferFuelInput
+        from v2.modules.trip.public import SeferFuelInput
 
         estimator = self._get_estimator()
         processed = filled = failed = skipped = 0

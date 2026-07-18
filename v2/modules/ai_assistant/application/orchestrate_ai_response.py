@@ -13,7 +13,7 @@ kurulmaz).
 `_predictor_cache` SİLİNDİ — grep ile doğrulandı, hiçbir prod endpoint/
 servis çağırmıyordu (EnsembleFuelPredictor'ın Phase 4-5
 SeferFuelEstimator tarafından supersede edilmiş ikinci bir kopyasıydı;
-gerçek tahmin yolu `app/core/services/sefer_fuel_estimator.py`).
+gerçek tahmin yolu `v2/modules/trip/application/sefer_fuel_estimator.py`).
 """
 
 from typing import Any, Dict, List

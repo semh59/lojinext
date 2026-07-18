@@ -11,15 +11,15 @@ from typing import List, Optional
 
 import pytest
 
-from app.core.services.sefer_fuel_estimator import (
-    SeferFuelEstimator,
-    SeferFuelInput,
-)
 from app.core.services.weather_service import WeatherSample
 from v2.modules.route_simulation.application.simulate_route import SimulationResult
 from v2.modules.route_simulation.domain.segment_simulator import (
     SegmentOutput,
     SegmentSummary,
+)
+from v2.modules.trip.application.sefer_fuel_estimator import (
+    SeferFuelEstimator,
+    SeferFuelInput,
 )
 
 # ── Fixtures ────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ def mock_async_session_local(monkeypatch, request):
         return FakeAsyncSessionContext()
 
     monkeypatch.setattr(
-        "app.core.services.sefer_fuel_estimator.AsyncSessionLocal",
+        "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal",
         fake_async_session_local_factory,
     )
 
@@ -396,7 +396,7 @@ async def test_predict_lokasyon_id_resolves_coords(monkeypatch):
         return FakeAsyncSessionContext()
 
     monkeypatch.setattr(
-        "app.core.services.sefer_fuel_estimator.AsyncSessionLocal",
+        "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal",
         fake_async_session_local_factory,
     )
 

@@ -12,11 +12,16 @@ from app.api.v1.endpoints import (
     health,
     internal,
     system,
-    trips,
     weather,
+)
+from v2.modules.ai_assistant.api.plan_wizard_routes import (
+    router as plan_wizard_router,
 )
 from v2.modules.analytics_executive.api.executive_routes import (
     router as executive_router,
+)
+from v2.modules.analytics_executive.api.trip_analytics_routes import (
+    router as trip_analytics_router,
 )
 from v2.modules.anomaly.api.anomaly_routes import router as anomalies_router
 from v2.modules.anomaly.api.attribution_routes import (
@@ -42,6 +47,12 @@ from v2.modules.fleet.api.vehicle_routes import router as vehicle_router
 from v2.modules.fuel.api.fuel_routes import admin_router as admin_fuel_accuracy
 from v2.modules.fuel.api.fuel_routes import router as fuel_router
 from v2.modules.import_excel.api.import_routes import router as import_router
+from v2.modules.import_excel.api.trip_export_routes import (
+    router as trip_export_router,
+)
+from v2.modules.import_excel.api.trip_import_routes import (
+    router as trip_import_router,
+)
 from v2.modules.location.api.location_routes import router as location_router
 from v2.modules.notification.api.live_ws_routes import (
     router as notification_live_ws_router,
@@ -70,6 +81,10 @@ from v2.modules.reports.api.page_view_routes import router as page_view_router
 from v2.modules.reports.api.studio_routes import router as reports_studio_router
 from v2.modules.reports.api.triage_routes import router as today_triage_router
 from v2.modules.route_simulation.api.route_routes import router as route_router
+from v2.modules.trip.api.trip_approval_routes import router as trip_approval_router
+from v2.modules.trip.api.trip_bulk_routes import router as trip_bulk_router
+from v2.modules.trip.api.trip_read_routes import router as trip_read_router
+from v2.modules.trip.api.trip_write_routes import router as trip_write_router
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
@@ -95,7 +110,14 @@ api_router.include_router(
 )
 api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
 api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
-api_router.include_router(trips.router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_read_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_write_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_bulk_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_approval_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_export_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_import_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_analytics_router, prefix="/trips", tags=["trips"])
+api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
 api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
     predictions_router, prefix="/predictions", tags=["predictions"]

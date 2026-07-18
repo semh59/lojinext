@@ -4,8 +4,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
-from app.database.repositories.sefer_repo import SeferRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
 )
@@ -13,6 +11,8 @@ from v2.modules.prediction_ml.application.ensemble_service import (
     EnsemblePredictorService,
 )
 from v2.modules.prediction_ml.domain.ensemble_core import PredictionResult
+from v2.modules.trip.infrastructure.repository import SeferRepository
+from v2.modules.trip.sefer_status import SEFER_STATUS_TAMAMLANDI
 
 LEGACY_REAL_FLAG = "is" + "_real"
 

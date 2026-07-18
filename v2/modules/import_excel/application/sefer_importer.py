@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING, List, Tuple, cast
 from app.core.exceptions import ImportValidationError
 
 if TYPE_CHECKING:
-    from app.schemas.sefer import SeferCreate
-from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
+    from v2.modules.trip.schemas import SeferCreate
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.entity_resolvers import (
@@ -31,6 +30,7 @@ from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
+from v2.modules.trip.public import SEFER_STATUS_PLANLANDI
 
 logger = get_logger(__name__)
 
@@ -128,20 +128,15 @@ async def process_sefer_import(content: bytes) -> Tuple[int, list]:
 
         count = 0
         if sefer_list:
-            # Delegate to SeferService for bulk processing (trip modülü,
-            # henüz taşınmadı — container üzerinden geçici erişim).
-            from app.core.container import get_container
+            # Delegate to trip's bulk_add_sefer use-case (dalga 14 — artık
+            # container üzerinden değil, doğrudan trip.public).
+            from v2.modules.trip.public import bulk_add_sefer
 
-            # SeferService.bulk_add_sefer'in tipi List[SeferCreate] bekliyor;
-            # bu fonksiyon dict listesi üretiyor (üretim yolu değil, prod'da
-            # çağrılmıyor — bkz. modül docstring'i). Bu latent uyuşmazlık
-            # taşımadan ÖNCE de vardı (self.sefer_service untyped constructor
-            # param olduğu için mypy görmüyordu); free-function geçişinde
-            # container.sefer_service düzgün tipli hale gelince ortaya çıktı
-            # (dalga 4'ün yakit_importer.py'deki aynı sınıf gotcha'sı).
-            count = await get_container().sefer_service.bulk_add_sefer(
-                cast("List[SeferCreate]", sefer_list)
-            )
+            # bulk_add_sefer'in tipi List[SeferCreate] bekliyor; bu fonksiyon
+            # dict listesi üretiyor (üretim yolu değil, prod'da çağrılmıyor —
+            # bkz. modül docstring'i). Bu latent uyuşmazlık taşımadan ÖNCE de
+            # vardı (dalga 4'ün yakit_importer.py'deki aynı sınıf gotcha'sı).
+            count = await bulk_add_sefer(cast("List[SeferCreate]", sefer_list))
 
         return count, errors
 

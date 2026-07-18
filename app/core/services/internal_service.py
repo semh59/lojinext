@@ -15,10 +15,9 @@ from datetime import date
 from typing import Dict, List, Optional
 
 from app.database.models import SeferBelge
-from app.database.repositories.sefer_repo import get_sefer_repo
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.driver.public import get_sofor_repo
+from v2.modules.driver.public import get_by_sofor_id, get_sofor_repo
 
 logger = get_logger(__name__)
 
@@ -31,7 +30,6 @@ class InternalService:
 
     def __init__(self) -> None:
         self._sofor_repo = get_sofor_repo()
-        self._sefer_repo = get_sefer_repo()
 
     async def get_sofor_by_telegram_id(self, telegram_id: str) -> Optional[Dict]:
         """Telegram ID ile aktif şoför bilgisini döner, yoksa None."""
@@ -108,7 +106,7 @@ class InternalService:
         sofor = await self._sofor_repo.get_by_telegram_id(telegram_id)
         if sofor is None:
             return None
-        return await self._sefer_repo.get_by_sofor_id(sofor["id"], limit=limit)
+        return await get_by_sofor_id(sofor["id"], limit=limit)
 
     async def get_sofor_id(self, telegram_id: str) -> Optional[int]:
         """PDF oluşturma için sofor_id döner, bulunamazsa None."""
@@ -131,7 +129,7 @@ class InternalService:
         if sofor is None:
             raise ValueError("Telegram ID kayıtlı şoför bulunamadı")
 
-        seferler = await self._sefer_repo.get_by_sofor_id(sofor["id"], limit=1)
+        seferler = await get_by_sofor_id(sofor["id"], limit=1)
         if not seferler:
             raise ValueError("Şoföre ait sefer yok — araç otomatik çözülemiyor")
         arac_id = seferler[0].get("arac_id")

@@ -31,7 +31,7 @@ def _make_mock_uow(
 
 
 def _build_service(event_bus=None):
-    from app.core.services.sefer_analiz_service import SeferAnalizService
+    from v2.modules.trip.application.reconcile_costs import SeferAnalizService
 
     if event_bus is None:
         event_bus = AsyncMock()
@@ -45,22 +45,22 @@ def _build_service(event_bus=None):
 
 class TestSeferAnalizService:
     def test_service_exists(self):
-        from app.core.services.sefer_analiz_service import SeferAnalizService
+        from v2.modules.trip.application.reconcile_costs import SeferAnalizService
 
         assert SeferAnalizService is not None
 
     async def test_basic_initialization(self):
         with (
             patch(
-                "app.core.services.sefer_analiz_service.get_sefer_repo",
+                "v2.modules.trip.application.reconcile_costs.get_sefer_repo",
                 return_value=MagicMock(),
             ),
             patch(
-                "app.core.services.sefer_analiz_service.get_event_bus",
+                "v2.modules.trip.application.reconcile_costs.get_event_bus",
                 return_value=AsyncMock(),
             ),
         ):
-            from app.core.services.sefer_analiz_service import SeferAnalizService
+            from v2.modules.trip.application.reconcile_costs import SeferAnalizService
 
             svc = SeferAnalizService(consumption_threshold=45.0)
             assert svc.consumption_threshold == 45.0
@@ -76,7 +76,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             result = await svc.reconcile_costs(sefer_id=1)
 
@@ -90,7 +90,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             with pytest.raises(ValueError, match="Sefer bulunamadı"):
                 await svc.reconcile_costs(sefer_id=999)
@@ -104,7 +104,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             result = await svc.reconcile_costs(sefer_id=1)
 
@@ -120,7 +120,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             result = await svc.reconcile_costs(sefer_id=1)
 
@@ -140,7 +140,7 @@ class TestSeferAnalizService:
         svc = _build_service(event_bus=event_bus)
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             await svc.reconcile_costs(sefer_id=1)
 
@@ -163,7 +163,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             result = await svc.reconcile_costs(sefer_id=1)
 
@@ -180,7 +180,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             result = await svc.reconcile_costs(sefer_id=1)
 
@@ -199,7 +199,7 @@ class TestSeferAnalizService:
         svc = _build_service()
 
         with patch(
-            "app.core.services.sefer_analiz_service.UnitOfWork", return_value=mock_uow
+            "v2.modules.trip.application.reconcile_costs.UnitOfWork", return_value=mock_uow
         ):
             await svc.reconcile_costs(sefer_id=1)
 

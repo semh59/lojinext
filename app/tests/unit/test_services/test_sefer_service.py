@@ -11,15 +11,15 @@ import pytest
 from pydantic import ValidationError
 
 from app.core.entities.models import SeferCreate
-from app.core.services.sefer_service import SeferService
-from app.core.utils.sefer_status import (
+from app.infrastructure.events.event_bus import get_event_bus
+from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.trip.application.trip_service import SeferService
+from v2.modules.trip.infrastructure.repository import SeferRepository
+from v2.modules.trip.sefer_status import (
     SEFER_STATUS_IPTAL,
     SEFER_STATUS_PLANLANDI,
     SEFER_STATUS_TAMAMLANDI,
 )
-from app.database.repositories.sefer_repo import SeferRepository
-from app.infrastructure.events.event_bus import get_event_bus
-from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 
 pytestmark = pytest.mark.integration
 

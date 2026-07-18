@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from app.database.models import Arac, Lokasyon, Sefer, Sofor
-from app.database.repositories.sefer_repo import SeferRepository
+from v2.modules.trip.infrastructure.repository import SeferRepository
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 

@@ -127,7 +127,7 @@ class TestOverrideAttribution:
 
         A real UPDATE on an existing row always succeeds, so this otherwise-unreachable
         guard is exercised by forcing the repo method's return value (error-path only)."""
-        from app.database.repositories.sefer_repo import SeferRepository
+        from v2.modules.trip.infrastructure.repository import SeferRepository
 
         a1 = await _seed_arac(db_session, "34 AAA 444")
         s1 = await _seed_sofor(db_session, "Sofor D")

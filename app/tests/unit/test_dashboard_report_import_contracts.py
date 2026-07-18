@@ -88,7 +88,7 @@ async def test_dashboard_service_filters_deleted_trip_count_and_recent_list(
     The filtering behavior lives in SeferRepository, not in DashboardService
     itself — so asserting the repo output is the correct behavioral test here.
     """
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     arac = await seed_arac(db_session, plaka="34TST002")
     sofor = await seed_sofor(db_session, ad_soyad="Test Sofor")

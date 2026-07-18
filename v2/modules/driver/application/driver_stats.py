@@ -24,9 +24,9 @@ def _repos(uow: Optional[UnitOfWork]):
     if uow is not None:
         return uow.analiz_repo, uow.sofor_repo, uow.sefer_repo
 
-    from app.database.repositories.sefer_repo import get_sefer_repo
     from v2.modules.analytics_executive.public import get_analiz_repo
     from v2.modules.driver.infrastructure.repository import get_sofor_repo
+    from v2.modules.trip.public import get_sefer_repo
 
     return get_analiz_repo(), get_sofor_repo(), get_sefer_repo()
 
@@ -66,9 +66,12 @@ async def get_driver_stats(
     if include_elite_score:
         sofor_ids = [stats["sofor_id"] for stats in sefer_stats]
         from app.config import settings as _s
+        from v2.modules.driver.infrastructure.driver_trip_queries import (
+            get_recent_trips_batch,
+        )
 
-        trips_by_driver = await sefer_repo.get_recent_trips_batch(
-            sofor_ids, limit_per_driver=_s.ELITE_SCORE_TRIP_LIMIT
+        trips_by_driver = await get_recent_trips_batch(
+            sofor_ids, limit_per_driver=_s.ELITE_SCORE_TRIP_LIMIT, uow=uow
         )
 
         for sid in sofor_ids:

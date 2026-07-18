@@ -230,8 +230,8 @@ async def test_service_factories_build_real_services():
     explicit uow= kwarg (no DI factory to assert on).
     """
     from app.api import deps
-    from app.core.services.sefer_service import SeferService
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.trip.application.trip_service import SeferService
 
     async with UnitOfWork() as uow:
         assert isinstance(await deps.get_sefer_service(uow), SeferService)

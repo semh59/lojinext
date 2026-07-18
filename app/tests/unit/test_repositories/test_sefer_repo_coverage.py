@@ -33,7 +33,7 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return a SeferRepository with a mocked async session."""
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     repo = SeferRepository.__new__(SeferRepository)
     mock_session = session if session is not None else AsyncMock()
@@ -438,7 +438,7 @@ class TestAdd:
         mock_sefer.id = 99
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 tarih=date(2024, 1, 1),
@@ -464,7 +464,7 @@ class TestAdd:
         mock_sefer.id = 11
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 tarih=date(2024, 1, 1),
@@ -495,7 +495,7 @@ class TestAdd:
         mock_sefer.id = None
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             with pytest.raises(ValueError, match="sefer numarası"):
                 await repo.add(
@@ -526,7 +526,7 @@ class TestAdd:
         mock_sefer.id = None
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             with pytest.raises(IntegrityError):
                 await repo.add(
@@ -550,7 +550,7 @@ class TestAdd:
         mock_sefer.id = 55
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 {
@@ -1448,13 +1448,19 @@ class TestGetSeferRepoFactory:
     """Cover get_sefer_repo factory (line 859)."""
 
     def test_returns_sefer_repo_instance(self):
-        from app.database.repositories.sefer_repo import SeferRepository, get_sefer_repo
+        from v2.modules.trip.infrastructure.repository import (
+            SeferRepository,
+            get_sefer_repo,
+        )
 
         repo = get_sefer_repo()
         assert isinstance(repo, SeferRepository)
 
     def test_with_session_arg(self):
-        from app.database.repositories.sefer_repo import SeferRepository, get_sefer_repo
+        from v2.modules.trip.infrastructure.repository import (
+            SeferRepository,
+            get_sefer_repo,
+        )
 
         mock_session = AsyncMock()
         repo = get_sefer_repo(session=mock_session)

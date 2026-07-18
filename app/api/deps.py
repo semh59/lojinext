@@ -30,7 +30,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
 if TYPE_CHECKING:
-    from app.core.services.sefer_service import SeferService
+    from v2.modules.trip.application.trip_service import SeferService
 import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -71,7 +71,7 @@ async def get_background_job_manager() -> BackgroundJobManager:
 
 
 async def get_sefer_service(uow: UOWDep) -> "SeferService":
-    from app.core.services.sefer_service import SeferService
+    from v2.modules.trip.application.trip_service import SeferService
 
     return SeferService(repo=uow.sefer_repo)
 

@@ -13,11 +13,11 @@ Integration testler (DB'li) Phase 4.4 sonrası CI'da koşacak — sefer create
 from __future__ import annotations
 
 from app.config import settings
-from app.core.services.sefer_fuel_estimator import (
+from app.database.models import Base
+from v2.modules.trip.application.sefer_fuel_estimator import (
     FactorBreakdown,
     SeferFuelEstimate,
 )
-from app.database.models import Base
 
 
 def test_legacy_prediction_dict_has_required_keys():

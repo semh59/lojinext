@@ -636,7 +636,7 @@ class TestReposFallback:
                 return_value=MagicMock(),
             ) as mock_sofor,
             patch(
-                "app.database.repositories.sefer_repo.get_sefer_repo",
+                "v2.modules.trip.infrastructure.repository.get_sefer_repo",
                 return_value=MagicMock(),
             ) as mock_sefer,
         ):

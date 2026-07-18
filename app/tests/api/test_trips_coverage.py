@@ -85,7 +85,7 @@ def _make_stats_dict(**kwargs):
 
 def _make_sefer_response_obj():
     """Return a validated SeferResponse Pydantic object."""
-    from app.schemas.sefer import SeferResponse
+    from v2.modules.trip.schemas import SeferResponse
 
     return SeferResponse.model_validate(_make_sefer_response_dict())
 
@@ -135,7 +135,7 @@ def _override_job_manager(mock_jm):
 @pytest.mark.asyncio
 async def test_read_seferler_success(async_client, admin_auth_headers):
     """GET / with valid auth → 200 list response (lines 73-87)."""
-    from app.schemas.sefer import SeferListResponse
+    from v2.modules.trip.schemas import SeferListResponse
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(

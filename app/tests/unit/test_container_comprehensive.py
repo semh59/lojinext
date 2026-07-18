@@ -287,7 +287,7 @@ class TestMockInjection:
 
     def test_sefer_service_accepts_mock_repo(self, mock_sefer_repo, mock_event_bus):
         """SeferService mock repo kabul etmeli."""
-        from app.core.services.sefer_service import SeferService
+        from v2.modules.trip.application.trip_service import SeferService
 
         service = SeferService(repo=mock_sefer_repo, event_bus=mock_event_bus)
 
@@ -327,7 +327,7 @@ class TestFactoryFunctions:
     def test_get_sefer_service_returns_container_instance(self):
         """get_sefer_service() Container'daki instance'ı döndürmeli."""
         from app.core.container import get_container
-        from app.core.services.sefer_service import get_sefer_service
+        from v2.modules.trip.application.trip_service import get_sefer_service
 
         container = get_container()
         service = get_sefer_service()
@@ -474,7 +474,7 @@ class TestEdgeCases:
 
     def test_service_with_none_repo_uses_default(self):
         """None repo geçilirse default kullanılmalı."""
-        from app.core.services.sefer_service import SeferService
+        from v2.modules.trip.application.trip_service import SeferService
 
         service = SeferService(repo=None, event_bus=None)
 

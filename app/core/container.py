@@ -23,8 +23,6 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.core.services.health_service import HealthService
-    from app.core.services.sefer_service import SeferService
-    from app.database.repositories.sefer_repo import SeferRepository
     from app.infrastructure.events.event_bus import EventBus
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.analytics_executive.infrastructure.executive_read_models import (
@@ -43,6 +41,8 @@ if TYPE_CHECKING:
     from v2.modules.prediction_ml.application.time_series_service import (
         TimeSeriesService,
     )
+    from v2.modules.trip.application.trip_service import SeferService
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
 
 class Container:
@@ -141,7 +141,9 @@ class Container:
         if self._sefer_repo is None:
             with self._lock:
                 if self._sefer_repo is None:
-                    from app.database.repositories.sefer_repo import SeferRepository
+                    from v2.modules.trip.infrastructure.repository import (
+                        SeferRepository,
+                    )
 
                     self._sefer_repo = SeferRepository()
         return self._sefer_repo
@@ -201,7 +203,7 @@ class Container:
         if self._sefer_service is None:
             with self._lock:
                 if self._sefer_service is None:
-                    from app.core.services.sefer_service import SeferService
+                    from v2.modules.trip.application.trip_service import SeferService
 
                     self._sefer_service = SeferService(
                         repo=self.sefer_repo, event_bus=self.event_bus

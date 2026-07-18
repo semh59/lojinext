@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.core.entities.models import SeferCreate
 from app.core.exceptions import RouteProcessingError
-from app.core.services.sefer_service import SeferService
+from v2.modules.trip.application.trip_service import SeferService
 
 
 class TestSeferService:

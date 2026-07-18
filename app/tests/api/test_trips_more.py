@@ -76,7 +76,7 @@ def _make_sefer_response_dict(**kwargs):
 
 
 def _make_sefer_response_obj():
-    from app.schemas.sefer import SeferResponse
+    from v2.modules.trip.schemas import SeferResponse
 
     return SeferResponse.model_validate(_make_sefer_response_dict())
 
@@ -271,7 +271,7 @@ async def test_create_sefer_validation_error_in_serialization(
     mock_svc.get_sefer_by_id = AsyncMock(return_value={"id": "not-an-int-that-parses"})
     with _override_sefer_service(mock_svc):
         with patch(
-            "app.schemas.sefer.SeferResponse.model_validate",
+            "v2.modules.trip.schemas.SeferResponse.model_validate",
             side_effect=ValidationError.from_exception_data(
                 "SeferResponse",
                 [
@@ -503,7 +503,7 @@ async def test_create_return_trip_serialization_error(async_client, admin_auth_h
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.schemas.sefer.SeferResponse.model_validate",
+            "v2.modules.trip.schemas.SeferResponse.model_validate",
             side_effect=ValidationError.from_exception_data(
                 "SeferResponse",
                 [

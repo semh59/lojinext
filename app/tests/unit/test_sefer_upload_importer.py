@@ -85,10 +85,10 @@ def _stub_parse(monkeypatch, items: List[Dict[str, Any]]):
 async def test_process_excel_import_produces_pydantic_objects(db_session, monkeypatch):
     """Eski bug: dict döndürülüyor → bulk_add_sefer AttributeError.
     Fix: SeferCreate objesi döner."""
-    from app.schemas.sefer import SeferCreate
     from v2.modules.import_excel.application.sefer_upload_importer import (
         import_sefer_excel_upload,
     )
+    from v2.modules.trip.schemas import SeferCreate
 
     items = [
         {

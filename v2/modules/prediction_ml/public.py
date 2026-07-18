@@ -5,11 +5,11 @@ not from ``application/``, ``domain/``, or ``infrastructure/`` directly.
 
 Table ownership: ``egitim_kuyrugu``, ``model_versiyonlar``, ``prediction_results``.
 
-``trip`` (not yet migrated) still imports ``PredictionService``/
-``get_prediction_service`` via ``app/api/v1/endpoints/trips.py`` and
-``app/core/services/sefer_write_service.py`` — those keep the old
-``app.services.prediction_service`` path as a shim during the transition
-(2026-07-18).
+``trip`` (migrated, dalga 14) imports ``PredictionService``/
+``get_prediction_service`` via ``v2/modules/trip/application/{add_trip,
+trip_prediction_enrichment,return_trip,bulk_add_trips}.py`` and
+``v2/modules/ai_assistant/api/plan_wizard_routes.py`` — all through this
+``public.py``.
 """
 
 from v2.modules.prediction_ml.application.ensemble_service import (

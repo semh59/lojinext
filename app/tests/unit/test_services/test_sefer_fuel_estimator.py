@@ -30,7 +30,7 @@ def _make_sim_result(avg_l=32.0, total_km=450.0, eta_sec=18000):
 class TestSeferFuelEstimator:
     def test_service_exists(self):
         """SeferFuelEstimator and dataclasses are importable."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             FactorBreakdown,
             SeferFuelEstimate,
             SeferFuelEstimator,
@@ -44,7 +44,7 @@ class TestSeferFuelEstimator:
 
     async def test_basic_initialization(self):
         """SeferFuelEstimator initializes with injected simulator and weather."""
-        from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
+        from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
         mock_sim = MagicMock()
         mock_weather = MagicMock()
@@ -55,13 +55,13 @@ class TestSeferFuelEstimator:
 
     async def test_default_physics_weight_is_one(self):
         """Cold-start DEFAULT_PHYSICS_WEIGHT should be 1.0 (ensemble bypass)."""
-        from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
+        from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
         assert SeferFuelEstimator.DEFAULT_PHYSICS_WEIGHT == 1.0
 
     async def test_happy_path_returns_estimate(self):
         """predict() returns SeferFuelEstimate when all mocks succeed."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimate,
             SeferFuelEstimator,
             SeferFuelInput,
@@ -94,7 +94,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -112,7 +112,7 @@ class TestSeferFuelEstimator:
 
     async def test_predict_returns_none_when_arac_missing(self):
         """predict() returns None when arac lookup returns None."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimator,
             SeferFuelInput,
         )
@@ -134,7 +134,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -147,7 +147,7 @@ class TestSeferFuelEstimator:
 
     async def test_predict_returns_none_when_route_coords_missing(self):
         """predict() returns None when no coordinates provided."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimator,
             SeferFuelInput,
         )
@@ -168,7 +168,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -181,7 +181,7 @@ class TestSeferFuelEstimator:
 
     async def test_predict_returns_none_when_mapbox_fails(self):
         """predict() returns None when RouteSimulator.simulate returns None."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimator,
             SeferFuelInput,
         )
@@ -206,7 +206,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -219,7 +219,7 @@ class TestSeferFuelEstimator:
 
     async def test_edge_case_bos_sefer_sets_ton_zero(self):
         """bos_sefer=True forces ton=0 in physics simulation."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimator,
             SeferFuelInput,
         )
@@ -254,7 +254,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -268,7 +268,7 @@ class TestSeferFuelEstimator:
 
     async def test_edge_case_none_arac_yasi_defaults_to_5(self):
         """_derive_arac_yasi returns 5 when yil is None."""
-        from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
+        from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
         estimator = SeferFuelEstimator.__new__(SeferFuelEstimator)
         arac = MagicMock()
@@ -277,7 +277,7 @@ class TestSeferFuelEstimator:
 
     async def test_derive_arac_yasi_none_arac_defaults_to_5(self):
         """_derive_arac_yasi returns 5 when there is no Arac row at all."""
-        from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
+        from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
         estimator = SeferFuelEstimator.__new__(SeferFuelEstimator)
         assert estimator._derive_arac_yasi(None) == 5
@@ -334,7 +334,7 @@ class TestSeferFuelEstimator:
 
     async def test_to_legacy_prediction_dict_shape(self):
         """to_legacy_prediction_dict returns the expected shape."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             FactorBreakdown,
             SeferFuelEstimate,
         )
@@ -368,7 +368,7 @@ class TestSeferFuelEstimator:
 
     async def test_weather_failure_is_non_fatal(self):
         """Weather fetch failure returns empty list and prediction continues."""
-        from app.core.services.sefer_fuel_estimator import (
+        from v2.modules.trip.application.sefer_fuel_estimator import (
             SeferFuelEstimate,
             SeferFuelEstimator,
             SeferFuelInput,
@@ -398,7 +398,7 @@ class TestSeferFuelEstimator:
         )
 
         with patch(
-            "app.core.services.sefer_fuel_estimator.AsyncSessionLocal"
+            "v2.modules.trip.application.sefer_fuel_estimator.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_db)
@@ -416,7 +416,7 @@ class TestSeferFuelEstimator:
         """Weather fetch failure is recorded on the silent-fallback probe —
         sibling of the elevation degradation — so ops can alarm on a rate
         instead of grepping WARNING lines."""
-        from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
+        from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
         mock_weather = MagicMock()
         mock_weather.get_route_weather_samples = AsyncMock(

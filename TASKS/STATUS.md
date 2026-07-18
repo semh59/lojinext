@@ -47,7 +47,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
 | 12 | ai-assistant | `modules/ai-assistant.md` | ✅ main'de yeşil (commit `928de51`, bkz. DALGA 12 bölümü) |
 | 13 | prediction-ml | `modules/prediction-ml.md` | ✅ main'de yeşil (bkz. DALGA 13 bölümü) |
-| 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
+| 14 | trip (en karmaşık split) | `modules/trip.md` | ✅ branch'te tamamlandı (bkz. DALGA 14 bölümü) |
 | 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
 | 16 | shared-kernel (erime) | `modules/shared-kernel.md` | 🔲 |
 | 17 | platform-infra (registry finali) | `modules/platform-infra.md` | 🔲 |
@@ -1430,6 +1430,110 @@ v2/modules/prediction_ml` sıfır hata; `lint-imports` değişmedi (15 kept +
 1 pre-existing broken); ilgili 13 test dosyası + `test_ml/` tam paketi
 602 passed/4 skipped; ardından tam `pytest app/tests tests -m "unit or
 not integration"` koşumu ile regresyon kontrolü yapıldı.
+
+## DALGA 14 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-18)
+
+**Kapsam:** trip modülü — en karmaşık split (task dosyası kendi başlığında
+"en karmaşık split" olarak işaretlemişti). Sefer CRUD, durum makinesi
+(Planned/Completed/Cancelled), dönüş seferi otomasyonu, bulk operasyonlar,
+Phase 4-5 `SeferFuelEstimator` (sefer create yolu, kök CLAUDE.md'de
+dokümante), SLA gecikme tespiti, maliyet mutabakatı, onay iş akışı.
+`seferler`/`route_simulations`/`route_segments` tablolarının tek sahibi.
+`sefer_write_service.py`'nin 28 üyesi haritalandı (`domain/trip_validation.py`
++ 11 `application/*.py` dosyasına dissolve edildi, B.1).
+
+**Envanter/plan düzeltmeleri (task dosyası vs gerçek kod, kullanıcı onayıyla
+"plan yeterli değil mi" talimatıyla uygulandı):**
+1. `sla.py` — task dosyası `domain/sla.py` öneriyordu; gerçek kod
+   `uow.sefer_repo`/`uow.lokasyon_repo` DB I/O + `get_outbox_service()`
+   çağrısı yapıyor → `application/sla.py`'ye taşındı (prediction_ml
+   dalgasındaki aynı sınıf sapmayla tutarlı).
+2. Dönüş seferi kümesi (`return_trip.py`) — aynı gerekçeyle
+   `domain/` yerine `application/`'a taşındı.
+3. Task dosyasının "import_excel/analytics_executive/ai_assistant zaten
+   hazır" varsayımı 3 hedeften 2'sinde (import_excel, ai_assistant)
+   doğruydu, analytics_executive'te YANLIŞTI — cost/stats route'ları hiç
+   bağlı değildi, gerçek kod okunarak yeni ince wrapper route dosyası
+   yazıldı (`analytics_executive/api/trip_analytics_routes.py`).
+4. `sefer_status.py`/`trip_status.py` planın önerdiği `domain/` yerine
+   **modül köküne** taşındı — bkz. aşağıdaki import-linter bölümü,
+   bu dalgada ilk kez karşılaşılan yeni bir kontrat inceliği yüzünden.
+
+**Yapı:** `v2/modules/trip/{api,application,domain,infrastructure,
+schemas.py,sefer_status.py,trip_status.py,events.py,public.py,CLAUDE.md}`.
+`SeferReadService`/`SeferWriteService`/`SeferAnalizService` (CQRS
+alt-servisleri) tamamen dissolve edildi; `SeferService` facade olarak
+KALDI (ARCH-006 — hiçbir endpoint alt-fonksiyonları doğrudan import
+etmiyor, doğrulandı). `SeferFuelEstimator` da kendi gerekçesiyle sınıf
+olarak kaldı (constructor-injected client'lar). `SeferRepository`'nin 6
+şofor-özel sorgusu (`get_by_sofor_id` vb.) `v2/modules/driver/
+infrastructure/driver_trip_queries.py`'ye taşındı (task dosyası kararı);
+`get_all`'ın genel arama özelliği artık `driver.public.
+search_driver_ids_by_name`'i çağırıyor.
+
+**Router bölünmesi:** eski `app/api/v1/endpoints/trips.py` (1017 satır,
+22 route) silindi, 8 yeni dosyaya bölündü — 4'ü trip'te kaldı
+(read/write/bulk/approval), 2'si import_excel'e (export/import), 1'i
+analytics_executive'e (cost-analysis/stats), 1'i ai_assistant'a (plan
+wizard) taşındı. Tümü `api.py`'de aynı `prefix="/trips"` altında
+`include_router` ile bağlandı — URL'ler DEĞİŞMEDİ (router objesinin
+fiziksel konumu URL'i etkilemez, prefix belirler).
+
+**`.importlinter` yeni bulgu — domain/infrastructure bağımsızlığı AYNI
+modül içinde de geçerli:** önceki 13 dalgada hiç karşılaşılmamış bir
+kontrat inceliği bulundu — `type=independence` kontratı aynı üst modülün
+`domain`/`infrastructure` alt-paketlerini AYRI item olarak listelediğinde,
+bu ikisi arasında da sıfır import yolu şartı koşuyor (yalnızca modüller
+ARASI değil). `trip.infrastructure`'ın `trip.domain.sefer_status`/
+`trip_status`'ü doğrudan import etmesi bunu ihlal etti — çözüm:
+`sefer_status.py`/`trip_status.py` `domain/`'den modül köküne taşındı
+(`schemas.py` gibi kontratın `modules` listesi dışında), repo genelinde
+10 dosyada import path'i güncellendi. Ayrıca `public-surface-only-trip`
+16. kontrat olarak eklendi; diğer 13 kontratın `forbidden_modules`'üne
+trip'in 4 katmanı eklendi. Nihai durum: **16 kept, 1 broken** (pre-existing,
+ilgisiz FAZ0 kontratı).
+
+**Cross-module tüketici düzeltmeleri:** `analytics_executive/
+executive_read_models.py` (circular-import fix — lazy import),
+`import_excel/sefer_importer.py`+`sefer_upload_importer.py`
+(container→public.py doğrudan çağrı), `internal_service.py` (ölü
+sefer_repo kaldırıldı), `driver/driver_stats.py`+`route_profile.py`+
+`get_route_profile.py` (mypy'nin bulduğu 3 GERÇEK bug — artık var
+olmayan `sefer_repo.<driver_method>` çağrıları, taşınan 6 sorgudan
+kaynaklı), `prediction_ml/route_similarity.py`+`ensemble_service.py`+
+`prediction_backfill_service.py` (import path).
+
+**Test taşıması (~40 dosya):** toplu sed + yapısal olarak kırılan dosyalar
+tek tek yeniden yazıldı (`test_sefer_write_more.py`: 28/28,
+`test_sefer_write_more2.py`: 25/25, `test_sefer_write_service_coverage.py`:
+75/75 — `@pytest.mark.integration`, gerçek DB, `test_sefer_write_service_
+prediction_flows.py`: 5/5, `test_sefer_read_service.py`,
+`test_sefer_status_guards.py`, `test_sefer_prediction_contract.py`).
+Free-function patch-target konvansiyonu diğer 13 modülle tutarlı
+(modül-seviyesi import → tüketen modülün namespace'i, örn.
+`update_trip.check_sla_delay`; inline import → kaynak modül, örn.
+`v2.modules.trip.application.sefer_fuel_estimator.get_sefer_fuel_estimator`).
+`SeferWriteService.VALID_STATUS_TRANSITIONS` alias testi düşürüldü
+(sınıf dissolve olunca alias kavramı da anlamsızlaştı, tek isim
+`ALLOWED_TRANSITIONS` kaldı).
+
+**Doğrulama:** `ruff check app v2 scripts --select E,F,W,I` temiz;
+`lint-imports` 16/17 kontrat kept (1 pre-existing ilgisiz broken);
+`pytest --collect-only app/tests tests` 6674 test / 0 hata; gerçek
+Postgres 16 + Redis'e karşı `app/tests/unit/test_services/
+test_sefer_write_service_coverage.py` (75 passed) +
+`test_sefer_write_service_prediction_flows.py` (5 passed) +
+`test_sefer_write_more.py`/`test_sefer_write_more2.py` (28+25 passed)
+tam yeşil.
+
+**Değişen dosya sayısı:** 4 dosya taşındı (`sefer_fuel_estimator.py`,
+`schemas.py`, `sefer_status.py`, `trip_status.py`), 6 dosya silindi
+(`trips.py` endpoint, `sefer_service.py`, `sefer_read_service.py`,
+`sefer_write_service.py`, `sefer_analiz_service.py`, `sefer_repo.py`),
+~30 yeni dosya oluşturuldu (`v2/modules/trip/` + 4 hedef modülün yeni
+route dosyaları + `driver_trip_queries.py`), ~15 üretim tüketici dosyası
+güncellendi, ~40 test dosyası taşındı/güncellendi, `.importlinter`,
+kök `CLAUDE.md` + `v2/modules/trip/CLAUDE.md` (yeni).
 
 ## Son güncelleme
 

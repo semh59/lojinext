@@ -38,7 +38,6 @@ os.environ["MAPBOX_API_KEY"] = ""
 
 import app.core.container as container_mod  # noqa: E402
 import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
-import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
 import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
 import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
@@ -46,6 +45,7 @@ import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E
 import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
+import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
 from app.database.models import Base  # noqa: E402
 
 
@@ -453,7 +453,7 @@ def arac_repo(db_session):
 
 @pytest.fixture
 def sefer_repo(db_session):
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     return SeferRepository(session=db_session)
 
@@ -493,8 +493,8 @@ def dorse_repo(db_session):
 
 @pytest.fixture
 def sefer_service(db_session, mock_event_bus):
-    from app.core.services.sefer_service import SeferService
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.application.trip_service import SeferService
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     return SeferService(
         repo=SeferRepository(session=db_session), event_bus=mock_event_bus

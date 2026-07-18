@@ -111,7 +111,6 @@ class Benchmark:
 
 def create_benchmarks() -> List[Benchmark]:
     """Create benchmark suite."""
-    from app.core.services.sefer_service import get_sefer_service
     from app.database.connection import get_connection
     from v2.modules.fleet.public import get_all_vehicles
     from v2.modules.reports.public import (
@@ -119,6 +118,7 @@ def create_benchmarks() -> List[Benchmark]:
         generate_monthly_trend,
         resolve_repos,
     )
+    from v2.modules.trip.application.trip_service import get_sefer_service
 
     return [
         Benchmark(

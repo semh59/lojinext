@@ -5,9 +5,10 @@ not from ``application/``, ``domain/``, or ``infrastructure/`` directly.
 This module owns no DB table (FAISS dosya-tabanlı indeks, `app/data/ai_kb/`
 + `data/vector_store/`, Docker `app_data` named volume üzerinden persist).
 
-`trip` (dalga 14, henüz taşınmadı) `TripPlannerEngine`/`PlanInput`/
-`PlanResult`/sihirbaz şemaları için doğrudan bu public surface'i kullanır
-(`app/api/v1/endpoints/trips.py`). `anomaly`/`driver` (taşındı) da
+`trip` (taşındı, dalga 14) `TripPlannerEngine`/`PlanInput`/`PlanResult`/
+sihirbaz şemaları için doğrudan bu public surface'i kullanır
+(`v2/modules/ai_assistant/api/plan_wizard_routes.py` — `plan_wizard`
+route'u da dalga 14'te bu modüle taşındı). `anomaly`/`driver` (taşındı) da
 `GroqService`/`get_groq_service`'e buradan erişir (2026-07-18 denetiminde
 public'e çevrildi).
 

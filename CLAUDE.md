@@ -142,10 +142,11 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 | `reports` | Done (code) | `v2/modules/reports/CLAUDE.md` |
 | `analytics_executive` | Done (code) — Feature-E strategic cockpit | `v2/modules/analytics_executive/CLAUDE.md` |
 | `ai_assistant` | Done (code) — LLM chat, RAG, trip-planner wizard | `v2/modules/ai_assistant/CLAUDE.md` |
-| `prediction_ml` | Done (code) — 5-model ensemble, physics fallback, Kalman, ARIMA, XAI; `app/core/services/sefer_fuel_estimator.py` (Phase 4-5 sefer create path) still on old `app/` path, consumes this module's `adjustment_factors`/`vehicle_health_adjustment` | `v2/modules/prediction_ml/CLAUDE.md` |
-| `trip`, `admin_platform`, `shared_kernel`, `platform_infra` | Not started | see `TASKS/STATUS.md` |
+| `prediction_ml` | Done (code) — 5-model ensemble, physics fallback, Kalman, ARIMA, XAI; consumed by `trip` module's `SeferFuelEstimator` (Phase 4-5 sefer create path) via `adjustment_factors`/`vehicle_health_adjustment` | `v2/modules/prediction_ml/CLAUDE.md` |
+| `trip` | Done (code) — sefer CRUD, round-trip automation, bulk ops, SLA/cost reconciliation, Phase 4-5 `SeferFuelEstimator` | `v2/modules/trip/CLAUDE.md` |
+| `admin_platform`, `shared_kernel`, `platform_infra` | Not started | see `TASKS/STATUS.md` |
 
-There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `LicenseEngine`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector`, `PredictionService`, `EnsemblePredictorService`, `EnsembleFuelPredictor`, `KalmanEstimatorService`, `Trainer` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
+There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `LicenseEngine`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector`, `PredictionService`, `EnsemblePredictorService`, `EnsembleFuelPredictor`, `KalmanEstimatorService`, `Trainer`, `SeferService`, `SeferFuelEstimator`, `SeferRepository` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
 
 ### Route grade/segment analysis
 
@@ -281,10 +282,10 @@ Frontend hook `useTaskStatus(taskId)` (in `frontend/src/hooks/useTaskStatus.ts`)
 
 ### Sefer yakıt tahmini (Phase 4-5 SeferFuelEstimator)
 
-`app/core/services/sefer_fuel_estimator.py` — sefer kaydında çalışan tahmin pipeline'ı. Aktivasyon `USE_SEFER_FUEL_ESTIMATOR` env (production `true`, default `false`). 7-adım:
+`v2/modules/trip/application/sefer_fuel_estimator.py` — sefer kaydında çalışan tahmin pipeline'ı (bkz. `v2/modules/trip/CLAUDE.md`). Aktivasyon `USE_SEFER_FUEL_ESTIMATOR` env (production `true`, default `false`). 7-adım:
 1. arac/sofor yükle → 2. route koordinat çöz → 3. RouteSimulator (Mapbox Directions + segment_resampler + Open-Meteo elevation) → 4. Open-Meteo weather batch midpoints → 5. adjustment factors (temp, wind, precip, seasonal, driver, vehicle_age, maint) → 6. ML correction (Phase 5 cold-start `pw=1.0` → ensemble bypass) → 7. `route_simulations` + `route_segments` persist.
 
-Sefer create yolu (`_predict_outbound`) **2.5s timeout** uyguluyor; cold cache'de Mapbox+Open-Meteo bunu aşar → sefer **tahminisiz** kaydedilir (`tahmini_tuketim=NULL`). Bu silent fallback `GET /admin/fuel-accuracy` endpoint'inde `coverage_pct`'ye yansır.
+Sefer create yolu (`trip_prediction_enrichment.py::predict_outbound`) **2.5s timeout** uyguluyor; cold cache'de Mapbox+Open-Meteo bunu aşar → sefer **tahminisiz** kaydedilir (`tahmini_tuketim=NULL`). Bu silent fallback `GET /admin/fuel-accuracy` endpoint'inde `coverage_pct`'ye yansır.
 
 `route_simulations` tablosu kolon adları: `total_km`, `total_l`, `total_eta_sec`, `avg_l_per_100km` (`distance_km` / `duration_min` DEĞİL).
 

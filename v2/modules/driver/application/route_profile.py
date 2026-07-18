@@ -45,12 +45,13 @@ async def get_driver_route_coefficient(
 
     Yeterli veri yoksa 1.0 döndürür (nötr — tahmine dokunmaz).
     """
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.driver.infrastructure.driver_trip_queries import (
+        get_driver_trips_by_route_type,
+    )
 
-    async with UnitOfWork() as uow:
-        trips = await uow.sefer_repo.get_driver_trips_by_route_type(
-            sofor_id=sofor_id, route_type=route_type, limit=50
-        )
+    trips = await get_driver_trips_by_route_type(
+        sofor_id=sofor_id, route_type=route_type, limit=50
+    )
 
     if len(trips) < min_trips:
         return 1.0

@@ -64,6 +64,14 @@ from v2.modules.driver.domain.performance_ml import (
     DriverScorePrediction,
     get_driver_performance_ml,
 )
+from v2.modules.driver.infrastructure.driver_trip_queries import (
+    get_by_sofor_id,
+    get_driver_trips_by_route_type,
+    get_driver_trips_with_route_analysis,
+    get_recent_trips_batch,
+    get_with_route_analysis,
+    search_driver_ids_by_name,
+)
 from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 from v2.modules.driver.infrastructure.repository import SoforRepository, get_sofor_repo
 from v2.modules.driver.schemas import (
@@ -134,6 +142,13 @@ __all__ = [
     # repository
     "SoforRepository",
     "get_sofor_repo",
+    # trip-özel sefer sorguları (dalga 14 — sefer_repo.py'den taşındı)
+    "get_by_sofor_id",
+    "get_with_route_analysis",
+    "get_driver_trips_with_route_analysis",
+    "get_driver_trips_by_route_type",
+    "get_recent_trips_batch",
+    "search_driver_ids_by_name",
     # schemas
     "SoforCreate",
     "SoforUpdate",

@@ -4,10 +4,10 @@ from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 import pytest
 
-from app.core.ml.ensemble_predictor import (
-    EnsembleFuelPredictor,
+from v2.modules.prediction_ml.application.ensemble_service import (
     EnsemblePredictorService,
 )
+from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     FuelPrediction,
     PhysicsBasedFuelPredictor,

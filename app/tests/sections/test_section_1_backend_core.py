@@ -459,7 +459,7 @@ class TestEnsemblePredictor:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         return EnsembleFuelPredictor()
 
@@ -591,7 +591,7 @@ class TestEnsemblePredictorSecurity:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         return EnsembleFuelPredictor()
 
@@ -609,7 +609,9 @@ class TestEnsemblePredictorSecurity:
             predictor.save_model(filepath)
 
             # Yeni instance ile yükle
-            from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+            from v2.modules.prediction_ml.domain.ensemble_core import (
+                EnsembleFuelPredictor,
+            )
 
             new_predictor = EnsembleFuelPredictor()
             new_predictor.load_model(filepath)
@@ -627,7 +629,7 @@ class TestEnsemblePredictorSecurity:
 
         import joblib
 
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         base_path = tmp_path / "model_tamper"
         sklearn_file = tmp_path / "model_tamper_sklearn.joblib"
@@ -1050,7 +1052,9 @@ class TestPerformance:
 
     def test_ensemble_predictor_memory_guard(self):
         """Ensemble predictor bellek guard'ı"""
-        from app.core.ml.ensemble_predictor import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         service = EnsemblePredictorService()
 
@@ -1112,7 +1116,7 @@ class TestEdgeCases:
 
     def test_empty_strings_and_none_values(self):
         """Boş string ve None değer handling"""
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 

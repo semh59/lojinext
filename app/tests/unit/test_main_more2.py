@@ -212,7 +212,7 @@ async def test_lifespan_startup_and_shutdown():
             "app.infrastructure.monitoring.activate.activate_all_probes",
         ),
         patch(
-            "app.core.ml.ensemble_predictor.get_ensemble_service",
+            "v2.modules.prediction_ml.public.get_ensemble_service",
         ),
         patch(
             "app.core.container.get_container",

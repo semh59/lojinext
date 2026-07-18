@@ -45,7 +45,7 @@ class TestModelSerialization:
     def test_sha256_checksum_verification(self):
         """Model dosyası checksum ile doğrulanmalı"""
         # This logic is inside EnsembleFuelPredictor, here we mock to verify it's called
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 
@@ -158,7 +158,7 @@ class TestEnsembleModel:
 
     def test_weights_sum_to_one(self):
         """Ağırlıklar toplamı 1.0 olmalı"""
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 
@@ -168,7 +168,9 @@ class TestEnsembleModel:
 
     def test_lru_cache_eviction(self):
         """Cache limiti aşılınca eviction çalışmalı"""
-        from app.core.ml.ensemble_predictor import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         service = EnsemblePredictorService()
         service.MAX_PREDICTORS = 2

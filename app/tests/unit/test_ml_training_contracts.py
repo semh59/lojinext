@@ -4,15 +4,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.ml.ensemble_predictor import (
-    EnsemblePredictorService,
-    PredictionResult,
-)
 from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
 from app.database.repositories.sefer_repo import SeferRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
 )
+from v2.modules.prediction_ml.application.ensemble_service import (
+    EnsemblePredictorService,
+)
+from v2.modules.prediction_ml.domain.ensemble_core import PredictionResult
 
 LEGACY_REAL_FLAG = "is" + "_real"
 

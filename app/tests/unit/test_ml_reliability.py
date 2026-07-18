@@ -3,8 +3,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from app.core.ml.ensemble_predictor import EnsembleFuelPredictor, SecurityError
 from v2.modules.prediction_ml.domain.benchmark import MLBenchmark
+from v2.modules.prediction_ml.domain.ensemble_core import (
+    EnsembleFuelPredictor,
+    SecurityError,
+)
 from v2.modules.prediction_ml.domain.lightgbm_predictor import LightGBMFuelPredictor
 from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
 

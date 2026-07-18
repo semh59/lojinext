@@ -170,6 +170,20 @@ constructor-injected client bağımlılığı, CRUD-benzeri bir servis değiller
    event-bus subscriber'ları, `self.event_bus`/`self._cache` state.
 10. **`TimeSeriesService`** (`application/time_series_service.py`) —
     `container.py`'de lazy singleton, `self.engine` (AdvancedTSEngine) state.
+11. **`MLService`** (`application/ml_service.py`) — class-level `_locks:
+    Dict[int, asyncio.Lock]` (araç başına eğitim kilidi), gerçek paylaşılan
+    mutable state; use-case fonksiyonlarına bölünemez çünkü kilit sözlüğü
+    tüm çağrılar arasında paylaşılmalı. `public.py`'de export EDİLMEZ (bkz.
+    yukarı not) — yalnız `api/admin_ml.py` ve `ensemble_service.py`
+    (`_register_model_version` üzerinden) kullanır.
+12. **`MLBenchmark`**/**`ABTestFramework`**/**`EnsembleBenchmark`**
+    (`domain/benchmark.py`) — istatistiksel karşılaştırma state'i tutan
+    framework sınıfları (çalışan benchmark/A-B-test sonuçlarını internal
+    listede biriktirir). Denetimde doğrulandı: repo genelinde sıfır prod
+    çağıranı var (yalnız `test_ml_reliability.py`/`test_ml_audit.py`
+    tarafından egzersiz ediliyor) — `lightgbm_predictor.py`/
+    `kalman_estimator.py`/`HybridFuelPredictor` ile aynı "taşındı ama
+    wire edilmedi" kategorisinde, aşağıdaki gotcha'ya bkz.
 
 ## Domain katmanı bölünmesi — task dosyasının §5 kümelemesi kısmen düzeltildi
 
@@ -230,7 +244,7 @@ da `app/main.py` lifespan startup'ında bağlanır
 `egitim_kuyrugu` (`EgitimKuyrugu` — `MLTrainingRepository`), `model_versiyonlar`
 (`ModelVersiyon` — `ModelVersiyonRepository`, kolonlar: `arac_id`, `versiyon`,
 `veri_sayisi`, `r2_skoru`, `mae`, `mape`, `rmse`, `model_dosya_yolu`,
-`kullanilan_ozellikler` JSON, `olusturma_zaman`), `prediction_results`
+`kullanilan_ozellikler` JSON, `egitim_tarihi`), `prediction_results`
 (`PredictionResult` — async prediction-queue task sonuçları,
 `workers/tasks/prediction_tasks.py`).
 
@@ -314,20 +328,30 @@ metodu çağırmaya devam ediyor.
   tespiti için tutulan kasıtlı bir yardımcı olarak değerlendirildi, "ölü kod"
   silme kararının kapsamına (sıfır test yatırımı olan kod) girmiyor.
 - **`lightgbm_predictor.py`/`kalman_estimator.py`/`HybridFuelPredictor`/
-  legacy LSTM sınıfları — prod çağıranı yok, ama silinmedi**: grep ile
-  doğrulandı, bu 4 kalemin (özellikle `KalmanEstimatorService`/
-  `get_kalman_service`) hiçbir endpoint/container/servis tarafından
-  wire edilmediği görüldü. `time_series_predictor.py`'nin legacy LSTM
-  sınıfları için modülün kendi docstring'i zaten "yalnızca test fixture'ları
-  için tutuluyor" diyerek bunu KASITLI olarak dokümante ediyor. Diğer 3'ü
-  (`lightgbm_predictor.py`, `kalman_estimator.py`, `HybridFuelPredictor`)
-  için böyle bir doküman yok — ama bu modülün taşıma görevi (task dosyası)
-  bunları "sil" değil "taşı" olarak işaretliyor ve dead-code temizliği bu
-  dalgada yalnız FAZ0'ın açıkça flag'lediği kalemlerle (model_manager,
-  predictors/, get_training_seferler) sınırlı tutuldu — genişletilmiş bir
-  dead-code avı bu taşımanın kapsamı dışında bırakıldı. Not olarak
-  düşürülüyor: gelecekte ayrı bir "kullanılmayan ML sınıfları" denetimi
-  açılabilir.
+  legacy LSTM sınıfları/`domain/benchmark.py` (`MLBenchmark`/
+  `ABTestFramework`/`EnsembleBenchmark`) — prod çağıranı yok, ama
+  silinmedi**: grep ile doğrulandı, bu kalemlerin (özellikle
+  `KalmanEstimatorService`/`get_kalman_service` ve `benchmark.py`'nin 3
+  sınıfı) hiçbir endpoint/container/servis tarafından wire edilmediği
+  görüldü. `time_series_predictor.py`'nin legacy LSTM sınıfları için
+  modülün kendi docstring'i zaten "yalnızca test fixture'ları için
+  tutuluyor" diyerek bunu KASITLI olarak dokümante ediyor. Diğerleri
+  (`lightgbm_predictor.py`, `kalman_estimator.py`, `HybridFuelPredictor`,
+  `benchmark.py`) için böyle bir doküman yok — ama bu modülün taşıma görevi
+  (task dosyası) bunları "sil" değil "taşı" olarak işaretliyor ve dead-code
+  temizliği bu dalgada yalnız FAZ0'ın açıkça flag'lediği kalemlerle
+  (model_manager, predictors/, get_training_seferler) sınırlı tutuldu —
+  genişletilmiş bir dead-code avı bu taşımanın kapsamı dışında bırakıldı.
+  Not olarak düşürülüyor: gelecekte ayrı bir "kullanılmayan ML sınıfları"
+  denetimi açılabilir.
+- **`app/core/ml/ensemble_predictor.py` shim'i kaldırıldı**: DALGA 13'ün
+  ilk commit'i (`9e47ce8`) bu dosyayı 19 tüketici (2 script + test
+  dosyaları) için geçici bir backward-compat shim olarak bırakmıştı — kök
+  `CLAUDE.md`'nin "migrated modüllerin eski app/ dosyaları silinir, shim
+  bırakılmaz" kuralına aykırıydı. Takip denetiminde bulunup düzeltildi: tüm
+  19 çağıran gerçek `v2.modules.prediction_ml.{public,domain.ensemble_core,
+  application.ensemble_service}` yoluna güncellendi, shim dosyası ve artık
+  boşalan `app/core/ml/` dizini silindi.
 - **`Sefer yakıt tahmini (Phase 4-5 SeferFuelEstimator)`** kök CLAUDE.md'de
   dokümante — bu modülün `adjustment_factors`/`vehicle_health_adjustment`
   fonksiyonlarını kullanır ama estimator'ın kendisi (`app/core/services/

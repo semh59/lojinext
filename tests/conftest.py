@@ -44,7 +44,7 @@ def _mock_ml_load_model_for_tests():
     when both directories are collected in the same pytest session.
     """
     patcher = patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor.load_model",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor.load_model",
         new=mock_load_model,
     )
     patcher.start()

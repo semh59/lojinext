@@ -370,7 +370,7 @@ class TestEnsembleStatus:
         fake_predictor.weights = {"physics": 0.8, "xgboost": 0.05}
 
         with patch(
-            "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+            "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
             return_value=fake_predictor,
         ):
             resp = await async_client.get(

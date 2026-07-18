@@ -1,6 +1,8 @@
 """Tests for speed profile ML features added to EnsemblePredictor."""
 
-from app.core.ml.ensemble_predictor import EnsembleFuelPredictor as EnsemblePredictor
+from v2.modules.prediction_ml.domain.ensemble_core import (
+    EnsembleFuelPredictor as EnsemblePredictor,
+)
 
 SAMPLE_SEFER = {
     "ton": 20.0,

@@ -430,13 +430,13 @@ async def test_ensemble_status_all_available(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
         return_value=fake_predictor,
     ):
         with (
-            patch("app.core.ml.ensemble_predictor.SKLEARN_AVAILABLE", True),
-            patch("app.core.ml.ensemble_predictor.LIGHTGBM_AVAILABLE", True),
-            patch("app.core.ml.ensemble_predictor.XGBOOST_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", True),
         ):
             resp = await async_client.get(
                 f"{BASE}/ensemble/status",
@@ -455,13 +455,13 @@ async def test_ensemble_status_none_available(async_client, admin_auth_headers):
     fake_predictor.weights = {"physics": 1.0}
 
     with patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
         return_value=fake_predictor,
     ):
         with (
-            patch("app.core.ml.ensemble_predictor.SKLEARN_AVAILABLE", False),
-            patch("app.core.ml.ensemble_predictor.LIGHTGBM_AVAILABLE", False),
-            patch("app.core.ml.ensemble_predictor.XGBOOST_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", False),
         ):
             resp = await async_client.get(
                 f"{BASE}/ensemble/status",

@@ -1383,6 +1383,54 @@ kontrat), `mypy.ini` (3 override yolu güncellendi), kök `CLAUDE.md` +
 6 modülün kendi `CLAUDE.md`'si (location, route_simulation, ai_assistant,
 driver, analytics_executive + prediction_ml'in kendi yeni dosyası).
 
+### DALGA 13 takip-denetimi (2026-07-18, dördüncü oturum) — bağımsız ajan denetimi
+
+Kullanıcı talebi: "Dalga 13 detaylı ve derin incele. Kurallara uygun
+taşındı mı. Hata ve eksik var mı." Taze bağlamlı bağımsız bir ajan ile
+(lint-imports/ruff/mypy/pytest'i GERÇEKTEN çalıştırarak, iddiaları
+doğrulamadan kabul etmeden) tam denetim yapıldı. Bulunan gerçek sorunlar:
+
+1. 🔴 **Kural ihlali — no-shim ilkesi**: ilk taşıma commit'i (`9e47ce8`)
+   `app/core/ml/ensemble_predictor.py`'yi (`EnsembleFuelPredictor`/
+   `EnsemblePredictorService`/vb. re-export eden) geçici bir backward-compat
+   shim olarak bırakmıştı — kök `CLAUDE.md`'nin "migrated modülün eski
+   `app/` dosyaları silinir, shim bırakılmaz, kalan çağıranlar tek tek
+   `v2.modules.<name>`'e güncellenir" kuralına doğrudan aykırıydı. Bu
+   sapma STATUS.md'nin (o zamanki) metninde "pragmatik" bir not olarak
+   vardı ama kural ihlali olduğu açıkça yazılmamıştı. **Düzeltildi**: shim'i
+   kullanan 19 site (`scripts/train_ensemble.py`, `scripts/
+   train_model_with_route_features.py`, 12 test dosyası) gerçek
+   `v2.modules.prediction_ml.{public, domain.ensemble_core,
+   application.ensemble_service}` yollarına güncellendi; shim dosyası +
+   artık boşalan `app/core/ml/` dizini tamamen silindi.
+2. 🟡 **Eksik dokümantasyon — B.1 sınıf istisnası listesi tamamlanmadı**:
+   `MLService` (`application/ml_service.py`, class-level `_locks` mutable
+   state) ve `domain/benchmark.py`'nin `MLBenchmark`/`ABTestFramework`/
+   `EnsembleBenchmark` sınıfları modülün kendi `CLAUDE.md`'sindeki
+   "10 sınıf istisnası" listesinde yoktu. **Düzeltildi**: liste 12 kaleme
+   çıkarıldı, gerekçeleriyle (`MLService`→paylaşılan kilit sözlüğü;
+   benchmark sınıfları→sıfır prod çağıranı olan "taşındı ama wire
+   edilmedi" kategorisi, `lightgbm_predictor`/`kalman_estimator`/
+   `HybridFuelPredictor` ile aynı gotcha'ya eklendi).
+3. 🟢 **Kozmetik — CLAUDE.md kolon adı yanlış**: `model_versiyonlar`
+   tablosunun kolonlarını sayarken `olusturma_zaman` yazıyordu; gerçek ORM
+   kolonu `egitim_tarihi` (`app/database/models.py:1154`, doğrulandı).
+   Düzeltildi.
+
+Denetimde CONFIRMED (doğru/temiz) çıkan maddeler: 36 dosyalık yapısal
+envanter, cross-module bypass taraması (sıfır ihlal), domain saflığı
+(`physics_model.py` application'a bağımlı değil), `lint-imports`
+(15 kept + 1 pre-existing ilgisiz broken), `ruff`/`mypy` sıfır hata,
+483 toplanan test / 479 geçen (denetim anında), `_register_model_version`
+wiring + `train_general_model` davranış-düzeltmesi.
+
+**Doğrulama (bu takip turu)**: shim kaldırma sonrası `ruff check
+v2/modules/prediction_ml app scripts --select E,F,W,I` temiz; `mypy
+v2/modules/prediction_ml` sıfır hata; `lint-imports` değişmedi (15 kept +
+1 pre-existing broken); ilgili 13 test dosyası + `test_ml/` tam paketi
+602 passed/4 skipped; ardından tam `pytest app/tests tests -m "unit or
+not integration"` koşumu ile regresyon kontrolü yapıldı.
+
 ## Son güncelleme
 
 2026-07-18 (üçüncü oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME

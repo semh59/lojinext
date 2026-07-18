@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
 from app.core.services.sefer_write_service import SeferWriteService
 from app.database.repositories.audit_repo import AuditRepository
+from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
 
 def test_extract_prediction_values_prefers_canonical_field():

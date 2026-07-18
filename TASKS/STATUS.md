@@ -18,7 +18,7 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 12/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) main'de yeşil, 2 turluk dedektif denetim + 4 gerçek bug fix dahil (bkz. DALGA 12 bölümü); sıradaki: dalga 13 (prediction-ml), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 12/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) main'de yeşil, 2 turluk dedektif denetim + 4 gerçek bug fix dahil (bkz. DALGA 12 bölümü); ✅ **2026-07-18 ikinci oturum: ilk 12 dalganın TAM-DENETİM DÜZELTME TURU** — tüm 12 dalgaya yayılan import-linter/public.py/domain-I/O/ölü-kod bulguları kapatıldı, commit `02d1ea5` (bkz. "Son güncelleme" bölümü); sıradaki: dalga 13 (prediction-ml), yeni oturumda |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
@@ -30,7 +30,7 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | # | Modül/kalem | Görev dosyası | Durum |
 |---|---|---|---|
 | — | Registry+iskelet+shim deseni (çatı) | `faz1-registry-iskelet-ve-shim.md` | 🔲 |
-| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 11/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 13 kept, 1 broken[kapsam dışı]`); gate (continue-on-error kaldırma) kalan 6 dalga sonrası ayrı onayla |
+| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 12/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 14 kept, 1 broken[kapsam dışı — pre-existing app.services↔app.core.services, migrasyonla ilgisiz]`, 2026-07-18 tam-denetim turunda 7 bayat ignore girdisi temizlenip 5 gerçek ihlal düzeltildikten sonraki gerçek sayı); gate (continue-on-error kaldırma) kalan 5 dalga sonrası ayrı onayla |
 | — | Davranışsal mimari testleri (çatı) | `faz1-davranissal-mimari-testler.md` | 🔲 |
 | — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | 🔲 |
 | — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |
@@ -67,7 +67,7 @@ Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **rep
 - `admin_ws.py` dosya-sahipliği vs route-işlev tutarsızlığı — notification (dalga 2) VE admin-platform (dalga 15) dosyalarında işaretli, dalga 2'de karar verilecek.
 - `model_manager.py`'deki 9 kırık raw-SQL sitesi (`model_versions` tablosu yok) — prediction-ml (dalga 13) dalgasında düzeltilecek/temizlenecek, ayrı bug-fix.
 - ✅ **ÇÖZÜLDÜ (2026-07-14)** — Connection-pool leak, sistematik debugging ile 2 kök nedene indirgendi ve düzeltildi: (1) `AuthService`/`MLService`/`AttributionService`'in zaten açık bir `UnitOfWork`'ü ikinci kez `async with self.uow:` ile yeniden açması (`_owns` bayrağını bozup dış `session.close()`'u atlıyordu) — 3 servis dosyası + 1 endpoint düzeltildi, `UnitOfWork.__aenter__`'e re-entrancy guard eklendi (defense-in-depth, artık sessizce bozmak yerine `RuntimeError`). (2) `AuthService.authenticate()`'teki senkron `bcrypt.checkpw()` event loop'u bloke edip eşzamanlı yük altında pool tükenmesini şiddetlendiriyordu — `asyncio.to_thread`'e taşındı. Gerçek 30-kullanıcılı Locust koşumunda leak uyarısı 30-44 → **0**, p99 latency ~70000ms → **500ms**. 2 gerçek regresyon testi eklendi (`app/tests/test_db_hardening.py`, TDD red→green doğrulandı). Detay: `TASKS/bug-connection-pool-leak-under-load.md` (kabul kriterleri işaretli).
-- `v2/modules/route_simulation/infrastructure/openroute_client.py`'deki `OpenRouteClient` sınıfı 3 ilgisiz sorumluluk taşıyor (ORS distance client + location modülünün geocode'unu tekrarlayan `geocode()` + `lokasyonlar` tablosuna location'ı bypass eden ham SQL `update_route_distance()`) — B.1 + tablo-sahipliği ihlali, ama prod route'larından çağrılmıyor (ölü/legacy kod, yalnız script+testler kullanıyor). 2026-07-14 dalga1-5 denetiminde bulundu. Bağımsız görev açıldı: `TASKS/bug-openroute-client-architectural-leak.md`. Herhangi bir oturumda, dalga sırası beklenmeden ele alınabilir.
+- ✅ **ÇÖZÜLDÜ (2026-07-18, tam-denetim düzeltme turu)** — `v2/modules/route_simulation/infrastructure/openroute_client.py`'deki `OpenRouteClient` sınıfının 3 ilgisiz sorumluluğundan 2'si (`geocode()`/`_call_geocode_api` + `lokasyonlar` tablosuna ham SQL atan `update_route_distance()`) SİLİNDİ; `scripts/enrich_existing_data.py` `location.public.geocode_location`'a geçti. **Kısmen kapsam dışı bırakıldı** (görev dosyasının kendi madde 3 kararı): üçüncü implementasyon `app.core.services.openroute_service.py` (eski `app/`, route_simulation'ın henüz taşınmamış parçası) dokunulmadı — yani "tek geocode implementasyonu" hedefi tam karşılanmadı, hâlâ 2 implementasyon var (location'ınki + eski openroute_service.py); bu, route_simulation'ın ikinci-dilim taşıması bekleniyor. Detay: `TASKS/bug-openroute-client-architectural-leak.md` (kabul kriterleri güncellendi).
 - ✅ **ÇÖZÜLDÜ (2026-07-15)** — İki bağımsız `create_admin.py` scripti var: `scripts/create_admin.py` (rol=`admin`, hardcoded `admin@lojinext.com`, granular `yetkiler` dict) ve `app/scripts/create_admin.py` (rol=`super_admin`, `settings.SUPER_ADMIN_USERNAME`, wildcard `{"*": True}`) — `git log --follow` ile doğrulandı, ikisi de `9f8110b` initial commit'ten beri var, dalga 6'nın ürettiği bir duplikasyon DEĞİL. **Karar: ikisi de kalıyor** (hiçbiri gerçek prod bootstrap'ında kullanılmıyor — gerçek admin oluşturma `alembic/versions/0002_seed_and_bootstrap.py`'de doğrudan SQL upsert ile yapılıyor, bu iki script yalnız manuel/dev-amaçlı CLI yardımcıları). `scripts/create_admin.py`'nin `yetkiler` dict'i eksikti — 2026-06-21 planındaki 5 anahtar (`attribution_duzenle`/`bakim_ekle`/`circuit_breaker_reset`/`model_egit`/`notification_rule_goruntule`) o tarihten sonra zaten eklenmiş (plan dosyası stale çıktı), ama 5 GERÇEK eksik anahtar daha bulundu (`import_goruntule`/`import_rollback`/`notification_rule_duzenle`/`notification_rule_sil`/`admin`) — repo genelindeki 53 `require_yetki(...)` çağrı noktasının tamamı tek tek simüle edilip gerçek `SecurityService.has_permission` koduna karşı doğrulandı, düzeltmeden önce 5 endpoint grubu admin rolüne kapalıydı, düzeltmeden sonra 53/53 geçiyor.
 - **Dalga 1-6 + 8 detaylı B.1 dedektif denetimi (2026-07-15, kullanıcı talebiyle "ilk 8 dalgayı detaylı kontrol edelim")** — 6 bağımsız sıfır-context ajan (dalga1: location+route_simulation, dalga2: notification, dalga3: fleet, dalga4: fuel, dalga5: driver, dalga6: auth_rbac) her modülün TÜM dosyalarını tek tek B.1 ("her dosya tek görev") kuralına karşı denetledi (dalga 8/anomaly aynı gün ayrıca 3 ajanla denetlenmişti, bkz. DALGA 8 bölümü). Sonuç: **location + driver TAM TEMİZ**; route_simulation'daki tek bulgu zaten bilinen/dokümante `OpenRouteClient` sızıntısı (yukarıda); fuel'de 1 düşük-risk bulgu (`domain/consumption_prediction.py`'de domain katmanına DB erişimi sızmış ama dosya ölü kod, hiçbir prod endpoint çağırmıyor). **3 modülde (notification/fleet/auth_rbac) YENİ bir ortak bulgu deseni**: 5 route handler'ı `application/` katmanını atlayıp doğrudan repo/ORM çağırıyor + auth_rbac'ta bir iş kuralı (privilege-escalation guard) route dosyasında tekrarlanmış. B.1'in "tek dosya = tek sınıf" ilkesi ihlal edilmiyor ama "route → application → repo" katman sözleşmesi 5 yerde tutmuyor. Bağımsız görev açıldı: `TASKS/bug-route-layer-bypasses-application.md`.
 - ✅ **ÇÖZÜLDÜ (2026-07-15, kullanıcı onayı: "8 dalga tam temiz olana kadar durma")** — yukarıdaki `TASKS/bug-route-layer-bypasses-application.md`'nin 5 handler'ı tek tek düzeltildi: notification'da `manage_notification_rules.py`+`manage_push_subscription.py`, fleet'te `get_maintenance_ics_data.py` + `get_vehicle_by_id`/`get_trailer_by_id`'ye `include_inactive` parametresi, auth_rbac'ta `role_service.py`. 🔴 **Bu sırada notification'ın push subscribe/unsubscribe'ında GERÇEK bir bug bulundu**: her ikisi de hiçbir zaman `uow.commit()` çağırmıyordu (ghost-transaction guard ORM identity-map'e bakıyor, Core-tarzı delete/attribute-mutasyon farklı yollarla ama HER İKİSİ de sessiz rollback'e yol açıyordu) — push abone-ol/ol-ma endpoint'leri 200/204 dönüyordu ama veritabanında hiçbir şey kalıcı olmuyordu, taşımadan önce de böyleydi (regresyon değil), tek satır `await uow.commit()` ile düzeltildi. Detay + doğrulama: `TASKS/bug-route-layer-bypasses-application.md` "Çözüm" bölümü. Yerel `ruff`+`py_compile`+gerçek Python import zinciri temiz; CI doğrulaması bekleniyor.
@@ -1216,6 +1216,73 @@ yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
 taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
 
 ## Son güncelleme
+
+2026-07-18 (üçüncü oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME
+TURU'NUN İKİNCİ GEÇİŞİ (kullanıcı talebi: "dalga 13 geçmeden önce bir
+eksik unutulan göz ardı edilen en ufak bir kusur istemiyorum"). İkinci
+geçişte bulunan gerçek sorunlar:
+
+- 🔴 **Kritik: önceki turun ölü-kod silme işleminin 7 dosyası hiç
+  commit'e girmemişti.** Kök neden: `git rm` çoklu-dosya çağrısında bir
+  dosyanın (`test_context_builder_coverage.py`) o an yerel değişikliği
+  vardı — `git rm` bu YÜZDEN TÜM batch'i (9 dosya) sessizce reddetti
+  (`error: local modifications`), ama komut zinciri `&&` değil ayrı
+  satırlar olduğu için sonraki `echo` yine de çalıştı ve "silindi"
+  görüntüsü verdi. Gerçekte diskte kalan 7 dosya: `v2/modules/
+  ai_assistant/application/{recommendation_engine,prompt_tuner,
+  build_context}.py`, `app/core/ai/{recommendation_engine,prompt_tuner}.py`
+  (shim), 3 test dosyası. `public.py`/`orchestrate_ai_response.py` zaten
+  bu dosyaları import etmiyordu (o kısım doğru commit'lenmişti) — yani
+  kod fiilen ölüydü ama fiziksel dosyalar + testleri hâlâ duruyordu,
+  CLAUDE.md/STATUS.md ise "silindi" diyordu (dokümantasyon-gerçek
+  uyuşmazlığı). Bu turda gerçekten silindi, doğrulandı (ruff+mypy+
+  collect-only+ilgili testler yeşil).
+- **CLAUDE.md çapraz-referans taraması**: önceki turun düzeltmeleri
+  kendi modülünde tutarlıydı ama BAŞKA modüllerin CLAUDE.md'lerinde
+  driver/fuel/auth_rbac/notification/reports'a ait artık-geçersiz eski
+  yol/dosya referansları kalmıştı (`analytics_executive` ve `reports`ın
+  driver'ın eski `domain/driver_stats.py` yoluna atıfta bulunması;
+  `analytics_executive`'in silinen `fuel/domain/consumption_prediction.py`
+  ve kendi silinen `generate_insights.py`/`_UnitOfWorkContext`'ine hâlâ
+  "var" gibi atıf yapması — sınıf istisna sayısı "2 adet" kalmıştı, 1'e
+  düzeltildi; `notification`'ın silinen `generate_insights.py`'ye in-edge
+  bağımlılık iddiası; `reports`'un silinen `get_daily_consumption_trend`'i
+  hâlâ Public API imzalarında listelemesi; `analytics_executive`+`reports`
+  CLAUDE.md'lerinin `auth_rbac.domain.permission_checker.require_yetki`
+  gibi ÖNCEDEN (dalga-11/12 öncesi) zaten public'e taşınmış ama hiç
+  düzeltilmemiş bayat yol iddiaları — bunlar benim bu oturumdaki
+  hatam değil, daha eski bir doküman borcuydu, bu geçişte bulunup
+  düzeltildi). Hepsi tek tek düzeltildi.
+- **2 ek script bypass'ı bulundu ve düzeltildi**: `app/scripts/
+  benchmark.py` fleet'i `application/list_vehicles`'tan doğrudan
+  import ediyordu (→ `fleet.public.get_all_vehicles`); `scripts/
+  p51_real_world_validation.py` location'ı `application/create_location`
+  + `schemas`'tan doğrudan import ediyordu (→ `location.public`).
+- **Sentry doc-kayması düzeltildi**: kök CLAUDE.md'nin `_sentry_before_send`
+  notu `app/main.py:64` diyordu (gerçek satır 71), filtrenin `jose.
+  ExpiredSignatureError/JWTError`'ı düşürdüğünü söylüyordu ama kod
+  aslında `PyJWT` (`from jwt import ...`) kullanıyor — düzeltildi,
+  filtrenin gerçek tam listesi + "yalnız 2 call-site Sentry'ye ulaşır"
+  netliği eklendi.
+- `TASKS/bug-openroute-client-architectural-leak.md`'nin kabul
+  kriterleri gerçek duruma göre işaretlendi (madde 3 kısmi kaldı —
+  üçüncü geocode implementasyonu `app.core.services.openroute_service.py`
+  hâlâ ayrı, bilinçli kapsam dışı).
+
+**Doğrulama (2. geçiş, gerçek Postgres+Redis+api-stub):** `ruff check
+app v2 scripts` temiz, `mypy app` temiz (670 dosya, önceki turdan 5 az —
+gerçekten silinen 7 dosyanın 5'i mypy kapsamında), `compileall` temiz,
+`lint-imports` 14/15 kept (aynı, pre-existing broken), `pytest
+--collect-only app/tests tests` 6712 test/0 hata (önceki 6779'dan 67 az
+— gerçekten silinen 3 test dosyasının içerdiği testler). **OpenAPI şeması
+`frontend/openapi.json`'a karşı byte-seviyesinde BYTE-BYTE ÖZDEŞ**
+(202/202 path, 0 operationId farkı, tam JSON diff sıfır) — bu oturumun
+tüm değişiklikleri saf iç mimari, sıfır API kontrat etkisi. **Tam pytest
+suite'i (`app/tests/unit app/tests/api tests`): 6239 passed, 23 failed,
+26 skipped** (önceki 6304/23/26'dan farkı yalnız 65 test azlığı — silinen
+test dosyaları; **FAILED listesinin 23 ismi de bir önceki koşumla BİREBİR
+AYNI** — net-yeni regresyon SIFIR). Commit/push bu turda yapıldı.
+
 
 2026-07-18 (ikinci oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME TURU
 (kullanıcı talebi: "ilk 12 dalgayı detaylı ve derin incele... eksikleri

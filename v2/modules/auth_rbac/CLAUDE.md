@@ -241,13 +241,13 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   değişikliği yok.
 - **`app/api/deps.py` taşınmadı** — FastAPI-wiring katmanı (driver/fleet
   dalgalarındaki kararla aynı), yalnızca import kaynakları
-  `v2.modules.auth_rbac.domain.security_service`/`v2.modules.auth_rbac.domain.token_blacklist`
-  olarak güncellendi (2026-07-18: `token_blacklist` importu
-  `infrastructure/`'a taşınan yeni yolu gösteriyor; deps.py'nin public.py
-  YERİNE domain-leaf import etmesi bilinçli — public, `PermissionChecker`
-  üzerinden deps.py'nin kendisini import ettiği için döngü oluşur, deps.py
-  içinde yorumla dokümante). `get_auth_service`/`AuthServiceDep`
-  KALDIRILDI (yukarı bakınız).
+  `v2.modules.auth_rbac.domain.security_service` (Permission/SecurityService,
+  değişmedi) ve `v2.modules.auth_rbac.infrastructure.token_blacklist`
+  (2026-07-18'de `domain/`'den `infrastructure/`'a taşınan yeni yol) olarak
+  güncellendi; deps.py'nin public.py YERİNE domain/infrastructure-leaf
+  import etmesi bilinçli — public, `PermissionChecker` üzerinden deps.py'nin
+  kendisini import ettiği için döngü oluşur, deps.py içinde yorumla
+  dokümante. `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı bakınız).
 - **Super-admin break-glass bypass** (`api/auth_routes.py::login`) —
   `SUPER_ADMIN_PASSWORD` env değişkeni + IP-scoped rate-limit bucket
   (`super_admin_login:{ip}`, 5dk'da 3 deneme) — genel `auth_token` bucket'ından

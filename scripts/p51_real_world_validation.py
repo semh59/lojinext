@@ -27,8 +27,7 @@ from app.core.services.sefer_fuel_estimator import (
     SeferFuelInput,
 )
 from app.database.unit_of_work import UnitOfWork
-from v2.modules.location.application.create_location import create_location
-from v2.modules.location.schemas import LokasyonCreate
+from v2.modules.location.public import LokasyonCreate, create_location
 
 # ---------------------------------------------------------------------------
 # Test verisi

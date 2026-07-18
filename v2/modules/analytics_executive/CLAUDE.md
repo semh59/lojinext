@@ -16,8 +16,8 @@ dosya bazında sistemin en yoğun raw-SQL kaynağı.
 
 NE YAPMAZ: sayfa-görüntüleme analitiği (`page_views` — reports'un işi,
 aşağıdaki "page_views tutarsızlığı çözüldü" notuna bakın), driver bulk
-metrikleri (`get_bulk_driver_metrics`/`get_driver_comparison` — driver'ın
-işi, aşağıya bakın), ML model parametreleri (prediction_ml dalga 13'e
+metrikleri (`get_bulk_driver_metrics` — driver'ın işi, aşağıya bakın),
+ML model parametreleri (prediction_ml dalga 13'e
 kadar burada geçici kalıyor).
 
 ## Public API (public.py imzaları)
@@ -94,12 +94,13 @@ yalnız o ikisini kapsıyordu (2026-07-16). Kod gerçek + iyi test edilmiş
 push tetikleme) — ileride bir cron/endpoint'e bağlanabilir. Bağlanırsa
 davranış değişikliği gerektirir, ayrı bir karar.
 
-## `get_driver_comparison` (driver_metrics_queries.py) de aynı sınıf — ölü kod, silinmedi
+## ✅ `get_driver_comparison` (driver_metrics_queries.py) — 2026-07-18'de SİLİNDİ
 
-Bkz. driver modülünün CLAUDE.md'si — bu fonksiyon hiçbir prod endpoint'ten
-çağrılmıyor (`get_driver_comparison_pdf` adı benziyor ama farklı bir
-fonksiyon, `get_driver_stats`'i kullanıyor). Taşımadan önce de aynı
-durumdaydı, davranış değişikliği gerektirmediği için olduğu gibi taşındı.
+Aynı sınıf ölü koddu: hiçbir prod endpoint'ten çağrılmıyordu
+(`get_driver_comparison_pdf` adı benziyordu ama farklı bir fonksiyon,
+`get_driver_stats`'i kullanıyor). Kullanıcı kararıyla ("ölü kod yasak")
+dosyasından silindi — bkz. aşağıdaki "2026-07-18 ölü-kod temizliği"
+bölümü.
 
 ## 🔴 Bulgu + düzeltme: driver bulk metrikleri hiç taşınmamıştı (dalga 5 gap'i)
 
@@ -110,7 +111,8 @@ geçici bağımlılık" olarak doğru dokümante etmişti, task dosyasının
 varsayımı yanlıştı). Bu dalgada düzeltildi: `v2/modules/driver/
 infrastructure/driver_metrics_queries.py` (yeni dosya) — free function
 (B.1, tek-tablo CRUD değil çapraz-tablo salt-okunur agregat). Çağıranlar
-(`driver/domain/driver_stats.py`, `driver/domain/evaluation.py`)
+(`driver/application/driver_stats.py`, `driver/application/evaluation.py`
+— 2026-07-18'de `domain/`'den taşındı, domain saf/I/O'suz kuralı)
 güncellendi; `v2/modules/reports/infrastructure/repo_access.py`'nin
 `ReportRepos`'una `session` alanı eklendi (evaluation.py'nin `_HasAnalizRepo`
 duck-type fallback'i `ReportRepos` gibi session'sız bundle'larla da
@@ -130,22 +132,16 @@ infrastructure/analytics_tasks.py, api/page_view_routes.py}` +
 yanlıştı (`executive.py`(8)+`analytics.py`(2)) — gerçek analytics_executive
 route sayısı **8**.
 
-## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 2 adet)
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 1 adet)
 
-**DÜZELTME (2026-07-17 ikinci-tur dedektif denetimi):** bu bölüm önceden
-"1 adet" diyordu ve yalnız `AnalizRepository`'yi sayıyordu —
-`application/generate_insights.py::_UnitOfWorkContext` de gerçek bir sınıf
-olarak var, sayım eksikti.
+**DÜZELTME (2026-07-18 tam-denetim turu):** bu bölüm 2 adet diyordu —
+`_UnitOfWorkContext` (`application/generate_insights.py`'de yaşıyordu)
+dosyasıyla birlikte ölü-kod olarak silindiği için sayım tekrar 1'e düştü.
 
 1. **`AnalizRepository`** (`infrastructure/executive_read_models.py`) — her
    modüldeki repository sınıfı gibi (`AracRepository`, `YakitRepository`, vb.)
    `BaseRepository[Sefer]`'den türeyen bir CRUD/query sınıfı; repo katmanı
    zaten B.1'in istisnası (bkz. root CLAUDE.md "Repository pattern").
-2. **`_UnitOfWorkContext`** (`application/generate_insights.py`) — tek
-   metodu `get_uow()`'un mock'lanabilir olmasını sağlayan async
-   context-manager adaptörü; iş mantığı taşımıyor, zararsız ama
-   `AnalizRepository` gibi repo-istisnası kapsamına girmediği için ayrı
-   bir madde olarak sayılması gerekiyordu.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -168,11 +164,12 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **driver (taşındı)**: `driver/domain/driver_stats.py`/`evaluation.py`
-  `AnalizRepository.get_filo_ortalama_tuketim` kullanır (bulk metrikler
-  artık driver'ın kendi `driver_metrics_queries.py`'sinde, bkz. yukarı).
-- **fuel (taşındı)**: `fuel/domain/consumption_prediction.py`
-  `get_analiz_repo()`'yu doğrudan çağırır (şoför-bazlı tüketim düzeltme).
+- **driver (taşındı)**: `driver/application/driver_stats.py`/`evaluation.py`
+  (2026-07-18'de `domain/`'den taşındı) `AnalizRepository.
+  get_filo_ortalama_tuketim` kullanır (bulk metrikler artık driver'ın
+  kendi `driver_metrics_queries.py`'sinde, bkz. yukarı).
+- ~~fuel (tersine)~~: `fuel/domain/consumption_prediction.py` 2026-07-18
+  ölü-kod temizliğinde silindi — bu bağımlılık artık yok.
 - **reports (taşındı)**: `ReportRepos.analiz_repo` = bu modülün
   `AnalizRepository`'si; `advanced_reports_routes.py` maliyet
   endpoint'leri `analyze_costs.py`'nin free function'larını çağırır.
@@ -184,7 +181,7 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
   (2026-07-18: public'e çevrildi; `generate_insights.py` aynı gün ölü kod
   olarak silindi).
 - **auth_rbac (taşındı)**: `api/executive_routes.py`
-  `v2.modules.auth_rbac.domain.permission_checker.require_yetki` kullanır.
+  `v2.modules.auth_rbac.public.require_yetki` kullanır (public.py üzerinden).
 - **anomaly (taşındı, geçici)**: `aggregate_cross_feature`'ın D.4 kalemi
   `app.core.ml.vehicle_health_factor`'ı çağırır (henüz taşınmamış — ayrı
   bir modülün dosyası, bu dalganın kapsamı dışı).

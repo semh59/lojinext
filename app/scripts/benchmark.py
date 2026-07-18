@@ -113,7 +113,7 @@ def create_benchmarks() -> List[Benchmark]:
     """Create benchmark suite."""
     from app.core.services.sefer_service import get_sefer_service
     from app.database.connection import get_connection
-    from v2.modules.fleet.application.list_vehicles import get_all_vehicles
+    from v2.modules.fleet.public import get_all_vehicles
     from v2.modules.reports.public import (
         generate_fleet_summary,
         generate_monthly_trend,

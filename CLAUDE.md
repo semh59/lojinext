@@ -363,7 +363,7 @@ Project lives in EU (`de.sentry.io`). API base is `https://de.sentry.io/api/0/`,
 
 ### `_sentry_before_send` already drops these — don't re-capture
 
-(`app/main.py:64`) Filters out: monitoring self-test events, `jose.ExpiredSignatureError`/`JWTError`, `HTTPException` with "devre dışı/disabled" detail, all `HTTPException` 4xx, `asyncio.CancelledError`. Adding `capture_exception()` for any of these is wasted noise.
+(`app/main.py:71`, `_sentry_before_send`) Filters out: monitoring self-test events, `CancelledError`-message events, JWT-anomaly `capture_message`s from `alarm_router`, all `HTTPException`/`StarletteHTTPException` 4xx, `PyJWT`'s `ExpiredSignatureError`/`PyJWTError` (not `jose` — the codebase uses `PyJWT`, `from jwt import ...`), `HTTPException` with "devre dışı/disabled" detail, `asyncio.CancelledError`, and asyncpg's `UntranslatableCharacterError` (test-DB-only). Adding `capture_exception()` for any of these is wasted noise. In practice only two call sites ever reach Sentry: `db_operational_error_handler` (`SAOperationalError`) and the catch-all `unhandled_exception_handler` — everything else is suppressed before send.
 
 ### Pre-commit reformats — restage after first commit attempt
 

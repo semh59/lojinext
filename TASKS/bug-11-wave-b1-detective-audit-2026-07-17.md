@@ -239,7 +239,12 @@ tüketici/shim taraması) denetlendi.
 7. `RAGEngine.index_log`/`index_event`/`bulk_index` (`index_alert`'in tek
    çağırdığı) — dokümante edilmemiş ek ölü metotlar olarak eklendi.
 
-## Gerçek, DAVRANIŞ DEĞİŞTİRİCİ bulgular — PRE-EXISTING (dalga 12'den önce de vardı), BU OTURUMDA DÜZELTİLMEDİ, kullanıcı kararı bekliyor
+## Gerçek, DAVRANIŞ DEĞİŞTİRİCİ bulgular — PRE-EXISTING (dalga 12'den önce de vardı) — ✅ HEPSİ AYNI GÜN İKİNCİ TURDA DÜZELTİLDİ (bkz. aşağıdaki "DURUM GÜNCELLEMESİ")
+
+> Başlık geçmişte "düzeltilmedi, kullanıcı kararı bekliyor" diyordu — bu
+> madde 8-11'in İLK bulunduğu andaki durumdu. Aynı gün (2026-07-17) ikinci
+> turda kullanıcı onayıyla hepsi düzeltildi (bkz. altta), başlık
+> 2026-07-18 tam-denetim turunda bu tutarsızlık fark edilip güncellendi.
 
 Üçü de `git show d0b8f1e:<eski-yol>` ile dalga-12-öncesi koda karşı
 doğrulandı — dalga 12'nin taşıması bunları birebir/faithfully taşıdı,

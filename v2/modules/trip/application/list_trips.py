@@ -112,6 +112,7 @@ async def get_all_trips(
     arac_id: Optional[int] = None,
     status: Optional[str] = None,
     limit: int = 100,
+    repo: Optional[SeferRepository] = None,
 ) -> List[SeferResponse]:
     """Filtreli sefer listesi (Legacy support, redirected to paged)"""
     # Note: This returns List[Sefer], but get_all_paged returns Dict.
@@ -123,6 +124,7 @@ async def get_all_trips(
         baslangic_tarih=start_date,
         bitis_tarih=end_date,
         durum=status,
+        repo=repo,
     )
 
     return paged_result["items"]

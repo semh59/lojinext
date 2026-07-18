@@ -110,7 +110,14 @@ api_router.include_router(
 )
 api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
 api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
-api_router.include_router(trip_read_router, prefix="/trips", tags=["trips"])
+# NOT: trip_read_router EN SON eklenir — kendi ``GET /{sefer_id}`` catch-all
+# route'u tek-segment bir path param'ı (FastAPI/Starlette route eşleşmesi
+# kayıt SIRASINA göredir, otomatik specificity yok). Diğer router'ların
+# ``GET /stats`` (trip_analytics_router) / ``GET /export`` (trip_export_router)
+# gibi tek-segment literal path'leri trip_read_router'dan ÖNCE eklenmezse,
+# `/{sefer_id}` bunları önce yakalar ve sefer_id=<literal> int-coercion'ı
+# 422 ile patlar (bu regresyon `test_trip_contracts_and_bulk_flows`'ta
+# bulundu ve düzeltildi — dalga 14).
 api_router.include_router(trip_write_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_bulk_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_approval_router, prefix="/trips", tags=["trips"])
@@ -118,6 +125,7 @@ api_router.include_router(trip_export_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_import_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_analytics_router, prefix="/trips", tags=["trips"])
 api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
+api_router.include_router(trip_read_router, prefix="/trips", tags=["trips"])
 api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
     predictions_router, prefix="/predictions", tags=["predictions"]

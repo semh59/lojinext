@@ -26,6 +26,9 @@ from v2.modules.driver.application.driver_stats import (
 from v2.modules.driver.infrastructure import (
     driver_metrics_queries as driver_metrics_queries_mod,
 )
+from v2.modules.driver.infrastructure import (
+    driver_trip_queries as driver_trip_queries_mod,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -55,7 +58,7 @@ def _make_stats(**kwargs):
 
 
 @pytest.fixture
-def mock_uow():
+def mock_uow(monkeypatch):
     uow = MagicMock()
     uow.__aenter__ = AsyncMock(return_value=uow)
     uow.__aexit__ = AsyncMock(return_value=None)
@@ -73,7 +76,12 @@ def mock_uow():
     uow.sefer_repo.get_all = AsyncMock(return_value=[])
     # AUDIT-045 refactor: elite skor artık get_recent_trips_batch + _calc_elite_from_trips
     # yolundan hesaplanıyor (eski calculate_elite_performance_score değil).
-    uow.sefer_repo.get_recent_trips_batch = AsyncMock(return_value={})
+    # Dalga 14: get_recent_trips_batch artık uow.sefer_repo'nun bir metodu
+    # değil, driver_trip_queries.py'de bağımsız bir free function (inline
+    # import edilir) — patch hedefi kaynak modül.
+    monkeypatch.setattr(
+        driver_trip_queries_mod, "get_recent_trips_batch", AsyncMock(return_value={})
+    )
 
     return uow
 
@@ -229,8 +237,10 @@ class TestGetDriverStats:
             AsyncMock(return_value=stats),
         )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
-        mock_uow.sefer_repo.get_recent_trips_batch = AsyncMock(
-            return_value={1: [{"tuketim": 30.0}]}
+        monkeypatch.setattr(
+            driver_trip_queries_mod,
+            "get_recent_trips_batch",
+            AsyncMock(return_value={1: [{"tuketim": 30.0}]}),
         )
 
         with patch.object(
@@ -636,7 +646,7 @@ class TestReposFallback:
                 return_value=MagicMock(),
             ) as mock_sofor,
             patch(
-                "v2.modules.trip.infrastructure.repository.get_sefer_repo",
+                "v2.modules.trip.public.get_sefer_repo",
                 return_value=MagicMock(),
             ) as mock_sefer,
         ):

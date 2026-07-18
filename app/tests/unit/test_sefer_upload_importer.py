@@ -14,9 +14,10 @@ Master listeleri (arac/sofor/dorse/lokasyon) artık GERÇEK DB'den çekiliyor:
 ``import_sefer_excel_upload`` kendi ``async with UnitOfWork()`` içinde
 ``uow.arac_repo.get_all(...)`` çağırır. Testler gerçek satır seed eder ve
 gerçek repo sorgusunu + ORM-attribute lookup yolunu (üretimdeki ``getattr``
-dalı, dict ``.get`` değil) çalıştırır. ``sefer_service.bulk_add_sefer``
-container üzerinden çağrılıyor (trip henüz taşınmadı) — container.sefer_service
-patch'lenir, çağrılan argüman listesi bir capture closure ile yakalanır.
+dalı, dict ``.get`` değil) çalıştırır. ``bulk_add_sefer`` artık (dalga 14)
+``v2.modules.trip.public``'ten inline import ediliyor (container üzerinden
+değil) — patch hedefi KAYNAK modül, çağrılan argüman listesi bir capture
+closure ile yakalanır.
 
 Excel parse (``parse_sefer_excel``) stub'lanır: xlsx ayrıştırma ayrı bir
 birim (infrastructure/parsers.py) ve kendi testlerine sahip; buradaki birim
@@ -35,7 +36,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -63,11 +64,7 @@ async def _prepare(db_session, monkeypatch, *, seed_route=True):
         captured["calls"].append(sefer_list)
         return len(sefer_list)
 
-    mock_sefer_service = AsyncMock()
-    mock_sefer_service.bulk_add_sefer = _bulk
-    mock_container = MagicMock()
-    mock_container.sefer_service = mock_sefer_service
-    monkeypatch.setattr("app.core.container.get_container", lambda: mock_container)
+    monkeypatch.setattr("v2.modules.trip.public.bulk_add_sefer", _bulk)
 
     return captured
 

@@ -13,13 +13,13 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import require_permissions
+from app.api.deps import get_sefer_service, require_permissions
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import EXCEL_XLSX_RESPONSES
 from v2.modules.import_excel.public import export_data, generate_template
-from v2.modules.trip.public import SeferService, get_sefer_service
+from v2.modules.trip.public import SeferService
 
 logger = get_logger(__name__)
 

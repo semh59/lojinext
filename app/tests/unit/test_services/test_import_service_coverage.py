@@ -21,7 +21,7 @@ patch hedefi HER ZAMAN tüketen modül (`v2.modules.import_excel.application.
 import io
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
@@ -60,14 +60,15 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def svc(monkeypatch):
-    """``sefer_service.bulk_add_sefer`` container üzerinden çağrılıyor (trip
-    henüz taşınmadı) — container.sefer_service patch'lenir, mock namespace
-    üzerinden erişilir (`svc.sefer_service.bulk_add_sefer`)."""
-    mock_sefer_service = AsyncMock()
-    mock_container = MagicMock()
-    mock_container.sefer_service = mock_sefer_service
-    monkeypatch.setattr("app.core.container.get_container", lambda: mock_container)
-    return SimpleNamespace(sefer_service=mock_sefer_service)
+    """``process_sefer_import`` artık ``v2.modules.trip.public.bulk_add_sefer``'i
+    doğrudan çağırıyor (dalga 14 — container üzerinden değil). Inline
+    (fonksiyon-içi) import olduğu için patch hedefi KAYNAK modül, tüketen
+    modül değil."""
+    mock_bulk_add_sefer = AsyncMock(return_value=0)
+    monkeypatch.setattr(
+        "v2.modules.trip.public.bulk_add_sefer", mock_bulk_add_sefer
+    )
+    return SimpleNamespace(bulk_add_sefer=mock_bulk_add_sefer)
 
 
 @pytest.fixture
@@ -664,7 +665,7 @@ class TestProcessSeferImportExtra:
                 "bitis_km": 450,
             }
         ]
-        svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
+        svc.bulk_add_sefer.return_value = 1
 
         count, errors = await process_sefer_import(b"fake")
         assert count == 1
@@ -1097,9 +1098,7 @@ class TestProcessSeferImportErrorBranches:
         ]
 
         # Make bulk_add_sefer raise after validation passes
-        svc.sefer_service.bulk_add_sefer = AsyncMock(
-            side_effect=RuntimeError("DB crash")
-        )
+        svc.bulk_add_sefer.side_effect = RuntimeError("DB crash")
 
         count, errors = await process_sefer_import(b"fake")
         # bulk_add_sefer raising after validation passes is caught by the

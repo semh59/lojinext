@@ -93,7 +93,7 @@ class SeferService:
     ) -> List[Any]:
         """Retrieves all trips based on criteria."""
         return await list_trips.get_all_trips(
-            start_date, end_date, sofor_id, arac_id, status, limit
+            start_date, end_date, sofor_id, arac_id, status, limit, repo=self.repo
         )
 
     async def get_trip_stats(

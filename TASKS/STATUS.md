@@ -1535,6 +1535,74 @@ route dosyaları + `driver_trip_queries.py`), ~15 üretim tüketici dosyası
 güncellendi, ~40 test dosyası taşındı/güncellendi, `.importlinter`,
 kök `CLAUDE.md` + `v2/modules/trip/CLAUDE.md` (yeni).
 
+### DALGA 14 push-sonrası düzeltme turu (2026-07-18, aynı oturum) — gerçek Postgres+Redis'e karşı tam suite
+
+İlk commit push'landıktan sonra `app/tests/integration`/`app/tests/api`/
+`app/tests/unit` gerçek DB'ye karşı tam koşuldu (önceki doğrulama yalnız
+hedefli dosyalarla sınırlıydı) — 2 GERÇEK ÜRETİM BUG'I + 6 test-migrasyon
+borcu bulundu, hepsi aynı oturumda düzeltildi:
+
+1. **GERÇEK BUG — route sırası çakışması**: `app.py`'de `trip_read_router`
+   (kendi `GET /{sefer_id}` catch-all'ı, tek segment path param) ilk sırada
+   include edilmişti; `trip_analytics_router`'ın `GET /stats`'ı ve
+   `trip_export_router`'ın `GET /export`'u (ikisi de tek-segment literal,
+   AYNI HTTP metodu) ondan SONRA geliyordu. FastAPI/Starlette route
+   eşleşmesi kayıt sırasına göre olduğu için `/trips/stats` önce
+   `/trips/{sefer_id}`'e düşüp `sefer_id="stats"` int-coercion'ı 422 ile
+   patlıyordu (`test_api_seferler.py::test_trip_contracts_and_bulk_flows`
+   ile bulundu). Düzeltme: `trip_read_router`'ın include sırası EN SONA
+   alındı (yorum eklendi, tekrar olmasın diye).
+2. **GERÇEK BUG — `trip_export_routes.py` yanlış `get_sefer_service`
+   kullanıyordu**: 7 route dosyasının 7'si de `app.api.deps.get_sefer_service`
+   (request-scoped UoW'a bağlı repo) kullanırken, bu dosya yanlışlıkla
+   `v2.modules.trip.public.get_sefer_service` (container-singleton,
+   session'sız repo) import ediyordu — `GET /trips/export` prod'da da
+   "Database session not initialized" ile 500 verirdi (yalnız testte değil).
+   Düzeltme: import `app.api.deps`'e çevrildi (diğer 7 dosyayla tutarlı).
+3. **Test migrasyon borcu (6 dosya)** — mekanik `pytest --collect-only`
+   taraması yakalayamadığı RUNTIME-only kırılmalar (import başarılı,
+   davranış eski sınıf/container mimarisini varsayıyor):
+   - `test_sefer_service_coverage.py` — TAM YENİDEN YAZILDI (eski
+     `SeferService.read_service`/`write_service`/`analiz_service` CQRS
+     alt-servis mimarisini test ediyordu, artık yok — free-function
+     delegation testine çevrildi).
+   - `test_sefer_analiz_service.py` — TAM YENİDEN YAZILDI (silinen
+     `SeferAnalizService` sınıfını test ediyordu — `reconcile_costs`
+     free function'ına çevrildi, 10 test + 1 yeni threshold testi).
+   - `test_sofor_analiz_coverage.py` — `get_recent_trips_batch` artık
+     `uow.sefer_repo`'nun metodu değil, `driver_trip_queries.py`'de
+     free function (inline import) — 4 test + fixture kaynak modülü
+     patch'lemeye çevrildi. Ayrıca ayrı bir bug: `test_repos_falls_back_
+     without_uow` `v2.modules.trip.infrastructure.repository.get_sefer_repo`'yu
+     patch'liyordu ama `driver_stats.py` `v2.modules.trip.public`'ten
+     import ediyor — iki ayrı module-namespace binding'i, patch etkisizdi
+     (yalnız test sırası `public`'i önceden import ETMEMİŞSE tesadüfen
+     geçiyordu — full-suite'te 1195/1196 testten sonra her zaman
+     import edilmiş oluyor, o yüzden yalnız tam koşumda ortaya çıktı).
+   - `test_sefer_fuel_estimator.py` (test_services/) — 3 test hâlâ
+     `app.core.services.sefer_fuel_estimator` import ediyordu (silinen
+     eski yol) — `v2.modules.trip.application.sefer_fuel_estimator`'a
+     düzeltildi.
+   - `test_import_service_coverage.py`, `test_import_service.py`,
+     `test_sefer_upload_importer.py` — `sefer_importer.py`/
+     `sefer_upload_importer.py`'nin `bulk_add_sefer`'i artık container
+     üzerinden değil `v2.modules.trip.public`'ten inline import ediyor
+     (dalga 14 kararı) — 3 dosyanın `svc`/`seeded` fixture'ları container
+     mock'undan kaynak-modül patch'ine çevrildi (aksi halde gerçek
+     `bulk_add_sefer` mock'lanmadan çalışıp dict/`SeferCreate` tip
+     uyuşmazlığına çarpıyordu — bu uyuşmazlığın kendisi ARCH-002'de
+     zaten dokümante pre-existing bir gotcha, YENİ değil, sadece artık
+     mock'un arkasına gizlenemiyor).
+4. `v2/modules/driver/CLAUDE.md`'nin "trip henüz taşınmadı" bölümleri
+   güncellendi (dalga 14 artık geçti, 6 sorgu gerçekten taşındı).
+
+**Doğrulama (bu tur)**: `ruff check` + `mypy app v2` (1022 dosya) temiz;
+`lint-imports` 16/17 kept (aynı); gerçek Postgres 16 + Redis'e karşı
+`app/tests/integration` (283/288, 5 fail = pre-existing api-stub/gerçek-ağ
+ortam farkı, trip'le ilgisiz), `app/tests/api` (1044/1045, 1 fail = aynı
+sınıf), `app/tests/unit` (tam koşum, sıfır fail) — **net-yeni regresyon
+SIFIR** düzeltmeler sonrası. İkinci commit + push aynı oturumda yapıldı.
+
 ## Son güncelleme
 
 2026-07-18 (üçüncü oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME

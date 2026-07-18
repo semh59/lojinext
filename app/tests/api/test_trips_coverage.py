@@ -232,7 +232,7 @@ async def test_export_seferler_success(async_client, admin_auth_headers):
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.export_data",
+            "v2.modules.import_excel.api.trip_export_routes.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -558,7 +558,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
     """GET /excel/template → 200 with file content (lines 429-439)."""
     fake_bytes = b"PK\x03\x04fake-template"
     with patch(
-        "app.api.v1.endpoints.trips.generate_template",
+        "v2.modules.import_excel.api.trip_export_routes.generate_template",
         new_callable=AsyncMock,
         return_value=fake_bytes,
     ):
@@ -573,7 +573,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
 async def test_get_excel_template_error(async_client, admin_auth_headers):
     """GET /excel/template ExcelService raises → 500 (lines 444-446)."""
     with patch(
-        "app.api.v1.endpoints.trips.generate_template",
+        "v2.modules.import_excel.api.trip_export_routes.generate_template",
         new_callable=AsyncMock,
         side_effect=RuntimeError("template generation failed"),
     ):
@@ -1102,7 +1102,7 @@ async def test_sefer_onayla_success(async_client, admin_auth_headers):
     mock_svc.set_onay_durumu = AsyncMock(return_value=sefer_obj)
     with (
         _override_sefer_service(mock_svc),
-        patch("app.api.v1.endpoints.trips.trip_approval_total") as mock_metric,
+        patch("v2.modules.trip.api.trip_approval_routes.trip_approval_total") as mock_metric,
     ):
         mock_metric.labels.return_value.inc = MagicMock()
         resp = await async_client.post(
@@ -1153,7 +1153,7 @@ async def test_sefer_reddet_success(async_client, admin_auth_headers):
     mock_svc.set_onay_durumu = AsyncMock(return_value=sefer_obj)
     with (
         _override_sefer_service(mock_svc),
-        patch("app.api.v1.endpoints.trips.trip_approval_total") as mock_metric,
+        patch("v2.modules.trip.api.trip_approval_routes.trip_approval_total") as mock_metric,
     ):
         mock_metric.labels.return_value.inc = MagicMock()
         resp = await async_client.post(
@@ -1278,7 +1278,7 @@ async def test_plan_wizard_engine_error(async_client, admin_auth_headers):
 
     try:
         with patch(
-            "v2.modules.ai_assistant.public.TripPlannerEngine",
+            "v2.modules.ai_assistant.api.plan_wizard_routes.TripPlannerEngine",
             return_value=mock_engine,
         ):
             resp = await async_client.post(

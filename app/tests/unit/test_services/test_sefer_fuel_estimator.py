@@ -290,7 +290,7 @@ class TestSeferFuelEstimator:
         (yıl bazlı) yaş hesaplanmalı."""
         from datetime import date
 
-        from app.core.services import sefer_fuel_estimator as mod
+        from v2.modules.trip.application import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
         arac = MagicMock(spec=["yil"])
@@ -306,7 +306,7 @@ class TestSeferFuelEstimator:
         from datetime import date
 
         from app.core.entities.models import Arac as EntityArac
-        from app.core.services import sefer_fuel_estimator as mod
+        from v2.modules.trip.application import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
         arac = MagicMock(spec=["yil"])
@@ -323,7 +323,7 @@ class TestSeferFuelEstimator:
         """Gelecek üretim yılı negatif yaş üretmez (max 0)."""
         from datetime import date
 
-        from app.core.services import sefer_fuel_estimator as mod
+        from v2.modules.trip.application import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)
         arac = MagicMock(spec=["yil"])

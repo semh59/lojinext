@@ -19,7 +19,7 @@ değil (location/fleet/driver/fuel'deki aynı gotcha).
 
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
@@ -115,17 +115,17 @@ class TestProcessImports:
         """GERÇEK master satırları (arac/sofor/lokasyon) + mock'lanan
         bulk_add_* / container.sefer_service.
 
-        ``bulk_add_vehicles``/``bulk_add_yakit``/``bulk_add_sofor`` birer
-        free function — ilgili importer bunları inline import ile çağırır,
-        bu yüzden patch hedefi KAYNAK modül (location/CLAUDE.md inline-import
-        gotcha'sı) — ``bulk_add_vehicles`` için hâlâ
+        ``bulk_add_vehicles``/``bulk_add_yakit``/``bulk_add_sofor``/``bulk_add_sefer``
+        birer free function — ilgili importer bunları inline import ile
+        çağırır, bu yüzden patch hedefi KAYNAK modül (location/CLAUDE.md
+        inline-import gotcha'sı) — ``bulk_add_vehicles`` için hâlâ
         ``v2.modules.fleet.application.bulk_add_vehicles`` (fleet henüz bu
         importer'ı public.py'ye yönlendirmedi); ``bulk_add_yakit``/
-        ``bulk_add_sofor`` için artık "kaynak" `public.py`'nin kendisi
-        (2026-07-17 dedektif denetimi düzeltmesi — importer'lar artık
-        `fuel.public`/`driver.public` üzerinden geçiyor). ``sefer_service.
-        bulk_add_sefer`` container üzerinden çağrılıyor (trip henüz
-        taşınmadı) — container.sefer_service patch'lenir.
+        ``bulk_add_sofor``/``bulk_add_sefer`` için artık "kaynak" ilgili
+        modülün `public.py`'sinin kendisi (2026-07-17 dedektif denetimi
+        düzeltmesi fuel/driver için, dalga 14 trip için — importer'lar
+        artık container yerine `fuel.public`/`driver.public`/`trip.public`
+        üzerinden geçiyor).
         """
         arac = await seed_arac(
             db_session, plaka="34ABC123", marka="Mercedes", bos_agirlik_kg=0
@@ -137,11 +137,10 @@ class TestProcessImports:
         user = await seed_kullanici(db_session)
         await db_session.commit()
 
-        mock_sefer_service = AsyncMock()
-        mock_sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
-        mock_container = MagicMock()
-        mock_container.sefer_service = mock_sefer_service
-        monkeypatch.setattr("app.core.container.get_container", lambda: mock_container)
+        mock_bulk_add_sefer = AsyncMock(return_value=1)
+        monkeypatch.setattr(
+            "v2.modules.trip.public.bulk_add_sefer", mock_bulk_add_sefer
+        )
         monkeypatch.setattr(
             "v2.modules.fleet.application.bulk_add_vehicles.bulk_add_vehicles",
             AsyncMock(return_value=1),
@@ -160,7 +159,7 @@ class TestProcessImports:
             lok=lok,
             user=user,
             db=db_session,
-            sefer_service=mock_sefer_service,
+            bulk_add_sefer=mock_bulk_add_sefer,
         )
 
     @patch(
@@ -182,7 +181,7 @@ class TestProcessImports:
         count, errors = await process_sefer_import(b"fake")
         assert count == 1
         assert len(errors) == 0
-        payload = seeded.sefer_service.bulk_add_sefer.await_args.args[0][0]
+        payload = seeded.bulk_add_sefer.await_args.args[0][0]
         assert payload["sofor_id"] == seeded.sofor.id
         assert payload["guzergah_id"] == seeded.lok.id
         assert payload["net_kg"] == 20000
@@ -452,7 +451,7 @@ class TestProcessImports:
         assert count == 0
         assert errors
         assert errors[0]["field"] == "sofor_adi"
-        seeded.sefer_service.bulk_add_sefer.assert_not_called()
+        seeded.bulk_add_sefer.assert_not_called()
 
     async def test_execute_import_sefer_resolves_driver_and_route_ids(self, seeded):
         """execute_import sefer yolu: gerçek master + gerçek INSERT INTO seferler."""

@@ -148,18 +148,22 @@ path'ini kullanacak şekilde refactor).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **trip (senkron, henüz taşınmadı)**: `get_route_profile_sofor`
-  `uow.sefer_repo.get_driver_trips_with_route_analysis(...)` çağırır;
-  `get_driver_stats`/`calculate_elite_performance_score`
-  `sefer_repo.get_recent_trips_batch(...)`/`sefer_repo.get_all(...)` çağırır.
-  `sefer_repo.py`'deki 6 driver-özel sorgu (`get_by_sofor_id`,
-  `get_with_route_analysis`, `get_driver_trips_with_route_analysis`,
-  `get_driver_trips_by_route_type`, `get_recent_trips_batch`,
-  `_search_driver_ids_by_name`) **BU DALGADA TAŞINMADI** — trip dalga 14'te
-  taşınacak (`infrastructure/driver_trip_queries.py` olarak driver
-  modülüne gelecek, `TASKS/modules/driver.md` §4'te zaten not düşülmüştü).
-  Ayrıca `sefer_write_service.py` (trip) `uow.sofor_repo.get_by_id`/
-  `get_by_ids`/`get_all` çağırır (aktif şoför kontrolü, N+1 önleme).
+- **trip (taşındı, dalga 14)**: eski `sefer_repo.py`'deki 6 driver-özel sorgu
+  (`get_by_sofor_id`, `get_with_route_analysis`,
+  `get_driver_trips_with_route_analysis`, `get_driver_trips_by_route_type`,
+  `get_recent_trips_batch`, `search_driver_ids_by_name`) trip dalga 14'te bu
+  modüle taşındı — artık `infrastructure/driver_trip_queries.py`'de, kendi
+  `uow: Optional[Any] = None` fallback deseniyle (`_resolve_session()`
+  helper'ı, `uow` verilmezse kendi `UnitOfWork()` açar). `route_profile.py`/
+  `get_route_profile.py::get_route_profile_sofor` ve `driver_stats.py::
+  get_driver_stats`/`calculate_elite_performance_score` artık bu dosyadan
+  inline import ederek çağırıyor (`uow.sefer_repo.*` DEĞİL). `v2.modules.
+  trip.public.search_driver_ids_by_name` de `SeferRepository.get_all`'ın
+  genel arama özelliği tarafından ters yönde çağrılıyor (bkz.
+  `v2/modules/trip/CLAUDE.md`). Ayrıca trip'in `bulk_add_sefer`/
+  `sefer_write_service`'in dissolve edilmiş hali `uow.sofor_repo.get_by_id`/
+  `get_by_ids`/`get_all` çağırır (aktif şoför kontrolü, N+1 önleme) —
+  bu yön değişmedi.
 - **prediction_ml (taşındı, dalga 13)**: `application/driver_stats.py`
   `_calc_elite_from_trips`/`calculate_elite_performance_score`
   `v2.modules.prediction_ml.public.get_prediction_service()` çağırır
@@ -284,9 +288,10 @@ diğer modüllerin yalnız `public`/`events`'ini import edebilir
 (2026-07-18'den beri KEPT — `generate_coaching.py`'nin groq_client
 doğrudan importu `ai_assistant.public`'e çevrildi). Diğer modüller bu
 modüle yalnız `v2.modules.driver.public` üzerinden erişir (container.py/
-repositories/__init__.py composition-root istisnası hariç). Trip'in
-`sefer_repo`'suna geçici doğrudan bağımlılık kontrat ignore'unda
-dokümante (dalga 14'te çözülecek).
+repositories/__init__.py composition-root istisnası hariç). Trip'e geçici
+bağımlılık (dalga 14 öncesi `sefer_repo`'ya doğrudan erişim) dalga 14 ile
+çözüldü — artık `v2.modules.trip.public` üzerinden geçiyor, ayrı bir
+kontrat ignore'una gerek kalmadı.
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 

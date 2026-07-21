@@ -140,6 +140,40 @@ yazdığı 13 kontratın TAMAMI (independence + layers + 11×forbidden) KEPT.**
 - `continue-on-error: true` satırı CI workflow'undan kaldırılır.
 - 5 ardışık gün main'de bu adım yeşil kalır (flake yok).
 
+## ✅ GATE'E GEÇİŞ — KISMEN YAPILDI (2026-07-21, dalga 16 sırasında)
+
+Kullanıcı ("sınır ihlali için stoper... çalışmıyor" sorusu üzerine)
+`.github/workflows/ci.yml`'nin bu adımı hâlâ `|| true` +
+`continue-on-error: true` ile tamamen non-blocking olduğunu, yani sınır
+ihlallerini GERÇEKTE hiç durdurmadığını fark etti. Yukarıdaki dört kriter
+tam olarak karşılanmamıştı (dalga 12-15 taşınmıştı ama shared_kernel dalga
+16 ortasındaydı, platform_infra dalga 17 hiç başlamamıştı, 5 gün burn-in
+imkansızdı — bu bir CI oturumu, günler boyu gözlem yapılamaz) ama kullanıcı
+kararı ("en doğrusunu seç, sonuç bize doğru seçimi gösterir") ile **kısmi
+gate'e geçildi**:
+
+- `lint-imports --contract <17 isim>` ile YALNIZ modüler-monolit
+  kontratları (1 independence + 1 layers + 15 public-surface-only — o an
+  taşınmış TÜM iş modülleri) `|| true`/`continue-on-error` OLMADAN
+  çalıştırılıyor — gerçekten blocking.
+- Eski `report-only` kontratı (`app.core.services` vs `app.services`,
+  refactor'ün kapsamı dışı, önceden bilinen drift) AYRI bir adıma taşındı,
+  `--contract report-only` ile izole edilip `|| true` ile non-blocking
+  bırakıldı — gate'in bu ALAKASIZ, eski sorunu bloklamasını önlemek için
+  (`lint-imports` tüm config'i tek komutta çalıştırınca herhangi bir
+  kontrat kırılırsa TÜMÜ non-zero exit veriyor, seçici `--contract` filtresi
+  olmadan ayırmak mümkün değildi).
+- `shared_kernel` (dalga 16) ve `platform_infra` (dalga 17) henüz kontrat
+  setinde YOK — o dalgalar bitince, önceki 15 modülle aynı desende
+  eklenmeleri gerekiyor (yeni `public-surface-only-shared_kernel`/
+  `-platform_infra` kontratları + `.importlinter`'ın 3 mevcut kontrat
+  tipine dahil edilmeleri).
+- 5 günlük burn-in GÖZLENEMEDİ (tek oturumluk iş) — bunun yerine mevcut 17
+  kontrat bu oturumda çok kez `lint-imports` ile tekrar tekrar doğrulandı
+  (her önemli değişiklikten sonra), tutarlı "17 kept" sonucu verdi.
+  Gerçek CI ortamında ilk birkaç koşuda flake çıkarsa buradan görülüp
+  düzeltilecek.
+
 ## Kabul Kriterleri (BU TUR)
 
 - [x] Adım 0'daki root_package/root_packages sorunu gerçekten çözülmüş

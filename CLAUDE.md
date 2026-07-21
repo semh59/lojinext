@@ -421,6 +421,14 @@ All settings in `app/config.py` (`pydantic_settings.BaseSettings`). Reference vi
 6. `mypy` — no type errors
 7. `pytest` unit + integration with 70 % coverage minimum
 8. `vitest --run` + `vite build`
+9. `lint-imports` (import-linter) — the 17 v2/-modules contracts (1
+   independence + 1 layers + 15 `public-surface-only-<module>`, one per
+   migrated business module) must pass; blocking since 2026-07-21. The
+   pre-existing legacy `report-only` contract (`app.core.services` vs
+   `app.services` circular drift, unrelated to the v2/ modular-monolith
+   refactor) stays non-blocking on purpose — see
+   `TASKS/faz1-import-linter-baseline-ve-gate.md`. `shared_kernel`/
+   `platform_infra` aren't in the gated set yet — added when those dalgas land.
 
 ---
 

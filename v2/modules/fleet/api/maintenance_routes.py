@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.deps import get_current_active_user
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.fleet.application.create_maintenance_record import create_breakdown
 from v2.modules.fleet.infrastructure.models import BakimTipi
 

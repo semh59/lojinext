@@ -444,7 +444,7 @@ class TestUserService:
 
     @pytest.mark.asyncio
     async def test_create_user_success(self, svc, db_session):
-        from app.database.models import Rol
+        from v2.modules.auth_rbac.public import Rol
 
         rol = Rol(ad="create-user-test-rol", yetkiler={})
         db_session.add(rol)

@@ -8,10 +8,9 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from v2.modules.auth_rbac.public import require_yetki
+from v2.modules.auth_rbac.public import Kullanici, require_yetki
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
 )

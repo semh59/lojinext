@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.reports.schemas import TemplateListResponse, TemplateMeta
 
 logger = logging.getLogger(__name__)

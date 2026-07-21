@@ -5,7 +5,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import select
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Kullanici, Rol
+from v2.modules.auth_rbac.infrastructure.models import Kullanici, Rol
 
 
 class RolRepository(BaseRepository[Rol]):

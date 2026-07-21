@@ -19,9 +19,9 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.driver.application.generate_coaching import get_driver_coaching_engine
 from v2.modules.driver.application.get_coaching_effectiveness import (
     get_coaching_effectiveness_stats,

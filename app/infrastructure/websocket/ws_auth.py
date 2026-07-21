@@ -16,8 +16,12 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.database.connection import AsyncSessionLocal
-from app.database.models import Kullanici
-from v2.modules.auth_rbac.public import Permission, SecurityService, blacklist
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    Permission,
+    SecurityService,
+    blacklist,
+)
 
 
 async def verify_ws_ticket(ticket: str) -> Optional[str]:

@@ -11,13 +11,13 @@ from typing import Annotated, Any, Dict
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.api.deps import get_background_job_manager, require_permissions
-from app.database.models import Kullanici
 from app.infrastructure.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
 )
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.shared_kernel.schemas.api_responses import TaskStatusResponse
 
 logger = get_logger(__name__)

@@ -42,7 +42,8 @@ class TestListRules:
         self, async_client, admin_auth_headers, db_session
     ):
         """list_rules returns seeded notification rules from real DB."""
-        from app.database.models import BildirimKurali, Rol
+        from app.database.models import BildirimKurali
+        from v2.modules.auth_rbac.public import Rol
 
         role = Rol(ad="notif_test_rol", yetkiler={})
         db_session.add(role)
@@ -77,7 +78,7 @@ class TestCreateRule:
         self, async_client, admin_auth_headers, db_session
     ):
         """create_rule persists to DB and returns 201 with the new rule."""
-        from app.database.models import Rol
+        from v2.modules.auth_rbac.public import Rol
 
         role = Rol(ad="notif_create_test_rol", yetkiler={})
         db_session.add(role)

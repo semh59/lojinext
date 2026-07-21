@@ -1,10 +1,14 @@
-from typing import List, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Union
 
 from fastapi import Depends
 
 from app.api.deps import get_current_user
-from app.database.models import Kullanici
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
+
+if TYPE_CHECKING:
+    from v2.modules.auth_rbac.infrastructure.models import Kullanici
 
 
 class PermissionChecker:

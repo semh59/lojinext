@@ -6,13 +6,13 @@ from fastapi import APIRouter, Depends, Query
 from starlette.responses import JSONResponse
 
 from app.api.deps import get_background_job_manager, get_current_active_admin
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
 )
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.prediction_ml.application.prediction_backfill_service import (
     PredictionBackfillService,
 )

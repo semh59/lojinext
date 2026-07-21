@@ -16,9 +16,8 @@ from pydantic import BaseModel
 from app.api.deps import get_current_active_user
 from app.api.middleware.rate_limiter import limiter
 from app.core.exceptions import DomainError
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
-from v2.modules.auth_rbac.public import require_yetki
+from v2.modules.auth_rbac.public import Kullanici, require_yetki
 from v2.modules.import_excel.application.execute_import import execute_import
 from v2.modules.import_excel.application.get_import_history import (
     get_import_history as get_import_history_usecase,

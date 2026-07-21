@@ -30,7 +30,6 @@ from app.api.deps import (
 from app.api.v1.utils import parse_date_param
 from app.config import settings
 from app.core.exceptions import DomainError
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
@@ -46,6 +45,7 @@ from v2.modules.admin_platform.public import (
     release_reservation,
     reserve_or_get_cached,
 )
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.delete_yakit import (
     delete_yakit as delete_yakit_usecase,

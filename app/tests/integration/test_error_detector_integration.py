@@ -330,12 +330,12 @@ async def test_resolve_event_end_to_end(async_client, db_session):
     from sqlalchemy import select
 
     from app.database.models import ErrorEvent as ErrorEventModel
-    from app.database.models import Kullanici, Rol
     from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
+    from v2.modules.auth_rbac.public import Kullanici, Rol
 
     # Create a real admin role + user so resolved_by FK is satisfied
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "admin"))

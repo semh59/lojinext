@@ -167,11 +167,8 @@ def db_session_factory(db_engine, monkeypatch):
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_db(db_engine, db_session_factory):
-    from app.database.models import (
-        Base,
-        Kullanici,
-        Rol,
-    )
+    from app.database.models import Base
+    from v2.modules.auth_rbac.public import Kullanici, Rol
 
     original_environment = settings.ENVIRONMENT
     original_alembic_ready = settings.ALEMBIC_READY

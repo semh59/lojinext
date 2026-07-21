@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import SessionDep, require_permissions
 from app.config import settings
-from app.database.models import Anomaly, Kullanici
+from app.database.models import Anomaly
 from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.anomaly.application.manage_investigations import (
     create_investigation as create_investigation_uc,
@@ -56,6 +56,7 @@ from v2.modules.anomaly.schemas import (
     PatternMatch,
     TheftClassification,
 )
+from v2.modules.auth_rbac.public import Kullanici
 
 logger = logging.getLogger(__name__)
 

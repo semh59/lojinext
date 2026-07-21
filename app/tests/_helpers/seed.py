@@ -6,12 +6,11 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from app.database.models import (
-    Kullanici,
     Lokasyon,
-    Rol,
     SistemKonfig,
     YakitAlimi,
 )
+from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.public import Dorse

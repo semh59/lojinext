@@ -5,7 +5,7 @@ from typing import List
 from sqlalchemy import select
 
 from app.database.base_repository import BaseRepository
-from app.database.models import KullaniciOturumu
+from v2.modules.auth_rbac.infrastructure.models import KullaniciOturumu
 
 
 class SessionRepository(BaseRepository[KullaniciOturumu]):

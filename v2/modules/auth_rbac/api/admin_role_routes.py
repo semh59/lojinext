@@ -2,11 +2,11 @@ from typing import List
 
 from fastapi import APIRouter, Depends, status
 
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.application import role_service
 from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.schemas import RolCreate, RolRead
 
 router = APIRouter()

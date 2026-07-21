@@ -14,8 +14,8 @@ from typing import Dict, List
 
 from fastapi import HTTPException
 
-from app.database.models import Kullanici, Rol
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.auth_rbac.infrastructure.models import Kullanici, Rol
 
 _PROTECTED_ROLES = {"super_admin", "admin"}
 

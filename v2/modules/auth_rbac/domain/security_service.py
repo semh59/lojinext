@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from enum import IntFlag, auto
-from typing import Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from fastapi import HTTPException, status
 
-from app.database.models import Kullanici
+if TYPE_CHECKING:
+    from v2.modules.auth_rbac.infrastructure.models import Kullanici
 
 
 class Permission(IntFlag):

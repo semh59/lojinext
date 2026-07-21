@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.api.deps import UOWDep, get_sefer_service, require_permissions
 from app.core.exceptions import DomainError
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
@@ -15,6 +14,7 @@ from v2.modules.admin_platform.public import (
     release_reservation,
     reserve_or_get_cached,
 )
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.trip.public import SeferCreate, SeferResponse, SeferService, SeferUpdate
 
 logger = get_logger(__name__)

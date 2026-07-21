@@ -17,8 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 
-from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.trip.infrastructure.models import SeferLog
 
 

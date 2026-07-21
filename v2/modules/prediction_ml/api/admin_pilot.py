@@ -20,7 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.api.deps import SessionDep, get_current_active_admin
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.public import Kullanici
 
 router = APIRouter()
 

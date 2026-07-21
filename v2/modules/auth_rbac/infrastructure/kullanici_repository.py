@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.infrastructure.models import Kullanici
 
 
 class KullaniciRepository(BaseRepository[Kullanici]):

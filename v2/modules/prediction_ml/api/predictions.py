@@ -9,8 +9,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import and_, select
 
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
-from app.database.models import Kullanici
 from app.infrastructure.background.celery_app import celery_app
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.driver.public import Sofor
 from v2.modules.prediction_ml.application.prediction_service import PredictionService
 from v2.modules.prediction_ml.schemas import (

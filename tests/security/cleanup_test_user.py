@@ -3,7 +3,7 @@ import asyncio
 from sqlalchemy import delete
 
 from app.database.connection import engine
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.public import Kullanici
 
 
 async def clear():

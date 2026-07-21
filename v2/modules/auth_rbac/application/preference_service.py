@@ -6,9 +6,9 @@ bir fonksiyon, opsiyonel ``uow: UnitOfWork | None = None`` alır.
 
 from typing import Any, List, Optional
 
-from app.database.models import KullaniciAyari
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.auth_rbac.infrastructure.models import KullaniciAyari
 
 logger = get_logger(__name__)
 

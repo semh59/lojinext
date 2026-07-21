@@ -16,9 +16,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.api.deps import get_current_active_admin
 from app.config import settings
-from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.schemas import SseTokenResponse
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.shared_kernel.schemas.api_responses import SSE_RESPONSES
 
 router = APIRouter()
@@ -199,7 +199,7 @@ async def error_stream(request: Request):
     from sqlalchemy.orm import selectinload
 
     from app.database.connection import AsyncSessionLocal
-    from app.database.models import Kullanici as KullaniciModel
+    from v2.modules.auth_rbac.public import Kullanici as KullaniciModel
 
     try:
         async with AsyncSessionLocal() as session:

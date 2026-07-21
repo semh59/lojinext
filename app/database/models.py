@@ -29,12 +29,10 @@ from sqlalchemy.orm import (
     Mapped,
     mapped_column,
     relationship,
-    validates,
 )
 
 from v2.modules.shared_kernel.infrastructure.base import (
     Base,
-    EncryptedPII,
     get_utc_now,
 )
 
@@ -278,90 +276,6 @@ class YakitFormul(Base):
     )
 
 
-class Rol(Base):
-    __tablename__ = "roller"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    ad: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
-    yetkiler: Mapped[dict] = mapped_column(
-        JSONB, server_default=text("'{}'"), nullable=False
-    )
-    olusturma: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-
-class Kullanici(Base):
-    __tablename__ = "kullanicilar"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    # PII encryption-at-rest (Tier E madde 26): email is encrypted at rest;
-    # email_bidx is the deterministic HMAC used for login lookup and the
-    # UNIQUE constraint (see EncryptedPII docstring for why plaintext UNIQUE
-    # doesn't work once the column is randomized-encrypted).
-    email: Mapped[str] = mapped_column(EncryptedPII, nullable=False)
-    email_bidx: Mapped[str] = mapped_column(
-        String(64), unique=True, index=True, server_default=""
-    )
-    ad_soyad: Mapped[str] = mapped_column(EncryptedPII, nullable=False)
-    sifre_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    rol_id: Mapped[int] = mapped_column(ForeignKey("roller.id"), nullable=False)
-    aktif: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-
-    # Oturum ve Güvenlik
-    son_giris: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    son_giris_ip: Mapped[Optional[str]] = mapped_column(String(45))
-    basarisiz_giris_sayisi: Mapped[int] = mapped_column(
-        Integer, default=0, nullable=False
-    )
-    kilitli_kadar: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
-    # Şifre yönetimi
-    sifre_degisim_tarihi: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    sifre_sifir_token: Mapped[Optional[str]] = mapped_column(Text)
-    sifre_sifir_son: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
-    # Existing linkage
-    sofor_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("soforler.id", ondelete="SET NULL"), index=True
-    )
-
-    # Zaman damgaları
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-    olusturan_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
-    )
-
-    # Relationships
-    rol: Mapped["Rol"] = relationship()
-    oturumlari: Mapped[List["KullaniciOturumu"]] = relationship(
-        back_populates="kullanici", cascade="all, delete-orphan"
-    )
-    bildirimler: Mapped[List["BildirimGecmisi"]] = relationship(
-        back_populates="kullanici", cascade="all, delete-orphan"
-    )
-    ayarlar: Mapped[List["KullaniciAyari"]] = relationship(
-        back_populates="kullanici", cascade="all, delete-orphan"
-    )
-
-    @validates("email")
-    def _sync_email_bidx(self, key, value):
-        from app.infrastructure.security.pii_encryption import blind_index
-
-        self.email_bidx = blind_index(value) if value else ""
-        return value
-
-
 class EntegrasyonAyari(Base):
     """Admin-configurable external API keys (Mapbox/OpenRoute/Groq).
 
@@ -389,40 +303,6 @@ class EntegrasyonAyari(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-
-
-class KullaniciOturumu(Base):
-    __tablename__ = "kullanici_oturumlari"
-
-    id: Mapped[int] = mapped_column(
-        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
-    )
-    kullanici_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"),
-        index=True,
-        nullable=False,
-    )
-    access_token_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    refresh_token_hash: Mapped[Optional[str]] = mapped_column(Text)
-    ip_adresi: Mapped[str] = mapped_column(String(45), nullable=False)
-    tarayici: Mapped[Optional[str]] = mapped_column(Text)
-    olusturma: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    son_aktivite: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-        nullable=False,
-    )
-    access_bitis: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    refresh_bitis: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    aktif: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    iptal_sebebi: Mapped[Optional[str]] = mapped_column(Text)
-
-    kullanici: Mapped["Kullanici"] = relationship(back_populates="oturumlari")
 
 
 class AdminAuditLog(Base):
@@ -594,13 +474,12 @@ class EgitimKuyrugu(Base):
         nullable=False,
     )
 
-    # İsteğe bağlı, kimin veya sistemin tetiklediği
+    # İsteğe bağlı, kimin veya sistemin tetiklediği (FK id kalır; Kullanici
+    # auth_rbac'a taşındı, relationship() cross-module olduğu için kaldırıldı
+    # — dalga 16 task #58)
     tetikleyen_kullanici_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("kullanicilar.id", ondelete="SET NULL")
     )
-
-    # Relationships
-    tetikleyen: Mapped[Optional["Kullanici"]] = relationship()
 
 
 class ModelVersiyon(Base):
@@ -646,13 +525,12 @@ class ModelVersiyon(Base):
 
     # Meta
     notlar: Mapped[Optional[str]] = mapped_column(Text)
+    # FK id kalır; Kullanici auth_rbac'a taşındı, relationship() cross-module
+    # olduğu için kaldırıldı (dalga 16 task #58)
     egiten_kullanici_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("kullanicilar.id", ondelete="SET NULL")
     )
     tetikleyici: Mapped[str] = mapped_column(String(50), default="otomatik")
-
-    # Relationships
-    egiten_kullanici: Mapped[Optional["Kullanici"]] = relationship()
 
     __table_args__ = (
         CheckConstraint(
@@ -812,42 +690,6 @@ class BildirimGecmisi(Base):
     olusturma_tarihi: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), default=get_utc_now
     )
-
-    # Relationships
-    kullanici: Mapped["Kullanici"] = relationship(back_populates="bildirimler")
-
-
-class KullaniciAyari(Base):
-    """
-    User-specific preferences for different modules and settings types.
-    e.g. Saved filters for 'seferler' module or column visibility for 'araclar' table.
-    """
-
-    __tablename__ = "kullanici_ayarlari"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    kullanici_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"), index=True
-    )
-    modul: Mapped[str] = mapped_column(
-        String(50), index=True
-    )  # 'seferler', 'araclar', etc.
-    ayar_tipi: Mapped[str] = mapped_column(String(50), index=True)  # 'filtre', 'sutun'
-    deger: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
-    ad: Mapped[Optional[str]] = mapped_column(
-        String(100)
-    )  # Friendly name for saved filters
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=get_utc_now
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=get_utc_now
-    )
-
-    # Relationships
-    kullanici: Mapped["Kullanici"] = relationship(back_populates="ayarlar")
 
 
 class PredictionResult(Base):

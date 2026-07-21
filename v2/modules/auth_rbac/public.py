@@ -63,6 +63,11 @@ from v2.modules.auth_rbac.domain.security_service import Permission, SecuritySer
 from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
 )
+from v2.modules.auth_rbac.infrastructure.models import (
+    Kullanici,
+    KullaniciAyari,
+    Rol,
+)
 from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
 from v2.modules.auth_rbac.infrastructure.token_blacklist import (
@@ -119,6 +124,10 @@ __all__ = [
     "KullaniciRepository",
     "RolRepository",
     "SessionRepository",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Kullanici",
+    "Rol",
+    "KullaniciAyari",
     # schemas
     "KullaniciCreate",
     "KullaniciRead",

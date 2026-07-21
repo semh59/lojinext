@@ -8,8 +8,8 @@ sys.path.append(os.getcwd())
 
 from app.config import settings
 from app.database.connection import AsyncSessionLocal
-from app.database.models import Kullanici, Rol
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.auth_rbac.public import hash_password as get_password_hash
 
 

@@ -3,9 +3,8 @@
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from v2.modules.auth_rbac.public import SecurityService
+from v2.modules.auth_rbac.public import Kullanici, SecurityService
 from v2.modules.trip.domain.entities import Sefer
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo
 from v2.modules.trip.infrastructure.sefer_timeline_repo import (

@@ -10,10 +10,10 @@ from app.api.deps import (
     get_current_active_user,
 )
 from app.core.exceptions import DomainError
-from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.base import ResponseMeta, StandardResponse
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.fleet.application.create_vehicle import create_vehicle
 from v2.modules.fleet.application.delete_vehicle import (
     delete_all_vehicles,

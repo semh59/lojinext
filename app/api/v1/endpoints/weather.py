@@ -10,7 +10,7 @@ from app.api.deps import (
     get_current_active_user,
     get_sefer_service,
 )
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.route_simulation.schemas import (
     TripWeatherImpactResponse,
     WeatherDashboardResponse,

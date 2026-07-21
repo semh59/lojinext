@@ -3,7 +3,7 @@ from typing import List, Optional
 from sqlalchemy import and_, select
 
 from app.database.base_repository import BaseRepository
-from app.database.models import KullaniciAyari
+from v2.modules.auth_rbac.infrastructure.models import KullaniciAyari
 
 
 class SettingRepository(BaseRepository[KullaniciAyari]):

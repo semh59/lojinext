@@ -52,8 +52,8 @@ async def test_rol_repo_create_uses_flush_not_commit():
 
 async def test_rol_repo_create_raises_on_duplicate():
     """create() raises ValueError when role name already exists."""
-    from app.database.models import Rol
     from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+    from v2.modules.auth_rbac.public import Rol
 
     mock_session = MagicMock()
     mock_session.execute = AsyncMock()
@@ -71,8 +71,8 @@ async def test_rol_repo_create_raises_on_duplicate():
 
 async def test_rol_repo_update_uses_flush_not_commit():
     """update() değişiklikleri uygular, flush eder, commit ETMEZ."""
-    from app.database.models import Rol
     from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+    from v2.modules.auth_rbac.public import Rol
 
     role = MagicMock(spec=Rol)
     role.id = 5
@@ -110,8 +110,8 @@ async def test_rol_repo_update_returns_none_when_missing():
 
 async def test_rol_repo_update_raises_on_name_clash():
     """update() farklı bir role ait ada çekilirse ValueError fırlatır."""
-    from app.database.models import Rol
     from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+    from v2.modules.auth_rbac.public import Rol
 
     role = MagicMock(spec=Rol)
     role.id = 5
@@ -135,8 +135,8 @@ async def test_rol_repo_update_raises_on_name_clash():
 
 async def test_rol_repo_delete_calls_session_delete():
     """delete() session.delete + flush çağırır, commit ETMEZ."""
-    from app.database.models import Rol
     from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+    from v2.modules.auth_rbac.public import Rol
 
     role = MagicMock(spec=Rol)
     role.id = 7

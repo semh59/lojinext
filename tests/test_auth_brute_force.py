@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.database.models import Kullanici
 from v2.modules.auth_rbac.application import auth_service
+from v2.modules.auth_rbac.public import Kullanici
 
 
 @pytest.fixture

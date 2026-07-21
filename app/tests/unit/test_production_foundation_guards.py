@@ -522,7 +522,7 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
         ROOT / "v2" / "modules" / "prediction_ml" / "domain" / "lightgbm_predictor.py"
     ).read_text(encoding="utf-8")
     sefer_repo = (
-        ROOT / "app" / "database" / "repositories" / "sefer_repo.py"
+        ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
 
     assert "Cold-Start-Mock" not in time_series_service
@@ -594,7 +594,7 @@ def test_backend_trip_contract_no_longer_exposes_is_real():
 def test_runtime_and_persistence_layers_no_longer_reference_is_real():
     db_models = (ROOT / "app" / "database" / "models.py").read_text(encoding="utf-8")
     trip_repo = (
-        ROOT / "app" / "database" / "repositories" / "sefer_repo.py"
+        ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
     analytics_repo = (
         ROOT

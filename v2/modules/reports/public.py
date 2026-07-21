@@ -33,6 +33,7 @@ from v2.modules.reports.application.generate_vehicle_report import (
 )
 from v2.modules.reports.application.get_dashboard_summary import get_dashboard_summary
 from v2.modules.reports.application.get_monthly_comparison import get_monthly_comparison
+from v2.modules.reports.infrastructure.models import PageView
 from v2.modules.reports.infrastructure.pdf_export import (
     PDFReportGenerator,
     get_report_generator,
@@ -40,6 +41,8 @@ from v2.modules.reports.infrastructure.pdf_export import (
 from v2.modules.reports.infrastructure.repo_access import ReportRepos, resolve_repos
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "PageView",
     "generate_fleet_summary",
     "generate_vehicle_report",
     "generate_driver_report",

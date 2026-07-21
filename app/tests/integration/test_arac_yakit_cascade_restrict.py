@@ -5,8 +5,9 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import YakitAlimi, YakitFormul, YakitPeriyot
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
+from v2.modules.fuel.public import YakitFormul, YakitPeriyot
 
 
 @pytest.mark.asyncio

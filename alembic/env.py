@@ -31,15 +31,18 @@ import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
 import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
 import v2.modules.driver.infrastructure.models  # noqa: E402,F401
 import v2.modules.fleet.infrastructure.models  # noqa: E402,F401
+import v2.modules.fuel.infrastructure.models  # noqa: E402,F401
 import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.location.infrastructure.models  # noqa: E402,F401
 import v2.modules.notification.infrastructure.models  # noqa: E402,F401
 import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
+import v2.modules.reports.infrastructure.models  # noqa: E402,F401
 import v2.modules.route_simulation.infrastructure.models  # noqa: E402,F401
 import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
 import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
 import v2.modules.trip.infrastructure.models  # noqa: E402,F401
 from app.config import settings
-from app.database.models import Base
+from v2.modules.shared_kernel.infrastructure.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

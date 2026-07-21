@@ -8,11 +8,11 @@ tablosu) sorguluyor ama şoför-özel raporlama/arama için var; driver'ın kend
 ``driver_metrics_queries.py``'siyle aynı gerekçeyle (B.1) serbest fonksiyon
 olarak tutuldu — tek-tablo CRUD değil, salt-okunur sorgu kümesi.
 
-Şema not: ``Sofor``/``SoforAdSoyadTrigram`` ORM modelleri henüz paylaşılan
-``app/database/models.py``'de (models.py bölünmesi ayrı bir görev) — bu
-dosyanın onları doğrudan import etmesi mevcut projedeki tüm diğer
-modüllerle aynı, kabul edilmiş desendir. ``Sefer`` dalga 16 (task #58)'de
-trip modülüne taşındı, ``trip.public.SeferORM`` üzerinden import edilir.
+Şema not: ``Sofor``/``SoforAdSoyadTrigram`` ORM modelleri dalga 16 (task
+#58)'de driver modülüne taşındı, kendi ``infrastructure/models.py``'sinden
+doğrudan import edilir (intra-module). ``Sefer`` aynı dalgada trip
+modülüne taşındı, ``trip.public.SeferORM`` üzerinden import edilir
+(cross-module).
 """
 
 from datetime import datetime, timedelta, timezone

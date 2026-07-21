@@ -100,8 +100,8 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_duplicate(self, db_session):
         """add_yakit raises ValueError when duplicate detected (real DB)."""
-        from app.database.models import YakitAlimi
         from v2.modules.fleet.public import AracORM as Arac
+        from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 
         arac = Arac(plaka="34YKT003", marka="Test", model="Dilim19", aktif=True)
         db_session.add(arac)

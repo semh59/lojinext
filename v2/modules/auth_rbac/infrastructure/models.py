@@ -6,9 +6,10 @@ sahibi auth_rbac modülü.
 ``Kullanici.bildirimler`` (notification'ın ``BildirimGecmisi``'ne) cross-module
 ``relationship()`` idi — kaldırıldı (modüller birbirinin tablosuna
 relationship() ile sızmaz, B.1). ``BildirimGecmisi.kullanici`` karşı tarafı da
-(``app/database/models.py``'de resident, notification henüz bu görevde
-taşınmadı) aynı gerekçeyle kaldırıldı. Aynı şekilde henüz resident olan
-``EgitimKuyrugu.tetikleyen``/``ModelVersiyon.egiten_kullanici`` (prediction_ml)
+(o sırada ``app/database/models.py``'de resident, notification henüz bu
+görevde taşınmamıştı — artık ``v2/modules/notification/infrastructure/
+models.py``'de) aynı gerekçeyle kaldırıldı. Aynı şekilde o sırada henüz
+resident olan ``EgitimKuyrugu.tetikleyen``/``ModelVersiyon.egiten_kullanici`` (prediction_ml)
 ``Kullanici``'ye cross-module relationship taşıyordu — kaldırıldı, FK
 kolonları (``tetikleyen_kullanici_id``/``egiten_kullanici_id``) yerinde kaldı.
 ``Kullanici.rol``/``.oturumlari``/``.ayarlar`` intra-module (Rol/

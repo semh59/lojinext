@@ -197,7 +197,7 @@ async def test_hydrate_requires_admin(async_client, normal_auth_headers):
 
 async def test_hydrate_missing_cikis_lat(async_client, admin_auth_headers, db_session):
     """POST /{id}/hydrate when cikis_lat is None → 422 (real seeded Lokasyon)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="HydMissLat",
@@ -220,7 +220,7 @@ async def test_hydrate_missing_cikis_lat(async_client, admin_auth_headers, db_se
 
 async def test_hydrate_missing_varis_lon(async_client, admin_auth_headers, db_session):
     """POST /{id}/hydrate when varis_lon is None → 422 (real seeded Lokasyon)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="HydMissLon",
@@ -259,12 +259,12 @@ async def test_hydrate_provider_unavailable(
     sentinel koordinat (varis_lat=401.0) stub'ın gerçek 401 dönmesini
     tetikler → get_segments None → hydrate() None → endpoint 502."""
     from app.config import settings
-    from app.database.models import Lokasyon
     from app.main import app
     from v2.modules.location.application.hydration import (
         LokasyonHydrator,
         get_lokasyon_hydrator,
     )
+    from v2.modules.location.public import Lokasyon
     from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
 
     fake_key = MagicMock()
@@ -312,7 +312,7 @@ async def test_hydrate_provider_unavailable(
 
 async def test_get_segments_success(async_client, admin_auth_headers, db_session):
     """GET /{id}/segments → 200 with segment list (real seeded Lokasyon+segment)."""
-    from app.database.models import Lokasyon, LokasyonSegment
+    from v2.modules.location.public import Lokasyon, LokasyonSegment
 
     lok = Lokasyon(
         cikis_yeri="SegSuccC",
@@ -362,7 +362,7 @@ async def test_get_segments_not_found(async_client, admin_auth_headers):
 
 async def test_get_segments_empty(async_client, admin_auth_headers, db_session):
     """GET /{id}/segments → 200 with empty segments (not yet hydrated, real DB)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="SegEmptyC",
@@ -512,7 +512,7 @@ async def test_update_inactive_location_does_not_crash(
     — pasif (soft-deleted) bir lokasyonu güncellemek (reaktive etmeden,
     örn. sadece notlar) `get_by_id` None döndürdüğü için `dict(None)` ile
     500'e düşüyordu."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="InactiveUpdateC",
@@ -542,7 +542,7 @@ async def test_delete_inactive_hard_delete(
     async_client, admin_auth_headers, db_session
 ):
     """DELETE /{id} inactive location → Hard Delete header set."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="DelInactiveC",
@@ -569,7 +569,7 @@ async def test_delete_inactive_hard_delete(
 
 async def test_delete_generic_exception(async_client, admin_auth_headers, db_session):
     """DELETE /{id} generic exception → 500 (exception raised after fetch succeeds)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="DelExcC", varis_yeri="DelExcV", mesafe_km=100.0, aktif=True

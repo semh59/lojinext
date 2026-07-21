@@ -8,7 +8,7 @@ from sqlalchemy import select
 sys.path.append(os.getcwd())
 
 from app.database.connection import AsyncSessionLocal
-from app.database.models import Lokasyon
+from v2.modules.location.public import Lokasyon
 
 
 def tr_title(text: str) -> str:

@@ -13,7 +13,7 @@ Integration testler (DB'li) Phase 4.4 sonrası CI'da koşacak — sefer create
 from __future__ import annotations
 
 from app.config import settings
-from app.database.models import Base
+from v2.modules.shared_kernel.infrastructure.base import Base
 from v2.modules.trip.application.sefer_fuel_estimator import (
     FactorBreakdown,
     SeferFuelEstimate,

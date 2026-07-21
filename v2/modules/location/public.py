@@ -42,6 +42,7 @@ from v2.modules.location.application.search_locations_by_route import (
 )
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.domain.route_key import normalize_turkish_title, route_key
+from v2.modules.location.infrastructure.models import Lokasyon, LokasyonSegment
 from v2.modules.location.infrastructure.repository import (
     LokasyonRepository,
     get_lokasyon_repo,
@@ -58,6 +59,9 @@ from v2.modules.location.schemas import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Lokasyon",
+    "LokasyonSegment",
     "create_location",
     "update_location",
     "delete_location",

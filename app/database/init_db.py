@@ -2,7 +2,7 @@ import asyncio
 import logging
 
 from app.database.connection import engine
-from app.database.models import Base
+from v2.modules.shared_kernel.infrastructure.base import Base
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)

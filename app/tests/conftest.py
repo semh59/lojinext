@@ -45,8 +45,14 @@ import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E
 import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
+
+# error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
+# (app/infrastructure/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
+# yüzden container_mod importu zincirinden ULAŞILMIYOR, Base.metadata'ya
+# kaydolmaları için açık import şart (alembic/env.py'deki aynı zorunluluk).
+import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
 import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
-from app.database.models import Base  # noqa: E402
+from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 
 
 def pytest_collection_modifyitems(config, items):
@@ -267,7 +273,7 @@ async def async_db_engine(temp_db_url):
             await conn.execute(text("ROLLBACK TO SAVEPOINT _postgis_probe"))
 
         if not postgis_ok:
-            import app.database.models as _db_models
+            import v2.modules.route_simulation.infrastructure.models as _db_models
 
             _db_models._LINESTRING_TYPE = LargeBinary()
             # Patch column types and remove auto-created GiST indexes so

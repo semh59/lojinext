@@ -16,9 +16,11 @@ from contextlib import asynccontextmanager  # noqa: E402
 from sqlalchemy import select, update  # noqa: E402
 
 from app.database.connection import AsyncSessionLocal  # noqa: E402
-from app.database.models import Lokasyon  # noqa: E402
 from app.infrastructure.logging.logger import get_logger  # noqa: E402
-from v2.modules.location.public import geocode_location  # noqa: E402
+from v2.modules.location.public import (
+    Lokasyon,  # noqa: E402
+    geocode_location,  # noqa: E402
+)
 from v2.modules.route_simulation.public import OpenRouteClient  # noqa: E402
 from v2.modules.trip.public import SeferORM as Sefer  # noqa: E402
 

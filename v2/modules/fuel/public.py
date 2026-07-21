@@ -42,6 +42,8 @@ from v2.modules.fuel.infrastructure.integrations.opet_client import (
     FuelTransaction,
     OpetFuelProvider,
 )
+from v2.modules.fuel.infrastructure.models import YakitAlimi as YakitAlimiORM
+from v2.modules.fuel.infrastructure.models import YakitFormul, YakitPeriyot
 from v2.modules.fuel.infrastructure.repository import YakitRepository, get_yakit_repo
 from v2.modules.fuel.infrastructure.tasks import CoverageResult, compute_coverage
 from v2.modules.fuel.schemas import (
@@ -57,6 +59,13 @@ from v2.modules.fuel.schemas import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi). YakitAlimi ORM
+    # sınıfı "YakitAlimiORM" olarak export edilir — domain/entities.py'de
+    # zaten aynı isimli Pydantic YakitAlimi(BaseEntity) var (prediction_ml'in
+    # PredictionResult -> PredictionResultORM ile aynı gerekçe).
+    "YakitAlimiORM",
+    "YakitPeriyot",
+    "YakitFormul",
     # fuel transactions
     "add_yakit",
     "add_yakit_alimi",

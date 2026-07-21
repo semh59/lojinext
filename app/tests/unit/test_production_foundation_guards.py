@@ -592,7 +592,10 @@ def test_backend_trip_contract_no_longer_exposes_is_real():
 
 
 def test_runtime_and_persistence_layers_no_longer_reference_is_real():
-    db_models = (ROOT / "app" / "database" / "models.py").read_text(encoding="utf-8")
+    # app/database/models.py dalga 16 (task #58) sonunda tamamen dissolve
+    # edildi (tüm ORM sınıfları v2/modules/<isim>/infrastructure/models.py'ye
+    # taşındı, dosyanın kendisi silindi) — bu yüzden artık taranacak bir
+    # dosya kalmadı, eski satır kaldırıldı.
     trip_repo = (
         ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
@@ -615,7 +618,6 @@ def test_runtime_and_persistence_layers_no_longer_reference_is_real():
         encoding="utf-8"
     )
 
-    assert LEGACY_REAL_FLAG not in db_models
     assert LEGACY_REAL_FLAG not in trip_repo
     assert LEGACY_REAL_FLAG not in analytics_repo
     assert LEGACY_REAL_FLAG not in vehicle_repo

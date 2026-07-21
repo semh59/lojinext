@@ -4,9 +4,9 @@ from datetime import date
 
 import pytest
 
-from app.database.models import Lokasyon
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.location.public import Lokasyon
 from v2.modules.trip.infrastructure.repository import SeferRepository
 from v2.modules.trip.public import SeferORM as Sefer
 

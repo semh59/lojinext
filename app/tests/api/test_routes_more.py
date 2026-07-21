@@ -228,7 +228,7 @@ class TestSimulateRouteSuccess:
         self, async_client, admin_auth_headers, db_session
     ):
         """simulate_route with lokasyon_id fetches coords from real DB."""
-        from app.database.models import Lokasyon
+        from v2.modules.location.public import Lokasyon
 
         lok = Lokasyon(
             cikis_yeri="SimAdhocC",

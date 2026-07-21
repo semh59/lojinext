@@ -7,8 +7,9 @@ sahibi route_simulation modülü.
 ``GuzergahKalibrasyon.lokasyon`` (location'ın ``Lokasyon``'una) cross-module
 ``relationship()`` idi — kaldırıldı (modüller birbirinin tablosuna
 relationship() ile sızmaz, B.1). Karşı taraf ``Lokasyon.kalibrasyonlar`` da
-(``app/database/models.py``'de resident, location henüz bu görevde
-taşınmadı) aynı gerekçeyle kaldırıldı — ``lokasyon_id`` FK kolonu yerinde.
+(o sırada ``app/database/models.py``'de resident, location henüz bu görevde
+taşınmamıştı — artık ``v2/modules/location/infrastructure/models.py``'de)
+aynı gerekçeyle kaldırıldı — ``lokasyon_id`` FK kolonu yerinde.
 ``RouteSimulation.segments``/``RouteSegment.simulation`` intra-module
 (ikisi de aynı anda taşındı) — değişmedi.
 """

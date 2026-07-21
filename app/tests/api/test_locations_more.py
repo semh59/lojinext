@@ -114,7 +114,7 @@ async def test_create_location_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_location_success(async_client, admin_auth_headers, db_session):
     """PUT /{id} → 200 (real DB: seeds Lokasyon, real update via test session)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="Istanbul", varis_yeri="Ankara", mesafe_km=450.0)
     db_session.add(lok)
@@ -156,7 +156,7 @@ async def test_delete_location_success_active(
     async_client, admin_auth_headers, db_session
 ):
     """DELETE active location → soft delete (real DB via test session)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="DelSucc", varis_yeri="Active", mesafe_km=100.0, aktif=True
@@ -185,7 +185,7 @@ async def test_delete_location_value_error(
     async_client, admin_auth_headers, db_session
 ):
     """DELETE when service raises ValueError (conflict) → 409."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="DelVE", varis_yeri="Error", mesafe_km=100.0, aktif=True)
     db_session.add(lok)
@@ -308,7 +308,7 @@ async def test_hydrate_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_hydrate_missing_coords(async_client, admin_auth_headers, db_session):
     """POST /{id}/hydrate with lokasyon missing coords → 422 (gerçek seed'li satır)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="NoCoordsA", varis_yeri="NoCoordsB", mesafe_km=100.0)
     db_session.add(lok)
@@ -339,7 +339,7 @@ async def test_get_segments_not_found(async_client, admin_auth_headers):
 async def test_get_segments_success_empty(async_client, admin_auth_headers, db_session):
     """GET /{id}/segments → 200 with empty segments list (gerçek seed'li satır,
     hiç hidrasyon yapılmamış)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="SegEmptyA", varis_yeri="SegEmptyB", mesafe_km=100.0)
     db_session.add(lok)

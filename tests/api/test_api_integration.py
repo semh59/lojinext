@@ -10,8 +10,6 @@ from datetime import date
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.database.models import Lokasyon
-
 # Import app and models
 from app.main import app
 
@@ -20,6 +18,7 @@ from tests.conftest import TEST_DATABASE_URL
 from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.location.public import Lokasyon
 
 
 def _unwrap_standard_response(payload):

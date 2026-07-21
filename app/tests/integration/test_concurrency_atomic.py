@@ -114,8 +114,8 @@ async def test_fuel_km_counter_no_race(db_session, async_client, auth_headers):
     4. No lost updates, final state consistent
     """
 
-    from app.database.models import YakitAlimi
     from v2.modules.fleet.public import AracORM as Arac
+    from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 
     # Create vehicle
     arac_result = await db_session.execute(

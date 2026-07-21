@@ -21,8 +21,17 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import YakitFormul
 from app.infrastructure.logging.logger import get_logger
+
+# fuel.public değil infrastructure.models doğrudan: fuel.public, add_yakit
+# üzerinden app.database.unit_of_work'e bağımlı, ve BU dosya zaten
+# app/database/unit_of_work.py'nin kendisi tarafından import ediliyor
+# (analiz_repo property) — public.py üzerinden gidilirse döngüsel import
+# oluşur (unit_of_work -> executive_read_models -> fuel.public -> add_yakit
+# -> unit_of_work). reports'un ReportRepos.yakit_repo = v2.modules.fuel.
+# infrastructure.repository ile aynı, zaten dokümante edilmiş geçici
+# infra-to-infra bağımlılık deseni.
+from v2.modules.fuel.infrastructure.models import YakitFormul
 
 logger = get_logger(__name__)
 

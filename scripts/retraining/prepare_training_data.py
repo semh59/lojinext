@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from sqlalchemy import select
 
 from app.database.connection import AsyncSessionLocal
-from app.database.models import Lokasyon
+from v2.modules.location.public import Lokasyon
 from v2.modules.trip.public import SeferORM as Sefer
 
 load_dotenv()

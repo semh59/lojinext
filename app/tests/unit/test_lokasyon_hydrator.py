@@ -10,8 +10,8 @@ from typing import List
 
 import pytest
 
-from app.database.models import Lokasyon
 from v2.modules.location.application.hydration import LokasyonHydrator
+from v2.modules.location.public import Lokasyon
 from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 
 

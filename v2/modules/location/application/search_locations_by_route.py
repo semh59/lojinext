@@ -2,7 +2,7 @@
 
 from typing import List
 
-from app.database.models import Lokasyon
+from v2.modules.location.infrastructure.models import Lokasyon
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 
 

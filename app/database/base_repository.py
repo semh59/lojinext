@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.infrastructure.logging.logger import get_logger
 
 if TYPE_CHECKING:
-    from app.database.models import Base
+    from v2.modules.shared_kernel.infrastructure.base import Base
 
 logger = get_logger(__name__)
 

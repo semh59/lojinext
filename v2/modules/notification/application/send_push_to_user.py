@@ -9,9 +9,9 @@ from typing import Optional
 
 from sqlalchemy import delete, select, update
 
-from app.database.models import PushSubscription
 from app.database.unit_of_work import UnitOfWork
 from v2.modules.notification.domain.vapid import vapid_configured
+from v2.modules.notification.infrastructure.models import PushSubscription
 from v2.modules.notification.infrastructure.webpush_client import send_webpush
 from v2.modules.notification.schemas import PushSendResult
 

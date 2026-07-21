@@ -30,6 +30,7 @@ import v2.modules.admin_platform.infrastructure.models  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
 import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
 import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.notification.infrastructure.models  # noqa: E402,F401
 import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
 import v2.modules.route_simulation.infrastructure.models  # noqa: E402,F401
 import v2.modules.driver.infrastructure.models  # noqa: E402,F401

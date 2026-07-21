@@ -12,11 +12,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List
 
-from app.database.models import BildirimDurumu, BildirimGecmisi
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.notification.events import SeferUpdatedPayload, SlaDelayPayload
+from v2.modules.notification.infrastructure.models import (
+    BildirimDurumu,
+    BildirimGecmisi,
+)
 from v2.modules.notification.infrastructure.ws_broadcaster import (
     notification_ws_manager,
 )

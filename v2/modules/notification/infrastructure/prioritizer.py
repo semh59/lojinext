@@ -24,7 +24,7 @@ class NotificationPrioritizer:
         self.session = session
 
     async def priority_for(self, *, user_id: int, olay_tipi: Optional[str]) -> str:
-        from app.database.models import BildirimGecmisi
+        from v2.modules.notification.infrastructure.models import BildirimGecmisi
 
         if not olay_tipi:
             return "normal"

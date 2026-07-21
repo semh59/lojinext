@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import List
 
-from app.database.models import BildirimGecmisi
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.notification.infrastructure.models import BildirimGecmisi
 
 
 async def get_user_notifications(user_id: int) -> List[BildirimGecmisi]:

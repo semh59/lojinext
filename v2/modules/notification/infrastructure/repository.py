@@ -4,7 +4,10 @@ from typing import Any, List, Optional, cast
 from sqlalchemy import and_, select
 
 from app.database.base_repository import BaseRepository
-from app.database.models import BildirimGecmisi, BildirimKurali
+from v2.modules.notification.infrastructure.models import (
+    BildirimGecmisi,
+    BildirimKurali,
+)
 
 
 class NotificationRepository(BaseRepository[BildirimGecmisi]):
@@ -77,7 +80,7 @@ class NotificationRepository(BaseRepository[BildirimGecmisi]):
 
         from sqlalchemy import update
 
-        from app.database.models import BildirimDurumu
+        from v2.modules.notification.infrastructure.models import BildirimDurumu
 
         stmt = (
             update(BildirimGecmisi)

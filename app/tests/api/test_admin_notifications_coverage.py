@@ -42,8 +42,8 @@ class TestListRules:
         self, async_client, admin_auth_headers, db_session
     ):
         """list_rules returns seeded notification rules from real DB."""
-        from app.database.models import BildirimKurali
         from v2.modules.auth_rbac.public import Rol
+        from v2.modules.notification.public import BildirimKurali
 
         role = Rol(ad="notif_test_rol", yetkiler={})
         db_session.add(role)

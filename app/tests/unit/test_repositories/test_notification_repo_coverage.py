@@ -164,7 +164,7 @@ class TestCreateRule:
         session.flush.assert_called_once()
 
         # returned object is a BildirimKurali instance
-        from app.database.models import BildirimKurali
+        from v2.modules.notification.public import BildirimKurali
 
         assert isinstance(result, BildirimKurali)
         assert result.olay_tipi == "YAKIT_ALARMI"
@@ -185,7 +185,7 @@ class TestCreateRule:
 
         result = await repo.create_rule(rule_data)
 
-        from app.database.models import BildirimKurali
+        from v2.modules.notification.public import BildirimKurali
 
         assert isinstance(result, BildirimKurali)
         assert result.aktif is False

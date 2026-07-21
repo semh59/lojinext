@@ -46,6 +46,12 @@ from v2.modules.notification.infrastructure.email_client import (
     send_password_reset,
     send_text,
 )
+from v2.modules.notification.infrastructure.models import (
+    BildirimDurumu,
+    BildirimGecmisi,
+    BildirimKurali,
+    PushSubscription,
+)
 from v2.modules.notification.infrastructure.repository import NotificationRepository
 from v2.modules.notification.infrastructure.telegram_client import (
     notify_error,
@@ -63,6 +69,11 @@ from v2.modules.notification.schemas import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "BildirimKurali",
+    "BildirimDurumu",
+    "BildirimGecmisi",
+    "PushSubscription",
     "register_handlers",
     "handle_event",
     "get_user_notifications",

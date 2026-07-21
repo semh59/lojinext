@@ -1,7 +1,6 @@
 import pytest
 from sqlalchemy import select
 
-from app.database.models import Anomaly
 from v2.modules.ai_assistant.infrastructure.rag.rag_engine import get_rag_engine
 from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyDetector,
@@ -9,6 +8,7 @@ from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyType,
     SeverityEnum,
 )
+from v2.modules.anomaly.public import Anomaly
 
 pytestmark = pytest.mark.integration
 

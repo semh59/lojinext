@@ -17,13 +17,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Anomaly, FuelInvestigation
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from v2.modules.anomaly.infrastructure.theft_tasks import (
     _run_pattern_scan,
     daily_pattern_scan,
 )
+from v2.modules.anomaly.public import Anomaly, FuelInvestigation
 
 pytestmark = pytest.mark.integration
 

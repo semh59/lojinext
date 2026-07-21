@@ -18,7 +18,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import FuelInvestigation
+from v2.modules.anomaly.infrastructure.models import FuelInvestigation
 
 _INVESTIGATION_JOIN_SQL = """
         SELECT

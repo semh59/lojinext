@@ -27,6 +27,7 @@ ACTIVE_VERSION_DIR = os.path.join(ALEMBIC_DIR, "versions")
 # `alembic check` DROP TABLE üretir). Her yeni modül taşındığında buraya
 # eklenmeli.
 import v2.modules.admin_platform.infrastructure.models  # noqa: E402,F401
+import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
 import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
 import v2.modules.driver.infrastructure.models  # noqa: E402,F401
 import v2.modules.fleet.infrastructure.models  # noqa: E402,F401

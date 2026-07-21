@@ -24,8 +24,8 @@ async def test_concurrent_patch_does_not_lose_resolution_update(async_db_engine)
     from sqlalchemy import update
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    from app.database.models import Anomaly, FuelInvestigation
     from app.tests._helpers.seed import seed_kullanici
+    from v2.modules.anomaly.public import Anomaly, FuelInvestigation
 
     SessionLocal = async_sessionmaker(
         bind=async_db_engine, class_=AsyncSession, expire_on_commit=False

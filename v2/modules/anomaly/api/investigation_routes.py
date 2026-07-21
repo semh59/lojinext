@@ -25,7 +25,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.api.deps import SessionDep, require_permissions
 from app.config import settings
-from app.database.models import Anomaly
 from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.anomaly.application.manage_investigations import (
     create_investigation as create_investigation_uc,
@@ -49,6 +48,7 @@ from v2.modules.anomaly.application.manage_investigations import (
 from v2.modules.anomaly.application.manage_investigations import (
     update_investigation as update_investigation_uc,
 )
+from v2.modules.anomaly.infrastructure.models import Anomaly
 from v2.modules.anomaly.schemas import (
     InvestigationCreate,
     InvestigationResponse,

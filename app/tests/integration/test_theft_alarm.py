@@ -12,7 +12,7 @@ import pytest
 
 
 async def _seed_high_anomaly(db_session) -> int:
-    from app.database.models import Anomaly
+    from v2.modules.anomaly.public import Anomaly
 
     row = Anomaly(
         tarih=date.today(),
@@ -33,7 +33,7 @@ async def _seed_high_anomaly(db_session) -> int:
 
 
 async def _seed_low_anomaly(db_session) -> int:
-    from app.database.models import Anomaly
+    from v2.modules.anomaly.public import Anomaly
 
     row = Anomaly(
         tarih=date.today(),

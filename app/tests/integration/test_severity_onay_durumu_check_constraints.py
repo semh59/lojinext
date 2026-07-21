@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import Anomaly
+from v2.modules.anomaly.public import Anomaly
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.trip.public import SeferORM as Sefer

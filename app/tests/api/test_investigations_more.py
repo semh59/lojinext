@@ -458,7 +458,7 @@ async def test_list_all_filters_combined(async_client, admin_auth_headers):
 
 async def test_update_investigation_status_closed(async_client, admin_auth_headers):
     """PATCH status=closed sets closed_at."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -509,7 +509,7 @@ async def test_update_investigation_status_closed(async_client, admin_auth_heade
 
 async def test_update_investigation_assign_non_open(async_client, admin_auth_headers):
     """PATCH assign to non-open investigation doesn't change status."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -567,7 +567,7 @@ async def test_update_investigation_noop_fetch_returns_none(
     async_client, admin_auth_headers
 ):
     """PATCH no-op path when AnalizRepository.get_investigation_detail returns None → 404."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -615,7 +615,7 @@ async def test_update_investigation_noop_fetch_returns_none(
 
 async def test_update_investigation_post_fetch_none(async_client, admin_auth_headers):
     """PATCH when _fetch returns None after update → 404."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -675,7 +675,7 @@ async def test_create_investigation_integrity_error(async_client, admin_auth_hea
     """POST /admin/investigations → 409 on IntegrityError race condition."""
     from sqlalchemy.exc import IntegrityError
 
-    from app.database.models import Anomaly
+    from v2.modules.anomaly.public import Anomaly
     from v2.modules.anomaly.schemas import TheftClassification
 
     fake_anomaly = MagicMock(spec=Anomaly)

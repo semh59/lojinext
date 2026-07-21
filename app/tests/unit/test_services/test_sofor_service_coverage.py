@@ -679,7 +679,7 @@ class TestGetPerformanceDetails:
         assert result["trend"] == "increasing"
 
     async def test_trend_decreasing_when_many_anomalies(self, db_session):
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         sofor = await seed_sofor(db_session, ad_soyad="Perf Trend Dec Driver")
         today = date.today()
@@ -731,7 +731,7 @@ class TestGetPerformanceDetails:
         assert result["trend"] == "decreasing"
 
     async def test_trend_stable_mid_range(self, db_session):
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         arac = await seed_arac(db_session, plaka="34PERF02")
         sofor = await seed_sofor(db_session, ad_soyad="Perf Trend Stable Driver")

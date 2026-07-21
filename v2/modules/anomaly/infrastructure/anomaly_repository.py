@@ -13,8 +13,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Anomaly
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.anomaly.infrastructure.models import Anomaly
 
 logger = get_logger(__name__)
 

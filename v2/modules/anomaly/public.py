@@ -38,6 +38,7 @@ from v2.modules.anomaly.application.manage_investigations import (
     update_investigation,
 )
 from v2.modules.anomaly.domain.clustering import cluster_anomalies
+from v2.modules.anomaly.infrastructure.models import Anomaly, FuelInvestigation
 from v2.modules.anomaly.schemas import (
     AttributionOverrideRequest,
     AttributionOverrideResponse,
@@ -50,6 +51,9 @@ from v2.modules.anomaly.schemas import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Anomaly",
+    "FuelInvestigation",
     "AnomalyDetector",
     "AnomalyResult",
     "AnomalyType",

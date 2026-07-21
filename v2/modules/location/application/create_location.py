@@ -3,7 +3,6 @@
 from typing import Optional
 
 from app.infrastructure.events.event_bus import EventType, publishes
-from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.application.analyze_location_route import (
     analyze_location_route,
@@ -11,6 +10,7 @@ from v2.modules.location.application.analyze_location_route import (
 from v2.modules.location.domain.route_key import normalize_turkish_title, route_key
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.location.schemas import LokasyonCreate
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 
 logger = get_logger(__name__)
 

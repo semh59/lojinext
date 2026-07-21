@@ -3,7 +3,6 @@ from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import (
-    CHAR,
     BigInteger,
     Boolean,
     CheckConstraint,
@@ -11,7 +10,6 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
-    Identity,
     Index,
     Integer,
     Numeric,
@@ -21,7 +19,6 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import (
     Mapped,
@@ -260,146 +257,6 @@ class YakitFormul(Base):
         server_default=func.now(),
         default=get_utc_now,
         onupdate=get_utc_now,
-    )
-
-
-class OutboxEvent(Base):
-    """Transactional Outbox for reliable event delivery."""
-
-    __tablename__ = "outbox_events"
-    __table_args__ = (
-        Index("idx_outbox_processed", "processed"),
-        Index("idx_outbox_created", "created_at"),
-    )
-
-    id: Mapped[int] = mapped_column(
-        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
-    )
-    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    correlation_id: Mapped[str] = mapped_column(String(64), nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        default=get_utc_now,
-        onupdate=get_utc_now,
-        nullable=False,
-    )
-    processed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    error_message: Mapped[Optional[str]] = mapped_column(Text)
-
-
-# ---------------------------------------------------------------------------
-# Error Monitoring Tables (Task 2 — error detector system)
-# ---------------------------------------------------------------------------
-
-_error_layer_enum = PG_ENUM(
-    "db",
-    "celery",
-    "api",
-    "service",
-    "frontend",
-    "external",
-    "security",
-    "ml",
-    name="error_layer",
-    create_type=False,
-)
-_error_severity_enum = PG_ENUM(
-    "critical",
-    "error",
-    "warning",
-    "info",
-    name="error_severity",
-    create_type=False,
-)
-
-
-class ErrorEvent(Base):
-    """Aggregated error table — one active row per unique fingerprint."""
-
-    __tablename__ = "error_events"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    fingerprint: Mapped[str] = mapped_column(CHAR(16), nullable=False)
-    layer: Mapped[str] = mapped_column(_error_layer_enum, nullable=False)
-    category: Mapped[str] = mapped_column(String(60), nullable=False)
-    severity: Mapped[str] = mapped_column(_error_severity_enum, nullable=False)
-    message: Mapped[str] = mapped_column(Text, nullable=False)
-    count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
-    first_seen: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    last_seen: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
-    )
-    path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    stack_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    # "metadata" is reserved by SQLAlchemy's DeclarativeBase; use attribute alias
-    extra: Mapped[dict] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default="{}"
-    )
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    resolved_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
-    )
-
-    __table_args__ = (
-        Index(
-            "idx_error_events_fingerprint_active",
-            "fingerprint",
-            unique=True,
-            postgresql_where=text("resolved_at IS NULL"),
-        ),
-        Index("idx_error_events_layer_sev", "layer", "severity", "last_seen"),
-        Index(
-            "idx_error_events_trace_id",
-            "trace_id",
-            postgresql_where=text("trace_id IS NOT NULL"),
-        ),
-    )
-
-
-class ErrorOccurrence(Base):
-    """Raw time-series error log — RANGE-partitioned by occurred_at (month)."""
-
-    __tablename__ = "error_occurrences"
-
-    # For partitioned tables, SQLAlchemy ORM requires a declared primary key.
-    # PostgreSQL requires the partition key (occurred_at) to be part of the PK.
-    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
-    occurred_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        primary_key=True,
-    )
-    fingerprint: Mapped[str] = mapped_column(CHAR(16), nullable=False)
-    layer: Mapped[str] = mapped_column(_error_layer_enum, nullable=False)
-    severity: Mapped[str] = mapped_column(_error_severity_enum, nullable=False)
-    trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    # "metadata" is reserved by SQLAlchemy's DeclarativeBase; use attribute alias
-    extra: Mapped[dict] = mapped_column(
-        "metadata", JSONB, nullable=False, server_default="{}"
-    )
-
-    __table_args__ = (
-        Index("idx_error_occurrences_time", "occurred_at", "layer"),
-        # postgresql_partition_by tells SQLAlchemy this is a declarative-only hint;
-        # the actual PARTITION BY clause was written in the Alembic migration.
-        {"postgresql_partition_by": "RANGE (occurred_at)"},
     )
 
 

@@ -93,7 +93,7 @@ class TestRelayOutboxEvents:
         mock_service.relay_pending_events = AsyncMock(return_value=3)
 
         with patch(
-            "app.infrastructure.events.outbox_service.get_outbox_service",
+            "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
             from app.workers.tasks.outbox_tasks import relay_outbox_events
@@ -106,7 +106,7 @@ class TestRelayOutboxEvents:
         mock_service.relay_pending_events = AsyncMock(return_value=0)
 
         with patch(
-            "app.infrastructure.events.outbox_service.get_outbox_service",
+            "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
             from app.workers.tasks.outbox_tasks import relay_outbox_events

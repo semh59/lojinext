@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.outbox_service import OutboxService
+from v2.modules.shared_kernel.infrastructure.outbox import OutboxService
 
 
 @pytest.mark.asyncio
@@ -30,10 +30,10 @@ async def test_outbox_relay_graceful_shutdown():
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
-            "app.infrastructure.events.outbox_service.get_event_bus"
+            "v2.modules.shared_kernel.infrastructure.outbox.get_event_bus"
         ) as mock_bus_func,
         patch(
-            "app.infrastructure.events.outbox_service.is_stopping"
+            "v2.modules.shared_kernel.infrastructure.outbox.is_stopping"
         ) as mock_is_stopping,
     ):
         # Mock bus

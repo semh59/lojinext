@@ -1,22 +1,78 @@
-"""
-Transactional Outbox Service
-Ensures atomic event persistence and reliable delivery.
+"""Transactional Outbox — ORM tablosu + servis.
+
+``app/database/models.py`` bölünmesi (dalga 16, task #58) — bu tablo hiçbir
+tek iş modülüne ait değil, TÜM modüllerin `save_outbox_event`/
+`get_outbox_service` çağırdığı gerçekten paylaşılan altyapı (driver/trip/
+fuel/location/fleet — grep ile doğrulandı). Bu yüzden bir iş modülüne
+zorla atanmak yerine shared_kernel'e taşındı — event_bus.py/audit_logger.py
+ile aynı kategori, ama o ikisinden farklı olarak bu tablonun gerçek tek
+sahibi (eski ``app/infrastructure/events/outbox_service.py``, bu taşımayla
+silindi) küçük ve self-contained olduğu için hemen taşınabildi.
+
+``event_bus.py``/``request_context``/``resilience``/``logging`` importları
+henüz v2'ye taşınmamış ``app/infrastructure/`` altyapısına bağımlı kalıyor
+(proje kararı: geçiş sırasında v2 modülleri geçici olarak eski app/
+dosyalarına bağımlı olabilir — bu, o altyapı kendisi migrate olunca
+(muhtemelen platform_infra/dalga 17) çözülecek).
 """
 
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from sqlalchemy import select
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    select,
+)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Mapped, mapped_column
 
-from app.database.models import OutboxEvent
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.context.request_context import get_correlation_id
 from app.infrastructure.events.event_bus import Event, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.shutdown import is_stopping
+from v2.modules.shared_kernel.infrastructure.base import Base, get_utc_now
 
 logger = get_logger(__name__)
+
+
+class OutboxEvent(Base):
+    """Transactional Outbox for reliable event delivery."""
+
+    __tablename__ = "outbox_events"
+    __table_args__ = (
+        Index("idx_outbox_processed", "processed"),
+        Index("idx_outbox_created", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"), primary_key=True
+    )
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    correlation_id: Mapped[str] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=get_utc_now,
+        onupdate=get_utc_now,
+        nullable=False,
+    )
+    processed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    error_message: Mapped[Optional[str]] = mapped_column(Text)
 
 
 async def save_outbox_event(
@@ -49,11 +105,11 @@ async def save_outbox_event(
 class OutboxService:
     """Manages the transactional outbox patterns."""
 
-    def __init__(self, uow: Optional[UnitOfWork] = None):
+    def __init__(self, uow: Optional[Any] = None):
         self.uow = uow
 
     async def save_event(
-        self, event_type: str, payload: Dict[str, Any], uow: Optional[UnitOfWork] = None
+        self, event_type: str, payload: Dict[str, Any], uow: Optional[Any] = None
     ) -> int:
         """
         Saves an event to the outbox table within the current transaction.

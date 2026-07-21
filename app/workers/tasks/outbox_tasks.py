@@ -20,7 +20,7 @@ def relay_outbox_events(self):
     """
     import asyncio
 
-    from app.infrastructure.events.outbox_service import get_outbox_service
+    from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
 
     async def run_relay():
         service = get_outbox_service()

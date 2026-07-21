@@ -4,8 +4,8 @@ from typing import Any, Dict, List
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
-from app.infrastructure.events.outbox_service import save_outbox_event
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 
 logger = get_logger(__name__)
 

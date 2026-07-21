@@ -48,7 +48,9 @@ def _make_ev(
 
 async def _insert_error_event(session, ev: ErrorEvent) -> int:
     """Insert an error_event row and return its id. Uses ORM model to avoid asyncpg cast issues."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     db_ev = ErrorEventModel(
         fingerprint=ev.fingerprint,
@@ -72,7 +74,9 @@ async def _insert_error_event(session, ev: ErrorEvent) -> int:
 @pytest.mark.integration
 async def test_direct_orm_write_to_error_events_table(db_session):
     """ORM INSERT into error_events works and can be queried."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     ev = _make_ev(
         category="pg_write_test",
@@ -125,7 +129,9 @@ async def test_error_occurrences_table_exists(db_session):
 @pytest.mark.integration
 async def test_upsert_increments_count_on_duplicate_fingerprint(db_session):
     """Two events with identical fingerprint → count=2 via UPSERT."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     ev = _make_ev(category="upsert_test", message="duplicate upsert integration test")
     now = datetime.now(timezone.utc)
@@ -329,13 +335,15 @@ async def test_resolve_event_end_to_end(async_client, db_session):
 
     from sqlalchemy import select
 
-    from app.database.models import ErrorEvent as ErrorEventModel
     from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
     from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     # Create a real admin role + user so resolved_by FK is satisfied
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "admin"))

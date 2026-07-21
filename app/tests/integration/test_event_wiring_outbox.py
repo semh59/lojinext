@@ -15,7 +15,6 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from app.database.models import OutboxEvent
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sofor
 from v2.modules.driver.application.add_sofor import add_sofor
 from v2.modules.driver.application.delete_sofor import delete_sofor
@@ -32,6 +31,7 @@ from v2.modules.location.application.delete_location import delete_location
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.location.schemas import LokasyonCreate, LokasyonUpdate
+from v2.modules.shared_kernel.infrastructure.outbox import OutboxEvent
 
 pytestmark = pytest.mark.integration
 
@@ -211,7 +211,7 @@ class TestRelayDispatchesRealHandlersWithoutCrashing:
             setup_cache_invalidation,
         )
         from app.infrastructure.events.event_bus import get_event_bus
-        from app.infrastructure.events.outbox_service import OutboxService
+        from v2.modules.shared_kernel.infrastructure.outbox import OutboxService
 
         bus = get_event_bus()
         bus.reset_all_for_tests()

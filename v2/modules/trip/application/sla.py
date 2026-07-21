@@ -11,8 +11,8 @@ from typing import Any, Dict, Optional
 
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType
-from app.infrastructure.events.outbox_service import get_outbox_service
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
 
 logger = get_logger(__name__)
 

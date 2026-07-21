@@ -268,7 +268,7 @@ class TestGetRouteSimulationFound:
         self, async_client, admin_auth_headers, db_session
     ):
         """GET /simulate/{id} returns 200 with simulation data (real seeded row)."""
-        from app.database.models import RouteSegment, RouteSimulation
+        from v2.modules.route_simulation.public import RouteSegment, RouteSimulation
 
         sim = RouteSimulation(
             cikis_lon=28.9,

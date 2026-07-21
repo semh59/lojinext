@@ -18,9 +18,9 @@ import pytest
 from sqlalchemy import select
 
 from app.core.services.route_calibration_service import RouteCalibrationService
-from app.database.models import GuzergahKalibrasyon
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sefer, seed_sofor
+from v2.modules.route_simulation.public import GuzergahKalibrasyon
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

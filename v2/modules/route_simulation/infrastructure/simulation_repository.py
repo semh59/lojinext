@@ -15,7 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database.base_repository import BaseRepository
-from app.database.models import RouteSegment, RouteSimulation
+from v2.modules.route_simulation.infrastructure.models import (
+    RouteSegment,
+    RouteSimulation,
+)
 
 
 class SimulationRepository(BaseRepository[RouteSimulation]):

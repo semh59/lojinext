@@ -9,9 +9,9 @@ except ImportError:
     LineString = None
     from_shape = None
 
-from app.database.models import GuzergahKalibrasyon
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.route_simulation.public import GuzergahKalibrasyon
 
 logger = get_logger(__name__)
 

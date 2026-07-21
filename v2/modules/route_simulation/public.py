@@ -28,6 +28,12 @@ from v2.modules.route_simulation.domain.segment_simulator import (
     simulate_route,
 )
 from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
+from v2.modules.route_simulation.infrastructure.models import (
+    GuzergahKalibrasyon,
+    RoutePath,
+    RouteSegment,
+    RouteSimulation,
+)
 from v2.modules.route_simulation.infrastructure.open_meteo_client import (
     OpenMeteoElevationClient,
     get_elevation_client,
@@ -37,6 +43,11 @@ from v2.modules.route_simulation.infrastructure.openroute_client import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "RoutePath",
+    "GuzergahKalibrasyon",
+    "RouteSimulation",
+    "RouteSegment",
     "get_route_details",
     "get_route_difficulty",
     "RouteSimulator",

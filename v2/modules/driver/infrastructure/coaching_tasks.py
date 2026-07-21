@@ -151,9 +151,9 @@ async def _run_evaluate_pending() -> Dict[str, Any]:
 
     from sqlalchemy import select, update
 
-    from app.database.models import CoachingDelivery
     from app.database.unit_of_work import UnitOfWork
     from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+    from v2.modules.driver.infrastructure.models import CoachingDelivery
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=14)
     results: Dict[str, Any] = {"evaluated": 0, "skipped": 0, "errors": 0}

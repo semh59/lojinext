@@ -9,10 +9,10 @@ doğrudan çalıştırıyordu — mekanik taşıma, davranış değişikliği yo
 
 from typing import Optional
 
-from app.database.models import CoachingDelivery
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.application.get_score import get_score_breakdown_sofor
+from v2.modules.driver.infrastructure.models import CoachingDelivery
 
 logger = get_logger(__name__)
 

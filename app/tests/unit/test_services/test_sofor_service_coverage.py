@@ -176,7 +176,7 @@ class TestDeleteSofor:
         assert result is False
 
     async def test_returns_false_when_already_deleted(self, db_session):
-        from app.database.models import Sofor as SoforModel
+        from v2.modules.driver.public import Sofor as SoforModel
 
         sofor = SoforModel(
             ad_soyad="Already Deleted Driver", aktif=False, is_deleted=True

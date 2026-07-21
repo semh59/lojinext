@@ -14,9 +14,9 @@ import pytest
 from sqlalchemy import insert
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import Sofor
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 
 

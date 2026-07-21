@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import func, select
 
-from app.database.models import Sofor, YakitAlimi
+from app.database.models import YakitAlimi
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import (
     seed_arac,
@@ -36,6 +36,7 @@ from app.tests._helpers.seed import (
     seed_lokasyon,
     seed_sofor,
 )
+from v2.modules.driver.public import Sofor
 from v2.modules.import_excel.application.execute_import import execute_import
 from v2.modules.import_excel.application.preview_import import (
     parse_and_preview,

@@ -72,6 +72,7 @@ from v2.modules.driver.infrastructure.driver_trip_queries import (
     get_with_route_analysis,
     search_driver_ids_by_name,
 )
+from v2.modules.driver.infrastructure.models import CoachingDelivery, Sofor
 from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 from v2.modules.driver.infrastructure.repository import SoforRepository, get_sofor_repo
 from v2.modules.driver.schemas import (
@@ -142,6 +143,9 @@ __all__ = [
     # repository
     "SoforRepository",
     "get_sofor_repo",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Sofor",
+    "CoachingDelivery",
     # trip-özel sefer sorguları (dalga 14 — sefer_repo.py'den taşındı)
     "get_by_sofor_id",
     "get_with_route_analysis",

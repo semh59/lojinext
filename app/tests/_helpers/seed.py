@@ -10,9 +10,9 @@ from app.database.models import (
     Lokasyon,
     Rol,
     SistemKonfig,
-    Sofor,
     YakitAlimi,
 )
+from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.public import Dorse
 from v2.modules.trip.public import SeferORM as Sefer

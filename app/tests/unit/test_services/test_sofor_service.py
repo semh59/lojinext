@@ -25,7 +25,7 @@ class TestSoforService:
 
     async def test_add_sofor_reactivates_passive_driver(self, db_session):
         """add_sofor re-activates an existing passive driver and returns its ID (real DB)."""
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         passive = Sofor(ad_soyad="Sofor Dilim18 B", aktif=False)
         db_session.add(passive)
@@ -37,7 +37,7 @@ class TestSoforService:
 
     async def test_add_sofor_raises_on_duplicate_active(self, db_session):
         """add_sofor raises ValueError when an active driver with same name exists (real DB)."""
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         active = Sofor(ad_soyad="Sofor Dilim18 C", aktif=True)
         db_session.add(active)
@@ -71,7 +71,7 @@ class TestSoforService:
 
     async def test_calculate_hybrid_score_no_trips(self, db_session):
         """calculate_hybrid_score returns manual_score when no trips found (real DB)."""
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sofor = Sofor(ad_soyad="Sofor Dilim18 D", aktif=True)
         db_session.add(sofor)

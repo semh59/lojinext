@@ -18,7 +18,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from celery.exceptions import SoftTimeLimitExceeded
 
-from app.database.models import Sofor
+from v2.modules.driver.public import Sofor
 
 pytestmark = pytest.mark.integration
 

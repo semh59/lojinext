@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import text
 
-from app.database.models import Sofor
+from v2.modules.driver.public import Sofor
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 

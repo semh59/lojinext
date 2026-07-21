@@ -16,10 +16,10 @@ doğrudan çağırır.
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import Sofor
 from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.driver.application.update_sofor import update_score
 from v2.modules.driver.application.update_sofor import update_sofor as update_sofor_fn
+from v2.modules.driver.public import Sofor
 
 pytestmark = pytest.mark.integration
 

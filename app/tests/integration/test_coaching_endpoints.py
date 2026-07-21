@@ -74,7 +74,7 @@ class TestCoachingEndpoints:
     ):
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sid = await self._create_sofor(async_client, admin_auth_headers)
         await db_session.execute(
@@ -125,7 +125,7 @@ class TestCoachingEndpoints:
         """Q2: parse_mode=HTML + html.escape(); injection denemesi escape edilir."""
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sid = await self._create_sofor(async_client, admin_auth_headers)
         await db_session.execute(

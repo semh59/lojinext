@@ -611,7 +611,7 @@ class TestPredictFuelDriverDBLookup:
         self, async_client, admin_auth_headers, db_session
     ):
         """When sofor_id is provided and exists, use sofor.score."""
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sofor = Sofor(
             ad_soyad="Test Sofor",

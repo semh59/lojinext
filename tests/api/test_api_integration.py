@@ -10,13 +10,14 @@ from datetime import date
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.database.models import Kullanici, Lokasyon, Rol, Sofor
+from app.database.models import Kullanici, Lokasyon, Rol
 
 # Import app and models
 from app.main import app
 
 # Use global Test Database Configuration from conftest
 from tests.conftest import TEST_DATABASE_URL
+from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 
 

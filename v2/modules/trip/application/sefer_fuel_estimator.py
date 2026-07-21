@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date as dt_date
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from app.config import settings
 from app.core.services.weather_service import (
@@ -36,7 +36,6 @@ from app.database.models import (
     Lokasyon,
     RouteSegment,
     RouteSimulation,
-    Sofor,
 )
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.public import AracORM as Arac
@@ -47,6 +46,10 @@ from v2.modules.prediction_ml.public import (
     weather_temperature_factor,
     weather_wind_factor,
 )
+
+if TYPE_CHECKING:
+    from v2.modules.driver.public import Sofor
+
 from v2.modules.route_simulation.public import (
     RouteSimulator,
     SimulationResult,
@@ -290,6 +293,8 @@ class SeferFuelEstimator:
     async def _load_entities(
         self, db: Any, inp: SeferFuelInput
     ) -> Tuple[Optional[Arac], Optional[Sofor], Optional[Dorse]]:
+        from v2.modules.driver.public import Sofor
+
         arac: Optional[Arac] = await db.get(Arac, inp.arac_id) if inp.arac_id else None
         sofor = await db.get(Sofor, inp.sofor_id) if inp.sofor_id else None
         dorse = await db.get(Dorse, inp.dorse_id) if inp.dorse_id else None

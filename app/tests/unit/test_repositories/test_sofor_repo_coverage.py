@@ -193,7 +193,7 @@ async def test_count_active_none_scalar():
 
 async def test_add_happy_path():
     """add creates new Sofor, flushes, and returns its id."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     session = AsyncMock()
     # TOCTOU check: no existing driver with that name

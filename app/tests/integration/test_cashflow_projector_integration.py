@@ -13,8 +13,8 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Sofor
 from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.trip.public import SeferORM as Sefer
 

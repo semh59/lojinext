@@ -11,8 +11,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Sofor
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.driver.infrastructure.models import Sofor
 
 logger = get_logger(__name__)
 
@@ -158,8 +158,8 @@ class SoforRepository(BaseRepository[Sofor]):
         from sqlalchemy import delete as sa_delete
         from sqlalchemy import insert as sa_insert
 
-        from app.database.models import SoforAdSoyadTrigram
         from app.infrastructure.security.pii_encryption import trigram_blind_indexes
+        from v2.modules.driver.infrastructure.models import SoforAdSoyadTrigram
 
         session = self.session
         await session.execute(

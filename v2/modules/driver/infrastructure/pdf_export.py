@@ -8,9 +8,9 @@ from xml.sax.saxutils import escape as xml_escape
 
 from sqlalchemy import select
 
-from app.database.models import Sofor
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.driver.infrastructure.models import Sofor
 from v2.modules.reports.public import PDFReportGenerator
 from v2.modules.trip.public import SeferORM as Sefer
 

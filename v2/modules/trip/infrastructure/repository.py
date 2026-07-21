@@ -6,7 +6,7 @@ from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Lokasyon, Sofor
+from app.database.models import Lokasyon
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.trip.infrastructure.models import Sefer
 from v2.modules.trip.sefer_status import (
@@ -69,6 +69,7 @@ class SeferRepository(BaseRepository[Sefer]):
         fleet.application.bulk_add_vehicles → unit_of_work`` çemberi oluşur
         (ampirik doğrulandı — `import app.main` gerçekten patlıyordu).
         """
+        from v2.modules.driver.public import Sofor
         from v2.modules.fleet.public import AracORM as Arac
         from v2.modules.fleet.public import Dorse
 

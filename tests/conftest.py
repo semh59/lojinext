@@ -376,7 +376,7 @@ def mocker():
 @pytest_asyncio.fixture(scope="function")
 async def sofor_id(db_session_factory, setup_test_db):
     """Seed a disposable driver record for legacy delete smoke tests."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     async with db_session_factory() as session:
         sofor = Sofor(

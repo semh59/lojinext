@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.models import EgitimKuyrugu
 from v2.modules.prediction_ml.application.ml_service import MLService
+from v2.modules.prediction_ml.public import EgitimKuyrugu
 
 
 @pytest.mark.asyncio

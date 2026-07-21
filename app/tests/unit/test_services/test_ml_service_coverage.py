@@ -82,7 +82,7 @@ class TestScheduleTraining:
 
         uow.session.add = capture_add
 
-        from app.database.models import EgitimKuyrugu
+        from v2.modules.prediction_ml.public import EgitimKuyrugu
 
         fake_task = MagicMock(spec=EgitimKuyrugu)
         fake_task.arac_id = 1
@@ -106,7 +106,7 @@ class TestScheduleTraining:
             return_value=MagicMock(versiyon=3)
         )
 
-        from app.database.models import EgitimKuyrugu
+        from v2.modules.prediction_ml.public import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -130,7 +130,7 @@ class TestScheduleTraining:
         uow.ml_training_repo.get_active_tasks_for_vehicle = AsyncMock(return_value=[])
         uow.model_versiyon_repo.get_latest_version = AsyncMock(return_value=None)
 
-        from app.database.models import EgitimKuyrugu
+        from v2.modules.prediction_ml.public import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -152,7 +152,7 @@ class TestScheduleTraining:
         uow.ml_training_repo.get_active_tasks_for_vehicle = AsyncMock(return_value=[])
         uow.model_versiyon_repo.get_latest_version = AsyncMock(return_value=None)
 
-        from app.database.models import EgitimKuyrugu
+        from v2.modules.prediction_ml.public import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -344,7 +344,7 @@ class TestRegisterModelVersion:
 
         uow.session.add = capture_add
 
-        from app.database.models import ModelVersiyon
+        from v2.modules.prediction_ml.public import ModelVersiyon
 
         fake_mv = MagicMock(spec=ModelVersiyon)
         fake_mv.arac_id = 1
@@ -377,7 +377,7 @@ class TestRegisterModelVersion:
         """register_model_version uses None for missing metric keys."""
         svc, uow = _make_service()
 
-        from app.database.models import ModelVersiyon
+        from v2.modules.prediction_ml.public import ModelVersiyon
 
         created_kwargs = {}
 

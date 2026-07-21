@@ -72,6 +72,13 @@ from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
     fetch_health_input,
     fetch_health_input_batch,
 )
+from v2.modules.prediction_ml.infrastructure.models import (
+    EgitimKuyrugu,
+    ModelVersiyon,
+)
+from v2.modules.prediction_ml.infrastructure.models import (
+    PredictionResult as PredictionResultORM,
+)
 
 __all__ = [
     "EnsemblePredictorService",
@@ -95,6 +102,10 @@ __all__ = [
     "XGBOOST_AVAILABLE",
     "EnsembleFuelPredictor",
     "PredictionResult",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "EgitimKuyrugu",
+    "ModelVersiyon",
+    "PredictionResultORM",
     "SecurityError",
     "FuelPrediction",
     "HybridFuelPredictor",

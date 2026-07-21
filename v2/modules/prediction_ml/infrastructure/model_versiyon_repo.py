@@ -7,7 +7,7 @@ from typing import Any, List, Optional, cast
 from sqlalchemy import desc, select, update
 
 from app.database.base_repository import BaseRepository
-from app.database.models import ModelVersiyon
+from v2.modules.prediction_ml.infrastructure.models import ModelVersiyon
 
 
 class ModelVersiyonRepository(BaseRepository[ModelVersiyon]):

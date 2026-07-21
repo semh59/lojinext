@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy import select
 
 from app.database.base_repository import BaseRepository
-from app.database.models import EgitimKuyrugu
+from v2.modules.prediction_ml.infrastructure.models import EgitimKuyrugu
 
 
 class MLTrainingRepository(BaseRepository[EgitimKuyrugu]):

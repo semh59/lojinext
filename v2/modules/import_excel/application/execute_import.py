@@ -18,10 +18,10 @@ from typing import Any, Dict, List
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import text
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.import_excel.application.preview_import import parse_import_file
 from v2.modules.import_excel.domain.constants import SUPPORTED_TYPES
 from v2.modules.import_excel.domain.row_validators import validate_import_rows
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SEFER_STATUS_PLANLANDI
 
 

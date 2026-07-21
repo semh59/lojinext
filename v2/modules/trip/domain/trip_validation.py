@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from typing import Any, Dict, List, Optional, cast
 
-from app.core.exceptions import RouteProcessingError
+from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.trip.schemas import SeferCreate, TripStatus
 from v2.modules.trip.sefer_status import (
     SEFER_STATUS_PLANLANDI,

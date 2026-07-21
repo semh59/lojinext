@@ -14,7 +14,7 @@ import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 
-from app.database.base_repository import BaseRepository
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 pytestmark = pytest.mark.unit
 

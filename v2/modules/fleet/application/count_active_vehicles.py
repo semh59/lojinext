@@ -1,6 +1,6 @@
 """Use-case: count active (non-deleted) vehicles — used by auth_rbac's license limit check."""
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def count_active_vehicles() -> int:

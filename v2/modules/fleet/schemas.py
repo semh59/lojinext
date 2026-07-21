@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-from app.schemas.validators import (
+from v2.modules.shared_kernel.schemas.validators import (
     PLAKA_PATTERN_STR,
     sanitize_string,
     validate_safe_string,

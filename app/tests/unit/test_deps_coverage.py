@@ -230,7 +230,7 @@ async def test_service_factories_build_real_services():
     explicit uow= kwarg (no DI factory to assert on).
     """
     from app.api import deps
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
     from v2.modules.trip.application.trip_service import SeferService
 
     async with UnitOfWork() as uow:

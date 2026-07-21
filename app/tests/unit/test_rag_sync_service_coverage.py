@@ -112,7 +112,7 @@ async def test_initial_sync_skips_if_already_syncing():
 
 
 async def test_initial_sync_indexes_all_entities():
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
 
@@ -147,7 +147,7 @@ async def test_initial_sync_indexes_all_entities():
 
 
 async def test_initial_sync_exception_resets_syncing_flag():
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
 
@@ -177,7 +177,7 @@ async def test_on_arac_changed_int_id_fetches_from_repo():
     fırlatıyordu — bkz. rag_sync_service.py docstring'i), bu yüzden
     UnitOfWork mocklanıyor (test_initial_sync_indexes_all_entities'teki
     aynı desen)."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"result": 42})
@@ -197,7 +197,7 @@ async def test_on_arac_changed_int_id_fetches_from_repo():
 
 
 async def test_on_arac_changed_int_id_not_found_skips():
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"result": 99})
@@ -243,7 +243,7 @@ async def test_on_sofor_changed_dict_data():
 
 async def test_on_sofor_changed_int_id_fetches_from_repo():
     """2026-07-17 fix: bkz. test_on_arac_changed_int_id_fetches_from_repo — aynı desen."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"result": 5})
@@ -263,7 +263,7 @@ async def test_on_sofor_changed_int_id_fetches_from_repo():
 
 
 async def test_on_sofor_changed_int_id_not_found_skips():
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"result": 99})
@@ -314,7 +314,7 @@ async def test_on_sefer_changed_sefer_id_key_fetches_from_repo():
     """2026-07-17 fix: gerçek publisher'lar (`sefer_write_service.py` vb.)
     `"result"` değil `"sefer_id"` (int) gönderiyor — eski kod bunu hiç
     işlemiyordu (prod'da hep no-op), yeni kod UnitOfWork üzerinden çekiyor."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"sefer_id": 200, "sefer_no": "S-200"})
@@ -336,7 +336,7 @@ async def test_on_sefer_changed_sefer_id_key_fetches_from_repo():
 async def test_on_sefer_changed_id_key_fetches_from_repo():
     """`sefer_analiz_service.py`'nin `publish_simple_async(..., id=t_id, ...)`
     deseni — `"id"` anahtarı, `"sefer_id"` değil."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"id": 201, "tuketim": 32.5})
@@ -356,7 +356,7 @@ async def test_on_sefer_changed_id_key_fetches_from_repo():
 
 
 async def test_on_sefer_changed_sefer_id_not_found_skips():
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     svc = _make_service()
     event = _make_event({"sefer_id": 999})

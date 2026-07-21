@@ -11,9 +11,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database.base_repository import BaseRepository
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.infrastructure.models import Lokasyon
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 

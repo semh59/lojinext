@@ -1,8 +1,8 @@
 import pytest
 from sqlalchemy import text
 
-from app.database.base_repository import BaseRepository
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 pytestmark = pytest.mark.integration
 

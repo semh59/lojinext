@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.schemas.validators import validate_safe_string
+from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 from v2.modules.trip.sefer_status import (
     CANONICAL_SEFER_STATUS_SET,
     SEFER_STATUS_PLANLANDI,

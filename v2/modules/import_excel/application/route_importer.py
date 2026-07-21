@@ -8,11 +8,11 @@ crash ediyordu.
 
 from typing import Tuple
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_route_excel
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def import_routes(content: bytes) -> Tuple[int, list]:

@@ -22,8 +22,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.location.public import LokasyonCreate, create_location
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.sefer_fuel_estimator import (
     SeferFuelEstimator,
     SeferFuelInput,

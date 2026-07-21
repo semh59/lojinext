@@ -21,7 +21,7 @@ class TestDetailedScenarios:
         self, db_session, report_repos, sefer_service
     ):
         """SENARYO 1: Pasif şoförlerin raporlarda görünmesi"""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             # 1. Şoför oluştur
@@ -78,7 +78,7 @@ class TestDetailedScenarios:
         )
 
         # 4. Şoförü PASİF yap ve doğrula
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             await uow.sofor_repo.delete(sofor_id)  # Bu soft delete yapar (aktif=0)
@@ -159,7 +159,7 @@ class TestDetailedScenarios:
     @pytest.mark.asyncio
     async def test_sefer_service_logic(self, sefer_service):
         """SENARYO 3: Sefer Servisi Mantığı (Validasyon & Boş Dönüş)"""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             sofor_model = await uow.sofor_repo.add(
@@ -219,7 +219,7 @@ class TestDetailedScenarios:
     @pytest.mark.asyncio
     async def test_foreign_key_integrity(self, db_session):
         """SENARYO 4: Foreign Key Bütünlüğü — PostgreSQL enforces FK constraints natively."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             arac_model = await uow.arac_repo.add(

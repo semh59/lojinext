@@ -249,7 +249,7 @@ async def test_chat_exception_raises_llm_provider_error():
     try/except (driver_coaching_engine.py, anomalies.py, ai_service.py)
     were written assuming this call could raise, so it never actually
     engaged their fallback paths correctly."""
-    from app.core.exceptions import LLMProviderError
+    from v2.modules.shared_kernel.exceptions import LLMProviderError
 
     svc = _make_service_with_client()
     svc.client.chat = MagicMock()
@@ -265,7 +265,7 @@ async def test_chat_exception_raises_llm_provider_error():
 async def test_chat_timeout_raises_llm_provider_error():
     import asyncio
 
-    from app.core.exceptions import LLMProviderError
+    from v2.modules.shared_kernel.exceptions import LLMProviderError
 
     svc = _make_service_with_client()
     svc.client.chat = MagicMock()
@@ -335,7 +335,7 @@ async def test_chat_stream_success():
 
 
 async def test_chat_stream_exception_raises_llm_provider_error():
-    from app.core.exceptions import LLMProviderError
+    from v2.modules.shared_kernel.exceptions import LLMProviderError
 
     svc = _make_service_with_client()
     svc.client.chat = MagicMock()

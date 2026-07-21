@@ -29,7 +29,7 @@ from v2.modules.import_excel.domain.field_validators import (
 
 
 def validate_arac_row(row: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     plaka = row.get(mapping.get("plaka", "plaka"))
     if not plaka:
@@ -38,7 +38,7 @@ def validate_arac_row(row: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str,
 
 
 def validate_surucu_row(row: Dict[str, Any], mapping: Dict[str, str]) -> Dict[str, Any]:
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     ad_soyad = row.get(mapping.get("ad_soyad", "ad_soyad"))
     if not ad_soyad:
@@ -62,7 +62,7 @@ def validate_sefer_row(
     trailers: List[Dict[str, Any]],
     routes: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     plaka = row.get(mapping.get("plaka", "plaka"))
     sofor_ad = row.get(mapping.get("sofor_ad", "sofor_ad"))

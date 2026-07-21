@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from v2.modules.fleet.infrastructure.models import Dorse
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class DorseRepository(BaseRepository[Dorse]):

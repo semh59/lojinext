@@ -12,9 +12,9 @@ from sqlalchemy import text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.anomaly.infrastructure.models import Anomaly
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 

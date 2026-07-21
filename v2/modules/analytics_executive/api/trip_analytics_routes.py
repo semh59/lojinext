@@ -19,7 +19,6 @@ from app.api.deps import (
     get_sefer_service,
     require_permissions,
 )
-from app.core.exceptions import DomainError
 from app.infrastructure.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
@@ -27,6 +26,7 @@ from app.infrastructure.background.job_manager import (
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.trip.public import SeferService, SeferStatsResponse
 
 logger = get_logger(__name__)

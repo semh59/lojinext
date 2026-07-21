@@ -12,7 +12,6 @@ from typing import Any, Dict, Optional
 
 from app.config import settings
 from app.core.services.weather_service import WeatherService
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.prediction_ml.application.ensemble_orchestration import (
     process_ensemble_result,
     run_ensemble_prediction,
@@ -28,6 +27,7 @@ from v2.modules.prediction_ml.domain.physics_model import (
     run_physics_model,
 )
 from v2.modules.prediction_ml.domain.route_ratios import normalize_route_analysis
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

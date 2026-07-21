@@ -2,8 +2,8 @@
 
 from typing import Any, Dict, List, Optional, cast
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.delete_trip import delete_sefer_uow
 from v2.modules.trip.application.stats_refresh import refresh_stats
 from v2.modules.trip.application.update_trip import update_sefer_uow

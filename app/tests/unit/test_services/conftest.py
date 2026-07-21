@@ -8,7 +8,7 @@ import pytest
 @pytest.fixture
 def mock_uow(monkeypatch):
     """Mock UnitOfWork that can be used by services without a real DB."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     # Create a mock UnitOfWork instance
     uow = MagicMock(spec=UnitOfWork)

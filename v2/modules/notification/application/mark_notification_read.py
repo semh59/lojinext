@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def mark_as_read(notification_id: int, user_id: int) -> bool:

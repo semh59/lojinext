@@ -10,17 +10,17 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.errors import (
-    BusinessException,
-    DiagnosticHelper,
-    create_error_response,
-)
 from app.core.services.route_validator import RouteValidator
 from app.main import (
     business_exception_handler,
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
+)
+from v2.modules.shared_kernel.errors import (
+    BusinessException,
+    DiagnosticHelper,
+    create_error_response,
 )
 
 pytestmark = pytest.mark.integration
@@ -472,7 +472,7 @@ class TestUserService:
         # Documented boundary: `kullanici_repo.update` returning False while the
         # row exists is a TOCTOU race condition guard — unreachable in a
         # single-tenant real DB. Kept mocked to preserve the dead-code branch.
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         existing = {"id": 1, "email": "a@b.com"}
         mock_uow = MagicMock()
@@ -494,7 +494,7 @@ class TestUserService:
         # Documented boundary: create succeeds but immediate get_by_id returns
         # None is physically impossible in a non-distributed DB — tested via
         # injection to cover the defensive guard branch.
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         mock_uow = MagicMock()
         mock_uow.kullanici_repo = MagicMock()

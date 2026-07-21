@@ -4,13 +4,13 @@ from contextlib import AsyncExitStack
 from datetime import date
 from decimal import Decimal
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.cache.cache_manager import get_cache_manager
 from v2.modules.fuel.domain.entities import YakitAlimi
 from v2.modules.fuel.domain.period_matcher import (
     sync_create_fuel_periods,
     sync_match_periods_with_trips,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import Sefer
 
 

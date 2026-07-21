@@ -398,7 +398,7 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
 
     wrapper = NonClosingSession(session)
     monkeypatch.setattr("app.database.connection.AsyncSessionLocal", wrapper)
-    monkeypatch.setattr("app.database.unit_of_work.AsyncSessionLocal", wrapper)
+    monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
 
     # Sync support
     sync_url = temp_db_url.replace("+asyncpg", "")

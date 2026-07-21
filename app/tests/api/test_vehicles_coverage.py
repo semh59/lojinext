@@ -108,7 +108,7 @@ async def test_list_vehicles_service_raises_domain_error(
     async_client, admin_auth_headers
 ):
     """DomainError from use-case propagates correctly."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with patch(
         f"{ROUTES}.get_all_vehicles_paged",
@@ -747,7 +747,7 @@ async def test_inspection_alerts_happy_path(async_client, admin_auth_headers):
 
 async def test_delete_vehicle_domain_error_propagates(async_client, admin_auth_headers):
     """DomainError from delete_vehicle propagates as-is (422)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.delete_vehicle",

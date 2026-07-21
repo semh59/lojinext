@@ -69,10 +69,10 @@ async def _run_digest() -> Dict[str, Any]:
     `timeout_partial=True` bayrağı operasyon ekibine zaman aşımını
     bildirir.
     """
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.driver.application.generate_coaching import (
         get_driver_coaching_engine,
     )
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     engine = get_driver_coaching_engine()
     async with UnitOfWork() as uow:
@@ -151,9 +151,9 @@ async def _run_evaluate_pending() -> Dict[str, Any]:
 
     from sqlalchemy import select, update
 
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.driver.application.get_score import get_score_breakdown_sofor
     from v2.modules.driver.infrastructure.models import CoachingDelivery
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=14)
     results: Dict[str, Any] = {"evaluated": 0, "skipped": 0, "errors": 0}

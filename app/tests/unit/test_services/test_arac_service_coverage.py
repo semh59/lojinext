@@ -16,7 +16,6 @@ decorator is documented dead code, see v2/modules/fleet/events.py).
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_sefer, seed_sofor
 from v2.modules.fleet.application.bulk_add_vehicles import bulk_add_vehicles
 from v2.modules.fleet.application.create_vehicle import create_vehicle
@@ -33,6 +32,7 @@ from v2.modules.fleet.application.list_vehicles import (
 from v2.modules.fleet.application.update_vehicle import update_vehicle
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.schemas import AracCreate, AracUpdate
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

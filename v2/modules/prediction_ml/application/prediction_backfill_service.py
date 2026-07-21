@@ -35,7 +35,7 @@ class PredictionBackfillService:
     def _get_uow(self) -> Any:
         if self._uow is not None:
             return self._uow
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         return UnitOfWork()
 

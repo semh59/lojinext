@@ -63,7 +63,7 @@ def monitor_errors(
                 except Exception as exc:
                     from fastapi import HTTPException
 
-                    from app.core.exceptions import DomainError
+                    from v2.modules.shared_kernel.exceptions import DomainError
 
                     if isinstance(exc, (DomainError, HTTPException, ValueError)):
                         raise
@@ -103,7 +103,7 @@ def monitor_errors(
                 except Exception as exc:
                     from fastapi import HTTPException
 
-                    from app.core.exceptions import DomainError
+                    from v2.modules.shared_kernel.exceptions import DomainError
 
                     if isinstance(exc, (DomainError, HTTPException, ValueError)):
                         raise

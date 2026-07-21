@@ -112,7 +112,7 @@ class TestAppBootImport:
 
     def test_unit_of_work_imports(self):
         """UoW must export get_uow — FastAPI dependency."""
-        from app.database.unit_of_work import (  # noqa: F401
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import (  # noqa: F401
             UnitOfWork,
             get_uow,
             unit_of_work,

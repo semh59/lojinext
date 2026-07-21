@@ -1,7 +1,10 @@
 import pytest
 
-from app.schemas.validators import sanitize_string, validate_safe_string
 from v2.modules.ai_assistant.application.orchestrate_ai_response import AIService
+from v2.modules.shared_kernel.schemas.validators import (
+    sanitize_string,
+    validate_safe_string,
+)
 
 
 class TestSecurityPenetration:

@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac
 from v2.modules.fleet.public import AracBakim, BakimTipi
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
 

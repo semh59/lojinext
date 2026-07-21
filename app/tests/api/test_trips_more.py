@@ -386,7 +386,7 @@ async def test_update_sefer_get_updated_returns_none(async_client, admin_auth_he
 @pytest.mark.asyncio
 async def test_sefer_onayla_domain_error(async_client, admin_auth_headers):
     """POST /{id}/onayla DomainError is re-raised (not caught as 500)."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     sefer_obj = _make_sefer_response_obj()
     mock_svc = AsyncMock()
@@ -409,7 +409,7 @@ async def test_sefer_onayla_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_sefer_reddet_domain_error(async_client, admin_auth_headers):
     """POST /{id}/reddet DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     sefer_obj = _make_sefer_response_obj()
     mock_svc = AsyncMock()
@@ -431,7 +431,7 @@ async def test_sefer_reddet_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_beklemede_domain_error(async_client, admin_auth_headers):
     """GET /beklemede DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_by_onay_durumu = AsyncMock(side_effect=DomainError("domain err"))
@@ -531,7 +531,7 @@ async def test_create_return_trip_serialization_error(async_client, admin_auth_h
 @pytest.mark.asyncio
 async def test_read_seferler_domain_error(async_client, admin_auth_headers):
     """GET / DomainError is re-raised (not caught as 500)."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain err"))
@@ -548,7 +548,7 @@ async def test_read_seferler_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_read_today_domain_error(async_client, admin_auth_headers):
     """GET /today DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain err"))

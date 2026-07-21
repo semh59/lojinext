@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.core.utils.type_helpers import safe_float
+from v2.modules.shared_kernel.utils.type_helpers import safe_float
 
 pytestmark = pytest.mark.unit
 

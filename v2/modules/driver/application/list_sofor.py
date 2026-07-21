@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Optional
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def get_all_paged(

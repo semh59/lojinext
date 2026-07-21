@@ -13,7 +13,6 @@ from app.api.deps import (
     get_current_active_admin,
     get_current_active_user,
 )
-from app.core.exceptions import DomainError
 from app.infrastructure.audit import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
@@ -65,6 +64,7 @@ from v2.modules.location.schemas import (
     RouteInfoResponse,
     StaleLocationsResponse,
 )
+from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import (
     EXCEL_XLSX_RESPONSES,
     DeleteResultResponse,

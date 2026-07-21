@@ -70,7 +70,7 @@ async def test_theft_pattern_scan_logs_ids_not_pii(caplog):
 
     with (
         patch(
-            "app.database.unit_of_work.UnitOfWork",
+            "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
             lambda *a, **kw: _FakeUoW(fake_rows),
         ),
         caplog.at_level(logging.WARNING, logger=theft_tasks.logger.name),

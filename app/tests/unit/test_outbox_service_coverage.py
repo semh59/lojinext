@@ -18,12 +18,12 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.shared_kernel.infrastructure.outbox import (
     OutboxEvent,
     OutboxService,
     get_outbox_service,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
 _BUS = "v2.modules.shared_kernel.infrastructure.outbox.get_event_bus"

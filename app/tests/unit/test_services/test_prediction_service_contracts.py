@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import v2.modules.prediction_ml.domain.physics_model as physics_model_module
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.prediction_ml.application.prediction_service import PredictionService
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 class DummyUnitOfWork:

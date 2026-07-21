@@ -3,11 +3,11 @@
 from datetime import date
 from typing import Any, List, Optional
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.application._locks import SOFOR_WRITE_LOCK
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

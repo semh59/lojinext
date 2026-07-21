@@ -6,7 +6,7 @@ import pytest
 
 import app.core.services.weather_service as weather_module
 import v2.modules.prediction_ml.public as prediction_module
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application import (
     add_trip,
     bulk_add_trips,

@@ -289,7 +289,7 @@ async def test_http_exception_handler_404(async_client):
 
 async def test_domain_error_handler_fuel_calculation(async_client):
     """FuelCalculationError → 422 via domain_error_handler."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     @app.get("/test-fuel-error")
     async def _raise_fuel_error():
@@ -310,7 +310,7 @@ async def test_domain_error_handler_fuel_calculation(async_client):
 
 async def test_domain_error_handler_ml_prediction(async_client):
     """MLPredictionError → 503 via domain_error_handler."""
-    from app.core.exceptions import MLPredictionError
+    from v2.modules.shared_kernel.exceptions import MLPredictionError
 
     @app.get("/test-ml-error")
     async def _raise_ml_error():
@@ -329,7 +329,7 @@ async def test_domain_error_handler_ml_prediction(async_client):
 
 async def test_domain_error_handler_route_processing_424(async_client):
     """RouteProcessingError with provider_status=429 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-error")
     async def _raise_route_error():
@@ -555,7 +555,7 @@ async def test_unhandled_exception_handler(async_client):
 
 async def test_audit_log_error_handler(async_client):
     """AuditLogError → 500 via domain_error_handler."""
-    from app.core.exceptions import AuditLogError
+    from v2.modules.shared_kernel.exceptions import AuditLogError
 
     @app.get("/test-audit-error")
     async def _raise_audit():
@@ -580,7 +580,7 @@ async def test_audit_log_error_handler(async_client):
 
 async def test_import_validation_error_handler(async_client):
     """ImportValidationError → 422 via domain_error_handler."""
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     @app.get("/test-import-error")
     async def _raise_import():

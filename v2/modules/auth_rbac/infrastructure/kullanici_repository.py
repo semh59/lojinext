@@ -6,8 +6,8 @@ from typing import Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.database.base_repository import BaseRepository
 from v2.modules.auth_rbac.infrastructure.models import Kullanici
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class KullaniciRepository(BaseRepository[Kullanici]):

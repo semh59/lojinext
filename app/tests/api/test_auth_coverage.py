@@ -109,7 +109,7 @@ async def test_login_super_admin_bypass(async_client):
 async def test_login_wrong_super_admin_password_falls_through(async_client):
     """Wrong password for super-admin → falls through to regular auth → non-200."""
     from app.config import settings
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     fake_svc = _make_fake_auth_service(
         authenticate=AsyncMock(side_effect=DomainError("bad credentials"))
@@ -293,7 +293,7 @@ async def test_login_regular_user_success(async_client):
 
 async def test_login_regular_user_wrong_credentials(async_client):
     """Auth service raises DomainError → propagated as error response."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     fake_svc = _make_fake_auth_service(
         authenticate=AsyncMock(side_effect=DomainError("bad credentials"))

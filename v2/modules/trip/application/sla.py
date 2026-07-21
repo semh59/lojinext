@@ -9,10 +9,10 @@ tutarlı olarak ``application/``'a taşındı.
 
 from typing import Any, Dict, Optional
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

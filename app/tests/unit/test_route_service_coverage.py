@@ -173,7 +173,9 @@ class TestGetRouteDetailsNoApiKey:
 
 class TestGetRouteDetailsCacheHit:
     async def test_returns_cached_result(self, db_session):
-        from app.database.unit_of_work import unit_of_work as get_uow
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import (
+            unit_of_work as get_uow,
+        )
 
         async with get_uow() as uow:
             await uow.route_repo.save_route(
@@ -203,7 +205,9 @@ class TestGetRouteDetailsCacheHit:
         assert result["distance_km"] == 450.0
 
     async def test_cache_hit_with_include_details(self, db_session):
-        from app.database.unit_of_work import unit_of_work as get_uow
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import (
+            unit_of_work as get_uow,
+        )
 
         async with get_uow() as uow:
             await uow.route_repo.save_route(

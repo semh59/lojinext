@@ -4,8 +4,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from v2.modules.admin_platform.infrastructure.models import KonfigGecmis, SistemKonfig
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 # Thread-safe singleton
 _admin_config_repo_lock = threading.Lock()

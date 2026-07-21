@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.shared_kernel.infrastructure.outbox import OutboxService
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 @pytest.mark.asyncio

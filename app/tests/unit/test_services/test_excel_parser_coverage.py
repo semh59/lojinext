@@ -1005,8 +1005,8 @@ class TestRowLimitGuard:
         assert MAX_EXCEL_ROWS == 20_000
 
     def test_sefer_parser_rejects_over_limit(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 2)
         content = _make_xlsx(
@@ -1021,8 +1021,8 @@ class TestRowLimitGuard:
             excel_parser._parse_sefer_excel_sync(content)
 
     def test_yakit_parser_rejects_over_limit(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
         content = _make_xlsx(
@@ -1036,8 +1036,8 @@ class TestRowLimitGuard:
             excel_parser._parse_yakit_excel_sync(content)
 
     def test_vehicle_parser_rejects_over_limit(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(excel_parser, "MAX_EXCEL_ROWS", 1)
         content = _make_xlsx(
@@ -1069,8 +1069,8 @@ class TestExceptionHandlingBranches:
     """Cover the except (ValueError, OSError, KeyError, AttributeError) branches."""
 
     def test_sefer_sync_raises_excel_export_error_on_value_error(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1081,8 +1081,8 @@ class TestExceptionHandlingBranches:
             excel_parser._parse_sefer_excel_sync(b"dummy")
 
     def test_yakit_sync_raises_excel_export_error_on_os_error(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1093,8 +1093,8 @@ class TestExceptionHandlingBranches:
             excel_parser._parse_yakit_excel_sync(b"dummy")
 
     def test_route_sync_raises_excel_export_error_on_key_error(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1107,8 +1107,8 @@ class TestExceptionHandlingBranches:
     def test_vehicle_sync_raises_excel_export_error_on_attribute_error(
         self, monkeypatch
     ):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1119,8 +1119,8 @@ class TestExceptionHandlingBranches:
             excel_parser._parse_vehicle_excel_sync(b"dummy")
 
     def test_driver_sync_raises_excel_export_error_on_value_error(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,
@@ -1131,8 +1131,8 @@ class TestExceptionHandlingBranches:
             excel_parser._parse_driver_excel_sync(b"dummy")
 
     def test_dorse_sync_raises_excel_export_error_on_os_error(self, monkeypatch):
-        from app.core.exceptions import ExcelExportError
         from v2.modules.import_excel.infrastructure import parsers as excel_parser
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(
             excel_parser.pd,

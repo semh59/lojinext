@@ -29,8 +29,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.exceptions import RouteProcessingError
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.trip.application import (
     add_trip,
     bulk_add_trips,

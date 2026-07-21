@@ -145,7 +145,8 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 | `prediction_ml` | Done (code) — 5-model ensemble, physics fallback, Kalman, ARIMA, XAI; consumed by `trip` module's `SeferFuelEstimator` (Phase 4-5 sefer create path) via `adjustment_factors`/`vehicle_health_adjustment` | `v2/modules/prediction_ml/CLAUDE.md` |
 | `trip` | Done (code) — sefer CRUD, round-trip automation, bulk ops, SLA/cost reconciliation, Phase 4-5 `SeferFuelEstimator` | `v2/modules/trip/CLAUDE.md` |
 | `admin_platform` | Done (code) — sistem konfig, admin audit log, dış entegrasyon secret'ları, idempotency-key altyapısı, health check, error_events admin yüzeyi, Telegram bot köprüsü | `v2/modules/admin_platform/CLAUDE.md` |
-| `shared_kernel`, `platform_infra` | Not started | see `TASKS/STATUS.md` |
+| `shared_kernel` | Done (code) — not a business module; genuinely cross-cutting code left over once all 15 business modules were carved out (`UnitOfWork`, `BaseRepository`, ORM `Base`, domain exception hierarchy, security validators, generic response envelopes, `OutboxEvent`/`ErrorEvent`/`ErrorOccurrence`) | `v2/modules/shared_kernel/CLAUDE.md` |
+| `platform_infra` | Not started | see `TASKS/STATUS.md` |
 
 There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `LicenseEngine`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector`, `PredictionService`, `EnsemblePredictorService`, `EnsembleFuelPredictor`, `KalmanEstimatorService`, `Trainer`, `SeferService`, `SeferFuelEstimator`, `SeferRepository` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
 
@@ -155,11 +156,11 @@ There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules fo
 
 ### Unit of Work
 
-`app/database/unit_of_work.py` — async context manager that groups all repository operations into one transaction. All repositories are properties on the `UnitOfWork` object (`uow.sefer_repo`, `uow.arac_repo`, etc.). Services should accept an optional `uow: UnitOfWork` so callers can share transactions.
+`v2/modules/shared_kernel/infrastructure/unit_of_work.py` — async context manager that groups all repository operations into one transaction. All repositories are properties on the `UnitOfWork` object (`uow.sefer_repo`, `uow.arac_repo`, etc.). Services should accept an optional `uow: UnitOfWork` so callers can share transactions.
 
 ### Repository pattern
 
-`app/database/base_repository.py` provides generic CRUD. Specialised repos in `app/database/repositories/` add domain queries. Repos operate on `app/database/models.py` (SQLAlchemy 2 async ORM). Pydantic schemas for requests/responses live in `app/schemas/`.
+`v2/modules/shared_kernel/infrastructure/base_repository.py` provides generic CRUD (`BaseRepository`). Specialised repos live in each module's own `infrastructure/repository.py` and add domain queries. Repos operate on each module's own `infrastructure/models.py` (SQLAlchemy 2 async ORM, all deriving from `v2/modules/shared_kernel/infrastructure/base.py`'s `Base`). Pydantic schemas for requests/responses live in each module's own `schemas.py`.
 
 ### Service split
 
@@ -261,11 +262,11 @@ The system runs **single-tenant**: no `tenant_id` column on any table and no row
 
 ### Domain exceptions
 
-`app/core/exceptions.py` — typed exception hierarchy rooted at `DomainError`. Subclasses: `FuelCalculationError`, `ImportValidationError` (carries `errors: list[str]`), `ExcelExportError`, `RouteProcessingError`, `MLPredictionError`, `AnomalyDetectionError`, `AuditLogError`. Services must raise these (never swallow silently) so the FastAPI exception handler can map them to the correct HTTP status.
+`v2/modules/shared_kernel/exceptions.py` — typed exception hierarchy rooted at `DomainError`. Subclasses: `FuelCalculationError`, `ImportValidationError` (carries `errors: list[str]`), `ExcelExportError`, `RouteProcessingError`, `MLPredictionError`, `AnomalyDetectionError`, `AuditLogError`. Services must raise these (never swallow silently) so the FastAPI exception handler can map them to the correct HTTP status.
 
 ### Error response envelope
 
-All error responses follow `{"error": {"code": "...", "message": "...", "trace_id": "..."}}`. Raised via FastAPI exception handlers registered in `app/main.py`. Use `HTTPException` in endpoints; service layer raises domain-specific exceptions from `app/core/exceptions.py` or `ValueError` (→ 400).
+All error responses follow `{"error": {"code": "...", "message": "...", "trace_id": "..."}}`. Raised via FastAPI exception handlers registered in `app/main.py`. Use `HTTPException` in endpoints; service layer raises domain-specific exceptions from `v2/modules/shared_kernel/exceptions.py` or `ValueError` (→ 400).
 
 ### Audit logging
 

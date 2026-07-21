@@ -125,7 +125,7 @@ class OutboxService:
         Relays pending events to the EventBus.
         Called by a background worker or cron job.
         """
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             # Atomic fetch-and-lock pending events

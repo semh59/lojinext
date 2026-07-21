@@ -302,7 +302,7 @@ async def _add_guzergah_performansi(
         if sofor_repo is not None:
             guzergah_data = await sofor_repo.get_guzergah_performansi(sofor_id)
         else:
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as own_uow:
                 guzergah_data = await own_uow.sofor_repo.get_guzergah_performansi(

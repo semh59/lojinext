@@ -10,9 +10,9 @@ from typing import Any, Dict, List, Optional, cast
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.infrastructure.models import Sofor
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 

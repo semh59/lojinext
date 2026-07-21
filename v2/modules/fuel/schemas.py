@@ -20,7 +20,7 @@ from pydantic import (
     field_validator,
 )
 
-from app.schemas.validators import validate_safe_string
+from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
 # Para alanlarının üst sınırları (YakitBase Field le= ile birebir). heal_amounts
 # bu sınırı aşan bozuk DB değerini üst sınıra clamp eder; aksi halde mode="before"

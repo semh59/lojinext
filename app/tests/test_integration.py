@@ -38,7 +38,7 @@ async def test_yakit_ekleme_basarili(yakit_repo, test_arac_id):
     y_id = await add_yakit(dto)
 
     # DB'den oku ve doğrula
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         kayit = await uow.yakit_repo.get_by_id(y_id)
@@ -64,7 +64,7 @@ async def test_hatali_veri_engelleme(test_arac_id):
         )
 
     # DB'ye yazılmadığını doğrula (Service çağrılmadı bile)
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         # Instead of expecting exactly 0, just make sure there is no record with that price or litre
@@ -92,7 +92,7 @@ async def test_update_islemi(test_arac_id):
     await update_yakit(y_id, update_dto)
 
     # Kontrol et
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         kayit = await uow.yakit_repo.get_by_id(y_id)

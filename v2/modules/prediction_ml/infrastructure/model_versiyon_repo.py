@@ -6,8 +6,8 @@ from typing import Any, List, Optional, cast
 
 from sqlalchemy import desc, select, update
 
-from app.database.base_repository import BaseRepository
 from v2.modules.prediction_ml.infrastructure.models import ModelVersiyon
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class ModelVersiyonRepository(BaseRepository[ModelVersiyon]):

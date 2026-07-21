@@ -4,7 +4,6 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import EventType, publishes
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
@@ -12,6 +11,7 @@ from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 from v2.modules.fleet.infrastructure.models import VehicleEventLog, VehicleSpecTimeline
 from v2.modules.fleet.schemas import AracCreate
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

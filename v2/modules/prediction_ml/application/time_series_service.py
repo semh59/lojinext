@@ -76,7 +76,7 @@ class TimeSeriesService:
         self, arac_id: Optional[int] = None, days: int = 90
     ) -> List[Dict[str, Any]]:
         """Return daily aggregates from the analytics repository."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         days = max(1, min(int(days), 365))
 

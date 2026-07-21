@@ -6,10 +6,10 @@ import logging
 from sqlalchemy import select
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.background.celery_app import celery_app
 from app.infrastructure.metrics import telegram_belge_ocr_total
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SeferBelge
 
 logger = logging.getLogger(__name__)

@@ -596,7 +596,7 @@ async def test_delete_generic_exception(async_client, admin_auth_headers, db_ses
 
 async def test_geocode_domain_error_reraise(async_client, admin_auth_headers):
     """GET /geocode DomainError is re-raised (not converted to 500)."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with _patch_location_route_function(
         "geocode_location_usecase", side_effect=DomainError("domain issue")
@@ -633,7 +633,7 @@ async def test_geocode_http_exception_passthrough(async_client, admin_auth_heade
 
 async def test_list_domain_error_passthrough(async_client, admin_auth_headers):
     """GET / DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with _patch_location_route_function(
         "list_locations", side_effect=DomainError("domain err")

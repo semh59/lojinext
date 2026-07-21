@@ -2,9 +2,9 @@ from datetime import timezone
 
 import pytest
 
-from app.database.unit_of_work import unit_of_work
 from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 from v2.modules.fleet.public import VehicleEventLog
+from v2.modules.shared_kernel.infrastructure.unit_of_work import unit_of_work
 
 
 @pytest.mark.asyncio

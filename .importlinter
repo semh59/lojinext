@@ -89,26 +89,28 @@ ignore_imports =
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.auth_rbac.domain.permission_checker -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
+    v2.modules.analytics_executive.infrastructure.executive_read_models -> v2.modules.fuel.infrastructure.models
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:module-internal-layers]
@@ -177,26 +179,28 @@ ignore_imports =
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.auth_rbac.domain.permission_checker -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
+    v2.modules.analytics_executive.infrastructure.executive_read_models -> v2.modules.fuel.infrastructure.models
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-location]
@@ -295,26 +299,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-route_simulation]
@@ -413,26 +417,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-notification]
@@ -531,26 +535,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fleet]
@@ -649,26 +653,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fuel]
@@ -767,26 +771,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-driver]
@@ -885,26 +889,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-auth_rbac]
@@ -1003,26 +1007,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-anomaly]
@@ -1121,26 +1125,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-import_excel]
@@ -1239,26 +1243,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-reports]
@@ -1357,26 +1361,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-analytics_executive]
@@ -1470,26 +1474,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-ai_assistant]
@@ -1587,26 +1591,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-prediction_ml]
@@ -1705,26 +1709,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-trip]
@@ -1822,26 +1826,27 @@ ignore_imports =
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-admin_platform]
@@ -1939,24 +1944,24 @@ ignore_imports =
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
-    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
-    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
-    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
-    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
-    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
-    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
-    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error

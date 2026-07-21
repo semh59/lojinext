@@ -18,10 +18,10 @@ from typing import Optional, TypedDict
 
 from sqlalchemy import select
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.security.pii_encryption import decrypt_pii, encrypt_pii
 from v2.modules.admin_platform.infrastructure.models import EntegrasyonAyari
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

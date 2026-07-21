@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.schemas.validators import validate_dict_size
+from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
 # Maksimum metrics dict boyutu
 MAX_METRICS_KEYS = 50

@@ -5,14 +5,15 @@ from sqlalchemy import asc as sql_asc
 from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
 
-from app.database.base_repository import BaseRepository
 from app.infrastructure.logging.logger import get_logger
+
 # location.public değil infrastructure.models doğrudan: bu dosya
 # app/database/unit_of_work.py tarafından import ediliyor, location.public
 # ise (hydration.py -> route_simulation.public -> get_route_details)
 # unit_of_work'e geri bağımlı — public.py üzerinden gidilirse döngüsel
 # import oluşur. fuel/executive_read_models.py'deki aynı gerekçe.
 from v2.modules.location.infrastructure.models import Lokasyon
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 from v2.modules.trip.infrastructure.models import Sefer
 from v2.modules.trip.sefer_status import (
     CANONICAL_SEFER_STATUS_SET,
@@ -68,7 +69,7 @@ class SeferRepository(BaseRepository[Sefer]):
         relationship() ile sızmaz). Tek gerçek ORM-seviye tüketicisi buydu —
         N+1 yerine 4 ayrı batch SELECT (id IN (...)).
 
-        Lazy import zorunlu: ``app.database.unit_of_work`` bu repository'yi
+        Lazy import zorunlu: ``v2.modules.shared_kernel.infrastructure.unit_of_work`` bu repository'yi
         top-level import ediyor; ``fleet.public`` üzerinden top-level
         import edilirse ``unit_of_work → repository → fleet.public →
         fleet.application.bulk_add_vehicles → unit_of_work`` çemberi oluşur

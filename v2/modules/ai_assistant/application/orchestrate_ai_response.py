@@ -55,7 +55,7 @@ class AIService:
     async def _build_context(self) -> str:
         """Build a fleet-context string for LLM grounding."""
         try:
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as uow:
                 stats = await uow.analiz_repo.get_dashboard_stats()

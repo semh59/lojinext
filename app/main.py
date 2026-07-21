@@ -18,8 +18,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.middleware.rate_limiter import limiter
 from app.api.v1.api import api_router
 from app.config import settings
-from app.core.errors import BusinessException
-from app.core.exceptions import (
+from app.database.connection import engine
+from app.infrastructure.context.correlation_middleware import CorrelationMiddleware
+from app.infrastructure.context.request_context import get_correlation_id
+from app.infrastructure.logging.logger import setup_logging
+from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
+from app.infrastructure.middleware.logging_middleware import RequestLoggingMiddleware
+from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
+from v2.modules.shared_kernel.errors import BusinessException
+from v2.modules.shared_kernel.exceptions import (
     AnomalyDetectionError,
     AuditLogError,
     DomainError,
@@ -30,13 +37,6 @@ from app.core.exceptions import (
     MLPredictionError,
     RouteProcessingError,
 )
-from app.database.connection import engine
-from app.infrastructure.context.correlation_middleware import CorrelationMiddleware
-from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.logging.logger import setup_logging
-from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
-from app.infrastructure.middleware.logging_middleware import RequestLoggingMiddleware
-from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
 
 logger = setup_logging(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 

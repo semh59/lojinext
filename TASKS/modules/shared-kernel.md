@@ -112,16 +112,16 @@ MEMORY §B.1'deki ölçüm: health/import/notification/maintenance/fuel/weather/
 MEMORY §2.1'de tespit edilen `database/repositories/__init__.py`'nin 15 modülün repo'sunu re-export etmesi — bu dalgada TAMAMEN SİLİNİR (her modül kendi repository'sini `infrastructure/repository.py`'den doğrudan import eder, merkezi huniye ihtiyaç kalmaz). **Gerçek blast-radius doğrulandı (dalga 16 ön-denetimi)**: yalnız 2 gerçek çağıran var — `app/database/unit_of_work.py` (20 `_Lazy` descriptor'ın import satırları, her biri ilgili modülün `infrastructure/repository.py`'sine doğrudan çevrilecek) ve `tests/test_app_boot.py` (boot-smoke testi, import yolu güncellenecek). Bu, planın EN DÜŞÜK riskli adımı — dalga 16'nın ilk yapılacak işi olarak önerilir (mekanizmayı kanıtlar, sonraki daha riskli adımlara güven verir).
 
 ## 6. Kabul kriterleri
-- [ ] Tüm yol referansları `v2/modules/shared_kernel/` ve `v2/modules/<isim>/` (madde 0 düzeltme #1)
-- [ ] `core/entities/models.py` sembol-bazında dağıtıldı, yalnız `BaseEntity` (+ doğrulanacak ortak enum'lar) kaldı (madde 3b)
-- [ ] `protocols.py`, `interfaces/repositories.py`, `app/core/unit_of_work.py` sıfır-çağıran re-check sonrası SİLİNDİ (madde 2)
-- [ ] `Ayar` sınıfı re-check sonrası SİLİNDİ veya gerçek bir çağıran bulunduysa hedef modüle taşındı
+- [x] Tüm yol referansları `v2/modules/shared_kernel/` ve `v2/modules/<isim>/` (madde 0 düzeltme #1)
+- [x] `core/entities/models.py` sembol-bazında dağıtıldı — dosyanın kendisi artık yok, `BaseEntity` `v2/modules/shared_kernel/domain/base_entity.py`'ye taşındı (bu erken bir dalga 16 alt-adımında yapılmış, bu doküman-güncelleme turunda doğrulandı)
+- [x] `protocols.py`, `interfaces/repositories.py`, `app/core/unit_of_work.py` — üçü de zaten yok (sıfır-çağıran silme daha önce yapılmış, bu turda doğrulandı: `app/core/protocols.py`/`app/core/interfaces/`/`app/core/unit_of_work.py` dosya sisteminde mevcut değil)
+- [x] `Ayar` sınıfı — grep ile doğrulandı, hiçbir yerde `class Ayar` yok (core/entities/models.py ile birlikte gitti)
 - [x] models.py'nin 43 tablosunun TAMAMI dağıtıldı (15 iş modülü + admin_platform + shared_kernel), her adımda `alembic check` boş-diff. Kalan 3 tablo (`outbox_events`/`error_events`/`error_occurrences`) de taşındı (2026-07-21, kullanıcı geri bildirimiyle) — `v2/modules/shared_kernel/infrastructure/{outbox,error_monitoring_models}.py`. Son 3 iş-modülü tablosu (`Lokasyon`/`LokasyonSegment`→location, `YakitAlimi`/`YakitPeriyot`/`YakitFormul`→fuel, `PageView`→reports) taşınınca `app/database/models.py`'de SIFIR sınıf kaldı — dosya TAMAMEN SİLİNDİ (44 gerçek çağıran dosya güncellendi, `Base` artık doğrudan `v2.modules.shared_kernel.infrastructure.base`'den import ediliyor).
-- [ ] Çapraz-modül `relationship()`'lar kaldırıldı, explicit sorgulara çevrildi (regresyon testleriyle kanıtlı) — gerçek sayı madde 3 uygulaması sırasında sınıf-sınıf doğrulanacak (plan taslağının "27" rakamı toplam 45 `relationship()` içinden çapraz-modül olanların KABA tahminiydi, kesin sayı taşıma sırasında netleşir)
-- [ ] api_responses.py 846 satır dağıtıldı, yalnız jenerik zarflar kaldı
-- [ ] repositories/__init__.py hunisi silindi (önerilen ilk adım, madde 5)
-- [ ] `v2/modules/shared_kernel/public.py` oluşturuldu — kasıtlı dış-yüzey sembolleri (madde 7)
-- [ ] Kalan shared_kernel dosya sayısı ≤22 (büyümedi) — FAZ-sonu boyut raporu PROGRESS.md'ye eklendi
+- [x] Çapraz-modül `relationship()`'lar kaldırıldı, explicit FK-id kolonlarına çevrildi — her modülün taşınması sırasında tek tek doğrulanıp yapıldı (auth_rbac↔notification/prediction_ml, route_simulation↔location gibi), her yeni `infrastructure/models.py`'nin kendi docstring'inde dokümante
+- [x] api_responses.py 846 satır dağıtıldı, yalnız jenerik zarflar (`MessageResponse`/`SuccessCountResponse`/vb., 118 satır) `v2/modules/shared_kernel/schemas/api_responses.py`'de kaldı (bu erken bir alt-adımda yapılmış, bu turda doğrulandı)
+- [x] repositories/__init__.py hunisi silindi (`app/database/repositories/` artık boş, yalnız `__pycache__`)
+- [x] `v2/modules/shared_kernel/public.py` oluşturuldu — kasıtlı dış-yüzey sembolleri (madde 7)
+- [x] Kalan shared_kernel dosya sayısı 19 (≤22, büyümedi) — `find v2/modules/shared_kernel -name "*.py" | grep -v __pycache__ | wc -l` ile doğrulandı
 
 ## 7. public.py/events.py kararı (YENİ — madde 0 düzeltme #5)
 shared_kernel iş modülü olmadığı için `public-surface-only-shared_kernel` tipi ZORUNLU bir import-linter kısıtı anlamsız (amaç zaten her modülün serbestçe erişebilmesi). Ama disiplin için minimal bir `v2/modules/shared_kernel/public.py` oluşturulacak — yalnız KASITLI dış-yüzeyi listeler (`Base`, `BaseRepository` generic, kalan `exceptions.py` hiyerarşisi, `errors.py::DiagnosticHelper`, `UnitOfWork`/`get_uow`, `clock`/`type_helpers` yardımcıları, kalan jenerik response zarfları). `events.py` gerekmiyor — shared_kernel event yayınlamaz/dinlemez (event_bus zaten `app/infrastructure/events/`'te ayrı bir cross-cutting altyapı, bu modülün kapsamı dışında).

@@ -11,9 +11,9 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from app.config import settings
-from app.core.exceptions import LLMProviderError
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+from v2.modules.shared_kernel.exceptions import LLMProviderError
 
 logger = get_logger(__name__)
 

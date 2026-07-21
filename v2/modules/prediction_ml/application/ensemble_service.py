@@ -38,8 +38,8 @@ async def _register_model_version(
     zaten hesaplanmış eğitim sonucunu / disk kaydını / class-model
     döngüsünü iptal etmiyor).
     """
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.prediction_ml.application.ml_service import MLService
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     try:
         measurements = result.get("measurements", {})
@@ -633,7 +633,7 @@ class EnsemblePredictorService:
         """
         Gelişmiş N+1 Fix: Tek session ile toplu tahmin (Phase 3)
         """
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         results = []
         async with UnitOfWork() as uow:

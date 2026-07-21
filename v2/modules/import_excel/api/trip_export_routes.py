@@ -14,10 +14,10 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, R
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import get_sefer_service, require_permissions
-from app.core.exceptions import DomainError
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.import_excel.public import export_data, generate_template
+from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
 from v2.modules.trip.public import SeferService
 

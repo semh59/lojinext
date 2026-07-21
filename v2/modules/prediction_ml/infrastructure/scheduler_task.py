@@ -43,8 +43,8 @@ def weekly_retrain_all_vehicles(self) -> dict:
 
 
 async def _run_async() -> dict:
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.prediction_ml.application.trainer import Trainer
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     trainer = Trainer()
     results = {"total": 0, "success": 0, "failed": 0, "skipped": 0}

@@ -165,8 +165,8 @@ def test_monitor_errors_sync_no_reraise():
 
 def test_monitor_errors_sync_skips_domain_error():
     """Sync: DomainError passes through without emit."""
-    from app.core.exceptions import DomainError
     from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     @monitor_errors(category="sync_test")
     def domain_sync():

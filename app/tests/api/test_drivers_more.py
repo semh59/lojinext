@@ -27,7 +27,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.core.exceptions import DomainError
+from v2.modules.shared_kernel.exceptions import DomainError
 
 pytestmark = pytest.mark.unit
 

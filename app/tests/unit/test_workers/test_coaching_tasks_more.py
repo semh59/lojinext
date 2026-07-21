@@ -2,7 +2,7 @@
 _run_evaluate_pending (rows present), weekly_coaching_digest task execution,
 high-priority + telegram_id + COACHING_ENABLED path.
 
-0-mock (Dilim 33): patch("app.database.unit_of_work.UnitOfWork") replaced with
+0-mock (Dilim 33): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
 """
 
@@ -10,13 +10,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.driver.infrastructure.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
     _send_high_priority_to_telegram,
     weekly_coaching_digest,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 

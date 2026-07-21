@@ -34,7 +34,9 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         return validate_password_complexity(v)
 

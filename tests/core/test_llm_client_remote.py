@@ -2,8 +2,8 @@ import pytest
 import respx
 from httpx import Response
 
-from app.core.exceptions import LLMProviderError
 from v2.modules.ai_assistant.infrastructure.llm.raw_client import LLMClient, LLMMessage
+from v2.modules.shared_kernel.exceptions import LLMProviderError
 
 
 @pytest.mark.anyio

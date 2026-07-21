@@ -37,7 +37,7 @@ async def test_monitor_errors_emits_event_on_exception():
 
 @pytest.mark.unit
 async def test_monitor_errors_skips_domain_errors():
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     @monitor_errors(category="test_error")
     async def domain_fn():

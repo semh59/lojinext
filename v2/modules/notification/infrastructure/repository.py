@@ -3,11 +3,11 @@ from typing import Any, List, Optional, cast
 
 from sqlalchemy import and_, select
 
-from app.database.base_repository import BaseRepository
 from v2.modules.notification.infrastructure.models import (
     BildirimGecmisi,
     BildirimKurali,
 )
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class NotificationRepository(BaseRepository[BildirimGecmisi]):

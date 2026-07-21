@@ -13,11 +13,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.core.exceptions import RouteProcessingError
 from v2.modules.route_simulation.infrastructure.openroute_client import (
     OpenRouteClient,
     get_route_client,
 )
+from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
 pytestmark = pytest.mark.integration
 

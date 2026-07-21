@@ -153,7 +153,7 @@ class TestSeferServiceValidation:
         The ``db_session`` fixture already monkeypatches UnitOfWork to use
         the test session — no inline FakeUnitOfWork needed.
         """
-        from app.core.exceptions import RouteProcessingError
+        from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
         data = sample_sefer_data.copy()
         data["cikis_yeri"] = "Istanbul"

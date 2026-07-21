@@ -9,7 +9,7 @@ parametre olarak geçirir (N+1 önleme, importer'lar arası paylaşılan sözle�
 
 from typing import Any, Dict, List, Optional
 
-from app.core.exceptions import ImportValidationError
+from v2.modules.shared_kernel.exceptions import ImportValidationError
 
 
 def resolve_arac_id(

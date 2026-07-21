@@ -280,7 +280,7 @@ class OpenRouteClient:
 
                 return result
             else:
-                from app.core.exceptions import RouteProcessingError
+                from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
                 if response.status_code == 403:
                     raise RouteProcessingError(
@@ -306,7 +306,7 @@ class OpenRouteClient:
                         provider_status=response.status_code,
                     )
         except Exception as e:
-            from app.core.exceptions import RouteProcessingError
+            from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
             if isinstance(e, RouteProcessingError):
                 raise

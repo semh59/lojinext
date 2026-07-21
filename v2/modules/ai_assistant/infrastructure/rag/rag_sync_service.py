@@ -47,7 +47,9 @@ class RAGSyncService:
             try:
                 logger.info("Starting initial RAG synchronization...")
 
-                from app.database.unit_of_work import UnitOfWork
+                from v2.modules.shared_kernel.infrastructure.unit_of_work import (
+                    UnitOfWork,
+                )
 
                 # get_arac_repo()/get_sofor_repo()/get_sefer_repo() return
                 # session-less singletons — raw-SQL-backed get_all() crashes
@@ -98,7 +100,7 @@ class RAGSyncService:
         if data and isinstance(data, dict):
             await self.rag.index_vehicle(data)
         elif isinstance(data, int):
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as uow:
                 arac = await uow.arac_repo.get_by_id(data)
@@ -111,7 +113,7 @@ class RAGSyncService:
         if data and isinstance(data, dict):
             await self.rag.index_driver(data)
         elif isinstance(data, int):
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as uow:
                 sofor = await uow.sofor_repo.get_by_id(data)
@@ -143,7 +145,7 @@ class RAGSyncService:
         if not isinstance(sefer_id, int):
             sefer_id = event.data.get("id")
         if isinstance(sefer_id, int):
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as uow:
                 sefer = await uow.sefer_repo.get_by_id(sefer_id)

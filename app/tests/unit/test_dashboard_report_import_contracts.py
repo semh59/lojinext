@@ -10,7 +10,6 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.generate_monthly_trend import generate_monthly_trend
@@ -22,6 +21,7 @@ from v2.modules.reports.application.get_monthly_comparison import (
     get_monthly_comparison,
 )
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
 

@@ -4,7 +4,6 @@ from datetime import date
 from typing import Any, Optional, cast
 
 from app.core.services.route_validator import RouteValidator
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.events.event_bus import (
     Event,
     EventBus,
@@ -13,6 +12,7 @@ from app.infrastructure.events.event_bus import (
 )
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.return_trip import handle_round_trip_on_update
 from v2.modules.trip.application.sla import check_sla_delay
 from v2.modules.trip.application.stats_refresh import refresh_stats
@@ -58,7 +58,7 @@ async def update_sefer_uow(
         # Fetch current state for transition check
         current_sefer = await uow.sefer_repo.get_by_id(sefer_id, for_update=True)
         if not current_sefer:
-            from app.core.exceptions import RouteProcessingError
+            from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
             raise RouteProcessingError(
                 f"Sefer bulunamadı: {sefer_id}",

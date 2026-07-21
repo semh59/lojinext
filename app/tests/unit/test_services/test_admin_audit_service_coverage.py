@@ -4,7 +4,7 @@ Targets ~41% → ≥75%
 Covers: log_action (basic, with request, user=None, basarili=False,
         DB exception swallowed), log_login, log_config_change.
 
-0-mock (Dilim 30): patch("app.database.unit_of_work.UnitOfWork") replaced with
+0-mock (Dilim 30): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__) so the class itself
 is never replaced — only its context-manager dunders are stubbed out.
 All assertions are on the returned AdminAuditLog object (built before any DB call).
@@ -17,8 +17,8 @@ from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.admin_platform.application import admin_audit_service
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 

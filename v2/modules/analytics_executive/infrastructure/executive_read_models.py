@@ -20,11 +20,10 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from app.infrastructure.logging.logger import get_logger
 
 # fuel.public değil infrastructure.models doğrudan: fuel.public, add_yakit
-# üzerinden app.database.unit_of_work'e bağımlı, ve BU dosya zaten
+# üzerinden v2.modules.shared_kernel.infrastructure.unit_of_work'e bağımlı, ve BU dosya zaten
 # app/database/unit_of_work.py'nin kendisi tarafından import ediliyor
 # (analiz_repo property) — public.py üzerinden gidilirse döngüsel import
 # oluşur (unit_of_work -> executive_read_models -> fuel.public -> add_yakit
@@ -32,6 +31,7 @@ from app.infrastructure.logging.logger import get_logger
 # infrastructure.repository ile aynı, zaten dokümante edilmiş geçici
 # infra-to-infra bağımlılık deseni.
 from v2.modules.fuel.infrastructure.models import YakitFormul
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
@@ -67,9 +67,9 @@ class AnalizRepository(BaseRepository[Any]):
         false positives and to stay consistent with get_for_training.
         """
         # Lazy import (dalga 16'da doğrulandı — sebep güncellendi): bu dosya
-        # app.database.unit_of_work.py'nin `analiz_repo` lazy property'si
+        # v2.modules.shared_kernel.infrastructure.unit_of_work.py'nin `analiz_repo` lazy property'si
         # için DOĞRUDAN import ediliyor; trip.public zincirinin ucu
-        # (add_trip.py) da `app.database.unit_of_work.UnitOfWork`'ü import
+        # (add_trip.py) da `v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork`'ü import
         # ediyor — top-level yapılırsa unit_of_work.py kendi kendini
         # yüklerken çöker (ImportError: partially initialized module).
         # Ampirik doğrulama: top-level'a alınıp `import app.main` denendi,

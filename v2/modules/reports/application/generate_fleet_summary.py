@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Dict, Optional
 
-from app.core.utils.clock import current_date
 from v2.modules.reports.domain.report_metrics import (
     get_first_available,
     prefer_positive,
 )
 from v2.modules.reports.infrastructure.repo_access import ReportRepos
+from v2.modules.shared_kernel.utils.clock import current_date
 
 
 async def generate_fleet_summary(

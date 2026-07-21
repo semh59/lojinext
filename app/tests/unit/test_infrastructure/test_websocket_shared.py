@@ -206,8 +206,8 @@ class TestConnectionManagerDomainErrorPaths:
     """Tests for DomainError/HTTPException re-raise paths in ConnectionManager."""
 
     async def test_send_personal_message_domain_error_reraises(self):
-        from app.core.exceptions import DomainError
         from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.shared_kernel.exceptions import DomainError
 
         mgr = ConnectionManager()
         ws = AsyncMock()
@@ -233,8 +233,8 @@ class TestConnectionManagerDomainErrorPaths:
             await mgr.send_personal_message({"type": "x"}, "u@test.com")
 
     async def test_broadcast_domain_error_reraises(self):
-        from app.core.exceptions import DomainError
         from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.shared_kernel.exceptions import DomainError
 
         mgr = ConnectionManager()
         ws = AsyncMock()

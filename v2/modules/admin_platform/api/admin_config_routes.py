@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict
 
 from app.api.deps import SessionDep
 from app.api.middleware.rate_limiter import limiter
-from app.core.exceptions import DomainError
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.application.admin_audit_service import (
     log_config_change,
@@ -21,6 +20,7 @@ from v2.modules.admin_platform.application.konfig_service import (
 )
 from v2.modules.admin_platform.infrastructure.repository import get_admin_config_repo
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.shared_kernel.exceptions import DomainError
 
 router = APIRouter()
 logger = get_logger(__name__)

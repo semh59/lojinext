@@ -415,22 +415,22 @@ class TestRouteAnalysisResponse:
 
 class TestSanitizeString:
     def test_strips_whitespace(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         assert sanitize_string("  hello  ") == "hello"
 
     def test_removes_null_bytes(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         assert "\x00" not in sanitize_string("hel\x00lo")
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         assert sanitize_string(123) == 123
 
     def test_unicode_normalisation(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         # NFC normalisation should not break regular strings
         result = sanitize_string("Türkçe")
@@ -442,36 +442,36 @@ class TestSanitizeString:
 
 class TestCheckXss:
     def test_clean_string_passes(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         assert check_xss("Hello World") == "Hello World"
 
     def test_script_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError, match="XSS"):
             check_xss("<script>alert(1)</script>")
 
     def test_javascript_colon_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("javascript:void(0)")
 
     def test_iframe_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<iframe src='x'></iframe>")
 
     def test_onerror_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss('<img onerror="alert(1)">')
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         assert check_xss(42) == 42
 
@@ -481,24 +481,24 @@ class TestCheckXss:
 
 class TestCheckSqlInjection:
     def test_clean_string_passes(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         assert check_sql_injection("Istanbul") == "Istanbul"
 
     def test_union_select_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError, match="SQL injection"):
             check_sql_injection("UNION SELECT * FROM users")
 
     def test_drop_table_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("DROP TABLE seferler")
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         assert check_sql_injection(None) is None
 
@@ -508,17 +508,17 @@ class TestCheckSqlInjection:
 
 class TestValidateSafeString:
     def test_none_passthrough(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         assert validate_safe_string(None) is None
 
     def test_clean_value_returned(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         assert validate_safe_string("  Ankara  ") == "Ankara"
 
     def test_xss_blocked(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         with pytest.raises(ValueError):
             validate_safe_string("<script>alert(1)</script>")
@@ -526,7 +526,7 @@ class TestValidateSafeString:
     def test_sql_not_blocked_in_free_text(self):
         # AUDIT-106: serbest-metin alanlarda SQL blocklist KALDIRILDI (gerçek
         # koruma parameterized query'den gelir; blocklist meşru içeriği 422'liyordu).
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         assert validate_safe_string("DELETE FROM users") == "DELETE FROM users"
         # XSS koruması korunur:
@@ -539,18 +539,18 @@ class TestValidateSafeString:
 
 class TestValidateUsername:
     def test_valid(self):
-        from app.schemas.validators import validate_username
+        from v2.modules.shared_kernel.schemas.validators import validate_username
 
         assert validate_username("admin_user1") == "admin_user1"
 
     def test_invalid_chars_raise(self):
-        from app.schemas.validators import validate_username
+        from v2.modules.shared_kernel.schemas.validators import validate_username
 
         with pytest.raises(ValueError, match="alt çizgi"):
             validate_username("user@name!")
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import validate_username
+        from v2.modules.shared_kernel.schemas.validators import validate_username
 
         assert validate_username(99) == 99
 
@@ -560,18 +560,18 @@ class TestValidateUsername:
 
 class TestValidateName:
     def test_valid_turkish(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         assert validate_name("Ahmet Yılmaz") == "Ahmet Yılmaz"
 
     def test_invalid_chars_raise(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         with pytest.raises(ValueError):
             validate_name("Name<script>")
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         assert validate_name(0) == 0
 
@@ -581,7 +581,7 @@ class TestValidateName:
 
 class TestMaskPhone:
     def test_masks_correctly(self):
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         masked = mask_phone("05321234567")
         assert masked.startswith("0532")
@@ -589,12 +589,12 @@ class TestMaskPhone:
         assert masked.endswith("67")
 
     def test_none_returns_none(self):
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         assert mask_phone(None) is None
 
     def test_short_phone_returned_as_is(self):
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         assert mask_phone("123") == "123"
 
@@ -604,25 +604,25 @@ class TestMaskPhone:
 
 class TestValidateDictSize:
     def test_within_limit(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         d = {str(i): i for i in range(10)}
         assert validate_dict_size(d) == d
 
     def test_exceeds_limit_raises(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         d = {str(i): i for i in range(101)}
         with pytest.raises(ValueError, match="100"):
             validate_dict_size(d)
 
     def test_none_returns_none(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         assert validate_dict_size(None) is None
 
     def test_non_dict_passthrough(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         assert validate_dict_size("not-a-dict") == "not-a-dict"
 
@@ -632,36 +632,48 @@ class TestValidateDictSize:
 
 class TestValidatePasswordComplexity:
     def test_valid_password(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         assert validate_password_complexity("Password1") == "Password1"
 
     def test_too_short_raises(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         with pytest.raises(ValueError, match="8 karakter"):
             validate_password_complexity("Ab1")
 
     def test_no_uppercase_raises(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         with pytest.raises(ValueError, match="büyük harf"):
             validate_password_complexity("password1")
 
     def test_no_lowercase_raises(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         with pytest.raises(ValueError, match="küçük harf"):
             validate_password_complexity("PASSWORD1")
 
     def test_no_digit_raises(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         with pytest.raises(ValueError, match="rakam"):
             validate_password_complexity("PasswordOnly")
 
     def test_non_string_passthrough(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         assert validate_password_complexity(42) == 42
 
@@ -671,35 +683,35 @@ class TestValidatePasswordComplexity:
 
 class TestValidatePhone:
     def test_valid_phone(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         result = validate_phone("0532 123 45 67")
         assert result == "0532 123 45 67"
 
     def test_none_returns_none(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         assert validate_phone(None) is None
 
     def test_empty_string_returns_none(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         assert validate_phone("  ") is None
 
     def test_no_digits_raises(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         with pytest.raises(ValueError, match="rakam"):
             validate_phone("abcdefghij")
 
     def test_too_short_raises(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         with pytest.raises(ValueError, match="10 rakam"):
             validate_phone("12345")
 
     def test_too_long_raises(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         with pytest.raises(ValueError, match="15 rakam"):
             validate_phone("1234567890123456")

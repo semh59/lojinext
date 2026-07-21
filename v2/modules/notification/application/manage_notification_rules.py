@@ -12,8 +12,8 @@ commit sırası birebir korundu).
 
 from typing import Any, Dict, List, Optional
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.notification.infrastructure.models import BildirimKurali
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def list_rules() -> List[BildirimKurali]:

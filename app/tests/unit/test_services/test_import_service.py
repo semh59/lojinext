@@ -79,7 +79,7 @@ class TestResolveIds:
         assert resolve_arac_id("16 TIR 789", vehicles) == 3
 
     def test_resolve_arac_id_not_found(self, sample_data):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             resolve_arac_id("00 ZZZ 000", sample_data["vehicles"])
@@ -90,13 +90,13 @@ class TestResolveIds:
         assert resolve_sofor_id("ahmet yılmaz", drivers) == 1
 
     def test_resolve_sofor_id_not_found(self, sample_data):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             resolve_sofor_id("Bilinmeyen", sample_data["drivers"])
 
     def test_resolve_route_id_variants(self):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         routes = [
             {"id": 9, "cikis_yeri": "Ankara", "varis_yeri": "Istanbul"},
@@ -517,7 +517,7 @@ class TestProcessImports:
 
 class TestImportValidation:
     def test_validate_plaka(self):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         assert validate_plaka("34 abc 123") == "34ABC123"
         with pytest.raises(ImportValidationError, match="boş olamaz"):
@@ -535,7 +535,7 @@ class TestImportValidation:
         POST /vehicles/ ile eklenebilirken Excel import'ta reddediliyordu.
         Artık ikisi de aynı paylaşılan pattern'i (`schemas.validators.PLAKA_PATTERN`)
         kullanıyor."""
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         # 4-5 harfli plaka — schemas/arac.py hep kabul ediyordu, import
         # eskiden reddediyordu (azami 3 harf sınırı).
@@ -548,14 +548,14 @@ class TestImportValidation:
             validate_plaka("3400123")
 
     def test_validate_name(self):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         assert validate_name("ahmet yılmaz") == "Ahmet Yılmaz"
         with pytest.raises(ImportValidationError, match="en az 2"):
             validate_name("A")
 
     def test_validate_numeric(self):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         assert validate_numeric("123.4", "Test") == 123.4
         with pytest.raises(ImportValidationError, match="sayı olmalı"):

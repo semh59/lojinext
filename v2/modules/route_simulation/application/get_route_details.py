@@ -14,7 +14,6 @@ import os
 from typing import Dict, Optional, Tuple
 
 from app.config import settings
-from app.database.unit_of_work import unit_of_work as get_uow
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.circuit_breaker import (
     CircuitBreakerError,
@@ -25,6 +24,7 @@ from v2.modules.route_simulation.application.get_route_difficulty import (
 )
 from v2.modules.route_simulation.domain.route_analyzer import route_analyzer
 from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
+from v2.modules.shared_kernel.infrastructure.unit_of_work import unit_of_work as get_uow
 
 logger = get_logger(__name__)
 

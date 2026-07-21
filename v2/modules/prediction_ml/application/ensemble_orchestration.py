@@ -16,12 +16,12 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.prediction_ml.application.response_builder import (
     build_explanation_summary,
     build_prediction_response,
     extract_confidence_score,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

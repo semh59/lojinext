@@ -64,7 +64,7 @@ _PATTERN_SCAN_SQL = """
 async def _run_pattern_scan(
     days: int = 30, min_count: int = 3, limit: int = 100
 ) -> Dict[str, Any]:
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     async with UnitOfWork() as uow:

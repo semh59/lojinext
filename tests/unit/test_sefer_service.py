@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.core.exceptions import RouteProcessingError
+from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.trip.application.trip_service import SeferService
 from v2.modules.trip.schemas import SeferCreate
 

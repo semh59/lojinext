@@ -17,7 +17,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from app.schemas.validators import (
+from v2.modules.shared_kernel.schemas.validators import (
     mask_phone,
     sanitize_string,
     validate_phone,

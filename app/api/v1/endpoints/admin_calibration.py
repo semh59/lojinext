@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.core.services.route_calibration_service import RouteCalibrationService
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.auth_rbac.public import require_yetki
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 router = APIRouter()
 

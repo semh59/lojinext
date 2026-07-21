@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.reports.application.aggregate_today_triage import aggregate_today_triage
@@ -22,6 +21,7 @@ from v2.modules.reports.schemas import (
 from v2.modules.reports.schemas import (
     TriageItem as TriageItemSchema,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

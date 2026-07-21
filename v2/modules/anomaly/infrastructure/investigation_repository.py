@@ -17,8 +17,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
 from v2.modules.anomaly.infrastructure.models import FuelInvestigation
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 _INVESTIGATION_JOIN_SQL = """
         SELECT

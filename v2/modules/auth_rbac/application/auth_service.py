@@ -23,12 +23,12 @@ from typing import Optional, Tuple
 from fastapi import HTTPException, Request, status
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.audit.audit_logger import audit_logger
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
 from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.infrastructure.models import KullaniciOturumu
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

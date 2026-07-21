@@ -13,8 +13,8 @@ import json
 
 from fastapi import HTTPException, WebSocket, status
 
-from app.core.exceptions import DomainError
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.shared_kernel.exceptions import DomainError
 
 logger = get_logger(__name__)
 

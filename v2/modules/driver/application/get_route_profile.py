@@ -2,12 +2,12 @@
 
 from typing import Any, Dict, List, Optional
 
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.application.route_profile import ROUTE_TYPES, classify_route
 from v2.modules.driver.infrastructure.driver_trip_queries import (
     get_driver_trips_with_route_analysis,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

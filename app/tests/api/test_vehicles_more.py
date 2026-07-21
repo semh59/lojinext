@@ -106,7 +106,7 @@ async def test_export_vehicles_domain_error_propagates(
     async_client, admin_auth_headers
 ):
     """DomainError from export raises (not swallowed as 500)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.get_all_vehicles_paged",
@@ -197,7 +197,7 @@ async def test_create_vehicle_operational_error_returns_503(
 
 async def test_create_vehicle_domain_error_propagates(async_client, admin_auth_headers):
     """DomainError → propagates with domain handler (422)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.create_vehicle",
@@ -256,7 +256,7 @@ async def test_clear_all_vehicles_domain_error_propagates(
     async_client, admin_auth_headers
 ):
     """DomainError from delete_all_vehicles propagates (422)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.delete_all_vehicles",

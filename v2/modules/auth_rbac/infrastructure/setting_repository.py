@@ -2,8 +2,8 @@ from typing import List, Optional
 
 from sqlalchemy import and_, select
 
-from app.database.base_repository import BaseRepository
 from v2.modules.auth_rbac.infrastructure.models import KullaniciAyari
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class SettingRepository(BaseRepository[KullaniciAyari]):

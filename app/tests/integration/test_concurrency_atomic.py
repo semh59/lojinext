@@ -132,7 +132,7 @@ async def test_fuel_km_counter_no_race(db_session, async_client, auth_headers):
     await db_session.commit()
 
     # Create 5 concurrent fuel records using separate transactions
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async def add_fuel(index):
         try:

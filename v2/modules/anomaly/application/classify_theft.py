@@ -27,8 +27,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import text
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.anomaly.schemas import SuspicionLevel, TheftClassification
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

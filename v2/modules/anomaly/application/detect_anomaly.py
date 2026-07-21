@@ -35,9 +35,9 @@ except ImportError:
     LIGHTGBM_AVAILABLE = False
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.prediction_ml.public import get_prediction_service
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

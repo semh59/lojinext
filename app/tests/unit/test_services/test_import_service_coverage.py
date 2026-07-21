@@ -27,7 +27,6 @@ import pandas as pd
 import pytest
 from sqlalchemy import func, select
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import (
     seed_arac,
     seed_dorse,
@@ -52,6 +51,7 @@ from v2.modules.import_excel.application.yakit_importer import process_yakit_imp
 from v2.modules.import_excel.domain.entity_resolvers import resolve_dorse_id
 from v2.modules.import_excel.domain.field_validators import normalize_text
 from v2.modules.import_excel.domain.row_validators import validate_import_rows
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
@@ -202,7 +202,7 @@ class TestParseImportFile:
         kullanmıyor — kendi doğrudan `pd.read_excel` çağrısı var, bu yüzden
         oradaki satır sınırı bu yolu KAPSAMAZ. Ayrı bir guard gerekiyordu."""
         import v2.modules.import_excel.application.preview_import as mod
-        from app.core.exceptions import ExcelExportError
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(mod, "MAX_EXCEL_ROWS", 2)
         df = pd.DataFrame([{"plaka": "06TIR001"}] * 3)

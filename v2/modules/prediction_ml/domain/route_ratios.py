@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.core.utils.type_helpers import safe_float
+from v2.modules.shared_kernel.utils.type_helpers import safe_float
 
 
 def sum_segment_km(segment: Any) -> float:

@@ -11,7 +11,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator
 
-from app.schemas.validators import validate_password_complexity
+from v2.modules.shared_kernel.schemas.validators import validate_password_complexity
 
 _DEGER_MAX_BYTES = 10_240  # 10 KB per preference value
 

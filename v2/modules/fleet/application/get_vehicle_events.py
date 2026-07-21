@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def get_vehicle_events(arac_id: int, limit: int = 20) -> List[Dict[str, Any]]:

@@ -22,7 +22,6 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.anomaly.public import get_anomaly_detector
 from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
 from v2.modules.driver.application.get_score import get_score_breakdown_sofor
@@ -32,6 +31,7 @@ from v2.modules.driver.schemas import (
     CoachingInsightsResponse,
     CoachingPriority,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

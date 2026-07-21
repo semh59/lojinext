@@ -29,7 +29,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application import add_trip, return_trip
 from v2.modules.trip.application.add_trip import add_sefer
 from v2.modules.trip.application.bulk_add_trips import bulk_add_sefer

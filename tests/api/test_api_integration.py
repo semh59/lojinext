@@ -171,7 +171,7 @@ def override_deps(test_session, test_user):
     )
 
     # Monkey patch UoW to always use test_session
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     original_aenter = UnitOfWork.__aenter__
 
@@ -186,7 +186,7 @@ def override_deps(test_session, test_user):
     # Patch execute_query to fix SQLite JSON/Enum string deserialization
     import json
 
-    from app.database.base_repository import BaseRepository
+    from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
     from v2.modules.trip.domain.entities import DurumEnum
 
     # Build DurumEnum name → value mapping for SQLite compat

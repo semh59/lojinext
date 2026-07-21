@@ -216,7 +216,7 @@ def test_sanitize_validation_errors_multiple_errors():
 
 async def test_domain_error_anomaly_detection(async_client):
     """AnomalyDetectionError → 503."""
-    from app.core.exceptions import AnomalyDetectionError
+    from v2.modules.shared_kernel.exceptions import AnomalyDetectionError
 
     @app.get("/test-anomaly-error")
     async def _raise():
@@ -236,7 +236,7 @@ async def test_domain_error_anomaly_detection(async_client):
 
 async def test_domain_error_excel_export(async_client):
     """ExcelExportError → 422."""
-    from app.core.exceptions import ExcelExportError
+    from v2.modules.shared_kernel.exceptions import ExcelExportError
 
     @app.get("/test-excel-error")
     async def _raise():
@@ -253,7 +253,7 @@ async def test_domain_error_excel_export(async_client):
 
 async def test_domain_error_route_processing_provider_403(async_client):
     """RouteProcessingError with provider_status=403 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-403")
     async def _raise():
@@ -270,7 +270,7 @@ async def test_domain_error_route_processing_provider_403(async_client):
 
 async def test_domain_error_route_processing_provider_404(async_client):
     """RouteProcessingError with provider_status=404 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-404-provider")
     async def _raise():
@@ -289,7 +289,7 @@ async def test_domain_error_route_processing_provider_404(async_client):
 
 async def test_domain_error_fuel_calculation_has_details(async_client):
     """FuelCalculationError response includes 'details' key."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     @app.get("/test-fuel-calc-detail")
     async def _raise():

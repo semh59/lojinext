@@ -20,8 +20,8 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select, text
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.driver.infrastructure.models import Sofor, SoforAdSoyadTrigram
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SeferORM as Sefer
 
 

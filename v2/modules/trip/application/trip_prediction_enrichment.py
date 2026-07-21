@@ -12,8 +12,8 @@ burada tutuldu, ayrı bir dosyaya bölünmedi.
 from datetime import date
 from typing import Any, Dict, Optional
 
-from app.core.utils.type_helpers import safe_float
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.shared_kernel.utils.type_helpers import safe_float
 
 logger = get_logger(__name__)
 

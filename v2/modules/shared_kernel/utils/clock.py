@@ -5,7 +5,7 @@ bozar (her test günü farklı sonuç, timezone bug'ı). Production kodu
 bu helper üzerinden çağırırsa testlerde monkeypatch ile sabitlenebilir:
 
     monkeypatch.setattr(
-        "app.core.utils.clock.current_date",
+        "v2.modules.shared_kernel.utils.clock.current_date",
         lambda: date(2026, 6, 15),
     )
 

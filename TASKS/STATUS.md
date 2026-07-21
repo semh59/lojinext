@@ -48,8 +48,8 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 12 | ai-assistant | `modules/ai-assistant.md` | ✅ main'de yeşil (commit `928de51`, bkz. DALGA 12 bölümü) |
 | 13 | prediction-ml | `modules/prediction-ml.md` | ✅ main'de yeşil (bkz. DALGA 13 bölümü) |
 | 14 | trip (en karmaşık split) | `modules/trip.md` | ✅ branch'te tamamlandı (bkz. DALGA 14 bölümü) |
-| 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
-| 16 | shared-kernel (erime) | `modules/shared-kernel.md` | 🔲 |
+| 15 | admin-platform | `modules/admin-platform.md` | ✅ branch'te tamamlandı (bkz. DALGA 15 bölümü) |
+| 16 | shared-kernel (erime) | `modules/shared-kernel.md` | ✅ branch'te tamamlandı (2026-07-21, bkz. DALGA 16 bölümü) — task #58 (models.py'nin 43 tablosu TAMAMEN dağıtıldı, dosya silindi) + task #59 (kalan 9 dosya: errors/exceptions/utils/schemas/base_repository/unit_of_work taşındı, dosyalar silindi) + public.py/CLAUDE.md yazıldı |
 | 17 | platform-infra (registry finali) | `modules/platform-infra.md` | 🔲 |
 
 **FAZ1 çıkış kriteri:** yukarıdaki 17 kalemin tamamı + import-linter gate main'de 5 ardışık gün yeşil (bkz. `TASKS/README.md`).
@@ -1673,6 +1673,95 @@ atıfta bulunuyor, dalga 14'ten kalma bayat guard testi) ve
 `SeferRepository.get_driver_trips_by_route_type` eksikliği (dalga 14'ten
 kalma pre-existing repo boşluğu) gibi — **admin_platform'un dokunduğu
 hiçbir dosyada sıfır fail**, net-yeni regresyon SIFIR.
+
+## DALGA 16 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-21)
+
+**Kapsam:** shared_kernel erimesi — 15 iş modülü + admin_platform taşındıktan
+sonra geriye kalan gerçekten paylaşılan kod. İki alt-görev:
+
+**task #58 (`app/database/models.py` bölünmesi, modül modül):** Bu dalganın
+kendi oturumu içinde sırayla taşınan modüller: driver, auth_rbac,
+admin_platform, anomaly, route_simulation, prediction_ml, import_excel,
+notification, fuel, location, reports (fleet+trip önceki dalgalarda zaten
+tamamlanmıştı). Her modülün taşıması ayrı commit, ayrı tam doğrulama
+(ruff/mypy/lint-imports/`import app.main`/`pytest --collect-only`/`alembic
+check`/tam pytest suite).
+
+🔴 **Kullanıcı geri bildirimiyle kapsam genişletildi**: `outbox_events`/
+`error_events`/`error_occurrences` başta dalga 17'ye ertelenmeyi
+planlıyordu (görev dosyasının o zamanki hâli). Kullanıcı bu ertelemeyi
+kesin dille reddetti ("bu 3 tablonun sahibini bulun taşıyın... V2 manası
+ne anlaşılmadı mı"). Gerçek inceleme sonucu erteleme gerekçesiz çıktı —
+`outbox_events`'in tek gerçek sahibi (`app/infrastructure/events/
+outbox_service.py`, 136 satır) küçük+self-contained; `error_events`/
+`error_occurrences`'ı hiçbir prod kod ORM olarak kullanmıyordu (yalnız
+Alembic şema kaydı + 1 test dosyası, asıl yazım `app/infrastructure/
+monitoring/`'de ham SQL). Üçü de `v2/modules/shared_kernel/infrastructure/
+{outbox,error_monitoring_models}.py`'ye taşındı, eski dosya (`outbox_
+service.py`) silindi — monitoring alt sisteminin kendisi (~2300 satır,
+13 dosya) taşınmadı, bu ayrı ve çok daha büyük bir iş (muhtemelen
+`platform_infra`/dalga 17).
+
+Bu taşımaların sonucunda `app/database/models.py`'nin 43 tablosunun
+TAMAMI dağıtıldı — dosya artık **hiç yok**, tamamen silindi (shim
+bırakılmadı). 44 gerçek çağıran dosya `Base`/tablo ORM sınıflarını
+`v2.modules.shared_kernel.infrastructure.base`/ilgili modülün
+`public.py`/`infrastructure.models`'ından import edecek şekilde
+güncellendi.
+
+**task #59 (kalan generic altyapı taşıması):** `app/core/errors.py`,
+`app/core/exceptions.py` (57 çağıran), `app/core/utils/{clock,
+type_helpers}.py`, `app/schemas/{base,validators}.py`,
+`app/database/base_repository.py` (27 çağıran), `app/database/
+unit_of_work.py` (**168 çağıran** — projenin en yoğun import edilen
+tek dosyası, tüm 15+ modül) → `v2/modules/shared_kernel/{errors.py,
+exceptions.py, utils/, schemas/, infrastructure/{base_repository,
+unit_of_work}.py}`. Blanket string-replace stratejisi kullanıldı
+(`app.database.unit_of_work` → `v2.modules.shared_kernel.infrastructure.
+unit_of_work` tüm repo genelinde, 168 dosya) — tek tek import satırı
+enumerasyonu yerine, çünkü modül yolu tamamen ve benzersiz şekilde
+değişiyordu. `core/entities/models.py` (→ `BaseEntity`), `api_responses.py`
+(846→118 satır), `protocols.py`/`interfaces/repositories.py`/`core/
+unit_of_work.py` shim'i/`Ayar` sınıfı, `database/repositories/__init__.py`
+hunisi — bunların hepsi bu turdan ÖNCE, daha erken bir alt-adımda zaten
+tamamlanmıştı (bu turda grep ile yeniden doğrulandı, tekrar iş
+yapılmadı).
+
+**2 döngüsel-import düzeltmesi** (unit_of_work.py'nin tüm modüllerin
+repo'larını import etmesi + o repo'ların bazılarının artık hedef
+modülün AĞIR `public.py`'sini import etmesi çakıştı): `v2/modules/
+analytics_executive/infrastructure/executive_read_models.py` ve
+`v2/modules/trip/infrastructure/repository.py`, sırasıyla `fuel.public`/
+`location.public` yerine doğrudan `fuel.infrastructure.models`/
+`location.infrastructure.models`'tan import eder (reports'un zaten
+dokümante edilmiş `ReportRepos.yakit_repo = fuel.infrastructure.
+repository` deseniyle aynı). `.importlinter`'a 2 yeni `ignore_imports`
+satırı eklendi (3 kontratta: cross-domain-infra-independence,
+internal-layers, public-surface-only-trip).
+
+**Regresyon (bulunup düzeltildi)**: `app/tests/conftest.py`'nin
+`Base.metadata.create_all()`'u `error_events`/`error_occurrences`'ı hiç
+görmüyordu (hiçbir prod kod import etmediği için `container_mod`'un
+transitive import zincirinden ulaşılmıyordu) — ilk tam pytest koşumu
+**1698 hata** verdi (`error_hourly_stats` materialized view'ı
+`error_occurrences` tablosunu bulamadı). Açık bir import eklenerek
+düzeltildi (`import v2.modules.shared_kernel.infrastructure.
+error_monitoring_models` — alembic/env.py'deki aynı zorunluluk).
+
+`v2/modules/shared_kernel/public.py` + `CLAUDE.md` yazıldı. Kök
+`CLAUDE.md`'nin modül tablosu güncellendi (`shared_kernel`: Not
+started → Done; `platform_infra` ayrı satıra ayrıldı, hâlâ Not
+started) + 3 stale path referansı düzeltildi (Unit of Work/Repository
+pattern/Domain exceptions bölümleri).
+
+**Doğrulama**: `ruff check app v2 scripts tests` temiz, `mypy app v2`
+temiz (1046 dosya), `lint-imports` **17 kept, 1 broken** (bilinen
+pre-existing, migrasyonla ilgisiz), `import app.main` temiz,
+`pytest --collect-only` 6621 test/0 hata, `alembic check` boş-diff.
+Her modül taşımasından sonra ayrı tam pytest koşumu (toplam 5+ ayrı tam
+koşum bu dalga boyunca) — hepsi **6576 passed, 17 failed (bilinen
+baseline), 28 skipped, 0 error**'a yakınsadı (bir istisna: yukarıdaki
+1698-hatalı koşum, aynı oturumda düzeltilip yeniden koşuldu).
 
 ## Son güncelleme
 

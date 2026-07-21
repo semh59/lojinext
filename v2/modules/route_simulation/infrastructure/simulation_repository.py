@@ -14,11 +14,11 @@ from typing import List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.database.base_repository import BaseRepository
 from v2.modules.route_simulation.infrastructure.models import (
     RouteSegment,
     RouteSimulation,
 )
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class SimulationRepository(BaseRepository[RouteSimulation]):

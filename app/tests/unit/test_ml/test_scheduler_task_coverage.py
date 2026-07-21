@@ -34,7 +34,7 @@ def _patch_uow_and_trainer(rows=None, trainer=None):
     Patch UnitOfWork dunders and v2.modules.prediction_ml.application.trainer.Trainer.
     """
     import v2.modules.prediction_ml.application.trainer as trainer_mod
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     mock_session = _make_session(rows)
     fake_uow = MagicMock()

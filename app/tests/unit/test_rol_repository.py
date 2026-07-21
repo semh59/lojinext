@@ -9,15 +9,15 @@ pytestmark = pytest.mark.asyncio
 
 async def test_rol_repo_inherits_from_base_repository():
     """RolRepository must be a subclass of BaseRepository."""
-    from app.database.base_repository import BaseRepository
     from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+    from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
     assert issubclass(RolRepository, BaseRepository)
 
 
 async def test_uow_has_rol_repo():
     """UoW must expose rol_repo as a lazy descriptor."""
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     # The lazy descriptor (_Lazy) is stored on the class itself; assert it is a
     # descriptor (has __get__) rather than asserting its concrete type.

@@ -14,6 +14,29 @@ YOK — amaç zaten herkesin serbestçe import edebilmesi. `public.py` yine de
 var (madde 0 düzeltme #5): kasıtlı dış-yüzeyi belgelemek için, zorunlu bir
 kontrat olmadan.
 
+## Neden "Senkron konuştuğu modüller" / "Yayınladığı/dinlediği event'ler" başlığı YOK
+
+Diğer 15 iş modülünün CLAUDE.md'si bu iki başlığı taşır, burada kasıtlı
+olarak yok — unutulmadı:
+
+- **Senkron konuştuğu modüller**: bu başlık normalde "bu modül hangi
+  DİĞER modülün `public.py`'sini çağırıyor" sorusuna cevap verir — yani
+  modülün DIŞARI doğru bağımlılığını gösterir. shared_kernel'in dışarı
+  doğru böyle bir bağımlılığı YOK (tam tersi yönde çalışır: herkes ona
+  bağımlı, o kimseye değil). `unit_of_work.py`'nin 15 modülün
+  repository'lerini import etmesi bu kategoriye girmez — bu bir iş
+  akışı çağrısı değil, DI/lazy-bind mekaniği (aşağıdaki "İzin verilen /
+  yasak import'lar" bölümünde `ignore_imports` listesiyle zaten
+  belgelendi, ikinci kez ayrı başlıkta tekrarlamak gereksiz olurdu).
+- **Yayınladığı/dinlediği event'ler**: shared_kernel kendi domain
+  event'ini yayınlamaz ve hiçbir event'e abone olmaz. `infrastructure/
+  outbox.py`'nin `OutboxEvent`/`save_outbox_event`/`OutboxService` içeriği
+  bir istisna DEĞİL — bu, DİĞER modüllerin (driver/trip/fuel/location/
+  fleet) KENDİ event'lerini yazdığı paylaşılan altyapı tablosu/servisi;
+  shared_kernel'in kendisi hiçbir `EventType` tanımlamaz, hiçbir
+  `@publishes`/`register_handlers` çağırmaz (`grep -rn "publishes\|
+  register_handlers" v2/modules/shared_kernel/` sıfır sonuç verir).
+
 ## İçerik envanteri (dalga 16, task #58/#59 — `app/`'den taşındı)
 
 ```

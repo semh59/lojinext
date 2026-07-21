@@ -7,13 +7,10 @@ directly.
 
 from __future__ import annotations
 
-from app.database.repositories.admin_config_repo import (
+from v2.modules.admin_platform.infrastructure.repository import (
     AdminConfigRepository,
     get_admin_config_repo,
 )
-from app.database.repositories.audit_repo import AuditRepository
-from app.database.repositories.config_repo import ConfigRepository
-from app.database.repositories.setting_repository import SettingRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
 )
@@ -26,6 +23,7 @@ from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
 )
 from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
+from v2.modules.auth_rbac.infrastructure.setting_repository import SettingRepository
 from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
@@ -53,8 +51,6 @@ __all__ = [
     "AnalizRepository",
     "AnomalyRepository",
     "AracRepository",
-    "AuditRepository",
-    "ConfigRepository",
     "DorseRepository",
     "ImportHistoryRepository",
     "InvestigationRepository",

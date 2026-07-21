@@ -14,16 +14,18 @@ from pydantic import BaseModel, Field
 
 from app.api.middleware.rate_limiter import limiter
 from app.config import settings
-from app.core.services.admin_audit_service import AdminAuditService
-from app.core.services.integration_secrets import (
+from app.database.models import Kullanici
+from app.infrastructure.logging.logger import get_logger
+from app.infrastructure.monitoring.container_health import get_container_status
+from v2.modules.admin_platform.application.admin_audit_service import (
+    log_config_change,
+)
+from v2.modules.admin_platform.application.integration_secrets import (
     KNOWN_SERVICES,
     IntegrationStatus,
     get_integration_statuses,
     set_integration_secret,
 )
-from app.database.models import Kullanici
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.container_health import get_container_status
 from v2.modules.auth_rbac.public import require_yetki
 
 router = APIRouter()
@@ -113,7 +115,7 @@ async def list_planned_integrations(
     current_user: Annotated[Kullanici, Depends(require_yetki("konfig_goruntule"))],
 ):
     """Honest-visibility read for the AVL/fuel-card provider scaffolding
-    (app/core/integrations/{avl,fuel}/) — these are real Protocol/adapter
+    (v2/modules/admin_platform/infrastructure/integrations/avl/) — these are real Protocol/adapter
     interfaces with a wired-up registry, but every adapter is a stub
     (fetch_trips/fetch_transactions raise NotImplementedError,
     healthcheck() always returns False) and get_avl_provider()/
@@ -161,8 +163,7 @@ async def update_integration_key(
         raise HTTPException(status_code=400, detail=str(e))
 
     # Audit trail records THAT a key was changed, never the value itself.
-    audit_service = AdminAuditService()
-    await audit_service.log_config_change(
+    await log_config_change(
         user=current_user,
         key=f"entegrasyon:{servis_adi}",
         old_val="***",

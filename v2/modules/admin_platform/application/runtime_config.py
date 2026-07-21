@@ -7,13 +7,14 @@ operatörün UI'dan yaptığı değişiklik hiçbir davranışı etkilemiyordu.
 
 Bu modül tek kanonik okuma yolunu sağlar:
 
-    from app.core.services.runtime_config import get_runtime_float
+    from v2.modules.admin_platform.application.runtime_config import get_runtime_float
     z = await get_runtime_float("ANOMALY_Z_THRESHOLD", settings.ANOMALY_Z_THRESHOLD)
 
 Semantik:
 - Değer redis cache -> sistem_konfig satırı -> ``fallback`` sırasıyla çözülür
-  (KonfigService.get_value; UI'dan güncellemede cache invalidate + pubsub
-  zaten çalışıyor, dolayısıyla değişiklik 1 saatlik TTL beklemeden yayılır).
+  (konfig_service.get_config_value; UI'dan güncellemede cache invalidate +
+  pubsub zaten çalışıyor, dolayısıyla değişiklik 1 saatlik TTL beklemeden
+  yayılır).
 - Satır yoksa veya okuma HERHANGİ bir nedenle başarısız olursa fallback
   döner ve warning loglanır — config okuması iş akışını ASLA kırmaz
   (audit-logger'ın best-effort felsefesiyle aynı).
@@ -24,9 +25,9 @@ Semantik:
 
 from typing import Any, Optional
 
-from app.core.services.konfig_service import KonfigService
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.application.konfig_service import get_config_value
 
 logger = get_logger(__name__)
 
@@ -37,12 +38,10 @@ async def get_runtime_value(
     """sistem_konfig'ten değer okur; satır yok/okunamıyor ise ``fallback``."""
     try:
         if uow is not None:
-            service = KonfigService(uow.session)
-            value = await service.get_value(key, None)
+            value = await get_config_value(uow.session, key, None)
         else:
             async with UnitOfWork() as own_uow:
-                service = KonfigService(own_uow.session)
-                value = await service.get_value(key, None)
+                value = await get_config_value(own_uow.session, key, None)
         return fallback if value is None else value
     except Exception as exc:  # config okuması iş akışını kırmamalı
         logger.warning("Runtime config okunamadı (%s): %s — fallback", key, exc)

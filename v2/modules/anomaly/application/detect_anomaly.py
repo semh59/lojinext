@@ -144,7 +144,9 @@ class AnomalyDetector:
         if len(consumptions) < 5:
             return []
 
-        from app.core.services.runtime_config import get_runtime_float
+        from v2.modules.admin_platform.public import (
+            get_runtime_float,
+        )
 
         z_threshold = await get_runtime_float(
             "ANOMALY_Z_THRESHOLD", settings.ANOMALY_Z_THRESHOLD

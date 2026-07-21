@@ -5,10 +5,12 @@ from typing import Any, Dict, List, Optional
 
 from app.core.entities.models import Sefer
 from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.public import SecurityService
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo
+from v2.modules.trip.infrastructure.sefer_timeline_repo import (
+    get_sefer_timeline,
+)
 from v2.modules.trip.schemas import SeferResponse
 from v2.modules.trip.sefer_status import normalize_sefer_status
 
@@ -131,5 +133,4 @@ async def get_all_trips(
 
 
 async def get_timeline(sefer_id: int) -> List[Dict[str, Any]]:
-    async with UnitOfWork() as uow:
-        return await uow.audit_repo.get_sefer_timeline(sefer_id)
+    return await get_sefer_timeline(sefer_id)

@@ -1,14 +1,16 @@
-"""InternalService unit tests — app/core/services/internal_service.py — real DB.
+"""telegram_bridge unit tests — v2/modules/admin_platform/application/telegram_bridge.py — real DB.
 
-Previously these built the service via ``InternalService.__new__`` and injected
+Previously these built a service via ``InternalService.__new__`` and injected
 ``AsyncMock()`` repos, asserting on inner calls
 (``_sefer_repo.get_by_sofor_id.assert_called_once_with(...)``) — i.e. *that a
-repo method was called* rather than *the persisted result*. Here the service is
-the real one: ``InternalService()`` wires the real singleton repos, whose
-``_get_session()`` falls through to ``app.database.connection.AsyncSessionLocal``
-which the ``db_session`` fixture monkeypatches to the shared test session — so
-the repos read/write the real test DB. We seed real Sofor/Sefer rows and assert
-real results (returned dicts, persisted SeferBelge rows, real PDF bytes).
+repo method was called* rather than *the persisted result*. ``InternalService``
+was dissolved to free functions (B.1 — no genuine mutable state); each
+function calls ``get_sofor_repo()`` internally, whose ``_get_session()`` falls
+through to ``app.database.connection.AsyncSessionLocal`` which the
+``db_session`` fixture monkeypatches to the shared test session — so the
+underlying repo reads/writes the real test DB. We seed real Sofor/Sefer rows
+and assert real results (returned dicts, persisted SeferBelge rows, real PDF
+bytes).
 
 The only retained stub is the driver-coaching *engine*, which wraps the Groq
 LLM (external, non-deterministic) — a legitimate Category-B boundary. The Sofor
@@ -22,9 +24,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import select
 
-from app.core.services.internal_service import InternalService
 from app.database.models import SeferBelge
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.admin_platform.application import telegram_bridge
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
@@ -38,14 +40,14 @@ class TestGetSoforByTelegramId:
         await seed_sofor(db_session, ad_soyad="Ali", telegram_id="tg123")
         await db_session.commit()
 
-        result = await InternalService().get_sofor_by_telegram_id("tg123")
+        result = await telegram_bridge.get_sofor_by_telegram_id("tg123")
         assert result is not None
         assert result["ad_soyad"] == "Ali"
         assert result["telegram_id"] == "tg123"
 
     async def test_not_found_returns_none(self, db_session):
         """Returns None when sofor does not exist."""
-        result = await InternalService().get_sofor_by_telegram_id("unknown")
+        result = await telegram_bridge.get_sofor_by_telegram_id("unknown")
         assert result is None
 
     async def test_inactive_sofor_not_returned(self, db_session):
@@ -55,7 +57,7 @@ class TestGetSoforByTelegramId:
         )
         await db_session.commit()
 
-        result = await InternalService().get_sofor_by_telegram_id("tgpasif")
+        result = await telegram_bridge.get_sofor_by_telegram_id("tgpasif")
         assert result is None
 
 
@@ -68,7 +70,7 @@ class TestKaydetBelge:
     async def test_unknown_telegram_id_raises_value_error(self, db_session):
         """Raises ValueError when telegram_id not registered."""
         with pytest.raises(ValueError, match="Yetkisiz"):
-            await InternalService().kaydet_belge(
+            await telegram_bridge.kaydet_belge(
                 telegram_id="unknown",
                 belge_tipi="yakit_fisi",
                 image_bytes=b"img",
@@ -81,7 +83,7 @@ class TestKaydetBelge:
         sofor = await seed_sofor(db_session, ad_soyad="Veli", telegram_id="tg1")
         await db_session.commit()
 
-        result = await InternalService().kaydet_belge(
+        result = await telegram_bridge.kaydet_belge(
             telegram_id="tg1",
             belge_tipi="yakit_fisi",
             image_bytes=b"fake image",
@@ -113,7 +115,7 @@ class TestKaydetBelge:
         await seed_sofor(db_session, ad_soyad="Png User", telegram_id="tg1")
         await db_session.commit()
 
-        result = await InternalService().kaydet_belge(
+        result = await telegram_bridge.kaydet_belge(
             telegram_id="tg1",
             belge_tipi="sefer_fisi",
             image_bytes=b"png data",
@@ -134,7 +136,7 @@ class TestKaydetBelge:
         await db_session.commit()
 
         with pytest.raises(ValueError, match="Geçersiz belge_tipi"):
-            await InternalService().kaydet_belge(
+            await telegram_bridge.kaydet_belge(
                 telegram_id="tg1",
                 belge_tipi="bilinmeyen",
                 image_bytes=b"img",
@@ -150,7 +152,7 @@ class TestKaydetBelge:
 class TestGetSeferler:
     async def test_sofor_not_found_returns_none(self, db_session):
         """Returns None when sofor does not exist."""
-        result = await InternalService().get_seferler("unknown")
+        result = await telegram_bridge.get_seferler("unknown")
         assert result is None
 
     async def test_sofor_found_returns_trips(self, db_session):
@@ -166,7 +168,7 @@ class TestGetSeferler:
         )
         await db_session.commit()
 
-        result = await InternalService().get_seferler("tg7", limit=5)
+        result = await telegram_bridge.get_seferler("tg7", limit=5)
         assert result is not None
         assert len(result) == 1
         assert result[0]["cikis_yeri"] == "İstanbul"
@@ -180,7 +182,7 @@ class TestGetSeferler:
             await seed_sefer(db_session, arac_id=arac.id, sofor_id=sofor.id)
         await db_session.commit()
 
-        result = await InternalService().get_seferler("tg8")
+        result = await telegram_bridge.get_seferler("tg8")
         assert result is not None
         assert len(result) == 10
 
@@ -196,12 +198,12 @@ class TestGetSoforId:
         sofor = await seed_sofor(db_session, ad_soyad="Kadir", telegram_id="tg42")
         await db_session.commit()
 
-        result = await InternalService().get_sofor_id("tg42")
+        result = await telegram_bridge.get_sofor_id("tg42")
         assert result == sofor.id
 
     async def test_not_found_returns_none(self, db_session):
         """Returns None when sofor not found."""
-        result = await InternalService().get_sofor_id("unknown")
+        result = await telegram_bridge.get_sofor_id("unknown")
         assert result is None
 
 
@@ -213,7 +215,7 @@ class TestGetSoforId:
 class TestOlusturPdf:
     async def test_sofor_not_found_returns_none(self, db_session):
         """Returns None when sofor not found."""
-        result = await InternalService().olustur_pdf(
+        result = await telegram_bridge.olustur_pdf(
             "unknown", date(2026, 1, 1), date(2026, 1, 31)
         )
         assert result is None
@@ -233,7 +235,7 @@ class TestOlusturPdf:
         )
         await db_session.commit()
 
-        result = await InternalService().olustur_pdf(
+        result = await telegram_bridge.olustur_pdf(
             "tg15", date(2026, 5, 1), date(2026, 5, 31)
         )
 
@@ -253,7 +255,7 @@ class TestOlusturPdf:
 class TestGetCoachingSnapshot:
     async def test_sofor_not_found_returns_none(self, db_session):
         """Returns None when sofor not found."""
-        result = await InternalService().get_coaching_snapshot("unknown")
+        result = await telegram_bridge.get_coaching_snapshot("unknown")
         assert result is None
 
     async def test_engine_success_returns_snapshot(self, db_session):
@@ -278,7 +280,7 @@ class TestGetCoachingSnapshot:
             "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
-            result = await InternalService().get_coaching_snapshot("tg3")
+            result = await telegram_bridge.get_coaching_snapshot("tg3")
 
         assert result["ad_soyad"] == "Musa"
         assert result["top_suggestion"] == "Yakıt tasarrufu yapın"
@@ -299,7 +301,7 @@ class TestGetCoachingSnapshot:
             "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
-            result = await InternalService().get_coaching_snapshot("tg4")
+            result = await telegram_bridge.get_coaching_snapshot("tg4")
 
         assert result is not None
         assert result["source"] == "fallback"
@@ -326,24 +328,7 @@ class TestGetCoachingSnapshot:
             "v2.modules.driver.public.get_driver_coaching_engine",
             return_value=mock_engine,
         ):
-            result = await InternalService().get_coaching_snapshot("tg5")
+            result = await telegram_bridge.get_coaching_snapshot("tg5")
 
         assert result["top_suggestion"] is None
         assert result["insights_count"] == 0
-
-
-# ---------------------------------------------------------------------------
-# get_internal_service factory
-# ---------------------------------------------------------------------------
-
-
-class TestGetInternalService:
-    def test_returns_internal_service_from_container(self):
-        """get_internal_service returns the container's real InternalService."""
-        from app.core.container import get_container
-        from app.core.services.internal_service import get_internal_service
-
-        result = get_internal_service()
-        assert isinstance(result, InternalService)
-        # Same singleton the container hands out.
-        assert result is get_container().internal_service

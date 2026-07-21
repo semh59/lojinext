@@ -20,7 +20,9 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return an AdminConfigRepository with a mock session."""
-    from app.database.repositories.admin_config_repo import AdminConfigRepository
+    from v2.modules.admin_platform.infrastructure.repository import (
+        AdminConfigRepository,
+    )
 
     repo = AdminConfigRepository.__new__(AdminConfigRepository)
     repo.session = session or AsyncMock()
@@ -239,7 +241,7 @@ async def test_get_history_returns_dicts():
     mock_col = MagicMock()
     mock_col.key = "anahtar"
 
-    with patch("app.database.repositories.admin_config_repo.inspect") as mock_inspect:
+    with patch("v2.modules.admin_platform.infrastructure.repository.inspect") as mock_inspect:
         mock_mapper = MagicMock()
         mock_mapper.column_attrs = [mock_col]
         mock_inspect.return_value.mapper = mock_mapper
@@ -258,7 +260,7 @@ async def test_get_history_empty():
 
     repo = _make_repo(session)
 
-    with patch("app.database.repositories.admin_config_repo.inspect") as mock_inspect:
+    with patch("v2.modules.admin_platform.infrastructure.repository.inspect") as mock_inspect:
         mock_inspect.return_value.mapper.column_attrs = []
         results = await repo.get_history("nonexistent_key")
 
@@ -272,7 +274,7 @@ async def test_get_history_empty():
 
 def test_get_admin_config_repo_with_session_returns_new_instance():
     """Passing a session always creates a fresh repo, never reuses singleton."""
-    import app.database.repositories.admin_config_repo as mod
+    import v2.modules.admin_platform.infrastructure.repository as mod
 
     mod._admin_config_repo = None  # reset singleton
 
@@ -286,7 +288,7 @@ def test_get_admin_config_repo_with_session_returns_new_instance():
 
 def test_get_admin_config_repo_singleton_without_session():
     """Without session, the same singleton is returned."""
-    import app.database.repositories.admin_config_repo as mod
+    import v2.modules.admin_platform.infrastructure.repository as mod
 
     mod._admin_config_repo = None  # reset singleton
 

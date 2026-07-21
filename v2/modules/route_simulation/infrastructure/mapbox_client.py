@@ -48,7 +48,7 @@ class MapboxClient:
         self.base_url = settings.MAPBOX_API_BASE_URL
         # self.api_key above is the .env-sourced fallback; _resolve_api_key()
         # checks the admin-configurable entegrasyon_ayarlari row first (see
-        # app.core.services.integration_secrets) so a key entered via the
+        # v2.modules.admin_platform.public) so a key entered via the
         # admin UI takes effect immediately, without a restart.
         # Phase 2.3: Redis-backed cache. None geçilirse singleton CacheManager.
         # Sync API (get/set) async handler içinden de güvenli — Redis çağrıları
@@ -56,7 +56,9 @@ class MapboxClient:
         self._cache = cache if cache is not None else get_cache_manager()
 
     async def _resolve_api_key(self) -> Optional[str]:
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         return await get_integration_secret("mapbox", self.api_key)
 

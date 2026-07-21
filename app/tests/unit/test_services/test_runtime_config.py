@@ -10,8 +10,8 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
-from app.core.services.runtime_config import get_runtime_float
 from app.infrastructure.cache.redis_cache import get_redis_cache
+from v2.modules.admin_platform.application.runtime_config import get_runtime_float
 from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 

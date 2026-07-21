@@ -78,7 +78,9 @@ class GroqService:
         """
         if AsyncGroq is None:
             return None
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         api_key = await get_integration_secret("groq", self.api_key)
         if not api_key:

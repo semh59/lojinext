@@ -48,9 +48,11 @@ def _env_api_key() -> Optional[str]:
 
 async def _resolve_api_key() -> Optional[str]:
     """DB-configured key (admin UI) takes priority over the .env fallback —
-    see app.core.services.integration_secrets. Re-resolved on every call so
+    see v2.modules.admin_platform.public. Re-resolved on every call so
     an admin-entered key takes effect without a restart."""
-    from app.core.services.integration_secrets import get_integration_secret
+    from v2.modules.admin_platform.public import (
+        get_integration_secret,
+    )
 
     return await get_integration_secret("openroute", _env_api_key())
 

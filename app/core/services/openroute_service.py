@@ -78,10 +78,12 @@ class OpenRouteService:
 
     async def _resolve_api_key(self) -> Optional[str]:
         """DB-configured key (admin UI) takes priority over the .env
-        fallback — see app.core.services.integration_secrets."""
+        fallback — see v2.modules.admin_platform.public."""
         if not HTTPX_AVAILABLE:
             return None
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         return await get_integration_secret("openroute", self.api_key)
 

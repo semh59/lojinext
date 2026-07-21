@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.health_service import HealthService
+from v2.modules.admin_platform.application.health_service import HealthService
 
 
 @pytest.mark.asyncio
@@ -34,7 +34,7 @@ async def test_health_service_check_db_healthy():
     mock_conn.execute = AsyncMock()
     mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
     mock_conn.__aexit__ = AsyncMock(return_value=False)
-    with patch("app.core.services.health_service.engine") as mock_engine:
+    with patch("v2.modules.admin_platform.application.health_service.engine") as mock_engine:
         mock_engine.connect.return_value = mock_conn
         status = await service.check_db()
         assert status["status"] == "healthy"

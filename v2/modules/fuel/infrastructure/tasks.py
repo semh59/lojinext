@@ -90,8 +90,8 @@ async def compute_coverage(db: AsyncSession, days: int) -> CoverageResult:
 
 
 async def _run_fuel_coverage_check() -> None:
-    from app.core.services.runtime_config import get_runtime_float
     from app.database.unit_of_work import UnitOfWork
+    from v2.modules.admin_platform.public import get_runtime_float
     from v2.modules.notification.public import notify_error
 
     async with UnitOfWork() as uow:

@@ -137,7 +137,7 @@ async def test_error_stream_none_redis_delete_called_on_valid_token(async_client
 
 async def test_sse_generator_connect_exception_yields_stream_error():
     """When asyncpg.connect raises, generator yields stream_error event."""
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     request.is_disconnected = AsyncMock(return_value=False)
@@ -163,7 +163,7 @@ async def test_sse_generator_connect_exception_yields_stream_error():
 
 async def test_sse_generator_yields_valid_json_data():
     """When queue has valid JSON payload, generator yields data: ... event."""
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     # First call: not disconnected; second call: disconnected (to stop loop)
@@ -238,7 +238,7 @@ async def test_sse_generator_non_json_payload_dropped():
     """Non-JSON payload in queue is silently dropped (no data event yielded)."""
     import asyncio as _asyncio
 
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     call_count = 0
@@ -343,7 +343,7 @@ async def test_notify_callback_normal_put():
 
 async def test_sse_generator_closed_conn_skips_close():
     """When conn is already closed in finally, no double-close."""
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     request.is_disconnected = AsyncMock(return_value=True)
@@ -377,7 +377,7 @@ async def test_sse_generator_keepalive_sent_on_timeout():
     """When queue.get() times out, keepalive comment is yielded."""
     import asyncio as _asyncio
 
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     call_count = 0
 

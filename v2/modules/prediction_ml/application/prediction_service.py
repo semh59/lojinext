@@ -265,7 +265,9 @@ class PredictionService:
         # Runtime config resolved ONCE per request here (async boundary) —
         # never inside the sync build_vehicle_specs helper, and never
         # per-segment (there is no per-segment fan-out for this factor).
-        from app.core.services.runtime_config import get_runtime_float
+        from v2.modules.admin_platform.public import (
+            get_runtime_float,
+        )
 
         age_degradation_rate = await get_runtime_float(
             "VEHICLE_AGE_DEGRADATION_RATE", settings.VEHICLE_AGE_DEGRADATION_RATE

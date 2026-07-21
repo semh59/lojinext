@@ -22,17 +22,24 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 
 from app.config import settings
-from app.core.services.integration_secrets import (
-    BOT_TOKEN_SERVICES,
-    get_integration_secret,
-)
-from app.core.services.internal_service import InternalService, get_internal_service
 from app.infrastructure.metrics import telegram_belge_upload_total
 from app.schemas.api_responses import PDF_RESPONSES, CoachingSnapshotResponse
 from app.schemas.telegram import (
     DriverBreakdownRequest,
     SeferBelgeResponse,
     SoforTelegramInfo,
+)
+from v2.modules.admin_platform.application.integration_secrets import (
+    BOT_TOKEN_SERVICES,
+    get_integration_secret,
+)
+from v2.modules.admin_platform.application.telegram_bridge import (
+    get_coaching_snapshot,
+    get_seferler,
+    get_sofor_by_telegram_id,
+    kaydet_belge,
+    olustur_pdf,
+    report_driver_breakdown,
 )
 
 
@@ -99,11 +106,8 @@ async def bot_token(servis_adi: str) -> dict:
 
 
 @router.get("/sofor-by-telegram/{telegram_id}", response_model=SoforTelegramInfo)
-async def sofor_by_telegram(
-    telegram_id: str,
-    svc: InternalService = Depends(get_internal_service),
-) -> SoforTelegramInfo:
-    sofor = await svc.get_sofor_by_telegram_id(telegram_id)
+async def sofor_by_telegram(telegram_id: str) -> SoforTelegramInfo:
+    sofor = await get_sofor_by_telegram_id(telegram_id)
     if sofor is None:
         raise HTTPException(
             status_code=404, detail="Telegram ID kayıtlı şoför bulunamadı"
@@ -119,12 +123,9 @@ async def sofor_by_telegram(
 
 
 @router.get("/sofor-coaching/{telegram_id}", response_model=CoachingSnapshotResponse)
-async def sofor_coaching_snapshot(
-    telegram_id: str,
-    svc: InternalService = Depends(get_internal_service),
-):
+async def sofor_coaching_snapshot(telegram_id: str):
     """Bot için özetlenmiş koçluk verisi. Sofor bulunamazsa 404."""
-    snapshot = await svc.get_coaching_snapshot(telegram_id)
+    snapshot = await get_coaching_snapshot(telegram_id)
     if snapshot is None:
         raise HTTPException(
             status_code=404,
@@ -142,7 +143,6 @@ async def sefer_belge_yukle(
     belge_tipi: str = Form(...),
     telegram_mesaj_id: Optional[str] = Form(None),
     file: UploadFile = File(...),
-    svc: InternalService = Depends(get_internal_service),
 ) -> SeferBelgeResponse:
     if belge_tipi not in _ALLOWED_BELGE_TIPLERI:
         raise HTTPException(
@@ -173,7 +173,7 @@ async def sefer_belge_yukle(
         mesaj_id = None
 
     try:
-        result = await svc.kaydet_belge(
+        result = await kaydet_belge(
             telegram_id=telegram_id,
             belge_tipi=belge_tipi,
             image_bytes=content,
@@ -206,9 +206,8 @@ async def sefer_belge_yukle(
 async def sofor_seferler(
     telegram_id: str,
     limit: int = Query(10, ge=1, le=50),
-    svc: InternalService = Depends(get_internal_service),
 ) -> list:
-    seferler = await svc.get_seferler(telegram_id, limit=limit)
+    seferler = await get_seferler(telegram_id, limit=limit)
     if seferler is None:
         raise HTTPException(status_code=404, detail="Şoför bulunamadı")
     return [
@@ -228,16 +227,13 @@ async def sofor_seferler(
 
 
 @router.post("/driver-breakdown", status_code=201)
-async def driver_breakdown(
-    payload: DriverBreakdownRequest,
-    svc: InternalService = Depends(get_internal_service),
-) -> dict:
+async def driver_breakdown(payload: DriverBreakdownRequest) -> dict:
     """Sürücünün son seferindeki araç için açık arıza/acil kaydı oluşturur.
 
     Araç otomatik çözülür (sürücünün en yeni seferi). Çözülemezse 404.
     """
     try:
-        return await svc.report_driver_breakdown(
+        return await report_driver_breakdown(
             payload.telegram_id, detaylar=payload.detaylar, acil=payload.acil
         )
     except ValueError as exc:
@@ -257,9 +253,8 @@ async def sofor_pdf(
     telegram_id: str,
     baslangic_tarihi: date = Query(...),
     bitis_tarihi: date = Query(...),
-    svc: InternalService = Depends(get_internal_service),
 ) -> StreamingResponse:
-    pdf_bytes = await svc.olustur_pdf(telegram_id, baslangic_tarihi, bitis_tarihi)
+    pdf_bytes = await olustur_pdf(telegram_id, baslangic_tarihi, bitis_tarihi)
 
     if not pdf_bytes:
         raise HTTPException(

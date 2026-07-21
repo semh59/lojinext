@@ -18,7 +18,9 @@ pytestmark = pytest.mark.unit
 
 class TestAVLTrip:
     def test_minimal_construction(self):
-        from app.core.integrations.avl.base import AVLTrip
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLTrip,
+        )
 
         t = AVLTrip(
             external_id="EXT-001",
@@ -41,7 +43,9 @@ class TestAVLTrip:
         assert t.raw_payload == {}
 
     def test_full_construction(self):
-        from app.core.integrations.avl.base import AVLTrip
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLTrip,
+        )
 
         now = datetime.now(timezone.utc)
         t = AVLTrip(
@@ -67,7 +71,9 @@ class TestAVLTrip:
         assert t.raw_payload == {"source": "mobiliz"}
 
     def test_raw_payload_default_is_empty_dict(self):
-        from app.core.integrations.avl.base import AVLTrip
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLTrip,
+        )
 
         t = AVLTrip(
             external_id="x",
@@ -98,7 +104,9 @@ class TestAVLTrip:
 
 class TestAVLPosition:
     def test_minimal_construction(self):
-        from app.core.integrations.avl.base import AVLPosition
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLPosition,
+        )
 
         now = datetime.now(timezone.utc)
         pos = AVLPosition(
@@ -115,7 +123,9 @@ class TestAVLPosition:
         assert pos.raw_payload == {}
 
     def test_full_construction(self):
-        from app.core.integrations.avl.base import AVLPosition
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLPosition,
+        )
 
         pos = AVLPosition(
             external_id="V-002",
@@ -132,7 +142,9 @@ class TestAVLPosition:
         assert pos.raw_payload["gps_quality"] == "good"
 
     def test_raw_payload_independent_per_instance(self):
-        from app.core.integrations.avl.base import AVLPosition
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLPosition,
+        )
 
         p1 = AVLPosition("a", "P1", datetime.now(timezone.utc), 1.0, 2.0)
         p2 = AVLPosition("b", "P2", datetime.now(timezone.utc), 3.0, 4.0)
@@ -142,12 +154,16 @@ class TestAVLPosition:
 
 class TestAVLProviderProtocol:
     def test_protocol_is_importable(self):
-        from app.core.integrations.avl.base import AVLProvider
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLProvider,
+        )
 
         assert AVLProvider is not None
 
     def test_protocol_has_required_methods(self):
-        from app.core.integrations.avl.base import AVLProvider
+        from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
+            AVLProvider,
+        )
 
         # Protocol defines these abstract stubs
         assert hasattr(AVLProvider, "fetch_trips")
@@ -162,36 +178,44 @@ class TestAVLProviderProtocol:
 
 class TestGetAvlProviderNoKey:
     def test_returns_none_when_no_avl_provider_set(self):
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = ""
             result = get_avl_provider()
 
         assert result is None
 
     def test_returns_none_when_avl_provider_whitespace(self):
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = "   "
             result = get_avl_provider()
 
         assert result is None
 
     def test_returns_none_for_unknown_provider_key(self):
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = "unknown_xyz"
             result = get_avl_provider()
 
         assert result is None
 
     def test_returns_provider_for_mobiliz_key(self):
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = "mobiliz"
             mock_settings.AVL_BASE_URL = "https://api.mobiliz.com"
             mock_settings.AVL_API_KEY = "key123"  # pragma: allowlist secret
@@ -204,23 +228,27 @@ class TestGetAvlProviderNoKey:
 
     def test_returns_none_when_provider_init_raises(self):
         """If the provider class constructor raises, registry returns None."""
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
         bad_cls = MagicMock(side_effect=ValueError("bad config"))
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = "mobiliz"
             with patch.dict(
-                "app.core.integrations.registry.AVL_PROVIDERS", {"mobiliz": bad_cls}
+                "v2.modules.admin_platform.infrastructure.integrations.registry.AVL_PROVIDERS", {"mobiliz": bad_cls}
             ):
                 result = get_avl_provider()
 
         assert result is None
 
     def test_avl_provider_key_is_case_insensitive(self):
-        from app.core.integrations.registry import get_avl_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_avl_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.AVL_PROVIDER = "MOBILIZ"
             mock_settings.AVL_BASE_URL = "https://api.mobiliz.com"
             mock_settings.AVL_API_KEY = "key"  # pragma: allowlist secret
@@ -232,27 +260,33 @@ class TestGetAvlProviderNoKey:
 
 class TestGetFuelProviderNoKey:
     def test_returns_none_when_no_fuel_provider_set(self):
-        from app.core.integrations.registry import get_fuel_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_fuel_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.FUEL_PROVIDER = ""
             result = get_fuel_provider()
 
         assert result is None
 
     def test_returns_none_for_unknown_fuel_provider(self):
-        from app.core.integrations.registry import get_fuel_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_fuel_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.FUEL_PROVIDER = "shell"  # not in FUEL_PROVIDERS yet
             result = get_fuel_provider()
 
         assert result is None
 
     def test_returns_provider_for_opet_key(self):
-        from app.core.integrations.registry import get_fuel_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_fuel_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.FUEL_PROVIDER = "opet"
             mock_settings.FUEL_BASE_URL = "https://api.opet.com"
             mock_settings.FUEL_API_KEY = "key123"  # pragma: allowlist secret
@@ -263,23 +297,27 @@ class TestGetFuelProviderNoKey:
         assert result.provider_key == "opet"
 
     def test_returns_none_when_fuel_provider_init_raises(self):
-        from app.core.integrations.registry import get_fuel_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_fuel_provider,
+        )
 
         bad_cls = MagicMock(side_effect=Exception("config error"))
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.FUEL_PROVIDER = "opet"
             with patch.dict(
-                "app.core.integrations.registry.FUEL_PROVIDERS", {"opet": bad_cls}
+                "v2.modules.admin_platform.infrastructure.integrations.registry.FUEL_PROVIDERS", {"opet": bad_cls}
             ):
                 result = get_fuel_provider()
 
         assert result is None
 
     def test_fuel_provider_key_stripped(self):
-        from app.core.integrations.registry import get_fuel_provider
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            get_fuel_provider,
+        )
 
-        with patch("app.core.integrations.registry.settings") as mock_settings:
+        with patch("v2.modules.admin_platform.infrastructure.integrations.registry.settings") as mock_settings:
             mock_settings.FUEL_PROVIDER = "  opet  "
             mock_settings.FUEL_BASE_URL = "https://api.opet.com"
             mock_settings.FUEL_API_KEY = "k"  # pragma: allowlist secret
@@ -291,23 +329,31 @@ class TestGetFuelProviderNoKey:
 
 class TestProviderDicts:
     def test_avl_providers_dict_contains_mobiliz(self):
-        from app.core.integrations.registry import AVL_PROVIDERS
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            AVL_PROVIDERS,
+        )
 
         assert "mobiliz" in AVL_PROVIDERS
 
     def test_fuel_providers_dict_contains_opet(self):
-        from app.core.integrations.registry import FUEL_PROVIDERS
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            FUEL_PROVIDERS,
+        )
 
         assert "opet" in FUEL_PROVIDERS
 
     def test_avl_providers_values_are_classes(self):
-        from app.core.integrations.registry import AVL_PROVIDERS
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            AVL_PROVIDERS,
+        )
 
         for name, cls in AVL_PROVIDERS.items():
             assert isinstance(cls, type), f"{name} value should be a class"
 
     def test_fuel_providers_values_are_classes(self):
-        from app.core.integrations.registry import FUEL_PROVIDERS
+        from v2.modules.admin_platform.infrastructure.integrations.registry import (
+            FUEL_PROVIDERS,
+        )
 
         for name, cls in FUEL_PROVIDERS.items():
             assert isinstance(cls, type), f"{name} value should be a class"

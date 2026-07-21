@@ -27,26 +27,26 @@ from app.api.deps import (
     get_current_active_user,
     require_permissions,
 )
-from app.api.v1.endpoints.internal import (
-    _ALLOWED_MIME_TYPES,
-    _looks_like_allowed_image,
-)
 from app.api.v1.utils import parse_date_param
 from app.config import settings
 from app.core.exceptions import DomainError
-from app.core.services.idempotency_service import (
-    IdempotencyKeyConflictError,
-    IdempotencyKeyInProgressError,
-    finalize_response,
-    release_reservation,
-    reserve_or_get_cached,
-)
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from app.schemas.api_responses import EXCEL_XLSX_RESPONSES, FuelStatsResponse
+from v2.modules.admin_platform.api.internal_routes import (
+    _ALLOWED_MIME_TYPES,
+    _looks_like_allowed_image,
+)
+from v2.modules.admin_platform.public import (
+    IdempotencyKeyConflictError,
+    IdempotencyKeyInProgressError,
+    finalize_response,
+    release_reservation,
+    reserve_or_get_cached,
+)
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.delete_yakit import (
     delete_yakit as delete_yakit_usecase,

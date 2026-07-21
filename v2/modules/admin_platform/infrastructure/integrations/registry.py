@@ -1,7 +1,7 @@
 """Provider registry — config'deki provider_key → adapter sınıfı eşleme.
 
 Kullanım:
-    from app.core.integrations.registry import get_avl_provider, get_fuel_provider
+    from v2.modules.admin_platform.infrastructure.integrations.registry import get_avl_provider, get_fuel_provider
     avl = get_avl_provider()  # .env'deki AVL_PROVIDER'a göre instance döner
     trips = await avl.fetch_trips(since=...)
 
@@ -16,9 +16,11 @@ from __future__ import annotations
 from typing import Dict, Optional, Type
 
 from app.config import settings
-from app.core.integrations.avl.base import AVLProvider
-from app.core.integrations.avl.mobiliz import MobilizAVLProvider
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.infrastructure.integrations.avl.base import AVLProvider
+from v2.modules.admin_platform.infrastructure.integrations.avl.mobiliz import (
+    MobilizAVLProvider,
+)
 from v2.modules.fuel.public import FuelCardProvider, OpetFuelProvider
 
 logger = get_logger(__name__)

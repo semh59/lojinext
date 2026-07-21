@@ -297,12 +297,12 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
     import app.database.connection as db_connection
-    from app.core.services.idempotency_service import (
+    from app.database.models import IdempotencyKey
+    from v2.modules.admin_platform.application.idempotency_service import (
         IdempotencyKeyInProgressError,
         finalize_response,
         reserve_or_get_cached,
     )
-    from app.database.models import IdempotencyKey
 
     real_session_local = async_sessionmaker(
         bind=async_db_engine, class_=AsyncSession, expire_on_commit=False

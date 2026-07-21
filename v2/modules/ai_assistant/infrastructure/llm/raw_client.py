@@ -52,10 +52,12 @@ class LLMClient:
 
     async def _resolve_headers(self) -> dict:
         """DB-configured key (admin UI) takes priority over the .env
-        fallback — see app.core.services.integration_secrets. LLMClient is
+        fallback — see v2.modules.admin_platform.public. LLMClient is
         a process-lifetime singleton (get_llm_client()), so this must be
         re-resolved per call rather than baked in at __init__."""
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         api_key = await get_integration_secret("groq", self.api_key)
         return {

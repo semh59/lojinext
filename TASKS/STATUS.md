@@ -1603,6 +1603,68 @@ ortam farkı, trip'le ilgisiz), `app/tests/api` (1044/1045, 1 fail = aynı
 sınıf), `app/tests/unit` (tam koşum, sıfır fail) — **net-yeni regresyon
 SIFIR** düzeltmeler sonrası. İkinci commit + push aynı oturumda yapıldı.
 
+## DALGA 15 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-21)
+
+**Kapsam:** admin_platform modülü. Sistem konfigürasyonu (`sistem_konfig`
++ Redis cache/pubsub invalidation), runtime-config okuma köprüsü (7 diğer
+modülün env yerine kullandığı tek kanonik yol), yönetici audit logu
+(`admin_audit_log`), dış entegrasyon API anahtarları (`entegrasyon_ayarlari`,
+write-only), AVL sağlayıcı scaffolding (stub), idempotency-key altyapısı
+(trip/fuel yazma uçları kullanır), Telegram bot köprüsü, sistem sağlık
+kontrolü (`HealthService`), error_events admin-yönetim yüzeyi (liste/
+istatistik/resolve/trace-chain), SSE canlı hata akışı, ML eğitim WebSocket'i.
+
+**Envanter/plan düzeltmeleri (görev dosyası okunup gerçek koda karşı
+tek tek doğrulandı, kullanıcı onayı "hepsini uygula" ile uygulandı):**
+1. Route sayısı hataları: `admin_integrations.py` 3 route (görev dosyası
+   2 diyordu), `admin_ws.py` 1 route (görev dosyası 2 diyordu — `/live`
+   zaten dalga 2'de notification'a taşınmıştı).
+2. **Ölü kod silindi**: `app/database/repositories/config_repo.py`
+   (`ConfigRepository`) — sıfır çağıranı grep ile doğrulandı.
+3. **Tablo-sahipliği düzeltmesi (2 dosya, dosya adına değil gerçek
+   davranışa göre)**: `audit_repo.py` (`model = AdminAuditLog` taşıyordu
+   ama TEK metodu `get_sefer_timeline` hiç `admin_audit_log`'a
+   dokunmuyordu, yalnız trip'in `seferler_log`'unu sorguluyordu) →
+   `v2/modules/trip/infrastructure/sefer_timeline_repo.py`'ye taşındı.
+   `setting_repository.py` (`kullanici_ayarlari` yönetir, tek tüketicisi
+   `auth_rbac`) → `v2/modules/auth_rbac/infrastructure/
+   setting_repository.py`'ye taşındı.
+4. **Route-layer-bypass bug'ı düzeltildi**: `system.py`'nin 4 route'u
+   (`get_error_events`, `get_error_stats`, `resolve_error_event`,
+   `get_trace_chain`) route handler İÇİNDE raw SQL çalıştırıyordu
+   (`TASKS/bug-route-layer-bypasses-application.md` bug sınıfı) —
+   `application/error_events.py`'ye çıkarıldı.
+5. **3 sınıf B.1 gereği dissolve edildi**: `KonfigService`,
+   `AdminAuditService`, `InternalService` — üçü de gerçek mutable state
+   taşımıyordu (her metod kendi bağımlılığını taze kuruyor veya kendi
+   `UnitOfWork`'ünü açıyordu). `HealthService` sınıf olarak KALDI (genuine
+   mutable state: `start_time`+`_bg_tasks`).
+6. **`backup_tasks.py`/`error_digest.py` TAŞINMADI** (görev dosyası tek
+   `infrastructure/tasks.py`'ye birleştirmeyi öneriyordu) — ikisi de
+   `error_hourly_stats`/`DatabaseBackupManager` gibi cross-cutting
+   `app/infrastructure/monitoring/` ve `app/infrastructure/database/`
+   altyapısını kullanan Celery beat cron job'ları, hiçbiri admin_platform'un
+   sahip olduğu bir şeye özel değil — `app/workers/tasks/`'te bırakıldı.
+
+**Doğrulama**: `ruff check app v2 tests` temiz, `mypy` temiz (225 dosya,
+hedefli), `lint-imports` **17/18 kept** (yeni `public-surface-only-
+admin_platform` kontratı dahil tüm admin_platform-ilişkili kontratlar
+KEPT; tek broken = pre-existing "report-only FAZ0", migrasyonla ilgisiz).
+`pytest --collect-only` 6658 test/0 hata. Admin_platform'un dokunduğu
+29 test dosyası hedefli koşumda **380 passed, 0 failed**. **OpenAPI şeması
+`frontend/openapi.json`'a karşı path/operationId düzeyinde BİREBİR ÖZDEŞ**
+(202/202 path, 0 operationId farkı — 4 route handler'ın import edilen
+free function'larla isim çakışmasını önlemek için önce yeniden adlandırılıp
+sonra operationId'yi korumak için free-function tarafı alias'landığı bir
+ara adım geçirildi); tek fark kasıtlı bir docstring yol düzeltmesiydi
+(`app/core/integrations/` → `v2/modules/admin_platform/infrastructure/
+integrations/`), `frontend/openapi.json` bu farkı yansıtacak şekilde
+yeniden üretildi (orijinal minified/doğal-sıra formatı korunarak).
+Tam pytest suite'i gerçek Postgres+Redis'e karşı koşuldu (sonuç bir
+sonraki oturumda doğrulanacak — bu tur admin_platform'un dokunduğu
+alanlara odaklandı, önceki dalgaların bilinen ~23 pre-existing
+api-stub/gerçek-ağ farkı burada da beklenir).
+
 ## Son güncelleme
 
 2026-07-18 (üçüncü oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME

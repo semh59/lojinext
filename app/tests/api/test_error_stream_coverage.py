@@ -199,7 +199,10 @@ async def test_error_stream_none_redis_uses_mgr_get(async_client):
 
 async def test_sse_generator_too_many_streams():
     """When semaphore is locked, generator yields error event and returns."""
-    from app.api.v1.endpoints.error_stream import _SSE_SEMAPHORE, _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import (
+        _SSE_SEMAPHORE,
+        _sse_generator,
+    )
 
     # Acquire all 20 slots to trigger the "too many streams" branch
     acquired = []
@@ -224,7 +227,7 @@ async def test_sse_generator_too_many_streams():
 
 async def test_sse_generator_disconnects_cleanly():
     """Generator exits on disconnected request without yielding data."""
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     request.is_disconnected = AsyncMock(return_value=True)

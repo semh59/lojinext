@@ -44,8 +44,6 @@ from app.database.repositories import (
     AnalizRepository,
     AnomalyRepository,
     AracRepository,
-    AuditRepository,
-    ConfigRepository,
     DorseRepository,
     ImportHistoryRepository,
     InvestigationRepository,
@@ -247,7 +245,6 @@ class UnitOfWork:
     yakit_repo = _Lazy("yakit_repo", lambda u: YakitRepository(u.session))
     lokasyon_repo = _Lazy("lokasyon_repo", lambda u: LokasyonRepository(u.session))
     kullanici_repo = _Lazy("kullanici_repo", lambda u: KullaniciRepository(u.session))
-    audit_repo = _Lazy("audit_repo", lambda u: AuditRepository(u.session))
     notification_repo = _Lazy(
         "notification_repo", lambda u: NotificationRepository(u.session)
     )
@@ -269,7 +266,6 @@ class UnitOfWork:
     admin_config_repo = _Lazy(
         "admin_config_repo", lambda u: AdminConfigRepository(u.session)
     )
-    config_repo = _Lazy("config_repo", lambda u: ConfigRepository(u.session))
     import_repo = _Lazy("import_repo", lambda u: ImportHistoryRepository(u.session))
     session_repo = _Lazy("session_repo", lambda u: SessionRepository(u.session))
     rol_repo = _Lazy("rol_repo", lambda u: RolRepository(u.session))

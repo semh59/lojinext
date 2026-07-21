@@ -1090,7 +1090,7 @@ class TestInterfacesImport:
 
 class TestSystemErrorReport:
     def test_frontend_error_report_schema(self):
-        from app.api.v1.endpoints.system import FrontendErrorReport
+        from v2.modules.admin_platform.api.system_routes import FrontendErrorReport
 
         report = FrontendErrorReport(
             message="TypeError: Cannot read property 'x' of null",
@@ -1104,7 +1104,7 @@ class TestSystemErrorReport:
         assert report.stack is None
 
     def test_frontend_error_report_default_severity(self):
-        from app.api.v1.endpoints.system import FrontendErrorReport
+        from v2.modules.admin_platform.api.system_routes import FrontendErrorReport
 
         report = FrontendErrorReport(
             message="Something broke",
@@ -1120,7 +1120,7 @@ class TestSystemErrorReport:
 
         from starlette.requests import Request as StarletteRequest
 
-        from app.api.v1.endpoints.system import (
+        from v2.modules.admin_platform.api.system_routes import (
             FrontendErrorReport,
             receive_frontend_error,
         )

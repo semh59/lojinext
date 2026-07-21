@@ -26,7 +26,7 @@ pytestmark = pytest.mark.unit
 
 
 def _make_service():
-    from app.core.services.health_service import HealthService
+    from v2.modules.admin_platform.application.health_service import HealthService
 
     return HealthService()
 
@@ -43,7 +43,7 @@ def test_module_level_sentry_sdk_import_error_sets_none():
     saved = sys.modules.get("sentry_sdk")
     sys.modules["sentry_sdk"] = None  # simulate ImportError branch handled already
     try:
-        import app.core.services.health_service as mod
+        import v2.modules.admin_platform.application.health_service as mod
 
         # Module should still be importable; sentry_sdk attribute is either None or the real module
         assert hasattr(mod, "sentry_sdk")
@@ -62,7 +62,7 @@ def test_module_level_sentry_sdk_import_error_sets_none():
 def test_get_backup_manager_returns_instance():
     svc = _make_service()
     with patch(
-        "app.core.services.health_service.HealthService._get_backup_manager"
+        "v2.modules.admin_platform.application.health_service.HealthService._get_backup_manager"
     ) as mock_gbm:
         fake_mgr = MagicMock()
         fake_mgr.backup_dir = "/tmp/backups"
@@ -133,11 +133,11 @@ async def test_check_ai_readiness_error_path():
 async def test_get_sentry_summary_sdk_is_none_no_dsn():
     """sentry_sdk is None and SENTRY_DSN is empty — no warning, enabled=False."""
     svc = _make_service()
-    import app.core.services.health_service as mod
+    import v2.modules.admin_platform.application.health_service as mod
 
     orig = mod.sentry_sdk
     mod.sentry_sdk = None
-    with patch("app.core.services.health_service.settings") as mock_settings:
+    with patch("v2.modules.admin_platform.application.health_service.settings") as mock_settings:
         mock_settings.SENTRY_DSN = ""
         mock_settings.ENVIRONMENT = "test"
         result = await svc.get_sentry_summary()
@@ -150,14 +150,14 @@ async def test_get_sentry_summary_sdk_is_none_no_dsn():
 async def test_get_sentry_summary_sdk_none_with_dsn_logs_warning():
     """sentry_sdk is None but SENTRY_DSN is set — should log warning."""
     svc = _make_service()
-    import app.core.services.health_service as mod
+    import v2.modules.admin_platform.application.health_service as mod
 
     orig = mod.sentry_sdk
     mod.sentry_sdk = None
-    with patch("app.core.services.health_service.settings") as mock_settings:
+    with patch("v2.modules.admin_platform.application.health_service.settings") as mock_settings:
         mock_settings.SENTRY_DSN = "https://fake@de.sentry.io/123"
         mock_settings.ENVIRONMENT = "production"
-        with patch("app.core.services.health_service.logger") as mock_logger:
+        with patch("v2.modules.admin_platform.application.health_service.logger") as mock_logger:
             result = await svc.get_sentry_summary()
             mock_logger.warning.assert_called_once()
     mod.sentry_sdk = orig
@@ -169,13 +169,13 @@ async def test_get_sentry_summary_sdk_none_with_dsn_logs_warning():
 async def test_get_sentry_summary_sdk_present_active():
     """sentry_sdk is importable and Hub.current.client is not None."""
     svc = _make_service()
-    import app.core.services.health_service as mod
+    import v2.modules.admin_platform.application.health_service as mod
 
     orig = mod.sentry_sdk
     fake_sdk = MagicMock()
     fake_sdk.Hub.current.client = MagicMock()  # not None
     mod.sentry_sdk = fake_sdk
-    with patch("app.core.services.health_service.settings") as mock_settings:
+    with patch("v2.modules.admin_platform.application.health_service.settings") as mock_settings:
         mock_settings.SENTRY_DSN = "https://fake@de.sentry.io/123"
         mock_settings.ENVIRONMENT = "production"
         result = await svc.get_sentry_summary()
@@ -385,7 +385,7 @@ async def test_get_admin_health_details_includes_all_sections():
 
 
 def test_get_health_service_returns_same_instance():
-    import app.core.services.health_service as mod
+    import v2.modules.admin_platform.application.health_service as mod
 
     orig = mod._health_service
     mod._health_service = None

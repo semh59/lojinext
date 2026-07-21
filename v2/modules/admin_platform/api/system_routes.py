@@ -1,5 +1,4 @@
-from datetime import datetime, timezone
-from typing import Annotated, Any, List, Literal, Optional, cast
+from typing import Annotated, List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import Query as QueryParam
@@ -10,6 +9,18 @@ from app.api.middleware.rate_limiter import limiter
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from app.schemas.api_responses import TraceChainResponse
+from v2.modules.admin_platform.application.error_events import (
+    get_error_stats as _get_error_stats,
+)
+from v2.modules.admin_platform.application.error_events import (
+    get_trace_chain as _get_trace_chain,
+)
+from v2.modules.admin_platform.application.error_events import (
+    list_error_events,
+)
+from v2.modules.admin_platform.application.error_events import (
+    resolve_error_event as _resolve_error_event,
+)
 
 logger = get_logger(__name__)
 
@@ -176,104 +187,26 @@ async def get_error_events(
     page_size: int = QueryParam(50, ge=1, le=200),
 ):
     """List error events (paginated, filtered). Admin only."""
-    from sqlalchemy import text
-
-    from app.database.connection import AsyncSessionLocal
-    from app.infrastructure.monitoring.models import ErrorLayer, ErrorSeverity
-
-    valid_layers = {e.value for e in ErrorLayer}
-    valid_severities = {e.value for e in ErrorSeverity}
-
-    if layer and layer not in valid_layers:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid layer. Valid: {sorted(valid_layers)}",
+    try:
+        items, total = await list_error_events(
+            layer=layer,
+            severity=severity,
+            resolved=resolved,
+            page=page,
+            page_size=page_size,
         )
-    if severity and severity not in valid_severities:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Invalid severity. Valid: {sorted(valid_severities)}",
-        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
-    conditions: list[str] = []
-    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
-
-    if layer:
-        conditions.append("layer::text = :layer")
-        params["layer"] = layer
-    if severity:
-        conditions.append("severity::text = :severity")
-        params["severity"] = severity
-    if not resolved:
-        conditions.append("resolved_at IS NULL")
-
-    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-
-    async with AsyncSessionLocal() as session:
-        count_row = await session.execute(
-            text(f"SELECT COUNT(*) FROM error_events {where}"), params
-        )
-        total = count_row.scalar_one()
-
-        rows = await session.execute(
-            text(f"""
-                SELECT id, fingerprint, layer, category, severity, message,
-                       count, first_seen, last_seen, trace_id, path,
-                       metadata, resolved_at
-                FROM error_events {where}
-                ORDER BY last_seen DESC
-                LIMIT :limit OFFSET :offset
-            """),
-            params,
-        )
-        items = [
-            ErrorEventOut(
-                id=r.id,
-                fingerprint=r.fingerprint,
-                layer=r.layer,
-                category=r.category,
-                severity=r.severity,
-                message=r.message,
-                count=r._mapping["count"],
-                first_seen=r.first_seen.isoformat(),
-                last_seen=r.last_seen.isoformat(),
-                trace_id=r.trace_id,
-                path=r.path,
-                metadata=r.metadata or {},
-                resolved_at=r.resolved_at.isoformat() if r.resolved_at else None,
-            )
-            for r in rows
-        ]
-
-    return ErrorEventsResponse(items=items, total=total, page=page, page_size=page_size)
+    return ErrorEventsResponse(
+        items=[ErrorEventOut(**item) for item in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 # ── GET /error-stats ──────────────────────────────────────────────────────────
-
-
-async def _get_error_stats() -> list[ErrorStatsRow]:
-    from sqlalchemy import text
-
-    from app.database.connection import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as session:
-        rows = await session.execute(
-            text("""
-            SELECT hour, layer, severity, event_count
-            FROM error_hourly_stats
-            ORDER BY hour DESC, layer, severity
-            LIMIT 1000
-        """)
-        )
-        return [
-            ErrorStatsRow(
-                hour=r.hour.isoformat(),
-                layer=r.layer,
-                severity=r.severity,
-                event_count=r.event_count,
-            )
-            for r in rows
-        ]
 
 
 @router.get("/error-stats", response_model=ErrorStatsResponse)
@@ -282,7 +215,7 @@ async def get_error_stats(
 ):
     """Return hourly aggregated error stats from materialized view. Admin only."""
     stats = await _get_error_stats()
-    return ErrorStatsResponse(stats=stats)
+    return ErrorStatsResponse(stats=[ErrorStatsRow(**row) for row in stats])
 
 
 # ── GET /silent-fallbacks ────────────────────────────────────────────────────
@@ -314,31 +247,13 @@ async def resolve_error_event(
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Mark an error event as resolved. Admin only."""
-    from sqlalchemy import text
-
-    from app.database.connection import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            text("""
-                UPDATE error_events
-                SET resolved_at = :now, resolved_by = :user_id
-                WHERE id = :event_id AND resolved_at IS NULL
-            """),
-            {
-                "now": datetime.now(timezone.utc),
-                "user_id": current_user.id
-                if current_user.id and current_user.id > 0
-                else None,
-                "event_id": event_id,
-            },
+    user_id = current_user.id if current_user.id and current_user.id > 0 else None
+    resolved = await _resolve_error_event(event_id, user_id)
+    if not resolved:
+        raise HTTPException(
+            status_code=404,
+            detail="Event not found or already resolved",
         )
-        if cast("Any", result).rowcount == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="Event not found or already resolved",
-            )
-        await session.commit()
 
 
 # ── GET /debug/trace/{trace_id} ───────────────────────────────────────────
@@ -362,78 +277,4 @@ async def get_trace_chain(
     Frontend bunu admin paneline koyunca, yakalanan trace_id'yi tek
     tıkla detay gösterir → hata kovalama dakikalardan saniyelere iner.
     """
-    from sqlalchemy import text
-
-    from app.database.connection import AsyncSessionLocal
-
-    chain: dict[str, Any] = {"errors": [], "audit": []}
-
-    async with AsyncSessionLocal() as session:
-        # error_events
-        err_rows = (
-            (
-                await session.execute(
-                    text(
-                        """
-                    SELECT id, layer, category, severity, message,
-                           stack_trace, path, count,
-                           first_seen, last_seen, resolved_at
-                    FROM error_events
-                    WHERE trace_id = :trace_id
-                    ORDER BY first_seen ASC
-                    """
-                    ),
-                    {"trace_id": trace_id},
-                )
-            )
-            .mappings()
-            .all()
-        )
-        chain["errors"] = [dict(r) for r in err_rows]
-
-        # admin_audit_log — Türkçe kolon isimleri, istek_id = trace_id
-        try:
-            audit_rows = (
-                (
-                    await session.execute(
-                        text(
-                            """
-                        SELECT id,
-                               aksiyon_tipi    AS action,
-                               hedef_tablo     AS entity,
-                               hedef_id        AS entity_id,
-                               kullanici_id    AS user_id,
-                               yeni_deger      AS new_value,
-                               CASE WHEN basarili THEN 'success'
-                                    ELSE 'failure' END AS status,
-                               sure_ms         AS duration_ms,
-                               zaman           AS created_at
-                        FROM admin_audit_log
-                        WHERE istek_id = :trace_id
-                        ORDER BY zaman ASC
-                        LIMIT 100
-                        """
-                        ),
-                        {"trace_id": trace_id},
-                    )
-                )
-                .mappings()
-                .all()
-            )
-            chain["audit"] = [dict(r) for r in audit_rows]
-        except Exception as exc:  # pragma: no cover
-            logger.debug("Audit chain skipped for trace %s: %s", trace_id, exc)
-
-    chain["trace_id"] = trace_id
-    chain["counts"] = {
-        "errors": len(chain["errors"]),
-        "audit": len(chain["audit"]),
-    }
-    if not chain["errors"] and not chain["audit"]:
-        # Aramayı kolaylaştırmak için make trace komutunu öner
-        chain["hint"] = (
-            "Hiç kayıt bulunamadı. Container log'larında trace_id'yi arayın: "
-            f"docker compose logs backend worker celery-beat | grep '{trace_id}' "
-            "veya: make trace TRACE={trace_id}"
-        ).format(trace_id=trace_id)
-    return chain
+    return await _get_trace_chain(trace_id)

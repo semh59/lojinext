@@ -93,7 +93,7 @@ class TestTrainingWsEndpointDirect:
         return ws
 
     async def test_training_ws_no_token_closes_directly(self):
-        from app.api.v1.endpoints.admin_ws import training_status_ws
+        from v2.modules.admin_platform.api.admin_ws_routes import training_status_ws
 
         ws = self._make_ws(token=None)
         # query_params needs to support .get()
@@ -104,7 +104,7 @@ class TestTrainingWsEndpointDirect:
         ws.close.assert_called_once()
 
     async def test_training_ws_invalid_token_closes_directly(self):
-        from app.api.v1.endpoints.admin_ws import training_status_ws
+        from v2.modules.admin_platform.api.admin_ws_routes import training_status_ws
 
         ws = self._make_ws()
         ws.query_params = MagicMock()
@@ -119,7 +119,7 @@ class TestTrainingWsEndpointDirect:
         # _is_admin_email, which open their own AsyncSessionLocal against the app DB)
         # is stubbed at a single point; real end-to-end WS auth is covered by the
         # no_token/invalid_token tests and the integration/Playwright slice.
-        from app.api.v1.endpoints import admin_ws
+        from v2.modules.admin_platform.api import admin_ws_routes as admin_ws
 
         ws = self._make_ws(text_sequence=["ping"])
         ws.query_params = MagicMock()

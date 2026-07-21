@@ -907,7 +907,7 @@ class EntegrasyonAyari(Base):
     which is the opposite of what this table needs (write-only: nobody,
     not even an admin, can ever read the plaintext back). It stores raw
     Fernet ciphertext; the ONLY place that ever calls decrypt_pii() on it
-    is app.core.services.integration_secrets.get_integration_secret(),
+    is v2.modules.admin_platform.application.integration_secrets.get_integration_secret(),
     used exclusively to build outbound API requests — never returned in
     any response, never written to admin_audit_log.
     """

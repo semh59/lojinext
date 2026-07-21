@@ -1,7 +1,9 @@
-"""Coverage tests for app/database/repositories/audit_repo.py.
+"""Coverage tests for v2/modules/trip/infrastructure/sefer_timeline_repo.py.
 
-Tests all static helpers and the get_sefer_timeline method using
-a mock session (no real DB required).
+Tests all free-function helpers and get_sefer_timeline using a mock session
+(no real DB required). ``AuditRepository`` was dissolved to module-level
+free functions when this file moved from admin_platform to trip (table
+ownership correction, dalga 15 — see the module's own docstring).
 """
 
 from __future__ import annotations
@@ -11,6 +13,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
+from v2.modules.trip.infrastructure import sefer_timeline_repo
 
 pytestmark = pytest.mark.unit
 
@@ -40,14 +44,11 @@ def _make_log(
     return log
 
 
-def _make_repo(session=None):
-    from app.database.repositories.audit_repo import AuditRepository
-
-    mock_session = session or AsyncMock()
-    # AuditRepository expects BaseRepository init
-    repo = AuditRepository.__new__(AuditRepository)
-    repo._session = mock_session
-    return repo
+def _make_uow(session):
+    """A minimal stand-in for UnitOfWork exposing only `.session`."""
+    uow = MagicMock()
+    uow.session = session
+    return uow
 
 
 # ---------------------------------------------------------------------------
@@ -57,38 +58,26 @@ def _make_repo(session=None):
 
 class TestSafeParseJson:
     def test_none_returns_empty_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        assert AuditRepository._safe_parse_json(None) == {}
+        assert sefer_timeline_repo._safe_parse_json(None) == {}
 
     def test_empty_string_returns_empty_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        assert AuditRepository._safe_parse_json("") == {}
+        assert sefer_timeline_repo._safe_parse_json("") == {}
 
     def test_valid_json_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._safe_parse_json('{"durum": "Aktif", "km": 500}')
+        result = sefer_timeline_repo._safe_parse_json('{"durum": "Aktif", "km": 500}')
         assert result == {"durum": "Aktif", "km": 500}
 
     def test_json_list_returns_empty_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         # JSON array is not a dict → returns {}
-        result = AuditRepository._safe_parse_json("[1, 2, 3]")
+        result = sefer_timeline_repo._safe_parse_json("[1, 2, 3]")
         assert result == {}
 
     def test_invalid_json_returns_empty_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._safe_parse_json("{broken json")
+        result = sefer_timeline_repo._safe_parse_json("{broken json")
         assert result == {}
 
     def test_json_scalar_returns_empty_dict(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._safe_parse_json('"just a string"')
+        result = sefer_timeline_repo._safe_parse_json('"just a string"')
         assert result == {}
 
 
@@ -99,63 +88,45 @@ class TestSafeParseJson:
 
 class TestNormalizeEventType:
     def test_insert_returns_create(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._normalize_event_type("INSERT", [])
+        result = sefer_timeline_repo._normalize_event_type("INSERT", [])
         assert result == "CREATE"
 
     def test_delete_returns_delete(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._normalize_event_type("DELETE", [])
+        result = sefer_timeline_repo._normalize_event_type("DELETE", [])
         assert result == "DELETE"
 
     def test_update_with_durum_change_returns_status_change(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "durum", "eski": "Aktif", "yeni": "Tamamlandi"}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "STATUS_CHANGE"
 
     def test_update_with_tahmini_tuketim_change_returns_prediction_refresh(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "tahmini_tuketim", "eski": None, "yeni": 130.5}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "PREDICTION_REFRESH"
 
     def test_update_with_tahmin_meta_change_returns_prediction_refresh(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "tahmin_meta", "eski": None, "yeni": {"model": "ensemble"}}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "PREDICTION_REFRESH"
 
     def test_update_with_tuketim_change_returns_reconciliation(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "tuketim", "eski": None, "yeni": 128.0}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "RECONCILIATION"
 
     def test_update_with_periyot_id_change_returns_reconciliation(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "periyot_id", "eski": None, "yeni": 5}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "RECONCILIATION"
 
     def test_generic_update_returns_update(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         changes = [{"alan": "mesafe_km", "eski": 400, "yeni": 450}]
-        result = AuditRepository._normalize_event_type("UPDATE", changes)
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", changes)
         assert result == "UPDATE"
 
     def test_update_no_changes_returns_update(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._normalize_event_type("UPDATE", [])
+        result = sefer_timeline_repo._normalize_event_type("UPDATE", [])
         assert result == "UPDATE"
 
 
@@ -166,21 +137,15 @@ class TestNormalizeEventType:
 
 class TestBuildSummary:
     def test_create_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary("CREATE", {}, {})
+        result = sefer_timeline_repo._build_summary("CREATE", {}, {})
         assert "olusturuldu" in result.lower()
 
     def test_delete_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary("DELETE", {}, {})
+        result = sefer_timeline_repo._build_summary("DELETE", {}, {})
         assert "silindi" in result.lower()
 
     def test_status_change_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary(
+        result = sefer_timeline_repo._build_summary(
             "STATUS_CHANGE",
             {"durum": "Aktif"},
             {"durum": "Tamamlandi"},
@@ -189,21 +154,15 @@ class TestBuildSummary:
         assert "Tamamlandi" in result
 
     def test_prediction_refresh_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary("PREDICTION_REFRESH", {}, {})
+        result = sefer_timeline_repo._build_summary("PREDICTION_REFRESH", {}, {})
         assert "tahmin" in result.lower()
 
     def test_reconciliation_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary("RECONCILIATION", {}, {})
+        result = sefer_timeline_repo._build_summary("RECONCILIATION", {}, {})
         assert "uzlastirma" in result.lower() or "guncellendi" in result.lower()
 
     def test_update_summary(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._build_summary("UPDATE", {}, {})
+        result = sefer_timeline_repo._build_summary("UPDATE", {}, {})
         assert isinstance(result, str)
 
 
@@ -214,39 +173,31 @@ class TestBuildSummary:
 
 class TestExtractChanges:
     def test_detects_value_change(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old = {"durum": "Aktif", "km": 400}
         new = {"durum": "Tamamlandi", "km": 400}
-        changes = AuditRepository._extract_changes(old, new)
+        changes = sefer_timeline_repo._extract_changes(old, new)
         fields = {c["alan"] for c in changes}
         assert "durum" in fields
         assert "km" not in fields
 
     def test_ignores_updated_at_and_created_at(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old = {"updated_at": "2024-01-01", "created_at": "2024-01-01", "km": 400}
         new = {"updated_at": "2024-01-02", "created_at": "2024-01-01", "km": 500}
-        changes = AuditRepository._extract_changes(old, new)
+        changes = sefer_timeline_repo._extract_changes(old, new)
         fields = {c["alan"] for c in changes}
         assert "updated_at" not in fields
         assert "created_at" not in fields
         assert "km" in fields
 
     def test_detects_new_key(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old = {}
         new = {"tahmini_tuketim": 130.0}
-        changes = AuditRepository._extract_changes(old, new)
+        changes = sefer_timeline_repo._extract_changes(old, new)
         assert any(c["alan"] == "tahmini_tuketim" for c in changes)
 
     def test_no_changes_when_equal(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         data = {"km": 400, "durum": "Aktif"}
-        changes = AuditRepository._extract_changes(data, data.copy())
+        changes = sefer_timeline_repo._extract_changes(data, data.copy())
         assert changes == []
 
 
@@ -257,27 +208,23 @@ class TestExtractChanges:
 
 class TestExtractPredictionBlock:
     def test_returns_none_when_no_prediction_fields(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
-        result = AuditRepository._extract_prediction_block({"km": 400}, {"km": 450})
+        result = sefer_timeline_repo._extract_prediction_block(
+            {"km": 400}, {"km": 450}
+        )
         assert result is None
 
     def test_returns_block_when_tahmini_tuketim_present(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old = {"tahmini_tuketim": 120.0}
         new = {"tahmini_tuketim": 135.0}
-        result = AuditRepository._extract_prediction_block(old, new)
+        result = sefer_timeline_repo._extract_prediction_block(old, new)
         assert result is not None
         assert result["onceki_tahmini_tuketim"] == 120.0
         assert result["tahmini_tuketim"] == 135.0
 
     def test_returns_block_when_tahmin_meta_present(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old = {}
         new = {"tahmin_meta": {"model": "ensemble"}}
-        result = AuditRepository._extract_prediction_block(old, new)
+        result = sefer_timeline_repo._extract_prediction_block(old, new)
         assert result is not None
         assert result["tahmin_meta"] == {"model": "ensemble"}
 
@@ -289,22 +236,17 @@ class TestExtractPredictionBlock:
 
 class TestGetSeferTimeline:
     async def test_returns_empty_list_when_no_logs(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         mock_session = AsyncMock()
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute = AsyncMock(return_value=mock_result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        result = await repo.get_sefer_timeline(sefer_id=999)
+        result = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=999, uow=_make_uow(mock_session)
+        )
         assert result == []
 
     async def test_insert_log_is_create_type(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         new_data = json.dumps({"durum": "Aktif", "mesafe_km": 450})
         log = _make_log(
             log_id=1,
@@ -324,17 +266,14 @@ class TestGetSeferTimeline:
         # Second execute: Kullanici query (no user_ids → skipped)
         mock_session.execute = AsyncMock(return_value=sefer_result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         assert len(timeline) == 1
         assert timeline[0]["tip"] == "CREATE"
         assert timeline[0]["id"] == 1
 
     async def test_delete_log_is_delete_type(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old_data = json.dumps({"durum": "Aktif"})
         log = _make_log(
             log_id=2,
@@ -350,15 +289,12 @@ class TestGetSeferTimeline:
         result.scalars.return_value.all.return_value = [log]
         mock_session.execute = AsyncMock(return_value=result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         assert timeline[0]["tip"] == "DELETE"
 
     async def test_status_change_update_log(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old_data = json.dumps({"durum": "Aktif", "mesafe_km": 400})
         new_data = json.dumps({"durum": "Tamamlandi", "mesafe_km": 400})
         log = _make_log(
@@ -375,16 +311,13 @@ class TestGetSeferTimeline:
         result.scalars.return_value.all.return_value = [log]
         mock_session.execute = AsyncMock(return_value=result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         assert timeline[0]["tip"] == "STATUS_CHANGE"
         assert "Tamamlandi" in timeline[0]["ozet"]
 
     async def test_user_map_populated_from_degistiren_id(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old_data = json.dumps({"durum": "Aktif"})
         new_data = json.dumps({"durum": "Tamamlandi"})
         log = _make_log(
@@ -412,15 +345,12 @@ class TestGetSeferTimeline:
 
         mock_session.execute = AsyncMock(side_effect=[sefer_result, user_result])
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         assert timeline[0]["kullanici"] == "Ahmet Yılmaz"
 
     async def test_prediction_refresh_has_prediction_block(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old_data = json.dumps({"tahmini_tuketim": 120.0})
         new_data = json.dumps({"tahmini_tuketim": 135.0})
         log = _make_log(
@@ -437,17 +367,14 @@ class TestGetSeferTimeline:
         result.scalars.return_value.all.return_value = [log]
         mock_session.execute = AsyncMock(return_value=result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         assert timeline[0]["tip"] == "PREDICTION_REFRESH"
         assert timeline[0]["prediction"] is not None
         assert timeline[0]["prediction"]["tahmini_tuketim"] == 135.0
 
     async def test_technical_details_populated(self):
-        from app.database.repositories.audit_repo import AuditRepository
-
         old_data = json.dumps({"mesafe_km": 400})
         new_data = json.dumps({"mesafe_km": 450})
         log = _make_log(
@@ -464,10 +391,9 @@ class TestGetSeferTimeline:
         result.scalars.return_value.all.return_value = [log]
         mock_session.execute = AsyncMock(return_value=result)
 
-        repo = AuditRepository.__new__(AuditRepository)
-        repo._session = mock_session
-
-        timeline = await repo.get_sefer_timeline(sefer_id=5)
+        timeline = await sefer_timeline_repo.get_sefer_timeline(
+            sefer_id=5, uow=_make_uow(mock_session)
+        )
         td = timeline[0]["technical_details"]
         assert td["islem_tipi"] == "UPDATE"
         assert td["degisen_alan_sayisi"] == 1

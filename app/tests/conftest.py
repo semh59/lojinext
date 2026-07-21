@@ -37,7 +37,7 @@ os.environ["CORS_ORIGINS"] = "http://localhost"
 os.environ["MAPBOX_API_KEY"] = ""
 
 import app.core.container as container_mod  # noqa: E402
-import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
+import v2.modules.admin_platform.infrastructure.repository as admin_config_mod  # noqa: E402
 import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
 import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402

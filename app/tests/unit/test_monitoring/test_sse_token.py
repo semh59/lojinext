@@ -19,7 +19,7 @@ _PUBSUB_PATH = "app.infrastructure.cache.redis_pubsub.get_pubsub_manager"
 @pytest.mark.unit
 async def test_create_sse_token_returns_token_and_expiry():
     """create_sse_token returns dict with 'token' (UUID) and 'expires_in'=90."""
-    from app.api.v1.endpoints.error_stream import create_sse_token
+    from v2.modules.admin_platform.api.error_stream_routes import create_sse_token
 
     mock_user = MagicMock()
     mock_user.id = 42
@@ -40,7 +40,7 @@ async def test_create_sse_token_returns_token_and_expiry():
 @pytest.mark.unit
 async def test_create_sse_token_stores_in_redis_with_ttl():
     """Token stored at sse_token:{uuid} with ex=90."""
-    from app.api.v1.endpoints.error_stream import create_sse_token
+    from v2.modules.admin_platform.api.error_stream_routes import create_sse_token
 
     mock_user = MagicMock()
     mock_user.id = 7
@@ -68,7 +68,7 @@ async def test_error_stream_no_token_returns_401():
     """?token absent → 401."""
     from fastapi import Request
 
-    from app.api.v1.endpoints.error_stream import error_stream
+    from v2.modules.admin_platform.api.error_stream_routes import error_stream
 
     mock_request = MagicMock(spec=Request)
     mock_request.query_params = {}
@@ -82,7 +82,7 @@ async def test_error_stream_empty_token_returns_401():
     """?token= (empty string) → 401."""
     from fastapi import Request
 
-    from app.api.v1.endpoints.error_stream import error_stream
+    from v2.modules.admin_platform.api.error_stream_routes import error_stream
 
     mock_request = MagicMock(spec=Request)
     mock_request.query_params = {"token": ""}
@@ -96,7 +96,7 @@ async def test_error_stream_nonexistent_token_returns_401():
     """Unknown token (Redis returns None) → 401."""
     from fastapi import Request
 
-    from app.api.v1.endpoints.error_stream import error_stream
+    from v2.modules.admin_platform.api.error_stream_routes import error_stream
 
     mock_request = MagicMock(spec=Request)
     mock_request.query_params = {"token": "nonexistent-token-xyz"}
@@ -117,7 +117,7 @@ async def test_error_stream_valid_token_deleted_before_db_check():
     """Valid token in Redis → deleted immediately before DB lookup."""
     from fastapi import Request
 
-    from app.api.v1.endpoints.error_stream import error_stream
+    from v2.modules.admin_platform.api.error_stream_routes import error_stream
 
     token = "valid-test-token-abc"
     user_payload = json.dumps({"user_id": 1})

@@ -6,10 +6,21 @@ from pydantic import BaseModel, ConfigDict
 from app.api.deps import SessionDep
 from app.api.middleware.rate_limiter import limiter
 from app.core.exceptions import DomainError
-from app.core.services.admin_audit_service import AdminAuditService
-from app.core.services.konfig_service import KonfigService
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.application.admin_audit_service import (
+    log_config_change,
+)
+from v2.modules.admin_platform.application.konfig_service import (
+    get_all_by_group,
+)
+from v2.modules.admin_platform.application.konfig_service import (
+    get_all_configs as _get_all_configs,
+)
+from v2.modules.admin_platform.application.konfig_service import (
+    update_config as _update_config,
+)
+from v2.modules.admin_platform.infrastructure.repository import get_admin_config_repo
 from v2.modules.auth_rbac.public import require_yetki
 
 router = APIRouter()
@@ -41,10 +52,9 @@ async def get_all_configs(
     group: Optional[str] = None,
 ):
     """Sistem konfigürasyonlarını listele"""
-    service = KonfigService(db)
     if group:
-        return await service.get_all_by_group(group)
-    return await service.get_all()
+        return await get_all_by_group(db, group)
+    return await _get_all_configs(db)
 
 
 @router.get("/{key}", response_model=ConfigRead)
@@ -54,8 +64,8 @@ async def get_config(
     current_user: Kullanici = Depends(require_yetki("konfig_goruntule")),
 ):
     """Spesifik bir konfigürasyonu getir"""
-    service = KonfigService(db)
-    config = await service.repo.get_config(key)
+    repo = get_admin_config_repo(db)
+    config = await repo.get_config(key)
     if not config:
         raise HTTPException(status_code=404, detail="Konfigürasyon bulunamadı")
     return config
@@ -71,11 +81,10 @@ async def update_config(
     current_user: Kullanici = Depends(require_yetki("konfig_duzenle")),
 ):
     """Konfigürasyonu güncelle ve logla"""
-    service = KonfigService(db)
-    audit_service = AdminAuditService()
+    repo = get_admin_config_repo(db)
 
     # 1. Get old value for audit
-    config = await service.repo.get_config(key)
+    config = await repo.get_config(key)
     if not config:
         raise HTTPException(status_code=404, detail="Konfigürasyon bulunamadı")
 
@@ -83,12 +92,12 @@ async def update_config(
 
     try:
         # 2. Update config
-        updated = await service.update_config(
-            key=key, value=data.value, user_id=current_user.id, reason=data.reason
+        updated = await _update_config(
+            db, key=key, value=data.value, user_id=current_user.id, reason=data.reason
         )
 
         # 3. Log the action
-        await audit_service.log_config_change(
+        await log_config_change(
             user=current_user,
             key=key,
             old_val=old_value,

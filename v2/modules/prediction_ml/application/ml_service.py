@@ -4,10 +4,10 @@ from typing import Dict, Optional
 
 from fastapi import HTTPException
 
-from app.api.v1.endpoints.admin_ws import training_ws_manager
 from app.database.models import EgitimKuyrugu, ModelVersiyon
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.public import training_ws_manager
 
 logger = get_logger(__name__)
 

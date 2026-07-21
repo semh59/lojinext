@@ -1,10 +1,12 @@
 import numpy as np
 import pytest
 
-from app.database.repositories.audit_repo import AuditRepository
 from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 from v2.modules.trip.application.trip_prediction_enrichment import (
     extract_prediction_values,
+)
+from v2.modules.trip.infrastructure.sefer_timeline_repo import (
+    _normalize_event_type,
 )
 
 
@@ -40,7 +42,7 @@ def test_extract_prediction_values_rejects_alias_only_payload():
 
 
 def test_timeline_event_type_normalization_prediction_refresh():
-    event_type = AuditRepository._normalize_event_type(
+    event_type = _normalize_event_type(
         "UPDATE",
         [{"alan": "tahmini_tuketim", "eski": 30.1, "yeni": 31.0}],
     )
@@ -48,7 +50,7 @@ def test_timeline_event_type_normalization_prediction_refresh():
 
 
 def test_timeline_event_type_normalization_status_change():
-    event_type = AuditRepository._normalize_event_type(
+    event_type = _normalize_event_type(
         "UPDATE",
         [{"alan": "durum", "eski": "Planlandı", "yeni": "Tamamlandı"}],
     )

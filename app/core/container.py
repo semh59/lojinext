@@ -22,8 +22,8 @@ import threading
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from app.core.services.health_service import HealthService
     from app.infrastructure.events.event_bus import EventBus
+    from v2.modules.admin_platform.application.health_service import HealthService
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.analytics_executive.infrastructure.executive_read_models import (
         AnalizRepository,
@@ -110,7 +110,6 @@ class Container:
         self._external_service = None
         self._weather_service = None
         self._export_service = None
-        self._internal_service = None
 
     @property
     def event_bus(self) -> "EventBus":
@@ -275,7 +274,9 @@ class Container:
         if self._health_service is None:
             with self._lock:
                 if self._health_service is None:
-                    from app.core.services.health_service import HealthService
+                    from v2.modules.admin_platform.application.health_service import (
+                        HealthService,
+                    )
 
                     self._health_service = HealthService()
         return self._health_service
@@ -323,16 +324,6 @@ class Container:
 
                     self._export_service = ExportService()
         return self._export_service
-
-    @property
-    def internal_service(self):
-        if self._internal_service is None:
-            with self._lock:
-                if self._internal_service is None:
-                    from app.core.services.internal_service import InternalService
-
-                    self._internal_service = InternalService()
-        return self._internal_service
 
     @property
     def weather_service(self):

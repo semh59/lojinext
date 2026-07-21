@@ -6,13 +6,13 @@ from app.api.deps import get_current_active_user
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import SuccessOnlyResponse
 from v2.modules.auth_rbac.application import preference_service
 from v2.modules.auth_rbac.schemas import (
     PreferenceCreate,
     PreferenceItem,
     PreferenceListResponse,
 )
+from v2.modules.shared_kernel.schemas.api_responses import SuccessOnlyResponse
 
 router = APIRouter()
 logger = get_logger(__name__)

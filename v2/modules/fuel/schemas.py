@@ -247,3 +247,45 @@ class FuelDocumentItem(BaseModel):
 
 class FuelDocumentList(BaseModel):
     items: List[FuelDocumentItem]
+
+
+# ─── Yakıt istatistik response şeması (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class FuelStatsResponse(BaseModel):
+    """Fuel aggregation summary. Service-driven, so extra keys are tolerated
+    (e.g. per-vehicle breakdown, percentile metrics) — but the headline numbers
+    are documented for the client contract."""
+
+    toplam_litre: Optional[float] = None
+    toplam_maliyet: Optional[float] = None
+    ortalama_birim_fiyat: Optional[float] = None
+    kayit_sayisi: Optional[int] = None
+
+    @field_validator(
+        "toplam_litre", "toplam_maliyet", "ortalama_birim_fiyat", mode="before"
+    )
+    @classmethod
+    def heal_floats(cls, v: Any) -> Optional[float]:
+        """Bozuk float değerlerini NULL yapar."""
+        if v is None:
+            return None
+        try:
+            val = float(v)
+            return val if val >= 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("kayit_sayisi", mode="before")
+    @classmethod
+    def heal_count(cls, v: Any) -> Optional[int]:
+        """Bozuk count değerlerini NULL yapar."""
+        if v is None:
+            return None
+        try:
+            val = int(v)
+            return val if val >= 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    model_config = ConfigDict(extra="allow")

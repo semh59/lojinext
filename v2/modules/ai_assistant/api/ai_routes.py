@@ -6,12 +6,12 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
-from app.schemas.api_responses import (
+from v2.modules.ai_assistant.application.orchestrate_ai_response import get_ai_service
+from v2.modules.ai_assistant.schemas import (
     AiChatResponse,
     AiProgressResponse,
     AiStatusResponse,
 )
-from v2.modules.ai_assistant.application.orchestrate_ai_response import get_ai_service
 from v2.modules.fuel.public import get_monthly_cost_trend
 
 router = APIRouter()

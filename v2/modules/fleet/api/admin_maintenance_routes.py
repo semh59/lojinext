@@ -11,12 +11,6 @@ from app.config import settings
 from app.database.models import BakimTipi, Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import (
-    ICS_RESPONSES,
-    MaintenanceAlertItem,
-    MaintenanceCompleteResponse,
-    MaintenanceRecordResponse,
-)
 from v2.modules.auth_rbac.public import require_yetki
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
@@ -37,7 +31,13 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     mark_maintenance_completed,
 )
 from v2.modules.fleet.application.maintenance_cache import PREDICTIONS_CACHE_ALL
-from v2.modules.fleet.schemas import MaintenancePrediction
+from v2.modules.fleet.schemas import (
+    MaintenanceAlertItem,
+    MaintenanceCompleteResponse,
+    MaintenancePrediction,
+    MaintenanceRecordResponse,
+)
+from v2.modules.shared_kernel.schemas.api_responses import ICS_RESPONSES
 
 logger = logging.getLogger(__name__)
 

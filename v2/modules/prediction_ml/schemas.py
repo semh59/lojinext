@@ -262,3 +262,62 @@ class ModelVersionRead(ModelVersionBase):
     olusturma_zaman: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ─── Zaman-serisi/ensemble/XAI response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class TrendAnalysisResponse(BaseModel):
+    success: bool
+    trend: str = Field(..., description="decreasing | increasing | stable")
+    trend_tr: str
+    slope: float
+    current_avg: float
+    previous_avg: Optional[float] = None
+    moving_average_7: List[float]
+    daily_values: List[float]
+    daily_total_values: List[float]
+    dates: List[Optional[str]]
+    days_analyzed: int
+
+
+class TimeSeriesStatusResponse(BaseModel):
+    is_trained: bool
+    training_epochs: Optional[int] = None
+    last_loss: Optional[float] = None
+    n_training_samples: Optional[int] = None
+    train_time_s: Optional[float] = None
+    bilstm_mae: Optional[float] = None
+    tcn_mae: Optional[float] = None
+    torch_available: bool
+    deep_learning_active: bool
+    min_days_for_deep: Optional[int] = None
+
+
+class EnsembleModelFlags(BaseModel):
+    physics: bool
+    lightgbm: bool
+    xgboost: bool
+    gradient_boosting: bool
+    random_forest: bool
+
+
+class EnsembleStatusResponse(BaseModel):
+    models: EnsembleModelFlags
+    weights: Dict[str, float]
+    sklearn_available: bool
+    lightgbm_available: bool
+    xgboost_available: bool
+    total_models: int
+
+
+class ExplainPredictionResponse(BaseModel):
+    prediction: float
+    unit: str
+    contributions: Dict[str, float]
+    confidence: float
+
+
+class BackfillTriggerResponse(BaseModel):
+    status: str = Field(..., description="PROCESSING | SUCCESS | FAILED")
+    task_id: str

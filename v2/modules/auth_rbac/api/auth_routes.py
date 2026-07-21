@@ -11,11 +11,14 @@ from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import rate_limited
-from app.schemas.api_responses import MessageResponse, MessageWithWarningResponse
 from v2.modules.auth_rbac.application import auth_service
 from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 from v2.modules.auth_rbac.schemas import KullaniciRead
+from v2.modules.shared_kernel.schemas.api_responses import (
+    MessageResponse,
+    MessageWithWarningResponse,
+)
 
 router = APIRouter()
 logger = get_logger(__name__)

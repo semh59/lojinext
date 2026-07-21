@@ -72,3 +72,21 @@ class PlanWizardResponse(BaseModel):
     drivers: List[DriverSuggestion]
     generated_at: datetime
     cache_hit: bool = False
+
+
+# ─── AI chat/durum response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class AiProgressResponse(BaseModel):
+    status: str = Field(..., description="ready | loading | error | offline")
+    pending_jobs: int
+
+
+class AiStatusResponse(BaseModel):
+    is_ready: bool
+    progress: AiProgressResponse
+
+
+class AiChatResponse(BaseModel):
+    response: str
+    timestamp: str

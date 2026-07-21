@@ -8,7 +8,6 @@ from app.api.deps import get_current_active_admin, get_current_active_user
 from app.api.middleware.rate_limiter import limiter
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import TraceChainResponse
 from v2.modules.admin_platform.application.error_events import (
     get_error_stats as _get_error_stats,
 )
@@ -21,6 +20,7 @@ from v2.modules.admin_platform.application.error_events import (
 from v2.modules.admin_platform.application.error_events import (
     resolve_error_event as _resolve_error_event,
 )
+from v2.modules.admin_platform.schemas import TraceChainResponse
 
 logger = get_logger(__name__)
 

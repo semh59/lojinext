@@ -4,14 +4,14 @@ from app.api.deps import get_current_active_user
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    AdminHealthResponse,
-    BackupTriggerResponse,
-    CircuitBreakerResetResponse,
-)
 from v2.modules.admin_platform.application.health_service import (
     HealthService,
     get_health_service,
+)
+from v2.modules.admin_platform.schemas import (
+    AdminHealthResponse,
+    BackupTriggerResponse,
+    CircuitBreakerResetResponse,
 )
 from v2.modules.auth_rbac.public import require_yetki
 

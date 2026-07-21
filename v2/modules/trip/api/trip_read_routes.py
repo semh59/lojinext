@@ -7,8 +7,8 @@ from app.api.deps import get_sefer_service, require_permissions
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import TripTimelineResponse
 from v2.modules.trip.public import SeferListResponse, SeferResponse, SeferService
+from v2.modules.trip.schemas import TripTimelineResponse
 
 logger = get_logger(__name__)
 

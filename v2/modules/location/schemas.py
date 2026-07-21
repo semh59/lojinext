@@ -179,3 +179,95 @@ class GeocodeSuggestion(BaseModel):
     lon: float = Field(..., ge=-180, le=180)
     label: str = Field(..., min_length=1, max_length=255)
     source: Literal["ors", "nominatim", "offline"]
+
+
+# ─── Lokasyon istatistik/rota response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class RouteInfoResponse(BaseModel):
+    """Result of a coordinate→route lookup. Provider returns extra fields
+    (geometry, segments, elevation profile) — kept under `extra=allow` so
+    callers can read them, but the documented core is mandatory."""
+
+    distance_km: Optional[float] = None
+    duration_min: Optional[float] = None
+    ascent_m: Optional[float] = None
+    descent_m: Optional[float] = None
+    otoban_mesafe_km: Optional[float] = None
+    sehir_ici_mesafe_km: Optional[float] = None
+    source: Optional[str] = None
+
+    @field_validator(
+        "distance_km",
+        "duration_min",
+        "ascent_m",
+        "descent_m",
+        "otoban_mesafe_km",
+        "sehir_ici_mesafe_km",
+        mode="before",
+    )
+    @classmethod
+    def heal_floats(cls, v: Any) -> Optional[float]:
+        """Bozuk float değerlerini NULL yapar."""
+        if v is None:
+            return None
+        try:
+            val = float(v)
+            return val if val >= 0 else None
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def heal_source(cls, v: Any) -> Optional[str]:
+        """Boş source alanını NULL yapar."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return str(v).strip()
+
+    model_config = ConfigDict(extra="allow")
+
+
+class LocationStatsData(BaseModel):
+    total: int
+    analyzed: int
+    stale: int
+    avg_distance_km: float
+    high_difficulty: int
+
+
+class LocationStatsResponse(BaseModel):
+    status: str
+    data: LocationStatsData
+
+
+class StaleLocationItem(BaseModel):
+    id: int
+    cikis_yeri: str
+    varis_yeri: str
+    mesafe_km: Optional[float] = None
+    zorluk: Optional[str] = None
+    last_api_call: Optional[datetime] = None
+
+    model_config = ConfigDict(extra="allow")
+
+
+class StaleLocationsResponse(BaseModel):
+    status: str
+    data: List[StaleLocationItem]
+    threshold_days: int
+
+
+class RouteAnalyzeResponse(BaseModel):
+    success: bool
+    api_mesafe_km: Optional[float] = None
+    api_sure_saat: Optional[float] = None
+    ascent_m: Optional[float] = None
+    descent_m: Optional[float] = None
+    otoban_mesafe_km: Optional[float] = None
+    sehir_ici_mesafe_km: Optional[float] = None
+    source: Optional[str] = None
+    is_corrected: bool = False
+    correction_reason: Optional[str] = None
+    route_analysis: Optional[Any] = None
+    elevation_profile: List[Any] = Field(default_factory=list)

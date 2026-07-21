@@ -11,7 +11,8 @@ Güvenlik kontrolleri:
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
-from typing import Any, List, Literal, Optional
+from decimal import Decimal
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -553,3 +554,178 @@ class MaintenancePrediction(BaseModel):
     risk_level: RiskLevel = "low"
     savings_pct: float = Field(0.0, ge=0, le=100)
     reasons: List[str] = Field(default_factory=list, max_length=10)
+
+
+# ─── Bakım/filo/dorse response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class MaintenanceRecordResponse(BaseModel):
+    """`AracBakim` row, exposed via SQLAlchemy `from_attributes`."""
+
+    id: int
+    arac_id: Optional[int] = None
+    dorse_id: Optional[int] = None
+    bakim_tipi: str
+    km_bilgisi: int
+    bakim_tarihi: datetime
+    maliyet: Decimal = Field(default=Decimal("0"))
+    detaylar: Optional[str] = None
+    tamamlandi: bool = False
+    guncelleme_tarihi: Optional[datetime] = None
+
+    @field_validator("bakim_tipi", mode="before")
+    @classmethod
+    def heal_bakim_tipi(cls, v: Any) -> str:
+        """Boş bakim_tipi alanını fallback'ler."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return "BİLİNMİYOR"
+        return str(v).strip()
+
+    @field_validator("km_bilgisi", mode="before")
+    @classmethod
+    def heal_km(cls, v: Any) -> int:
+        """Bozuk km değerlerini 0 yapar."""
+        if v is None:
+            return 0
+        try:
+            return max(0, int(v))
+        except (ValueError, TypeError):
+            return 0
+
+    @field_validator("maliyet", mode="before")
+    @classmethod
+    def heal_maliyet(cls, v: Any) -> Decimal:
+        """Bozuk maliyet değerlerini 0 yapar."""
+        if v is None:
+            return Decimal("0")
+        try:
+            val = Decimal(str(v))
+            return val if val >= 0 else Decimal("0")
+        except (ValueError, TypeError, Exception):
+            return Decimal("0")
+
+    @field_validator("detaylar", mode="before")
+    @classmethod
+    def heal_detaylar(cls, v: Any) -> Optional[str]:
+        """Boş detaylar alanını NULL yapar."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return None
+        return str(v).strip()
+
+    @field_validator("bakim_tarihi", mode="before")
+    @classmethod
+    def heal_bakim_tarihi(cls, v: Any) -> datetime:
+        """Bozuk datetime değerlerini şu andan yapılır."""
+        if v is None:
+            return datetime.now(timezone.utc)
+        if isinstance(v, datetime):
+            return v
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, Exception):
+            return datetime.now(timezone.utc)
+
+    @field_validator("guncelleme_tarihi", mode="before")
+    @classmethod
+    def heal_update_time(cls, v: Any) -> Optional[datetime]:
+        """Bozuk optional datetime değerlerini NULL yapar."""
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, Exception):
+            return None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MaintenanceAlertItem(BaseModel):
+    """Single maintenance alert as enriched by the service layer."""
+
+    id: int
+    arac_id: Optional[int] = None
+    plaka: str
+    bakim_tipi: str
+    tarih: datetime
+    vade_durumu: str = Field(..., description="UPCOMING | OVERDUE")
+
+    @field_validator("plaka", "bakim_tipi", "vade_durumu", mode="before")
+    @classmethod
+    def heal_strings(cls, v: Any) -> str:
+        """Boş string alanlarını fallback'ler."""
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return "BİLİNMİYOR"
+        return str(v).strip()
+
+    @field_validator("tarih", mode="before")
+    @classmethod
+    def heal_datetime(cls, v: Any) -> datetime:
+        """Bozuk datetime değerlerini şu andan yapılır."""
+        if v is None:
+            return datetime.now(timezone.utc)
+        if isinstance(v, datetime):
+            return v
+        try:
+            return datetime.fromisoformat(str(v).replace("Z", "+00:00"))
+        except (ValueError, TypeError, Exception):
+            return datetime.now(timezone.utc)
+
+
+class MaintenanceCompleteResponse(BaseModel):
+    success: bool
+
+
+class FleetStatsResponse(BaseModel):
+    total: int
+    active: int
+    inspection_expiring: int
+    inspection_overdue: int
+
+
+class InspectionAlertItem(BaseModel):
+    id: int
+    plaka: str
+    marka: Optional[str] = None
+    model: Optional[str] = None
+    yil: Optional[int] = None
+    muayene_tarihi: Optional[str] = None
+    days_remaining: Optional[int] = None
+
+
+class InspectionAlertsResponse(BaseModel):
+    expiring: List[InspectionAlertItem]
+    overdue: List[InspectionAlertItem]
+    within_days: int
+
+
+class FleetEventItem(BaseModel):
+    id: int
+    event_type: str
+    old_status: Optional[str] = None
+    new_status: Optional[str] = None
+    triggered_by: Optional[str] = None
+    details: Optional[Any] = None
+    created_at: Optional[str] = None
+
+
+class DorseInspectionAlertItem(BaseModel):
+    id: int
+    plaka: str
+    marka: Optional[str] = None
+    tipi: Optional[str] = None
+    yil: Optional[int] = None
+    muayene_tarihi: Optional[str] = None
+    days_remaining: Optional[int] = None
+
+
+class DorseInspectionAlertsResponse(BaseModel):
+    expiring: List[DorseInspectionAlertItem]
+    overdue: List[DorseInspectionAlertItem]
+    within_days: int
+
+
+class DorseImportResult(BaseModel):
+    imported: int
+    errors: List[Dict[str, Any]] = Field(default_factory=list)

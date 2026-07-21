@@ -26,7 +26,7 @@ from app.infrastructure.background.job_manager import (
     BackgroundJobManager,
 )
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import FuelPerformanceAnalyticsResponse
+from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
 from v2.modules.trip.public import SeferService, SeferStatsResponse
 
 logger = get_logger(__name__)

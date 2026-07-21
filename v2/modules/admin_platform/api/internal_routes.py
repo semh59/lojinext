@@ -23,7 +23,6 @@ from fastapi.responses import StreamingResponse
 
 from app.config import settings
 from app.infrastructure.metrics import telegram_belge_upload_total
-from app.schemas.api_responses import PDF_RESPONSES, CoachingSnapshotResponse
 from app.schemas.telegram import (
     DriverBreakdownRequest,
     SeferBelgeResponse,
@@ -41,6 +40,8 @@ from v2.modules.admin_platform.application.telegram_bridge import (
     olustur_pdf,
     report_driver_breakdown,
 )
+from v2.modules.admin_platform.schemas import CoachingSnapshotResponse
+from v2.modules.shared_kernel.schemas.api_responses import PDF_RESPONSES
 
 
 async def _require_internal_token(

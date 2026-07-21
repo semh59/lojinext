@@ -11,16 +11,11 @@ from sqlalchemy import and_, select
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
 from app.database.models import Kullanici, Sefer, Sofor
 from app.infrastructure.background.celery_app import celery_app
-from app.schemas.api_responses import (
-    SSE_RESPONSES,
-    EnsembleStatusResponse,
-    ExplainPredictionResponse,
-    TimeSeriesStatusResponse,
-    TrendAnalysisResponse,
-)
 from v2.modules.prediction_ml.application.prediction_service import PredictionService
 from v2.modules.prediction_ml.schemas import (
     AccuracyDistribution,
+    EnsembleStatusResponse,
+    ExplainPredictionResponse,
     ForecastResponseModel,
     PredictionComparisonPoint,
     PredictionComparisonResponse,
@@ -29,8 +24,11 @@ from v2.modules.prediction_ml.schemas import (
     PredictionRequest,
     PredictionResponse,
     PredictionStatusResponse,
+    TimeSeriesStatusResponse,
     TrainingResponse,
+    TrendAnalysisResponse,
 )
+from v2.modules.shared_kernel.schemas.api_responses import SSE_RESPONSES
 
 router = APIRouter()
 

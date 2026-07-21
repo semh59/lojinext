@@ -18,7 +18,7 @@ from app.infrastructure.background.job_manager import (
 )
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import TaskStatusResponse
+from v2.modules.shared_kernel.schemas.api_responses import TaskStatusResponse
 
 logger = get_logger(__name__)
 

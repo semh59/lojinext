@@ -11,7 +11,7 @@ from app.api.deps import (
     get_sefer_service,
 )
 from app.database.models import Kullanici
-from app.schemas.api_responses import (
+from v2.modules.route_simulation.schemas import (
     TripWeatherImpactResponse,
     WeatherDashboardResponse,
 )

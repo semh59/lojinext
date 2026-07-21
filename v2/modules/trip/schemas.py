@@ -11,7 +11,7 @@ import enum
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -364,3 +364,10 @@ class SeferStatsResponse(BaseModel):
     in_progress_count: int
     total_distance_km: float
     avg_consumption: float
+
+
+# ─── Sefer zaman-çizelgesi response şeması (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class TripTimelineResponse(BaseModel):
+    items: List[Dict[str, Any]]

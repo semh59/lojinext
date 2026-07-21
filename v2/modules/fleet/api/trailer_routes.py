@@ -12,12 +12,6 @@ from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    DorseImportResult,
-    DorseInspectionAlertsResponse,
-    FleetStatsResponse,
-)
 from app.schemas.base import ResponseMeta, StandardResponse
 from v2.modules.fleet.application.create_trailer import create_trailer
 from v2.modules.fleet.application.export_trailers import (
@@ -40,7 +34,15 @@ from v2.modules.fleet.application.list_trailers import (
     get_trailer_by_id,
 )
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
-from v2.modules.fleet.schemas import DorseCreate, DorseResponse, DorseUpdate
+from v2.modules.fleet.schemas import (
+    DorseCreate,
+    DorseImportResult,
+    DorseInspectionAlertsResponse,
+    DorseResponse,
+    DorseUpdate,
+    FleetStatsResponse,
+)
+from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
 
 logger = get_logger(__name__)
 

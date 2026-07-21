@@ -18,15 +18,6 @@ from app.database.models import Kullanici
 from app.infrastructure.audit import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    DeleteResultResponse,
-    ImportResultResponse,
-    LocationStatsResponse,
-    RouteAnalyzeResponse,
-    RouteInfoResponse,
-    StaleLocationsResponse,
-)
 from v2.modules.location.application.analyze_location_route import (
     analyze_location_route,
 )
@@ -64,11 +55,20 @@ from v2.modules.location.application.update_location import update_location
 from v2.modules.location.infrastructure.repository import get_lokasyon_repo
 from v2.modules.location.schemas import (
     GeocodeSuggestion,
+    LocationStatsResponse,
     LokasyonCreate,
     LokasyonPaginationResponse,
     LokasyonResponse,
     LokasyonSegmentsResponse,
     LokasyonUpdate,
+    RouteAnalyzeResponse,
+    RouteInfoResponse,
+    StaleLocationsResponse,
+)
+from v2.modules.shared_kernel.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    DeleteResultResponse,
+    ImportResultResponse,
 )
 
 logger = get_logger(__name__)

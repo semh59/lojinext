@@ -13,10 +13,10 @@ from app.infrastructure.background.job_manager import (
     BackgroundJobManager,
 )
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import BackfillTriggerResponse
 from v2.modules.prediction_ml.application.prediction_backfill_service import (
     PredictionBackfillService,
 )
+from v2.modules.prediction_ml.schemas import BackfillTriggerResponse
 
 logger = get_logger(__name__)
 router = APIRouter()

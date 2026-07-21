@@ -362,3 +362,11 @@ class CoachingEffectivenessResponse(BaseModel):
         ...,
         description="UI'da açıkça gösterilecek istatistiksel uyarı",
     )
+
+
+# ─── Sürücü-filo istatistik response şeması (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class DriverFleetStatsResponse(BaseModel):
+    total: int
+    active: int

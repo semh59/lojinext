@@ -18,12 +18,6 @@ from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    PDF_RESPONSES,
-    CostTrendPoint,
-    VehicleCostComparisonItem,
-)
 from v2.modules.analytics_executive.public import (
     calculate_period_cost,
     calculate_roi,
@@ -40,6 +34,11 @@ from v2.modules.reports.application.generate_vehicle_report import (
 )
 from v2.modules.reports.infrastructure.pdf_export import get_report_generator
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
+from v2.modules.reports.schemas import CostTrendPoint, VehicleCostComparisonItem
+from v2.modules.shared_kernel.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    PDF_RESPONSES,
+)
 
 logger = get_logger(__name__)
 

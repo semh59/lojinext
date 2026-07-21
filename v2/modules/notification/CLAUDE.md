@@ -117,8 +117,9 @@ içeriyordu: `/training` (ML eğitim ilerleme, admin_platform'a ait,
 seçenekleri ("dosya ya tamamen taşınır ya tamamen kalır") bu karışık içeriği
 yansıtmıyordu — dosyanın kendisi bölündü:
 
-- `app/api/v1/endpoints/admin_ws.py` — yalnız `/training` kaldı (admin_platform,
-  henüz eski `app/` yolunda, dalga 15'e kadar).
+- `v2/modules/admin_platform/api/admin_ws_routes.py` (eski adı
+  `app/api/v1/endpoints/admin_ws.py`, dalga 15'te admin_platform'a
+  taşındı) — yalnız `/training` kaldı.
 - `v2/modules/notification/api/live_ws_routes.py` — `/live` buraya taşındı.
 - Paylaşılan `ConnectionManager` sınıfı + WS auth helper'ları
   (`verify_ws_token`, `resolve_ws_identity`, `is_admin_email`) **hiçbir
@@ -130,8 +131,9 @@ yansıtmıyordu — dosyanın kendisi bölündü:
 - URL kontratı KORUNDU: `/admin/ws/live` + `/admin/ws/training` — iki farklı
   router objesi `api.py`'de aynı `/admin/ws` prefix'i altına mount edilir
   (FastAPI bunu destekler, tek bir router olması şart değil).
-- **Katman ihlali düzeltmesi**: eski `notification_service.py`,
-  `app.api.v1.endpoints.admin_ws`'den `notification_ws_manager`'ı import
+- **Katman ihlali düzeltmesi**: eski `notification_service.py`, eski
+  `app.api.v1.endpoints.admin_ws`'den (bugünkü adıyla `v2.modules.
+  admin_platform.api.admin_ws_routes`) `notification_ws_manager`'ı import
   ediyordu (servis → endpoint, ters katman bağımlılığı). Artık
   `handle_trip_events.py`, kendi modülünün `infrastructure/ws_broadcaster.py`'sinden
   import ediyor — endpoint'e hiç bağımlı değil.

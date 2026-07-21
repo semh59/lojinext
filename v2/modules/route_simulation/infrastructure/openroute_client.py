@@ -1,8 +1,10 @@
 """OpenRouteService (ORS) API client — secondary/fallback routing provider.
 
-NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) ve
-``integration_secrets`` henüz v2'ye taşınmadı — eski yoldan import ediliyor,
-dokümante edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar kaydı).
+NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) henüz
+v2'ye taşınmadı — eski yoldan (`app.core.services.route_validator`) import
+ediliyor, dokümante edilmiş geçici bağımlılık (bkz. TASKS/STATUS.md karar
+kaydı). ``integration_secrets`` dalga 15'te v2'ye taşındı — bu dosya artık
+``v2.modules.admin_platform.public.get_integration_secret``'i kullanıyor.
 """
 
 import asyncio

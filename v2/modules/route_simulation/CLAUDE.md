@@ -115,9 +115,13 @@ Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor
   `FuelPrediction` alır (2026-07-18: eski `app.core.ml.physics_fuel_predictor`
   bypass'ı kapandı). `get_route_details.py` de `public.get_prediction_service`
   kullanıyor.
-- **route_validator/openroute_service** (senkron, geçici): `RouteService`
-  ve `OpenRouteClient` `app.core.services.route_validator.RouteValidator`'ı
-  ve `app.core.services.integration_secrets`'i eski yoldan kullanıyor.
+- **route_validator** (senkron, geçici): `RouteService` ve `OpenRouteClient`
+  `app.core.services.route_validator.RouteValidator`'ı eski yoldan
+  kullanıyor (henüz v2'ye taşınmadı).
+- **admin_platform** (taşındı, dalga 15, ileri yön): `OpenRouteClient`/
+  `MapboxClient` `v2.modules.admin_platform.public.get_integration_secret`
+  kullanıyor (eskiden `app.core.services.integration_secrets`'ten,
+  admin_platform dalgasında güncellendi).
 
 ## Şema & tablo sahipliği
 

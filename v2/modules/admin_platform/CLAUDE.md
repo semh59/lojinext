@@ -186,6 +186,25 @@ bu modüle ait değil), admin_platform yalnız `application/error_events.py`
 task dosyasının kararı "taşı", gelecekteki gerçek entegrasyon için gerçek
 bir Protocol/adapter iskeleti.
 
+**`registry.py`'nin tek-görev istisnası (dürüst not, dalga 15'in kendi
+denetiminde bulundu)**: bu dosya İKİ ayrı sağlayıcı-seçim sorumluluğunu
+bir arada taşıyor — `get_avl_provider()`/`AVL_PROVIDERS` (admin_platform'un
+kendi AVL alanı) VE `get_fuel_provider()`/`FUEL_PROVIDERS` (fuel modülünün
+`OpetFuelProvider`'ını `v2.modules.fuel.public`'ten cross-module import
+ederek seçen, fuel'e ait bir sorumluluk). Bu B.1'in "bir dosya = bir görev"
+ilkesini katı anlamda ihlal ediyor. Bilinçli olarak BÖLÜNMEDİ: (1) hem
+`get_avl_provider()` hem `get_fuel_provider()` sıfır prod çağıranlı saf
+stub'lar (yukarıdaki paragraf) — bölme riski olmadan da davranış
+etkilenmiyor; (2) fuel'in kendi CLAUDE.md'si bu dosyanın nihai adresini
+zaten `platform_infra` (henüz başlamamış modül, kök CLAUDE.md'nin modül
+tablosuna bkz.) olarak öngörmüştü — `admin_platform`'a taşınması yalnızca
+`platform_infra` doğana kadarki ARA (interim) bir karar, iki kalıcı ev
+arasında geçici bir duraktır, kalıcı mimari karar değil. `platform_infra`
+başladığında bu dosya oraya taşınmalı (veya en azından iki ayrı registry
+dosyasına bölünüp her biri kendi modülüne gitmeli). İmport-linter bunu
+bir ihlal olarak görmüyor (`v2.modules.fuel.public` üzerinden, sanctioned
+surface) — yalnız B.1'in ruhuna aykırı, mektubuna değil.
+
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
 - **driver (taşındı, ters yön)**: `telegram_bridge.py` →
@@ -215,6 +234,24 @@ bir Protocol/adapter iskeleti.
   WebSocket broadcast'i).
 - **auth_rbac (taşındı, ters yön #2)**: `setting_repository.py` bu
   dalgada admin_platform'dan auth_rbac'a taşındı.
+
+**Task dosyasının kendi notu (kabul kriteri #4, burada dokümante edilir)**:
+`TASKS/modules/admin-platform.md` §4, `internal.py`+`internal_service.py`
+(→ `api/internal_routes.py`+`application/telegram_bridge.py`) ikilisinin
+"tek-modüle temiz oturmadığını" kendisi işaretlemişti — bu ikili gerçekte
+Docker-internal Telegram-bot köprüsü ama ağırlıklı olarak **driver-yüzlü**
+(belge upload, coaching snapshot, sofor seferler, PDF — hepsi şoför
+verisine dokunuyor, admin_platform'un kendi tablolarına değil).
+admin_platform'da kalması savunulabilir (bot-token bootstrap +
+internal-token auth guard'ı gerçekten admin_platform'un "dış entegrasyon
+erişimi" sorumluluğuna giriyor) ama **saf** değil — gelecekte ayrı bir
+"integration-bridge" modülü açılırsa (Docker-internal servis-servis
+köprüleri için, yalnız bu ikili değil, benzer başka köprüler de varsa)
+bu ikili ilk taşınacak aday. Şimdilik bölünmedi: `telegram_bridge.py`'nin
+7 fonksiyonu tek bir tutarlı üst-anlatıya sahip ("Telegram bot'un backend
+tarafı temsilcisi") — driver modülüne bölünseydi, admin_platform'un kendi
+sorumluluğu olan bot-token/internal-token auth guard'ı ile birlikte
+yaşayan cohesive bir dosya kaybedilirdi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 

@@ -147,10 +147,16 @@ dalgada DEĞİŞTİRİLMEDİ.**
   doğrudan çağırır (location'ın `create_location` tüketimiyle aynı desen).
 - **fleet (senkron)**: `add_yakit`/`bulk_add_yakit` `uow.arac_repo` üzerinden
   aktif araç kontrolü yapar (plaka değil, aktiflik + son-km).
-- **platform-infra (senkron, geçici, ters yön)**: `app/core/integrations/registry.py`
-  (henüz taşınmadı) `infrastructure/integrations/opet_client.py`'den
-  `FuelCardProvider`/`OpetFuelProvider` import eder — registry taşınınca
-  bu import v2 tarafında zaten doğru yerde kalacak, fuel tarafında borç yok.
+- **admin_platform (taşındı, dalga 15, ters yön, ARA/interim)**:
+  `v2/modules/admin_platform/infrastructure/integrations/registry.py`
+  `v2.modules.fuel.public`'ten `FuelCardProvider`/`OpetFuelProvider`
+  import eder (cross-module, public.py üzerinden — sanctioned surface,
+  import-linter ihlali yok). Bu registry.py'nin NİHAİ adresi değil:
+  admin_platform'un kendi CLAUDE.md'si bu dosyanın AVL+Fuel provider
+  seçimini tek dosyada birleştirdiğini ve nihai adresinin `platform_infra`
+  (henüz başlamamış modül) olduğunu dokümante ediyor — `platform_infra`
+  doğduğunda bu import zincirinin güncellenmesi gerekecek, fuel tarafında
+  şimdilik borç yok (`get_fuel_provider()` zaten sıfır prod çağıranlı stub).
 - **notification (senkron)**: `infrastructure/tasks.py`'deki
   `_run_fuel_coverage_check` Telegram uyarısı için
   `v2.modules.notification.public.notify_error` (2026-07-18: public'e çevrildi)

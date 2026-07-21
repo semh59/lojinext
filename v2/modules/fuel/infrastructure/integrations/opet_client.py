@@ -13,9 +13,11 @@ mapping'in güncellenmesi gerekir.
      FUEL_ACCOUNT_ID alanlarını doldur.
   2. OPET'in gerçek B2B dokümanı geldiğinde bu dosyadaki endpoint
      path'lerini ve response mapping'ini gerçek şemaya göre güncelle.
-  3. app/core/integrations/registry.py'de FUEL_PROVIDERS["opet"] =
-     OpetFuelProvider zaten kayıtlı (platform-infra henüz taşınmadı,
-     registry.py bu dosyaya geçici olarak import atar).
+  3. v2/modules/admin_platform/infrastructure/integrations/registry.py'de
+     FUEL_PROVIDERS["opet"] = OpetFuelProvider zaten kayıtlı (registry.py
+     dalga 15'te admin_platform'a taşındı — nihai adresi `platform_infra`
+     henüz başlamadığı için ARA/interim bir konum; bu dosyaya cross-module
+     `v2.modules.fuel.public` üzerinden import atar, doğrudan değil).
 """
 
 from __future__ import annotations

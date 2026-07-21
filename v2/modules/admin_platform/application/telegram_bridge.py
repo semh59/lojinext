@@ -134,8 +134,7 @@ async def report_driver_breakdown(
     girmez. ValueError fırlatır: bilinmeyen telegram_id / sürücünün hiç
     seferi yok / son seferde araç tanımsız — endpoint bunları 404'e çevirir.
     """
-    from app.database.models import BakimTipi
-    from v2.modules.fleet.public import create_breakdown
+    from v2.modules.fleet.public import BakimTipi, create_breakdown
 
     repo = get_sofor_repo()
     sofor = await repo.get_by_telegram_id(telegram_id)

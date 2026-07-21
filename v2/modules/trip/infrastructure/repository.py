@@ -6,7 +6,7 @@ from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Arac, Dorse, Lokasyon, Sofor
+from app.database.models import Lokasyon, Sofor
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.trip.infrastructure.models import Sefer
 from v2.modules.trip.sefer_status import (
@@ -62,7 +62,16 @@ class SeferRepository(BaseRepository[Sefer]):
         #58) o relationship'ler kaldırıldı (modüller birbirinin tablosuna
         relationship() ile sızmaz). Tek gerçek ORM-seviye tüketicisi buydu —
         N+1 yerine 4 ayrı batch SELECT (id IN (...)).
+
+        Lazy import zorunlu: ``app.database.unit_of_work`` bu repository'yi
+        top-level import ediyor; ``fleet.public`` üzerinden top-level
+        import edilirse ``unit_of_work → repository → fleet.public →
+        fleet.application.bulk_add_vehicles → unit_of_work`` çemberi oluşur
+        (ampirik doğrulandı — `import app.main` gerçekten patlıyordu).
         """
+        from v2.modules.fleet.public import AracORM as Arac
+        from v2.modules.fleet.public import Dorse
+
         if not seferler:
             return []
         sess = session or self.session
@@ -182,6 +191,7 @@ class SeferRepository(BaseRepository[Sefer]):
 
         if search:
             from v2.modules.driver.public import search_driver_ids_by_name
+            from v2.modules.fleet.public import AracORM as Arac
 
             search_like = f"%{search}%"
             driver_ids = await search_driver_ids_by_name(search)

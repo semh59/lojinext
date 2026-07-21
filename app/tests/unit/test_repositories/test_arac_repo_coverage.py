@@ -291,7 +291,7 @@ class TestAracRepoGetByPlaka:
 class TestAracRepoAdd:
     async def test_add_creates_vehicle(self):
         """add creates and flushes a new Arac object."""
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         repo = _make_repo()
         # First execute: no duplicate found
@@ -315,7 +315,7 @@ class TestAracRepoAdd:
 
     async def test_add_duplicate_raises_value_error(self):
         """add raises ValueError when plaka already exists."""
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         repo = _make_repo()
         existing = MagicMock(spec=Arac)

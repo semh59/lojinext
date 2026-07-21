@@ -19,9 +19,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 ALEMBIC_DIR = os.path.abspath(os.path.dirname(__file__))
 ACTIVE_VERSION_DIR = os.path.join(ALEMBIC_DIR, "versions")
 
-from app.config import settings
-from app.database.models import Base
-
 # models.py bölünmesi (dalga 16, task #58): tablo sınıfları taşındıkça
 # v2/modules/<name>/infrastructure/models.py'ye gidiyor. Bu dosyalar aynı
 # paylaşılan Base'i (v2.modules.shared_kernel.infrastructure.base) kullanır
@@ -29,7 +26,10 @@ from app.database.models import Base
 # gerekir — aksi halde alembic bu tabloları "silinmiş" sanır (autogenerate/
 # `alembic check` DROP TABLE üretir). Her yeni modül taşındığında buraya
 # eklenmeli.
+import v2.modules.fleet.infrastructure.models  # noqa: E402,F401
 import v2.modules.trip.infrastructure.models  # noqa: E402,F401
+from app.config import settings
+from app.database.models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

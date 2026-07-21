@@ -20,7 +20,6 @@ to assert on.
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import Arac
 from v2.modules.fleet.application.bulk_add_vehicles import bulk_add_vehicles
 from v2.modules.fleet.application.create_vehicle import create_vehicle
 from v2.modules.fleet.application.delete_vehicle import delete_vehicle
@@ -29,6 +28,7 @@ from v2.modules.fleet.application.list_vehicles import (
     get_vehicle_by_id,
 )
 from v2.modules.fleet.application.update_vehicle import update_vehicle
+from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.schemas import AracCreate
 
 pytestmark = pytest.mark.integration

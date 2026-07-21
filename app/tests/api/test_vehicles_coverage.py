@@ -162,7 +162,7 @@ async def test_create_vehicle_no_auth(async_client):
 
 async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_session):
     """Returns 201 and vehicle on success (seeds real Arac; use-case mock returns its id)."""
-    from app.database.models import Arac
+    from v2.modules.fleet.public import AracORM as Arac
 
     arac = Arac(plaka="34VHC001", marka="Mercedes")
     db_session.add(arac)

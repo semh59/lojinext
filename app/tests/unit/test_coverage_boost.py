@@ -560,7 +560,7 @@ class TestMaintenanceService:
 
         from fastapi import HTTPException
 
-        from app.database.models import BakimTipi
+        from v2.modules.fleet.public import BakimTipi
 
         with pytest.raises(HTTPException) as exc_info:
             await svc.create_maintenance_record(
@@ -584,8 +584,8 @@ class TestMaintenanceService:
     async def test_mark_as_completed_true(self, svc, db_session):
         from datetime import datetime, timezone
 
-        from app.database.models import AracBakim, BakimTipi
         from app.tests._helpers.seed import seed_arac
+        from v2.modules.fleet.public import AracBakim, BakimTipi
 
         arac = await seed_arac(db_session, plaka="34COMP01")
         await db_session.flush()
@@ -618,8 +618,8 @@ class TestMaintenanceService:
     async def test_get_upcoming_alerts_with_items(self, svc, db_session):
         from datetime import datetime, timedelta, timezone
 
-        from app.database.models import AracBakim, BakimTipi
         from app.tests._helpers.seed import seed_arac
+        from v2.modules.fleet.public import AracBakim, BakimTipi
 
         arac = await seed_arac(db_session, plaka="34ALT001")
         await db_session.flush()

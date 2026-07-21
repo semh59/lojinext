@@ -26,7 +26,8 @@ async def test_fuel_trend_returns_chart_and_action(
 ):
     from datetime import date
 
-    from app.database.models import Arac, YakitAlimi
+    from app.database.models import YakitAlimi
+    from v2.modules.fleet.public import AracORM as Arac
 
     arac = Arac(
         plaka="34AI001",

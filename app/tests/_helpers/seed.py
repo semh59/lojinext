@@ -6,8 +6,6 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from app.database.models import (
-    Arac,
-    Dorse,
     Kullanici,
     Lokasyon,
     Rol,
@@ -15,6 +13,8 @@ from app.database.models import (
     Sofor,
     YakitAlimi,
 )
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fleet.public import Dorse
 from v2.modules.trip.public import SeferORM as Sefer
 
 _seq = {"n": 0}

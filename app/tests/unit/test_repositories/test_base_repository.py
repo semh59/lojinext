@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import text
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Arac
+from v2.modules.fleet.public import AracORM as Arac
 
 pytestmark = pytest.mark.integration
 

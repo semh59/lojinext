@@ -40,7 +40,7 @@ def _make_yakit_create(**kwargs):
 class TestYakitService:
     async def test_happy_path_add_yakit(self, db_session):
         """add_yakit returns an integer ID on success (real DB)."""
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         arac = Arac(plaka="34YKT001", marka="Test", model="Dilim19", aktif=True)
         db_session.add(arac)
@@ -85,7 +85,7 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_future_date(self, db_session):
         """add_yakit raises ValueError for a future date (real DB)."""
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         arac = Arac(plaka="34YKT002", marka="Test", model="Dilim19", aktif=True)
         db_session.add(arac)
@@ -100,7 +100,8 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_duplicate(self, db_session):
         """add_yakit raises ValueError when duplicate detected (real DB)."""
-        from app.database.models import Arac, YakitAlimi
+        from app.database.models import YakitAlimi
+        from v2.modules.fleet.public import AracORM as Arac
 
         arac = Arac(plaka="34YKT003", marka="Test", model="Dilim19", aktif=True)
         db_session.add(arac)
@@ -129,7 +130,7 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_inactive_vehicle(self, db_session):
         """add_yakit raises ValueError when vehicle is inactive (real DB)."""
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         arac = Arac(plaka="34YKT004", marka="Test", model="Dilim19", aktif=False)
         db_session.add(arac)

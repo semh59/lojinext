@@ -3,7 +3,8 @@ import uuid
 
 import pytest
 
-from app.database.models import Arac, Lokasyon, Sofor
+from app.database.models import Lokasyon, Sofor
+from v2.modules.fleet.public import AracORM as Arac
 
 pytestmark = pytest.mark.asyncio
 

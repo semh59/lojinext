@@ -3,10 +3,10 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
-from app.database.models import AracBakim
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.application.maintenance_cache import invalidate_predictions_cache
+from v2.modules.fleet.infrastructure.models import AracBakim
 
 logger = get_logger(__name__)
 

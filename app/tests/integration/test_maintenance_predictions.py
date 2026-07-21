@@ -8,7 +8,7 @@ import pytest
 
 
 async def _seed_arac(db_session, *, plaka: str = "34 ABC 123", yil: int = 2020) -> int:
-    from app.database.models import Arac
+    from v2.modules.fleet.public import AracORM as Arac
 
     row = Arac(
         plaka=plaka,
@@ -35,7 +35,7 @@ async def _seed_periyodik_bakim(
     km_bilgisi: int = 200_000,
     tamamlandi: bool = True,
 ) -> int:
-    from app.database.models import AracBakim, BakimTipi
+    from v2.modules.fleet.public import AracBakim, BakimTipi
 
     row = AracBakim(
         arac_id=arac_id,

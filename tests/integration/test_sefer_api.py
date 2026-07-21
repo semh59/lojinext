@@ -1,6 +1,7 @@
 import pytest
 
-from app.database.models import Arac, Lokasyon, Sofor
+from app.database.models import Lokasyon, Sofor
+from v2.modules.fleet.public import AracORM as Arac
 
 # Mark all tests in this module as asyncio with session loop scope
 pytestmark = pytest.mark.asyncio

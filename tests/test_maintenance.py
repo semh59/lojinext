@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.database.models import AracBakim, BakimTipi
 from app.tests._helpers.seed import seed_arac
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
@@ -12,6 +11,7 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     get_vehicle_maintenance_history,
     mark_maintenance_completed,
 )
+from v2.modules.fleet.public import AracBakim, BakimTipi
 
 
 @pytest.mark.asyncio

@@ -5,7 +5,8 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import Arac, YakitAlimi, YakitFormul, YakitPeriyot
+from app.database.models import YakitAlimi, YakitFormul, YakitPeriyot
+from v2.modules.fleet.public import AracORM as Arac
 
 
 @pytest.mark.asyncio
@@ -145,18 +146,20 @@ async def test_deleting_arac_orm_instance_does_not_silently_cascade_yakit_formul
 
 
 @pytest.mark.parametrize(
-    "relationship_name", ["yakit_alimlari", "yakit_periyotlari", "formul"]
+    "model,fk_column", [(YakitAlimi, "arac_id"), (YakitPeriyot, "arac_id"), (YakitFormul, "arac_id")]
 )
-def test_arac_financial_relationships_use_passive_deletes_not_cascade_delete(
-    relationship_name,
-):
-    """Mapper-seviyeli kesin doğrulama: bu 3 ilişkinin hiçbiri artık ORM
-    tarafında `delete`/`delete-orphan` cascade taşımamalı — DB'nin
-    `ondelete="RESTRICT"`'i ile çelişmemesi için silme tamamen DB'ye
-    bırakılmalı (`passive_deletes=True`)."""
-    from sqlalchemy import inspect
-
-    rel = inspect(Arac).relationships[relationship_name]
-    assert rel.passive_deletes is True
-    assert "delete" not in rel.cascade
-    assert "delete-orphan" not in rel.cascade
+def test_arac_financial_fk_columns_use_db_level_restrict(model, fk_column):
+    """Mapper-seviyeli kesin doğrulama (dalga 16 task #58 sonrası güncellendi):
+    `Arac.yakit_alimlari`/`.yakit_periyotlari`/`.formul` ORM ``relationship()``'leri
+    models.py bölünmesinde KALDIRILDI (Arac fleet'e taşındı, fuel'in
+    tablolarına cross-module relationship() ile sızamaz — B.1). Eski test
+    ORM mapper cascade config'ini kontrol ediyordu; artık kontrol edilecek
+    hiçbir relationship() yok — bu aslında RESTRICT/cascade çelişkisinin en
+    kesin çözümü (relationship() hiç olmayınca ORM-seviyeli cascade delete
+    riski de yapısal olarak imkânsız). Bu test artık doğrudan FK kolonunun
+    DB-seviyeli ``ondelete="RESTRICT"`` taşıdığını doğruluyor — asıl
+    korumanın kaynağı budur (yukarıdaki 3 entegrasyon testi bunu ampirik
+    olarak zaten kanıtlıyor)."""
+    col = model.__table__.columns[fk_column]
+    fk = next(iter(col.foreign_keys))
+    assert fk.ondelete == "RESTRICT"

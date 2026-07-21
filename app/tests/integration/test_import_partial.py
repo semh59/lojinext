@@ -14,7 +14,7 @@ Beklenen: Valid satırlar kaydedilmeli, invalid sayısı rapor edilmeli,
 import pytest
 from sqlalchemy import select
 
-from app.database.models import Arac
+from v2.modules.fleet.public import AracORM as Arac
 
 # OBSOLETE (test debt): this targets the removed /vehicles/import path and a
 # 'saved' response key. The live endpoint /vehicles/upload is Excel-only and

@@ -81,6 +81,13 @@ from v2.modules.fleet.domain.entities import Arac
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
 )
+from v2.modules.fleet.infrastructure.models import Arac as AracORM
+from v2.modules.fleet.infrastructure.models import (
+    AracBakim,
+    BakimTipi,
+    Dorse,
+    VehicleEventLog,
+)
 from v2.modules.fleet.infrastructure.trailer_repository import (
     DorseRepository,
     get_dorse_repo,
@@ -152,6 +159,14 @@ __all__ = [
     # yas/yas_faktoru/euro_sinifi computed fields; prediction_ml consumes it
     # for age-based fuel-consumption adjustment)
     "Arac",
+    # ORM tabloları (models.py bölünmesi — dalga 16 task #58). `AracORM`
+    # adı bilinçli: `Arac` adı yukarıdaki Pydantic domain entity tarafından
+    # kullanılıyor (trip.public'teki SeferORM ile aynı isimlendirme deseni).
+    "AracORM",
+    "Dorse",
+    "BakimTipi",
+    "AracBakim",
+    "VehicleEventLog",
     # schemas
     "AracBase",
     "AracCreate",

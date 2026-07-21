@@ -17,7 +17,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Arac, Lokasyon, RouteSegment, RouteSimulation
+from app.database.models import Lokasyon, RouteSegment, RouteSimulation
+from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.prediction_ml.public import VehicleSpecs
 from v2.modules.route_simulation.application.simulate_route import RouteSimulator
 from v2.modules.route_simulation.infrastructure.simulation_repository import (

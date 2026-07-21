@@ -19,7 +19,7 @@ async def log_vehicle_event(
 ) -> None:
     """Creates a vehicle event log entry (Atomic & UoW Compatible)."""
     try:
-        from app.database.models import VehicleEventLog
+        from v2.modules.fleet.infrastructure.models import VehicleEventLog
 
         log = VehicleEventLog(
             arac_id=arac_id,

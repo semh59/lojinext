@@ -27,7 +27,8 @@ import pandas as pd
 import pytest
 from sqlalchemy import func, select
 
-from app.database.models import Arac, YakitAlimi, YakitPeriyot
+from app.database.models import YakitAlimi, YakitPeriyot
+from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.import_excel.application.yakit_importer import process_yakit_import
 
 pytestmark = pytest.mark.integration

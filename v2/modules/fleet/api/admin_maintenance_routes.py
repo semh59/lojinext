@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
 from app.config import settings
-from app.database.models import BakimTipi, Kullanici
+from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.auth_rbac.public import require_yetki
@@ -31,6 +31,7 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     mark_maintenance_completed,
 )
 from v2.modules.fleet.application.maintenance_cache import PREDICTIONS_CACHE_ALL
+from v2.modules.fleet.infrastructure.models import BakimTipi
 from v2.modules.fleet.schemas import (
     MaintenanceAlertItem,
     MaintenanceCompleteResponse,

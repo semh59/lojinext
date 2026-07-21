@@ -17,10 +17,11 @@ Gerçek DB + gerçek servis; sadece event_bus MagicMock (dış altyapı).
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import Arac, Dorse
 from v2.modules.fleet.application.create_trailer import create_trailer
 from v2.modules.fleet.application.create_vehicle import create_vehicle
 from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fleet.public import Dorse
 from v2.modules.fleet.schemas import AracCreate, DorseCreate
 
 pytestmark = pytest.mark.integration

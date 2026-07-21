@@ -25,13 +25,13 @@ import pandas as pd
 import pytest
 from sqlalchemy import select
 
-from app.database.models import Arac
 from app.tests._helpers.seed import (
     seed_arac,
     seed_kullanici,
     seed_lokasyon,
     seed_sofor,
 )
+from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.import_excel.application.execute_import import execute_import
 from v2.modules.import_excel.application.route_importer import import_routes
 from v2.modules.import_excel.application.sefer_importer import process_sefer_import

@@ -4,7 +4,8 @@ from datetime import date
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import Arac, Sofor, YakitAlimi, YakitPeriyot
+from app.database.models import Sofor, YakitAlimi, YakitPeriyot
+from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.trip.public import SeferORM as Sefer
 
 

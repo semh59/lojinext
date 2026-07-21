@@ -35,7 +35,7 @@ async def test_uow_ghost_transaction_detection(caplog):
 
     async with UnitOfWork() as uow:
         # Create a model without committing to trigger the ghost transaction branch
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         uow.session.add(Arac(plaka="34GHOST"))
         # Do nothing, just exit

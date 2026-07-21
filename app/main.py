@@ -354,7 +354,7 @@ async def lifespan(app: FastAPI):
                 from sqlalchemy import select as _select
 
                 from app.database.connection import AsyncSessionLocal
-                from app.database.models import Arac
+                from v2.modules.fleet.public import AracORM as Arac
 
                 async with AsyncSessionLocal() as session:
                     rows = await session.execute(

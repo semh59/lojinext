@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import IceriAktarimGecmisi
+from v2.modules.import_excel.infrastructure.models import IceriAktarimGecmisi
 
 
 class ImportHistoryRepository(BaseRepository[IceriAktarimGecmisi]):

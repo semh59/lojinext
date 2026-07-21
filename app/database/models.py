@@ -1,5 +1,5 @@
 import enum
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any, List, Optional
 
@@ -19,7 +19,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    TypeDecorator,
     UniqueConstraint,
     func,
     text,
@@ -28,11 +27,16 @@ from sqlalchemy.dialects.postgresql import ENUM as PG_ENUM
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
-    DeclarativeBase,
     Mapped,
     mapped_column,
     relationship,
     validates,
+)
+
+from v2.modules.shared_kernel.infrastructure.base import (
+    Base,
+    EncryptedPII,
+    get_utc_now,
 )
 
 # hedef_path stores a route's "golden path" as raw WKB bytes in a BYTEA column.
@@ -45,50 +49,10 @@ from sqlalchemy.orm import (
 _LINESTRING_TYPE = LargeBinary()
 
 
-class EncryptedPII(TypeDecorator):
-    """Transparent Fernet encryption for PII columns (Tier E madde 26).
-
-    ORM reads/writes see plaintext (`.email`, `.ad_soyad` etc. behave as
-    normal Python str); the DB stores ciphertext only. Because Fernet is
-    randomized, this column can NEVER be used in an equality/ILIKE WHERE
-    clause or a UNIQUE constraint directly — pair it with a `_bidx` (blind
-    index) column (and a trigram-index table for substring search) for that.
-    Raw text() SQL bypasses this decorator entirely and sees ciphertext.
-    """
-
-    impl = Text
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        from app.infrastructure.security.pii_encryption import encrypt_pii
-
-        return encrypt_pii(value)
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        from app.infrastructure.security.pii_encryption import decrypt_pii
-
-        return decrypt_pii(value)
-
-
-def get_utc_now(ctx=None, *args, **kwargs):
-    return datetime.now(timezone.utc)
-
-
 class BakimTipi(str, enum.Enum):
     PERIYODIK = "PERIYODIK"
     ARIZA = "ARIZA"
     ACIL = "ACIL"
-
-
-class Base(AsyncAttrs, DeclarativeBase):
-    # type_annotation_map = {
-    #     Any: Geometry,
-    # }
-    pass
 
 
 class Arac(Base):

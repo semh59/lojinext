@@ -1037,30 +1037,7 @@ class TestCacheInvalidationSetup:
 
 
 class TestInterfacesImport:
-    """Ensure interface module-level code (imports + TypeVar) is counted as covered."""
-
-    def test_interfaces_importable(self):
-        # Confirm these are abstract (can't be instantiated)
-        import inspect
-
-        from app.core.interfaces import (
-            IAracRepository,
-            ILokasyonRepository,
-            IPeriyotRepository,
-            ISeferRepository,
-            ISoforRepository,
-            IYakitRepository,
-        )
-
-        for cls in (
-            IAracRepository,
-            ISoforRepository,
-            IYakitRepository,
-            ISeferRepository,
-            ILokasyonRepository,
-            IPeriyotRepository,
-        ):
-            assert inspect.isabstract(cls)
+    """Smoke-test that misc module-level code is importable (coverage counting)."""
 
     def test_cache_invalidation_importable(self):
         from app.infrastructure.cache import cache_invalidation  # noqa: F401

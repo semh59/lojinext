@@ -45,7 +45,6 @@ modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -88,6 +87,26 @@ ignore_imports =
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:module-internal-layers]
@@ -115,7 +134,6 @@ containers =
     v2.modules.trip
     v2.modules.admin_platform
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -155,6 +173,26 @@ ignore_imports =
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-location]
@@ -220,7 +258,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -254,6 +291,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-route_simulation]
@@ -319,7 +376,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -353,6 +409,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-notification]
@@ -418,7 +494,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -452,6 +527,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fleet]
@@ -517,7 +612,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -551,6 +645,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fuel]
@@ -616,7 +730,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -650,6 +763,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-driver]
@@ -715,7 +848,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -749,6 +881,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-auth_rbac]
@@ -814,7 +966,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -848,6 +999,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-anomaly]
@@ -913,7 +1084,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -947,6 +1117,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-import_excel]
@@ -1012,7 +1202,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1046,6 +1235,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-reports]
@@ -1111,7 +1320,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1145,6 +1353,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-analytics_executive]
@@ -1205,7 +1433,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1239,6 +1466,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-ai_assistant]
@@ -1303,7 +1550,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1337,6 +1583,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-prediction_ml]
@@ -1402,7 +1668,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1436,6 +1701,26 @@ ignore_imports =
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-trip]
@@ -1501,7 +1786,6 @@ forbidden_modules =
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1534,6 +1818,26 @@ ignore_imports =
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-admin_platform]
@@ -1599,7 +1903,6 @@ forbidden_modules =
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
@@ -1632,4 +1935,24 @@ ignore_imports =
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
     v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
     v2.modules.trip.public -> v2.modules.trip.**
+    app.database.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    app.database.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    app.database.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    app.database.unit_of_work -> v2.modules.driver.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    app.database.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    app.database.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.location.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.notification.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    app.database.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    app.database.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    app.database.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error

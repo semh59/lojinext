@@ -121,16 +121,31 @@ class TestAppBootImport:
         assert callable(get_uow)
 
     def test_all_repo_factories_importable(self):
-        """All repo factory functions referenced in __init__.py must be importable."""
-        from app.database.repositories import (  # noqa: F401
+        """All repositories UnitOfWork wires up must be importable from their
+        owning v2 module (no central re-export hub — removed dalga 16)."""
+        from v2.modules.analytics_executive.infrastructure.executive_read_models import (  # noqa: F401, E501
             AnalizRepository,
-            AracRepository,
-            DorseRepository,
+        )
+        from v2.modules.auth_rbac.infrastructure.kullanici_repository import (  # noqa: F401, E501
             KullaniciRepository,
-            LokasyonRepository,
-            SeferRepository,
+        )
+        from v2.modules.driver.infrastructure.repository import (  # noqa: F401
             SoforRepository,
+        )
+        from v2.modules.fleet.infrastructure.trailer_repository import (  # noqa: F401
+            DorseRepository,
+        )
+        from v2.modules.fleet.infrastructure.vehicle_repository import (  # noqa: F401
+            AracRepository,
+        )
+        from v2.modules.fuel.infrastructure.repository import (  # noqa: F401
             YakitRepository,
+        )
+        from v2.modules.location.infrastructure.repository import (  # noqa: F401
+            LokasyonRepository,
+        )
+        from v2.modules.trip.infrastructure.repository import (  # noqa: F401
+            SeferRepository,
         )
 
     def test_no_circular_imports(self):

@@ -2,8 +2,8 @@ from datetime import timezone
 
 import pytest
 
-from app.core.unit_of_work import get_uow
 from app.database.models import VehicleEventLog
+from app.database.unit_of_work import unit_of_work
 from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 
 
@@ -44,7 +44,7 @@ async def test_utc_defaults_in_models():
 @pytest.mark.asyncio
 async def test_atomic_logging_in_vehicle_event_log():
     """Verify that vehicle event logs include triggered_by and use UoW."""
-    async with get_uow() as uow:
+    async with unit_of_work() as uow:
         await log_vehicle_event(
             arac_id=1,
             event_type="TEST_EVENT",

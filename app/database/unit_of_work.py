@@ -39,30 +39,40 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connection import AsyncSessionLocal
 from app.database.db_session import _session_ctx
-from app.database.repositories import (
-    AdminConfigRepository,
-    AnalizRepository,
-    AnomalyRepository,
-    AracRepository,
-    DorseRepository,
-    ImportHistoryRepository,
-    InvestigationRepository,
-    KullaniciRepository,
-    LokasyonRepository,
-    MaintenanceRepository,
-    MLTrainingRepository,
-    ModelVersiyonRepository,
-    NotificationRepository,
-    RolRepository,
-    RouteRepository,
-    SeferRepository,
-    SessionRepository,
-    SettingRepository,
-    SoforRepository,
-    YakitRepository,
-)
 from app.infrastructure.events.event_bus import EventBus, get_event_bus
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.infrastructure.repository import AdminConfigRepository
+from v2.modules.analytics_executive.infrastructure.executive_read_models import (
+    AnalizRepository,
+)
+from v2.modules.anomaly.infrastructure.anomaly_repository import AnomalyRepository
+from v2.modules.anomaly.infrastructure.investigation_repository import (
+    InvestigationRepository,
+)
+from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
+    KullaniciRepository,
+)
+from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
+from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
+from v2.modules.auth_rbac.infrastructure.setting_repository import SettingRepository
+from v2.modules.driver.infrastructure.repository import SoforRepository
+from v2.modules.fleet.infrastructure.maintenance_repository import (
+    MaintenanceRepository,
+)
+from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
+from v2.modules.fuel.infrastructure.repository import YakitRepository
+from v2.modules.import_excel.infrastructure.repository import ImportHistoryRepository
+from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.notification.infrastructure.repository import NotificationRepository
+from v2.modules.prediction_ml.infrastructure.ml_training_repo import (
+    MLTrainingRepository,
+)
+from v2.modules.prediction_ml.infrastructure.model_versiyon_repo import (
+    ModelVersiyonRepository,
+)
+from v2.modules.route_simulation.infrastructure.repository import RouteRepository
+from v2.modules.trip.infrastructure.repository import SeferRepository
 
 logger = get_logger(__name__)
 

@@ -127,7 +127,7 @@ pratikte hem `public.py` üzerinden hem de doğrudan
 modülün amacı zaten herkesin serbestçe erişebilmesi). `module-cross-
 domain-infra-independence` ve `module-internal-layers` kontratlarının
 `ignore_imports` listesinde `v2.modules.shared_kernel.infrastructure.
-unit_of_work -> v2.modules.<X>.infrastructure.<repo>` şeklinde 17 satır
+unit_of_work -> v2.modules.<X>.infrastructure.<repo>` şeklinde 20 satır
 var — bu, `UnitOfWork`'ün TÜM modüllerin repository'lerini lazy-bind
 etmesinin doğal/kabul edilmiş sonucu, ihlal değil.
 

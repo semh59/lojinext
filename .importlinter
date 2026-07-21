@@ -11,7 +11,7 @@ modules =
     app.services
 
 [importlinter:contract:module-cross-domain-infra-independence]
-name = 12 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
+name = 15 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
 type = independence
 modules =
     v2.modules.location.domain

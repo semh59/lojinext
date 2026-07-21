@@ -49,9 +49,14 @@ class AnalizRepository(BaseRepository[Sefer]):
         [v2.1] FK join on guzergah_id — text-match join removed to avoid
         false positives and to stay consistent with get_for_training.
         """
-        # Lazy import: trip.public'in kendisi (dolaylı olarak) bu modülün
-        # AnalizRepository'sini import eden app.database.repositories
-        # aggregation'ına bağımlı — top-level import döngüsel olur.
+        # Lazy import (dalga 16'da doğrulandı — sebep güncellendi): bu dosya
+        # app.database.unit_of_work.py'nin `analiz_repo` lazy property'si
+        # için DOĞRUDAN import ediliyor; trip.public zincirinin ucu
+        # (add_trip.py) da `app.database.unit_of_work.UnitOfWork`'ü import
+        # ediyor — top-level yapılırsa unit_of_work.py kendi kendini
+        # yüklerken çöker (ImportError: partially initialized module).
+        # Ampirik doğrulama: top-level'a alınıp `import app.main` denendi,
+        # gerçekten patladı.
         from v2.modules.trip.public import SEFER_STATUS_TAMAMLANDI
 
         # Input validation

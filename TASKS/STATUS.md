@@ -1660,10 +1660,19 @@ ara adım geçirildi); tek fark kasıtlı bir docstring yol düzeltmesiydi
 (`app/core/integrations/` → `v2/modules/admin_platform/infrastructure/
 integrations/`), `frontend/openapi.json` bu farkı yansıtacak şekilde
 yeniden üretildi (orijinal minified/doğal-sıra formatı korunarak).
-Tam pytest suite'i gerçek Postgres+Redis'e karşı koşuldu (sonuç bir
-sonraki oturumda doğrulanacak — bu tur admin_platform'un dokunduğu
-alanlara odaklandı, önceki dalgaların bilinen ~23 pre-existing
-api-stub/gerçek-ağ farkı burada da beklenir).
+**Tam pytest suite'i taze oluşturulmuş `lojinext_test` DB'sine karşı
+koşuldu: 6607 passed, 23 failed, 28 skipped, 0 error (716s).** (İlk koşum
+bu ortamın önceki oturumlardan kalma bayat `lojinext_test` DB'siyle 91
+failed/74 error göstermişti — `soforler_pkey` unique-violation'ları
+sequence/veri kalıntısına işaret ediyordu; DB `dropdb`+`createdb` ile
+sıfırlanıp yeniden koşulunca bu rakamlar tamamen kayboldu, DB durumuydu,
+kod regresyonu değildi.) **23 fail'in TAMAMI trip/sofor alanında ve
+admin_platform'un dokunmadığı dosyalarda** — `test_trip_endpoint_
+architecture_guards.py` (silinen eski `app/api/v1/endpoints/trips.py`'ye
+atıfta bulunuyor, dalga 14'ten kalma bayat guard testi) ve
+`SeferRepository.get_driver_trips_by_route_type` eksikliği (dalga 14'ten
+kalma pre-existing repo boşluğu) gibi — **admin_platform'un dokunduğu
+hiçbir dosyada sıfır fail**, net-yeni regresyon SIFIR.
 
 ## Son güncelleme
 

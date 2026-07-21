@@ -21,10 +21,10 @@ async def test_admin_config_update_value_serializes_concurrent_writes(async_db_e
     """
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    from app.database.models import SistemKonfig
     from v2.modules.admin_platform.infrastructure.repository import (
         AdminConfigRepository,
     )
+    from v2.modules.admin_platform.public import SistemKonfig
 
     SessionLocal = async_sessionmaker(
         bind=async_db_engine, class_=AsyncSession, expire_on_commit=False

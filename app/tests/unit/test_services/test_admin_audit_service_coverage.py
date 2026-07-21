@@ -66,7 +66,7 @@ def _stub_uow():
 class TestLogAction:
     async def test_log_action_basic_returns_audit_log(self):
         """log_action returns an AdminAuditLog without request."""
-        from app.database.models import AdminAuditLog
+        from v2.modules.admin_platform.public import AdminAuditLog
 
         user = _make_user(uid=1)
         uow_inst = _stub_uow()

@@ -9,7 +9,6 @@ make look true without it actually holding.
 import pytest
 from sqlalchemy import select, update
 
-from app.database.models import EntegrasyonAyari
 from app.database.unit_of_work import UnitOfWork
 from v2.modules.admin_platform.application.integration_secrets import (
     KNOWN_SERVICES,
@@ -17,6 +16,7 @@ from v2.modules.admin_platform.application.integration_secrets import (
     get_integration_statuses,
     set_integration_secret,
 )
+from v2.modules.admin_platform.public import EntegrasyonAyari
 
 pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 

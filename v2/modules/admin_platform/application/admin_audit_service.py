@@ -10,9 +10,9 @@ from typing import Any, Dict, Optional
 
 from fastapi import Request
 
-from app.database.models import AdminAuditLog
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.admin_platform.infrastructure.models import AdminAuditLog
 from v2.modules.auth_rbac.public import Kullanici
 
 logger = get_logger(__name__)

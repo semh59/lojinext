@@ -7,9 +7,9 @@ from decimal import Decimal
 
 from app.database.models import (
     Lokasyon,
-    SistemKonfig,
     YakitAlimi,
 )
+from v2.modules.admin_platform.public import SistemKonfig
 from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac

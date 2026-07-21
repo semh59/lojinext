@@ -5,7 +5,6 @@ from typing import Dict, Optional
 
 from sqlalchemy import func, select
 
-from app.database.models import SistemKonfig as Ayarlar
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.public import count_active_vehicles
@@ -86,7 +85,16 @@ class LicenseEngine:
         return tier
 
     async def get_current_tier(self) -> str:
-        """Sistemin aktif lisans seviyesini getir (Hash-based validation)"""
+        """Sistemin aktif lisans seviyesini getir (Hash-based validation).
+
+        Lazy import zorunlu: ``auth_rbac.public`` → ``license_service`` →
+        ``admin_platform.public`` → ``admin_audit_service`` →
+        ``auth_rbac.public`` çemberini kırar (ampirik doğrulandı — dalga 16
+        task #58'de ``SistemKonfig`` admin_platform'a taşınınca ortaya
+        çıktı, ``check_monthly_trip_limit``'teki aynı desenle tutarlı).
+        """
+        from v2.modules.admin_platform.public import SistemKonfig as Ayarlar
+
         async with UnitOfWork() as uow:
             stmt = select(Ayarlar.deger).where(Ayarlar.anahtar == "LICENSE_KEY")
             result = await uow.session.execute(stmt)

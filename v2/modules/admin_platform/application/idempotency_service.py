@@ -55,7 +55,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 import app.database.connection as db_connection
-from app.database.models import IdempotencyKey
+from v2.modules.admin_platform.infrastructure.models import IdempotencyKey
 
 # Reservation sentinel — finalize_response() overwrites this before commit.
 # A real HTTP status code is always >= 100, so 0 can never collide.

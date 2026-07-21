@@ -63,6 +63,13 @@ from v2.modules.admin_platform.application.telegram_bridge import (
     olustur_pdf,
     report_driver_breakdown,
 )
+from v2.modules.admin_platform.infrastructure.models import (
+    AdminAuditLog,
+    EntegrasyonAyari,
+    IdempotencyKey,
+    KonfigGecmis,
+    SistemKonfig,
+)
 from v2.modules.admin_platform.infrastructure.repository import (
     AdminConfigRepository,
     get_admin_config_repo,
@@ -70,6 +77,12 @@ from v2.modules.admin_platform.infrastructure.repository import (
 
 __all__ = [
     "AdminConfigRepository",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "AdminAuditLog",
+    "EntegrasyonAyari",
+    "IdempotencyKey",
+    "KonfigGecmis",
+    "SistemKonfig",
     "BOT_TOKEN_SERVICES",
     "HealthService",
     "IdempotencyKeyConflictError",

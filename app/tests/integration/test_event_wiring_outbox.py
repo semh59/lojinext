@@ -84,7 +84,7 @@ class TestFuelOutboxWiring:
     async def test_add_yakit_writes_yakit_added(self, db_session):
         from datetime import date
 
-        from app.core.entities.models import YakitAlimiCreate
+        from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
         arac = await seed_arac(db_session, plaka="34EVT004")
         await db_session.commit()
@@ -104,8 +104,8 @@ class TestFuelOutboxWiring:
         assert row.payload == {"result": yakit_id, "arac_id": arac.id}
 
     async def test_update_yakit_writes_yakit_updated(self, db_session):
-        from app.core.entities.models import YakitUpdate
         from app.tests._helpers.seed import seed_yakit
+        from v2.modules.fuel.schemas import YakitUpdate
 
         arac = await seed_arac(db_session, plaka="34EVT005")
         yakit = await seed_yakit(db_session, arac_id=arac.id, km_sayac=100, litre=50.0)

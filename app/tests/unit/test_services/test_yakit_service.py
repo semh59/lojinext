@@ -21,7 +21,7 @@ pytestmark = pytest.mark.integration
 
 
 def _make_yakit_create(**kwargs):
-    from app.core.entities.models import YakitAlimiCreate
+    from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
     defaults = {
         "arac_id": 1,
@@ -53,7 +53,7 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_zero_litres(self):
         """YakitAlimiCreate Pydantic schema rejects litre=0 at construction."""
-        from app.core.entities.models import YakitAlimiCreate
+        from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
         with pytest.raises(Exception):  # pydantic ValidationError
             YakitAlimiCreate(
@@ -69,7 +69,7 @@ class TestYakitService:
 
     async def test_add_yakit_raises_for_zero_price(self):
         """YakitAlimiCreate Pydantic schema rejects fiyat_tl=0 at construction."""
-        from app.core.entities.models import YakitAlimiCreate
+        from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
         with pytest.raises(Exception):  # pydantic ValidationError
             YakitAlimiCreate(

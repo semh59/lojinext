@@ -184,8 +184,8 @@ def override_deps(test_session, test_user):
     # Patch execute_query to fix SQLite JSON/Enum string deserialization
     import json
 
-    from app.core.entities.models import DurumEnum
     from app.database.base_repository import BaseRepository
+    from v2.modules.trip.domain.entities import DurumEnum
 
     # Build DurumEnum name → value mapping for SQLite compat
     _durum_map = {f"DurumEnum.{e.name}": e.value for e in DurumEnum}

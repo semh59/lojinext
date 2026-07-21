@@ -9,7 +9,6 @@ from app.api.deps import (
     get_current_active_admin,
     get_current_active_user,
 )
-from app.core.entities.models import VehicleStats
 from app.core.exceptions import DomainError
 from app.database.models import Kullanici
 from app.infrastructure.audit.audit_logger import log_audit_event
@@ -37,6 +36,7 @@ from v2.modules.fleet.application.list_vehicles import (
     get_vehicle_stats as get_vehicle_stats_usecase,
 )
 from v2.modules.fleet.application.update_vehicle import update_vehicle
+from v2.modules.fleet.domain.entities import VehicleStats
 from v2.modules.fleet.schemas import (
     AracCreate,
     AracResponse,

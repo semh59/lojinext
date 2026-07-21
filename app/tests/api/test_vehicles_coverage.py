@@ -363,7 +363,7 @@ async def test_get_vehicle_stats_not_found(async_client, admin_auth_headers):
 
 async def test_get_vehicle_stats_happy_path(async_client, admin_auth_headers):
     """Returns VehicleStats on success."""
-    from app.core.entities.models import VehicleStats
+    from v2.modules.fleet.domain.entities import VehicleStats
 
     mock_stats = MagicMock(spec=VehicleStats)
     mock_stats.arac_id = 1

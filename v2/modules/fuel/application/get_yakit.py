@@ -2,8 +2,8 @@
 
 from typing import List, Optional
 
-from app.core.entities.models import YakitAlimi
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.fuel.domain.entities import YakitAlimi
 
 
 async def get_yakit_by_id(

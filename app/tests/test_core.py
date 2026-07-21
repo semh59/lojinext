@@ -9,9 +9,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.entities import Arac, Sefer, YakitAlimi, YakitPeriyodu
 from app.infrastructure.cache.cache_manager import CacheManager, _sign
 from app.infrastructure.events.event_bus import Event, EventBus, EventType
+from v2.modules.fleet.domain.entities import Arac
+from v2.modules.fuel.domain.entities import YakitAlimi, YakitPeriyodu
+from v2.modules.trip.domain.entities import Sefer
 
 
 class TestAracEntity:

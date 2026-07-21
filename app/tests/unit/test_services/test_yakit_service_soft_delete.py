@@ -23,10 +23,10 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import insert, select
 
-from app.core.entities.models import YakitUpdate
 from app.database.models import Arac, YakitAlimi
 from v2.modules.fuel.application.delete_yakit import delete_yakit
 from v2.modules.fuel.application.update_yakit import update_yakit
+from v2.modules.fuel.schemas import YakitUpdate
 
 pytestmark = pytest.mark.integration
 

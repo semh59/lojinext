@@ -38,7 +38,7 @@ pytestmark = pytest.mark.integration
 
 
 def _make_yakit_create(**overrides):
-    from app.core.entities.models import YakitAlimiCreate
+    from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
     defaults = {
         "arac_id": 1,
@@ -94,7 +94,7 @@ class TestAddYakitKmCheck:
 
 class TestUpdateYakit:
     async def test_update_yakit_returns_false_when_not_found(self, db_session):
-        from app.core.entities.models import YakitUpdate
+        from v2.modules.fuel.schemas import YakitUpdate
 
         update = YakitUpdate(istasyon="Yeni", litre=300.0, fiyat_tl=40.0)
         result = await update_yakit(9999, update)
@@ -118,7 +118,7 @@ class TestUpdateYakit:
         assert result is True
 
     async def test_update_yakit_success(self, db_session):
-        from app.core.entities.models import YakitUpdate
+        from v2.modules.fuel.schemas import YakitUpdate
 
         arac = await seed_arac(db_session, plaka="34YAKTUP02")
         yakit = await seed_yakit(
@@ -246,7 +246,7 @@ class TestGetMonthlySummary:
 
 class TestBulkAddYakit:
     async def test_bulk_skips_zero_litre_entries(self, db_session):
-        from app.core.entities.models import YakitAlimiCreate
+        from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
         arac = await seed_arac(db_session, plaka="34YAKTBLK01")
         await db_session.commit()

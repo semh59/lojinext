@@ -386,7 +386,7 @@ class TestTrainForVehicleAracEntityFail:
             ),
             # Make Arac(**arac) fail
             patch(
-                "app.core.entities.models.Arac", side_effect=ValueError("bad mapping")
+                "v2.modules.fleet.public.Arac", side_effect=ValueError("bad mapping")
             ),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
@@ -893,7 +893,7 @@ class TestPredictConsumptionEntityMapFail:
             ),
             # Make Arac(**arac) fail
             patch(
-                "app.core.entities.models.Arac", side_effect=ValueError("bad mapping")
+                "v2.modules.fleet.public.Arac", side_effect=ValueError("bad mapping")
             ),
         ):
             with pytest.raises(RuntimeError, match="mapping failed"):

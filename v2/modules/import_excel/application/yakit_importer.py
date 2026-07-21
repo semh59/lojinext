@@ -21,7 +21,7 @@ from v2.modules.import_excel.infrastructure.monitoring_bridge import (
 from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
 
 if TYPE_CHECKING:
-    from app.core.entities.models import YakitAlimiCreate
+    from v2.modules.fuel.public import YakitAlimiCreate
 
 logger = get_logger(__name__)
 

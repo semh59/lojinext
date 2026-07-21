@@ -3,7 +3,7 @@
 import asyncio
 from typing import List
 
-from app.core.entities import YakitAlimi, YakitPeriyodu
+from v2.modules.fuel.domain.entities import YakitAlimi, YakitPeriyodu
 from v2.modules.fuel.domain.period_matcher import sync_create_fuel_periods
 
 

@@ -10,11 +10,11 @@ from datetime import date, timedelta
 import pytest
 from pydantic import ValidationError
 
-from app.core.entities.models import SeferCreate
 from app.infrastructure.events.event_bus import get_event_bus
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from v2.modules.trip.application.trip_service import SeferService
 from v2.modules.trip.infrastructure.repository import SeferRepository
+from v2.modules.trip.schemas import SeferCreate
 from v2.modules.trip.sefer_status import (
     SEFER_STATUS_IPTAL,
     SEFER_STATUS_PLANLANDI,

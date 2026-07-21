@@ -302,7 +302,7 @@ class EnsemblePredictorService:
             return {"success": False, "error": "Araç bulunamadı"}
 
         # Araç yaşı ve faktörü hesapla
-        from app.core.entities.models import Arac
+        from v2.modules.fleet.public import Arac
 
         try:
             arac_entity = Arac(**arac)
@@ -535,7 +535,7 @@ class EnsemblePredictorService:
             else:
                 dorse = await self.dorse_repo.get_by_id(dorse_id)
 
-        from app.core.entities.models import Arac
+        from v2.modules.fleet.public import Arac
 
         try:
             arac_entity = Arac(**arac)

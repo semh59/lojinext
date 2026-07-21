@@ -3,9 +3,9 @@
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from app.core.entities.models import YakitAlimi
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.fuel.domain.entities import YakitAlimi
 
 logger = get_logger(__name__)
 

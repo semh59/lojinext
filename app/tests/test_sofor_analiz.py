@@ -12,7 +12,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.entities.models import DriverStats
 from v2.modules.driver.application import driver_stats as driver_stats_mod
 from v2.modules.driver.application.driver_stats import (
     calculate_performance_score,
@@ -20,6 +19,7 @@ from v2.modules.driver.application.driver_stats import (
     compare_drivers,
     get_driver_stats,
 )
+from v2.modules.driver.domain.entities import DriverStats
 from v2.modules.driver.infrastructure import (
     driver_metrics_queries as driver_metrics_queries_mod,
 )

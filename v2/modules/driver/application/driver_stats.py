@@ -12,9 +12,9 @@ import math
 from statistics import mean
 from typing import Dict, List, Optional
 
-from app.core.entities import DriverStats
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.driver.domain.entities import DriverStats
 from v2.modules.prediction_ml.public import get_prediction_service
 
 logger = get_logger(__name__)

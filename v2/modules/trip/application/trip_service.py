@@ -14,7 +14,6 @@ gitmeli.
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from app.core.entities.models import Sefer
 from app.database.models import Kullanici
 from app.infrastructure.events.event_bus import EventBus, get_event_bus
 from app.infrastructure.logging.logger import get_logger
@@ -34,6 +33,7 @@ from v2.modules.trip.application.delete_trip import delete_sefer as _delete_sefe
 from v2.modules.trip.application.reconcile_costs import reconcile_costs as _reconcile
 from v2.modules.trip.application.return_trip import create_return_trip as _create_return
 from v2.modules.trip.application.update_trip import update_sefer as _update_sefer
+from v2.modules.trip.domain.entities import Sefer
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo
 from v2.modules.trip.schemas import SeferCreate, SeferUpdate
 

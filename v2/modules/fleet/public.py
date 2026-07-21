@@ -77,6 +77,7 @@ from v2.modules.fleet.application.maintenance_prediction import (
 )
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
 from v2.modules.fleet.application.update_vehicle import update_vehicle
+from v2.modules.fleet.domain.entities import Arac
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
 )
@@ -147,6 +148,10 @@ __all__ = [
     "DorseRepository",
     "get_dorse_repo",
     "MaintenanceRepository",
+    # domain entity (internal DTO, distinct from AracResponse above — carries
+    # yas/yas_faktoru/euro_sinifi computed fields; prediction_ml consumes it
+    # for age-based fuel-consumption adjustment)
+    "Arac",
     # schemas
     "AracBase",
     "AracCreate",

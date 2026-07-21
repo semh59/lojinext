@@ -37,7 +37,7 @@ pytestmark = pytest.mark.unit
 
 
 def _sefer(id, arac_id, tarih_str, mesafe_km=300, net_kg=15000):
-    from app.core.entities.models import Sefer
+    from v2.modules.trip.domain.entities import Sefer
 
     return Sefer(
         id=id,
@@ -53,7 +53,7 @@ def _sefer(id, arac_id, tarih_str, mesafe_km=300, net_kg=15000):
 
 
 def _make_period(toplam_yakit=1000.0, arac_id=1):
-    from app.core.entities.models import YakitPeriyodu
+    from v2.modules.fuel.domain.entities import YakitPeriyodu
 
     return YakitPeriyodu(
         arac_id=arac_id,

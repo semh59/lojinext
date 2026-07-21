@@ -20,11 +20,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.entities.models import SeferCreate
 from app.database.unit_of_work import UnitOfWork
 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 from v2.modules.fuel.schemas import YakitCreate
 from v2.modules.trip.application.bulk_add_trips import bulk_add_sefer
+from v2.modules.trip.schemas import SeferCreate
 
 
 class _BaseUoW:

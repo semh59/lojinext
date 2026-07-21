@@ -48,6 +48,7 @@ from v2.modules.trip.application.trip_stats import (
     get_trip_stats,
 )
 from v2.modules.trip.application.update_trip import update_sefer
+from v2.modules.trip.domain.entities import Sefer
 from v2.modules.trip.domain.trip_validation import ALLOWED_TRANSITIONS, safe_durum
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo
 from v2.modules.trip.schemas import (
@@ -118,6 +119,9 @@ __all__ = [
     "normalize_sefer_status",
     "ALLOWED_TRANSITIONS",
     "safe_durum",
+    # domain entity (internal DTO, distinct from the SeferResponse/SeferCreate
+    # API schemas below — used by fuel's period-matching and prediction_ml)
+    "Sefer",
     # repository
     "SeferRepository",
     "get_sefer_repo",

@@ -4,9 +4,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pydantic import ValidationError
 
-from app.core.entities.models import SeferCreate
 from app.core.exceptions import RouteProcessingError
 from v2.modules.trip.application.trip_service import SeferService
+from v2.modules.trip.schemas import SeferCreate
 
 
 class TestSeferService:
@@ -123,20 +123,24 @@ class TestSeferService:
             )
         assert "mesafe_km" in str(excinfo.value)
 
-    def test_add_sefer_invalid_weight_pydantic(self):
-        with pytest.raises(ValidationError) as excinfo:
-            SeferCreate(
-                tarih=date.today(),
-                arac_id=1,
-                sofor_id=1,
-                guzergah_id=1,
-                cikis_yeri="LocA",
-                varis_yeri="LocB",
-                mesafe_km=100,
-                net_kg=-50,
-                bos_sefer=False,
-            )
-        assert "net_kg" in str(excinfo.value)
+    def test_add_sefer_negative_weight_healed_to_zero(self):
+        """v2.modules.trip.schemas.SeferCreate'in `heal_weights` validator'ı
+        (mode="before") negatif ağırlık değerlerini reddetmek yerine 0'a
+        klipler — bozuk/eksik Excel import verisi için kasıtlı tolerans
+        (bkz. schemas.py). Reddetme davranışı dalga 16'da silinen eski
+        `app.core.entities.models.SeferCreate`'e aitti."""
+        sefer = SeferCreate(
+            tarih=date.today(),
+            arac_id=1,
+            sofor_id=1,
+            guzergah_id=1,
+            cikis_yeri="LocA",
+            varis_yeri="LocB",
+            mesafe_km=100,
+            net_kg=-50,
+            bos_sefer=False,
+        )
+        assert sefer.net_kg == 0
 
     @pytest.mark.asyncio
     async def test_add_sefer_future_date_limit(self, service, mock_uow):

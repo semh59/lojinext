@@ -35,6 +35,7 @@ from v2.modules.fuel.application.recalculate_vehicle_periods import (
     recalculate_vehicle_periods,
 )
 from v2.modules.fuel.application.update_yakit import update_yakit
+from v2.modules.fuel.domain.entities import YakitAlimiCreate
 from v2.modules.fuel.domain.period_matcher import PeriyotSeferMatch
 from v2.modules.fuel.infrastructure.integrations.opet_client import (
     FuelCardProvider,
@@ -98,4 +99,8 @@ __all__ = [
     "OcrPreviewResponse",
     "FuelDocumentItem",
     "FuelDocumentList",
+    # domain entity (internal DTO, distinct from YakitCreate above — used by
+    # bulk_add_yakit/add_yakit; import_excel constructs these for its bulk
+    # Excel-import path)
+    "YakitAlimiCreate",
 ]

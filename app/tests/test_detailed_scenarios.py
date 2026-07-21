@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy import text
 
 from app.core.container import get_container
-from app.core.entities.models import SeferCreate
+from v2.modules.trip.schemas import SeferCreate
 
 
 class TestDetailedScenarios:

@@ -305,7 +305,7 @@ class TestSeferFuelEstimator:
         kapatıldı)."""
         from datetime import date
 
-        from app.core.entities.models import Arac as EntityArac
+        from v2.modules.fleet.domain.entities import Arac as EntityArac
         from v2.modules.trip.application import sefer_fuel_estimator as mod
 
         estimator = mod.SeferFuelEstimator.__new__(mod.SeferFuelEstimator)

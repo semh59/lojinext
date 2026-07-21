@@ -25,7 +25,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import select
 
-from app.database.models import Arac, Sefer
+from app.database.models import Arac
 from app.tests._helpers.seed import (
     seed_arac,
     seed_kullanici,
@@ -49,6 +49,7 @@ from v2.modules.import_excel.domain.field_validators import (
     validate_numeric,
     validate_plaka,
 )
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 

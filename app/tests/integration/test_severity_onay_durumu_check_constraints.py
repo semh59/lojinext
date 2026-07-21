@@ -4,7 +4,8 @@ from datetime import date
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.database.models import Anomaly, Arac, Sefer, Sofor
+from app.database.models import Anomaly, Arac, Sofor
+from v2.modules.trip.public import SeferORM as Sefer
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,8 @@ import hashlib
 from sqlalchemy import select
 
 from app.database.db_session import get_async_session_context
-from app.database.models import Lokasyon, Sefer
+from app.database.models import Lokasyon
+from v2.modules.trip.public import SeferORM as Sefer
 
 
 async def backfill_route_pairs():

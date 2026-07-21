@@ -19,12 +19,13 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import insert, select
 
-from app.database.models import Arac, Sefer, Sofor
+from app.database.models import Arac, Sofor
 from app.database.unit_of_work import UnitOfWork
 from v2.modules.anomaly.application.attribute_loss import (
     bulk_override_attribution,
     override_attribution,
 )
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 

@@ -4,8 +4,9 @@ from datetime import date
 
 import pytest
 
-from app.database.models import Arac, Lokasyon, Sefer, Sofor
+from app.database.models import Arac, Lokasyon, Sofor
 from v2.modules.trip.infrastructure.repository import SeferRepository
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 

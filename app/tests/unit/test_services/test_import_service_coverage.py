@@ -27,7 +27,7 @@ import pandas as pd
 import pytest
 from sqlalchemy import func, select
 
-from app.database.models import Sefer, Sofor, YakitAlimi
+from app.database.models import Sofor, YakitAlimi
 from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import (
     seed_arac,
@@ -51,6 +51,7 @@ from v2.modules.import_excel.application.yakit_importer import process_yakit_imp
 from v2.modules.import_excel.domain.entity_resolvers import resolve_dorse_id
 from v2.modules.import_excel.domain.field_validators import normalize_text
 from v2.modules.import_excel.domain.row_validators import validate_import_rows
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

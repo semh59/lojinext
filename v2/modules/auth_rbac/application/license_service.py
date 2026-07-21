@@ -5,7 +5,6 @@ from typing import Dict, Optional
 
 from sqlalchemy import func, select
 
-from app.database.models import Sefer
 from app.database.models import SistemKonfig as Ayarlar
 from app.database.unit_of_work import UnitOfWork
 from app.infrastructure.logging.logger import get_logger
@@ -111,11 +110,16 @@ class LicenseEngine:
     async def check_monthly_trip_limit(self) -> bool:
         """Aylık sefer limiti kontrolü.
 
-        ``Sefer`` doğrudan ORM erişimi bilinçli geçici borç: trip modülü
-        henüz v2'ye taşınmadı, dolayısıyla delege edilecek bir
-        ``public.py`` yok. trip taşındığında bu sorgu onun public
-        API'sine yönlendirilmeli.
+        ``Sefer`` (``trip.public.SeferORM``) doğrudan ORM erişimi (dalga 16,
+        task #58'de ``trip.public`` üzerinden düzeltildi — ayrı bir
+        use-case fonksiyonuna sarmak bu dalganın kapsamı dışı, mekanik
+        import-path düzeltmesi). Lazy import zorunlu: ``auth_rbac.public``
+        → ``license_service`` → ``trip.public`` → (list_trips.py vb.) →
+        ``auth_rbac.public`` çemberini kırar (ampirik doğrulandı —
+        top-level'da ``import app.main`` gerçekten patlıyordu).
         """
+        from v2.modules.trip.public import SeferORM as Sefer
+
         tier = await self.get_current_tier()
         limit = self.LIMITS[tier]["max_trips_monthly"]
 

@@ -27,7 +27,8 @@ async def test_same_vehicle_concurrent_trips(db_session, async_client, auth_head
     5. Final state: Exactly 10 trips in DB OR <10 with clear conflict resolution
     """
 
-    from app.database.models import Arac, Sefer
+    from app.database.models import Arac
+    from v2.modules.trip.public import SeferORM as Sefer
 
     # Create vehicle
     arac_result = await db_session.execute(

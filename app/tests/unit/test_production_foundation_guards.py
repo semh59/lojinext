@@ -567,20 +567,28 @@ def test_frontend_public_trip_contract_no_longer_exposes_is_real():
 
 
 def test_backend_trip_contract_no_longer_exposes_is_real():
-    trip_schema = (ROOT / "app" / "schemas" / "sefer.py").read_text(encoding="utf-8")
-    trip_entities = (ROOT / "app" / "core" / "entities" / "models.py").read_text(
+    """dalga 14/16'da trip modülüne taşındı: app/schemas/sefer.py ->
+    v2/modules/trip/schemas.py, app/core/entities/models.py ->
+    v2/modules/trip/domain/entities.py, app/core/services/
+    sefer_write_service.py (B.1'de dissolve edildi) -> v2/modules/trip/
+    application/*.py (tüm dosyalar birleşik taranır)."""
+    trip_schema = (ROOT / "v2" / "modules" / "trip" / "schemas.py").read_text(
         encoding="utf-8"
     )
-    trip_write_service = (
-        ROOT / "app" / "core" / "services" / "sefer_write_service.py"
+    trip_entities = (
+        ROOT / "v2" / "modules" / "trip" / "domain" / "entities.py"
     ).read_text(encoding="utf-8")
+    trip_application = "".join(
+        p.read_text(encoding="utf-8")
+        for p in (ROOT / "v2" / "modules" / "trip" / "application").glob("*.py")
+    )
 
     assert LEGACY_REAL_FIELD not in trip_schema
     assert LEGACY_REAL_OPTIONAL not in trip_schema
     assert LEGACY_REAL_ENTITY not in trip_entities
     assert LEGACY_REAL_OPTIONAL not in trip_entities
-    assert LEGACY_REAL_ASSIGNMENT not in trip_write_service
-    assert LEGACY_REAL_FALLBACK not in trip_write_service
+    assert LEGACY_REAL_ASSIGNMENT not in trip_application
+    assert LEGACY_REAL_FALLBACK not in trip_application
 
 
 def test_runtime_and_persistence_layers_no_longer_reference_is_real():

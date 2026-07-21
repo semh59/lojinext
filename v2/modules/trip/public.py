@@ -50,6 +50,8 @@ from v2.modules.trip.application.trip_stats import (
 from v2.modules.trip.application.update_trip import update_sefer
 from v2.modules.trip.domain.entities import Sefer
 from v2.modules.trip.domain.trip_validation import ALLOWED_TRANSITIONS, safe_durum
+from v2.modules.trip.infrastructure.models import Sefer as SeferORM
+from v2.modules.trip.infrastructure.models import SeferBelge, SeferLog
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo
 from v2.modules.trip.schemas import (
     SeferBase,
@@ -122,6 +124,16 @@ __all__ = [
     # domain entity (internal DTO, distinct from the SeferResponse/SeferCreate
     # API schemas below — used by fuel's period-matching and prediction_ml)
     "Sefer",
+    # ORM tabloları (models.py bölünmesi — dalga 16 task #58). `SeferORM`
+    # adı bilinçli: `Sefer` adı yukarıdaki Pydantic domain entity tarafından
+    # kullanılıyor, aynı public.py'de iki farklı sınıf aynı isimle export
+    # edilemez. Cross-module tüketiciler (analytics_executive/auth_rbac/
+    # driver/prediction_ml) tipli SQLAlchemy select() sorguları için gerçek
+    # ORM sınıfına ihtiyaç duyuyor (raw SQL değil) — "geçici borç" olarak
+    # zaten dokümante edilmişti (bkz. license_service.py).
+    "SeferORM",
+    "SeferLog",
+    "SeferBelge",
     # repository
     "SeferRepository",
     "get_sefer_repo",

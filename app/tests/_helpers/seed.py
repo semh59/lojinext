@@ -11,11 +11,11 @@ from app.database.models import (
     Kullanici,
     Lokasyon,
     Rol,
-    Sefer,
     SistemKonfig,
     Sofor,
     YakitAlimi,
 )
+from v2.modules.trip.public import SeferORM as Sefer
 
 _seq = {"n": 0}
 

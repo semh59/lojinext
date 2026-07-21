@@ -17,8 +17,9 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select
 
-from app.database.models import Kullanici, SeferLog
+from app.database.models import Kullanici
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.trip.infrastructure.models import SeferLog
 
 
 def _safe_parse_json(raw_value: Optional[str]) -> Dict[str, Any]:

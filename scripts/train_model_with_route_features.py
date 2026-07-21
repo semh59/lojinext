@@ -13,9 +13,9 @@ sys.path.append(project_root)
 load_dotenv(os.path.join(project_root, ".env"))
 
 from app.database.connection import AsyncSessionLocal
-from app.database.models import Sefer
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.prediction_ml.public import EnsemblePredictorService
+from v2.modules.trip.public import SeferORM as Sefer
 
 logger = get_logger(__name__)
 

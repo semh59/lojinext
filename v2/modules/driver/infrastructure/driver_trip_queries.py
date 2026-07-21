@@ -8,10 +8,11 @@ tablosu) sorguluyor ama şoför-özel raporlama/arama için var; driver'ın kend
 ``driver_metrics_queries.py``'siyle aynı gerekçeyle (B.1) serbest fonksiyon
 olarak tutuldu — tek-tablo CRUD değil, salt-okunur sorgu kümesi.
 
-Şema not: ``Sefer``/``Sofor``/``SoforAdSoyadTrigram`` ORM modelleri henüz
-paylaşılan ``app/database/models.py``'de (models.py bölünmesi ayrı bir
-görev) — bu dosyanın onları doğrudan import etmesi mevcut projedeki tüm
-diğer modüllerle aynı, kabul edilmiş desendir.
+Şema not: ``Sofor``/``SoforAdSoyadTrigram`` ORM modelleri henüz paylaşılan
+``app/database/models.py``'de (models.py bölünmesi ayrı bir görev) — bu
+dosyanın onları doğrudan import etmesi mevcut projedeki tüm diğer
+modüllerle aynı, kabul edilmiş desendir. ``Sefer`` dalga 16 (task #58)'de
+trip modülüne taşındı, ``trip.public.SeferORM`` üzerinden import edilir.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -19,8 +20,9 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import select, text
 
-from app.database.models import Sefer, Sofor, SoforAdSoyadTrigram
+from app.database.models import Sofor, SoforAdSoyadTrigram
 from app.database.unit_of_work import UnitOfWork
+from v2.modules.trip.public import SeferORM as Sefer
 
 
 async def _resolve_session(uow: Optional[Any]):

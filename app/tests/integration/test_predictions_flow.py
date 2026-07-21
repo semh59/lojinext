@@ -17,7 +17,8 @@ async def test_predict_fuel_consumption_full_flow(
 
     from sqlalchemy import insert
 
-    from app.database.models import Arac, Sefer, Sofor
+    from app.database.models import Arac, Sofor
+    from v2.modules.trip.public import SeferORM as Sefer
 
     # Create vehicle
     arac_result = await db_session.execute(

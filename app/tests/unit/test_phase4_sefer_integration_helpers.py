@@ -100,7 +100,9 @@ def test_sefer_repo_allowed_whitelist_phase44():
     """Phase 4.4: route_simulation_id + tahmini_tuketim allowed'da olmalı."""
     import re
 
-    src = open("app/database/repositories/sefer_repo.py", encoding="utf-8").read()
+    src = open(
+        "v2/modules/trip/infrastructure/repository.py", encoding="utf-8"
+    ).read()
     # allowed bloğunu bul
     m = re.search(r"allowed\s*=\s*\{([^}]+)\}", src)
     assert m is not None

@@ -22,7 +22,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.database.connection import engine
-from app.database.models import Arac, Lokasyon, Sefer, Sofor, YakitAlimi
+from app.database.models import Arac, Lokasyon, Sofor, YakitAlimi
+from v2.modules.trip.public import SeferORM as Sefer
 
 random.seed(42)
 

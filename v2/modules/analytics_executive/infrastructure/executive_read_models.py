@@ -21,7 +21,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Sefer, YakitFormul
+from app.database.models import YakitFormul
 from app.infrastructure.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -30,11 +30,19 @@ logger = get_logger(__name__)
 DEFAULT_FILO_ORTALAMA = 32.0
 
 
-class AnalizRepository(BaseRepository[Sefer]):
+class AnalizRepository(BaseRepository[Any]):
     """Analiz ve istatistik veritabanı operasyonları (Async)"""
 
-    # BaseRepository gereksinimi için default model (seferler üzerinden çok analiz yapılıyor)
-    model = Sefer
+    def __init__(self, session: Any = None) -> None:
+        # Lazy import — aynı sebep: unit_of_work.py -> executive_read_models.py
+        # -> trip.public -> add_trip.py -> unit_of_work.py çemberini kırar
+        # (bkz. get_training_seferler'daki lazy-import notu). `model` hiçbir
+        # metotta gerçekten kullanılmıyor (bu repo tamamen raw-SQL) — yalnız
+        # BaseRepository.__init__'in `model is None` guard'ı için gerekli.
+        from v2.modules.trip.public import SeferORM
+
+        self.model = SeferORM
+        super().__init__(session)
 
     # =========================================================================
     # ML VERİLERİ (prediction_ml dalgası [13] taşıyana kadar burada — task

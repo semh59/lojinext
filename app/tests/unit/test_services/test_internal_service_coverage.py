@@ -24,9 +24,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import select
 
-from app.database.models import SeferBelge
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from v2.modules.admin_platform.application import telegram_bridge
+from v2.modules.trip.public import SeferBelge
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

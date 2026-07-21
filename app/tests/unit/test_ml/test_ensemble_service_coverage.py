@@ -127,7 +127,7 @@ class TestLazyRepoProperties:
         mock_repo = MagicMock()
 
         with patch(
-            "v2.modules.trip.infrastructure.repository.get_sefer_repo",
+            "v2.modules.trip.public.get_sefer_repo",
             return_value=mock_repo,
         ):
             repo = svc.sefer_repo

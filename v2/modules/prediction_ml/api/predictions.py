@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import and_, select
 
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
-from app.database.models import Kullanici, Sefer, Sofor
+from app.database.models import Kullanici, Sofor
 from app.infrastructure.background.celery_app import celery_app
 from v2.modules.prediction_ml.application.prediction_service import PredictionService
 from v2.modules.prediction_ml.schemas import (
@@ -29,6 +29,7 @@ from v2.modules.prediction_ml.schemas import (
     TrendAnalysisResponse,
 )
 from v2.modules.shared_kernel.schemas.api_responses import SSE_RESPONSES
+from v2.modules.trip.public import SeferORM as Sefer
 
 router = APIRouter()
 

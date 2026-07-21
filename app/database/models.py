@@ -150,7 +150,6 @@ class Arac(Base):
     bakimlar: Mapped[List["AracBakim"]] = relationship(
         back_populates="arac", cascade="all, delete-orphan"
     )
-    seferler: Mapped[List["Sefer"]] = relationship(back_populates="arac")
     event_logs: Mapped[List["VehicleEventLog"]] = relationship(
         back_populates="arac", cascade="all, delete-orphan"
     )
@@ -204,7 +203,6 @@ class Dorse(Base):
     )
 
     # Relationships
-    seferler: Mapped[List["Sefer"]] = relationship(back_populates="dorse")
     bakimlar: Mapped[List["AracBakim"]] = relationship(
         back_populates="dorse", cascade="all, delete-orphan"
     )
@@ -269,10 +267,6 @@ class Sofor(Base):
         default=get_utc_now,
         onupdate=get_utc_now,
     )
-
-    # Relationships
-    seferler: Mapped[List["Sefer"]] = relationship(back_populates="sofor")
-    belgeler: Mapped[List["SeferBelge"]] = relationship(back_populates="sofor")
 
     @validates("ad_soyad")
     def _sync_ad_soyad_bidx(self, key, value):
@@ -414,7 +408,6 @@ class Lokasyon(Base):
     kalibrasyonlar: Mapped[List["GuzergahKalibrasyon"]] = relationship(
         back_populates="lokasyon", cascade="all, delete-orphan"
     )
-    seferler: Mapped[List["Sefer"]] = relationship(back_populates="guzergah")
     segments: Mapped[List["LokasyonSegment"]] = relationship(
         back_populates="lokasyon",
         cascade="all, delete-orphan",
@@ -510,214 +503,6 @@ class YakitAlimi(Base):
     last_fetched: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-
-
-class Sefer(Base):
-    __tablename__ = "seferler"
-    __table_args__ = (
-        Index("idx_seferler_durum_tarih", "durum", "tarih"),
-        # Composite performance indexes (created by 0004_composite_indexes migration)
-        # tarih DESC matches the sort direction used in the 0004 migration.
-        Index("ix_seferler_arac_id_tarih", "arac_id", text("tarih DESC")),
-        Index("ix_seferler_sofor_id_tarih", "sofor_id", text("tarih DESC")),
-        Index("ix_seferler_arac_id_durum", "arac_id", "durum"),
-        CheckConstraint("mesafe_km > 0", name="check_sefer_mesafe_positive"),
-        CheckConstraint(
-            "net_kg = dolu_agirlik_kg - bos_agirlik_kg", name="check_sefer_net_kg_calc"
-        ),
-        CheckConstraint("bos_agirlik_kg >= 0", name="check_sefer_bos_agirlik_positive"),
-        CheckConstraint(
-            "dolu_agirlik_kg >= 0", name="check_sefer_dolu_agirlik_positive"
-        ),
-        CheckConstraint("net_kg >= 0", name="check_sefer_net_kg_positive"),
-        CheckConstraint(
-            "durum IN ('Planned', 'Completed', 'Cancelled')",
-            name="check_sefer_durum_enum",
-        ),
-        # 2026-07-01 prod-grade denetimi P1 (Dalga 3 madde 15): DB-seviye
-        # kısıt yoktu. NULL="web-girildi" hâlâ serbest (CHECK NULL'da
-        # otomatik geçer — IN (...) NULL karşısında UNKNOWN döner).
-        CheckConstraint(
-            "onay_durumu IS NULL OR onay_durumu IN "
-            "('beklemede', 'onaylandi', 'reddedildi')",
-            name="check_sefer_onay_durumu_enum",
-        ),
-        Index("idx_seferler_rota_detay_gin", "rota_detay", postgresql_using="gin"),
-        Index("idx_seferler_tahmin_meta_gin", "tahmin_meta", postgresql_using="gin"),
-        # Partial index for approval-queue queries (0009_onay_durumu_index migration)
-        Index(
-            "ix_seferler_onay_durumu",
-            "onay_durumu",
-            postgresql_where=text("onay_durumu IS NOT NULL"),
-        ),
-    )
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    sefer_no: Mapped[Optional[str]] = mapped_column(
-        String(50), unique=True, index=True
-    )  # Business Key (e.g. SEF-001)
-    tarih: Mapped[date] = mapped_column(Date, index=True)
-    saat: Mapped[Optional[str]] = mapped_column(String(5))
-    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-
-    # Foreign Keys
-    guzergah_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("lokasyonlar.id", ondelete="RESTRICT"), index=True, nullable=True
-    )
-    route_pair_id: Mapped[Optional[str]] = mapped_column(
-        String(64), index=True
-    )  # Unified V2.1 Contract
-    # Phase 4.4: SeferFuelEstimator tahmininin route_simulations row'una bağı
-    route_simulation_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        ForeignKey("route_simulations.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="RESTRICT"), index=True
-    )
-    dorse_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("dorseler.id", ondelete="SET NULL"), index=True
-    )
-    sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="RESTRICT"), index=True
-    )
-    periyot_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("yakit_periyotlari.id", ondelete="SET NULL"), index=True
-    )  # 2026-07-01 P1 madde 14: gerçek FK (bkz. migration 0035)
-
-    # Weight Info
-    bos_agirlik_kg: Mapped[int] = mapped_column(
-        Integer, server_default=text("0"), default=0
-    )
-    dolu_agirlik_kg: Mapped[int] = mapped_column(
-        Integer, server_default=text("0"), default=0
-    )
-    net_kg: Mapped[int] = mapped_column(
-        Integer, server_default=text("0"), default=0
-    )  # Computed: Dolu - Boş
-    ton: Mapped[float] = mapped_column(
-        Float, server_default=text("0.0"), default=0.0
-    )  # Computed
-
-    # Location Info
-    cikis_yeri: Mapped[str] = mapped_column(String(100))
-    varis_yeri: Mapped[str] = mapped_column(String(100))
-    mesafe_km: Mapped[float] = mapped_column(Float)
-    baslangic_km: Mapped[Optional[int]] = mapped_column(Integer)
-    bitis_km: Mapped[Optional[int]] = mapped_column(Integer)
-
-    # Trip Status & Details
-    bos_sefer: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false")
-    )
-    durum: Mapped[str] = mapped_column(
-        String(20), default="Planned", server_default=text("'Planned'")
-    )
-    notlar: Mapped[Optional[str]] = mapped_column(String(255))
-    # Manual attribution override audit (AttributionService.override_attribution):
-    # marks a trip whose arac/sofor was manually re-assigned, with the reason.
-    is_corrected: Mapped[bool] = mapped_column(
-        Boolean, default=False, server_default=text("false"), nullable=False
-    )
-    correction_reason: Mapped[Optional[str]] = mapped_column(Text)
-
-    # Fuel & API Data
-    dagitilan_yakit: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    tahmini_tuketim: Mapped[Optional[float]] = mapped_column(
-        Float
-    )  # AI predicted consumption
-    tahmin_meta: Mapped[Optional[dict]] = mapped_column(JSONB)
-    rota_detay: Mapped[Optional[dict]] = mapped_column(JSONB)  # Route path and details
-    tuketim: Mapped[Optional[float]] = mapped_column(Float)
-    ascent_m: Mapped[Optional[float]] = mapped_column(Float)
-    descent_m: Mapped[Optional[float]] = mapped_column(Float)
-    flat_distance_km: Mapped[float] = mapped_column(Float, default=0.0)
-    otoban_mesafe_km: Mapped[Optional[float]] = mapped_column(Float)
-    sehir_ici_mesafe_km: Mapped[Optional[float]] = mapped_column(Float)
-    duration_min: Mapped[Optional[int]] = mapped_column(
-        Integer
-    )  # Time proxy for fatigue
-
-    # Audit Logs
-    created_by_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
-    )
-    updated_by_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
-    )
-    iptal_nedeni: Mapped[Optional[str]] = mapped_column(String(255))
-    # B-004: Optimistic Locking â€” her update'te version +1 artar
-    version: Mapped[int] = mapped_column(
-        Integer, default=1, server_default=text("1"), nullable=False
-    )
-
-    # PostGIS Spatial Data (Removed temporarily due to missing columns/extension)
-    # cikis_geom: Mapped[Optional[Any]] = mapped_column(Geometry("POINT", srid=4326))
-    # varis_geom: Mapped[Optional[Any]] = mapped_column(Geometry("POINT", srid=4326))
-
-    # Telegram onay akışı
-    onay_durumu: Mapped[Optional[str]] = mapped_column(
-        String(20), nullable=True
-    )  # NULL=web-girildi, beklemede, onaylandi, reddedildi
-    onaylayan_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
-    )
-
-    # Meta
-    # aktif: Mapped[bool] = mapped_column(Boolean, default=True)  # REMOVED - Hard Delete
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), default=get_utc_now
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=get_utc_now,
-    )
-
-    # Relationships
-    arac: Mapped["Arac"] = relationship(back_populates="seferler")
-    dorse: Mapped[Optional["Dorse"]] = relationship(back_populates="seferler")
-    sofor: Mapped["Sofor"] = relationship(back_populates="seferler")
-    guzergah: Mapped[Optional["Lokasyon"]] = relationship(back_populates="seferler")
-    created_by: Mapped[Optional["Kullanici"]] = relationship(
-        foreign_keys=[created_by_id]
-    )
-    updated_by: Mapped[Optional["Kullanici"]] = relationship(
-        foreign_keys=[updated_by_id]
-    )
-
-    @validates("mesafe_km")
-    def validate_mesafe(self, key, value):
-        if value is not None and value <= 0:
-            raise ValueError(f"Mesafe (km) 0'dan büyük olmalıdır: {value}")
-        return value
-
-    @validates("net_kg")
-    def validate_net_kg(self, key, value):
-        if value is not None and value < 0:
-            raise ValueError(f"Net ağırlık (kg) negatif olamaz: {value}")
-        return value
-
-
-class SeferLog(Base):
-    __tablename__ = "seferler_log"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    sefer_id: Mapped[int] = mapped_column(
-        ForeignKey("seferler.id", ondelete="CASCADE"), index=True
-    )
-    degisen_alan: Mapped[Optional[str]] = mapped_column(String(50))
-    eski_deger: Mapped[Optional[str]] = mapped_column(String)
-    yeni_deger: Mapped[Optional[str]] = mapped_column(String)
-    degistiren_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
-    )
-    islem_tipi: Mapped[str] = mapped_column(String(20))  # INSERT, UPDATE, DELETE
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), index=True
-    )
-    sefer: Mapped["Sefer"] = relationship()
 
 
 class YakitPeriyot(Base):
@@ -1499,38 +1284,6 @@ class OutboxEvent(Base):
     processed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     retry_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text)
-
-
-class SeferBelge(Base):
-    """Şoförlerden Telegram üzerinden gelen fotoğraf + OCR sonuçları"""
-
-    __tablename__ = "sefer_belgeler"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    sefer_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("seferler.id", ondelete="SET NULL"), nullable=True, index=True
-    )
-    telegram_mesaj_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    belge_tipi: Mapped[str] = mapped_column(
-        String(30), nullable=False
-    )  # yakit_fisi, sefer_fisi, tir_ekran
-    dosya_yolu: Mapped[str] = mapped_column(String(500), nullable=False)
-    ocr_ham: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    ocr_veri: Mapped[Optional[dict]] = mapped_column(
-        JSONB, nullable=True
-    )  # {tarih, tutar, litre, istasyon, km}
-    ocr_durumu: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default="bekliyor", index=True
-    )  # bekliyor, islendi, hata
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-
-    # Relationships
-    sofor: Mapped["Sofor"] = relationship(back_populates="belgeler")
 
 
 # ---------------------------------------------------------------------------

@@ -4,11 +4,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import asc as sql_asc
 from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
-from sqlalchemy.orm import joinedload
 
 from app.database.base_repository import BaseRepository
-from app.database.models import Arac, Sefer
+from app.database.models import Arac, Dorse, Lokasyon, Sofor
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.trip.infrastructure.models import Sefer
 from v2.modules.trip.sefer_status import (
     CANONICAL_SEFER_STATUS_SET,
     SEFER_STATUS_IPTAL,
@@ -36,29 +36,76 @@ class SeferRepository(BaseRepository[Sefer]):
     model = Sefer
 
     @staticmethod
-    def _with_relations(stmt):
-        """3 kopya ``joinedload(arac,sofor,dorse,guzergah)`` zincirini tek
-        yerde toplar (models.py bölünmesinden ÖNCEKİ ara adım — D.1/1
-        riskinin mitigasyonu, task dosyası madde 5.5)."""
-        return stmt.options(
-            joinedload(Sefer.arac),
-            joinedload(Sefer.sofor),
-            joinedload(Sefer.dorse),
-            joinedload(Sefer.guzergah),
-        )
-
-    @staticmethod
-    def _row_to_dict(s: Sefer) -> Dict[str, Any]:
+    def _row_to_dict(
+        s: Sefer,
+        arac_map: Optional[Dict[int, str]] = None,
+        sofor_map: Optional[Dict[int, str]] = None,
+        dorse_map: Optional[Dict[int, str]] = None,
+        guzergah_map: Optional[Dict[int, str]] = None,
+    ) -> Dict[str, Any]:
         d = s.__dict__.copy()
         d.pop("_sa_instance_state", None)
-        d["plaka"] = s.arac.plaka if s.arac else None
-        d["sofor_adi"] = s.sofor.ad_soyad if s.sofor else None
-        d["dorse_plakasi"] = s.dorse.plaka if s.dorse else None
-        if s.guzergah:
-            d["guzergah_adi"] = f"{s.guzergah.cikis_yeri} - {s.guzergah.varis_yeri}"
-        else:
-            d["guzergah_adi"] = f"{s.cikis_yeri} - {s.varis_yeri}"
+        d["plaka"] = (arac_map or {}).get(s.arac_id)
+        d["sofor_adi"] = (sofor_map or {}).get(s.sofor_id)
+        d["dorse_plakasi"] = (dorse_map or {}).get(s.dorse_id)
+        guzergah_adi = (guzergah_map or {}).get(s.guzergah_id)
+        d["guzergah_adi"] = guzergah_adi or f"{s.cikis_yeri} - {s.varis_yeri}"
         return d
+
+    async def _rows_to_dicts(
+        self, seferler: List[Sefer], session=None
+    ) -> List[Dict[str, Any]]:
+        """``joinedload(arac/sofor/dorse/guzergah)`` yerine açık batch-query.
+
+        Bu 4 alan cross-module (fleet/driver/location) ORM ``relationship()``
+        aracılığıyla dolduruluyordu; models.py bölünmesinde (dalga 16, task
+        #58) o relationship'ler kaldırıldı (modüller birbirinin tablosuna
+        relationship() ile sızmaz). Tek gerçek ORM-seviye tüketicisi buydu —
+        N+1 yerine 4 ayrı batch SELECT (id IN (...)).
+        """
+        if not seferler:
+            return []
+        sess = session or self.session
+
+        arac_ids = {s.arac_id for s in seferler if s.arac_id}
+        sofor_ids = {s.sofor_id for s in seferler if s.sofor_id}
+        dorse_ids = {s.dorse_id for s in seferler if s.dorse_id}
+        guzergah_ids = {s.guzergah_id for s in seferler if s.guzergah_id}
+
+        arac_map: Dict[int, str] = {}
+        if arac_ids:
+            res = await sess.execute(select(Arac.id, Arac.plaka).where(Arac.id.in_(arac_ids)))
+            arac_map = dict(res.all())
+
+        sofor_map: Dict[int, str] = {}
+        if sofor_ids:
+            res = await sess.execute(
+                select(Sofor.id, Sofor.ad_soyad).where(Sofor.id.in_(sofor_ids))
+            )
+            sofor_map = dict(res.all())
+
+        dorse_map: Dict[int, str] = {}
+        if dorse_ids:
+            res = await sess.execute(
+                select(Dorse.id, Dorse.plaka).where(Dorse.id.in_(dorse_ids))
+            )
+            dorse_map = dict(res.all())
+
+        guzergah_map: Dict[int, str] = {}
+        if guzergah_ids:
+            res = await sess.execute(
+                select(Lokasyon.id, Lokasyon.cikis_yeri, Lokasyon.varis_yeri).where(
+                    Lokasyon.id.in_(guzergah_ids)
+                )
+            )
+            guzergah_map = {
+                row.id: f"{row.cikis_yeri} - {row.varis_yeri}" for row in res.all()
+            }
+
+        return [
+            self._row_to_dict(s, arac_map, sofor_map, dorse_map, guzergah_map)
+            for s in seferler
+        ]
 
     async def get_all(  # type: ignore[override]
         self,
@@ -109,7 +156,7 @@ class SeferRepository(BaseRepository[Sefer]):
         offset = max(0, int(offset or 0))
 
         # Build Query
-        stmt = self._with_relations(select(Sefer)).where(
+        stmt = select(Sefer).where(
             Sefer.is_deleted == False  # noqa: E712  [Integrity] Soft delete check
         )
 
@@ -140,7 +187,9 @@ class SeferRepository(BaseRepository[Sefer]):
             driver_ids = await search_driver_ids_by_name(search)
             stmt = stmt.where(
                 or_(
-                    Sefer.arac.has(Arac.plaka.ilike(search_like)),
+                    Sefer.arac_id.in_(
+                        select(Arac.id).where(Arac.plaka.ilike(search_like))
+                    ),
                     Sefer.sofor_id.in_(driver_ids),
                     Sefer.cikis_yeri.ilike(search_like),
                     Sefer.varis_yeri.ilike(search_like),
@@ -159,9 +208,9 @@ class SeferRepository(BaseRepository[Sefer]):
 
         stmt = stmt.limit(limit).offset(offset)
         result = await self.session.execute(stmt)
-        trips = result.scalars().unique().all()
+        trips = result.scalars().all()
 
-        return [self._row_to_dict(s) for s in trips]
+        return await self._rows_to_dicts(trips)
 
     async def get_for_training(self, arac_id: int, limit: int = 200) -> List[Dict]:
         """
@@ -294,12 +343,13 @@ class SeferRepository(BaseRepository[Sefer]):
         conditions = [Sefer.id == sefer_id]
         if not include_inactive:
             conditions.append(Sefer.is_deleted == False)  # noqa: E712
-        stmt = self._with_relations(select(Sefer)).where(*conditions)
+        stmt = select(Sefer).where(*conditions)
         result = await self.session.execute(stmt)
         s = result.scalars().first()
         if not s:
             return None
-        return self._row_to_dict(s)
+        rows = await self._rows_to_dicts([s])
+        return rows[0]
 
     # Alias used by sefer_read_service
     async def get_by_id_with_details(self, sefer_id: int) -> dict | None:
@@ -840,14 +890,15 @@ class SeferRepository(BaseRepository[Sefer]):
         """Onay durumuna göre sefer listesi (en yeni önce)."""
         async with self._get_session() as session:
             stmt = (
-                self._with_relations(select(Sefer))
+                select(Sefer)
                 .where(Sefer.onay_durumu == onay_durumu, ~Sefer.is_deleted)
                 .order_by(Sefer.created_at.desc())
                 .offset(skip)
                 .limit(min(limit, self.MAX_LIMIT))
             )
             result = await session.execute(stmt)
-            return [self._row_to_dict(s) for s in result.unique().scalars().all()]
+            seferler = result.scalars().all()
+            return await self._rows_to_dicts(seferler, session=session)
 
 
 def get_sefer_repo(session=None) -> "SeferRepository":

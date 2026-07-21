@@ -428,8 +428,12 @@ All settings in `app/config.py` (`pydantic_settings.BaseSettings`). Reference vi
    pre-existing legacy `report-only` contract (`app.core.services` vs
    `app.services` circular drift, unrelated to the v2/ modular-monolith
    refactor) stays non-blocking on purpose — see
-   `TASKS/faz1-import-linter-baseline-ve-gate.md`. `shared_kernel`/
-   `platform_infra` aren't in the gated set yet — added when those dalgas land.
+   `TASKS/faz1-import-linter-baseline-ve-gate.md`. `shared_kernel` landed
+   (dalga 16) but deliberately has no `public-surface-only-shared_kernel`
+   contract — the whole point of that module is that everyone imports it
+   freely (see `v2/modules/shared_kernel/CLAUDE.md`), so the "15" count
+   above stays business-modules-only. `platform_infra` (not started) will
+   get its own contract added when it lands.
 
 ---
 

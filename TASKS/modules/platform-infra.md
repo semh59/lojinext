@@ -1,12 +1,112 @@
-# Modül Görevi: platform-infra (dalga 17/17 — REGISTRY FİNALİ)
+# Modül Görevi: platform-infra (dalga 17/17)
 
-> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz. **1. Adım:** `app/platform/CLAUDE.md`'yi Read ile oku (yoksa oluştur).
+> **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
-**Doğa farkı:** shared_kernel gibi bu da iş modülü değil — gerçekten cross-cutting altyapı (cache/events/monitoring/resilience/middleware/DI/bootstrap). Bu dalga FAZ1'in SON adımı: `main.py`/`container.py`/`api.py`'nin kalıntısını registry desenine tam oturtur.
+**Doğa farkı:** shared_kernel gibi bu da iş modülü değil — gerçekten cross-cutting altyapı (cache/events/monitoring/resilience/middleware/DI/bootstrap).
 
-**Giriş kriteri:** shared-kernel dalgası (16) tamamlandı. **Çıkış kriteri:** `app/modules/registry.py` 15 modülün TAMAMINI içeriyor; `main.py` yalnız registry iterate ediyor, hard-code hook kalmadı.
+**Giriş kriteri:** shared-kernel dalgası (16) tamamlandı, main'de yeşil.
 
 ---
+
+## 0. ÖN-DENETİM DÜZELTMELERİ (2026-07-21, dalga 16 bittikten sonra yapıldı, kullanıcı onayıyla)
+
+Bu planın orijinal hâli (aşağıdaki madde 1-5, tarihsel olarak korunuyor)
+`app/modules/registry.py` + `ModuleSpec` + tek-satır-shim'li bir mimariye
+dayanıyordu. Dalga 1-16'nın GERÇEK yürütülüşü bambaşka bir yoldan gitti —
+bu bölüm o planı gerçek koda karşı doğrulayıp düzeltiyor (shared-kernel.md'nin
+madde 0'ıyla aynı disiplin).
+
+1. **`app/modules/registry.py`/`ModuleSpec`/`app/platform/` HİÇ VAR OLMADI.**
+   `faz1-registry-iskelet-ve-shim.md`'nin öngördüğü `ModuleSpec`/registry
+   deseni, 15 modülün taşınması sırasında hiç inşa edilmedi — her modül
+   doğrudan `v2/modules/<isim>/`'e taşındı (`app/modules/<isim>/` DEĞİL),
+   `main.py`/`container.py`/`api.py` her taşımada ELLE güncellendi (o
+   modülün import/route'ları eklendi/çıkarıldı). Taşınan hiçbir dosyanın
+   eski yerinde shim BIRAKILMADI — kullanıcının tekrarlanan "varsayımla iş
+   yapmak yasak"/"shim bırakma" talimatları eski planın "tek-satır shim"
+   stratejisini baştan geçersiz kıldı (istisna: `app/api/v1/endpoints/
+   {ai,feedback}.py` + `app/schemas/trip_planner.py` — bunlar GERÇEKTEN
+   var, ama ai_assistant modülünün KENDİ, "FAZ4'te silinir" diye
+   dokümante edilmiş bilinçli shim'leri, bu dalganın kapsamı dışı).
+   **Düzeltme**: aşağıdaki madde 1-5'teki registry/ModuleSpec/shim
+   çerçevesi TAMAMEN TERK EDİLDİ — bu dalganın gerçek işi doğrudan
+   `container.py`/`api.py`/`main.py`'nin kalan kalıntısını (varsa) ilgili
+   modüllere taşımak/silmek, registry soyutlaması KURMADAN.
+
+2. **`app/api/v1/api.py`: 55 `include_router`, ama sadece 2 tanesi gerçek
+   platform_infra kalıntısı.** Dosya (218 satır) zaten neredeyse tamamen
+   `v2.modules.*.api.*` import'larından oluşuyor (`grep -c include_router`
+   → 55). `app/api/v1/endpoints/`'te kalan 4 dosyadan yalnız 2'si GERÇEK
+   (mekanik olarak taşınmamış) kod: `admin_calibration.py` (53 satır),
+   `weather.py` (193 satır) — ikisi de **route_simulation modülünün kendi**
+   dokümante edilmiş eksik-taşıması (kök CLAUDE.md'nin route_simulation
+   satırı: "weather_service.py/route_validator.py/openroute_service.py/
+   route_calibration_service.py/admin_calibration.py endpoint hâlâ eski
+   app/ yollarında"). **Bu iki dosya platform_infra'nın kapsamı DEĞİL** —
+   route_simulation'ın kendi bitmemiş işi, ayrı bir onay/görev.
+   `app/api/v1/endpoints/ai.py`/`feedback.py` zaten `v2.modules.ai_assistant.
+   api.*`'ye yönlendiren 1 satırlık, "FAZ4'te silinir" diye işaretli bilinçli
+   shim'ler — dokunulmadı.
+
+3. **`app/core/container.py`: 19 property vardı (32 değil), taşıma sırasında
+   8'i sıfır-çağıran bulunup silindi.** Her property için gerçek kod tabanı
+   (`grep -rn "get_container()\.<prop>"` + `grep -rn "container\.<prop>"`,
+   test dosyaları dahil) taranarak GERÇEK çağıran sayısı doğrulandı —
+   varsayılmadı:
+   - **Sıfır çağıran, silindi** (2026-07-21): `arac_repo`, `sofor_repo`,
+     `yakit_repo`, `lokasyon_repo`, `dorse_repo`, `analiz_repo`,
+     `health_service`, `external_service`. Gerçek prod kod bu repo'ları hep
+     `uow.<repo>` (UnitOfWork) veya modül-seviyeli singleton getter'lar
+     (`get_arac_repo()` vb.) veya `ReportRepos` bundle'ı üzerinden okuyordu
+     — container'daki AYRI kopyaları hiçbir yerden okunmuyordu (yalnız
+     `test_container.py`/`test_container_comprehensive.py`'nin kendi
+     testleri + `test_detailed_scenarios.py`'nin artık işlevsiz bir
+     session-enjeksiyon bloğu tarafından egzersiz ediliyordu — o test
+     bloğu da provasız/no-op olduğu doğrulanıp kaldırıldı).
+   - **Kaldı, gerçek çağıranı var**: `event_bus`, `sefer_repo` (yalnız
+     `sefer_service`'in kendi DI wire-up'ı için — `sefer_service` gerçekten
+     çağrılıyor: `import_excel`'in `process_sefer_import`/
+     `import_sefer_excel_upload`'ı `get_container().sefer_service.
+     bulk_add_sefer(...)` kullanıyor), `prediction_service`,
+     `anomaly_detector`, `time_series_service`, `license_service`,
+     `ai_service`, `smart_ai_service`, `export_service`, `weather_service`
+     — hepsi `get_container().<prop>` ile gerçekten çağrılıyor
+     (`v2/modules/*/application/*.py` içinden, çoğunlukla döngüsel-import
+     kırma amaçlı bir lazy-factory deseni).
+   - **Not**: `container.py`'nin kendi docstring'i "BURAYA GİRMEZ:
+     transaction-scoped domain servisleri, bunlar app/api/deps.py'de
+     Depends()+UoW ile oluşturulur" diyor — ama `sefer_service` tam olarak
+     bu kategoriye giriyor ve yine de container'da yaşıyor (tarihsel
+     tutarsızlık, bu turda dokunulmadı, ayrı bir karar gerektirir: gerçek
+     trip route'ları zaten `app/api/deps.py`'nin AYRI, per-request
+     `get_sefer_service(uow)` fonksiyonunu kullanıyor — container'ınki
+     yalnız import_excel'in container-üzerinden-erişimi için yaşıyor).
+   - **Kalan 11 property için gelecek karar (bu turda YAPILMADI)**: bunların
+     her biri gerçekten "app-lifetime singleton" mı (container'ın kendi
+     iddia ettiği amaç) yoksa modülün kendi `public.py`'sine taşınabilecek
+     bir lazy-factory mi — bu, modül-modül ayrı bir inceleme gerektirir,
+     kapsamı bu ön-denetimin ötesinde.
+
+4. **`app/main.py` (853 satır): ML warm-up hâlâ inline, `prediction_ml.
+   startup()`'a hiç taşınmamış.** Eski planın "main.py ML warm-up →
+   prediction_ml.startup(app)" iddiası gerçekleşmedi — lifespan'ın 343-381
+   satırları arası hâlâ `_warmup_all_predictors()`'ı doğrudan tanımlıyor.
+   Bunun taşınması (registry olmadan, doğrudan `v2.modules.prediction_ml`'e)
+   ayrı bir karar/onay gerektirir — bu ön-denetimde yalnız TESPİT edildi.
+
+5. **Gerçek platform_infra envanteri (registry'siz, doğrudan)**: cache/
+   events/monitoring/resilience/middleware (`app/infrastructure/*`),
+   Sentry/Prometheus/OTEL/exception-handler'lar (`main.py` 206-282,
+   375-748), `app/services/external_service.py`,
+   `app/workers/tasks/{dlq_tasks,outbox_tasks}.py`, `app/database/
+   {connection,db_session,init_db}.py` — bunların hangilerinin GERÇEKTEN
+   cross-cutting kalıp hangilerinin belirli bir modüle ait olduğu (madde 1
+   deki gibi tek tek `grep`le) HENÜZ İNCELENMEDİ, kullanıcı onayıyla
+   sıradaki adım olarak planlanabilir.
+
+---
+
+## Aşağıdaki madde 1-5 — TARİHSEL, TERK EDİLDİ (yukarıdaki madde 0'a bakın)
 
 ## 1. Mevcut envanter (62 dosya, 9.654 LOC — değişmez, bu dalga TAŞIMIYOR, YENİDEN BAĞLIYOR)
 Ana kalemler (tam liste MEMORY/PROGRESS.md kaynak taramasından): `main.py`, `config.py`, `api/deps.py`, `api/v1/api.py`, `core/container.py`, `database/{connection,db_session,init_db}.py`, `infrastructure/{audit,background,cache,context,database,events,logging,middleware,monitoring,resilience,security/pii_*}/*`, `services/external_service.py`, `workers/tasks/{dlq_tasks,outbox_tasks}.py`.

@@ -23,18 +23,9 @@ from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from app.infrastructure.events.event_bus import EventBus
-    from v2.modules.admin_platform.application.health_service import HealthService
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
-    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-        AnalizRepository,
-    )
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
     from v2.modules.auth_rbac.application.license_service import LicenseEngine
-    from v2.modules.driver.infrastructure.repository import SoforRepository
-    from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
-    from v2.modules.fleet.infrastructure.vehicle_repository import AracRepository
-    from v2.modules.fuel.infrastructure.repository import YakitRepository
-    from v2.modules.location.infrastructure.repository import LokasyonRepository
     from v2.modules.prediction_ml.application.prediction_service import (
         PredictionService,
     )
@@ -51,10 +42,12 @@ class Container:
 
     INITIALIZATION ORDER (dependency graph sırası):
     1. Infrastructure : event_bus
-    2. Repositories   : arac, sefer, sofor, yakit, lokasyon, dorse, analiz
-    3. Domain Services: arac, sofor, sefer, yakit, lokasyon, dorse, analiz
+    2. Repositories   : sefer (yalnız sefer_service'in DI wire-up'ı için —
+                        diğer 6 repo property'si dalga 17 denetiminde sıfır-
+                        çağıran bulunup kaldırıldı, bkz. platform-infra.md madde 0)
+    3. Domain Services: sefer
     4. ML/AI          : prediction, anomaly_detector, time_series (ağır)
-    5. External/Infra : license, health, route, smart_ai, weather (ağ bağımlı)
+    5. External/Infra : license, smart_ai, ai, weather, export (ağ bağımlı)
 
     SINGLETON vs PER-REQUEST KURALI:
     - BURAYA GİRER (singleton): ML model yüklemesi, AI engine, external API client,
@@ -76,15 +69,12 @@ class Container:
         self._event_bus: Optional["EventBus"] = None
 
         # ── 2. Repositories (sessionsuz blueprint; UoW session inject eder) ─
-        # Bu repo'lar "şablon" olarak yaşıyor. Gerçek sorgular UoW.session
-        # üzerinden yapılır. Container'daki örnek sadece DI wire-up içindir.
-        self._arac_repo: Optional["AracRepository"] = None
+        # Bu repo "şablon" olarak yaşıyor. Gerçek sorgular UoW.session
+        # üzerinden yapılır. Container'daki örnek sadece `sefer_service`'in
+        # DI wire-up'ı içindir — bu yüzden tek kalan repo bu (diğerleri
+        # dalga 17 denetiminde sıfır-çağıran bulunup kaldırıldı, bkz.
+        # platform-infra.md madde 0).
         self._sefer_repo: Optional["SeferRepository"] = None
-        self._sofor_repo: Optional["SoforRepository"] = None
-        self._yakit_repo: Optional["YakitRepository"] = None
-        self._lokasyon_repo: Optional["LokasyonRepository"] = None
-        self._dorse_repo: Optional["DorseRepository"] = None
-        self._analiz_repo: Optional["AnalizRepository"] = None
 
         # ── 3. Core Domain Services (singleton — stateless read-heavy) ──────
         # NOT: Transaction-scoped CRUD servisleri (AracService, SeferService vb.)
@@ -106,8 +96,6 @@ class Container:
         # ── 5. External / Infrastructure Services ───────────────────────────
         # Ağ bağımlı veya konfigürasyon tabanlı servisler.
         self._license_service: Optional["LicenseEngine"] = None
-        self._health_service: Optional["HealthService"] = None
-        self._external_service = None
         self._weather_service = None
         self._export_service = None
 
@@ -124,18 +112,6 @@ class Container:
     # --- Repositories ---
 
     @property
-    def arac_repo(self) -> "AracRepository":
-        if self._arac_repo is None:
-            with self._lock:
-                if self._arac_repo is None:
-                    from v2.modules.fleet.infrastructure.vehicle_repository import (
-                        AracRepository,
-                    )
-
-                    self._arac_repo = AracRepository()
-        return self._arac_repo
-
-    @property
     def sefer_repo(self) -> "SeferRepository":
         if self._sefer_repo is None:
             with self._lock:
@@ -146,54 +122,6 @@ class Container:
 
                     self._sefer_repo = SeferRepository()
         return self._sefer_repo
-
-    @property
-    def sofor_repo(self) -> "SoforRepository":
-        if self._sofor_repo is None:
-            with self._lock:
-                if self._sofor_repo is None:
-                    from v2.modules.driver.infrastructure.repository import (
-                        SoforRepository,
-                    )
-
-                    self._sofor_repo = SoforRepository()
-        return self._sofor_repo
-
-    @property
-    def yakit_repo(self) -> "YakitRepository":
-        if self._yakit_repo is None:
-            with self._lock:
-                if self._yakit_repo is None:
-                    from v2.modules.fuel.infrastructure.repository import (
-                        YakitRepository,
-                    )
-
-                    self._yakit_repo = YakitRepository()
-        return self._yakit_repo
-
-    @property
-    def lokasyon_repo(self) -> "LokasyonRepository":
-        if self._lokasyon_repo is None:
-            with self._lock:
-                if self._lokasyon_repo is None:
-                    from v2.modules.location.infrastructure.repository import (
-                        LokasyonRepository,
-                    )
-
-                    self._lokasyon_repo = LokasyonRepository()
-        return self._lokasyon_repo
-
-    @property
-    def dorse_repo(self) -> "DorseRepository":
-        if self._dorse_repo is None:
-            with self._lock:
-                if self._dorse_repo is None:
-                    from v2.modules.fleet.infrastructure.trailer_repository import (
-                        DorseRepository,
-                    )
-
-                    self._dorse_repo = DorseRepository()
-        return self._dorse_repo
 
     # --- Core Services ---
 
@@ -208,18 +136,6 @@ class Container:
                         repo=self.sefer_repo, event_bus=self.event_bus
                     )
         return self._sefer_service
-
-    @property
-    def analiz_repo(self) -> "AnalizRepository":
-        if self._analiz_repo is None:
-            with self._lock:
-                if self._analiz_repo is None:
-                    from v2.modules.analytics_executive.infrastructure.executive_read_models import (
-                        AnalizRepository,
-                    )
-
-                    self._analiz_repo = AnalizRepository()
-        return self._analiz_repo
 
     @property
     def prediction_service(self) -> "PredictionService":
@@ -270,18 +186,6 @@ class Container:
         return self._license_service
 
     @property
-    def health_service(self) -> "HealthService":
-        if self._health_service is None:
-            with self._lock:
-                if self._health_service is None:
-                    from v2.modules.admin_platform.application.health_service import (
-                        HealthService,
-                    )
-
-                    self._health_service = HealthService()
-        return self._health_service
-
-    @property
     def ai_service(self):
         if self._ai_service is None:
             with self._lock:
@@ -304,16 +208,6 @@ class Container:
 
                     self._smart_ai_service = SmartAIService()
         return self._smart_ai_service
-
-    @property
-    def external_service(self):
-        if self._external_service is None:
-            with self._lock:
-                if self._external_service is None:
-                    from app.services.external_service import get_external_service
-
-                    self._external_service = get_external_service()
-        return self._external_service
 
     @property
     def export_service(self):
@@ -344,7 +238,6 @@ class Container:
             # Servisleri sıfırla (Dependency sırasının tersine)
             self._smart_ai_service = None
             self._ai_service = None
-            self._health_service = None
             self._license_service = None
             self._time_series_service = None
             self._anomaly_detector = None
@@ -353,15 +246,9 @@ class Container:
 
             # External / infra singletons
             self._weather_service = None
-            self._external_service = None
 
             # Repositories
-            self._yakit_repo = None
-            self._lokasyon_repo = None
             self._sefer_repo = None
-            self._sofor_repo = None
-            self._arac_repo = None
-            self._dorse_repo = None
 
             # Infrastructure
             self._event_bus = None

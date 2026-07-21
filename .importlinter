@@ -46,23 +46,15 @@ modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -139,23 +131,15 @@ containers =
     v2.modules.admin_platform
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -267,23 +251,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -385,23 +361,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -503,23 +471,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -621,23 +581,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -739,23 +691,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -857,23 +801,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -975,23 +911,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1093,23 +1021,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1211,23 +1131,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1329,23 +1241,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1442,23 +1346,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1559,23 +1455,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1677,23 +1565,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1795,23 +1675,15 @@ forbidden_modules =
     v2.modules.admin_platform.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1913,23 +1785,15 @@ forbidden_modules =
     v2.modules.trip.infrastructure
 ignore_imports =
     app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> v2.modules.admin_platform.application.health_service
     app.core.container -> v2.modules.trip.application.trip_service
     app.core.container -> app.core.services.weather_service
     app.core.container -> v2.modules.trip.infrastructure.repository
     app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
     app.core.container -> v2.modules.prediction_ml.application.prediction_service
     app.core.container -> v2.modules.ai_assistant.application.knowledge_base
     app.core.container -> v2.modules.prediction_ml.application.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
     app.core.container -> v2.modules.anomaly.application.detect_anomaly
     app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.location.infrastructure.repository
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**

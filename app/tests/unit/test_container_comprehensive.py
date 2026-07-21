@@ -72,40 +72,11 @@ def mock_event_bus():
 
 
 @pytest.fixture
-def mock_arac_repo():
-    """Mock AracRepository for testing."""
-    mock = Mock()
-    mock.get_all = Mock(return_value=[])
-    mock.get_by_id = Mock(return_value=None)
-    mock.add = Mock(return_value=1)
-    return mock
-
-
-@pytest.fixture
 def mock_sefer_repo():
     """Mock SeferRepository for testing."""
     mock = Mock()
     mock.get_all = Mock(return_value=[])
     mock.add = Mock(return_value=1)
-    return mock
-
-
-@pytest.fixture
-def mock_sofor_repo():
-    """Mock SoforRepository for testing."""
-    mock = Mock()
-    mock.get_all = Mock(return_value=[])
-    mock.add = Mock(return_value=1)
-    return mock
-
-
-@pytest.fixture
-def mock_yakit_repo():
-    """Mock YakitRepository for testing."""
-    mock = Mock()
-    mock.get_all = Mock(return_value=[])
-    mock.add = Mock(return_value=1)
-    mock.get_son_km = Mock(return_value=None)
     return mock
 
 
@@ -165,15 +136,20 @@ class TestContainerInitialization:
     """Container initialization testleri."""
 
     def test_all_repositories_initialized(self):
-        """Tüm repository'ler initialize edilmeli."""
+        """Tüm repository'ler initialize edilmeli.
+
+        Yalnız ``sefer_repo`` kaldı (``sefer_service``'in DI wire-up'ı için) —
+        ``arac``/``sofor``/``yakit``/``lokasyon``/``dorse``/``analiz_repo``
+        dalga 17 denetiminde sıfır-çağıran bulunup kaldırıldı: gerçek prod
+        kod hepsi ``uow.<repo>``/module-level singleton getter'lar üzerinden
+        gidiyordu, container'daki ayrı kopyaları hiçbir yerden okunmuyordu
+        (bkz. ``TASKS/modules/platform-infra.md`` madde 0).
+        """
         from app.core.container import get_container
 
         container = get_container()
 
-        assert container.arac_repo is not None
         assert container.sefer_repo is not None
-        assert container.sofor_repo is not None
-        assert container.yakit_repo is not None
 
     def test_all_services_initialized(self):
         """Tüm servisler initialize edilmeli."""
@@ -183,8 +159,10 @@ class TestContainerInitialization:
 
         assert container.sefer_service is not None
         # container.analiz_service removed — AnalizService class deleted in
-        # dalga 11 (dead-code temizliği, hiçbir prod kod çağırmıyordu);
-        # container.analiz_repo hâlâ var (read-model repo, asserted above).
+        # dalga 11 (dead-code temizliği, hiçbir prod kod çağırmıyordu).
+        # container.analiz_repo de dalga 17'de aynı gerekçeyle kaldırıldı —
+        # reports modülü kendi ReportRepos bundle'ını kullanıyor, container'ınkini
+        # hiç okumuyordu (bkz. TASKS/modules/platform-infra.md madde 0).
         # container.import_service removed — ImportService class deleted in
         # dalga 9 (B.1 free-function refactor, v2.modules.import_excel).
         # container.report_service removed — ReportService class deleted in
@@ -223,38 +201,18 @@ class TestDependencyInjection:
 
         assert container.sefer_service.repo is container.sefer_repo
 
-    # test_yakit_service_has_correct_repo removed — YakitService class deleted
-    # in dalga 4 (B.1 free-function refactor, v2.modules.fuel); fuel use-cases
-    # open their own UnitOfWork() and never held a constructor-injected repo
-    # (container.yakit_repo still exists, used by other services e.g.
-    # analiz_service/report_service, asserted below).
-
-    # test_arac_service_has_correct_repo removed — AracService class deleted
-    # in dalga 3; container.arac_repo still exists (used by other services
-    # e.g. analiz_service/import_service/report_service, asserted below).
-
-    # test_sofor_service_has_correct_repo removed — SoforService class deleted
-    # in dalga 5 (B.1 free-function refactor, v2.modules.driver); driver
-    # use-cases open their own UnitOfWork() and never held a
-    # constructor-injected repo (container.sofor_repo still exists, used by
-    # other services e.g. import_service/report_service, asserted below).
-
-    # test_analiz_service_has_all_repos removed — AnalizService class +
-    # container.analiz_service property both deleted in dalga 11 (dead-code
-    # temizliği, hiçbir prod kod çağırmıyordu); container.{arac,sefer,yakit}_repo
-    # still exist, used by other services e.g. report use-cases, asserted above.
-
-    # test_import_service_has_services_and_repos removed — ImportService
-    # class + container.import_service property both deleted in dalga 9
-    # (B.1 free-function refactor, v2.modules.import_excel); each use-case
-    # opens its own UnitOfWork() or reaches container.sefer_service inline
-    # (bkz. v2/modules/import_excel/CLAUDE.md).
-
-    # test_report_service_has_all_repos removed — ReportService class deleted
-    # in dalga 10 (B.1 free-function refactor, v2.modules.reports); reports
-    # use-cases take an explicit ReportRepos bundle (resolve_repos(uow)),
-    # never a constructor-injected repo (container.{arac,sofor,yakit,sefer}_repo
-    # still exist, used by other services e.g. analiz_service, asserted above).
+    # test_yakit_service_has_correct_repo / test_arac_service_has_correct_repo /
+    # test_sofor_service_has_correct_repo / test_analiz_service_has_all_repos /
+    # test_import_service_has_services_and_repos / test_report_service_has_all_repos
+    # — all removed. YakitService/AracService/SoforService/AnalizService/
+    # ImportService/ReportService classes were deleted in dalgas 3-11 (B.1
+    # free-function refactor / dead-code cleanup); each domain now opens its
+    # own UnitOfWork() or takes an explicit repo bundle (e.g. reports'
+    # ReportRepos via resolve_repos(uow)). container.{arac,sofor,yakit,
+    # lokasyon,dorse,analiz}_repo were themselves removed in dalga 17 — none
+    # had a real caller anywhere (bkz. TASKS/modules/platform-infra.md
+    # madde 0); only container.sefer_repo remains, kept alive by
+    # container.sefer_service's own DI wire-up (asserted below).
 
     def test_all_services_share_same_event_bus(self):
         """Event-publishing servisler aynı EventBus'ı paylaşmalı."""
@@ -399,9 +357,9 @@ class TestThreadSafety:
                 for _ in range(iterations):
                     # Çeşitli servislere erişim
                     _ = container.sefer_service
-                    _ = container.yakit_repo
-                    _ = container.arac_repo
-                    _ = container.analiz_repo
+                    _ = container.sefer_repo
+                    _ = container.prediction_service
+                    _ = container.license_service
             except Exception as e:
                 errors.append(str(e))
 

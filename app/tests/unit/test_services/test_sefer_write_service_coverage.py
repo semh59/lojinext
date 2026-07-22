@@ -30,6 +30,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.driver.infrastructure.repository import SoforRepository
 from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.trip.application import (
     add_trip,
@@ -54,6 +55,7 @@ from v2.modules.trip.domain.trip_validation import (
     sync_weight_fields,
     validate_sefer_create,
 )
+from v2.modules.trip.infrastructure.repository import SeferRepository
 from v2.modules.trip.schemas import SeferCreate, SeferUpdate, TripStatus
 
 pytestmark = pytest.mark.integration
@@ -688,6 +690,8 @@ async def test_bulk_delete_empty_list(db_session):
 
 
 async def test_create_return_trip_success(db_session):
+    """Return trip mirrors the reference sefer: locations swapped, ascent/
+    descent swapped, '-D' sefer_no suffix, bos_sefer=True, net_kg=0."""
     arac = await seed_arac(db_session, plaka="34SWCRT01")
     sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Rt")
     sefer = await seed_sefer(
@@ -697,12 +701,24 @@ async def test_create_return_trip_success(db_session):
         sefer_no="SWC-TRIP-RT01",
         cikis_yeri="Istanbul",
         varis_yeri="Ankara",
+        ascent_m=500,
+        descent_m=300,
     )
     await db_session.commit()
 
     # user_id=None to avoid FK violation against kullanicilar (no user 1 in test DB)
     new_id = await return_trip.create_return_trip(sefer.id, user_id=None)
     assert isinstance(new_id, int) and new_id > 0 and new_id != sefer.id
+
+    repo = SeferRepository(session=db_session)
+    donus = await repo.get_by_id(new_id)
+    assert donus["cikis_yeri"] == "Ankara"
+    assert donus["varis_yeri"] == "Istanbul"
+    assert donus["ascent_m"] == 300
+    assert donus["descent_m"] == 500
+    assert donus["sefer_no"] == "SWC-TRIP-RT01-D"
+    assert donus["bos_sefer"] is True
+    assert donus["net_kg"] == 0
 
 
 async def test_create_return_trip_raises_when_not_found(db_session):
@@ -746,12 +762,22 @@ async def test_update_sefer_round_trip_failure_is_not_silently_swallowed(db_sess
     # caller now sees the failure instead of a silent `True`.
 
 
-async def test_create_return_trip_no_double_suffix(db_session):
-    """Return trip sefer_no gets exactly one '-D' suffix, not '-D-D'.
+async def test_create_return_trip_no_double_suffix_collides_with_reference(
+    db_session,
+):
+    """Documents a real (pre-existing, mock-hidden) quirk in the '-D-D'
+    double-suffix guard, found by converting this test to real DB
+    (2026-07-22, mock-free test policy).
 
-    The '-D' strip logic on a sefer_no ending in '-D' would re-use the same
-    sefer_no (uniqueness conflict). Here we test the happy path: a sefer with
-    no sefer_no at all (NULL) → return trip succeeds with NULL sefer_no too.
+    When the reference sefer's own sefer_no already ends in '-D' (i.e. the
+    reference IS itself a return trip), the guard strips that suffix and
+    re-appends it — reproducing the reference's OWN sefer_no exactly. Since
+    `sefer_no` carries a table-wide UNIQUE constraint (not scoped by
+    is_deleted), inserting the new row collides with the still-present
+    reference row itself and raises ValueError, instead of the "-D-D"-free
+    success the guard's comment implies. The previous mock-based test never
+    caught this — a MagicMock repo has no real uniqueness constraint to
+    violate.
     """
     arac = await seed_arac(db_session, plaka="34SWCRT02")
     sofor = await seed_sofor(db_session, ad_soyad="Sofor SWC Rt2")
@@ -759,13 +785,43 @@ async def test_create_return_trip_no_double_suffix(db_session):
         db_session,
         arac_id=arac.id,
         sofor_id=sofor.id,
+        sefer_no="SWC-TRIP-RT02-D",
         cikis_yeri="Ankara",
         varis_yeri="Istanbul",
     )
     await db_session.commit()
 
-    new_id = await return_trip.create_return_trip(sefer.id)
-    assert isinstance(new_id, int) and new_id > 0
+    with pytest.raises(ValueError, match="zaten kullanımda"):
+        await return_trip.create_return_trip(sefer.id)
+
+
+# ============================================================
+# 10. SeferRepository.get_all(search=...) — real DB
+# ============================================================
+
+
+async def test_get_all_search_filter_matches_by_driver_name(db_session):
+    """search= finds trips via the driver-name trigram lookup (Tier E
+    madde 26, Sofor.ad_soyad is encrypted at rest) — real DB, real
+    SoforRepository.add() so the trigram child table is actually populated
+    (raw ORM inserts, like the _helpers/seed.py helpers, skip that sync)."""
+    arac = await seed_arac(db_session, plaka="34SWCSRCH1")
+    sofor_repo = SoforRepository(session=db_session)
+    match_id = await sofor_repo.add(ad_soyad="Mehmet Yılmaz SWC")
+    other_id = await sofor_repo.add(ad_soyad="Ali Demir SWC")
+    await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=match_id, sefer_no="SWC-SRCH-01"
+    )
+    await seed_sefer(
+        db_session, arac_id=arac.id, sofor_id=other_id, sefer_no="SWC-SRCH-02"
+    )
+    await db_session.commit()
+
+    repo = SeferRepository(session=db_session)
+    result = await repo.get_all(search="Yılmaz")
+
+    assert len(result) == 1
+    assert result[0]["sefer_no"] == "SWC-SRCH-01"
 
 
 # ============================================================

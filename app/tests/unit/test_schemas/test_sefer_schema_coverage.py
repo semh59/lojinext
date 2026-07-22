@@ -164,6 +164,18 @@ class TestSeferBaseTarih:
 # ---------------------------------------------------------------------------
 
 
+class TestSeferCreateMesafeKm:
+    def test_zero_mesafe_km_raises(self):
+        """SeferBase.mesafe_km carries Field(..., gt=0) — 0 must be rejected
+        at the Pydantic layer (before any use-case/DB logic runs)."""
+        from pydantic import ValidationError
+
+        from v2.modules.trip.schemas import SeferCreate
+
+        with pytest.raises(ValidationError, match="mesafe_km"):
+            SeferCreate(**_base_payload(mesafe_km=0))
+
+
 class TestSeferCreateKmRange:
     def test_valid_km_range(self):
         from v2.modules.trip.schemas import SeferCreate

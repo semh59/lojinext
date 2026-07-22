@@ -11,10 +11,13 @@ Covers:
 - get_by_date_range (lines 661-686)
 - set_onay_durumu (lines 688-714)
 - get_by_onay_durumu (lines 716-732)
-- get_by_sofor_id (lines 734-747)
-- get_with_route_analysis (lines 749-777)
-- get_driver_trips_with_route_analysis (lines 779-815)
-- get_driver_trips_by_route_type (lines 817-854)
+
+NOT: `get_by_sofor_id`/`get_with_route_analysis`/`get_driver_trips_with_
+route_analysis`/`get_driver_trips_by_route_type` dalga 14'te bu sınıftan
+`v2/modules/driver/infrastructure/driver_trip_queries.py`'ye (serbest
+fonksiyonlar) taşındı — artık `SeferRepository`'nin bir parçası değiller.
+Gerçek-DB testleri `test_driver_trip_queries.py`'de (2026-07-22'de eklendi,
+bu sınıflar burada silinip oraya taşındı).
 """
 
 from contextlib import asynccontextmanager
@@ -245,15 +248,12 @@ class TestGetAll:
         await repo.get_all(desc=False)
         repo._session.execute.assert_called_once()
 
-    async def test_search_filter(self):
-        """search executes the driver-name trigram lookup (Tier E madde 26,
-        Sofor.ad_soyad is encrypted at rest) plus the main filtered SELECT."""
-        repo = _make_repo()
-        mock_result = _scalars_result([])
-        repo._session.execute = AsyncMock(return_value=mock_result)
-
-        await repo.get_all(search="Ankara")
-        assert repo._session.execute.call_count == 2
+    # NOT: `search=` gerçek davranışı (driver-name trigram lookup + ana
+    # filtreli SELECT) artık `search_driver_ids_by_name` (ayrı bir DB
+    # session açan serbest fonksiyon, driver modülü) üzerinden çalışıyor
+    # — mock'lu tek-session call_count varsayımı artık geçerli değil.
+    # Gerçek-DB testi `test_sefer_write_service_coverage.py::
+    # test_get_all_search_filter_matches_by_driver_name`'de.
 
     async def test_durum_filter(self):
         repo = _make_repo()
@@ -1054,249 +1054,6 @@ class TestGetByOnayDurumu:
         repo._get_session = fake_get_session
 
         result = await repo.get_by_onay_durumu("Onaylandı")
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_by_sofor_id  (lines 734-747)
-# ---------------------------------------------------------------------------
-
-
-class TestGetBySoforId:
-    async def test_basic(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-        repo._to_dict = MagicMock(return_value={"id": 1})
-
-        result = await repo.get_by_sofor_id(sofor_id=3)
-        assert isinstance(result, list)
-
-    async def test_with_onay_durumu_filter(self):
-        repo = _make_repo()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = []
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_by_sofor_id(sofor_id=3, onay_durumu="Onaylandı")
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_with_route_analysis  (lines 749-777)
-# ---------------------------------------------------------------------------
-
-
-class TestGetWithRouteAnalysis:
-    async def test_returns_list(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 10
-        sefer.mesafe_km = 300.0
-        sefer.rota_detay = {"route_analysis": {"type": "highway"}}
-        sefer.tuketim = 35.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis(days=90)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["id"] == 10
-        assert result[0]["mesafe_km"] == 300.0
-
-    async def test_rota_detay_fallback_to_whole_dict(self):
-        """If rota_detay has no 'route_analysis' key, use the whole dict."""
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 11
-        sefer.mesafe_km = 200.0
-        sefer.rota_detay = {"some_other_key": "value"}
-        sefer.tuketim = 30.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis()
-        assert result[0]["route_analysis"] == {"some_other_key": "value"}
-
-    async def test_none_rota_detay_returns_empty_dict(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 12
-        sefer.mesafe_km = 100.0
-        sefer.rota_detay = None
-        sefer.tuketim = 28.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis()
-        assert result[0]["route_analysis"] == {}
-
-
-# ---------------------------------------------------------------------------
-# get_driver_trips_with_route_analysis  (lines 779-815)
-# ---------------------------------------------------------------------------
-
-
-class TestGetDriverTripsWithRouteAnalysis:
-    async def test_basic(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 20
-        sefer.tuketim = 34.0
-        sefer.tahmini_tuketim = 32.0
-        sefer.rota_detay = {}
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_driver_trips_with_route_analysis(sofor_id=5)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["gercek_tuketim"] == 34.0
-        assert result[0]["tahmini_tuketim"] == 32.0
-
-    async def test_empty_result(self):
-        repo = _make_repo()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = []
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_driver_trips_with_route_analysis(sofor_id=99)
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_driver_trips_by_route_type  (lines 817-854)
-# ---------------------------------------------------------------------------
-
-
-class _FakeDriverSefer:
-    """Minimal sefer-like object for driver route tests."""
-
-    def __init__(self, id, tuketim, tahmini_tuketim, rota_detay):
-        self.id = id
-        self.tuketim = tuketim
-        self.tahmini_tuketim = tahmini_tuketim
-        self.rota_detay = rota_detay
-
-
-class TestGetDriverTripsByRouteType:
-    async def test_filters_by_classify_route(self):
-        """Only trips whose rota_detay classifies to matching route_type are returned."""
-        repo = _make_repo()
-
-        sefer_match = _FakeDriverSefer(
-            30, 33.0, 31.0, {"route_analysis": {"primary_type": "highway"}}
-        )
-        sefer_no_match = _FakeDriverSefer(
-            31, 40.0, 38.0, {"route_analysis": {"primary_type": "city"}}
-        )
-
-        rows = [sefer_match, sefer_no_match]
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars = MagicMock(
-                return_value=MagicMock(all=MagicMock(return_value=rows))
-            )
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        with patch(
-            "v2.modules.driver.public.classify_route",
-            side_effect=lambda rd: "highway"
-            if rd.get("primary_type") == "highway"
-            else "city",
-        ):
-            result = await repo.get_driver_trips_by_route_type(
-                sofor_id=5, route_type="highway"
-            )
-
-        assert len(result) == 1
-        assert result[0]["id"] == 30
-
-    async def test_empty_when_no_matching_type(self):
-        repo = _make_repo()
-        sefer = _FakeDriverSefer(32, 33.0, 31.0, {})
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars = MagicMock(
-                return_value=MagicMock(all=MagicMock(return_value=[sefer]))
-            )
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        with patch(
-            "v2.modules.driver.public.classify_route",
-            return_value="city",
-        ):
-            result = await repo.get_driver_trips_by_route_type(
-                sofor_id=5, route_type="highway"
-            )
-
         assert result == []
 
 

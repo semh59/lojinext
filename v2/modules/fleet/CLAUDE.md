@@ -17,7 +17,6 @@ bulgusu), sefer planlama (trip), Excel import orkestrasyonu (import_excel
 ```python
 # Vehicle
 create_vehicle(data: AracCreate, uow=None) -> int
-count_active_vehicles() -> int                # LicenseEngine (auth_rbac) araç limit kontrolü için
 update_vehicle(arac_id: int, data: AracUpdate, uow=None) -> bool
 delete_vehicle(arac_id: int) -> bool          # smart delete: aktif→pasif→hard
 delete_all_vehicles() -> int
@@ -147,6 +146,14 @@ geçici borç olarak kalıyor, dokümante edildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **SİLİNDİ (2026-07-22, kullanıcı kararı — LicenseEngine "abandoned"
+  kabul edildi)** — `count_active_vehicles()` (`application/
+  count_active_vehicles.py`) yalnızca `auth_rbac`'ın `LicenseEngine.
+  check_car_limit()`'i için var olan tek-satırlık bir sarmalayıcıydı
+  (`uow.arac_repo.count_active()`'i saran). `LicenseEngine` tamamen
+  silinince bu wrapper da öksüz kaldı — `AracRepository.count_active()`'in
+  kendisi `reports` modülünün dashboard sayaçlarında hâlâ canlı kullanılıyor,
+  yalnız bu fleet-public sarmalayıcı gitti.
 - ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
   denetiminde bulundu)** — `vehicle_routes.py::create_arac` ve
   `trailer_routes.py::create_dorse` oluşturulan kaydı aynı transaction

@@ -16,9 +16,6 @@ here rather than carried forward).
 """
 
 from v2.modules.fleet.application.bulk_add_vehicles import bulk_add_vehicles
-from v2.modules.fleet.application.count_active_vehicles import (
-    count_active_vehicles,
-)
 from v2.modules.fleet.application.create_maintenance_record import (
     create_breakdown,
     create_maintenance_record,
@@ -110,7 +107,6 @@ from v2.modules.fleet.schemas import (
 __all__ = [
     # vehicle
     "create_vehicle",
-    "count_active_vehicles",
     "update_vehicle",
     "delete_vehicle",
     "delete_all_vehicles",

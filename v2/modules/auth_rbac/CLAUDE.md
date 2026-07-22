@@ -6,9 +6,12 @@ JWT login/refresh/logout + oturum yönetimi, kullanıcı CRUD'u (admin +
 self-service), rol/yetki (RBAC) CRUD'u, granular permission-check (`Permission`
 bitwise enum + string-key `require_yetki`), token blacklist (Redis-backed,
 logout revocation), kullanıcı tercihleri (kayıtlı filtre/sütun ayarları),
-lisans/ticari kısıt motoru (`LicenseEngine` — araç/sefer limit kontrolü),
 WebSocket bağlantı bileti (`ws_ticket`). `kullanicilar`, `roller`,
 `kullanici_oturumlari`, `kullanici_ayarlari` tablolarının tek sahibi.
+
+✅ **SİLİNDİ (2026-07-22, kullanıcı kararı)**: lisans/ticari kısıt motoru
+(`LicenseEngine` — araç/sefer limit kontrolü) tamamen kaldırıldı, bkz.
+aşağıdaki "abandoned subsystem silindi" notu.
 
 NE YAPMAZ: multi-worker güvenlik state'i (`BruteForceDetector`/
 `RBACViolationTracker`, bugün `v2/modules/platform_infra/monitoring/security_probe.py`'de
@@ -88,12 +91,7 @@ TokenBlacklist, blacklist                           # module-level singleton ins
 blacklist.add(token, expires_at) -> None
 blacklist.is_blacklisted(token) -> bool              # fail-secure: Redis down → True
 
-# License (araç/sefer ticari limit kontrolü — sınıf, bkz. istisna notu)
-# ✅ **TEMİZLENDİ (2026-07-22)**: `get_license_engine()` getter'ı silindi —
-# `v2/modules/platform_infra/container.py` zaten `LicenseEngine()`'i
-# doğrudan instantiate ediyordu (bu getter'ı hiç çağırmıyordu), grep ile
-# sıfır başka çağıran doğrulandı. `LicenseEngine` sınıfı KALDI.
-LicenseEngine
+# License — ✅ SİLİNDİ (2026-07-22, bkz. "abandoned subsystem silindi" notu aşağıda)
 
 # Repositories (3 ayrı dosya: infrastructure/kullanici_repository.py,
 # infrastructure/rol_repository.py, infrastructure/session_repository.py —
@@ -125,11 +123,14 @@ doğrudan `UOWDep` alıp `auth_service.authenticate(..., uow=uow)` gibi
 servisler UoW ile açılır — aynen korundu, sadece aradaki sınıf katmanı
 kalktı).
 
-## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar — 4 adet)
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar — 3 adet)
 
 **DÜZELTME (2026-07-15, dedektif denetiminde bulundu):** bu liste önceden 3
 sınıf sayıyordu, `PermissionChecker` unutulmuştu — `public.py`'de export
-edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
+edilen gerçek bir sınıf olmasına rağmen. Liste tam hale getirildi (4 oldu).
+**2026-07-22 dead-code denetimi**: `LicenseEngine` (aşağıdaki eski madde 2)
+tamamen silindi (bkz. "Abandoned subsystem silindi" notu) — liste tekrar 3'e
+düştü, numaralandırma buna göre kaydırıldı.
 
 1. **`SecurityService`** (`domain/security_service.py`) — yalnız
    `@classmethod` içerir, hiçbir constructor/instance-state yok.
@@ -137,26 +138,20 @@ edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
    parametresi taşımadı — free function'a bölünmedi çünkü zaten stateless bir
    isim alanı (Permission enum ile birlikte gruplu kullanım), CRUD-benzeri bir
    servis değil.
-2. **`LicenseEngine`** (`application/license_service.py`) — env'den bir kez
-   yüklenen `_LICENSE_HASHES` mutable state'i olan, `v2/modules/
-   platform_infra/container.py` lazy-property singleton'ı olarak yaşayan bir
-   motor. Driver'ın
-   `DriverPerformanceML`'iyle aynı gerekçe sınıfı (mutable durum, yeniden
-   hesaplaması pahalı/anlamsız).
-3. **`TokenBlacklist`** (`infrastructure/token_blacklist.py` — 2026-07-18'de
+2. **`TokenBlacklist`** (`infrastructure/token_blacklist.py` — 2026-07-18'de
    `domain/`'den taşındı: Redis I/O yapan bir sınıf domain'de duramaz) — `__new__`'de
    thread-safe singleton deseni (`_instance`/`_lock`), Redis-backed. Zaten
    stateless bir wrapper ama sınıf-tabanlı singleton deseni pre-migration'dan
    korundu (davranış değişikliği gerektirmiyor, dokunulmadı).
-4. **`PermissionChecker`** (`domain/permission_checker.py`) — `__init__(self,
+3. **`PermissionChecker`** (`domain/permission_checker.py`) — `__init__(self,
    required_permission)` + `__call__` ile klasik FastAPI
    `Depends(SomeClass(param))` closure/dependency-factory deseni. Yukarıdaki
-   3 resmi gerekçeden hiçbirine harfiyen uymuyor (client-injected pipeline
+   2 resmi gerekçeden hiçbirine harfiyen uymuyor (client-injected pipeline
    değil, mutable/singleton motor değil, classmethod-only namespace de değil
    — gerçek instance-state'i var: `self.required_permission`), ama FastAPI'nin
    parametrik `Depends()` mekanizması saf bir fonksiyonla ifade edilemez
    (bound-parameter taşıyan bir callable gerekir) — bu yüzden meşru, ayrı bir
-   5. gerekçe kategorisi: **(d) FastAPI dependency-factory closure'ı**.
+   gerekçe kategorisi: **(d) FastAPI dependency-factory closure'ı**.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -230,22 +225,22 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
-- 🔴 **BULGU, KARAR BEKLİYOR (2026-07-22, dead-code/hayali-kod denetimi)**
-  — `LicenseEngine.check_car_limit()`/`check_monthly_trip_limit()` tam
-  olarak implemente edilmiş (hash-tabanlı FREE/PRO/ENTERPRISE tier
-  kontrolü, gerçek DB sorguları, `container.py`'de wire edilmiş singleton)
-  ama **hiçbir gerçek çağıranı yok** — ne fleet'in araç-oluşturma yolu
-  (`v2.modules.fleet.application.create_vehicle`) ne de trip'in
-  sefer-ekleme yolu (`add_trip.py`/`bulk_add_trips.py`) bu kontrolü
-  çağırıyor (grep ile doğrulandı — yalnız `test_license_service.py`
-  bu fonksiyonları egzersiz ediyor). `count_active_vehicles()`
-  (`v2.modules.fleet.public`) fonksiyonunun kendi docstring'i açıkça
-  "used by auth_rbac's license limit check" diyor — yardımcı VAR ama onu
-  çağıran özellik hiç bağlanmamış. Sonuç: bugün FREE tier müşteriler
-  sınırsız araç/sefer ekleyebiliyor; motor "hayali" değil (gerçek,
-  test edilmiş kod) ama devre dışı — silinmeli mi yoksa gerçekten fleet/
-  trip'in create-path'lerine bağlanmalı mı, ayrı bir ürün kararı
-  gerektiriyor, bu denetimde DOKUNULMADI.
+- ✅ **ÇÖZÜLDÜ (2026-07-22, kullanıcı kararı — "abandoned" kabul edildi,
+  silindi)** — daha önce burada `LicenseEngine.check_car_limit()`/
+  `check_monthly_trip_limit()`'in tam implemente ama hiçbir gerçek
+  çağıranı olmadığı (fleet'in araç-oluşturma yolu ne de trip'in
+  sefer-ekleme yolu bu kontrolü hiç çağırmıyordu — bugün FREE tier
+  müşteriler sınırsız araç/sefer ekleyebiliyordu) bir 🔴 bulgu olarak
+  duruyordu. Kullanıcıya "fleet/trip'e bağla" vs "sil (abandoned kabul
+  et)" seçeneği sunuldu — **sil** seçildi. `application/license_service.py`
+  (LicenseEngine sınıfı + check_car_limit/check_monthly_trip_limit +
+  get_current_tier + _validate_license_key), `container.py`'nin
+  `license_service` lazy-property'si, `fleet.public.count_active_vehicles()`
+  (bu motorun tek çağıranıydı) ve dedike testler (`test_license_service.py`)
+  tamamen silindi. `LICENSE_PRO_KEY`/`LICENSE_ENTERPRISE_KEY`/
+  `LICENSE_PRO_HASH`/`LICENSE_ENTERPRISE_HASH` env değişkenleri artık
+  hiçbir yerde okunmuyor (bilgi amaçlı — ayrı bir temizlik gerektirmiyor,
+  ortamda tanımlıysa sessizce yok sayılır).
 - ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
   denetiminde bulundu)** — 2 çapraz-modül/katman bulgusu:
   (1) `LicenseEngine.check_car_limit()` (`application/license_service.py`)
@@ -298,7 +293,8 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 ## Test stratejisi (slice/entegrasyon koşumu)
 
 - `app/tests/unit/test_services/test_auth_service_coverage.py`,
-  `test_license_service.py`, `test_preference_service.py`,
+  `test_preference_service.py` (`test_license_service.py` 2026-07-22'de
+  LicenseEngine ile birlikte silindi),
   `test_security_service.py` — use-case fonksiyon testleri (0-mock: gerçek
   repo + `db_session`), sınıf-mock'tan free-function-mock desenine çevrildi
   (`v2.modules.auth_rbac.api.<x>_routes.<fn>` gibi TÜKETEN modül patch

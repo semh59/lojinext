@@ -15,10 +15,18 @@ aşağı) — bu proje genelinde tutarlı bir karar, auth_rbac'a özgü değil.
 There is no ``AuthService``/``UserService``/``PreferenceService`` class —
 each use-case is a standalone function (same B.1 pattern as location/
 notification/fleet/fuel/driver). ``SecurityService``/``Permission`` stay a
-classmethod-only namespace (no constructor/state — narrower exception than
-the stateful-singleton class of ``LicenseEngine``, see CLAUDE.md).
-``LicenseEngine``/``TokenBlacklist`` stay classes — see CLAUDE.md for the
-exception rationale (stateful singleton).
+classmethod-only namespace (no constructor/state).
+``TokenBlacklist`` stays a class — see CLAUDE.md for the exception
+rationale (stateful singleton).
+
+2026-07-22 dead-code denetimi: ``LicenseEngine`` (araç/sefer ticari limit
+motoru) tamamen silindi — hash-tabanlı tier kontrolü gerçek/test-edilmişti
+ama fleet'in araç-oluşturma/trip'in sefer-ekleme yollarından hiçbir zaman
+çağrılmadı (kullanıcı kararıyla "abandoned" kabul edildi, wire etmek yerine
+silindi). ``v2/modules/platform_infra/container.py``'nin
+``license_service`` lazy-property'si ve ``v2.modules.fleet.public``'in
+yalnız bu motor için var olan ``count_active_vehicles()`` sarmalayıcısı da
+aynı geçişte kaldırıldı.
 
 NOT: ``get_current_user``/``get_current_active_user``/``get_current_active_admin``/
 ``require_permissions``/``UOWDep``/``TokenDep``/``SessionDep`` FastAPI
@@ -29,7 +37,6 @@ import kaynakları güncellendi).
 """
 
 from v2.modules.auth_rbac.application import auth_service, role_service
-from v2.modules.auth_rbac.application.license_service import LicenseEngine
 from v2.modules.auth_rbac.application.preference_service import (
     delete_preference,
     get_preferences,
@@ -108,8 +115,6 @@ __all__ = [
     # token blacklist
     "TokenBlacklist",
     "blacklist",
-    # license
-    "LicenseEngine",
     # repositories
     "KullaniciRepository",
     "RolRepository",

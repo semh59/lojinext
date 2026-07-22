@@ -29,7 +29,6 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
-    from v2.modules.auth_rbac.application.license_service import LicenseEngine
     from v2.modules.platform_infra.events.event_bus import EventBus
     from v2.modules.prediction_ml.application.prediction_service import (
         PredictionService,
@@ -52,7 +51,7 @@ class Container:
                         çağıran bulunup kaldırıldı, bkz. platform-infra.md madde 0)
     3. Domain Services: sefer
     4. ML/AI          : prediction, anomaly_detector, time_series (ağır)
-    5. External/Infra : license, smart_ai, ai, weather, export (ağ bağımlı)
+    5. External/Infra : smart_ai, ai, weather, export (ağ bağımlı)
 
     SINGLETON vs PER-REQUEST KURALI:
     - BURAYA GİRER (singleton): ML model yüklemesi, AI engine, external API client,
@@ -100,7 +99,6 @@ class Container:
 
         # ── 5. External / Infrastructure Services ───────────────────────────
         # Ağ bağımlı veya konfigürasyon tabanlı servisler.
-        self._license_service: Optional["LicenseEngine"] = None
         self._weather_service = None
         self._export_service = None
 
@@ -179,18 +177,6 @@ class Container:
         return self._time_series_service
 
     @property
-    def license_service(self) -> "LicenseEngine":
-        if self._license_service is None:
-            with self._lock:
-                if self._license_service is None:
-                    from v2.modules.auth_rbac.application.license_service import (
-                        LicenseEngine,
-                    )
-
-                    self._license_service = LicenseEngine()
-        return self._license_service
-
-    @property
     def ai_service(self):
         if self._ai_service is None:
             with self._lock:
@@ -229,7 +215,9 @@ class Container:
         if self._weather_service is None:
             with self._lock:
                 if self._weather_service is None:
-                    from app.core.services.weather_service import get_weather_service
+                    from v2.modules.route_simulation.application.weather_service import (
+                        get_weather_service,
+                    )
 
                     self._weather_service = get_weather_service()
         return self._weather_service
@@ -243,7 +231,6 @@ class Container:
             # Servisleri sıfırla (Dependency sırasının tersine)
             self._smart_ai_service = None
             self._ai_service = None
-            self._license_service = None
             self._time_series_service = None
             self._anomaly_detector = None
             self._prediction_service = None

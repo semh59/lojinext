@@ -47,14 +47,13 @@ modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -133,14 +132,13 @@ containers =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -254,14 +252,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -364,14 +361,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -474,14 +470,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -584,14 +579,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -694,14 +688,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -804,14 +797,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -914,14 +906,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1024,14 +1015,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1134,14 +1124,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1244,14 +1233,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1349,14 +1337,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1458,14 +1445,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1568,15 +1554,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
-    app.core.services.weather_service -> v2.modules.route_simulation.infrastructure.external_service
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1679,15 +1663,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
-    app.core.services.weather_service -> v2.modules.route_simulation.infrastructure.external_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1790,14 +1772,13 @@ forbidden_modules =
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
-    v2.modules.platform_infra.container -> app.core.services.weather_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
     v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
-    v2.modules.platform_infra.container -> v2.modules.auth_rbac.application.license_service
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**

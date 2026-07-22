@@ -359,7 +359,6 @@ class TestThreadSafety:
                     _ = container.sefer_service
                     _ = container.sefer_repo
                     _ = container.prediction_service
-                    _ = container.license_service
             except Exception as e:
                 errors.append(str(e))
 

@@ -9,8 +9,8 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.database.connection import engine
+from v2.modules.platform_infra.logging.logger import get_logger
 
 try:
     import sentry_sdk
@@ -36,7 +36,9 @@ class HealthService:
         self._bg_tasks: set[asyncio.Task] = set()
 
     def _get_backup_manager(self):
-        from app.infrastructure.database.backup_manager import DatabaseBackupManager
+        from v2.modules.platform_infra.database.backup_manager import (
+            DatabaseBackupManager,
+        )
 
         return DatabaseBackupManager()
 

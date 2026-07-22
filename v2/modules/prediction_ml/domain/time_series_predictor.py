@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 else:
     _NNModule = nn.Module if TORCH_AVAILABLE else object
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

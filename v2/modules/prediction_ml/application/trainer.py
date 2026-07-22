@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -8,7 +8,7 @@ import asyncio
 from typing import cast
 
 from app.infrastructure.background.celery_app import celery_app
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

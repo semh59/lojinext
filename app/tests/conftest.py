@@ -635,12 +635,12 @@ async def normal_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
     from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     # Ensure role exists
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -683,12 +683,12 @@ async def no_trip_read_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
     from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     role_name = "kisitli"
     role_result = await db_session.execute(select(Rol).where(Rol.ad == role_name))

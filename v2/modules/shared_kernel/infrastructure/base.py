@@ -33,14 +33,14 @@ class EncryptedPII(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        from app.infrastructure.security.pii_encryption import encrypt_pii
+        from v2.modules.platform_infra.security.pii_encryption import encrypt_pii
 
         return encrypt_pii(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        from app.infrastructure.security.pii_encryption import decrypt_pii
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii
 
         return decrypt_pii(value)
 

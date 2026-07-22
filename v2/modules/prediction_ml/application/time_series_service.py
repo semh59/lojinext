@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.domain.advanced_lstm import (
     FORECAST_DAYS as _DEFAULT_FORECAST_DAYS,
 )

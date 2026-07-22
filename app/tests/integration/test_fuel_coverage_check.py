@@ -21,7 +21,10 @@ pytestmark = pytest.mark.integration
 
 
 async def _seed_vehicle_and_driver(db_session) -> tuple[int, int]:
-    from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+    from v2.modules.platform_infra.security.pii_encryption import (
+        blind_index,
+        encrypt_pii,
+    )
 
     vehicle = await db_session.execute(
         text(

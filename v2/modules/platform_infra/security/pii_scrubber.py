@@ -1,3 +1,8 @@
+"""`app/infrastructure/security/pii_scrubber.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — `logging/logger.py`'nin PIIFilter'ı + `audit/
+audit_logger.py`'nin audit_log decorator'ı + main.py'nin Sentry hook'u
+üzerinden tüm sisteme dolaylı yayılan genuinely cross-cutting altyapı."""
+
 import re
 from typing import Any
 

@@ -21,7 +21,7 @@ except ImportError:
     HTTPX_AVAILABLE = False
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.circuit_breaker import (
     CircuitBreakerError,
     CircuitBreakerRegistry,

@@ -28,8 +28,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.infrastructure.models import Lokasyon, LokasyonSegment
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.route_simulation.public import (
     MapboxClient,
     OpenMeteoElevationClient,

@@ -10,8 +10,11 @@ import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from app.infrastructure.context.request_context import clear_context, set_correlation_id
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.context.request_context import (
+    clear_context,
+    set_correlation_id,
+)
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

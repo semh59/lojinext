@@ -1,5 +1,9 @@
 """PII encryption-at-rest (Tier E madde 26).
 
+`app/infrastructure/security/pii_encryption.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — 7 bağımsız modül + shared_kernel.infrastructure.base
+tarafından kullanılan genuinely cross-cutting altyapı.
+
 Fernet gives randomized (IV-based) confidentiality — the same plaintext never
 encrypts to the same ciphertext twice, so it cannot be used for equality
 lookups or UNIQUE constraints directly. For fields that need exact-match

@@ -4,7 +4,7 @@ import threading
 import time
 from collections import OrderedDict, deque
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,
     ErrorLayer,

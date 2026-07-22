@@ -7,7 +7,7 @@ import asyncio
 import os
 
 from app.infrastructure.background.celery_app import celery_app
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,7 +19,9 @@ def db_backup(self):
     Başarı durumunda yedek dosya yolunu döner; hata durumunda 2 kez yeniden dener.
     """
     try:
-        from app.infrastructure.database.backup_manager import DatabaseBackupManager
+        from v2.modules.platform_infra.database.backup_manager import (
+            DatabaseBackupManager,
+        )
 
         manager = DatabaseBackupManager()
         filepath = manager.create_backup()
@@ -45,7 +47,7 @@ def db_backup_verify(self):
     extension, sürüm uyumsuzluğu sessizce aylarca fark edilmeyebilir) —
     bu task o boşluğu kapatır. Başarısızlıkta ErrorEvent alarmı tetikler.
     """
-    from app.infrastructure.database.backup_manager import DatabaseBackupManager
+    from v2.modules.platform_infra.database.backup_manager import DatabaseBackupManager
 
     manager = DatabaseBackupManager()
     result = manager.verify_backup_restorable()

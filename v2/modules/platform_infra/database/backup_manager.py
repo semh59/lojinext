@@ -1,3 +1,8 @@
+"""`app/infrastructure/database/backup_manager.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — tüm PostgreSQL DB'yi yedekleyen genuinely platform-genel
+altyapı, `app/workers/tasks/backup_tasks.py` (Celery beat) ve
+`admin_platform`'un manuel yedek tetikleme yolu tarafından kullanılıyor."""
+
 import logging
 import os
 import shutil

@@ -4,8 +4,8 @@ from typing import Dict, Optional
 
 from fastapi import HTTPException
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.public import training_ws_manager
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.infrastructure.models import EgitimKuyrugu, ModelVersiyon
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

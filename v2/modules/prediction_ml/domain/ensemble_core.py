@@ -21,7 +21,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.domain.ensemble_strategy import (
     DynamicWeightStrategy,
     EnsembleStrategy,

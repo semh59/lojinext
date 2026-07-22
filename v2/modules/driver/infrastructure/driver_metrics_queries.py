@@ -22,7 +22,7 @@ async def get_bulk_driver_metrics(
     uow: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     """Tüm şoförler için puanlama metriklerini TEK BİR sorgu ile getirir."""
-    from app.infrastructure.security.pii_encryption import decrypt_pii_or
+    from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
     today = date.today()
     son_15_gun = today - timedelta(days=15)

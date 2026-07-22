@@ -1,9 +1,9 @@
 import threading
 from datetime import datetime, timezone
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.domain.jwt_handler import hash_token
 from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val, set_redis_val
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

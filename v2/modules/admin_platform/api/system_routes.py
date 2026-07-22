@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import get_current_active_admin, get_current_active_user
 from app.api.middleware.rate_limiter import limiter
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.application.error_events import (
     get_error_stats as _get_error_stats,
 )
@@ -21,6 +20,7 @@ from v2.modules.admin_platform.application.error_events import (
 )
 from v2.modules.admin_platform.schemas import TraceChainResponse
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -34,9 +34,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.context.request_context import get_correlation_id
 from v2.modules.platform_infra.events.event_bus import Event, get_event_bus
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.shutdown import is_stopping
 from v2.modules.shared_kernel.infrastructure.base import Base, get_utc_now
 

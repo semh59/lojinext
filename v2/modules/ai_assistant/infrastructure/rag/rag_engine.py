@@ -10,12 +10,12 @@ from datetime import date, datetime, timezone
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.ai_assistant.infrastructure.rag.vector_store import (
     FAISS_AVAILABLE,
     FAISSVectorStore,
     SearchResult,
 )
+from v2.modules.platform_infra.logging.logger import get_logger
 
 # Lazy imports for heavy dependencies
 SENTENCE_TRANSFORMERS_AVAILABLE = False

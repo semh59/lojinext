@@ -18,9 +18,9 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.domain.security import create_access_token
 from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

@@ -9,8 +9,8 @@ from itertools import groupby
 from typing import Dict, List
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fuel.domain.entities import YakitAlimi, YakitPeriyodu
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.trip.public import Sefer
 
 logger = get_logger(__name__)

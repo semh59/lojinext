@@ -1,6 +1,11 @@
 """
 Request Context - Correlation ID management
 Distributed tracing ve log korelasyonu için
+
+`app/infrastructure/context/request_context.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — zaten taşınmış `monitoring.db_probe` ve
+`shared_kernel.infrastructure.outbox`'ın bu dosyaya geri bağımlı olması,
+genuinely cross-cutting olduğunun doğrudan kanıtıydı.
 """
 
 import contextvars

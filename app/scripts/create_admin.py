@@ -7,10 +7,10 @@ from sqlalchemy import select
 sys.path.append(os.getcwd())
 
 from app.config import settings
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.auth_rbac.public import hash_password as get_password_hash
 from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 
 async def create_user():

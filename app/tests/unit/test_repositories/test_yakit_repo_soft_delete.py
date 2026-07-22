@@ -10,10 +10,10 @@ from datetime import date
 import pytest
 from sqlalchemy import insert
 
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration

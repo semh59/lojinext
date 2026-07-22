@@ -247,7 +247,7 @@ async def search_driver_ids_by_name(
     to filter Sefer.sofor_id. (trip'in ``infrastructure/repository.py::
     get_all``'ının genel arama özelliği bunu çağırır.)
     """
-    from app.infrastructure.security.pii_encryption import trigram_blind_indexes
+    from v2.modules.platform_infra.security.pii_encryption import trigram_blind_indexes
 
     async def _run(session) -> List[int]:
         hashes = trigram_blind_indexes(search)

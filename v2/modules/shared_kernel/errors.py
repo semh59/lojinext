@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from fastapi.responses import JSONResponse
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

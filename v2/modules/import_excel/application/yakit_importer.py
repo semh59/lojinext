@@ -11,13 +11,13 @@ Pipeline:
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, List, Tuple, cast
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
 from v2.modules.import_excel.domain.field_validators import validate_numeric
 from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:

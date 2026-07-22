@@ -56,8 +56,8 @@ async def test_create_user_sets_olusturan_id(
     """
     from sqlalchemy import select
 
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     result = await db_session.execute(select(Rol).limit(1))
     role = result.scalar_one_or_none()

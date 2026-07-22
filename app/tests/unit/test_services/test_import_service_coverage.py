@@ -404,7 +404,7 @@ class TestExecuteImport:
         assert result["basarili"] == 1
         db = real_master.db
         db.expire_all()
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         count = (
             await db.execute(

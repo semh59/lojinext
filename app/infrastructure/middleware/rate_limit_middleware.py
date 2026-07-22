@@ -15,7 +15,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -117,7 +117,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # ({"error": {"code","message","trace_id"}}, bkz. main.py
             # http_exception_handler) bypass ediyordu, frontend'in genel
             # hata-zarfı ayrıştırıcısı bunu tanımıyordu.
-            from app.infrastructure.context.request_context import (
+            from v2.modules.platform_infra.context.request_context import (
                 get_correlation_id,
             )
 

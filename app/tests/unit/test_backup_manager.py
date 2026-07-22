@@ -10,10 +10,12 @@ pytestmark = pytest.mark.unit
 
 
 def _make_manager(tmp_path):
-    with patch("app.infrastructure.database.backup_manager.settings") as mock_settings:
+    with patch("v2.modules.platform_infra.database.backup_manager.settings") as mock_settings:
         mock_settings.DATABASE_URL = "postgresql+asyncpg://u:pw@db:5432/lojinext_db"  # noqa: E501  # pragma: allowlist secret
         mock_settings.BACKUP_RETENTION_DAYS = 30
-        from app.infrastructure.database.backup_manager import DatabaseBackupManager
+        from v2.modules.platform_infra.database.backup_manager import (
+            DatabaseBackupManager,
+        )
 
         manager = DatabaseBackupManager.__new__(DatabaseBackupManager)
         manager.backup_dir = str(tmp_path)

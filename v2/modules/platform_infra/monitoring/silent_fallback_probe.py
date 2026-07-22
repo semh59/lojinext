@@ -19,7 +19,7 @@ from __future__ import annotations
 import threading
 from collections import Counter
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,
     ErrorLayer,

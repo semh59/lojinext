@@ -1,6 +1,6 @@
 """Context infrastructure package"""
 
-from app.infrastructure.context.request_context import (
+from v2.modules.platform_infra.context.request_context import (
     clear_context,
     get_correlation_id,
     get_current_user_id,

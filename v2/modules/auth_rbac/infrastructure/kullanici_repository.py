@@ -17,7 +17,7 @@ class KullaniciRepository(BaseRepository[Kullanici]):
 
     async def get_by_email(self, email: str) -> Optional[Kullanici]:
         """Email ile kullanıcı bul (blind-index eşleşmesi). Rol ilişkisi eager yüklenir."""
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         stmt = (
             select(self.model)

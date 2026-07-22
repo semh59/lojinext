@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.pii_scrubber import scrub_pii
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 from v2.modules.shared_kernel.exceptions import LLMProviderError
 
 _GROQ_TIMEOUT_S = 30.0

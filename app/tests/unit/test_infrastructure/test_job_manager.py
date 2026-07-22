@@ -335,7 +335,7 @@ class TestJobManager:
         """Regression guard for the fix above: only _session_ctx should be
         reset — correlation_id/user_id (used for audit-log attribution of
         background-job side effects) must still propagate to the task."""
-        from app.infrastructure.context.request_context import (
+        from v2.modules.platform_infra.context.request_context import (
             get_correlation_id,
             set_correlation_id,
         )

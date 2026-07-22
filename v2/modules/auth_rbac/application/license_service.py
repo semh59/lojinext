@@ -5,8 +5,8 @@ from typing import Dict, Optional
 
 from sqlalchemy import func, select
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.public import count_active_vehicles
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

@@ -240,11 +240,11 @@ def test_after_handler_n_plus_one_detected_at_threshold():
     with (
         patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append),
         patch(
-            "app.infrastructure.context.request_context.get_correlation_id",
+            "v2.modules.platform_infra.context.request_context.get_correlation_id",
             return_value="corr-1",
         ),
         patch(
-            "app.infrastructure.context.request_context.get_request_path",
+            "v2.modules.platform_infra.context.request_context.get_request_path",
             return_value="/test",
         ),
     ):

@@ -2,9 +2,9 @@
 
 from typing import Any, Dict, List, Optional
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.domain.entities import Arac as AracEntity
 from v2.modules.fleet.domain.entities import VehicleStats
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

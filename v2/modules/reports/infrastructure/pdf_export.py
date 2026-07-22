@@ -45,7 +45,7 @@ def get_system_font() -> str:
         return "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 
-from app.infrastructure.logging.logger import get_logger  # noqa: E402
+from v2.modules.platform_infra.logging.logger import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 

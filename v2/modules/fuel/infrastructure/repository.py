@@ -11,8 +11,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fuel.infrastructure.models import YakitAlimi, YakitPeriyot
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)

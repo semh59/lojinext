@@ -27,9 +27,9 @@ from typing import (
 
 import redis
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 from v2.modules.platform_infra.events.event_types import EventType
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

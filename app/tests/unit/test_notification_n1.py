@@ -13,9 +13,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.notification.public import BildirimGecmisi, BildirimKurali
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 

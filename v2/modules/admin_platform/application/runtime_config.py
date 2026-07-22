@@ -25,8 +25,8 @@ Semantik:
 
 from typing import Any, Optional
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.application.konfig_service import get_config_value
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

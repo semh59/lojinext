@@ -3,10 +3,10 @@ TIR Yakıt Takip - Cache Invalidation Module
 EventBus listener'ları ile otomatik cache temizleme.
 """
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 from v2.modules.platform_infra.events.event_bus import Event, EventType, get_event_bus
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

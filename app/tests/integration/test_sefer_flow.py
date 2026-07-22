@@ -10,9 +10,9 @@ from sqlalchemy import text
 # Add project root
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.domain.entities import YakitAlimiCreate
+from v2.modules.platform_infra.security.pii_encryption import blind_index, encrypt_pii
 from v2.modules.trip.application.trip_service import get_sefer_service
 from v2.modules.trip.infrastructure.repository import SeferRepository
 from v2.modules.trip.schemas import SeferCreate

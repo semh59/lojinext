@@ -5,14 +5,13 @@ from sqlalchemy import asc as sql_asc
 from sqlalchemy import case, func, or_, select, text, update
 from sqlalchemy import desc as sql_desc
 
-from app.infrastructure.logging.logger import get_logger
-
 # location.public değil infrastructure.models doğrudan: bu dosya
 # app/database/unit_of_work.py tarafından import ediliyor, location.public
 # ise (hydration.py -> route_simulation.public -> get_route_details)
 # unit_of_work'e geri bağımlı — public.py üzerinden gidilirse döngüsel
 # import oluşur. fuel/executive_read_models.py'deki aynı gerekçe.
 from v2.modules.location.infrastructure.models import Lokasyon
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 from v2.modules.trip.infrastructure.models import Sefer
 from v2.modules.trip.sefer_status import (
@@ -860,7 +859,7 @@ class SeferRepository(BaseRepository[Sefer]):
             WHERE {where}
             ORDER BY s.tarih DESC
         """
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         rows = await self.execute_query(sql, params)
         for row in rows:

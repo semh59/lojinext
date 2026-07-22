@@ -8,8 +8,8 @@ v2.modules.route_simulation.public'e güncellenecek.
 
 from datetime import datetime, timezone
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

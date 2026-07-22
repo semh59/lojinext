@@ -8,7 +8,7 @@ import time
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 if TYPE_CHECKING:
     from v2.modules.platform_infra.monitoring.models import ErrorEvent

@@ -10,7 +10,6 @@ from app.api.deps import (
     get_current_active_user,
 )
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.fleet.application.create_vehicle import create_vehicle
 from v2.modules.fleet.application.delete_vehicle import (
@@ -48,6 +47,7 @@ from v2.modules.import_excel.public import (
     generate_template,
     process_vehicle_import,
 )
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import (
     EXCEL_XLSX_RESPONSES,

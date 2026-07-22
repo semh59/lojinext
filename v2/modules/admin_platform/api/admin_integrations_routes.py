@@ -14,7 +14,6 @@ from pydantic import BaseModel, Field
 
 from app.api.middleware.rate_limiter import limiter
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.application.admin_audit_service import (
     log_config_change,
 )
@@ -28,6 +27,7 @@ from v2.modules.admin_platform.infrastructure.container_health import (
     get_container_status,
 )
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.platform_infra.logging.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)

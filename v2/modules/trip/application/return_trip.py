@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 from pydantic import ValidationError
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.trip_prediction_enrichment import (
     build_prediction_quality_flags,

@@ -20,7 +20,7 @@ try:
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.reports.public import get_report_generator
 
 logger = get_logger(__name__)

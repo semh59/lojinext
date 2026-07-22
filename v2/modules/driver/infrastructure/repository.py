@@ -10,8 +10,8 @@ from typing import Any, Dict, List, Optional, cast
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.driver.infrastructure.models import Sofor
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
@@ -111,7 +111,7 @@ class SoforRepository(BaseRepository[Sofor]):
         kilitleyecek bir şey olmadığından phantom-insert race'ini TEK BAŞINA
         önlemez.
         """
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         session = self.session
         # Fast-path: kayıt zaten varsa dostça hata. Mevcut satırı kilitler;
@@ -158,8 +158,10 @@ class SoforRepository(BaseRepository[Sofor]):
         from sqlalchemy import delete as sa_delete
         from sqlalchemy import insert as sa_insert
 
-        from app.infrastructure.security.pii_encryption import trigram_blind_indexes
         from v2.modules.driver.infrastructure.models import SoforAdSoyadTrigram
+        from v2.modules.platform_infra.security.pii_encryption import (
+            trigram_blind_indexes,
+        )
 
         session = self.session
         await session.execute(
@@ -230,7 +232,7 @@ class SoforRepository(BaseRepository[Sofor]):
             "LIMIT :limit OFFSET :offset"
         )
 
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         rows = await self.execute_query(query, params)
         for row in rows:
@@ -268,7 +270,7 @@ class SoforRepository(BaseRepository[Sofor]):
             query += " LIMIT :limit"
             params["limit"] = limit
 
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         rows = await self.execute_query(query, params)
         for row in rows:
@@ -315,7 +317,7 @@ class SoforRepository(BaseRepository[Sofor]):
         self, ad_soyad: str, for_update: bool = False
     ) -> Optional[Dict[str, Any]]:
         """İsim ile şoför getir (blind-index eşleşmesi, performans için)"""
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         session = self.session
         stmt = select(self.model).where(
@@ -452,7 +454,7 @@ class SoforRepository(BaseRepository[Sofor]):
             ORDER BY recent_trip_count ASC, s.id DESC
             LIMIT :limit
         """
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         rows = await self.execute_query(
             query, {"trip_date": trip_date, "limit": int(limit)}

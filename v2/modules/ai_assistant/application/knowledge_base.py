@@ -26,8 +26,8 @@ else:
         SentenceTransformer = None
         EMBEDDING_AVAILABLE = False
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.ai_assistant.infrastructure.rag.vector_store import FAISSVectorStore
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

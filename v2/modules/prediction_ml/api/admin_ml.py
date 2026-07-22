@@ -6,8 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
 from app.api.middleware.rate_limiter import limiter
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.application.ml_service import MLService
 from v2.modules.prediction_ml.schemas import MLTaskRead, ModelVersionRead
 from v2.modules.shared_kernel.exceptions import DomainError

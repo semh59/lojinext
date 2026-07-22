@@ -342,12 +342,12 @@ async def test_resolve_event_end_to_end(async_client, db_session):
 
     from sqlalchemy import select
 
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
     from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
     from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
         ErrorEvent as ErrorEventModel,
     )

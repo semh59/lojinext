@@ -8,11 +8,11 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.cache.cache_manager import (
     CacheManager,
     get_cache_manager,
 )
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
 from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
 from v2.modules.route_simulation.infrastructure.retry import with_async_retry

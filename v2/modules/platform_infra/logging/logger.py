@@ -1,3 +1,8 @@
+"""`app/infrastructure/logging/logger.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — projenin en yaygın kullanılan dosyası (tüm 15 iş
+modülü + shared_kernel + platform_infra'nın kendisi `get_logger()`'ı
+kullanıyor)."""
+
 import json
 import logging
 import sys
@@ -6,8 +11,10 @@ from pathlib import Path
 from typing import Any, Dict
 
 # Log dizini
-# Log dizini (Proje Kök Dizini)
-LOG_DIR = Path(__file__).parent.parent.parent.parent / "logs"
+# Log dizini (Proje Kök Dizini) — dalga 17 taşımasıyla dosya bir kademe
+# derinleşti (app/infrastructure/logging/ -> v2/modules/platform_infra/logging/),
+# bu yüzden kök dizine çıkmak için 5. .parent gerekiyor (4 değil).
+LOG_DIR = Path(__file__).parent.parent.parent.parent.parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
 from app.config import settings  # noqa: E402
@@ -39,7 +46,7 @@ class PIIFilter(logging.Filter):
             if not hasattr(record, "msg"):
                 return True
 
-            from app.infrastructure.security.pii_scrubber import scrub_pii
+            from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 
             # Log injection protection
             msg = str(record.msg).replace("\n", "\\n").replace("\r", "\\r")
@@ -107,7 +114,9 @@ class JSONFormatter(logging.Formatter):
         # Correlation ID'yi context'ten al
         correlation_id = ""
         try:
-            from app.infrastructure.context.request_context import get_correlation_id
+            from v2.modules.platform_infra.context.request_context import (
+                get_correlation_id,
+            )
 
             correlation_id = get_correlation_id()
         except Exception:

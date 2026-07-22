@@ -19,12 +19,12 @@ from app.api.middleware.rate_limiter import limiter
 from app.api.v1.api import api_router
 from app.config import settings
 from app.infrastructure.context.correlation_middleware import CorrelationMiddleware
-from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.logging.logger import setup_logging
 from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
 from app.infrastructure.middleware.logging_middleware import RequestLoggingMiddleware
 from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
+from v2.modules.platform_infra.context.request_context import get_correlation_id
 from v2.modules.platform_infra.database.connection import engine
+from v2.modules.platform_infra.logging.logger import setup_logging
 from v2.modules.shared_kernel.errors import BusinessException
 from v2.modules.shared_kernel.exceptions import (
     AnomalyDetectionError,
@@ -160,7 +160,7 @@ def _sentry_before_send(event, hint):
     # emails/phones/TCKN and sensitive keys never leave. Defensive: never let a
     # scrub failure drop the error report.
     try:
-        from app.infrastructure.security.pii_scrubber import scrub_pii
+        from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 
         event = scrub_pii(event)
     except Exception:

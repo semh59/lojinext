@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import get_current_active_user
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.application.health_service import (
     HealthService,
     get_health_service,
@@ -13,6 +12,7 @@ from v2.modules.admin_platform.schemas import (
     CircuitBreakerResetResponse,
 )
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

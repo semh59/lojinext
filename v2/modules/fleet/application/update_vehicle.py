@@ -2,12 +2,12 @@
 
 from typing import Optional
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.application.create_vehicle import plaka_lock
 from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
 from v2.modules.fleet.infrastructure.models import VehicleSpecTimeline
 from v2.modules.fleet.schemas import AracUpdate
 from v2.modules.platform_infra.events.event_bus import EventType, publishes
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork

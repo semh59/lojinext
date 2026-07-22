@@ -8,7 +8,7 @@ Import'un `(count, errors)` dönüş sözleşmesini korumak için exception
 yutulmaya devam ediyor.
 """
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

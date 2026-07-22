@@ -10,7 +10,7 @@ from sqlalchemy import event
 from sqlalchemy.engine import ExceptionContext
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,
     ErrorLayer,
@@ -127,7 +127,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                 recent = _recent_queries.get([])
 
             if count == _N_PLUS_ONE_THRESHOLD:
-                from app.infrastructure.context.request_context import (
+                from v2.modules.platform_infra.context.request_context import (
                     get_correlation_id,
                     get_request_path,
                 )

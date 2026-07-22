@@ -8,11 +8,11 @@ from typing import Any, Dict, List
 
 import pandas as pd
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.field_validators import (
     parse_date_flexible as _parse_date_flexible,
 )
 from v2.modules.import_excel.infrastructure.column_mapper import SafeColumnMapper
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import ExcelExportError
 
 logger = get_logger(__name__)

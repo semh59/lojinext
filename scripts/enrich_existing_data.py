@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager  # noqa: E402
 from sqlalchemy import select, update  # noqa: E402
 
 from v2.modules.platform_infra.database.connection import AsyncSessionLocal  # noqa: E402
-from app.infrastructure.logging.logger import get_logger  # noqa: E402
+from v2.modules.platform_infra.logging.logger import get_logger  # noqa: E402
 from v2.modules.location.public import (
     Lokasyon,  # noqa: E402
     geocode_location,  # noqa: E402

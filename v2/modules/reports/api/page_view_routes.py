@@ -18,7 +18,7 @@ from typing import Any, Optional
 from fastapi import APIRouter, Depends, Query, Response
 
 from app.api.deps import SessionDep, get_current_active_admin, get_current_active_user
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.reports.infrastructure.page_view_repo import PageViewRepository
 from v2.modules.reports.schemas import PageViewCreate, PageViewStats, RouteCount
 

@@ -9,7 +9,7 @@ except ImportError:
     LineString = None
     from_shape = None
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.route_simulation.public import GuzergahKalibrasyon
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

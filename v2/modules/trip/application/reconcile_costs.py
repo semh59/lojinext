@@ -8,8 +8,8 @@
 from typing import Any, Dict
 
 from app.infrastructure.audit import audit_log
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.events.event_bus import EventType, get_event_bus
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

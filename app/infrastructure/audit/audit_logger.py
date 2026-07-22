@@ -16,11 +16,11 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
-from app.infrastructure.context.request_context import (
+from v2.modules.platform_infra.context.request_context import (
     get_correlation_id,
     set_correlation_id,
 )
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 audit_logger = get_logger("audit")
 
@@ -197,7 +197,7 @@ def audit_log(action: str, entity_type: str = None, log_params: bool = False):
             }
 
             if log_params and kwargs:
-                from app.infrastructure.security.pii_scrubber import scrub_pii
+                from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 
                 safe_params = _mask_sensitive_data(scrub_pii(kwargs))
                 audit_entry["params"] = str(safe_params)[:500]
@@ -252,7 +252,7 @@ def audit_log(action: str, entity_type: str = None, log_params: bool = False):
             }
 
             if log_params and kwargs:
-                from app.infrastructure.security.pii_scrubber import scrub_pii
+                from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 
                 safe_params = _mask_sensitive_data(scrub_pii(kwargs))
                 audit_entry["params"] = str(safe_params)[:500]

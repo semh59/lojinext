@@ -6,7 +6,7 @@ Defines different strategies for weighting sub-models in the EnsemblePredictor.
 from abc import ABC, abstractmethod
 from typing import Dict
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

@@ -79,7 +79,7 @@ def validate_sefer_row(
     # ihtimalle ton cinsinden girilmiş (örn. 20 ton yerine 20000 kg
     # yazılmalıydı). 1000 ile çarp ve uyar.
     if 0 < ton_raw < 200:
-        from app.infrastructure.logging.logger import get_logger
+        from v2.modules.platform_infra.logging.logger import get_logger
 
         get_logger(__name__).warning(
             "Yük=%s küçük — ton olarak yorumlandı, kg'a çevrildi (%s kg). "

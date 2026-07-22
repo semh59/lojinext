@@ -14,7 +14,6 @@ from typing import Annotated, Any, cast
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import require_permissions
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.ai_assistant.public import (
     DriverSuggestion,
     PlanInput,
@@ -24,6 +23,7 @@ from v2.modules.ai_assistant.public import (
     VehicleSuggestion,
 )
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 
 logger = get_logger(__name__)

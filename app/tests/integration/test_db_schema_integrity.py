@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+from v2.modules.platform_infra.security.pii_encryption import blind_index, encrypt_pii
 
 pytestmark = pytest.mark.integration
 

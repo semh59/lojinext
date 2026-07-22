@@ -12,8 +12,8 @@ from sqlalchemy import text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.anomaly.infrastructure.models import Anomaly
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
@@ -86,7 +86,7 @@ class AnomalyRepository(BaseRepository[Anomaly]):
 
         sql += " ORDER BY a.tarih DESC"
 
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         result = await self.session.execute(text(sql), params)
         rows = [dict(row._mapping) for row in result.fetchall()]

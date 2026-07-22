@@ -10,11 +10,11 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.websocket.ws_auth import is_admin_email, resolve_ws_identity
 from v2.modules.notification.infrastructure.ws_broadcaster import (
     notification_ws_manager,
 )
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

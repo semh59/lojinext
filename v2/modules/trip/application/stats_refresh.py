@@ -8,7 +8,7 @@ state (arka plan task'larını GC'den koruyan set — B.1 istisnası, MLService'
 ``_locks`` dict'iyle aynı gerekçe kategorisi).
 """
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

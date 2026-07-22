@@ -42,7 +42,6 @@ from app.infrastructure.background.job_manager import (
     BackgroundJobManager,
     get_job_manager,
 )
-from app.infrastructure.logging.logger import get_logger
 
 # NOT (2026-07-18 denetimi): bu üç import auth_rbac.public YERİNE bilinçli
 # olarak domain-leaf yollarından yapılır — public.py, `PermissionChecker`
@@ -54,6 +53,7 @@ from v2.modules.auth_rbac.domain.security_service import Permission, SecuritySer
 from v2.modules.auth_rbac.infrastructure.models import Kullanici, Rol
 from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 from v2.modules.platform_infra.database.connection import get_db
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork, get_uow
 
 logger = get_logger(__name__)
@@ -131,7 +131,9 @@ async def get_current_user(
             #   ROW MISSING (None)   → seed issue; fail in prod, warn in dev/test
             _db_down = False
             try:
-                from app.infrastructure.security.pii_encryption import blind_index
+                from v2.modules.platform_infra.security.pii_encryption import (
+                    blind_index,
+                )
 
                 _res = await db.execute(
                     select(Kullanici)
@@ -226,7 +228,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    from app.infrastructure.security.pii_encryption import blind_index
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     result = await db.execute(
         select(Kullanici)

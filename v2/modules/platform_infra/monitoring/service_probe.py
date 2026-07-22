@@ -6,7 +6,7 @@ import traceback as _tb
 from contextvars import ContextVar
 from typing import Any, Callable, TypeVar
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring import aemit, emit
 from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,

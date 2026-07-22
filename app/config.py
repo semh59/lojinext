@@ -322,7 +322,7 @@ class Settings(BaseSettings):
     # uploads pass; defends against absurd (multi-hundred-MB) bodies.
     MAX_REQUEST_BODY_BYTES: int = 25 * 1024 * 1024  # 25 MB
 
-    # PII masking (consumed by app.infrastructure.logging.logger)
+    # PII masking (consumed by v2.modules.platform_infra.logging.logger)
     LOG_PII_MASK_EMAIL: str = r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
     LOG_PII_MASK_PHONE: str = (
         r"(?:\+?\d{1,3}[\s-]?)?(?:\(?\d{3,4}\)?[\s-]?)?\d{3}[\s-]?\d{2,4}[\s-]?\d{2,4}"

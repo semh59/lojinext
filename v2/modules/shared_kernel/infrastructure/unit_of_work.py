@@ -37,7 +37,6 @@ from typing import (
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.infrastructure.repository import AdminConfigRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
@@ -65,6 +64,7 @@ from v2.modules.notification.infrastructure.repository import NotificationReposi
 from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.platform_infra.database.db_session import _session_ctx
 from v2.modules.platform_infra.events.event_bus import EventBus, get_event_bus
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.infrastructure.ml_training_repo import (
     MLTrainingRepository,
 )
@@ -197,7 +197,9 @@ class UnitOfWork:
                     and (session.new or session.dirty or session.deleted)
                 )
                 if _has_pending:
-                    from app.infrastructure.logging.logger import get_logger as _gl
+                    from v2.modules.platform_infra.logging.logger import (
+                        get_logger as _gl,
+                    )
 
                     _log = _gl(__name__)
                     _log.error(

@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional, cast
 import redis as redis_lib
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.cache.redis_client_factory import get_sync_redis_client
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

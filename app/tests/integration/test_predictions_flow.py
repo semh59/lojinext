@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 

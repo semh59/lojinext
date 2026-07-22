@@ -5,9 +5,9 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.application.maintenance_cache import invalidate_predictions_cache
 from v2.modules.fleet.infrastructure.models import AracBakim, BakimTipi
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

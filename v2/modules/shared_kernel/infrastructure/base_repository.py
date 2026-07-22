@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Dict, Generic, List, Optional, Type, Type
 from sqlalchemy import delete, func, inspect, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 if TYPE_CHECKING:
     from v2.modules.shared_kernel.infrastructure.base import Base

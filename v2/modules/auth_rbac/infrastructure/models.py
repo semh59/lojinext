@@ -117,7 +117,7 @@ class Kullanici(Base):
 
     @validates("email")
     def _sync_email_bidx(self, key, value):
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         self.email_bidx = blind_index(value) if value else ""
         return value

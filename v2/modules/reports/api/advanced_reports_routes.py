@@ -14,7 +14,6 @@ from pydantic import BaseModel
 
 from app.api.deps import SessionDep, get_current_active_admin
 from app.api.v1.utils import parse_date_param
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.analytics_executive.public import (
     calculate_period_cost,
     calculate_roi,
@@ -26,6 +25,7 @@ from v2.modules.analytics_executive.public import (
 )
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.import_excel.public import export_data, get_export_service
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.generate_vehicle_report import (
     generate_vehicle_report,

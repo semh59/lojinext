@@ -18,7 +18,7 @@ gerçek tahmin yolu `v2/modules/trip/application/sefer_fuel_estimator.py`).
 
 from typing import Any, Dict, List
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

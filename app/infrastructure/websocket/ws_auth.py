@@ -78,7 +78,7 @@ async def is_admin_email(email: str) -> bool:
         # which is what the WS ticket stores — match both forms.
         return True
     async with AsyncSessionLocal() as session:
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         result = await session.execute(
             select(Kullanici)

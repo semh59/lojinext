@@ -11,9 +11,9 @@ used it — any authenticated user could mark any notification as read.
 import pytest
 from sqlalchemy import insert, text
 
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.notification.public import BildirimGecmisi
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 

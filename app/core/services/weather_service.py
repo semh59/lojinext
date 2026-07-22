@@ -12,7 +12,7 @@ from datetime import datetime as dt_datetime
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.config import settings
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.route_simulation.infrastructure.external_service import ExternalService
 
 logger = get_logger(__name__)

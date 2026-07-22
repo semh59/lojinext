@@ -33,7 +33,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.public import VehicleSpecs
 from v2.modules.route_simulation.domain.segment_resampler import resample_segments
 from v2.modules.route_simulation.domain.segment_simulator import (

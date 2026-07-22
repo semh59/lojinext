@@ -20,8 +20,8 @@ try:
 except ImportError:
     REDIS_AVAILABLE = False
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

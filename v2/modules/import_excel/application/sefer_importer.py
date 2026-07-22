@@ -13,7 +13,6 @@ from v2.modules.shared_kernel.exceptions import ImportValidationError
 
 if TYPE_CHECKING:
     from v2.modules.trip.schemas import SeferCreate
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.entity_resolvers import (
     resolve_arac_id,
     resolve_dorse_id,
@@ -29,6 +28,7 @@ from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SEFER_STATUS_PLANLANDI
 

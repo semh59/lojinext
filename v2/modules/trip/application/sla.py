@@ -9,8 +9,8 @@ tutarlı olarak ``application/``'a taşındı.
 
 from typing import Any, Dict, Optional
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.platform_infra.events.event_bus import EventType
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

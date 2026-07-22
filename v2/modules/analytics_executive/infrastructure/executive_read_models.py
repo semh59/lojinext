@@ -20,8 +20,6 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.logging.logger import get_logger
-
 # fuel.public değil infrastructure.models doğrudan: fuel.public, add_yakit
 # üzerinden v2.modules.shared_kernel.infrastructure.unit_of_work'e bağımlı, ve BU dosya zaten
 # app/database/unit_of_work.py'nin kendisi tarafından import ediliyor
@@ -31,6 +29,7 @@ from app.infrastructure.logging.logger import get_logger
 # infrastructure.repository ile aynı, zaten dokümante edilmiş geçici
 # infra-to-infra bağımlılık deseni.
 from v2.modules.fuel.infrastructure.models import YakitFormul
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)

@@ -5,8 +5,8 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.context.request_context import get_correlation_id
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -69,7 +69,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
             # Path ContextVar — n_plus_one / slow_query event'lerinin hangi
             # endpoint'te tetiklendiğini bilebilmek için
-            from app.infrastructure.context.request_context import set_request_path
+            from v2.modules.platform_infra.context.request_context import (
+                set_request_path,
+            )
 
             set_request_path(f"{request.method} {request.url.path}")
 

@@ -114,7 +114,7 @@ async def execute_import(
                     # şifreleme + blind-index + trigram burada elle
                     # uygulanır (aksi halde ad_soyad_bidx UNIQUE NOT NULL
                     # ihlali ile import çöker).
-                    from app.infrastructure.security.pii_encryption import (
+                    from v2.modules.platform_infra.security.pii_encryption import (
                         blind_index,
                         encrypt_pii,
                         trigram_blind_indexes,

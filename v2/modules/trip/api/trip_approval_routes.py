@@ -6,10 +6,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 
 from app.api.deps import get_sefer_service, require_permissions
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.metrics import trip_approval_total
 from app.schemas.telegram import SeferOnayRequest
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.trip.public import SeferResponse, SeferService
 

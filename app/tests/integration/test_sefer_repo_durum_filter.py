@@ -10,7 +10,7 @@ get_trip_stats() legacy Türkçe girişi normalize_sefer_status ile canonical'a
 import pytest
 from sqlalchemy import text
 
-from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+from v2.modules.platform_infra.security.pii_encryption import blind_index, encrypt_pii
 
 
 @pytest.mark.integration

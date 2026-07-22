@@ -93,7 +93,7 @@ class TestDbBackupTask:
 
         with (
             patch(
-                "app.infrastructure.database.backup_manager.DatabaseBackupManager",
+                "v2.modules.platform_infra.database.backup_manager.DatabaseBackupManager",
                 return_value=mock_manager,
             ),
             patch("app.workers.tasks.backup_tasks._upload_to_offsite"),
@@ -111,7 +111,7 @@ class TestDbBackupTask:
         from app.workers.tasks.backup_tasks import db_backup
 
         with patch(
-            "app.infrastructure.database.backup_manager.DatabaseBackupManager",
+            "v2.modules.platform_infra.database.backup_manager.DatabaseBackupManager",
             side_effect=RuntimeError("pg_dump failed"),
         ):
             with pytest.raises((Retry, RuntimeError)):
@@ -133,7 +133,7 @@ class TestDbBackupVerifyTask:
         }
 
         with patch(
-            "app.infrastructure.database.backup_manager.DatabaseBackupManager",
+            "v2.modules.platform_infra.database.backup_manager.DatabaseBackupManager",
             return_value=mock_manager,
         ):
             result = db_backup_verify.run()
@@ -154,7 +154,7 @@ class TestDbBackupVerifyTask:
 
         with (
             patch(
-                "app.infrastructure.database.backup_manager.DatabaseBackupManager",
+                "v2.modules.platform_infra.database.backup_manager.DatabaseBackupManager",
                 return_value=mock_manager,
             ),
             patch(

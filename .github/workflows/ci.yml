@@ -286,22 +286,25 @@ jobs:
       - name: Import boundary gate (modular monolith)
         # Promoted to a real blocking gate 2026-07-21 (dalga 16 audit) — see
         # TASKS/faz0-baseline-olcum-ve-rapor-modu.md and
-        # TASKS/faz1-import-linter-baseline-ve-gate.md. Covers the 17 v2/
-        # module contracts (1 independence + 1 layers + 15 public-surface-only,
-        # every business module migrated so far: location, route_simulation,
-        # notification, fleet, fuel, driver, auth_rbac, anomaly, import_excel,
-        # reports, analytics_executive, ai_assistant, prediction_ml, trip,
-        # admin_platform). Explicitly EXCLUDES the pre-existing legacy
+        # TASKS/faz1-import-linter-baseline-ve-gate.md. Covers the 18 v2/
+        # contracts (1 independence + 1 layers + 15 public-surface-only for
+        # every business module: location, route_simulation, notification,
+        # fleet, fuel, driver, auth_rbac, anomaly, import_excel, reports,
+        # analytics_executive, ai_assistant, prediction_ml, trip,
+        # admin_platform + 1 public-surface-only-platform_infra, added
+        # 2026-07-22 once dalga 17 landed — same pattern as every module
+        # before it). Explicitly EXCLUDES the pre-existing legacy
         # `report-only` contract (app.core.services vs app.services drift,
         # unrelated to the v2/ modular-monolith refactor, documented +
         # out of scope — see the separate report-only step below) so that
         # gating the NEW boundaries doesn't get blocked by OLD, already-known
         # drift this refactor isn't touching.
         #
-        # shared_kernel (dalga 16, in progress) and platform_infra (dalga 17,
-        # not started) are not yet part of this contract set — their
-        # contracts get added when those dalgas land, same pattern as every
-        # module before them.
+        # shared_kernel (dalga 16) deliberately has NO public-surface-only
+        # contract of its own (documented exemption — see
+        # v2/modules/shared_kernel/CLAUDE.md — the whole point of that
+        # module is that everyone imports it freely), so it stays out of
+        # this list on purpose, not because it's unfinished.
         run: |
           lint-imports --config .importlinter \
             --contract module-cross-domain-infra-independence \
@@ -320,7 +323,8 @@ jobs:
             --contract public-surface-only-ai_assistant \
             --contract public-surface-only-prediction_ml \
             --contract public-surface-only-trip \
-            --contract public-surface-only-admin_platform
+            --contract public-surface-only-admin_platform \
+            --contract public-surface-only-platform_infra
 
       - name: Import boundary report — legacy app.core.services/app.services drift (non-blocking)
         # Pre-existing FAZ0 report-only contract (app.core.services <-> app.services

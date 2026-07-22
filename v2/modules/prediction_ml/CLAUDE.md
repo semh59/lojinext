@@ -23,10 +23,13 @@ sağlar, segment üretmez).
 atlıyordu: `app/core/ml/route_similarity.py` (`encode_route`/`cosine_similarity`/
 `find_similar_trips` — ai_assistant'ın `plan_trip.py`'si kullanıyor) hiç listede
 değildi ama taşındı (`domain/route_similarity.py`). Gerçek envanter 36 dosya.
-`app/scripts/benchmark.py` ise task dosyasında listeli olmasına rağmen
-**taşınmadı** — içeriği gerçekte ML/prediction ile hiç ilgili değil (generic
-DB/fleet/reports perf benchmark script'i, `v2.modules.fleet.public`/
-`v2.modules.reports.public` kullanıyor); task dosyasının bu satırı bariz stale.
+`app/scripts/benchmark.py` ise task dosyasında listeli olmasına rağmen bu
+modüle **hiç ait değildi** (içeriği ML/prediction ile ilgisizdi, generic
+DB/fleet/reports perf benchmark script'iydi, `v2.modules.fleet.public`/
+`v2.modules.reports.public` kullanıyordu) — sonraki bir ölü-kod
+denetiminde (`Benchmark.run()`'ın hedef `async` fonksiyonları `await`'siz
+çağırdığı, ölçümü anlamsız kıldığı bulunduğunda) tamamen SİLİNDİ, hiçbir
+modüle taşınmadı. Task dosyasının bu satırı bariz stale.
 
 ## FAZ0 kararı — `model_manager.py` SİLİNDİ (dead code, kullanıcı onaylı)
 

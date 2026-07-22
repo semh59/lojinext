@@ -179,6 +179,11 @@ FK kenarına rağmen runtime çağrı sayısı düşük kalır (sadece login/
 permission-check senkron çağrılar, diğer 17 modülün auth_rbac'a `out=1`
 görünmesinin sebebi).
 
+`infrastructure/scripts/create_admin.py` — manuel/dev-only CLI yardımcısı
+(super_admin kullanıcısını senkronize eder), 2026-07-22'de `app/scripts/`'ten
+taşındı. Prod bootstrap'ı DEĞİL (`alembic/versions/0002_seed_and_bootstrap.py`
+gerçek işi yapar); hiçbir docker-compose/CI adımında çağrılmaz.
+
 ## Multi-worker güvenlik state'i — BU MODÜLE TAŞINMADI (FAZ2 TODO)
 
 `BruteForceDetector`/`RBACViolationTracker` bugün

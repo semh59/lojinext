@@ -389,6 +389,13 @@ docker compose exec backend python -m scripts.<file>
 
 Yeni yazılmış/henüz build edilmemiş tek bir script'i rebuild'siz denemek için `docker cp` pattern'i hâlâ geçerli (bkz. Docker bölümü).
 
+Modül-içi manuel/dev-only CLI script'leri (`v2/modules/<name>/infrastructure/scripts/`) aynı desenle çalıştırılır, yalnız modül path'iyle:
+
+```bash
+docker compose exec backend python -m v2.modules.auth_rbac.infrastructure.scripts.create_admin
+docker compose exec backend python -m v2.modules.route_simulation.infrastructure.scripts.backfill_route_pairs
+```
+
 ---
 
 ## Configuration

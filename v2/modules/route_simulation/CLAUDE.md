@@ -192,6 +192,13 @@ Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor
 Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
 `distance_km`/`duration_min` DEĞİL (bkz. root CLAUDE.md gotcha'sı).
 
+`infrastructure/scripts/backfill_route_pairs.py` — manuel/dev-only CLI
+yardımcısı (trip'in `Sefer.route_pair_id`'sini Lokasyon koordinatlarından
+geriye dönük doldurur), 2026-07-22'de `app/scripts/`'ten taşındı. Yazdığı
+tablo trip modülüne ait olsa da `route_pair_id` kavramı bu modülün
+rota-eşleştirme kontratına (HB2) ait; hiçbir docker-compose/CI adımında
+çağrılmaz.
+
 ## Modüle özel iş kuralları & gotcha'lar
 
 - ✅ **DÜZELTİLDİ (2026-07-15, "ilk 8 dalga" B.1 dedektif denetiminde

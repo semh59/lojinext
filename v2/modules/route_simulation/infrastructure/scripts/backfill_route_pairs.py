@@ -1,3 +1,16 @@
+"""Manuel/dev-only CLI yardımcısı: Sefer.route_pair_id'yi geriye dönük doldurur.
+
+2026-07-22: `app/scripts/backfill_route_pairs.py`'den bu modüle taşındı
+(mekanik taşıma, davranış değişikliği yok — `TASKS/modules/
+route-simulation.md` madde 7'nin "opsiyonel" notu tamamlandı).
+`route_pair_id` kavramı route_simulation'ın rota-eşleştirme kontratına ait
+(HB2), yazdığı tablo (`Sefer`) trip modülüne ait olsa da. Hiçbir docker-
+compose/CI adımında çağrılmıyor — yalnız manuel/dev CLI kullanımı.
+
+Çalıştırma: ``python -m v2.modules.route_simulation.infrastructure.scripts.backfill_route_pairs``
+(repo kökünden).
+"""
+
 import asyncio
 import hashlib
 

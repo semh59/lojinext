@@ -1,3 +1,17 @@
+"""Manuel/dev-only CLI yardımcısı: super_admin kullanıcısı senkronize eder.
+
+2026-07-22: `app/scripts/create_admin.py`'den bu modüle taşındı (mekanik
+taşıma, davranış değişikliği yok) — Kullanici/Rol auth_rbac'ın tablo
+sahipliğinde. Kök `scripts/create_admin.py` (farklı, kasıtlı bir
+duplikat — rol=admin, hardcoded email, granular yetkiler dict; 2026-07-15
+kararıyla ayrı kalıyor) İLE KARIŞTIRILMASIN. Gerçek prod bootstrap'ı
+`alembic/versions/0002_seed_and_bootstrap.py`'de yapılır; bu script
+yalnız manuel/dev CLI kullanımı içindir.
+
+Çalıştırma: ``python -m v2.modules.auth_rbac.infrastructure.scripts.create_admin``
+(repo kökünden).
+"""
+
 import asyncio
 import os
 import sys

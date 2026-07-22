@@ -52,7 +52,7 @@ app/scripts/backfill_route_pairs.py
 4. `route_analyzer.py::analyze_segments` (CC=56): baseline'a alınır, split GEREKMİYOR bu FAZ'da (ölçülü — kod kısalığı kuralı "5 satırlık işi 50 yapma" der, ama "58 satırlık işi zorla 6 parçaya böl" demez; CC azaltımı ayrı, gerekçesiz bir iş olur — bu görev kapsamı dışında, yalnız baseline'a donuyor).
 5. `route_calibration_service.py` → `application/calibrate_route.py`.
 6. `route_similarity.py`, `segment_simulator.py` (ML) → `domain/` (prediction_ml'e olan 4 bağımlılık `public.py` üzerinden).
-7. `backfill_route_pairs.py` script'i → `infrastructure/scripts/` (dış yazar değil, app içi script — `scripts/` kökünden modül-içine taşınabilir, opsiyonel).
+7. ✅ **YAPILDI (2026-07-22)** `backfill_route_pairs.py` script'i → `infrastructure/scripts/` (dış yazar değil, app içi script — `scripts/` kökünden modül-içine taşınabilir, opsiyonel).
 8. `app/domain/` dizini bu adımdan sonra boşalır, silinir (git ile takip edilir, "unfamiliar directory" değil — bu planın kendi kararı).
 9. Shim'ler + CLAUDE.md.
 

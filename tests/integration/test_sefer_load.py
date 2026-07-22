@@ -54,7 +54,7 @@ class TestSeferLoadAPI:
             app.state.limiter.enabled = False
 
         # 2. Bypass custom RateLimitMiddleware using monkeypatch (for safety)
-        from app.infrastructure.middleware.rate_limit_middleware import (
+        from v2.modules.platform_infra.middleware.rate_limit_middleware import (
             RateLimitMiddleware,
         )
 

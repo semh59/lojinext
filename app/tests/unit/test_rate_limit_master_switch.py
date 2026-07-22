@@ -45,7 +45,9 @@ async def test_global_middleware_bypassed_when_disabled(monkeypatch):
     """RATE_LIMIT_ENABLED=False → global RateLimitMiddleware her isteği geçirir."""
     from unittest.mock import AsyncMock
 
-    from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
+    from v2.modules.platform_infra.middleware.rate_limit_middleware import (
+        RateLimitMiddleware,
+    )
 
     # pytest/dev skip'lerini devre dışı bırak ki sadece RATE_LIMIT_ENABLED'ı test edelim
     monkeypatch.setattr("app.config.settings.ENVIRONMENT", "test")

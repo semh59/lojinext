@@ -1,6 +1,11 @@
 """
 Rate limiting middleware — Redis-backed (distributed) with in-memory fallback.
 
+`app/infrastructure/middleware/rate_limit_middleware.py`'den dalga 17
+(platform_infra) denetiminde taşındı — main.py'nin ASGI middleware zinciri
++ logging_middleware.py'nin get_real_client_ip() çağrısı, genuinely
+cross-cutting.
+
 Redis path: INCR + EXPIRE per bucket. Atomic and works across multiple workers.
 Fallback:   sliding fixed-window counter in process memory (single-worker only).
 """

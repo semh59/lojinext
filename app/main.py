@@ -18,13 +18,21 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.api.middleware.rate_limiter import limiter
 from app.api.v1.api import api_router
 from app.config import settings
-from app.infrastructure.context.correlation_middleware import CorrelationMiddleware
-from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
-from app.infrastructure.middleware.logging_middleware import RequestLoggingMiddleware
-from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
+from v2.modules.platform_infra.context.correlation_middleware import (
+    CorrelationMiddleware,
+)
 from v2.modules.platform_infra.context.request_context import get_correlation_id
 from v2.modules.platform_infra.database.connection import engine
 from v2.modules.platform_infra.logging.logger import setup_logging
+from v2.modules.platform_infra.middleware.body_size_middleware import (
+    MaxBodySizeMiddleware,
+)
+from v2.modules.platform_infra.middleware.logging_middleware import (
+    RequestLoggingMiddleware,
+)
+from v2.modules.platform_infra.middleware.rate_limit_middleware import (
+    RateLimitMiddleware,
+)
 from v2.modules.shared_kernel.errors import BusinessException
 from v2.modules.shared_kernel.exceptions import (
     AnomalyDetectionError,

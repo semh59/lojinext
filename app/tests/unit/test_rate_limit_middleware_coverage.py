@@ -1,4 +1,4 @@
-"""Coverage tests for app/infrastructure/middleware/rate_limit_middleware.py.
+"""Coverage tests for v2/modules/platform_infra/middleware/rate_limit_middleware.py.
 
 Tests cover:
 - _get_client_ip (X-Forwarded-For, direct client, unknown)
@@ -16,7 +16,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from starlette.requests import Request
 
-from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
+from v2.modules.platform_infra.middleware.rate_limit_middleware import (
+    RateLimitMiddleware,
+)
 
 pytestmark = pytest.mark.unit
 

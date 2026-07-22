@@ -1,5 +1,9 @@
 """Global request body-size cap — a DoS backstop.
 
+`app/infrastructure/middleware/body_size_middleware.py`'den dalga 17
+(platform_infra) denetiminde taşındı — main.py'nin ASGI middleware zinciri,
+genuinely cross-cutting.
+
 Rejects requests whose declared ``Content-Length`` exceeds the configured limit
 *before* the body is read into memory, returning 413. Per-endpoint upload checks
 (e.g. the 10 MB Excel cap) remain the tight control; this is the coarse backstop

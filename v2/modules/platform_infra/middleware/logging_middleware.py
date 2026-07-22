@@ -13,6 +13,10 @@ logger = get_logger(__name__)
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
+    `app/infrastructure/middleware/logging_middleware.py`'den dalga 17
+    (platform_infra) denetiminde taşındı — main.py'nin ASGI middleware
+    zinciri, genuinely cross-cutting.
+
     Enterprise-grade Request Logging Middleware.
 
     Özellikler:
@@ -82,7 +86,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             response.headers["X-Correlation-ID"] = correlation_id
 
             # Security probe
-            from app.infrastructure.middleware.rate_limit_middleware import (
+            from v2.modules.platform_infra.middleware.rate_limit_middleware import (
                 get_real_client_ip,
             )
             from v2.modules.platform_infra.monitoring.security_probe import (

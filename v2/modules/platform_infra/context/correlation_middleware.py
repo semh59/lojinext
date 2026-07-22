@@ -2,6 +2,10 @@
 Correlation ID Middleware
 Her request'e unique ID atar, response header'a ekler
 Distributed tracing için gerekli
+
+`app/infrastructure/context/correlation_middleware.py`'den dalga 17
+(platform_infra) denetiminde taşındı — main.py dışında gerçek çağıranı
+yok, ama diğer platform_infra.context/logging altyapısıyla aynı ailede.
 """
 
 import re

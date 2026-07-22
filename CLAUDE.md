@@ -148,7 +148,7 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 | `shared_kernel` | Done (code) — not a business module; genuinely cross-cutting code left over once all 15 business modules were carved out (`UnitOfWork`, `BaseRepository`, ORM `Base`, domain exception hierarchy, security validators, generic response envelopes, `OutboxEvent`/`ErrorEvent`/`ErrorOccurrence`) | `v2/modules/shared_kernel/CLAUDE.md` |
 | `platform_infra` | Done (code) — not a business module; genuinely cross-cutting RUNTIME SERVICES (cache/events/monitoring/resilience/middleware/database/DI-container/security/context/logging/audit/background/websocket) called (never inherited) by all 15 business modules; unlike `shared_kernel`, has its own enforced `public-surface-only-platform_infra` import-linter contract | `v2/modules/platform_infra/CLAUDE.md` |
 
-There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `LicenseEngine`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector`, `PredictionService`, `EnsemblePredictorService`, `EnsembleFuelPredictor`, `KalmanEstimatorService`, `Trainer`, `SeferService`, `SeferFuelEstimator`, `SeferRepository` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
+There is no `<X>Service`-as-DI-singleton-only pattern inside migrated modules for CRUD-style use-cases — each use-case is a standalone function (see each module's `public.py`/`CLAUDE.md`). A handful of classes remain as documented exceptions (real mutable state or constructor-injected client dependencies for a single cohesive pipeline) — `RouteSimulator`, `LokasyonHydrator`, `DriverCoachingEngine`, `DriverPerformanceML`, `SoforSeferPDFService`, `PDFReportGenerator`, `TokenBlacklist`, `PermissionChecker`, `MaintenancePredictor`, `OpetFuelProvider`, `FAISSVectorStore`/`RAGEngine`/`RAGSyncService`/`GroqService`/`LLMClient`/`AIService`/`SmartAIService`+`KnowledgeBase`/`TripPlannerEngine`, `FuelTheftClassifier`, `AnomalyDetector`, `PredictionService`, `EnsemblePredictorService`, `EnsembleFuelPredictor`, `KalmanEstimatorService`, `Trainer`, `SeferService`, `SeferFuelEstimator`, `SeferRepository` — never a multi-use-case service object. Every module's own `CLAUDE.md` documents its exceptions with rationale.
 
 ### Route grade/segment analysis
 
@@ -422,18 +422,18 @@ All settings in `app/config.py` (`pydantic_settings.BaseSettings`). Reference vi
 6. `mypy` — no type errors
 7. `pytest` unit + integration with 70 % coverage minimum
 8. `vitest --run` + `vite build`
-9. `lint-imports` (import-linter) — the 17 v2/-modules contracts (1
-   independence + 1 layers + 15 `public-surface-only-<module>`, one per
-   migrated business module) must pass; blocking since 2026-07-21. The
-   pre-existing legacy `report-only` contract (`app.core.services` vs
-   `app.services` circular drift, unrelated to the v2/ modular-monolith
-   refactor) stays non-blocking on purpose — see
-   `TASKS/faz1-import-linter-baseline-ve-gate.md`. `shared_kernel` landed
-   (dalga 16) but deliberately has no `public-surface-only-shared_kernel`
-   contract — the whole point of that module is that everyone imports it
-   freely (see `v2/modules/shared_kernel/CLAUDE.md`), so the "15" count
-   above stays business-modules-only. `platform_infra` (not started) will
-   get its own contract added when it lands.
+9. `lint-imports` (import-linter) — the 18 v2/-modules contracts (1
+   independence + 1 layers + 16 `public-surface-only-<module>`, one per
+   migrated business module, including `platform_infra`) must pass;
+   blocking since 2026-07-21. The pre-existing legacy `report-only`
+   contract (`app.core.services` vs `app.services` circular drift,
+   unrelated to the v2/ modular-monolith refactor) stays non-blocking on
+   purpose — see `TASKS/faz1-import-linter-baseline-ve-gate.md`.
+   `shared_kernel` landed (dalga 16) but deliberately has no
+   `public-surface-only-shared_kernel` contract — the whole point of that
+   module is that everyone imports it freely (see
+   `v2/modules/shared_kernel/CLAUDE.md`), so the "16" count above stays
+   business-modules-only.
 
 ---
 

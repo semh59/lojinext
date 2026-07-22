@@ -129,11 +129,11 @@ dalgada DEĞİŞTİRİLMEDİ.**
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **trip (senkron, henüz taşınmadı)**: `recalculate_vehicle_periods`
-  `sefer_repo.get_all(...)`/`sefer_repo.update_trips_fuel_data(...)`
-  çağırır — periyot-sefer eşleştirmesi ve dağıtılan-yakıt/tüketim yazımı aynı
-  transaction'da. Bu bağımlılık BİLİNÇLİ OLARAK fuel tarafında kalıyor (görev
-  dosyası kararı) — trip taşınınca bu dosyanın importu güncellenir.
+- **trip (taşındı, dalga 14)**: `recalculate_vehicle_periods`
+  `v2.modules.trip.public.Sefer` üzerinden `sefer_repo.get_all(...)`/
+  `sefer_repo.update_trips_fuel_data(...)` çağırır — periyot-sefer
+  eşleştirmesi ve dağıtılan-yakıt/tüketim yazımı aynı transaction'da. Bu
+  bağımlılık BİLİNÇLİ OLARAK fuel tarafında kalıyor (görev dosyası kararı).
 - ✅ **ÇÖZÜLDÜ (dalga 11, 2026-07-16)** — eski `analiz_service.py`
   (`AnalizService`) `create_fuel_periods`/`distribute_fuel_to_trips`/
   `match_periods_with_trips`/`recalculate_vehicle_periods`'i doğrudan import
@@ -141,8 +141,8 @@ dalgada DEĞİŞTİRİLMEDİ.**
   yoktu) — dedektif denetiminde hiçbir prod kod tarafından çağrılmadığı
   bulundu (dead code) ve kullanıcı kararıyla tamamen silindi. fuel↔
   analytics_executive arasında bu yönde artık HİÇBİR bağımlılık yok.
-- **import_excel (senkron, henüz taşınmadı)**: `import_service.py`
-  `process_yakit_import` içinde `bulk_add_yakit` + `recalculate_vehicle_periods`'i
+- **import_excel (taşındı, ters yön)**: `application/yakit_importer.py`
+  `v2.modules.fuel.public`'ten `bulk_add_yakit` + `recalculate_vehicle_periods`'i
   doğrudan çağırır (location'ın `create_location` tüketimiyle aynı desen).
 - **fleet (senkron)**: `add_yakit`/`bulk_add_yakit` `uow.arac_repo` üzerinden
   aktif araç kontrolü yapar (plaka değil, aktiflik + son-km).

@@ -4,8 +4,9 @@
 
 LLM sohbet (`/ai/chat`, `/ai/query`, `/ai/progress`, `/ai/status`), RAG
 (FAISS + sentence-transformers) tabanlı context-grounding, Feature C sefer
-planlama sihirbazı (`TripPlannerEngine`, `app/api/v1/endpoints/trips.py`
-tarafından kullanılır — trip henüz taşınmadı, dalga 14), pilot geri
+planlama sihirbazı (`TripPlannerEngine`, bu modülün kendi
+`api/plan_wizard_routes.py`'si tarafından kullanılır — dalga 14'te trip'in
+eski `app/api/v1/endpoints/trips.py`'sinden buraya taşındı), pilot geri
 bildirimi (`/feedback` → Telegram OPS). Bu modül **hiçbir DB tablosuna
 sahip değil** — FAISS dosya-tabanlı indeks (`app/data/ai_kb/` +
 `app/data/vector_store/`), Docker `app_data` named volume üzerinden
@@ -198,20 +199,23 @@ istisnaları #2/#7).
   best-effort arka plan görevi olarak çağırıyor.
   `v2.modules.prediction_ml.infrastructure.prediction_tasks.py` bu modülün
   `public.get_llm_client()`'ını çağırıyor.
-- **trip (taşınmadı, dalga 14, geçici bağımlılık)**:
-  `plan_trip.py` `app.database.unit_of_work.UnitOfWork` üzerinden
-  `lokasyon_repo`/`arac_repo`/`sofor_repo`/`sefer_repo`'ya (route_analysis/
-  weather fetch, shortlist, context) doğrudan erişiyor — trip taşınınca
-  güncellenecek (location/route_simulation dalga 1'deki geçici
-  bağımlılıkla aynı desen). `app/api/v1/endpoints/trips.py` (trip
-  modülünün kendisi) bu modülün `public.py`'sinden `TripPlannerEngine`/
-  `PlanInput`/`PlanResult`/sihirbaz şemalarını (`DriverSuggestion`/
-  `PlanWizardRequest`/`PlanWizardResponse`/`VehicleSuggestion`,
-  2026-07-18'de public'e eklendi) import ediyor.
-- **route_simulation (taşınmadı kısım, geçici)**: `plan_trip.py`
-  `app.core.container.get_container().weather_service` (henüz taşınmayan
-  `weather_service.py`) çağırıyor. `find_similar_trips` artık (dalga 13)
-  `v2.modules.prediction_ml.public`'ten import ediliyor (taşındı).
+- **trip (taşındı, dalga 14)**: `plan_trip.py`
+  `v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork`
+  üzerinden `lokasyon_repo`/`arac_repo`/`sofor_repo`/`sefer_repo`'ya
+  (route_analysis/weather fetch, shortlist, context) doğrudan erişiyor
+  (location/route_simulation'daki aynı UoW-passthrough deseni). Bu
+  modülün kendi `api/plan_wizard_routes.py`'si (trip'in eski
+  `app/api/v1/endpoints/trips.py`'sinden dalga 14'te taşındı, o dosya
+  artık yok) `public.py`'den `TripPlannerEngine`/`PlanInput`/`PlanResult`/
+  sihirbaz şemalarını (`DriverSuggestion`/`PlanWizardRequest`/
+  `PlanWizardResponse`/`VehicleSuggestion`, 2026-07-18'de public'e
+  eklendi) import ediyor.
+- **route_simulation (taşındı, ters yön)**: `plan_trip.py`
+  `v2.modules.platform_infra.public.get_container().weather_service`
+  (container'ın lazy singleton'ı, gerçek sınıf route_simulation'ın
+  `application/weather_service.py::WeatherService`'i — 2026-07-22'de
+  buraya taşındı) çağırıyor. `find_similar_trips` (dalga 13)
+  `v2.modules.prediction_ml.public`'ten import ediliyor.
 - **fuel (taşındı)**: ✅ **DÜZELTİLDİ (2026-07-17, aynı gün ikinci tur)** —
   `api/ai_routes.py::_fuel_trend_chart` fuel'in `yakit_alimlari`
   tablosuna API katmanından doğrudan ham SQL atıyordu (dalga-12-öncesinden

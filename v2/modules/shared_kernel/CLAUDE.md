@@ -179,12 +179,14 @@ injection.
 - `v2/modules/platform_infra/container.py` (dalga 17'de `app/core/
   container.py`'den taşındı) — DI composition root, bootstrap-seviyesi,
   ayrı bir konsept.
-- `app/core/ai/*` (5 dosya) — ai_assistant modülünün henüz taşınmamış
-  eski dosyaları (kendi CLAUDE.md'sinde dokümante, bu modülün kapsamı
-  dışı).
-- `app/core/services/{weather_service,route_validator,openroute_service,
-  route_calibration_service}.py` — route_simulation'ın henüz taşınmamış
-  eski dosyaları (kök CLAUDE.md'de dokümante).
+- `app/core/ai/*` (5 dosya) — gerçek kod zaten `v2/modules/ai_assistant/`'a
+  taşındı, bunlar geriye kalan 1-satırlık "FAZ4'te silinir" wildcard shim'ler
+  (kendi CLAUDE.md'sinde dokümante, bu modülün kapsamı dışı).
+- `app/core/services/openroute_service.py` — location modülünün canlı
+  geocode bağımlılığı, kasıtlı olarak `app/`'de kalıyor (kök CLAUDE.md'de
+  dokümante). `weather_service.py`/`route_validator.py`/
+  `route_calibration_service.py` 2026-07-22'de route_simulation'a taşındı,
+  bu listede artık yok.
 - `v2/modules/platform_infra/database/{connection.py,db_session.py,init_db.py}`
   (dalga 17'de `app/database/`'den taşındı) — DB bootstrap/engine kurulumu,
   orijinal 22 dosyalık envanterde hiç yoktu, kapsam dışı.

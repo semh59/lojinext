@@ -86,16 +86,16 @@ def test_template_meta_pydantic_validation():
 @pytest.mark.integration
 def test_list_templates_via_http(monkeypatch):
     """HTTP üzerinden çağrı (auth bypass + flag aç)."""
-    from app.api import deps
     from app.config import settings as app_settings
     from app.main import app
+    from v2.modules.auth_rbac.public import get_current_active_user
 
     monkeypatch.setattr(app_settings, "REPORTS_V2_ENABLED", True)
 
     async def _fake_user():
         return _FakeUser()
 
-    app.dependency_overrides[deps.get_current_active_user] = _fake_user
+    app.dependency_overrides[get_current_active_user] = _fake_user
     try:
         with TestClient(app) as client:
             r = client.get("/api/v1/reports/studio/templates")
@@ -107,4 +107,4 @@ def test_list_templates_via_http(monkeypatch):
                 body["templates"][0].keys()
             )
     finally:
-        app.dependency_overrides.pop(deps.get_current_active_user, None)
+        app.dependency_overrides.pop(get_current_active_user, None)

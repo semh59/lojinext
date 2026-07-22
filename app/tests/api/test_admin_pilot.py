@@ -34,8 +34,8 @@ def _client():
 
 
 async def test_pilot_status_aggregates_counts_and_coverage():
-    from app.api.deps import get_current_active_admin
     from app.main import app
+    from v2.modules.auth_rbac.public import get_current_active_admin
     from v2.modules.platform_infra.database.connection import get_db
 
     # sıra: seferler, predicted, araclar, soforler, yakit, anom_open, ack, resolved
@@ -71,8 +71,8 @@ async def test_pilot_status_aggregates_counts_and_coverage():
 
 
 async def test_pilot_status_zero_seferler_no_div_by_zero():
-    from app.api.deps import get_current_active_admin
     from app.main import app
+    from v2.modules.auth_rbac.public import get_current_active_admin
     from v2.modules.platform_infra.database.connection import get_db
 
     async def _fake_db():

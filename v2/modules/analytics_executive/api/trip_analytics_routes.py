@@ -13,14 +13,13 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import (
-    get_background_job_manager,
+from app.api.deps import get_background_job_manager, get_sefer_service
+from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
+from v2.modules.auth_rbac.public import (
+    Kullanici,
     get_current_active_user,
-    get_sefer_service,
     require_permissions,
 )
-from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
-from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,

@@ -20,13 +20,7 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field
 
-from app.api.deps import (
-    SessionDep,
-    UOWDep,
-    get_current_active_admin,
-    get_current_active_user,
-    require_permissions,
-)
+from app.api.deps import SessionDep, UOWDep
 from app.config import settings
 from v2.modules.admin_platform.api.internal_routes import (
     _ALLOWED_MIME_TYPES,
@@ -39,7 +33,12 @@ from v2.modules.admin_platform.public import (
     release_reservation,
     reserve_or_get_cached,
 )
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
+    require_permissions,
+)
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.delete_yakit import (
     delete_yakit as delete_yakit_usecase,

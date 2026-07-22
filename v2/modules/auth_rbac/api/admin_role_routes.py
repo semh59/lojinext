@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 
 from v2.modules.auth_rbac.application import role_service
-from v2.modules.auth_rbac.domain.permission_checker import require_yetki
+from v2.modules.auth_rbac.application.permission_checker import require_yetki
 from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.schemas import RolCreate, RolRead
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event

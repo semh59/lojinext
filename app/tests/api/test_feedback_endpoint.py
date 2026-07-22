@@ -16,8 +16,8 @@ def _client():
 
 
 async def _override_user():
-    from app.api.deps import get_current_active_user
     from app.main import app
+    from v2.modules.auth_rbac.public import get_current_active_user
 
     fake = MagicMock()
     fake.id = 1

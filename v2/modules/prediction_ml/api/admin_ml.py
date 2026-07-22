@@ -4,7 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
-from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_user,
+    require_yetki,
+)
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
@@ -27,7 +31,7 @@ router = APIRouter()
 async def trigger_training(
     arac_id: int,
     request: Request,
-    current_user: Kullanici = Depends(deps.get_current_active_user),
+    current_user: Kullanici = Depends(get_current_active_user),
 ):
     """
     Manually trigger model training for a specific vehicle.

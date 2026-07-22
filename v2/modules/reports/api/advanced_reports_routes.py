@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from app.api.deps import SessionDep, get_current_active_admin
+from app.api.deps import SessionDep
 from v2.modules.analytics_executive.public import (
     calculate_period_cost,
     calculate_roi,
@@ -22,7 +22,7 @@ from v2.modules.analytics_executive.public import (
 from v2.modules.analytics_executive.public import (
     get_vehicle_cost_comparison as analyze_vehicle_cost_comparison,
 )
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
 from v2.modules.import_excel.public import export_data, get_export_service
 from v2.modules.platform_infra.api_utils import parse_date_param
 from v2.modules.platform_infra.logging.logger import get_logger

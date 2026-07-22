@@ -6,9 +6,12 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 
-from app.api.deps import get_current_active_user
 from app.config import settings
-from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_user,
+    require_yetki,
+)
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
 )

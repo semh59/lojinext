@@ -4,8 +4,8 @@ from typing import Annotated, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep, get_current_active_user, get_sefer_service
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import SessionDep, get_sefer_service
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
 from v2.modules.route_simulation.application.weather_service import (
     WeatherService,
     get_weather_service,

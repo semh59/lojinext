@@ -14,9 +14,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_current_active_admin, get_current_active_user
 from app.config import settings
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
+)
 from v2.modules.notification.application.manage_push_subscription import (
     subscribe_push,
     unsubscribe_push,

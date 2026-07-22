@@ -7,13 +7,12 @@ from typing import Annotated, Any, List, Optional, cast
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel, Field
 
-from app.api.deps import (
-    SessionDep,
-    UOWDep,
+from app.api.deps import SessionDep, UOWDep
+from v2.modules.auth_rbac.public import (
+    Kullanici,
     get_current_active_admin,
     get_current_active_user,
 )
-from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.location.application.analyze_location_route import (
     analyze_location_route,
 )

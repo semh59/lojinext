@@ -21,8 +21,11 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import get_current_active_admin, get_current_active_user
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
+)
 from v2.modules.driver.application.delete_sofor import bulk_delete
 from v2.modules.driver.application.delete_sofor import (
     delete_sofor as delete_sofor_usecase,

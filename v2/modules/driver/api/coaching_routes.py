@@ -17,9 +17,12 @@ from typing import Annotated, Any
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_user,
+    require_permissions,
+)
 from v2.modules.driver.application.generate_coaching import get_driver_coaching_engine
 from v2.modules.driver.application.get_coaching_effectiveness import (
     get_coaching_effectiveness_stats,

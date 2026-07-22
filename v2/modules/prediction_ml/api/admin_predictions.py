@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from starlette.responses import JSONResponse
 
-from app.api.deps import get_background_job_manager, get_current_active_admin
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import get_background_job_manager
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,

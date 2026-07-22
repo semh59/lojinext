@@ -152,8 +152,8 @@ class TestAnalyzeRouteEndpoint:
 
     async def test_analyze_route_provider_error_returns_503(self):
         """analyze_route returns 503 when get_route_details reports error."""
-        from app.api.deps import get_current_active_user
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
         from v2.modules.platform_infra.database.connection import get_db
 
         fake_user = MagicMock()
@@ -195,8 +195,8 @@ class TestAnalyzeRouteEndpoint:
 
     async def test_analyze_route_success_returns_200(self):
         """analyze_route returns 200 when get_route_details succeeds."""
-        from app.api.deps import get_current_active_user
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
         from v2.modules.platform_infra.database.connection import get_db
 
         fake_user = MagicMock()
@@ -258,8 +258,8 @@ class TestSimulateRouteLogic:
         from httpx import AsyncClient
         from httpx._transports.asgi import ASGITransport
 
-        from app.api.deps import get_current_active_user
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
         from v2.modules.platform_infra.database.connection import get_db
         from v2.modules.platform_infra.resilience.rate_limiter import (
             RateLimiterDependency,

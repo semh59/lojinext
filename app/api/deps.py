@@ -1,7 +1,19 @@
-"""Per-request FastAPI dependency factories.
+"""Per-request FastAPI dependency factories (generic DI plumbing).
 
-Bu modül, endpoint handler'larının ``Depends()`` ile bağlandığı kısa
-ömürlü (request-scoped) bağımlılıkları tanımlar.
+2026-07-22 (Kalem 3 commit 1): auth-specific factories (``get_current_user``,
+``get_current_active_user``, ``get_current_active_admin``,
+``get_current_superadmin``, ``require_permissions``, ``TokenDep``) taşındı
+``v2/modules/auth_rbac/application/authenticate.py``'ye — bunlar hiçbir
+zaman gerçekten bu dosyaya ait değildi, yalnızca
+``auth_rbac.domain.permission_checker``'ın bu dosyayı import etmesinden
+doğan bir döngü onları burada tutuyordu (dosya v2/modules/ dışında
+kaldığı için). Artık `v2.modules.auth_rbac.public`'ten import edilirler.
+
+Kalan semboller (``SessionDep``/``UOWDep``/``get_background_job_manager``/
+``get_sefer_service``) de jenerik/tekil-modül-dışı DI alias'ları — bunlar
+da Kalem 3'ün sonraki commit'lerinde ``platform_infra``/``trip``'e
+taşınacak (bkz. plan). Bu dosya o taşımalar tamamlanana kadar geçiş
+durumunda.
 
 ─── DI Mimarisi — iki katmanlı ─────────────────────────────────────────────
 1. ``app/api/deps.py`` (bu dosya)
@@ -23,44 +35,22 @@ Kural: Transactional domain servisleri için bu modülü kullan;
 ────────────────────────────────────────────────────────────────────────────
 """
 
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Annotated, List, Union
+from typing import TYPE_CHECKING, Annotated
 
-from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends
 
 if TYPE_CHECKING:
     from v2.modules.trip.application.trip_service import SeferService
-import jwt
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.config import settings
-
-# NOT (2026-07-18 denetimi): bu üç import auth_rbac.public YERİNE bilinçli
-# olarak domain-leaf yollarından yapılır — public.py, `PermissionChecker`
-# üzerinden bu dosyanın kendisini (get_current_user) import eder; public'e
-# geçmek döngüsel import üretir. deps.py auth_rbac/CLAUDE.md'de dokümante
-# composition-root istisnasıdır.
-from v2.modules.auth_rbac.domain import jwt_handler
-from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
-from v2.modules.auth_rbac.infrastructure.models import Kullanici, Rol
-from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 from v2.modules.platform_infra.background.job_manager import (
     BackgroundJobManager,
     get_job_manager,
 )
 from v2.modules.platform_infra.database.connection import get_db
-from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork, get_uow
 
-logger = get_logger(__name__)
-
-reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
-
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
-TokenDep = Annotated[str, Depends(reusable_oauth2)]
 UOWDep = Annotated[UnitOfWork, Depends(get_uow)]
 
 
@@ -72,218 +62,3 @@ async def get_sefer_service(uow: UOWDep) -> "SeferService":
     from v2.modules.trip.application.trip_service import SeferService
 
     return SeferService(repo=uow.sefer_repo)
-
-
-# Blacklist logic moved to top imports
-async def get_current_user(
-    request: Request, db: SessionDep, token: TokenDep
-) -> Kullanici:
-    # B-86: Deny blacklisted tokens (e.g., after logout)
-    if await blacklist.is_blacklisted(token):
-        logger.warning("Blacklisted token attempt detected")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is blacklisted",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        # Phase 3 Security: Add leeway for clock skew. Verify aud/iss claims
-        # so tokens issued for a different service or environment are rejected.
-        payload = jwt.decode(
-            token,
-            jwt_handler.get_decode_key(),
-            algorithms=[settings.ALGORITHM],
-            audience=settings.JWT_AUDIENCE,
-            issuer=settings.JWT_ISSUER,
-            leeway=60,  # PyJWT: leeway is a top-level kwarg, not an options key
-        )
-        token_type = payload.get("typ")
-        username: str = payload.get("sub")
-        is_super: bool = payload.get("is_super", False)
-
-        if token_type != "access":
-            logger.warning(f"Token validation failed: Invalid typ={token_type!r}")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid access token",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        if username is None:
-            logger.warning("Token validation failed: Missing subject (sub)")
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-            )
-
-        if is_super and username == settings.SUPER_ADMIN_USERNAME:
-            logger.info(f"Super admin access granted: {username}")
-
-            # ARCH-001: Resolve the env break-glass superadmin to the real seed
-            # admin row (email == SUPER_ADMIN_USERNAME) so audit captures a real
-            # user_id instead of NULL.
-            #
-            # Two failure modes handled differently:
-            #   DB DOWN (Exception)  → keep break-glass usable in all envs
-            #   ROW MISSING (None)   → seed issue; fail in prod, warn in dev/test
-            _db_down = False
-            try:
-                from v2.modules.platform_infra.security.pii_encryption import (
-                    blind_index,
-                )
-
-                _res = await db.execute(
-                    select(Kullanici)
-                    .options(selectinload(Kullanici.rol))
-                    .where(
-                        Kullanici.email_bidx
-                        == blind_index(settings.SUPER_ADMIN_USERNAME)
-                    )
-                )
-                real_admin = _res.scalar_one_or_none()
-            except Exception as _e:
-                logger.error(
-                    "Superadmin DB resolve failed (DB unreachable?), "
-                    "using virtual id=0 break-glass: %s",
-                    _e,
-                )
-                real_admin = None
-                _db_down = True
-
-            if isinstance(real_admin, Kullanici):
-                setattr(real_admin, "is_env_superadmin", True)
-                return real_admin
-
-            # Row not found — seed migration missing or DB outage.
-            if not _db_down and settings.ENVIRONMENT == "prod":
-                # Production must always have seed row. Fail loudly so ops
-                # knows to run `alembic upgrade head` / seed migration.
-                logger.error(
-                    "ARCH-001: Superadmin seed row absent in prod DB "
-                    "(SUPER_ADMIN_USERNAME=%s). Run seed migration.",
-                    settings.SUPER_ADMIN_USERNAME,
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail="Superadmin account not seeded. Contact administrator.",
-                )
-
-            # Dev / test / DB-down: fall back to virtual id=0 (break-glass).
-            logger.warning(
-                "Superadmin row not resolvable; using virtual id=0 "
-                "(audit for this session will be anonymous). "
-                "db_down=%s env=%s",
-                _db_down,
-                settings.ENVIRONMENT,
-            )
-            super_role = Rol(
-                id=0,
-                ad="super_admin",
-                yetkiler={"*": True},
-                olusturma=datetime.now(timezone.utc),
-            )
-            virtual_user = Kullanici(
-                id=0,
-                email=f"{username}@lojinext.internal"
-                if "@" not in username
-                else username,
-                ad_soyad="Super Administrator",
-                rol_id=0,
-                rol=super_role,
-                aktif=True,
-                sifre_hash="",
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc),
-                son_giris=datetime.now(timezone.utc),
-            )
-            setattr(virtual_user, "is_env_superadmin", True)
-            return virtual_user
-
-    except jwt.ExpiredSignatureError:
-        from v2.modules.platform_infra.monitoring.security_probe import emit_jwt_anomaly
-
-        _ip = request.client.host if request.client else ""
-        emit_jwt_anomaly("ExpiredSignatureError", str(request.url.path), _ip)
-        logger.warning("Token signature has expired")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token signature has expired",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        from v2.modules.platform_infra.monitoring.security_probe import emit_jwt_anomaly
-
-        _ip = request.client.host if request.client else ""
-        _exc_type = type(e).__name__
-        emit_jwt_anomaly(_exc_type, str(request.url.path), _ip)
-        logger.warning(f"Token decoding failed or other error: {e!s}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    from v2.modules.platform_infra.security.pii_encryption import blind_index
-
-    result = await db.execute(
-        select(Kullanici)
-        .options(selectinload(Kullanici.rol))
-        .where(Kullanici.email_bidx == blind_index(username))
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
-        logger.warning(f"Authenticated user not found in DB: {username}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    if not user.aktif:
-        logger.warning(f"Inactive user attempted access: {username}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
-        )
-    return user
-
-
-async def get_current_active_admin(
-    current_user: Annotated[Kullanici, Depends(get_current_user)],
-) -> Kullanici:
-    """RBAC check for ADMIN level access."""
-    SecurityService.verify_permission(current_user, Permission.ADMIN)
-    return current_user
-
-
-async def get_current_active_user(
-    current_user: Annotated[Kullanici, Depends(get_current_user)],
-) -> Kullanici:
-    """Active user guard used by endpoints requiring only authentication."""
-    return current_user
-
-
-async def get_current_superadmin(
-    current_user: Annotated[Kullanici, Depends(get_current_user)],
-) -> Kullanici:
-    """RBAC check for SUPERADMIN level access."""
-    SecurityService.verify_permission(current_user, Permission.SUPERADMIN)
-    return current_user
-
-
-def require_permissions(required_permission: Union[Permission, str, List[str]]):
-    """
-    FastAPI dependency injection factory for granular RBAC controls.
-    Kullanım: current_user: Kullanici = Depends(require_permissions("sefer:write"))
-    """
-
-    async def permission_checker(
-        current_user: Annotated[Kullanici, Depends(get_current_user)],
-    ) -> Kullanici:
-        SecurityService.verify_permission(current_user, required_permission)
-        return current_user
-
-    return permission_checker

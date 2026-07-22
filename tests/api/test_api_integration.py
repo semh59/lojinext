@@ -134,12 +134,11 @@ async def test_route(test_session):
 def override_deps(test_session, test_user):
     """Override FastAPI dependencies and UoW for testing."""
 
-    from app.api.deps import (
-        get_background_job_manager,
+    from app.api.deps import get_background_job_manager, get_db
+    from v2.modules.auth_rbac.public import (
         get_current_active_admin,
         get_current_superadmin,
         get_current_user,
-        get_db,
     )
 
     async def override_get_db():

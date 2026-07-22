@@ -1,4 +1,6 @@
-"""Tests for app/api/deps.py — real DB, real JWT, real Redis blacklist.
+"""Tests for app/api/deps.py + v2/modules/auth_rbac/application/authenticate.py
+(auth-specific factories moved there 2026-07-22, Kalem 3 commit 1) — real DB,
+real JWT, real Redis blacklist.
 
 Previously these overrode get_db with an AsyncMock session, built MagicMock
 Kullanici/Rol objects, and patched blacklist/job-manager internals, asserting on
@@ -92,11 +94,11 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
 
     from fastapi import HTTPException
 
-    from app.api import deps
     from v2.modules.auth_rbac.infrastructure.token_blacklist import (
         TokenBlacklist,
         blacklist,
     )
+    from v2.modules.auth_rbac.public import get_current_user
 
     # Undo the autouse bypass for THIS test → real is_blacklisted.
     monkeypatch.setattr(
@@ -110,7 +112,7 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
     assert await blacklist.is_blacklisted(token) is True  # real Redis round-trip
 
     with pytest.raises(HTTPException) as exc:
-        await deps.get_current_user(_real_request(), db_session, token)
+        await get_current_user(_real_request(), db_session, token)
     assert exc.value.status_code == 401
     assert "blacklisted" in str(exc.value.detail).lower()
 
@@ -177,8 +179,8 @@ async def test_get_current_user_super_admin_virtual_user(async_client, db_sessio
 async def test_get_current_user_super_admin_resolves_real_db_id(db_session):
     """ARCH-001: super-admin token resolves to the real seeded admin row (real id +
     is_env_superadmin marker) so audit captures a real user_id."""
-    from app.api import deps
     from app.config import settings
+    from v2.modules.auth_rbac.public import get_current_user
 
     uid = await _seed_user(
         db_session, email=settings.SUPER_ADMIN_USERNAME, is_admin=True
@@ -188,7 +190,7 @@ async def test_get_current_user_super_admin_resolves_real_db_id(db_session):
         expires_delta=timedelta(minutes=30),
     )
 
-    user = await deps.get_current_user(_real_request(), db_session, token)
+    user = await get_current_user(_real_request(), db_session, token)
 
     assert user.id == uid
     assert user.email == settings.SUPER_ADMIN_USERNAME
@@ -253,8 +255,8 @@ async def test_get_background_job_manager_returns_manager():
 
 async def test_require_permissions_factory_returns_callable():
     """require_permissions returns an async callable checker."""
-    from app.api.deps import require_permissions
     from v2.modules.auth_rbac.domain.security_service import Permission
+    from v2.modules.auth_rbac.public import require_permissions
 
     checker = require_permissions(Permission.ADMIN)
     assert callable(checker)
@@ -264,8 +266,8 @@ async def test_require_permissions_denies_without_perm():
     """A real non-admin user is denied ADMIN by the real SecurityService → 403."""
     from fastapi import HTTPException
 
-    from app.api.deps import require_permissions
     from v2.modules.auth_rbac.domain.security_service import Permission
+    from v2.modules.auth_rbac.public import require_permissions
 
     # Real entities (no mock); verify_permission reads user.rol.yetkiler.
     user = Kullanici(id=1, email="user@x.com", aktif=True, sifre_hash="x")

@@ -10,8 +10,8 @@ from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from app.api.deps import get_background_job_manager, require_permissions
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import get_background_job_manager
+from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,

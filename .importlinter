@@ -72,7 +72,6 @@ ignore_imports =
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
-    v2.modules.auth_rbac.domain.permission_checker -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
@@ -154,7 +153,6 @@ ignore_imports =
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
-    v2.modules.auth_rbac.domain.permission_checker -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models

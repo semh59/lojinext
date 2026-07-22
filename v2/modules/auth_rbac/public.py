@@ -28,15 +28,33 @@ silindi). ``v2/modules/platform_infra/container.py``'nin
 yalnız bu motor için var olan ``count_active_vehicles()`` sarmalayıcısı da
 aynı geçişte kaldırıldı.
 
-NOT: ``get_current_user``/``get_current_active_user``/``get_current_active_admin``/
-``require_permissions``/``UOWDep``/``TokenDep``/``SessionDep`` FastAPI
-dependency wiring'i ``app/api/deps.py``'de KALIYOR (taşınmadı) — deps.py
-FastAPI-wiring katmanı, modül kodu değil (driver/fleet dalgalarında da aynı
-karar: `app/api/deps.py` hiçbir zaman v2/modules/*'e taşınmadı, yalnızca
-import kaynakları güncellendi).
+NOT (2026-07-22 güncellemesi): ``get_current_user``/``get_current_active_user``/
+``get_current_active_admin``/``get_current_superadmin``/``require_permissions``/
+``TokenDep`` artık BURADA (``application/authenticate.py``) — eskiden
+``app/api/deps.py``'de kalmalarının tek sebebi ``permission_checker.py``'nin
+(o zaman ``domain/``'da) bu dosyayı import etmesiyle oluşan döngüydü
+(public.py zaten ``PermissionChecker``'ı import ediyordu). Dosyalar
+v2/modules/ İÇİNE taşınınca (ve ``permission_checker.py`` da aynı turda
+``application/``'a taşınınca, artık sibling import) döngü kendiliğinden
+çözüldü. ``SessionDep``/``UOWDep``/``get_background_job_manager``/
+``get_sefer_service`` (jenerik per-request DI alias'ları, auth_rbac'a ait
+değil) hâlâ ``app/api/deps.py``'de — bunlar ayrı bir taşımanın konusu
+(`platform_infra`/`trip`).
 """
 
 from v2.modules.auth_rbac.application import auth_service, role_service
+from v2.modules.auth_rbac.application.authenticate import (
+    TokenDep,
+    get_current_active_admin,
+    get_current_active_user,
+    get_current_superadmin,
+    get_current_user,
+    require_permissions,
+)
+from v2.modules.auth_rbac.application.permission_checker import (
+    PermissionChecker,
+    require_yetki,
+)
 from v2.modules.auth_rbac.application.preference_service import (
     delete_preference,
     get_preferences,
@@ -53,10 +71,6 @@ from v2.modules.auth_rbac.application.user_service import (
 )
 from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.domain.jwt_handler import get_decode_key
-from v2.modules.auth_rbac.domain.permission_checker import (
-    PermissionChecker,
-    require_yetki,
-)
 from v2.modules.auth_rbac.domain.security import get_jwks
 from v2.modules.auth_rbac.domain.security import get_password_hash as hash_password
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
@@ -107,6 +121,14 @@ __all__ = [
     "SecurityService",
     "PermissionChecker",
     "require_yetki",
+    # FastAPI auth dependency factories (2026-07-22'de app/api/deps.py'den
+    # taşındı — bkz. application/authenticate.py)
+    "get_current_user",
+    "get_current_active_user",
+    "get_current_active_admin",
+    "get_current_superadmin",
+    "require_permissions",
+    "TokenDep",
     # JWT / password hashing
     "jwt_handler",
     "get_decode_key",

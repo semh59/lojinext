@@ -14,8 +14,11 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
-from app.api.deps import get_current_active_admin, get_current_active_user
 from v2.modules.auth_rbac.application import user_service
+from v2.modules.auth_rbac.application.authenticate import (
+    get_current_active_admin,
+    get_current_active_user,
+)
 from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.schemas import KullaniciRead
 from v2.modules.shared_kernel.schemas.api_responses import MessageResponse

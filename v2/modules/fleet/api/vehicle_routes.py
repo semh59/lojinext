@@ -4,12 +4,12 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.api.deps import (
-    UOWDep,
+from app.api.deps import UOWDep
+from v2.modules.auth_rbac.public import (
+    Kullanici,
     get_current_active_admin,
     get_current_active_user,
 )
-from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.fleet.application.create_vehicle import create_vehicle
 from v2.modules.fleet.application.delete_vehicle import (
     delete_all_vehicles,

@@ -14,10 +14,9 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from app.api.deps import get_current_active_admin
 from app.config import settings
 from v2.modules.admin_platform.schemas import SseTokenResponse
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.schemas.api_responses import SSE_RESPONSES
 

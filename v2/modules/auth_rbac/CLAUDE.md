@@ -143,7 +143,9 @@ düştü, numaralandırma buna göre kaydırıldı.
    thread-safe singleton deseni (`_instance`/`_lock`), Redis-backed. Zaten
    stateless bir wrapper ama sınıf-tabanlı singleton deseni pre-migration'dan
    korundu (davranış değişikliği gerektirmiyor, dokunulmadı).
-3. **`PermissionChecker`** (`domain/permission_checker.py`) — `__init__(self,
+3. **`PermissionChecker`** (`application/permission_checker.py` — 2026-07-22'de
+   `domain/`'den taşındı: Kalem 3 commit 1, bkz. aşağıdaki "app/api/deps.py
+   taşındı" notu) — `__init__(self,
    required_permission)` + `__call__` ile klasik FastAPI
    `Depends(SomeClass(param))` closure/dependency-factory deseni. Yukarıdaki
    2 resmi gerekçeden hiçbirine harfiyen uymuyor (client-injected pipeline
@@ -212,9 +214,11 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   endpoint (`admin_calibration.py`/`admin_config.py`/`admin_health.py`/
   `admin_integrations.py`/`admin_ml.py`/`error_stream.py`) artık
   `require_yetki`/`Permission`/`SecurityService`'i `auth_rbac.public`
-  üzerinden çekiyor; `get_current_user`/`get_current_active_user` hâlâ
-  `app/api/deps.py` üzerinden (o dosya kendisi composition-root
-  istisnası, aşağıya bkz.).
+  üzerinden çekiyor; `get_current_user`/`get_current_active_user` de
+  2026-07-22'den beri (Kalem 3 commit 1) `auth_rbac.public` üzerinden —
+  `app/api/deps.py`'nin composition-root istisnası artık yalnız
+  `SessionDep`/`UOWDep`/`get_background_job_manager`/`get_sefer_service`
+  (jenerik DI alias'ları, hiçbir modüle ait değil) için geçerli.
 - **notification (senkron, zaten taşınmış)**: iki yönlü —
   `auth_rbac→notification`: `auth_routes.py::request_password_reset`
   `v2.modules.notification.public.send_password_reset` çağırır
@@ -261,15 +265,25 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   handler'ıyla aynı isim çakışması burada da vardı, `as
   create_ws_ticket_usecase` alias'ıyla düzeltildi). Mekanik, davranış
   değişikliği yok.
-- **`app/api/deps.py` taşınmadı** — FastAPI-wiring katmanı (driver/fleet
-  dalgalarındaki kararla aynı), yalnızca import kaynakları
-  `v2.modules.auth_rbac.domain.security_service` (Permission/SecurityService,
-  değişmedi) ve `v2.modules.auth_rbac.infrastructure.token_blacklist`
-  (2026-07-18'de `domain/`'den `infrastructure/`'a taşınan yeni yol) olarak
-  güncellendi; deps.py'nin public.py YERİNE domain/infrastructure-leaf
-  import etmesi bilinçli — public, `PermissionChecker` üzerinden deps.py'nin
-  kendisini import ettiği için döngü oluşur, deps.py içinde yorumla
-  dokümante. `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı bakınız).
+- ✅ **`app/api/deps.py`'nin auth-özgü kısmı TAŞINDI (2026-07-22, Kalem 3
+  commit 1)** — `get_current_user`/`get_current_active_user`/
+  `get_current_active_admin`/`get_current_superadmin`/`require_permissions`/
+  `TokenDep` artık `application/authenticate.py`'de. Kök neden analizi:
+  bunların `app/api/deps.py`'de kalmasının GERÇEK sebebi
+  `domain/permission_checker.py`'nin bu dosyayı import etmesiyle oluşan
+  döngüydü (public.py zaten `PermissionChecker`'ı import ediyordu) — döngü
+  "mantığın auth_rbac'a bağımlı olması"ndan değil, dosyanın fiziksel olarak
+  `v2/modules/` DIŞINDA yaşamasından kaynaklanıyordu. Dosya içeri taşınınca
+  VE `permission_checker.py` da aynı turda `domain/`'den `application/`'a
+  taşınınca (kendisi zaten `Depends()` kullanan FastAPI-farkında kod, saf
+  domain değildi — `module-internal-layers` kontratının "domain
+  infrastructure'ı import edemez" kısıtı da bu taşımayla kendiliğinden
+  çözüldü, `.importlinter`'daki 2 eski `permission_checker -> infrastructure.models`
+  ignore satırı artık gereksiz, silindi), döngü tamamen ortadan kalktı.
+  `SessionDep`/`UOWDep`/`get_background_job_manager`/`get_sefer_service`
+  (jenerik per-request DI alias'ları, auth_rbac'a ait değil) hâlâ
+  `app/api/deps.py`'de — ayrı bir taşımanın konusu (`platform_infra`/`trip`).
+  `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı bakınız).
 - **Super-admin break-glass bypass** (`api/auth_routes.py::login`) —
   `SUPER_ADMIN_PASSWORD` env değişkeni + IP-scoped rate-limit bucket
   (`super_admin_login:{ip}`, 5dk'da 3 deneme) — genel `auth_token` bucket'ından
@@ -324,11 +338,17 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 `.importlinter`'ın `public-surface-only-auth_rbac` kontratı: `application/`
 diğer modüllerin yalnız `public`/`events`'ini import edebilir (KEPT).
 Diğer modüller bu modüle yalnız `v2.modules.auth_rbac.public` üzerinden
-erişir; istisnalar (kontrat ignore listesinde dokümante): `app/api/deps.py`
-(composition-root — public'e geçmek `PermissionChecker` üzerinden döngü
-üretir), `v2/modules/platform_infra/container.py`/`app/database/repositories/__init__.py`
+erişir; istisnalar (kontrat ignore listesinde dokümante):
+`v2/modules/platform_infra/container.py`/`app/database/repositories/__init__.py`
 (proje-geneli DI-wiring istisnası), `app/main.py`/`app/infrastructure/
 websocket/ws_auth.py` (2026-07-18'den beri public üzerinden).
+**2026-07-22 (Kalem 3 commit 1)**: eski `app/api/deps.py` istisnası
+(`PermissionChecker` üzerinden döngü ürettiği için ignore-list'te
+tutuluyordu) tamamen KALKTI — `get_current_user` artık
+`application/authenticate.py`'de yaşıyor, `permission_checker.py`
+(kendisi de `domain/`'den `application/`'a taşındı) onu sibling-import
+ediyor, `app/api/deps.py` dosyası bu sembolleri artık import etmiyor.
+İki `.importlinter` ignore satırı da kaldırıldı.
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 

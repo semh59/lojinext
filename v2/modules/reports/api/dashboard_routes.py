@@ -4,8 +4,8 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep, get_current_active_user
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import SessionDep
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.get_consumption_trend import (

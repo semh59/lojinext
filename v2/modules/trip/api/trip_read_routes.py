@@ -3,8 +3,8 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_sefer_service, require_permissions
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import get_sefer_service
+from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.trip.public import SeferListResponse, SeferResponse, SeferService

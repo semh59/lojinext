@@ -11,7 +11,11 @@ from v2.modules.anomaly.schemas import (
     AttributionOverrideRequest,
     AttributionOverrideResponse,
 )
-from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_user,
+    require_yetki,
+)
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
@@ -25,7 +29,7 @@ router = APIRouter()
 )
 async def override_trip_attribution(
     request: AttributionOverrideRequest,
-    current_user: Kullanici = Depends(deps.get_current_active_user),
+    current_user: Kullanici = Depends(get_current_active_user),
     db: AsyncSession = Depends(deps.get_db),
 ):
     """
@@ -72,7 +76,7 @@ async def override_trip_attribution(
 )
 async def bulk_override_trip_attribution(
     requests: List[AttributionOverrideRequest],
-    current_user: Kullanici = Depends(deps.get_current_active_user),
+    current_user: Kullanici = Depends(get_current_active_user),
 ):
     """
     Bulk override trip attributions.

@@ -26,7 +26,8 @@ def _make_client():
 
 def _override_deps(fake_user, weather_svc, sefer_svc=None, db_mock=None):
     """Return a context dict of dependency overrides."""
-    from app.api.deps import get_current_active_user, get_sefer_service
+    from app.api.deps import get_sefer_service
+    from v2.modules.auth_rbac.public import get_current_active_user
     from v2.modules.platform_infra.database.connection import get_db
     from v2.modules.route_simulation.application.weather_service import (
         get_weather_service,

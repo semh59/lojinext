@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import Query as QueryParam
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_current_active_admin, get_current_active_user
 from v2.modules.admin_platform.application.error_events import (
     get_error_stats as _get_error_stats,
 )
@@ -18,7 +17,11 @@ from v2.modules.admin_platform.application.error_events import (
     resolve_error_event as _resolve_error_event,
 )
 from v2.modules.admin_platform.schemas import TraceChainResponse
-from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
+)
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 

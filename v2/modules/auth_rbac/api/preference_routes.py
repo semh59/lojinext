@@ -2,8 +2,8 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_current_active_user
 from v2.modules.auth_rbac.application import preference_service
+from v2.modules.auth_rbac.application.authenticate import get_current_active_user
 from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.schemas import (
     PreferenceCreate,

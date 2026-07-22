@@ -13,8 +13,8 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import get_sefer_service, require_permissions
-from v2.modules.auth_rbac.public import Kullanici
+from app.api.deps import get_sefer_service
+from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.import_excel.public import export_data, generate_template
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError

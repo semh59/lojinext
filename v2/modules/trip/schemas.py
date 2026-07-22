@@ -371,3 +371,11 @@ class SeferStatsResponse(BaseModel):
 
 class TripTimelineResponse(BaseModel):
     items: List[Dict[str, Any]]
+
+
+class SeferOnayRequest(BaseModel):
+    """`POST /trips/{sefer_id}/onay` gövdesi (dalga 1'de `app/schemas/
+    telegram.py`'den taşındı — Telegram bot'a özgü değil, trip'in kendi
+    onay endpoint'inin gövdesi)."""
+
+    onay_notu: Optional[str] = Field(None, max_length=500)

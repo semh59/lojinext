@@ -239,7 +239,8 @@ surface) — yalnız B.1'in ruhuna aykırı, mektubuna değil.
   (önceden `app.api.v1.endpoints.internal`'dan aynı desende alınıyordu —
   mekanik taşıma, davranış değişikliği yok).
 - **anomaly, prediction_ml, route_simulation, ai_assistant, openroute_service
-  (app/core/services/, henüz taşınmadı) (ileri yön)**:
+  (yalnız geocode yüzeyi — `app/core/services/`, location'ın bağımlılığı,
+  bilinçli olarak orada kalıyor) (ileri yön)**:
   `public.get_runtime_float`/`get_integration_secret` — runtime config
   okuma + dış API anahtarı çözümleme tek kanonik yoldan.
 - **prediction_ml (taşındı, ters yön)**: `application/ml_service.py` →
@@ -265,6 +266,17 @@ bu ikili ilk taşınacak aday. Şimdilik bölünmedi: `telegram_bridge.py`'nin
 tarafı temsilcisi") — driver modülüne bölünseydi, admin_platform'un kendi
 sorumluluğu olan bot-token/internal-token auth guard'ı ile birlikte
 yaşayan cohesive bir dosya kaybedilirdi.
+
+✅ **TAMAMLANDI (2026-07-22, "V2 dışında kalan var mı" tarama turunda
+bulundu)**: bu ikilinin request/response şemaları (`DriverBreakdownRequest`,
+`SeferBelgeResponse`, `SoforTelegramInfo`) `app/schemas/telegram.py`'de
+kalmıştı — o dosya kendisi hiç taşınmamıştı (dosya adı yanıltıcı: "telegram"
+dese de aynı dosyada trip'e ait `SeferOnayRequest` de vardı, ayrı bir dead
+`SeferPDFRequest` de). Üçü `schemas.py`'ye taşındı; `SeferOnayRequest`
+`trip.schemas`'a gitti (kendi endpoint'inin gövdesi); `SeferPDFRequest`
+sıfır gerçek çağıranı olduğu için silindi (`internal_routes.py`'nin PDF
+endpoint'i zaten ham `Query(...)` parametreleri kullanıyordu, bu şemayı
+hiç kullanmıyordu). Mekanik, davranış değişikliği yok.
 
 ## Modüle özel iş kuralları & gotcha'lar
 

@@ -102,6 +102,14 @@ SeferBulkStatusUpdate, SeferBulkCancel, SeferBulkDelete, SeferBulkResponse,
 SeferListResponse, SeferStatsResponse
 ```
 
+`SeferOnayRequest` (`schemas.py`, `trip_approval_routes.py`'nin `/onay`
+gövdesi) 2026-07-22'de "V2 dışında kalan var mı" tarama turunda bulunup
+`app/schemas/telegram.py`'den taşındı — Telegram-özgü değildi, dosya adı
+yanıltıcıydı (trip'in kendi onay endpoint'inin gövdesiydi, aynı dosyanın
+gerçek Telegram-bridge şemaları `admin_platform.schemas`'a gitti).
+Public.py'ye export EDİLMEZ — tek tüketicisi kendi `api/
+trip_approval_routes.py`'si.
+
 **Önemli**: `trip_prediction_enrichment.py`'nin diğer fonksiyonları
 (`build_route_details_snapshot`, `build_prediction_quality_flags`,
 `check_reprediction_needed`, `repredikt_for_update`, `resolve_route`,

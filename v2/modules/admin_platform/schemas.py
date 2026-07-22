@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 _CONN_STR_RE = re.compile(
     r"(postgresql|redis|mongodb|amqp|mysql)://[^\s\"']+", re.IGNORECASE
@@ -83,3 +84,44 @@ class CoachingSnapshotResponse(BaseModel):
     priority: str
     insights_count: int
     source: str
+
+
+# ─── Telegram bot köprüsü (2026-07-22'de `app/schemas/telegram.py`'den
+# taşındı — `internal_routes.py`/`telegram_bridge.py`'nin gerçek tüketicisi
+# bu modüldü, dosya taşımadan geride kalmıştı) ──────────────────────────────
+
+
+class DriverBreakdownRequest(BaseModel):
+    """Sürücü botu /ariza komutu gövdesi.
+
+    Araç, sürücünün en son seferinden backend tarafında otomatik çözülür —
+    sürücü plaka girmez. `acil=True` → ACIL kaydı, aksi halde ARIZA.
+    """
+
+    telegram_id: str = Field(..., min_length=1)
+    detaylar: str = Field("", max_length=1000)
+    acil: bool = False
+
+
+class SeferBelgeResponse(BaseModel):
+    id: int
+    sofor_id: int
+    sefer_id: Optional[int]
+    belge_tipi: str
+    ocr_durumu: str
+    ocr_veri: Optional[dict]
+    # DB kolonu artık `created_at` (MODEL-003). Dış (telegram bot) JSON
+    # sözleşmesi "olusturulma" anahtarı olarak korunur; ORM'den `created_at`
+    # üzerinden okunur. Optional → eski `olusturulma=None` çağrısı da geçerli.
+    olusturulma: Optional[datetime] = Field(
+        default=None,
+        validation_alias=AliasChoices("created_at", "olusturulma"),
+    )
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class SoforTelegramInfo(BaseModel):
+    sofor_id: int
+    ad_soyad: str
+    aktif: bool

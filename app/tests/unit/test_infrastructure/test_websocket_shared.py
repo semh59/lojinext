@@ -28,7 +28,9 @@ class TestConnectionManager:
     """Direct unit tests for ConnectionManager logic."""
 
     def _make_manager(self):
-        from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.platform_infra.websocket.connection_manager import (
+            ConnectionManager,
+        )
 
         return ConnectionManager()
 
@@ -72,7 +74,7 @@ class TestConnectionManager:
         bağlantısı açabiliyordu (reconnect storm/DoS). Artık bir eşik
         (`_MAX_CONNECTIONS_PER_USER`) aşılınca yeni bağlantı 1008 ile
         reddediliyor, kabul edilmiyor."""
-        from app.infrastructure.websocket.connection_manager import (
+        from v2.modules.platform_infra.websocket.connection_manager import (
             _MAX_CONNECTIONS_PER_USER,
         )
 
@@ -92,7 +94,7 @@ class TestConnectionManager:
     async def test_connect_allows_new_connection_after_disconnect_frees_a_slot(self):
         """Regresyon guard'ı: limit'e ulaşıldıktan sonra biri disconnect
         olursa, sıradaki bağlantı meşru şekilde kabul edilmeli."""
-        from app.infrastructure.websocket.connection_manager import (
+        from v2.modules.platform_infra.websocket.connection_manager import (
             _MAX_CONNECTIONS_PER_USER,
         )
 
@@ -206,7 +208,9 @@ class TestConnectionManagerDomainErrorPaths:
     """Tests for DomainError/HTTPException re-raise paths in ConnectionManager."""
 
     async def test_send_personal_message_domain_error_reraises(self):
-        from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.platform_infra.websocket.connection_manager import (
+            ConnectionManager,
+        )
         from v2.modules.shared_kernel.exceptions import DomainError
 
         mgr = ConnectionManager()
@@ -221,7 +225,9 @@ class TestConnectionManagerDomainErrorPaths:
     async def test_send_personal_message_http_exception_reraises(self):
         from fastapi import HTTPException
 
-        from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.platform_infra.websocket.connection_manager import (
+            ConnectionManager,
+        )
 
         mgr = ConnectionManager()
         ws = AsyncMock()
@@ -233,7 +239,9 @@ class TestConnectionManagerDomainErrorPaths:
             await mgr.send_personal_message({"type": "x"}, "u@test.com")
 
     async def test_broadcast_domain_error_reraises(self):
-        from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.platform_infra.websocket.connection_manager import (
+            ConnectionManager,
+        )
         from v2.modules.shared_kernel.exceptions import DomainError
 
         mgr = ConnectionManager()
@@ -248,7 +256,9 @@ class TestConnectionManagerDomainErrorPaths:
     async def test_broadcast_http_exception_reraises(self):
         from fastapi import HTTPException
 
-        from app.infrastructure.websocket.connection_manager import ConnectionManager
+        from v2.modules.platform_infra.websocket.connection_manager import (
+            ConnectionManager,
+        )
 
         mgr = ConnectionManager()
         ws = AsyncMock()
@@ -276,13 +286,13 @@ class TestVerifyWsToken:
             expires_delta=timedelta(minutes=5),
         )
 
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         result = await verify_ws_token(token)
         assert result == "admin@lojinext.test"
 
     async def test_invalid_token_returns_none(self):
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         result = await verify_ws_token("this.is.not.a.jwt")
         assert result is None
@@ -304,7 +314,7 @@ class TestVerifyWsToken:
             algorithm=settings.ALGORITHM,
         )
 
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         result = await verify_ws_token(token)
         assert result is None
@@ -326,7 +336,7 @@ class TestVerifyWsToken:
             algorithm=settings.ALGORITHM,
         )
 
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         result = await verify_ws_token(token)
         assert result is None
@@ -375,7 +385,7 @@ class TestVerifyWsTokenRS256:
         from pydantic import SecretStr
 
         from app.config import settings
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         priv, pub = self._rsa_keypair()
         token = self._rs256_token(priv)
@@ -390,7 +400,7 @@ class TestVerifyWsTokenRS256:
         from pydantic import SecretStr
 
         from app.config import settings
-        from app.infrastructure.websocket.ws_auth import verify_ws_token
+        from v2.modules.platform_infra.websocket.ws_auth import verify_ws_token
 
         signing_priv, _ = self._rsa_keypair()
         _, configured_pub = self._rsa_keypair()  # different pair → must not verify

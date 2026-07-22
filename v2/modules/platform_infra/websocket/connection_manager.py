@@ -1,5 +1,8 @@
 """Shared per-user WebSocket connection registry.
 
+`app/infrastructure/websocket/connection_manager.py`'den dalga 17
+(platform_infra) denetiminde taşındı.
+
 Used by admin_ws.py's ``/training`` stream and the notification module's
 ``/live`` stream — two functionally unrelated broadcast channels that share
 the same connect/disconnect/send bookkeeping. Extracted here (rather than

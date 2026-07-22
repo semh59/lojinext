@@ -2,9 +2,12 @@ import json
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, status
 
-from app.infrastructure.websocket.connection_manager import ConnectionManager
-from app.infrastructure.websocket.ws_auth import is_admin_email, resolve_ws_identity
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.websocket.connection_manager import ConnectionManager
+from v2.modules.platform_infra.websocket.ws_auth import (
+    is_admin_email,
+    resolve_ws_identity,
+)
 
 logger = get_logger(__name__)
 
@@ -14,7 +17,7 @@ router = APIRouter()
 training_ws_manager = ConnectionManager()
 
 # Kept as module-level re-exports: some call sites / tests patch these names
-# on this module rather than on app.infrastructure.websocket.ws_auth.
+# on this module rather than on v2.modules.platform_infra.websocket.ws_auth.
 _resolve_ws_identity = resolve_ws_identity
 _is_admin_email = is_admin_email
 

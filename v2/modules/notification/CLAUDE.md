@@ -124,7 +124,7 @@ yansıtmıyordu — dosyanın kendisi bölündü:
 - Paylaşılan `ConnectionManager` sınıfı + WS auth helper'ları
   (`verify_ws_token`, `resolve_ws_identity`, `is_admin_email`) **hiçbir
   modüle ait olmayan gerçekten paylaşılan bir infra** olarak
-  `app/infrastructure/websocket/{connection_manager,ws_auth}.py`'ye
+  `v2/modules/platform_infra/websocket/{connection_manager,ws_auth}.py`'ye
   çıkarıldı (event_bus/audit_logger ile aynı gerekçe — cross-cutting infra,
   business modülü değil). Her iki route de bu paylaşılan sınıfı kullanır,
   birbirine bağımlı değil.

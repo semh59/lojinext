@@ -1,5 +1,8 @@
 """Shared WebSocket admin-auth helpers.
 
+`app/infrastructure/websocket/ws_auth.py`'den dalga 17 (platform_infra)
+denetiminde taşındı.
+
 Used by both admin_ws.py's ``/training`` stream and the notification
 module's ``/live`` stream. See connection_manager.py for why this is a
 shared infra module rather than owned by either.

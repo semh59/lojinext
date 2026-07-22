@@ -329,7 +329,7 @@ async def predict_via_estimator(
                 PREDICTION_TIMEOUT_SECONDS,
                 data.arac_id,
             )
-            from app.infrastructure.monitoring.silent_fallback_probe import (
+            from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
                 record_silent_fallback,
             )
 
@@ -435,7 +435,7 @@ async def predict_outbound(
                 PREDICTION_TIMEOUT_SECONDS,
                 data.arac_id,
             )
-            from app.infrastructure.monitoring.silent_fallback_probe import (
+            from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
                 record_silent_fallback,
             )
 

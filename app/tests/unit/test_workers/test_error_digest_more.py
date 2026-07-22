@@ -30,7 +30,7 @@ async def test_check_queue_depth_no_reserved():
 
     with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
             await _check_queue_depth()
             mock_aemit.assert_not_called()
@@ -46,7 +46,7 @@ async def test_check_queue_depth_low_queue():
 
     with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
             await _check_queue_depth()
             mock_aemit.assert_not_called()
@@ -66,11 +66,11 @@ async def test_check_queue_depth_warning_level():
         captured.append(ev)
 
     with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture_emit):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
     assert len(captured) == 1
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert captured[0].severity == ErrorSeverity.WARNING
     assert "150" in captured[0].message
@@ -90,11 +90,11 @@ async def test_check_queue_depth_error_level():
         captured.append(ev)
 
     with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture_emit):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
     assert len(captured) == 1
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert captured[0].severity == ErrorSeverity.ERROR
 
@@ -301,7 +301,7 @@ async def test_db_health_check_long_running_tx_emits():
         emitted.append(ev)
 
     with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -330,10 +330,10 @@ async def test_db_health_check_critical_tx_severity():
         emitted.append(ev)
 
     with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert emitted[0].severity == ErrorSeverity.CRITICAL
 
@@ -360,7 +360,7 @@ async def test_db_health_check_lock_wait_emits():
         emitted.append(ev)
 
     with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -389,10 +389,10 @@ async def test_db_health_check_lock_wait_critical_above_15s():
         emitted.append(ev)
 
     with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert emitted[0].severity == ErrorSeverity.CRITICAL
 
@@ -419,7 +419,7 @@ async def test_db_health_check_table_bloat_emits():
         emitted.append(ev)
 
     with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -459,7 +459,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
                     return_value=mock_sess,
                 ):
                     with patch(
-                        "app.infrastructure.monitoring.celery_probe.check_beat_health",
+                        "v2.modules.platform_infra.monitoring.celery_probe.check_beat_health",
                         new_callable=AsyncMock,
                     ) as mock_beat:
                         with patch(

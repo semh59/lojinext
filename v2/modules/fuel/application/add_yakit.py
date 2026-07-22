@@ -4,7 +4,6 @@ from datetime import date
 from typing import Any
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.service_probe import monitor_errors
 from v2.modules.fuel.domain.entities import YakitAlimiCreate
 from v2.modules.platform_infra.events.event_bus import (
     Event,
@@ -12,6 +11,7 @@ from v2.modules.platform_infra.events.event_bus import (
     get_event_bus,
     publishes,
 )
+from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

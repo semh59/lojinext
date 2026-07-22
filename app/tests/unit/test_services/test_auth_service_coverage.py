@@ -543,7 +543,7 @@ class TestAuthServiceRefreshSession:
                 "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"sub": "test@example.com"},
             ),
-            patch("app.infrastructure.monitoring.emit") as mock_emit,
+            patch("v2.modules.platform_infra.monitoring.emit") as mock_emit,
         ):
             service = _bind_auth_service(uow)
             with pytest.raises(HTTPException):

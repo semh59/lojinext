@@ -167,11 +167,14 @@ class TestDbBackupVerifyTask:
         mock_alert.assert_called_once()
 
     async def test_alert_restore_failure_emits_error_event(self):
-        from app.infrastructure.monitoring.models import ErrorLayer, ErrorSeverity
         from app.workers.tasks.backup_tasks import _alert_restore_failure
+        from v2.modules.platform_infra.monitoring.models import (
+            ErrorLayer,
+            ErrorSeverity,
+        )
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=MagicMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=MagicMock
         ) as mock_aemit:
             mock_aemit.return_value = None
 
@@ -191,7 +194,7 @@ class TestDbBackupVerifyTask:
         from app.workers.tasks.backup_tasks import _alert_restore_failure
 
         with patch(
-            "app.infrastructure.monitoring.aemit",
+            "v2.modules.platform_infra.monitoring.aemit",
             side_effect=RuntimeError("monitoring down"),
         ):
             await _alert_restore_failure({"error": "boom"})  # must not raise

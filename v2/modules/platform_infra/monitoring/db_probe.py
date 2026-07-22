@@ -11,7 +11,11 @@ from sqlalchemy.engine import ExceptionContext
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -127,7 +131,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                     get_correlation_id,
                     get_request_path,
                 )
-                from app.infrastructure.monitoring import emit
+                from v2.modules.platform_infra.monitoring import emit
 
                 emit(
                     ErrorEvent(
@@ -153,7 +157,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                 ErrorSeverity.ERROR if elapsed_ms > 2000 else ErrorSeverity.WARNING
             )
             fp = _sql_fingerprint(statement)
-            from app.infrastructure.monitoring import emit
+            from v2.modules.platform_infra.monitoring import emit
 
             emit(
                 ErrorEvent(
@@ -192,7 +196,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                 if pg_code in _CRITICAL_PG_CODES
                 else ErrorSeverity.ERROR
             )
-            from app.infrastructure.monitoring import emit
+            from v2.modules.platform_infra.monitoring import emit
 
             emit(
                 ErrorEvent(
@@ -220,7 +224,7 @@ def setup_db_probe(engine: AsyncEngine) -> None:
                 if now - _pool_state["last_alert"] < 60:
                     return
                 _pool_state["last_alert"] = now
-                from app.infrastructure.monitoring import emit
+                from v2.modules.platform_infra.monitoring import emit
 
                 emit(
                     ErrorEvent(
@@ -324,7 +328,7 @@ async def _auto_explain(
                 plan_text = "\n".join(plan_lines[:20])
 
             seq_scan = any("Seq Scan" in line for line in plan_lines)
-            from app.infrastructure.monitoring import aemit
+            from v2.modules.platform_infra.monitoring import aemit
 
             await aemit(
                 ErrorEvent(

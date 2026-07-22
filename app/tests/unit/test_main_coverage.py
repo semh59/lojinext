@@ -475,7 +475,7 @@ async def test_http_exception_500_triggers_monitoring(async_client):
     async def _raise_500():
         raise StarletteHTTPException(status_code=500, detail="Internal issue")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-500-http")
             assert resp.status_code == 500
@@ -500,7 +500,7 @@ async def test_db_operational_error_handler(async_client):
     async def _raise_db_error():
         raise SAOperationalError("conn fail", params=None, orig=Exception("conn fail"))
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-db-op-error")
             assert resp.status_code == 503
@@ -527,9 +527,9 @@ async def test_unhandled_exception_handler(async_client):
 
     # Patch both the inline import location AND the monitoring module
     with (
-        patch("app.infrastructure.monitoring.aemit", new=AsyncMock()),
+        patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()),
         patch(
-            "app.infrastructure.monitoring.__init__.aemit", new=AsyncMock(), create=True
+            "v2.modules.platform_infra.monitoring.__init__.aemit", new=AsyncMock(), create=True
         ),
     ):
         try:
@@ -561,7 +561,7 @@ async def test_audit_log_error_handler(async_client):
     async def _raise_audit():
         raise AuditLogError("Audit yazılamadı")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-audit-error")
             assert resp.status_code == 500

@@ -182,7 +182,7 @@ class OpenMeteoElevationClient:
                             resp.status_code,
                             resp.text[:200],
                         )
-                        from app.infrastructure.monitoring.silent_fallback_probe import (
+                        from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
                             record_silent_fallback,
                         )
 

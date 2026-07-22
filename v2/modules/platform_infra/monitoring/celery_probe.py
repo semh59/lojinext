@@ -12,7 +12,11 @@ except ImportError:  # Windows
     _RESOURCE_AVAILABLE = False
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -85,7 +89,7 @@ def setup_celery_probe() -> None:
                     if elapsed_ms > _SLOW_TASK_ERROR_MS
                     else ErrorSeverity.WARNING
                 )
-                from app.infrastructure.monitoring import emit
+                from v2.modules.platform_infra.monitoring import emit
 
                 emit(
                     ErrorEvent(
@@ -112,7 +116,7 @@ def setup_celery_probe() -> None:
                 rss_raw / (1024 * 1024) if sys.platform == "darwin" else rss_raw / 1024
             )
             if mem_mb > _MEMORY_ERROR_MB:
-                from app.infrastructure.monitoring import emit
+                from v2.modules.platform_infra.monitoring import emit
 
                 emit(
                     ErrorEvent(
@@ -135,7 +139,7 @@ def setup_celery_probe() -> None:
             is_final = sender.request.retries >= 10
         else:
             is_final = sender.request.retries >= max_retries
-        from app.infrastructure.monitoring import emit
+        from v2.modules.platform_infra.monitoring import emit
 
         exc_name = type(exception).__name__
         emit(
@@ -156,7 +160,7 @@ def setup_celery_probe() -> None:
 
     @task_retry.connect
     def on_retry(request, reason, einfo, **_):
-        from app.infrastructure.monitoring import emit
+        from v2.modules.platform_infra.monitoring import emit
 
         emit(
             ErrorEvent(
@@ -176,7 +180,7 @@ def setup_celery_probe() -> None:
 
     @task_revoked.connect
     def on_revoked(request, terminated, signum, expired, **_):
-        from app.infrastructure.monitoring import emit
+        from v2.modules.platform_infra.monitoring import emit
 
         emit(
             ErrorEvent(
@@ -250,8 +254,8 @@ async def check_beat_health() -> None:
 
     Called by digest task.
     """
-    from app.infrastructure.monitoring import aemit
     from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
+    from v2.modules.platform_infra.monitoring import aemit
 
     for task_name, max_silence_sec in BEAT_EXPECTED_TASKS.items():
         last_val = await get_redis_val(_record_heartbeat_key(task_name))

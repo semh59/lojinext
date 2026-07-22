@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from app.infrastructure.logging.logger import get_logger
 
 if TYPE_CHECKING:
-    from app.infrastructure.monitoring.models import ErrorEvent
+    from v2.modules.platform_infra.monitoring.models import ErrorEvent
 
 logger = get_logger(__name__)
 
@@ -159,7 +159,9 @@ class ErrorEventBus:
         await self._write_redis(batch)
 
         try:
-            from app.infrastructure.monitoring.alarm_router import get_alarm_router
+            from v2.modules.platform_infra.monitoring.alarm_router import (
+                get_alarm_router,
+            )
 
             router = get_alarm_router()
             for ev in batch:
@@ -368,8 +370,10 @@ class ErrorEventBus:
         await self._write_redis(batch)
         # Even with circuit open, route CRITICAL events to Telegram so they're not silently lost.
         try:
-            from app.infrastructure.monitoring.alarm_router import get_alarm_router
-            from app.infrastructure.monitoring.models import ErrorSeverity
+            from v2.modules.platform_infra.monitoring.alarm_router import (
+                get_alarm_router,
+            )
+            from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
             router = get_alarm_router()
             for ev in batch:

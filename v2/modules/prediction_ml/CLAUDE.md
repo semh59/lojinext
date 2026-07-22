@@ -146,8 +146,9 @@ EDİLMEZ (yalnız modülün kendi içinde kullanılıyor). `ensemble_core.py`
 (domain) bunu import ettiği için `module-cross-domain-infra-independence`/
 `module-internal-layers` kontratlarına 1 satır `ignore_imports` eklendi
 (telemetri side-effect'i, gerçek domain iş kuralı değil — `.importlinter`'da
-gerekçeli). Kendi `app.infrastructure.monitoring.models`/`emit`
-bağımlılığı sürüyor (platform-geneli monitoring alt sistemi, taşınmadı).
+gerekçeli). Kendi `v2.modules.platform_infra.monitoring.models`/`emit`
+bağımlılığı sürüyor (platform_infra'nın monitoring alt sistemi — dalga
+17'nin commit 5'inde `app/infrastructure/monitoring/`'den oraya taşındı).
 
 ## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar)
 

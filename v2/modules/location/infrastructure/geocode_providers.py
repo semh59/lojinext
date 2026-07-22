@@ -9,7 +9,7 @@ them into the actual fallback-chain use-case.
 
 from app.config import settings
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
 
 logger = get_logger(__name__)
 

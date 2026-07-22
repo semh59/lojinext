@@ -25,13 +25,13 @@ from typing import List, Optional
 import httpx
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.external_api_probe import (
-    emit_network_error,
-    get_monitored_client,
-)
 from v2.modules.admin_platform.infrastructure.integrations.avl.base import (
     AVLPosition,
     AVLTrip,
+)
+from v2.modules.platform_infra.monitoring.external_api_probe import (
+    emit_network_error,
+    get_monitored_client,
 )
 
 logger = get_logger(__name__)

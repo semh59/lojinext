@@ -16,7 +16,7 @@ istatistik/resolve/trace-chain), SSE canlı hata akışı, ML eğitim ilerleme
 WebSocket'i.
 
 NE YAPMAZ: `error_events`/`error_occurrences`/`error_hourly_stats`
-tablolarının YAZIM yolu (`app/infrastructure/monitoring/` — cross-cutting
+tablolarının YAZIM yolu (`v2/modules/platform_infra/monitoring/` — cross-cutting
 altyapı, audit_logger.py/event_bus.py ile aynı kategori; bu modül yalnız
 admin-facing okuma/yönetim katmanını sağlar; `container_health.py` bu
 alt sistemden dalga 17'de admin_platform'a taşındı, aşağıya bkz.),
@@ -161,8 +161,8 @@ get_container_status(compose_service: str) -> ContainerStatus
 `app/infrastructure/monitoring/container_health.py`'den taşındı — tek
 çağıranı `api/admin_integrations_routes.py` idi (monitoring alt
 sisteminin genel-amaçlı bir parçası değil, admin_platform'un kendi
-Integrations panel özelliği). `app.infrastructure.monitoring`'e (models/
-emit) bağımlılığı yok, yalnız `httpx`/`app.config`/logger kullanıyor.
+Integrations panel özelliği). `v2.modules.platform_infra.monitoring`'e
+(models/emit) bağımlılığı yok, yalnız `httpx`/`app.config`/logger kullanıyor.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -183,7 +183,7 @@ write-only: plaintext bir kez yazılır, asla geri okunmaz), `idempotency_keys`
 (`IdempotencyKey` — `idempotency_service.py`).
 
 `error_events`/`error_occurrences`/`error_hourly_stats` KISMEN bu modülün
-kapsamında: YAZIM yolu `app/infrastructure/monitoring/` (cross-cutting,
+kapsamında: YAZIM yolu `v2/modules/platform_infra/monitoring/` (cross-cutting,
 bu modüle ait değil), admin_platform yalnız `application/error_events.py`
 üzerinden admin-facing OKUMA/YÖNETİM katmanını sağlar (`system_routes.py`).
 

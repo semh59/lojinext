@@ -18,20 +18,20 @@ def activate_all_probes(engine, celery_app=None) -> None:
         engine: The SQLAlchemy AsyncEngine instance.
         celery_app: The Celery application (optional — omit in test/dev).
     """
-    from app.infrastructure.monitoring.event_bus import get_event_bus
+    from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
 
     get_event_bus().start()
 
-    from app.infrastructure.monitoring.db_probe import setup_db_probe
+    from v2.modules.platform_infra.monitoring.db_probe import setup_db_probe
 
     setup_db_probe(engine)
 
     if celery_app is not None:
-        from app.infrastructure.monitoring.celery_probe import setup_celery_probe
+        from v2.modules.platform_infra.monitoring.celery_probe import setup_celery_probe
 
         setup_celery_probe()  # uses Celery signals — celery_app arg unused
 
-    from app.infrastructure.monitoring.service_probe import (
+    from v2.modules.platform_infra.monitoring.service_probe import (
         setup_asyncio_exception_handler,
     )
 
@@ -63,8 +63,8 @@ def _self_test() -> None:
             )
             return
 
-        from app.infrastructure.monitoring.event_bus import get_event_bus
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,

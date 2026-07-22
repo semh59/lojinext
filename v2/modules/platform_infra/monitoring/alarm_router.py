@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Awaitable, cast
 from app.infrastructure.logging.logger import get_logger
 
 if TYPE_CHECKING:
-    from app.infrastructure.monitoring.models import ErrorEvent
+    from v2.modules.platform_infra.monitoring.models import ErrorEvent
 
 logger = get_logger(__name__)
 
@@ -117,7 +117,7 @@ class AlarmRouter:
     async def route(self, event: ErrorEvent) -> None:
         import time
 
-        from app.infrastructure.monitoring.models import ErrorSeverity
+        from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
         # Prune stale dedup entries to prevent unbounded growth
         now_mono = time.monotonic()

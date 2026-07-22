@@ -2,17 +2,17 @@
 
 ``app/database/models.py`` bölünmesi (dalga 16, task #58) — bu 2 tablonun
 (+ 2 PG enum) gerçek sahibi yok: hiçbir prod kod bu ORM sınıflarını
-kullanmıyor. `app/infrastructure/monitoring/` alt sistemi (13 dosya,
+kullanmıyor. `v2/modules/platform_infra/monitoring/` alt sistemi (13 dosya,
 ~2300 satır — probes, alarm_router, event_bus) `error_events`/
 `error_occurrences` tablolarına yalnız ham SQL `INSERT`/`text()` ile yazıyor
-(bkz. `app/infrastructure/monitoring/event_bus.py`); bu ORM sınıfları
+(bkz. `v2/modules/platform_infra/monitoring/event_bus.py`); bu ORM sınıfları
 yalnız Alembic'in `Base.metadata`'sında şema kaydı için var ve tek gerçek
 Python tüketicisi `app/tests/integration/test_error_detector_integration.py`
-(doğrulama amaçlı SELECT). `app/infrastructure/monitoring/models.py`'deki
+(doğrulama amaçlı SELECT). `v2/modules/platform_infra/monitoring/models.py`'deki
 aynı isimli `ErrorEvent` AYRI bir sınıf — düz `@dataclass` DTO, bu ORM
 sınıfıyla ilgisi yok, taşınmadı.
 
-Asıl `app/infrastructure/monitoring/` alt sisteminin (probes/alarm_router/
+Asıl `v2/modules/platform_infra/monitoring/` alt sisteminin (probes/alarm_router/
 event_bus) v2'ye taşınması ayrı, çok daha büyük bir iş (muhtemelen
 platform_infra/dalga 17) — bu dosya yalnız ORM tablo tanımlarını taşıyor,
 o alt sistemin kendisini değil.

@@ -201,7 +201,7 @@ async def get_current_user(
             return virtual_user
 
     except jwt.ExpiredSignatureError:
-        from app.infrastructure.monitoring.security_probe import emit_jwt_anomaly
+        from v2.modules.platform_infra.monitoring.security_probe import emit_jwt_anomaly
 
         _ip = request.client.host if request.client else ""
         emit_jwt_anomaly("ExpiredSignatureError", str(request.url.path), _ip)
@@ -214,7 +214,7 @@ async def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        from app.infrastructure.monitoring.security_probe import emit_jwt_anomaly
+        from v2.modules.platform_infra.monitoring.security_probe import emit_jwt_anomaly
 
         _ip = request.client.host if request.client else ""
         _exc_type = type(e).__name__

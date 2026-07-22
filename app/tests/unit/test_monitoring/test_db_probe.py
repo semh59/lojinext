@@ -1,4 +1,4 @@
-from app.infrastructure.monitoring.db_probe import (
+from v2.modules.platform_infra.monitoring.db_probe import (
     _CRITICAL_PG_CODES,
     _PG_CODE_MAP,
     _sql_fingerprint,

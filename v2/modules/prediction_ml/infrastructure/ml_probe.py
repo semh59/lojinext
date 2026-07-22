@@ -3,8 +3,8 @@
 `app/infrastructure/monitoring/ml_probe.py`'den dalga 17 (platform-infra)
 denetiminde taşındı — tek çağıranı prediction_ml (`ensemble_service.py`/
 `ensemble_core.py`), fallback-oranı takibi tamamen ML tahmin domain'ine
-özgü. `app.infrastructure.monitoring.models`'a (ErrorEvent/ErrorLayer/
-ErrorSeverity) ve `app.infrastructure.monitoring.emit`'e bağımlılığı
+özgü. `v2.modules.platform_infra.monitoring.models`'a (ErrorEvent/ErrorLayer/
+ErrorSeverity) ve `v2.modules.platform_infra.monitoring.emit`'e bağımlılığı
 sürüyor — bunlar platform-geneli monitoring alt sisteminin (dalga 16'da
 kasıtlı olarak ertelenen ~2300 satırlık kısım) parçası, taşınmadı.
 """
@@ -15,7 +15,11 @@ import threading
 from collections import Counter
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -33,7 +37,7 @@ class MLProbe:
 
     def _emit(self, event: ErrorEvent) -> None:
         try:
-            from app.infrastructure.monitoring import emit as _emit_fn
+            from v2.modules.platform_infra.monitoring import emit as _emit_fn
 
             _emit_fn(event)
         except Exception as exc:

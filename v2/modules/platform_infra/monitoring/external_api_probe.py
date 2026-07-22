@@ -7,7 +7,11 @@ from urllib.parse import urlparse, urlunparse
 import httpx
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -60,7 +64,7 @@ async def _on_response(response: httpx.Response) -> None:
     threshold = _THRESHOLDS.get(service, _DEFAULT_THRESHOLD)
     safe_url = _sanitize_url(str(response.url))
 
-    from app.infrastructure.monitoring import aemit
+    from v2.modules.platform_infra.monitoring import aemit
 
     if response.status_code >= 500:
         await aemit(
@@ -121,7 +125,7 @@ async def emit_network_error(exc: Exception, url: str) -> None:
             await emit_network_error(exc, url)
             raise
     """
-    from app.infrastructure.monitoring import aemit
+    from v2.modules.platform_infra.monitoring import aemit
 
     service = _identify_service(url)
     await aemit(

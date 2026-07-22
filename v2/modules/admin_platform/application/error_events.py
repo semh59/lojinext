@@ -7,7 +7,7 @@ kök CLAUDE.md'de dokümante). Route'lar artık yalnızca bu fonksiyonları
 çağırıp Pydantic response modeline sarıyor.
 
 Tablo sahipliği notu: ``error_events``/``error_occurrences``/
-``error_hourly_stats``'ın YAZIM yolu ``app/infrastructure/monitoring/``'de
+``error_hourly_stats``'ın YAZIM yolu ``v2/modules/platform_infra/monitoring/``'de
 yaşıyor (audit_logger.py/event_bus.py gibi cross-cutting altyapı — hiçbir
 v2 modülüne ait değil, tüm modüllerin hata event'lerini toplar). Bu dosya
 yalnızca admin-facing OKUMA/YÖNETİM katmanını sağlar (liste, istatistik,
@@ -35,7 +35,7 @@ async def list_error_events(
     page_size: int = 50,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Paginated/filtered error_events listesi. Returns (items, total)."""
-    from app.infrastructure.monitoring.models import ErrorLayer, ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorLayer, ErrorSeverity
 
     valid_layers = {e.value for e in ErrorLayer}
     valid_severities = {e.value for e in ErrorSeverity}

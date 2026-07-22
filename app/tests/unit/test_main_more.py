@@ -99,7 +99,7 @@ def test_sentry_before_send_handles_event_bus_emit_failure():
     hint = {}
 
     with patch(
-        "app.infrastructure.monitoring.event_bus.get_event_bus",
+        "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
         side_effect=RuntimeError("bus not available"),
     ):
         result = _sentry_before_send(event, hint)
@@ -116,7 +116,7 @@ def test_sentry_before_send_emits_error_severity_not_warning():
     never overridden in any deployment config — so WARNING here meant every
     Sentry-captured error silently never reached Telegram, contradicting this
     function's own docstring."""
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     exc = RuntimeError("boom")
     event = {"message": "boom", "event_id": "sev1"}
@@ -129,7 +129,7 @@ def test_sentry_before_send_emits_error_severity_not_warning():
             captured["event"] = ev
 
     with patch(
-        "app.infrastructure.monitoring.event_bus.get_event_bus",
+        "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
         return_value=FakeBus(),
     ):
         _sentry_before_send(event, hint)
@@ -222,7 +222,7 @@ async def test_domain_error_anomaly_detection(async_client):
     async def _raise():
         raise AnomalyDetectionError("Anomaly detector unavailable")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-anomaly-error")
             assert resp.status_code == 503

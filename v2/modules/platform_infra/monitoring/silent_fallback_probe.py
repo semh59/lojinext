@@ -20,7 +20,11 @@ import threading
 from collections import Counter
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -38,7 +42,7 @@ class SilentFallbackProbe:
 
     def _emit(self, event: ErrorEvent) -> None:
         try:
-            from app.infrastructure.monitoring import emit as _emit_fn
+            from v2.modules.platform_infra.monitoring import emit as _emit_fn
 
             _emit_fn(event)
         except Exception as exc:  # observability must never break the request

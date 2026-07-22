@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.infrastructure.monitoring.silent_fallback_probe import (
+from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
     SilentFallbackProbe,
     get_silent_fallback_probe,
     record_silent_fallback,
@@ -55,7 +55,7 @@ def test_emit_failure_never_propagates():
 def test_module_level_record_never_raises():
     # Even with a broken probe, the convenience helper swallows errors.
     with patch(
-        "app.infrastructure.monitoring.silent_fallback_probe.get_silent_fallback_probe",
+        "v2.modules.platform_infra.monitoring.silent_fallback_probe.get_silent_fallback_probe",
         side_effect=RuntimeError("boom"),
     ):
         record_silent_fallback("whatever")  # must not raise

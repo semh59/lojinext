@@ -47,7 +47,7 @@ import v2.modules.platform_infra.container as container_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
 
 # error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
-# (app/infrastructure/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
+# (v2/modules/platform_infra/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
 # yüzden container_mod importu zincirinden ULAŞILMIYOR, Base.metadata'ya
 # kaydolmaları için açık import şart (alembic/env.py'deki aynı zorunluluk).
 import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401

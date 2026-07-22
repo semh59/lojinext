@@ -7,8 +7,12 @@ from contextvars import ContextVar
 from typing import Any, Callable, TypeVar
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring import aemit, emit
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring import aemit, emit
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 

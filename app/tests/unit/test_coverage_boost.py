@@ -997,7 +997,7 @@ class TestSystemErrorReport:
         mock_user.id = 1
 
         with patch(
-            "app.infrastructure.monitoring.event_bus.ErrorEventBus.emit",
+            "v2.modules.platform_infra.monitoring.event_bus.ErrorEventBus.emit",
             new_callable=AsyncMock,
         ):
             result = await receive_frontend_error(report, real_request, mock_user)

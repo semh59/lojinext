@@ -12,7 +12,9 @@ from urllib.parse import urlsplit, urlunsplit
 try:
     import httpx
 
-    from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+    from v2.modules.platform_infra.monitoring.external_api_probe import (
+        get_monitored_client,
+    )
 
     HTTPX_AVAILABLE = True
 except ImportError:

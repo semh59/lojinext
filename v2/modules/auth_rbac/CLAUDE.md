@@ -11,7 +11,7 @@ WebSocket bağlantı bileti (`ws_ticket`). `kullanicilar`, `roller`,
 `kullanici_oturumlari`, `kullanici_ayarlari` tablolarının tek sahibi.
 
 NE YAPMAZ: multi-worker güvenlik state'i (`BruteForceDetector`/
-`RBACViolationTracker`, bugün `app/infrastructure/monitoring/security_probe.py`'de
+`RBACViolationTracker`, bugün `v2/modules/platform_infra/monitoring/security_probe.py`'de
 — platform-infra'da cross-cutting infra olarak KALIYOR, bu modüle
 taşınmadı). Redis-backed hale getirilmesi **FAZ2 görevi**
 (`TASKS/faz2-guvenlik-state-redis.md`) — dalga 6'nın kapsamı dışında,
@@ -182,7 +182,7 @@ görünmesinin sebebi).
 ## Multi-worker güvenlik state'i — BU MODÜLE TAŞINMADI (FAZ2 TODO)
 
 `BruteForceDetector`/`RBACViolationTracker` bugün
-`app/infrastructure/monitoring/security_probe.py`'de yaşıyor —
+`v2/modules/platform_infra/monitoring/security_probe.py`'de yaşıyor —
 process-local in-memory state (multi-worker/multi-replica deployment'ta her
 worker kendi sayacını tutuyor, brute-force/RBAC-ihlali tespiti worker'lar
 arası paylaşılmıyor). Bu modülün sınırları İÇİNDE mantıksal olarak ait

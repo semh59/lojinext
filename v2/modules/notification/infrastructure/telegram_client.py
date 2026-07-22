@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 
-from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
 
 logger = logging.getLogger(__name__)
 

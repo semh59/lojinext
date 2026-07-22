@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.infrastructure.monitoring import alarm_router as alarm_router_module
-from app.infrastructure.monitoring.alarm_router import (
+from v2.modules.platform_infra.monitoring import alarm_router as alarm_router_module
+from v2.modules.platform_infra.monitoring.alarm_router import (
     _DEDUP_WINDOW_SECONDS,
     _MIN_SAMPLES,
     _Z_SCORE_THRESHOLD,
@@ -13,7 +13,11 @@ from app.infrastructure.monitoring.alarm_router import (
     AnomalyDetector,
     drain_bg_tasks,
 )
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 
 def make_event(sev=ErrorSeverity.CRITICAL, layer=ErrorLayer.DB, category="test"):

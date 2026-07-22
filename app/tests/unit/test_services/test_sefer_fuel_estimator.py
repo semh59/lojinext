@@ -425,7 +425,7 @@ class TestSeferFuelEstimator:
         estimator = SeferFuelEstimator(simulator=MagicMock(), weather=mock_weather)
 
         with patch(
-            "app.infrastructure.monitoring.silent_fallback_probe.record_silent_fallback"
+            "v2.modules.platform_infra.monitoring.silent_fallback_probe.record_silent_fallback"
         ) as mock_record:
             samples = await estimator._fetch_weather_samples(_make_sim_result())
 

@@ -28,8 +28,8 @@ async def _drain_sync_fallback(redis) -> None:
     """Route events that were pushed to error:sync_fallback from sync contexts."""
     import json
 
-    from app.infrastructure.monitoring.alarm_router import get_alarm_router
-    from app.infrastructure.monitoring.models import ErrorEvent
+    from v2.modules.platform_infra.monitoring.alarm_router import get_alarm_router
+    from v2.modules.platform_infra.monitoring.models import ErrorEvent
 
     try:
         items = await redis.lrange("error:sync_fallback", 0, -1)
@@ -131,7 +131,7 @@ async def _run_digest() -> None:
         logger.warning("error_hourly_stats refresh failed: %s", exc)
 
     # Check Celery beat health
-    from app.infrastructure.monitoring.celery_probe import check_beat_health
+    from v2.modules.platform_infra.monitoring.celery_probe import check_beat_health
 
     await check_beat_health()
 
@@ -147,8 +147,8 @@ async def _check_queue_depth() -> None:
         from app.infrastructure.background.celery_app import (
             celery_app as _app,
         )
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -271,13 +271,13 @@ def db_health_check(self):
 async def _db_health_check() -> None:
     from sqlalchemy import text
 
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
     )
-    from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         # Long-running transactions (>30s)

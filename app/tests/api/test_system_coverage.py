@@ -38,7 +38,7 @@ async def test_error_report_success(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
     ) as mock_emit:
         resp = await async_client.post(
             "/api/v1/system/error-report",
@@ -52,7 +52,7 @@ async def test_error_report_success(async_client, admin_auth_headers):
 
 async def test_error_report_severity_fatal(async_client, admin_auth_headers):
     """Fatal severity maps to CRITICAL error level."""
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     payload = {
         "message": "Fatal crash",
@@ -63,7 +63,7 @@ async def test_error_report_severity_fatal(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
     ) as mock_emit:
         resp = await async_client.post(
             "/api/v1/system/error-report",
@@ -78,7 +78,7 @@ async def test_error_report_severity_fatal(async_client, admin_auth_headers):
 
 async def test_error_report_severity_warning(async_client, admin_auth_headers):
     """Warning severity maps correctly."""
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     payload = {
         "message": "Deprecation warning",
@@ -89,7 +89,7 @@ async def test_error_report_severity_warning(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
     ) as mock_emit:
         resp = await async_client.post(
             "/api/v1/system/error-report",
@@ -115,7 +115,7 @@ async def test_error_report_with_optional_fields(async_client, admin_auth_header
         "frontend_session_id": "session-xyz",
     }
 
-    with patch("app.infrastructure.monitoring.aemit", new_callable=AsyncMock):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock):
         resp = await async_client.post(
             "/api/v1/system/error-report",
             json=payload,
@@ -143,7 +143,7 @@ async def test_error_report_batch_success(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
     ) as mock_emit:
         resp = await async_client.post(
             "/api/v1/system/error-report-batch",
@@ -178,7 +178,7 @@ async def test_error_report_batch_too_large(async_client, admin_auth_headers):
     prev_enabled = limiter.enabled
     limiter.enabled = False
     try:
-        with patch("app.infrastructure.monitoring.aemit", new_callable=AsyncMock):
+        with patch("v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock):
             resp = await async_client.post(
                 "/api/v1/system/error-report-batch",
                 json=reports,

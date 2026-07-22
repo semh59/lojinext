@@ -65,8 +65,8 @@ def db_backup_verify(self):
 
 async def _alert_restore_failure(result: dict) -> None:
     try:
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,

@@ -5,7 +5,11 @@ import time
 from collections import OrderedDict, deque
 
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 logger = get_logger(__name__)
 
@@ -74,7 +78,7 @@ class BruteForceDetector:
                     self._emit_brute_force(ip, len(q))
 
     def _emit_brute_force(self, ip: str, attempts: int) -> None:
-        from app.infrastructure.monitoring import emit
+        from v2.modules.platform_infra.monitoring import emit
 
         emit(
             ErrorEvent(
@@ -125,7 +129,7 @@ class RBACViolationTracker:
                         }
                     self._alerted[user_id] = now
                     endpoints = list({ep for _, ep in q})[:10]
-                    from app.infrastructure.monitoring import emit
+                    from v2.modules.platform_infra.monitoring import emit
 
                     emit(
                         ErrorEvent(
@@ -160,7 +164,7 @@ def emit_jwt_anomaly(exc_type: str, path: str, ip: str) -> None:
         "InvalidAlgorithmError": ErrorSeverity.CRITICAL,
     }
     severity = severity_map.get(exc_type, ErrorSeverity.WARNING)
-    from app.infrastructure.monitoring import emit
+    from v2.modules.platform_infra.monitoring import emit
 
     emit(
         ErrorEvent(

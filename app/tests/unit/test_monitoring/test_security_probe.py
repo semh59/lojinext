@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.infrastructure.monitoring.security_probe import BruteForceDetector
+from v2.modules.platform_infra.monitoring.security_probe import BruteForceDetector
 
 
 def test_brute_force_not_triggered_below_threshold():

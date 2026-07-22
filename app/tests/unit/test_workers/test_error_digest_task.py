@@ -43,7 +43,7 @@ async def test_drain_sync_fallback_with_errors():
     redis.delete = AsyncMock()
 
     with patch(
-        "app.infrastructure.monitoring.alarm_router.get_alarm_router"
+        "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router"
     ) as mock_router:
         mock_router.return_value.route = AsyncMock()
         await _drain_sync_fallback(redis)
@@ -59,7 +59,7 @@ async def test_drain_sync_fallback_invalid_json():
     redis.lrange = AsyncMock(return_value=[b"invalid json"])
     redis.delete = AsyncMock()
 
-    with patch("app.infrastructure.monitoring.alarm_router.get_alarm_router"):
+    with patch("v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router"):
         await _drain_sync_fallback(redis)
 
         redis.delete.assert_called_once()

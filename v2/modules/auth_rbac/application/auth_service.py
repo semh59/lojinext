@@ -229,8 +229,8 @@ async def _refresh_session(uow: UnitOfWork, refresh_token: str) -> Tuple[str, st
         payload = jwt_handler.decode_refresh_token(refresh_token)
         email = payload.get("sub")
     except Exception as e:
-        from app.infrastructure.monitoring import emit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import emit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -267,8 +267,8 @@ async def _refresh_session(uow: UnitOfWork, refresh_token: str) -> Tuple[str, st
         # reuse signal so theft patterns are detectable. (Full reuse
         # detection that revokes the live session family needs token
         # lineage tracking — ARCH-018 follow-up.)
-        from app.infrastructure.monitoring import emit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import emit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,

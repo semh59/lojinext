@@ -1,4 +1,4 @@
-"""Coverage tests for app/infrastructure/monitoring/external_api_probe.py
+"""Coverage tests for v2/modules/platform_infra/monitoring/external_api_probe.py
 
 Targets ~68% → ≥75%
 Covers: _identify_service, _sanitize_url, get_monitored_client,
@@ -20,24 +20,32 @@ pytestmark = pytest.mark.unit
 
 class TestIdentifyService:
     def test_ors_by_hostname(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert (
             _identify_service("https://api.openrouteservice.org/v2/directions") == "ors"
         )
 
     def test_ors_by_prefix(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert _identify_service("https://ors.example.com/route") == "ors"
 
     def test_groq_identified(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert _identify_service("https://api.groq.com/openai/v1/chat") == "groq"
 
     def test_telegram_identified(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert (
             _identify_service("https://api.telegram.org/bot123/sendMessage")
@@ -45,17 +53,23 @@ class TestIdentifyService:
         )
 
     def test_mapbox_identified(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert _identify_service("https://api.mapbox.com/directions/v5") == "mapbox"
 
     def test_unknown_returns_external(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         assert _identify_service("https://some-random-api.io/data") == "external"
 
     def test_invalid_url_falls_back(self):
-        from app.infrastructure.monitoring.external_api_probe import _identify_service
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _identify_service,
+        )
 
         # Should not raise; invalid URL handled via except
         result = _identify_service("not-a-valid-url")
@@ -69,7 +83,9 @@ class TestIdentifyService:
 
 class TestSanitizeUrl:
     def test_removes_query_string(self):
-        from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _sanitize_url,
+        )
 
         result = _sanitize_url(
             "https://api.mapbox.com/route?access_token=SECRET&steps=true"
@@ -78,26 +94,34 @@ class TestSanitizeUrl:
         assert "access_token" not in result
 
     def test_removes_fragment(self):
-        from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _sanitize_url,
+        )
 
         result = _sanitize_url("https://example.com/path#section")
         assert "#section" not in result
 
     def test_truncates_long_url(self):
-        from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _sanitize_url,
+        )
 
         long_url = "https://example.com/" + "x" * 300
         result = _sanitize_url(long_url)
         assert len(result) <= 200
 
     def test_port_preserved(self):
-        from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _sanitize_url,
+        )
 
         result = _sanitize_url("https://example.com:8080/path?q=1")
         assert "8080" in result
 
     def test_invalid_url_truncates(self):
-        from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            _sanitize_url,
+        )
 
         bad = "not_valid://" + "x" * 300
         result = _sanitize_url(bad)
@@ -114,7 +138,7 @@ class TestGetMonitoredClient:
         """get_monitored_client returns an httpx.AsyncClient."""
         import httpx
 
-        from app.infrastructure.monitoring.external_api_probe import (
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
             get_monitored_client,
         )
 
@@ -123,7 +147,7 @@ class TestGetMonitoredClient:
 
     def test_event_hooks_include_probe_functions(self):
         """get_monitored_client wires _on_request and _on_response."""
-        from app.infrastructure.monitoring.external_api_probe import (
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
             _on_request,
             _on_response,
             get_monitored_client,
@@ -135,7 +159,7 @@ class TestGetMonitoredClient:
 
     def test_custom_event_hooks_merged(self):
         """get_monitored_client merges custom hooks with probe hooks."""
-        from app.infrastructure.monitoring.external_api_probe import (
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
             _on_request,
             get_monitored_client,
         )
@@ -155,7 +179,7 @@ class TestGetMonitoredClient:
 class TestOnRequest:
     async def test_on_request_stores_start_time(self):
         """_on_request stores monotonic start time in request.extensions."""
-        from app.infrastructure.monitoring.external_api_probe import _on_request
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_request
 
         mock_request = MagicMock()
         mock_request.extensions = {}
@@ -190,12 +214,12 @@ class TestOnResponse:
 
     async def test_on_response_5xx_emits_error(self):
         """_on_response emits ERROR event on 5xx status."""
-        from app.infrastructure.monitoring.external_api_probe import _on_response
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_response
 
         resp = self._make_response(500)
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await _on_response(resp)
             mock_emit.assert_called()
@@ -204,12 +228,12 @@ class TestOnResponse:
 
     async def test_on_response_429_emits_rate_limited(self):
         """_on_response emits WARNING event on 429 status."""
-        from app.infrastructure.monitoring.external_api_probe import _on_response
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_response
 
         resp = self._make_response(429)
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await _on_response(resp)
             mock_emit.assert_called()
@@ -218,7 +242,7 @@ class TestOnResponse:
 
     async def test_on_response_slow_emits_warning(self):
         """_on_response emits WARNING event when response is slow."""
-        from app.infrastructure.monitoring.external_api_probe import _on_response
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_response
 
         resp = self._make_response(200)
         # Make it appear very slow (12s elapsed)
@@ -226,7 +250,7 @@ class TestOnResponse:
         resp.request.extensions[key] = time.monotonic() - 12.0  # 12s ago
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await _on_response(resp)
             mock_emit.assert_called()
@@ -235,7 +259,7 @@ class TestOnResponse:
 
     async def test_on_response_200_no_emit_fast(self):
         """_on_response does not emit events for fast 200 responses."""
-        from app.infrastructure.monitoring.external_api_probe import _on_response
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_response
 
         resp = self._make_response(200)
         # Very fast (start time very close to now)
@@ -243,21 +267,21 @@ class TestOnResponse:
         resp.request.extensions[key] = time.monotonic()
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await _on_response(resp)
             mock_emit.assert_not_called()
 
     async def test_on_response_no_start_time(self):
         """_on_response handles missing start time (no elapsed_ms)."""
-        from app.infrastructure.monitoring.external_api_probe import _on_response
+        from v2.modules.platform_infra.monitoring.external_api_probe import _on_response
 
         resp = self._make_response(200)
         resp.request.extensions = {}  # no start time
 
         # Should not raise
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await _on_response(resp)
             mock_emit.assert_not_called()
@@ -273,13 +297,15 @@ class TestEmitNetworkError:
         """emit_network_error emits CRITICAL event for connection failure."""
         import httpx
 
-        from app.infrastructure.monitoring.external_api_probe import emit_network_error
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            emit_network_error,
+        )
 
         exc = httpx.ConnectError("Connection refused")
         url = "https://api.openrouteservice.org/v2/directions"
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await emit_network_error(exc, url)
             mock_emit.assert_called_once()
@@ -292,13 +318,15 @@ class TestEmitNetworkError:
         """emit_network_error correctly identifies the service."""
         import httpx
 
-        from app.infrastructure.monitoring.external_api_probe import emit_network_error
+        from v2.modules.platform_infra.monitoring.external_api_probe import (
+            emit_network_error,
+        )
 
         exc = httpx.TimeoutException("Timeout")
         url = "https://api.groq.com/openai/v1/chat"
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_emit:
             await emit_network_error(exc, url)
             event = mock_emit.call_args[0][0]

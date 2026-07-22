@@ -107,8 +107,8 @@ async def logout(
     except Exception as e:
         import asyncio
 
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,

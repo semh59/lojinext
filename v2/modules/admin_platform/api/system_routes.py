@@ -94,8 +94,8 @@ async def receive_frontend_error(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Accept client-side JS error reports from the authenticated error tracker."""
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
@@ -137,8 +137,8 @@ async def receive_frontend_error_batch(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Accept batch of client-side JS error reports (sent via navigator.sendBeacon)."""
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
@@ -231,7 +231,7 @@ async def get_silent_fallbacks(
     prediction on estimator timeout, physics-only estimate when Open-Meteo
     elevation fails, ...). Alarm on a rising ``total`` / per-reason count.
     """
-    from app.infrastructure.monitoring.silent_fallback_probe import (
+    from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
         get_silent_fallback_probe,
     )
 

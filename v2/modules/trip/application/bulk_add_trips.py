@@ -12,7 +12,7 @@ from typing import Any, Dict, List
 
 from app.infrastructure.audit import audit_log
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.service_probe import monitor_errors
+from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.stats_refresh import refresh_stats
 from v2.modules.trip.application.trip_prediction_enrichment import (

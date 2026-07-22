@@ -391,7 +391,7 @@ class TestProcessImports:
         mock_parse.side_effect = RuntimeError("DB down")
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new=AsyncMock()
+            "v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()
         ) as mock_aemit:
             count, errors = await process_sefer_import(b"fake")
 
@@ -416,7 +416,7 @@ class TestProcessImports:
         mock_parse.side_effect = RuntimeError("DB down")
 
         with patch(
-            "app.infrastructure.monitoring.aemit", new=AsyncMock()
+            "v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()
         ) as mock_aemit:
             count, errors = await process_yakit_import(b"fake")
 

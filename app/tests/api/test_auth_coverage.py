@@ -353,7 +353,7 @@ async def test_logout_blacklist_failure_returns_warning(
 
     with _override_auth_service(fake_svc):
         # Patch monitoring.aemit so it doesn't crash
-        with patch("app.infrastructure.monitoring.aemit", new_callable=AsyncMock):
+        with patch("v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock):
             resp = await async_client.post(
                 "/api/v1/auth/logout",
                 headers=admin_auth_headers,

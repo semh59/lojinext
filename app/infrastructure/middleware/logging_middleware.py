@@ -59,7 +59,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         try:
             # Reset N+1 query counter for this request
-            from app.infrastructure.monitoring.db_probe import (
+            from v2.modules.platform_infra.monitoring.db_probe import (
                 reset_query_counter,
                 reset_recent_queries,
             )
@@ -83,7 +83,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             from app.infrastructure.middleware.rate_limit_middleware import (
                 get_real_client_ip,
             )
-            from app.infrastructure.monitoring.security_probe import (
+            from v2.modules.platform_infra.monitoring.security_probe import (
                 get_brute_force_detector,
                 get_rbac_tracker,
             )

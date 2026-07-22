@@ -171,8 +171,8 @@ def _sentry_before_send(event, hint):
     # and AlarmRouter's 15-min dedup prevents double-notification for errors
     # already handled by the individual exception handlers.
     try:
-        from app.infrastructure.monitoring.event_bus import get_event_bus
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -288,13 +288,13 @@ async def lifespan(app: FastAPI):
     from v2.modules.platform_infra.resilience.shutdown import register_shutdown_handlers
 
     register_shutdown_handlers()
-    from app.infrastructure.monitoring.event_bus import get_event_bus
+    from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
 
     bus = get_event_bus()
     bus.start()
 
     from app.infrastructure.background.celery_app import celery_app as _celery
-    from app.infrastructure.monitoring.activate import activate_all_probes
+    from v2.modules.platform_infra.monitoring.activate import activate_all_probes
 
     activate_all_probes(engine, _celery)
 
@@ -363,7 +363,7 @@ async def lifespan(app: FastAPI):
         # a task still mid-DNS-lookup when the loop closes leaves its
         # executor Future's eventual result with nowhere to go, surfacing
         # as asyncio's "Future exception was never retrieved".
-        from app.infrastructure.monitoring.alarm_router import drain_bg_tasks
+        from v2.modules.platform_infra.monitoring.alarm_router import drain_bg_tasks
 
         await drain_bg_tasks()
         pending = [t for t in list(_bg_tasks) if not t.done()]
@@ -490,8 +490,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         except Exception as audit_exc:  # pragma: no cover
             logger.warning("403 audit log failed: %s", audit_exc)
     if exc.status_code >= 500:
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -619,8 +619,8 @@ async def domain_error_handler(request: Request, exc: DomainError):
             type(exc).__name__,
             exc,
         )
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -668,8 +668,8 @@ async def db_operational_error_handler(request: Request, exc: SAOperationalError
         sentry_sdk.capture_exception(exc)
     except Exception:
         pass
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
@@ -733,8 +733,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         pass
     # _sentry_before_send also emits to ErrorEventBus, but aemit is the
     # authoritative path — AlarmRouter's 15-min dedup prevents double-notification.
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,

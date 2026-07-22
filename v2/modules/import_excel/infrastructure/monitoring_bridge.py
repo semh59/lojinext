@@ -16,8 +16,8 @@ logger = get_logger(__name__)
 async def report_infra_failure(source: str, exc: Exception) -> None:
     logger.error("%s: beklenmeyen hata: %s", source, exc, exc_info=True)
     try:
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,

@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from app.api.deps import get_current_active_user
 from app.config import settings
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
 from v2.modules.fleet.application.create_maintenance_record import (
     create_maintenance_record,
@@ -37,6 +36,7 @@ from v2.modules.fleet.schemas import (
     MaintenancePrediction,
     MaintenanceRecordResponse,
 )
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.schemas.api_responses import ICS_RESPONSES
 
 logger = logging.getLogger(__name__)

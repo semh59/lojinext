@@ -64,7 +64,7 @@ class TestSeferLoadAPI:
         monkeypatch.setattr(RateLimitMiddleware, "dispatch", mock_dispatch)
 
         # 3. Bypass low-level AsyncRateLimiter for external services (OpenRoute etc.)
-        from app.infrastructure.resilience.rate_limiter import AsyncRateLimiter
+        from v2.modules.platform_infra.resilience.rate_limiter import AsyncRateLimiter
 
         async def mock_acquire(self):
             pass

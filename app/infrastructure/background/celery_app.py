@@ -175,7 +175,7 @@ import v2.modules.shared_kernel.infrastructure.outbox_tasks  # noqa: E402,F401
 # NOT: driver.calculate_performance_score orphan Celery task'ı (hiç kayıtlı
 # olmamış, hiçbir .delay() çağıranı yoktu) 2026-07-18 ölü-kod temizliğinde
 # dosyasıyla birlikte silindi (v2/modules/driver/infrastructure/driver_tasks.py).
-from app.infrastructure.resilience.shutdown import (  # noqa: E402
+from v2.modules.platform_infra.resilience.shutdown import (  # noqa: E402
     register_shutdown_handlers,
 )
 

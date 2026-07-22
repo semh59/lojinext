@@ -260,8 +260,10 @@ class TestSimulateRouteLogic:
 
         from app.api.deps import get_current_active_user
         from app.database.connection import get_db
-        from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
         from app.main import app
+        from v2.modules.platform_infra.resilience.rate_limiter import (
+            RateLimiterDependency,
+        )
         from v2.modules.route_simulation.application.simulate_route import (
             get_route_simulator,
         )

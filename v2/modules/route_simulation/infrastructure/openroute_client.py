@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 
 from app.config import settings
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.circuit_breaker import (
+from v2.modules.platform_infra.resilience.circuit_breaker import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
 )

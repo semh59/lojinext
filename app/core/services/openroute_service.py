@@ -20,11 +20,11 @@ except ImportError:
 
 from app.config import settings
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.circuit_breaker import (
+from v2.modules.platform_infra.resilience.circuit_breaker import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
 )
-from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
 logger = get_logger(__name__)
 

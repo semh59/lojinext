@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.infrastructure.resilience.circuit_breaker import CircuitBreakerRegistry
 from v2.modules.admin_platform.application.health_service import HealthService
+from v2.modules.platform_infra.resilience.circuit_breaker import CircuitBreakerRegistry
 
 
 def test_env_examples_define_dev_cors_origins():

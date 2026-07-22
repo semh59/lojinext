@@ -199,7 +199,7 @@ async def test_lifespan_startup_and_shutdown():
     mock_engine.dispose = AsyncMock()
 
     with (
-        patch("app.infrastructure.resilience.shutdown.register_shutdown_handlers"),
+        patch("v2.modules.platform_infra.resilience.shutdown.register_shutdown_handlers"),
         patch(
             "app.infrastructure.monitoring.event_bus.get_event_bus",
             return_value=mock_bus,

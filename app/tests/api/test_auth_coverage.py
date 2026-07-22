@@ -135,7 +135,7 @@ async def test_super_admin_login_rate_limited_after_repeated_attempts(async_clie
     deneme) var; bu bucket hem başarılı hem başarısız denemeleri sayar.
     """
     from app.config import settings
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     username = settings.SUPER_ADMIN_USERNAME
     try:
@@ -193,8 +193,8 @@ async def test_super_admin_rate_limit_is_scoped_per_ip(db_session):
     from httpx import ASGITransport, AsyncClient
 
     from app.config import settings
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
     from app.main import app
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     username = settings.SUPER_ADMIN_USERNAME
     try:
@@ -257,7 +257,7 @@ async def test_super_admin_rate_limit_is_scoped_per_ip(db_session):
 
 async def test_regular_user_login_unaffected_by_super_admin_rate_limit(async_client):
     """Süper-admin'e özel sıkı rate-limit, normal kullanıcı girişini etkilememeli."""
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.pop("super_admin_login", None)
     fake_svc = _make_fake_auth_service()

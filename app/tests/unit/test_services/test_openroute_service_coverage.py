@@ -290,7 +290,7 @@ async def test_get_route_profile_timeout_falls_back():
 
 
 async def test_get_route_profile_circuit_open_falls_back():
-    from app.infrastructure.resilience.circuit_breaker import CircuitBreakerError
+    from v2.modules.platform_infra.resilience.circuit_breaker import CircuitBreakerError
 
     svc = _make_service("validkey")
     mock_rl = MagicMock()

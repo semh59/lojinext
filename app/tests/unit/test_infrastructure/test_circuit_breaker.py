@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.infrastructure.resilience.circuit_breaker import (
+from v2.modules.platform_infra.resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerError,
     CircuitBreakerRegistry,
@@ -32,7 +32,7 @@ def _make_breaker(name="test_cb", fail_max=3, reset_timeout=60.0):
     mock_redis.incr = AsyncMock(return_value=1)
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=mock_redis,
     ):
         cb = CircuitBreaker(name=name, fail_max=fail_max, reset_timeout=reset_timeout)
@@ -173,7 +173,7 @@ class TestCircuitBreaker:
 
     def test_service_exists(self):
         """CircuitBreaker class is importable and instantiable."""
-        from app.infrastructure.resilience.circuit_breaker import (
+        from v2.modules.platform_infra.resilience.circuit_breaker import (
             CircuitBreaker,  # noqa: F401
         )
 
@@ -196,7 +196,7 @@ class TestCircuitBreaker:
         """max_failures kwarg is an alias for fail_max."""
         mock_redis = AsyncMock()
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=mock_redis,
         ):
             cb = CircuitBreaker(name="alias_test", max_failures=7)
@@ -231,7 +231,7 @@ class TestCircuitBreakerRegistry:
     async def test_registry_get_creates_new_breaker(self):
         """Registry creates a new breaker on first get."""
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=AsyncMock(),
         ):
             cb = await CircuitBreakerRegistry.get("reg_test", fail_max=3)
@@ -243,7 +243,7 @@ class TestCircuitBreakerRegistry:
     async def test_registry_get_returns_same_instance(self):
         """Registry returns the same breaker for the same name."""
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=AsyncMock(),
         ):
             cb1 = await CircuitBreakerRegistry.get("same_test")
@@ -255,7 +255,7 @@ class TestCircuitBreakerRegistry:
         """Registry reset returns True for a known breaker."""
         mock_redis = AsyncMock()
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=mock_redis,
         ):
             cb = CircuitBreakerRegistry.get_sync("reset_reg")
@@ -279,7 +279,7 @@ class TestCircuitProtectedDecorator:
     async def test_decorator_passes_result_through(self):
         """@circuit_protected passes return value through on success."""
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=AsyncMock(
                 get=AsyncMock(return_value=None),
                 set=AsyncMock(return_value=True),
@@ -298,7 +298,7 @@ class TestCircuitProtectedDecorator:
     async def test_decorator_uses_fallback_when_open(self):
         """@circuit_protected calls fallback when circuit is OPEN."""
         with patch(
-            "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+            "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
             return_value=AsyncMock(
                 get=AsyncMock(return_value="open"),
                 set=AsyncMock(return_value=True),

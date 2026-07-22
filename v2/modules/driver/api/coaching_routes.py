@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
 from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.driver.application.generate_coaching import get_driver_coaching_engine
 from v2.modules.driver.application.get_coaching_effectiveness import (
@@ -36,6 +35,7 @@ from v2.modules.driver.schemas import (
     SendCoachingRequest,
     SendCoachingResponse,
 )
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 
 logger = logging.getLogger(__name__)
 

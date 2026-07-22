@@ -192,7 +192,7 @@ async def test_get_sentry_summary_sdk_present_active():
 async def test_get_circuit_breakers_empty():
     svc = _make_service()
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.CircuitBreakerRegistry.get_all_status",
+        "v2.modules.platform_infra.resilience.circuit_breaker.CircuitBreakerRegistry.get_all_status",
         return_value=[],
     ):
         result = await svc.get_circuit_breakers()
@@ -211,7 +211,7 @@ async def test_get_circuit_breakers_with_entries():
         }
     ]
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.CircuitBreakerRegistry.get_all_status",
+        "v2.modules.platform_infra.resilience.circuit_breaker.CircuitBreakerRegistry.get_all_status",
         return_value=fake_breakers,
     ):
         result = await svc.get_circuit_breakers()
@@ -267,7 +267,7 @@ async def test_get_backup_status_with_backups():
 async def test_reset_circuit_breaker_success():
     svc = _make_service()
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.CircuitBreakerRegistry.reset",
+        "v2.modules.platform_infra.resilience.circuit_breaker.CircuitBreakerRegistry.reset",
         return_value=True,
     ):
         result = await svc.reset_circuit_breaker("groq")
@@ -281,7 +281,7 @@ async def test_reset_circuit_breaker_not_found_raises_404():
 
     svc = _make_service()
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.CircuitBreakerRegistry.reset",
+        "v2.modules.platform_infra.resilience.circuit_breaker.CircuitBreakerRegistry.reset",
         return_value=False,
     ):
         with pytest.raises(HTTPException) as exc_info:

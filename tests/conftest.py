@@ -121,7 +121,7 @@ def bypass_token_blacklist(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_registry():
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
     yield

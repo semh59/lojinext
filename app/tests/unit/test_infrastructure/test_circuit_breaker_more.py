@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/infrastructure/resilience/circuit_breaker.py.
+Additional coverage tests for v2/modules/platform_infra/resilience/circuit_breaker.py.
 
 Targets uncovered lines:
 - CircuitBreaker._get_distributed_state: OPEN → HALF_OPEN after reset_timeout
@@ -23,7 +23,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.resilience.circuit_breaker import (
+from v2.modules.platform_infra.resilience.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerError,
     CircuitBreakerRegistry,
@@ -46,7 +46,7 @@ def _make_breaker(name="test_cb", fail_max=3, reset_timeout=60.0, exclude=()):
     mock_redis.incr = AsyncMock(return_value=1)
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=mock_redis,
     ):
         cb = CircuitBreaker(
@@ -344,7 +344,7 @@ def test_registry_get_sync_creates_and_caches():
     CircuitBreakerRegistry.clear()
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=MagicMock(),
     ):
         cb1 = CircuitBreakerRegistry.get_sync("sync-reg-1", fail_max=7)
@@ -360,7 +360,7 @@ def test_registry_get_all_status_returns_list():
     CircuitBreakerRegistry.clear()
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=MagicMock(),
     ):
         CircuitBreakerRegistry.get_sync("status-a")
@@ -385,7 +385,7 @@ async def test_circuit_protected_reraises_when_no_fallback():
     CircuitBreakerRegistry.clear()
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=AsyncMock(
             get=AsyncMock(return_value="open"),
             set=AsyncMock(return_value=True),
@@ -418,7 +418,7 @@ async def test_circuit_protected_non_callable_fallback():
     CircuitBreakerRegistry.clear()
 
     with patch(
-        "app.infrastructure.resilience.circuit_breaker.get_pubsub_manager",
+        "v2.modules.platform_infra.resilience.circuit_breaker.get_pubsub_manager",
         return_value=AsyncMock(
             get=AsyncMock(return_value="open"),
             set=AsyncMock(return_value=True),

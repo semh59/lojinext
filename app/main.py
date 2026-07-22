@@ -285,7 +285,7 @@ def _wire_observability(app: FastAPI) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting LojiNext (%s)", settings.ENVIRONMENT)
-    from app.infrastructure.resilience.shutdown import register_shutdown_handlers
+    from v2.modules.platform_infra.resilience.shutdown import register_shutdown_handlers
 
     register_shutdown_handlers()
     from app.infrastructure.monitoring.event_bus import get_event_bus

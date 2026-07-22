@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from app.infrastructure.resilience.rate_limiter import (
+from v2.modules.platform_infra.resilience.rate_limiter import (
     AsyncRateLimiter,
     RateLimiterDependency,
     RateLimiterRegistry,
@@ -105,7 +105,7 @@ class TestAsyncRateLimiter:
 
     def test_service_exists(self):
         """AsyncRateLimiter class is importable."""
-        from app.infrastructure.resilience.rate_limiter import (
+        from v2.modules.platform_infra.resilience.rate_limiter import (
             AsyncRateLimiter,  # noqa: F401
         )
 

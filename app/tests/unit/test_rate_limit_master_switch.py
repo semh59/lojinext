@@ -6,7 +6,7 @@ Bu testler switch'in her iki rate-limit mekanizmasını da etkilediğini sabitle
 
 import pytest
 
-from app.infrastructure.resilience.rate_limiter import AsyncRateLimiter
+from v2.modules.platform_infra.resilience.rate_limiter import AsyncRateLimiter
 
 pytestmark = pytest.mark.unit
 

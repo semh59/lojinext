@@ -32,7 +32,6 @@ from app.config import settings
 from app.infrastructure.audit.audit_logger import log_audit_event
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.external_api_probe import get_monitored_client
-from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.admin_platform.api.internal_routes import (
     _ALLOWED_MIME_TYPES,
     _looks_like_allowed_image,
@@ -69,6 +68,7 @@ from v2.modules.fuel.schemas import (
     YakitResponse,
     YakitUpdate,
 )
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
 

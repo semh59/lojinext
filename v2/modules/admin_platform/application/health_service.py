@@ -120,7 +120,9 @@ class HealthService:
 
     async def get_circuit_breakers(self) -> List[Dict[str, Any]]:
         """Sistemdeki gercek circuit breaker registry durumunu don."""
-        from app.infrastructure.resilience.circuit_breaker import CircuitBreakerRegistry
+        from v2.modules.platform_infra.resilience.circuit_breaker import (
+            CircuitBreakerRegistry,
+        )
 
         return [
             {
@@ -171,7 +173,9 @@ class HealthService:
         """Var olan breaker'i sifirla."""
         from fastapi import HTTPException
 
-        from app.infrastructure.resilience.circuit_breaker import CircuitBreakerRegistry
+        from v2.modules.platform_infra.resilience.circuit_breaker import (
+            CircuitBreakerRegistry,
+        )
 
         if not CircuitBreakerRegistry.reset(service_name):
             raise HTTPException(

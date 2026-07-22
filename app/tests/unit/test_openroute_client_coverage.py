@@ -181,7 +181,7 @@ async def test_get_distance_cache_hit_returns_source_cache():
 
 
 async def test_get_distance_circuit_breaker_open_returns_none():
-    from app.infrastructure.resilience.circuit_breaker import CircuitBreakerError
+    from v2.modules.platform_infra.resilience.circuit_breaker import CircuitBreakerError
 
     client = _make_client()
     breaker = MagicMock()

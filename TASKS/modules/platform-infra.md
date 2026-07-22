@@ -1,5 +1,11 @@
 # Modül Görevi: platform-infra (dalga 17/17)
 
+> ✅ **TAMAMLANDI (2026-07-22)** — 10 commit'lik taşıma dalgası bitti.
+> `v2/modules/platform_infra/CLAUDE.md` artık bu modülün güncel referans
+> dokümanı (envanter, isim çakışması, `public.py`, import-linter kontratı).
+> Kök `CLAUDE.md`'nin modül tablosu "Done"a güncellendi. Bu dosya (planın
+> tarihsel izini taşıdığı için) siline değil, olduğu gibi bırakıldı.
+
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
 **Doğa farkı:** shared_kernel gibi bu da iş modülü değil — gerçekten cross-cutting altyapı (cache/events/monitoring/resilience/middleware/DI/bootstrap).
@@ -7,6 +13,44 @@
 **Giriş kriteri:** shared-kernel dalgası (16) tamamlandı, main'de yeşil.
 
 ---
+
+## Commit 1-10 özeti (`/root/.claude/plans/moonlit-mapping-flamingo.md` planının gerçek yürütülüşü)
+
+Orijinal plan 7 commit öngörüyordu (cache → events+container → resilience →
+database → monitoring → middleware → sıkılaştırma); derin kalıntı-incelemesi
+(task #59) 10-12 ek dosya bulunca kapsam 10 commit'e genişledi (yeni 6:
+security+context+logging, yeni 7: audit+background+metrics, 8: middleware+
+correlation [eski 6], 9: websocket [yeni], 10: sıkılaştırma [eski 7]).
+
+1. **cache** (`cache_manager`, `redis_cache`, `redis_client_factory`,
+   `redis_pubsub`, `cache_invalidation`)
+2. **events+container** (`event_bus`, `event_types`, `container.py`)
+3. **resilience** (`circuit_breaker`, `rate_limiter`, `shutdown`)
+4. **database** (`connection`, `db_session`, `init_db`) — en geniş sed alanı
+5. **monitoring** (11 dosya — ErrorEvent alt sistemi)
+6. **security+context+logging** (`pii_encryption`, `pii_scrubber`,
+   `request_context`, `logger.py` — bu sonuncusu 17+ çağıranla en yoğun
+   dosya; `LOG_DIR` path-depth bug'ı burada bulunup düzeltildi)
+7. **audit+background+metrics** (`audit_logger`, `celery_app`,
+   `job_manager`, `metrics.py`; ölü `logging/audit_logger.py` shim'i
+   silindi)
+8. **middleware+correlation** (`body_size_middleware`, `logging_middleware`,
+   `rate_limit_middleware`, `correlation_middleware`)
+9. **websocket** (`connection_manager`, `ws_auth` — admin_platform+
+   notification arasında paylaşılan, teknik eşiğin altında ama nötr-üçüncü-
+   taraf olduğu için dahil edildi)
+10. **sıkılaştırma** (`public.py` + yeni `public-surface-only-platform_infra`
+    kontratı + 78 application-katmanı dosyasının rewiring'i + ~8 test
+    dosyasının patch-hedefi düzeltmesi — detay: `v2/modules/platform_infra/
+    CLAUDE.md`)
+
+Her commit bağımsız doğrulandı (ruff/mypy/lint-imports/alembic check/tam
+pytest — bilinen baseline **17 failed / 6560 passed / 28 skipped**, sıfır
+yeni regresyon commit 6'dan sonra sabit) ve ayrı push edildi. İki gerçek
+bug bulundu ve düzeltildi (logger.py'nin path-depth hesabı, 0040_pii_
+encryption.py migration'ının embedded stale import'u) + bir gerçek
+circular-import (commit 10, `public.py`'nin `celery_app`/`ws_auth`'ı eager
+import etmesi — düzeltme: ikisi public.py'nin kapsamı dışında bırakıldı).
 
 ## 0. ÖN-DENETİM DÜZELTMELERİ (2026-07-21, dalga 16 bittikten sonra yapıldı, kullanıcı onayıyla)
 

@@ -484,7 +484,7 @@ class PredictionService:
 
         user_id audit log'a yazılır (kim tetiklediyse).
         """
-        from app.infrastructure.audit.audit_logger import log_audit_event
+        from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
         # ensemble_service uses train_for_vehicle method
         res = await self.ensemble_service.train_for_vehicle(arac_id)

@@ -178,7 +178,7 @@ class TestCoachingEndpoints:
 @pytest.mark.asyncio
 async def test_celery_beat_schedule_includes_weekly_digest():
     """coaching.weekly_digest beat_schedule'da kayıtlı + Pazartesi 09:00 UTC."""
-    from app.infrastructure.background.celery_app import celery_app
+    from v2.modules.platform_infra.background.celery_app import celery_app
 
     sched = celery_app.conf.beat_schedule
     assert "coaching-weekly-digest-mondays" in sched

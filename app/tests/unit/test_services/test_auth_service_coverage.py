@@ -198,7 +198,7 @@ class TestAuthServiceAuthenticate:
                 return_value=False,
             ),
             patch(
-                "app.infrastructure.audit.audit_logger.log_audit_event",
+                "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
                 new_callable=AsyncMock,
             ) as mock_audit,
         ):

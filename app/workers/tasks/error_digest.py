@@ -7,7 +7,7 @@ Error monitoring Celery tasks:
 import asyncio
 from typing import cast
 
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -144,7 +144,7 @@ async def _check_queue_depth() -> None:
     try:
         import asyncio
 
-        from app.infrastructure.background.celery_app import (
+        from v2.modules.platform_infra.background.celery_app import (
             celery_app as _app,
         )
         from v2.modules.platform_infra.monitoring import aemit

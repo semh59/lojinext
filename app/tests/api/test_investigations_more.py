@@ -379,7 +379,7 @@ class TestMaybeBroadcastAlarm:
                 mock_client_cls.return_value = mock_client
 
                 with patch(
-                    "app.infrastructure.audit.audit_logger.log_audit_event",
+                    "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
                     new=AsyncMock(),
                 ):
                     await _maybe_broadcast_alarm(1, clf, anomaly, db)
@@ -494,7 +494,7 @@ async def test_update_investigation_status_closed(async_client, admin_auth_heade
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -545,7 +545,7 @@ async def test_update_investigation_assign_non_open(async_client, admin_auth_hea
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -653,7 +653,7 @@ async def test_update_investigation_post_fetch_none(async_client, admin_auth_hea
         side_effect=_fetch_side_effect,
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):

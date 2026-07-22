@@ -1,5 +1,8 @@
 """Uygulama genelinde Prometheus custom metrikleri.
 
+`app/infrastructure/metrics.py`'den dalga 17 (platform_infra) denetiminde
+taşındı — 3 bağımsız modül (admin_platform, import_excel, trip) kullanıyor.
+
 Graceful no-op: prometheus_client yüklü değilse sayaçlar sessizce çalışmaz.
 """
 

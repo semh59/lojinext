@@ -18,7 +18,7 @@ import httpx
 from celery.exceptions import SoftTimeLimitExceeded
 
 from app.config import settings
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

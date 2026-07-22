@@ -11,7 +11,7 @@ import logging
 from typing import Any
 
 from app.config import settings
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.database.connection import session_scope
 from v2.modules.reports.infrastructure.page_view_repo import PageViewRepository
 

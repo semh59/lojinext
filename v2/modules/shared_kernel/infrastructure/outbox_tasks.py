@@ -5,7 +5,7 @@ taşındı — bu task'ın tek işi `v2.modules.shared_kernel.infrastructure.out
 periyodik relay etmek, OutboxEvent zaten shared_kernel'de yaşıyor (dalga 16).
 """
 
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)

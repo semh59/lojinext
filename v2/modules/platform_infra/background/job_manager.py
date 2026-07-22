@@ -1,6 +1,11 @@
 """
 Async background job manager.
 
+`app/infrastructure/background/job_manager.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — 4 bağımsız modül + app/api/deps.py tarafından
+kullanılıyor, zaten platform_infra'nın cache/database iç mekanizmalarına
+bağımlıydı.
+
 Job state is stored in Redis so status is visible across all workers
 and survives short worker restarts. Keys auto-expire after 24 h
 (no manual cleanup needed). In-process _tasks dict is kept for

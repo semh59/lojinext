@@ -240,7 +240,7 @@ async def test_service_factories_build_real_services():
 async def test_get_background_job_manager_returns_manager():
     """get_background_job_manager returns the real BackgroundJobManager singleton."""
     from app.api.deps import get_background_job_manager
-    from app.infrastructure.background.job_manager import BackgroundJobManager
+    from v2.modules.platform_infra.background.job_manager import BackgroundJobManager
 
     mgr = await get_background_job_manager()
     assert isinstance(mgr, BackgroundJobManager)

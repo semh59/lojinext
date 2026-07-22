@@ -23,9 +23,9 @@ from typing import Optional, Tuple
 from fastapi import HTTPException, Request, status
 
 from app.config import settings
-from app.infrastructure.audit.audit_logger import audit_logger
 from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.infrastructure.models import KullaniciOturumu
+from v2.modules.platform_infra.audit.audit_logger import audit_logger
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
@@ -155,7 +155,7 @@ async def _authenticate(
         # önceden yalnız dosya loguna düşüyordu, admin_audit_log'a hiç
         # yazılmıyordu — saldırı tespiti/trace UI'da görünmüyordu.
         try:
-            from app.infrastructure.audit.audit_logger import log_audit_event
+            from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
             await log_audit_event(
                 action="auth.failed_login",

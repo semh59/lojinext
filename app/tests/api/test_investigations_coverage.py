@@ -454,7 +454,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
         mock_clf_factory.return_value = mock_clf
 
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with patch(
@@ -579,7 +579,7 @@ async def test_delete_investigation_success(async_client, admin_auth_headers):
     db.commit = AsyncMock()
 
     with patch(
-        "app.infrastructure.audit.audit_logger.log_audit_event",
+        "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
         new=AsyncMock(),
     ):
         with _override_db(db):
@@ -720,7 +720,7 @@ async def test_update_investigation_status_change(async_client, admin_auth_heade
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -745,7 +745,7 @@ async def test_update_investigation_notes_only(async_client, admin_auth_headers)
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -770,7 +770,7 @@ async def test_update_investigation_assign_user(async_client, admin_auth_headers
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -795,7 +795,7 @@ async def test_update_investigation_resolve_with_type(async_client, admin_auth_h
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -841,7 +841,7 @@ async def test_update_investigation_evidence_files(async_client, admin_auth_head
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -866,7 +866,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -931,7 +931,7 @@ async def test_reclassify_success(async_client, admin_auth_headers):
         mock_clf_factory.return_value = mock_clf
 
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):

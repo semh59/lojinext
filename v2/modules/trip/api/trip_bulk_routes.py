@@ -3,8 +3,8 @@ from typing import Annotated, Any, Dict
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import get_sefer_service, require_permissions
-from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.trip.public import (

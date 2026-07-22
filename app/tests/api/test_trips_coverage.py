@@ -1247,7 +1247,7 @@ async def test_plan_wizard_success(async_client, admin_auth_headers):
                 return_value=mock_engine,
             ),
             patch(
-                "app.infrastructure.audit.audit_logger.log_audit_event",
+                "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
                 new_callable=AsyncMock,
             ),
         ):

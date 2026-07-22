@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.infrastructure.audit.audit_logger import (
+from v2.modules.platform_infra.audit.audit_logger import (
     _persist_audit_to_db,
     audit_log,
     log_audit_event,
@@ -115,11 +115,11 @@ async def test_audit_log_decorator_persists_success_to_db(monkeypatch):
         persisted.append(kwargs)
 
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger._persist_audit_to_db",
+        "v2.modules.platform_infra.audit.audit_logger._persist_audit_to_db",
         _spy,
     )
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger.get_correlation_id",
+        "v2.modules.platform_infra.audit.audit_logger.get_correlation_id",
         lambda: "trace-success-1",
     )
 
@@ -149,11 +149,11 @@ async def test_audit_log_decorator_persists_failure_to_db(monkeypatch):
         persisted.append(kwargs)
 
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger._persist_audit_to_db",
+        "v2.modules.platform_infra.audit.audit_logger._persist_audit_to_db",
         _spy,
     )
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger.get_correlation_id",
+        "v2.modules.platform_infra.audit.audit_logger.get_correlation_id",
         lambda: "trace-fail-1",
     )
 
@@ -181,11 +181,11 @@ async def test_log_audit_event_persists_to_db(monkeypatch):
         persisted.append(kwargs)
 
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger._persist_audit_to_db",
+        "v2.modules.platform_infra.audit.audit_logger._persist_audit_to_db",
         _spy,
     )
     monkeypatch.setattr(
-        "app.infrastructure.audit.audit_logger.get_correlation_id",
+        "v2.modules.platform_infra.audit.audit_logger.get_correlation_id",
         lambda: "trace-imp-1",
     )
 

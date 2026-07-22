@@ -10,7 +10,7 @@ madde 5.3'ün açık kararı.
 from datetime import date
 from typing import Any, Dict, List
 
-from app.infrastructure.audit import audit_log
+from v2.modules.platform_infra.audit import audit_log
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork

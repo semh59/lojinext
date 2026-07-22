@@ -22,7 +22,8 @@ admin-facing okuma/yönetim katmanını sağlar; `container_health.py` bu
 alt sistemden dalga 17'de admin_platform'a taşındı, aşağıya bkz.),
 veritabanı yedekleme
 zamanlanmış görevi (`app/workers/tasks/backup_tasks.py` — Celery beat
-cron job, `app/infrastructure/database/backup_manager.py`'yi kullanır;
+cron job, `v2/modules/platform_infra/database/backup_manager.py`'yi kullanır
+(dalga 17'de `app/infrastructure/database/backup_manager.py`'den taşındı);
 `HealthService.trigger_manual_backup()` da aynı infra manager'ı BAĞIMSIZ
 bir yoldan çağırır, celery task'ını tetiklemez), hata-digest/partition/
 db-health-check zamanlanmış görevleri (`app/workers/tasks/error_digest.py`

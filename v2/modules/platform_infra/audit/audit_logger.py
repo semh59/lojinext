@@ -1,6 +1,10 @@
 """
 Canonical audit logging decorator and helpers.
 
+`app/infrastructure/audit/audit_logger.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — 13 bağımsız iş modülü + main.py'nin kendi exception
+handler'ı tarafından kullanılan genuinely cross-cutting altyapı.
+
 İki kanal:
   1. JSON dosya log (her zaman, mevcut davranış)
   2. ``admin_audit_log`` tablosu (best-effort async INSERT — Trace UI

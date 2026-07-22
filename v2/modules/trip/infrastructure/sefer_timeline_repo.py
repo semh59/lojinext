@@ -7,7 +7,7 @@ listelenmişti, ama TEK gerçek metodu (``get_sefer_timeline``) hiçbir zaman
 ``admin_audit_log``'a dokunmuyordu — yalnızca ``seferler_log`` tablosunu
 sorguluyordu (trip'in ``Sefer`` kaydına bağlı audit-trail). Gerçek
 ``admin_audit_log`` yazım yolu tamamen ayrı bir yerde
-(``app/infrastructure/audit/audit_logger.py``). Bu yüzden dosya admin_platform
+(``v2.modules.platform_infra.audit.audit_logger``). Bu yüzden dosya admin_platform
 yerine buraya (trip) taşındı — tablo sahipliği koduna göre, dosya adına göre
 değil.
 """

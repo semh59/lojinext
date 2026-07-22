@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 @publishes(EventType.YAKIT_DELETED)
 async def delete_yakit(yakit_id: int, deleted_by_id: Optional[int] = None) -> bool:
     """Permanently deletes a fuel record (Hard Delete)."""
-    from app.infrastructure.audit.audit_logger import log_audit_event
+    from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
     try:
         async with UnitOfWork() as uow:

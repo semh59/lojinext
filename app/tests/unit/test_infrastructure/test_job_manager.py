@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.infrastructure.background.job_manager import (
+from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
     get_job_manager,

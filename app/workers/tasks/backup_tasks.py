@@ -6,7 +6,7 @@ Celery beat tarafından günlük tetiklenir (celery_app.py beat_schedule).
 import asyncio
 import os
 
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)

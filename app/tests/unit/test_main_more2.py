@@ -205,7 +205,7 @@ async def test_lifespan_startup_and_shutdown():
             return_value=mock_bus,
         ),
         patch(
-            "app.infrastructure.background.celery_app.celery_app",
+            "v2.modules.platform_infra.background.celery_app.celery_app",
             mock_celery,
         ),
         patch(

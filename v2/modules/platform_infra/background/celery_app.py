@@ -2,6 +2,10 @@
 """
 Celery uygulama tanımı.
 Redis broker/backend varsayılan; prod için env zorunlu (settings validator).
+
+`app/infrastructure/background/celery_app.py`'den dalga 17 (platform_infra)
+denetiminde taşındı — 9 bağımsız modül + shared_kernel task-registrasyonu
+için bu dosyayı import ediyor, genuinely cross-cutting.
 """
 
 from celery import Celery

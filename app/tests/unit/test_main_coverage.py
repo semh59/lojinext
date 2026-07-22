@@ -403,7 +403,7 @@ async def test_http_exception_403_writes_admin_audit_log(async_client):
 
     try:
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new_callable=AsyncMock,
         ) as mock_audit:
             resp = await async_client.get(
@@ -432,7 +432,7 @@ async def test_http_exception_403_audit_failure_does_not_break_response(async_cl
 
     try:
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new_callable=AsyncMock,
             side_effect=RuntimeError("db down"),
         ):

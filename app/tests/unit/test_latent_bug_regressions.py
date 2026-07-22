@@ -21,7 +21,7 @@ pytestmark = pytest.mark.unit
 
 def test_job_manager_factory_name_exists():
     """The factory fuel.py imports must actually exist in the module."""
-    from app.infrastructure.background import job_manager
+    from v2.modules.platform_infra.background import job_manager
 
     assert hasattr(job_manager, "get_job_manager")
     # The buggy name must NOT be what the endpoint relies on.
@@ -33,7 +33,7 @@ def test_fuel_async_upload_imports_resolve():
 
     Reproduces the exact import the endpoint performs at request time.
     """
-    from app.infrastructure.background.job_manager import (  # noqa: F401
+    from v2.modules.platform_infra.background.job_manager import (  # noqa: F401
         get_job_manager,
     )
 

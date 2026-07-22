@@ -10,7 +10,7 @@ pytestmark = pytest.mark.unit
 class TestCeleryTasks:
     def test_service_exists(self):
         """celery_app is importable and is a Celery instance."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         assert celery_app is not None
         # Has the standard Celery attributes
@@ -65,7 +65,7 @@ class TestCeleryTasks:
 
     async def test_basic_initialization(self):
         """celery_app conf has a broker_url set."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         # In test env, CELERY_EAGER mode or redis URL is configured
         assert celery_app.conf.broker_url is not None
@@ -101,19 +101,19 @@ class TestCeleryTasks:
 
     async def test_edge_case_none(self):
         """celery_app beat_schedule is a dict (may be empty but present)."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         assert isinstance(celery_app.conf.beat_schedule, dict)
 
     async def test_return_type_validation(self):
         """All registered task names in the app are strings."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         for name in celery_app.tasks:
             assert isinstance(name, str)
 
     async def test_integration_with_mock(self):
         """relay_outbox_events can be found by name in the celery task registry."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         assert "infrastructure.relay_outbox_events" in celery_app.tasks

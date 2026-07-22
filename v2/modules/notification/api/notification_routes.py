@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.api.deps import get_current_active_user
-from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
 from v2.modules.notification.application.get_user_notifications import (
     get_user_notifications,
@@ -31,6 +30,7 @@ from v2.modules.notification.schemas import (
     NotificationItemResponse,
     NotificationRuleResponse,
 )
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)

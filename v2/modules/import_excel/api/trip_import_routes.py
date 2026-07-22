@@ -11,11 +11,11 @@ from typing import Annotated, Any, Dict
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.api.deps import get_background_job_manager, require_permissions
-from app.infrastructure.background.job_manager import (
+from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
 )
-from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.schemas.api_responses import TaskStatusResponse

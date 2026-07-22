@@ -8,8 +8,8 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.infrastructure.background.celery_app import celery_app
 from v2.modules.notification.application.send_push_to_user import send_push_to_user
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.reports.public import aggregate_today_triage
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

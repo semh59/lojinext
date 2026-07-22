@@ -8,8 +8,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.config import settings
-from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.reports.application.compute_fleet_comparison import (
     PeriodType,
     compute_fleet_comparison,

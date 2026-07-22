@@ -62,7 +62,7 @@ async def test_atomic_logging_in_vehicle_event_log():
 
 def test_audit_masking_logic():
     """Verify the audit_logger masking improvements."""
-    from app.infrastructure.audit.audit_logger import _mask_sensitive_data
+    from v2.modules.platform_infra.audit.audit_logger import _mask_sensitive_data
 
     # Test dictionary masking
     data = {"password": "top_secret", "name": "Visible"}

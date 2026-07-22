@@ -45,7 +45,7 @@ async def plan_wizard(
     Hard filter boş ise 200 + boş listeler (404 değil).
     """
     from app.config import settings
-    from app.infrastructure.audit.audit_logger import log_audit_event
+    from v2.modules.platform_infra.audit.audit_logger import log_audit_event
     from v2.modules.prediction_ml.public import PredictionService
 
     if not settings.TRIP_PLANNER_ENABLED:

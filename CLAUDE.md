@@ -36,7 +36,7 @@ pytest app/tests/integration/test_api_seferler.py -x -q
 pytest app/tests/unit/test_ai_deep_remediation.py::test_specific_fn -s
 
 # Celery worker
-celery -A app.infrastructure.background.celery_app worker -l info
+celery -A v2.modules.platform_infra.background.celery_app worker -l info
 
 # Lint and type-check
 ruff check app --select E,F,W,I
@@ -258,7 +258,7 @@ The system runs **single-tenant**: no `tenant_id` column on any table and no row
 
 ### Celery
 
-`app/infrastructure/background/celery_app.py` — broker Redis, results Redis. Beat schedule includes outbox relay. Task modules: `app/workers/tasks/`. `CELERY_EAGER=True` in test env runs tasks inline (set in `app/config.py`).
+`v2/modules/platform_infra/background/celery_app.py` — broker Redis, results Redis. Beat schedule includes outbox relay. Task modules: `app/workers/tasks/`. `CELERY_EAGER=True` in test env runs tasks inline (set in `app/config.py`).
 
 ### Domain exceptions
 
@@ -270,13 +270,13 @@ All error responses follow `{"error": {"code": "...", "message": "...", "trace_i
 
 ### Audit logging
 
-`app/infrastructure/audit/audit_logger.py` exports two things:
+`v2/modules/platform_infra/audit/audit_logger.py` exports two things:
 - `@audit_log(action="X")` — decorator for service methods
 - `await log_audit_event(action, module, entity_id, ...)` — imperative helper for use inside endpoint handlers
 
 ### Async job pattern (cost analysis, import)
 
-Long-running endpoints submit work to `BackgroundJobManager` (`app/infrastructure/background/job_manager.py`) via `await job_manager.submit(coro_or_fn, *args)`. The handler returns 202 with `{status: "PROCESSING", task_id}`. Frontend polls `GET /trips/tasks/{task_id}/status` (returns `PROCESSING|SUCCESS|FAILED`). Used by:
+Long-running endpoints submit work to `BackgroundJobManager` (`v2/modules/platform_infra/background/job_manager.py`) via `await job_manager.submit(coro_or_fn, *args)`. The handler returns 202 with `{status: "PROCESSING", task_id}`. Frontend polls `GET /trips/tasks/{task_id}/status` (returns `PROCESSING|SUCCESS|FAILED`). Used by:
 - `GET /trips/{sefer_id}/cost-analysis` — submits `SeferService.reconcile_costs`.
 - `POST /trips/upload?async_mode=true` — submits import job; default `async_mode=false` keeps the synchronous response for backward compatibility.
 
@@ -347,7 +347,7 @@ async with UnitOfWork() as uow:
 
 The audit table is `admin_audit_log` (not `audit_log` / `audit_logs`). Columns: `istek_id` (~trace_id), `aksiyon_tipi` (action), `hedef_tablo` (entity), `hedef_id`, `kullanici_id`, `yeni_deger`, `basarili` (success boolean), `sure_ms` (duration ms), `zaman` (created_at). Project with SQL aliases for frontend.
 
-Audit logger (`app/infrastructure/audit/audit_logger.py`) **çift yazım** yapar: (1) her zaman JSON dosya log, (2) `_persist_audit_to_db` ile best-effort async `INSERT INTO admin_audit_log`. Async `@audit_log` decorator (success + failure yolları) ve `log_audit_event` her ikisi de tabloya yazar; **sync** wrapper yalnız dosyaya yazar (event loop garanti değil). DB persist asla ana iş akışını bloklamaz (exception yutulur → warning; shared/test session'da `begin_nested()` SAVEPOINT izolasyonu). `istek_id` ← `correlation_id`. Süper admin synthetic id≤0 → `kullanici_id=NULL` (FK violation'dan kaçınır); `kullanicilar`'da olmayan pozitif id'ler best-effort'ta sessizce düşer.
+Audit logger (`v2/modules/platform_infra/audit/audit_logger.py`) **çift yazım** yapar: (1) her zaman JSON dosya log, (2) `_persist_audit_to_db` ile best-effort async `INSERT INTO admin_audit_log`. Async `@audit_log` decorator (success + failure yolları) ve `log_audit_event` her ikisi de tabloya yazar; **sync** wrapper yalnız dosyaya yazar (event loop garanti değil). DB persist asla ana iş akışını bloklamaz (exception yutulur → warning; shared/test session'da `begin_nested()` SAVEPOINT izolasyonu). `istek_id` ← `correlation_id`. Süper admin synthetic id≤0 → `kullanici_id=NULL` (FK violation'dan kaçınır); `kullanicilar`'da olmayan pozitif id'ler best-effort'ta sessizce düşer.
 
 ### Sefer `net_kg` check constraint
 

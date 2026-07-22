@@ -22,7 +22,7 @@ from typing import Any, Dict
 
 from sqlalchemy import text
 
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

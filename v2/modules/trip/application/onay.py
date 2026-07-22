@@ -2,7 +2,7 @@
 
 from typing import Any, List, Optional
 
-from app.infrastructure.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.trip.application.list_trips import get_sefer_by_id
 from v2.modules.trip.infrastructure.repository import SeferRepository, get_sefer_repo

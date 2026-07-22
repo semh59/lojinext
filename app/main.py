@@ -293,7 +293,7 @@ async def lifespan(app: FastAPI):
     bus = get_event_bus()
     bus.start()
 
-    from app.infrastructure.background.celery_app import celery_app as _celery
+    from v2.modules.platform_infra.background.celery_app import celery_app as _celery
     from v2.modules.platform_infra.monitoring.activate import activate_all_probes
 
     activate_all_probes(engine, _celery)
@@ -464,8 +464,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         # radius olurdu). Best-effort: audit DB yazımı asıl 403 yanıtını
         # asla bloklamaz/bozmaz.
         try:
-            from app.infrastructure.audit.audit_logger import log_audit_event
             from v2.modules.auth_rbac.public import jwt_handler
+            from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
             sub = None
             auth_header = request.headers.get("authorization", "")

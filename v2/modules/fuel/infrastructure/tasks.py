@@ -30,7 +30,7 @@ from typing import NamedTuple
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.background.celery_app import celery_app
+from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)

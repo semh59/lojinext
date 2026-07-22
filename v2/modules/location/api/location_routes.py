@@ -13,7 +13,6 @@ from app.api.deps import (
     get_current_active_admin,
     get_current_active_user,
 )
-from app.infrastructure.audit import log_audit_event
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.location.application.analyze_location_route import (
     analyze_location_route,
@@ -62,6 +61,7 @@ from v2.modules.location.schemas import (
     RouteInfoResponse,
     StaleLocationsResponse,
 )
+from v2.modules.platform_infra.audit import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.exceptions import DomainError

@@ -28,7 +28,7 @@ async def test_check_queue_depth_no_reserved():
     mock_app = MagicMock()
     mock_app.control.inspect.return_value = mock_inspect
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch(
             "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
@@ -44,7 +44,7 @@ async def test_check_queue_depth_low_queue():
     mock_app = MagicMock()
     mock_app.control.inspect.return_value = mock_inspect
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch(
             "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
@@ -65,7 +65,7 @@ async def test_check_queue_depth_warning_level():
     async def capture_emit(ev):
         captured.append(ev)
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
@@ -89,7 +89,7 @@ async def test_check_queue_depth_error_level():
     async def capture_emit(ev):
         captured.append(ev)
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
@@ -103,7 +103,7 @@ async def test_check_queue_depth_error_level():
 async def test_check_queue_depth_exception_silenced():
     """Any exception in _check_queue_depth is silently logged (debug level)."""
     with patch(
-        "app.infrastructure.background.celery_app.celery_app",
+        "v2.modules.platform_infra.background.celery_app.celery_app",
         side_effect=Exception("celery unavailable"),
     ):
         # Must not raise

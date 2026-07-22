@@ -1,7 +1,7 @@
 """Use-case: update a fuel record (atomic)."""
 
-from app.infrastructure.audit import audit_log
 from v2.modules.fuel.schemas import YakitUpdate
+from v2.modules.platform_infra.audit import audit_log
 from v2.modules.platform_infra.events.event_bus import EventType, publishes
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.service_probe import monitor_errors

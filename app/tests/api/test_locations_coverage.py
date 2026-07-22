@@ -568,7 +568,7 @@ async def test_upload_no_auth(async_client):
 async def test_create_location_success(async_client, admin_auth_headers):
     """POST / with valid body → 201 (real DB insert via test session)."""
     with patch(
-        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+        "v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock(return_value=None)
     ):
         resp = await async_client.post(
             "/api/v1/locations/",
@@ -610,7 +610,7 @@ async def test_update_location_success(async_client, admin_auth_headers, db_sess
     await db_session.flush()
 
     with patch(
-        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+        "v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock(return_value=None)
     ):
         resp = await async_client.put(
             f"/api/v1/locations/{lok.id}",

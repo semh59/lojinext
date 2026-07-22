@@ -80,7 +80,7 @@ _VALID_CREATE_PAYLOAD = dict(
 @pytest.mark.asyncio
 async def test_create_location_success(async_client, admin_auth_headers):
     """POST / with valid payload → 201 (real DB insert via test session)."""
-    with patch("app.infrastructure.audit.log_audit_event", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock()):
         resp = await async_client.post(
             "/api/v1/locations/",
             json=_VALID_CREATE_PAYLOAD,
@@ -120,7 +120,7 @@ async def test_update_location_success(async_client, admin_auth_headers, db_sess
     db_session.add(lok)
     await db_session.flush()
 
-    with patch("app.infrastructure.audit.log_audit_event", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock()):
         resp = await async_client.put(
             f"/api/v1/locations/{lok.id}",
             json={"mesafe_km": 500.0},

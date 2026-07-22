@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from app.infrastructure.background.job_manager import get_job_manager
+from v2.modules.platform_infra.background.job_manager import get_job_manager
 
 
 class TestBackgroundJobManager:

@@ -2,6 +2,13 @@
 (auth-specific factories moved there 2026-07-22, Kalem 3 commit 1) — real DB,
 real JWT, real Redis blacklist.
 
+2026-07-22 (Kalem 3 commit 2): ``get_background_job_manager`` was removed
+from ``app/api/deps.py`` entirely (all callers now use
+``v2.modules.platform_infra.public.get_job_manager`` directly) — its
+coverage test here was dropped as redundant with
+``app/tests/unit/test_infrastructure/test_job_manager.py``, which already
+asserts ``get_job_manager()`` returns the real singleton.
+
 Previously these overrode get_db with an AsyncMock session, built MagicMock
 Kullanici/Rol objects, and patched blacklist/job-manager internals, asserting on
 status codes produced from mocked plumbing. Here the dependency functions run
@@ -237,15 +244,6 @@ async def test_service_factories_build_real_services():
 
     async with UnitOfWork() as uow:
         assert isinstance(await deps.get_sefer_service(uow), SeferService)
-
-
-async def test_get_background_job_manager_returns_manager():
-    """get_background_job_manager returns the real BackgroundJobManager singleton."""
-    from app.api.deps import get_background_job_manager
-    from v2.modules.platform_infra.background.job_manager import BackgroundJobManager
-
-    mgr = await get_background_job_manager()
-    assert isinstance(mgr, BackgroundJobManager)
 
 
 # ---------------------------------------------------------------------------

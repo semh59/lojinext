@@ -3,7 +3,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import deps
 from v2.modules.auth_rbac.public import (
     Kullanici,
     get_current_active_user,
@@ -12,6 +11,7 @@ from v2.modules.auth_rbac.public import (
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
+from v2.modules.platform_infra.public import get_db
 from v2.modules.prediction_ml.application.ml_service import MLService
 from v2.modules.prediction_ml.schemas import MLTaskRead, ModelVersionRead
 from v2.modules.shared_kernel.exceptions import DomainError
@@ -41,7 +41,7 @@ async def trigger_training(
         # UnitOfWork(db) with an externally-injected session makes
         # uow.commit() a deliberate no-op (nested/non-owning UoW — the
         # OUTER caller is supposed to control the commit boundary). But
-        # `deps.get_db()` never commits on the success path either, so the
+        # `get_db()` never commits on the success path either, so the
         # previous `UnitOfWork(db)` here silently never persisted the new
         # training task at all — the endpoint appeared to "succeed" (past
         # the ResponseValidationError this same call also had) while the
@@ -91,7 +91,7 @@ async def trigger_training(
 )
 async def get_training_queue(
     limit: int = Query(50, ge=1, le=200),
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get recent and pending training tasks."""
     async with UnitOfWork(db) as uow:
@@ -106,7 +106,7 @@ async def get_training_queue(
 )
 async def get_model_versions(
     arac_id: int,
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Get all model versions for a vehicle."""
     async with UnitOfWork(db) as uow:

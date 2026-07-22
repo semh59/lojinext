@@ -31,6 +31,8 @@ davranamazdı (domain kavramı yok). Çözüm: `v2/modules/` altında ama
 v2/modules/platform_infra/
 ├── public.py                     # kasıtlı dış-yüzey — application katmani icin ZORUNLU giris kapisi
 ├── container.py                  # DI composition root (event_bus + 8 lazy-singleton property)
+├── api_deps.py                   # per-request DI alias'lari (SessionDep, UOWDep) — container.py'nin
+│                                  # per-request ikizi, app/api/deps.py'den tasindi (2026-07-22, Kalem 3 commit 2)
 ├── metrics.py                    # Prometheus custom sayaclar (graceful no-op)
 ├── cache/                        # Redis cache/pub-sub (5 dosya)
 │   ├── cache_manager.py          # CacheManager, get_cache_manager
@@ -111,12 +113,13 @@ ihtiyaçları için kod ekleme" karşıtı ilkesiyle tutarlı şekilde kaldırı
 
 ## Public API (public.py'nin gerçekte export ettiği — özet)
 
-Tam liste `public.py`'nin `__all__`'ında; kategoriler: cache (13 sembol),
-domain event bus (5), DI composition root (3), request context (6),
-database (8), structured logging (3), metrics (3), ASGI middleware (4),
-error/alarm monitoring (~25), resilience (10), security/PII (6), audit (3),
-background jobs (3). **`background.celery_app` ve `websocket.*` public.py'de
-YOK** — aşağıdaki "circular-import notu"na bakın.
+Tam liste `public.py`'nin `__all__`'ında; kategoriler: per-request DI
+alias'ları (2 — `SessionDep`/`UOWDep`), cache (13 sembol), domain event bus
+(5), DI composition root (3), request context (6), database (8),
+structured logging (3), metrics (3), ASGI middleware (4), error/alarm
+monitoring (~25), resilience (10), security/PII (6), audit (3), background
+jobs (3). **`background.celery_app` ve `websocket.*` public.py'de YOK** —
+aşağıdaki "circular-import notu"na bakın.
 
 ## `public-surface-only-platform_infra` kontratı — kritik uygulama notu
 
@@ -198,6 +201,24 @@ taramasında bulunup taşınan/silinen 4 kalem:
   bu gerekçe geçersiz oldu. `app/workers/` paketi (yalnız ölü bir
   `run_prediction_task` re-export'u kalmıştı, gerçek çağıranı yoktu)
   tamamen silindi.
+
+## Sonradan bulunan 3. tur (2026-07-22, "Kalem 3" — `app/api/deps.py` dağıtımı)
+
+`app/api/deps.py`'nin jenerik per-request DI alias'ları (`SessionDep`,
+`UOWDep`) yeni `api_deps.py`'ye taşındı (commit 2/3, bkz. yukarıdaki
+envanter). `get_background_job_manager` (bu sembolleri saran async
+wrapper) bu taşımada tamamen SİLİNDİ — tüm tüketiciler zaten yalnızca
+`Depends(get_background_job_manager)` sonra `job_manager.submit(...)`
+kalıbını izliyordu, bu da `Depends(get_job_manager)` (zaten `public.py`'de
+export edilen senkron fonksiyon) ile birebir aynı sonucu üretir; ekstra
+indirection'a gerek yoktu. ~20 tüketici dosyasının (route dosyaları +
+testler, kök `tests/` dahil) import'ları `v2.modules.platform_infra.
+public`'e güncellendi. `app/api/deps.py`'de yalnız `get_sefer_service`
+(trip'in request-scoped `SeferService` factory'si) kaldı — Kalem 3'ün
+commit 3'ünde `trip` modülüne taşınacak, o zaman `app/api/deps.py` +
+`app/api/v1/api.py` tamamen silinecek (bkz. `v2/modules/auth_rbac/
+CLAUDE.md`'nin bu taşımanın commit 1'ini — auth sembollerini —
+dokümante eden notu).
 
 ## Test stratejisi
 

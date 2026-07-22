@@ -5,7 +5,6 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 from starlette.responses import JSONResponse
 
-from app.api.deps import get_background_job_manager
 from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.background.job_manager import (
@@ -13,6 +12,7 @@ from v2.modules.platform_infra.background.job_manager import (
     BackgroundJobManager,
 )
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_job_manager
 from v2.modules.prediction_ml.application.prediction_backfill_service import (
     PredictionBackfillService,
 )
@@ -30,7 +30,7 @@ router = APIRouter()
 async def trigger_prediction_backfill(
     limit: int = Query(50, ge=1, le=500),
     admin: Kullanici = Depends(get_current_active_admin),
-    job_manager: BackgroundJobManager = Depends(get_background_job_manager),
+    job_manager: BackgroundJobManager = Depends(get_job_manager),
 ) -> JSONResponse:
     """tahmini_tuketim=NULL seferleri estimator ile doldurur (arka planda çalışır).
 

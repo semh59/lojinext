@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import and_, select
 
-from app.api.deps import SessionDep
 from v2.modules.auth_rbac.public import (
     Kullanici,
     get_current_active_admin,
@@ -16,6 +15,7 @@ from v2.modules.auth_rbac.public import (
 )
 from v2.modules.driver.public import Sofor
 from v2.modules.platform_infra.background.celery_app import celery_app
+from v2.modules.platform_infra.public import SessionDep
 from v2.modules.prediction_ml.application.prediction_service import PredictionService
 from v2.modules.prediction_ml.schemas import (
     AccuracyDistribution,

@@ -19,8 +19,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from app.api.deps import SessionDep
 from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
+from v2.modules.platform_infra.public import SessionDep
 
 router = APIRouter()
 

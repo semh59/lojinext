@@ -23,7 +23,6 @@ from typing import Annotated, Optional
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import SessionDep
 from app.config import settings
 from v2.modules.anomaly.application.manage_investigations import (
     create_investigation as create_investigation_uc,
@@ -57,6 +56,7 @@ from v2.modules.anomaly.schemas import (
 )
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.public import SessionDep
 
 logger = logging.getLogger(__name__)
 

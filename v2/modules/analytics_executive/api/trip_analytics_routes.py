@@ -13,7 +13,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_background_job_manager, get_sefer_service
+from app.api.deps import get_sefer_service
 from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
 from v2.modules.auth_rbac.public import (
     Kullanici,
@@ -25,6 +25,7 @@ from v2.modules.platform_infra.background.job_manager import (
     BackgroundJobManager,
 )
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_job_manager
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.trip.public import SeferService, SeferStatsResponse
 
@@ -119,7 +120,7 @@ async def analyze_trip_costs(
     sefer_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
     service: SeferService = Depends(get_sefer_service),
-    job_manager: BackgroundJobManager = Depends(get_background_job_manager),
+    job_manager: BackgroundJobManager = Depends(get_job_manager),
 ):
     """
     Sefer maliyet analizi ve Smart Reconciliation tetikleme (Asenkron).

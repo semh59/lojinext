@@ -20,7 +20,6 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep, UOWDep
 from app.config import settings
 from v2.modules.admin_platform.api.internal_routes import (
     _ALLOWED_MIME_TYPES,
@@ -67,6 +66,7 @@ from v2.modules.platform_infra.api_utils import parse_date_param
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
+from v2.modules.platform_infra.public import SessionDep, UOWDep
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES

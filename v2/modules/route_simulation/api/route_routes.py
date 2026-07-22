@@ -4,8 +4,8 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep
 from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
+from v2.modules.platform_infra.public import SessionDep
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.route_simulation.application.create_route_simulation import (
     create_route_simulation,

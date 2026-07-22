@@ -3,7 +3,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import deps
 from v2.modules.anomaly.application.attribute_loss import (
     override_attribution,
 )
@@ -16,6 +15,7 @@ from v2.modules.auth_rbac.public import (
     get_current_active_user,
     require_yetki,
 )
+from v2.modules.platform_infra.public import get_db
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
@@ -30,7 +30,7 @@ router = APIRouter()
 async def override_trip_attribution(
     request: AttributionOverrideRequest,
     current_user: Kullanici = Depends(get_current_active_user),
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Manually override the vehicle or driver for a specific trip.

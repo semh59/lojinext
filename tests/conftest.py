@@ -175,9 +175,9 @@ async def setup_test_db(db_engine, db_session_factory):
     settings.ENVIRONMENT = "test"
     settings.ALEMBIC_READY = True
 
-    from app.api.deps import get_db
     from app.main import app
     from v2.modules.auth_rbac.domain.security import get_password_hash
+    from v2.modules.platform_infra.public import get_db
 
     async def override_get_db():
         async with db_session_factory() as session:

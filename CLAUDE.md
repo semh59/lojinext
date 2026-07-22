@@ -122,7 +122,7 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 
 ### Dependency injection
 
-`v2/modules/platform_infra/container.py` is the singleton DI container (moved from `app/core/container.py` in dalga 17). All major services (SeferService, AracService, AIService, RAGEngine, etc.) are lazy-loaded, thread-safe properties. Endpoints receive services via FastAPI `Depends()` wired through `app/api/deps.py`. In tests, patch `container_mod.*` or pass explicit instances.
+`v2/modules/platform_infra/container.py` is the singleton DI container (moved from `app/core/container.py` in dalga 17). All major services (SeferService, AracService, AIService, RAGEngine, etc.) are lazy-loaded, thread-safe properties. Per-request transaction-scoped dependency aliases (`SessionDep`, `UOWDep`) live alongside it in `v2/modules/platform_infra/api_deps.py` (moved from `app/api/deps.py` 2026-07-22 — container.py's per-request twin), exported via `platform_infra.public`. `app/api/deps.py` now only holds `get_sefer_service` (trip's request-scoped `SeferService` factory, pending its own move to the `trip` module) — auth-specific factories (`get_current_active_user` etc.) live in `v2/modules/auth_rbac/application/authenticate.py`, exported via `auth_rbac.public`. In tests, patch `container_mod.*` or pass explicit instances.
 
 ### v2 modular-monolith rebuild (in progress)
 
@@ -250,7 +250,7 @@ These are included in `docker-compose.yml` but are not part of the FastAPI app m
 
 ### Auth / RBAC
 
-JWT (HS256 default, RS256 optional). `app/core/security.py` for token logic. `app/api/deps.py` exports `get_current_active_user`, `get_current_active_admin`, `require_permissions("resource:action")`.
+JWT (HS256 default, RS256 optional). `app/core/security.py` for token logic. `v2/modules/auth_rbac/application/authenticate.py` (exported via `auth_rbac.public`, moved from `app/api/deps.py` 2026-07-22) exports `get_current_active_user`, `get_current_active_admin`, `require_permissions("resource:action")`.
 
 Frontend: `axiosInstance` (axios-instance.ts) handles token refresh automatically via interceptor. `fetchWithAuth` (auth-service.ts) also retries with a refreshed token on 401 before redirecting to `/login` — use it only for `/auth/*` endpoints where the axios interceptor would cause circular dependency. For all other calls, prefer `axiosInstance`.
 

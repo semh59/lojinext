@@ -4,7 +4,6 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.api.deps import UOWDep
 from v2.modules.auth_rbac.public import (
     Kullanici,
     get_current_active_admin,
@@ -48,6 +47,7 @@ from v2.modules.import_excel.public import (
 )
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import UOWDep
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import (
     EXCEL_XLSX_RESPONSES,

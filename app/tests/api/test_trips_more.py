@@ -112,17 +112,17 @@ def _override_sefer_service(mock_svc):
 
 @contextmanager
 def _override_job_manager(mock_jm):
-    from app.api.deps import get_background_job_manager
     from app.main import app
+    from v2.modules.platform_infra.public import get_job_manager
 
     async def _fake_jm():
         return mock_jm
 
-    app.dependency_overrides[get_background_job_manager] = _fake_jm
+    app.dependency_overrides[get_job_manager] = _fake_jm
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_background_job_manager, None)
+        app.dependency_overrides.pop(get_job_manager, None)
 
 
 _SEFER_CREATE_PAYLOAD = dict(

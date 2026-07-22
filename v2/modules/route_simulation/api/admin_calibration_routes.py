@@ -3,8 +3,8 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api import deps
 from v2.modules.auth_rbac.public import require_yetki
+from v2.modules.platform_infra.public import get_db
 from v2.modules.route_simulation.application.route_calibration_service import (
     RouteCalibrationService,
 )
@@ -20,7 +20,7 @@ router = APIRouter()
 )
 async def calibrate_route_from_trip(
     sefer_id: int,
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a route's 'Golden Path' using a specific trip's GPS data.
@@ -45,7 +45,7 @@ async def calibrate_route_from_trip(
 )
 async def match_trip_to_path(
     sefer_id: int,
-    db: AsyncSession = Depends(deps.get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Verify if a trip matches the calibrated target path.

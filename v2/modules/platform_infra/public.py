@@ -34,6 +34,7 @@ imports it directly; code that needs the error/alarm bus uses the
 ``ErrorEventBus`` access outside of ``emit``/``aemit``.
 """
 
+from v2.modules.platform_infra.api_deps import SessionDep, UOWDep
 from v2.modules.platform_infra.audit.audit_logger import (
     audit_log,
     audit_logger,
@@ -205,6 +206,9 @@ from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 # import etmeye devam eder.
 
 __all__ = [
+    # per-request DI aliases
+    "SessionDep",
+    "UOWDep",
     # cache
     "CacheManager",
     "get_cache_manager",

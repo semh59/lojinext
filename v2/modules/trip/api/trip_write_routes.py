@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from app.api.deps import UOWDep, get_sefer_service
+from app.api.deps import get_sefer_service
 from v2.modules.admin_platform.public import (
     IdempotencyKeyConflictError,
     IdempotencyKeyInProgressError,
@@ -13,6 +13,7 @@ from v2.modules.admin_platform.public import (
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import UOWDep
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.trip.public import SeferCreate, SeferResponse, SeferService, SeferUpdate

@@ -5,7 +5,6 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
 
-from app.api.deps import UOWDep
 from app.config import settings
 from v2.modules.auth_rbac.application import auth_service
 from v2.modules.auth_rbac.application.authenticate import TokenDep, get_current_user
@@ -14,6 +13,7 @@ from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
 from v2.modules.auth_rbac.schemas import KullaniciRead
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import UOWDep
 from v2.modules.platform_infra.resilience.rate_limiter import rate_limited
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import (

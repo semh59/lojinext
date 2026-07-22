@@ -10,13 +10,13 @@ from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
-from app.api.deps import get_background_job_manager
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
 )
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_job_manager
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.schemas.api_responses import TaskStatusResponse
 
@@ -38,7 +38,7 @@ router = APIRouter()
 )
 async def upload_sefer_excel(
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    job_manager: Annotated[BackgroundJobManager, Depends(get_background_job_manager)],
+    job_manager: Annotated[BackgroundJobManager, Depends(get_job_manager)],
     file: UploadFile = File(...),
     async_mode: bool = Query(
         False,
@@ -113,7 +113,7 @@ async def upload_sefer_excel(
 async def get_task_status(
     task_id: str,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    job_manager: BackgroundJobManager = Depends(get_background_job_manager),
+    job_manager: BackgroundJobManager = Depends(get_job_manager),
 ):
     """
     Asenkron islem durumunu kontrol eden polling endpointi.

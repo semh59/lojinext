@@ -217,8 +217,10 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   üzerinden çekiyor; `get_current_user`/`get_current_active_user` de
   2026-07-22'den beri (Kalem 3 commit 1) `auth_rbac.public` üzerinden —
   `app/api/deps.py`'nin composition-root istisnası artık yalnız
-  `SessionDep`/`UOWDep`/`get_background_job_manager`/`get_sefer_service`
-  (jenerik DI alias'ları, hiçbir modüle ait değil) için geçerli.
+  `get_sefer_service` (trip'in request-scoped factory'si) için geçerli;
+  `SessionDep`/`UOWDep` de aynı gün (commit 2) `platform_infra.public`'e
+  taşındı, `get_background_job_manager` tamamen silindi (bkz.
+  `v2/modules/platform_infra/CLAUDE.md`'nin "Sonradan bulunan 3. tur" notu).
 - **notification (senkron, zaten taşınmış)**: iki yönlü —
   `auth_rbac→notification`: `auth_routes.py::request_password_reset`
   `v2.modules.notification.public.send_password_reset` çağırır
@@ -281,9 +283,13 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   çözüldü, `.importlinter`'daki 2 eski `permission_checker -> infrastructure.models`
   ignore satırı artık gereksiz, silindi), döngü tamamen ortadan kalktı.
   `SessionDep`/`UOWDep`/`get_background_job_manager`/`get_sefer_service`
-  (jenerik per-request DI alias'ları, auth_rbac'a ait değil) hâlâ
-  `app/api/deps.py`'de — ayrı bir taşımanın konusu (`platform_infra`/`trip`).
-  `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı bakınız).
+  (jenerik per-request DI alias'ları, auth_rbac'a ait değil) o sırada hâlâ
+  `app/api/deps.py`'deydi — aynı gün (Kalem 3 commit 2) `SessionDep`/`UOWDep`
+  `platform_infra.public`'e taşındı, `get_background_job_manager` tamamen
+  silindi (tüm tüketiciler `platform_infra.public.get_job_manager`'ı
+  doğrudan kullanıyor). Yalnız `get_sefer_service` kaldı, Kalem 3 commit
+  3'ünde `trip` modülüne taşınacak. `get_auth_service`/`AuthServiceDep`
+  KALDIRILDI (yukarı bakınız).
 - **Super-admin break-glass bypass** (`api/auth_routes.py::login`) —
   `SUPER_ADMIN_PASSWORD` env değişkeni + IP-scoped rate-limit bucket
   (`super_admin_login:{ip}`, 5dk'da 3 deneme) — genel `auth_token` bucket'ından

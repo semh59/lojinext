@@ -57,7 +57,7 @@ v2/modules/shared_kernel/
 │   ├── api_responses.py                   # MessageResponse/SuccessCountResponse/... (846→118 satır, geri kalanı modüllere dağıtıldı)
 │   └── validators.py                      # sanitize_string/check_xss/validate_*/create_*_validator (güvenlik validatorları)
 └── utils/
-    ├── clock.py                           # current_date/current_datetime_utc (test-edilebilir clock injection)
+    ├── clock.py                           # current_date (test-edilebilir clock injection)
     └── type_helpers.py                    # safe_float
 ```
 
@@ -96,7 +96,7 @@ create_safe_string_validator, create_username_validator,
 create_name_validator, create_password_validator, create_phone_validator
 
 # clock injection
-current_date, current_datetime_utc
+current_date
 
 # type helpers
 safe_float

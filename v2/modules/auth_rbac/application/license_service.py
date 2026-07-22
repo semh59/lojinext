@@ -147,9 +147,3 @@ class LicenseEngine:
                 )
                 return False
         return True
-
-
-def get_license_engine() -> LicenseEngine:
-    from v2.modules.platform_infra.public import get_container
-
-    return get_container().license_service

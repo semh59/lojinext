@@ -74,7 +74,7 @@ from v2.modules.shared_kernel.schemas.validators import (
     validate_safe_string,
     validate_username,
 )
-from v2.modules.shared_kernel.utils.clock import current_date, current_datetime_utc
+from v2.modules.shared_kernel.utils.clock import current_date
 from v2.modules.shared_kernel.utils.type_helpers import safe_float
 
 __all__ = [
@@ -137,7 +137,6 @@ __all__ = [
     "create_phone_validator",
     # clock injection
     "current_date",
-    "current_datetime_utc",
     # type helpers
     "safe_float",
 ]

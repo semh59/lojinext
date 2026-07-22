@@ -1,11 +1,19 @@
 """
 TIR Yakıt Takip - OpenRouteService Entegrasyonu (Async)
-Rota profili, yükseklik, bayır/düzlük hesaplama
+Geocode (adres -> koordinat) entegrasyonu.
 REFACTORED: blocking requests → httpx.AsyncClient, thread-safe singleton
+
+2026-07-22 dead-code denetimi: rota-profili hesaplama tarafı (RouteProfile,
+get_route_profile/get_route_profile_offline, _haversine_distance, sync
+is_configured(), close()) silindi — sıfır prod çağıranı vardı (yalnız kendi
+dedike testleri), v2/modules/route_simulation'ın kendi RouteSimulator/
+get_route_details pipeline'ı tarafından zaten ikame edilmişti. Geocode
+tarafı (bu dosyanın geri kalanı) hâlâ canlı —
+v2/modules/location/infrastructure/geocode_providers.py'nin 3 aşamalı
+geocode fallback zincirinin 2 aşaması burayı kullanıyor.
 """
 
 import threading
-from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlsplit, urlunsplit
 
@@ -22,26 +30,8 @@ except ImportError:
 
 from app.config import settings
 from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.platform_infra.resilience.circuit_breaker import (
-    CircuitBreakerError,
-    CircuitBreakerRegistry,
-)
-from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class RouteProfile:
-    """Rota profili verisi"""
-
-    distance_km: float
-    duration_hours: float
-    ascent_m: float  # Toplam tırmanış (bayır)
-    descent_m: float  # Toplam iniş (düzlük)
-    elevation_gain_ratio: float  # Bayır/düzlük oranı
-    # True → haversine+sabit katsayıdan üretildi (API ulaşılamaz), gerçek veri yok.
-    is_offline: bool = False
 
 
 class OpenRouteService:
@@ -74,10 +64,6 @@ class OpenRouteService:
             self._client = get_monitored_client(timeout=self.TIMEOUT)
         return self._client
 
-    def is_configured(self) -> bool:
-        """API key var mı kontrol et (.env fallback ile — sync, hızlı ön-kontrol)."""
-        return bool(self.api_key) and HTTPX_AVAILABLE
-
     async def _resolve_api_key(self) -> Optional[str]:
         """DB-configured key (admin UI) takes priority over the .env
         fallback — see v2.modules.admin_platform.public."""
@@ -90,136 +76,9 @@ class OpenRouteService:
         return await get_integration_secret("openroute", self.api_key)
 
     async def is_configured_async(self) -> bool:
-        """DB-aware configured check — use this instead of is_configured()
-        wherever a caller can await, so an admin-only (no .env fallback)
-        key is honored instead of silently falling to offline mode."""
+        """DB-aware configured check — an admin-only (no .env fallback) key
+        is honored instead of silently falling to offline mode."""
         return bool(await self._resolve_api_key())
-
-    def _haversine_distance(
-        self, lon1: float, lat1: float, lon2: float, lat2: float
-    ) -> float:
-        """İki nokta arasındaki kuş uçuşu mesafeyi (KM) hesaplar"""
-        import math
-
-        R = 6371  # Dünya yarıçapı (km)
-        dLat = math.radians(lat2 - lat1)
-        dLon = math.radians(lon2 - lon1)
-        a = math.sin(dLat / 2) * math.sin(dLat / 2) + math.cos(
-            math.radians(lat1)
-        ) * math.cos(math.radians(lat2)) * math.sin(dLon / 2) * math.sin(dLon / 2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        return R * c
-
-    def get_route_profile_offline(
-        self, start_coords: Tuple[float, float], end_coords: Tuple[float, float]
-    ) -> RouteProfile:
-        """
-        İnternet yoksa kuş uçuşu mesafe üzerinden tahmini profil döndür.
-        """
-        # Kuş uçuşu mesafeyi hesapla ve %25 yol kıvrım payı ekle
-        air_distance = self._haversine_distance(
-            start_coords[0], start_coords[1], end_coords[0], end_coords[1]
-        )
-        distance_km = air_distance * 1.25
-
-        # Ortalama 70 km/s hız varsayımı
-        duration_hours = distance_km / 70.0
-
-        # Türkiye geneli için ortalama yükseklik tırmanışı
-        ascent = (distance_km / 100) * 450
-        descent = (distance_km / 100) * 400
-
-        return RouteProfile(
-            distance_km=round(distance_km, 1),
-            duration_hours=round(duration_hours, 2),
-            ascent_m=round(ascent, 0),
-            descent_m=round(descent, 0),
-            elevation_gain_ratio=0.53,
-            is_offline=True,
-        )
-
-    async def get_route_profile(
-        self,
-        start_coords: Tuple[float, float],  # (lon, lat)
-        end_coords: Tuple[float, float],  # (lon, lat)
-        vehicle_type: str = "driving-hgv",  # Heavy Goods Vehicle (TIR)
-    ) -> Optional[RouteProfile]:
-        """
-        İki nokta arasındaki rota profilini al (Async).
-        İnternet yoksa veya API anahtarı eksikse offline fallback kullanır.
-        """
-        # Eğer yapılandırılmamışsa direkt offline'a düş
-        api_key = await self._resolve_api_key()
-        if not api_key:
-            return self.get_route_profile_offline(start_coords, end_coords)
-
-        try:
-            # Rate Limiter: 2 istek/saniye (günlük 2000 limit)
-            rate_limiter = RateLimiterRegistry.get_sync(
-                "openroute", rate=2.0, period=1.0
-            )
-            await rate_limiter.acquire()
-
-            # Circuit Breaker: 5 hata → 60 saniye bekleme
-            circuit = CircuitBreakerRegistry.get_sync(
-                "openroute", fail_max=5, reset_timeout=60.0
-            )
-
-            client = await self._get_client()
-            url = f"{self.base_url}/directions/{vehicle_type}"
-            headers = {
-                "Content-Type": "application/json",
-            }
-            params = {"api_key": api_key}
-            body = {
-                "coordinates": [list(start_coords), list(end_coords)],
-                "elevation": True,
-                "instructions": False,
-            }
-
-            async def _make_request():
-                return await client.post(url, json=body, headers=headers, params=params)
-
-            response = await circuit.call(_make_request)
-
-            if response.status_code == 200:
-                data = response.json()
-                route = data.get("routes", [{}])[0]
-                summary = route.get("summary", {})
-
-                distance_m = summary.get("distance", 0)
-                distance_km = distance_m / 1000
-                duration_sec = summary.get("duration", 0)
-                ascent = summary.get("ascent", 0)
-                descent = summary.get("descent", 0)
-
-                total_elevation = ascent + descent
-                ratio = (ascent / total_elevation) if total_elevation > 0 else 0.5
-
-                return RouteProfile(
-                    distance_km=round(distance_km, 1),
-                    duration_hours=round(duration_sec / 3600, 2),
-                    ascent_m=round(ascent, 0),
-                    descent_m=round(descent, 0),
-                    elevation_gain_ratio=round(ratio, 2),
-                )
-            else:
-                logger.warning(
-                    f"OpenRouteService error {response.status_code}, falling back to offline."
-                )
-                return self.get_route_profile_offline(start_coords, end_coords)
-
-        except httpx.TimeoutException:
-            logger.warning("OpenRouteService timeout, falling back to offline.")
-            return self.get_route_profile_offline(start_coords, end_coords)
-        except CircuitBreakerError:
-            logger.warning(
-                "OpenRouteService circuit breaker open, falling back to offline."
-            )
-            return self.get_route_profile_offline(start_coords, end_coords)
-        except Exception as e:
-            logger.error(f"OpenRouteService exception: {e}, falling back to offline.")
-            return self.get_route_profile_offline(start_coords, end_coords)
 
     async def geocode(self, address: str) -> Optional[Tuple[float, float]]:
         """
@@ -273,13 +132,6 @@ class OpenRouteService:
             if city in addr_lower:
                 return coords
         return None
-
-    async def close(self):
-        """Graceful shutdown - HTTP client'ı kapat"""
-        if self._client:
-            await self._client.aclose()
-            self._client = None
-            logger.debug("OpenRouteService HTTP client closed.")
 
 
 # Thread-safe Singleton

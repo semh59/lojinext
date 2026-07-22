@@ -16,14 +16,9 @@ kullanır.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date
 
 
 def current_date() -> date:
     """Bugünün tarihi — production: date.today(), test: monkeypatched."""
     return date.today()
-
-
-def current_datetime_utc() -> datetime:
-    """Şu anki UTC datetime — production: datetime.now(tz=utc), test: monkeypatched."""
-    return datetime.now(timezone.utc)

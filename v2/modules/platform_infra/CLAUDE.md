@@ -95,18 +95,19 @@ v2/modules/platform_infra/
 decorator'ıyla business modüllerin yayınladığı olaylar, ör. `TripCreated`)
 ile `monitoring.event_bus.get_event_bus()` (**ErrorEventBus** —
 main.py'nin lifespan'ı + Sentry hook'unun kullandığı hata/alarm bus'ı) aynı
-isimde ama TAMAMEN farklı iki sınıf/dosya. `public.py`'de ikinci biri
-`get_error_event_bus` diye yeniden adlandırılarak import edilir:
+isimde ama TAMAMEN farklı iki sınıf/dosya. `public.py` yalnız domain
+`get_event_bus`'ı export eder; error/alarm bus'a application katmanından
+ihtiyaç duyan kod `monitoring.emit`/`aemit` (senkron/async sarmalayıcılar,
+kendi içlerinde `ErrorEventBus.get_event_bus()`'ı çağırır) kullanır — bu
+ikisi de `public.py`'den export edilir.
 
-```python
-from v2.modules.platform_infra.events.event_bus import get_event_bus
-from v2.modules.platform_infra.monitoring.event_bus import get_event_bus as get_error_event_bus
-```
-
-Pratikte application-katmanı kodu `get_error_event_bus`'ı neredeyse hiç
-doğrudan çağırmaz — bunun yerine `monitoring.emit`/`aemit` (senkron/async
-sarmalayıcılar, kendi içlerinde `get_event_bus()`'ı — yani ErrorEventBus'ı
-— çağırır) kullanılır; bu iki fonksiyon da `public.py`'den export edilir.
+✅ **TEMİZLENDİ (2026-07-22, dead-code denetimi)**: bu çakışmayı çözmek
+için taslak edilen `get_error_event_bus` alias'ı (`get_event_bus as
+get_error_event_bus`) sonradan silindi — grep ile doğrulandı, hiçbir
+çağıran hiçbir zaman `ErrorEventBus`'a `emit`/`aemit` dışında doğrudan
+erişmeye ihtiyaç duymadı. Spekülatif olarak eklenmiş, hiç kullanılmamış
+bir "ileri güvenlik supabı"ydı — projenin kendi "hipotetik gelecek
+ihtiyaçları için kod ekleme" karşıtı ilkesiyle tutarlı şekilde kaldırıldı.
 
 ## Public API (public.py'nin gerçekte export ettiği — özet)
 

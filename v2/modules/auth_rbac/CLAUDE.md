@@ -64,11 +64,14 @@ require_yetki(permission) -> PermissionChecker
 # verify_password/create_access_token) domain/security.py'ye delege eder;
 # create_refresh_token/hash_token/verify_token_hash/decode_token/
 # decode_refresh_token/get_decode_key SADECE jwt_handler.py'de yaşar, security.py'de
-# karşılığı yok (JWT oturum-token yaşam döngüsü onun asıl sorumluluğu). Ayrıca
-# hash_password()/verify_password_core() (security.py'den doğrudan export) ile
-# jwt_handler.get_password_hash()/jwt_handler.verify_password() AYNI capability'ye
-# iki farklı public isimden erişim sağlıyor — davranış hatası değil ama gelecekte
-# drift riski taşıyan gereksiz ikili-yüzey, bilerek dokümante ediliyor.
+# karşılığı yok (JWT oturum-token yaşam döngüsü onun asıl sorumluluğu).
+# ✅ **TEMİZLENDİ (2026-07-22, dead-code denetimi)**: `security.py`'den
+# doğrudan export edilen `verify_password_core`/`create_access_token_core`
+# alias'ları — jwt_handler.get_password_hash()/jwt_handler.verify_password()
+# ile AYNI capability'ye ikinci bir public isimden erişim sağlıyorlardı,
+# gerçek çağıranları hiç olmamıştı (grep ile doğrulandı) — public.py'den
+# silindi (`hash_password`/`jwt_handler.*` kanonik yollar KALDI, davranış
+# değişikliği yok).
 jwt_handler.create_access_token(data, expires_delta=None) -> str
 jwt_handler.create_refresh_token(data, expires_delta=None) -> str
 jwt_handler.decode_token(token, audience=None) -> dict
@@ -78,8 +81,6 @@ jwt_handler.verify_token_hash(token, token_hash) -> bool
 jwt_handler.get_password_hash(password) -> str     # bcrypt, delegates to domain/security.py
 jwt_handler.verify_password(plain, hashed) -> bool
 hash_password(password) -> str                      # domain/security.py kanonik (jwt_handler.get_password_hash bunu sarar)
-verify_password_core(plain, hashed) -> bool
-create_access_token_core(data, expires_delta=None) -> str
 get_jwks() -> dict                                  # RS256 JWKS endpoint desteği
 
 # Token blacklist (Redis-backed, logout revocation)
@@ -88,7 +89,11 @@ blacklist.add(token, expires_at) -> None
 blacklist.is_blacklisted(token) -> bool              # fail-secure: Redis down → True
 
 # License (araç/sefer ticari limit kontrolü — sınıf, bkz. istisna notu)
-LicenseEngine, get_license_engine()
+# ✅ **TEMİZLENDİ (2026-07-22)**: `get_license_engine()` getter'ı silindi —
+# `v2/modules/platform_infra/container.py` zaten `LicenseEngine()`'i
+# doğrudan instantiate ediyordu (bu getter'ı hiç çağırmıyordu), grep ile
+# sıfır başka çağıran doğrulandı. `LicenseEngine` sınıfı KALDI.
+LicenseEngine
 
 # Repositories (3 ayrı dosya: infrastructure/kullanici_repository.py,
 # infrastructure/rol_repository.py, infrastructure/session_repository.py —
@@ -225,6 +230,22 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- 🔴 **BULGU, KARAR BEKLİYOR (2026-07-22, dead-code/hayali-kod denetimi)**
+  — `LicenseEngine.check_car_limit()`/`check_monthly_trip_limit()` tam
+  olarak implemente edilmiş (hash-tabanlı FREE/PRO/ENTERPRISE tier
+  kontrolü, gerçek DB sorguları, `container.py`'de wire edilmiş singleton)
+  ama **hiçbir gerçek çağıranı yok** — ne fleet'in araç-oluşturma yolu
+  (`v2.modules.fleet.application.create_vehicle`) ne de trip'in
+  sefer-ekleme yolu (`add_trip.py`/`bulk_add_trips.py`) bu kontrolü
+  çağırıyor (grep ile doğrulandı — yalnız `test_license_service.py`
+  bu fonksiyonları egzersiz ediyor). `count_active_vehicles()`
+  (`v2.modules.fleet.public`) fonksiyonunun kendi docstring'i açıkça
+  "used by auth_rbac's license limit check" diyor — yardımcı VAR ama onu
+  çağıran özellik hiç bağlanmamış. Sonuç: bugün FREE tier müşteriler
+  sınırsız araç/sefer ekleyebiliyor; motor "hayali" değil (gerçek,
+  test edilmiş kod) ama devre dışı — silinmeli mi yoksa gerçekten fleet/
+  trip'in create-path'lerine bağlanmalı mı, ayrı bir ürün kararı
+  gerektiriyor, bu denetimde DOKUNULMADI.
 - ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
   denetiminde bulundu)** — 2 çapraz-modül/katman bulgusu:
   (1) `LicenseEngine.check_car_limit()` (`application/license_service.py`)

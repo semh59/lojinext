@@ -24,12 +24,14 @@ from here, not by reaching into ``cache/``, ``events/``, ``monitoring/``,
 ``EventBus``, used by ``@publishes``/business modules) and
 ``monitoring.event_bus.get_event_bus`` (the ``ErrorEventBus``, used by
 main.py's lifespan + Sentry hook) share a name but are two different
-classes at two different paths. Resolved below via
-``import ... as get_error_event_bus`` — application-layer code that needs
-the domain event bus imports ``get_event_bus``; code that needs the error/
-alarm bus imports ``get_error_event_bus`` (or, more commonly, the
-``emit``/``aemit`` wrappers, which never require importing either
-``get_event_bus`` directly).
+classes at two different paths. Only the domain ``get_event_bus`` is
+exported here — application-layer code that needs the domain event bus
+imports it directly; code that needs the error/alarm bus uses the
+``emit``/``aemit`` wrappers (which never require importing
+``monitoring.event_bus.get_event_bus`` at all). A disambiguating
+``get_error_event_bus`` alias was drafted for this file but dropped
+(2026-07-22 dead-code pass) — zero callers anywhere ever needed direct
+``ErrorEventBus`` access outside of ``emit``/``aemit``.
 """
 
 from v2.modules.platform_infra.audit.audit_logger import (
@@ -79,7 +81,6 @@ from v2.modules.platform_infra.database.backup_manager import DatabaseBackupMana
 from v2.modules.platform_infra.database.connection import (
     AsyncSessionLocal,
     engine,
-    get_connection,
     get_db,
     get_sync_session,
     session_scope,
@@ -132,9 +133,6 @@ from v2.modules.platform_infra.monitoring.db_probe import (
 from v2.modules.platform_infra.monitoring.event_bus import (
     ErrorEventBus,
     reset_event_bus,
-)
-from v2.modules.platform_infra.monitoring.event_bus import (
-    get_event_bus as get_error_event_bus,
 )
 from v2.modules.platform_infra.monitoring.external_api_probe import (
     emit_network_error,
@@ -241,7 +239,6 @@ __all__ = [
     # database
     "AsyncSessionLocal",
     "engine",
-    "get_connection",
     "get_db",
     "get_sync_session",
     "session_scope",
@@ -274,7 +271,6 @@ __all__ = [
     "reset_recent_queries",
     "setup_db_probe",
     "ErrorEventBus",
-    "get_error_event_bus",
     "reset_event_bus",
     "emit_network_error",
     "get_monitored_client",

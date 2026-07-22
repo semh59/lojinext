@@ -37,7 +37,6 @@ create_trailer(repo, **data) -> int
 update_trailer(repo, dorse_id: int, **data) -> bool
 delete_trailer(repo, dorse_id: int) -> bool
 get_trailer_by_id(repo, dorse_id: int, include_inactive=False) -> dict | None
-get_all_trailers(repo, **kwargs) -> list[dict]
 get_all_trailers_paged(repo, skip=0, limit=100, ...) -> list[dict]
 export_all_trailers(repo) -> bytes
 get_trailer_template() -> bytes

@@ -18,7 +18,6 @@ CRUD (fleet), Excel parse orkestrasyonu (import_excel — bu modül yalnız
 ```python
 # Fuel transactions
 add_yakit(data: YakitAlimiCreate) -> int
-add_yakit_alimi(**kwargs) -> int              # add_yakit alias (backward-compat, dead — hiçbir prod çağıran yok)
 update_yakit(yakit_id: int, data: YakitUpdate) -> bool
 delete_yakit(yakit_id: int, deleted_by_id: int | None = None) -> bool   # hard delete
 bulk_add_yakit(yakit_list: list[YakitAlimiCreate]) -> int

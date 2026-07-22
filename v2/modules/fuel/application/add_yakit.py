@@ -1,7 +1,6 @@
 """Use-case: add a new fuel transaction (duplicate/odometer/rolling-outlier checks)."""
 
 from datetime import date
-from typing import Any
 
 from v2.modules.fuel.domain.entities import YakitAlimiCreate
 from v2.modules.platform_infra.public import (
@@ -148,15 +147,3 @@ async def add_yakit(data: YakitAlimiCreate) -> int:
     except Exception as e:
         logger.error(f"Fuel addition error: {e}", exc_info=True)
         raise
-
-
-async def add_yakit_alimi(**kwargs: Any) -> int:
-    """Alias for add_yakit (backward compatibility)."""
-    if kwargs:
-        try:
-            data = YakitAlimiCreate(**kwargs)
-            return await add_yakit(data)
-        except Exception as e:
-            logger.error(f"Fuel addition error (alias): {e}")
-            raise
-    raise ValueError("No data provided")

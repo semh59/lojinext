@@ -22,7 +22,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tests._helpers.seed import seed_arac, seed_yakit
-from v2.modules.fuel.application.add_yakit import add_yakit, add_yakit_alimi
+from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 from v2.modules.fuel.application.delete_yakit import delete_yakit
 from v2.modules.fuel.application.get_yakit import get_by_vehicle, get_yakit_by_id
@@ -280,33 +280,6 @@ class TestBulkAddYakit:
         data = _make_yakit_create(arac_id=arac.id, km_sayac=125000)
         result = await bulk_add_yakit([data])
         assert result == 1
-
-
-# ---------------------------------------------------------------------------
-# add_yakit_alimi alias
-# ---------------------------------------------------------------------------
-
-
-class TestAddYakitAlimi:
-    async def test_alias_raises_without_data(self):
-        with pytest.raises(ValueError, match="No data"):
-            await add_yakit_alimi()
-
-    async def test_alias_delegates_to_add_yakit(self, db_session):
-        arac = await seed_arac(db_session, plaka="34YAKTALIAS01")
-        await db_session.commit()
-
-        result = await add_yakit_alimi(
-            arac_id=arac.id,
-            tarih=date.today() - timedelta(days=1),
-            istasyon="Test",
-            fiyat_tl=40.0,
-            litre=300.0,
-            km_sayac=125000,
-            fis_no="F002",
-            depo_durumu="Dolu",
-        )
-        assert isinstance(result, int) and result > 0
 
 
 # ---------------------------------------------------------------------------

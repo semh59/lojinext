@@ -800,60 +800,6 @@ class TestOpenRouteServiceOffline:
         svc = OpenRouteService(api_key="")
         assert svc is not None
 
-    def test_is_configured_false_without_key(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        with patch("app.core.services.openroute_service.settings") as mock_settings:
-            mock_settings.OPENROUTESERVICE_API_KEY = ""
-            mock_settings.OPENROUTE_API_BASE_URL = "https://api.openrouteservice.org/v2"
-            svc = OpenRouteService(api_key="")
-        svc.api_key = ""  # ensure key is cleared for the check
-        assert svc.is_configured() is False
-
-    def test_is_configured_true_with_key(self):
-        from app.core.services.openroute_service import (
-            HTTPX_AVAILABLE,
-            OpenRouteService,
-        )
-
-        svc = OpenRouteService(api_key="test-key-123")
-        assert svc.is_configured() == HTTPX_AVAILABLE
-
-    def test_haversine_distance(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        svc = OpenRouteService(api_key="")
-        # Istanbul (28.97, 41.01) → Ankara (32.86, 39.92) ≈ 352 km
-        dist = svc._haversine_distance(28.97, 41.01, 32.86, 39.92)
-        assert 300 < dist < 420
-
-    def test_haversine_same_point(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        svc = OpenRouteService(api_key="")
-        dist = svc._haversine_distance(28.97, 41.01, 28.97, 41.01)
-        assert dist < 0.001
-
-    def test_get_route_profile_offline(self):
-        from app.core.services.openroute_service import OpenRouteService, RouteProfile
-
-        svc = OpenRouteService(api_key="")
-        profile = svc.get_route_profile_offline((28.97, 41.01), (32.86, 39.92))
-        assert isinstance(profile, RouteProfile)
-        assert profile.distance_km > 0
-        assert profile.duration_hours > 0
-        assert profile.ascent_m >= 0
-        assert profile.descent_m >= 0
-
-    @pytest.mark.asyncio
-    async def test_get_route_profile_falls_back_offline_when_unconfigured(self):
-        from app.core.services.openroute_service import OpenRouteService, RouteProfile
-
-        svc = OpenRouteService(api_key="")
-        profile = await svc.get_route_profile((28.97, 41.01), (32.86, 39.92))
-        assert isinstance(profile, RouteProfile)
-        assert profile.distance_km > 0
-
 
 class TestCacheInvalidationSetup:
     """Tests for cache_invalidation.setup_cache_invalidation."""

@@ -137,7 +137,7 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
 
 # ── Sync wrapper (ARCH-005: no separate pool — reuses async engine's internal sync engine)
 # Production code must not use this for request-path SQL; it exists for
-# scripts (benchmark.py) and test fixtures (conftest.py patches SyncSessionLocal).
+# test fixtures (conftest.py patches SyncSessionLocal).
 sync_engine = engine.sync_engine
 SyncSessionLocal = sessionmaker(bind=sync_engine, autocommit=False, autoflush=False)
 
@@ -154,7 +154,3 @@ def get_sync_session() -> Iterator[Session]:
         raise
     finally:
         session.close()
-
-
-# Legacy alias kept for `app.scripts.benchmark`.
-get_connection = get_sync_session

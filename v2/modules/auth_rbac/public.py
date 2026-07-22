@@ -29,10 +29,7 @@ import kaynakları güncellendi).
 """
 
 from v2.modules.auth_rbac.application import auth_service, role_service
-from v2.modules.auth_rbac.application.license_service import (
-    LicenseEngine,
-    get_license_engine,
-)
+from v2.modules.auth_rbac.application.license_service import LicenseEngine
 from v2.modules.auth_rbac.application.preference_service import (
     delete_preference,
     get_preferences,
@@ -53,12 +50,8 @@ from v2.modules.auth_rbac.domain.permission_checker import (
     PermissionChecker,
     require_yetki,
 )
-from v2.modules.auth_rbac.domain.security import (
-    create_access_token as create_access_token_core,
-)
 from v2.modules.auth_rbac.domain.security import get_jwks
 from v2.modules.auth_rbac.domain.security import get_password_hash as hash_password
-from v2.modules.auth_rbac.domain.security import verify_password as verify_password_core
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
 from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
@@ -111,15 +104,12 @@ __all__ = [
     "jwt_handler",
     "get_decode_key",
     "hash_password",
-    "verify_password_core",
-    "create_access_token_core",
     "get_jwks",
     # token blacklist
     "TokenBlacklist",
     "blacklist",
     # license
     "LicenseEngine",
-    "get_license_engine",
     # repositories
     "KullaniciRepository",
     "RolRepository",

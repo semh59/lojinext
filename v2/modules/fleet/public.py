@@ -55,7 +55,6 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     mark_maintenance_completed,
 )
 from v2.modules.fleet.application.list_trailers import (
-    get_all_trailers,
     get_all_trailers_paged,
     get_trailer_by_id,
 )
@@ -129,7 +128,6 @@ __all__ = [
     "update_trailer",
     "delete_trailer",
     "get_trailer_by_id",
-    "get_all_trailers",
     "get_all_trailers_paged",
     "export_all_trailers",
     "get_trailer_template",

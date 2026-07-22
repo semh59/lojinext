@@ -13,7 +13,7 @@ opened its own ``UnitOfWork()`` and never read ``self.repo``) — dropped
 here rather than carried forward.
 """
 
-from v2.modules.fuel.application.add_yakit import add_yakit, add_yakit_alimi
+from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 from v2.modules.fuel.application.calculate_period import create_fuel_periods
 from v2.modules.fuel.application.delete_yakit import delete_yakit
@@ -68,7 +68,6 @@ __all__ = [
     "YakitFormul",
     # fuel transactions
     "add_yakit",
-    "add_yakit_alimi",
     "update_yakit",
     "delete_yakit",
     "bulk_add_yakit",

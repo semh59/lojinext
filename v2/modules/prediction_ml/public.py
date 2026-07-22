@@ -20,6 +20,9 @@ from v2.modules.prediction_ml.application.model_training_handler import (
     ModelTrainingHandler,
     get_model_training_handler,
 )
+from v2.modules.prediction_ml.application.model_warmup import (
+    schedule_predictor_warmup,
+)
 from v2.modules.prediction_ml.application.physics_handler import (
     PhysicsRecalculationHandler,
     get_physics_handler,
@@ -85,6 +88,7 @@ __all__ = [
     "get_ensemble_service",
     "ModelTrainingHandler",
     "get_model_training_handler",
+    "schedule_predictor_warmup",
     "PhysicsRecalculationHandler",
     "get_physics_handler",
     "PredictionBackfillService",

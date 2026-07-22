@@ -127,6 +127,9 @@ PhysicsRecalculationHandler, get_physics_handler()
 # Backfill (Phase 4.4 — timeout nedeniyle tahminisiz kalan seferleri doldurur)
 PredictionBackfillService
 
+# ML predictor warm-up (main.py lifespan'de çağrılır — dalga 17, ilk modül-startup hook'u)
+schedule_predictor_warmup() -> asyncio.Task[None]
+
 # Offline eğitim facade (Celery weekly retrain kullanır)
 Trainer
 ```
@@ -322,14 +325,22 @@ metodu çağırmaya devam ediyor.
   SINIRLARI İÇİNDE ama mimari sorun değil, kaynak-yönetimi sorunu — bu FAZ'ın
   kapsamı dışında, ayrı performans işi olarak bırakıldı (task dosyası §4'te
   zaten böyle işaretlenmişti).
-- **Warm-up hook taşınmadı (kapsam dışı)**: task dosyası §4 `main.py`'nin ML
-  predictor warm-up hook'unu (`_warmup_all_predictors`) bu modülün bir
-  `startup(app)` fonksiyonuna taşımayı öneriyordu (faz1-registry-iskelet-ve-shim.md
-  planı). Hiçbir migrated modül henüz bu `startup(app)` desenini
-  uygulamadığından (grep ile doğrulandı: repo genelinde `def startup(app)`
-  yok), bu modülde de tek başına icat edilmedi — warm-up hook `app/main.py`'de
-  kalmaya devam ediyor, yalnız import path'i güncellendi
-  (`v2.modules.prediction_ml.public.get_ensemble_service`).
+- **Warm-up hook dalga 17'de taşındı**: `app/main.py`'nin ML predictor
+  warm-up hook'u (`_warmup_all_predictors`) `application/model_warmup.py`'ye
+  taşındı — `schedule_predictor_warmup()` task'ı yaratıp döndürür,
+  `main.py`'nin lifespan'ı onu kendi `_bg_tasks` GC-koruma setine ekleyip
+  shutdown'da drain eder (task bookkeeping'i bilerek main.py'de bırakıldı,
+  modüle sızdırılmadı). Bu, projenin İLK `<modül>.startup()`-tarzı hook'u —
+  daha önce hiçbir migrated modül bu deseni uygulamıyordu.
+- **`get_prediction_service()` container'a delege edecek şekilde düzeltildi
+  (dalga 17)**: eskiden bağımsız kendi `_prediction_service` modül-global'ini
+  tutuyordu (diğer 6 property'nin — `anomaly_detector`/`time_series_service`/
+  `license_service`/`ai_service`/`smart_ai_service`/`export_service` —
+  hepsinin izlediği "modülün kendi getter'ı container'a delege eder"
+  deseninden sapıyordu, dosyanın kendi docstring'i "CREATED_BY: app/core/
+  container.py" zaten bunu öngörüyordu). Artık `get_container().
+  prediction_service`'e delege ediyor — `admin_platform/health_service.py`'nin
+  okuduğu instance ile gerçek serving instance'ı artık AYNI nesne.
 - **`_calculate_training_hash`** (`ensemble_service.py`) artık hiçbir çağıran
   tarafından KULLANILMIYOR (eskiden `model_manager.save_version`'ın
   `training_data_hash` kwarg'ına besleniyordu — `ModelVersiyon` ORM modelinde

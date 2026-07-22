@@ -81,18 +81,42 @@ madde 0'ıyla aynı disiplin).
      trip route'ları zaten `app/api/deps.py`'nin AYRI, per-request
      `get_sefer_service(uow)` fonksiyonunu kullanıyor — container'ınki
      yalnız import_excel'in container-üzerinden-erişimi için yaşıyor).
-   - **Kalan 11 property için gelecek karar (bu turda YAPILMADI)**: bunların
-     her biri gerçekten "app-lifetime singleton" mı (container'ın kendi
-     iddia ettiği amaç) yoksa modülün kendi `public.py`'sine taşınabilecek
-     bir lazy-factory mi — bu, modül-modül ayrı bir inceleme gerektirir,
-     kapsamı bu ön-denetimin ötesinde.
+   - **Kalan 10 property (2026-07-22'de modül-modül incelendi)**: 9'u sağlam
+     (`event_bus`, `sefer_service`, `anomaly_detector`, `time_series_service`,
+     `license_service`, `ai_service`, `smart_ai_service`, `export_service`,
+     `weather_service` — her birinin modülün kendi `get_X()` fonksiyonu
+     zaten `get_container().X`'e delege ediyor, kasıtlı circular-import-kırma
+     lazy-factory deseni; `event_bus`/`weather_service` ayrıca kendi
+     kaynaklarında da gerçek tekil singleton). **`prediction_service` gerçek
+     bir tutarsızlıktı**: `prediction_service.py`'nin kendi
+     `get_prediction_service()`'ı (7 gerçek çağıranı) container'a delege
+     ETMİYORDU, bağımsız kendi `PredictionService()` instance'ını
+     yaratıyordu — dosyanın kendi docstring'i ("CREATED_BY: app/core/
+     container.py") bunun yanlış olduğunu doğruluyordu. Sonuç:
+     `get_container().prediction_service` (yalnız `admin_platform/
+     health_service.py`'nin 1 çağırdığı yer) ile gerçek serving instance'ı
+     FARKLI iki `PredictionService()` nesnesiydi (pratikte zararsız — ikisi
+     de aynı `get_ensemble_service()` singleton'ına sarılıyordu — ama
+     tutarsız/israf). ✅ **DÜZELTİLDİ (2026-07-22, kullanıcı onayıyla)**:
+     `get_prediction_service()` artık diğer 6 property ile aynı `get_container().
+     prediction_service` delegasyon desenine çevrildi; `_prediction_service`
+     modül-seviyesi global silindi. Kendi test dosyası
+     (`test_prediction_service_coverage.py::test_get_prediction_service_singleton`)
+     güncellendi.
 
-4. **`app/main.py` (853 satır): ML warm-up hâlâ inline, `prediction_ml.
-   startup()`'a hiç taşınmamış.** Eski planın "main.py ML warm-up →
-   prediction_ml.startup(app)" iddiası gerçekleşmedi — lifespan'ın 343-381
-   satırları arası hâlâ `_warmup_all_predictors()`'ı doğrudan tanımlıyor.
-   Bunun taşınması (registry olmadan, doğrudan `v2.modules.prediction_ml`'e)
-   ayrı bir karar/onay gerektirir — bu ön-denetimde yalnız TESPİT edildi.
+4. ✅ **`app/main.py`'nin ML warm-up hook'u taşındı (2026-07-22, kullanıcı
+   onayıyla) — projenin İLK modül-startup hook'u emsali.** Yeni
+   `v2/modules/prediction_ml/application/model_warmup.py`
+   (`schedule_predictor_warmup() -> asyncio.Task`, `public.py`'den export
+   edilir) — asıl warm-up mantığı (`_warmup_all_predictors`, aktif araç
+   ID'lerini DB'den çekip `get_ensemble_service().get_predictor(...)`'ı
+   thread'de çağırma) mekanik olarak taşındı. `main.py`'nin lifespan'ı
+   artık yalnız `schedule_predictor_warmup()`'ı çağırıp döndürülen task'ı
+   kendi `_bg_tasks` GC-koruma setine ekliyor — task'ın izlenmesi/shutdown'da
+   drain edilmesi main.py'de KALDI (modül yalnız task'ı yaratıp döndürüyor,
+   `_bg_tasks`'i kendi içine almadı — main.py'nin kendi bookkeeping'ini
+   modüle sızdırmamak için). Diğer hiçbir modül henüz bu deseni
+   kullanmıyor; bu, gelecekteki modüllerin izleyebileceği ilk somut örnek.
 
 5. **Gerçek platform_infra envanteri (registry'siz, doğrudan)**: cache/
    events/monitoring/resilience/middleware (`app/infrastructure/*`),

@@ -511,12 +511,8 @@ class PredictionService:
         }
 
 
-# Singleton accessor
-_prediction_service = None
-
-
 def get_prediction_service() -> PredictionService:
-    global _prediction_service
-    if _prediction_service is None:
-        _prediction_service = PredictionService()
-    return _prediction_service
+    """Delegates to the DI container for the singleton PredictionService instance."""
+    from app.core.container import get_container
+
+    return get_container().prediction_service

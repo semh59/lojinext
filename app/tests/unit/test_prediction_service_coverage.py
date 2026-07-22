@@ -900,17 +900,13 @@ async def test_train_xgboost_model_failure():
 
 
 def test_get_prediction_service_singleton():
-    import v2.modules.prediction_ml.application.prediction_service as mod
+    """Delegates to the DI container — same instance on every call (dalga 17
+    fix: this used to be an independent module-level singleton, out of sync
+    with app/core/container.py's own copy; now both paths share one object)."""
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
-    orig = mod._prediction_service
-    mod._prediction_service = None
-    try:
-        with (
-            patch("v2.modules.prediction_ml.application.prediction_service.WeatherService"),
-            patch("v2.modules.prediction_ml.application.prediction_service.get_ensemble_service"),
-        ):
-            s1 = mod.get_prediction_service()
-            s2 = mod.get_prediction_service()
-        assert s1 is s2
-    finally:
-        mod._prediction_service = orig
+    s1 = get_prediction_service()
+    s2 = get_prediction_service()
+    assert s1 is s2

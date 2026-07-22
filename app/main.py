@@ -340,41 +340,12 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # pragma: no cover
         logger.warning("RAGSyncService initialization failed: %s", exc)
 
-    # ML predictor warm-up — aktif tüm araç modellerini önceden initialize et
-    # ki ilk POST /trips ML cold-start için 4-10sn beklemesin (LRU cache miss).
-    # Vehicle 0 (general fallback) her zaman dahil; aktif araç id'leri DB'den.
+    # ML predictor warm-up (v2.modules.prediction_ml.application.model_warmup'a
+    # taşındı, dalga 17 — projenin ilk modül-startup hook'u).
     try:
-        import asyncio as _asyncio
+        from v2.modules.prediction_ml.public import schedule_predictor_warmup
 
-        from v2.modules.prediction_ml.public import get_ensemble_service
-
-        async def _warmup_all_predictors() -> None:
-            ids: list[int] = [0]  # general/fallback
-            try:
-                from sqlalchemy import select as _select
-
-                from app.database.connection import AsyncSessionLocal
-                from v2.modules.fleet.public import AracORM as Arac
-
-                async with AsyncSessionLocal() as session:
-                    rows = await session.execute(
-                        _select(Arac.id).where(Arac.aktif.is_(True))
-                    )
-                    ids.extend(r[0] for r in rows.all())
-            except Exception as exc:
-                logger.debug("Arac fetch for warm-up failed: %s", exc)
-
-            def _init(arac_id: int) -> None:
-                try:
-                    get_ensemble_service().get_predictor(arac_id)
-                except Exception as exc:  # pragma: no cover
-                    logger.debug("Predictor warm-up %s skipped: %s", arac_id, exc)
-
-            for arac_id in ids:
-                await _asyncio.to_thread(_init, arac_id)
-            logger.info("ML predictor warm-up complete for %d models", len(ids))
-
-        _task = _asyncio.create_task(_warmup_all_predictors())
+        _task = schedule_predictor_warmup()
         _bg_tasks.add(_task)
         _task.add_done_callback(_bg_tasks.discard)
     except Exception as exc:  # pragma: no cover
@@ -386,8 +357,9 @@ async def lifespan(app: FastAPI):
         await bus.stop()
 
         # Sentry LOJINEXT-1C5: cancel + await any in-flight fire-and-forget
-        # tasks (alarm_router's Telegram notify_error, this module's ML
-        # warm-up) before disposing the engine/closing the loop — otherwise
+        # tasks (alarm_router's Telegram notify_error, the ML predictor
+        # warm-up scheduled above) before disposing the engine/closing the
+        # loop — otherwise
         # a task still mid-DNS-lookup when the loop closes leaves its
         # executor Future's eventual result with nowhere to go, surfacing
         # as asyncio's "Future exception was never retrieved".

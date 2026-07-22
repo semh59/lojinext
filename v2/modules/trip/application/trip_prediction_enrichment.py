@@ -12,7 +12,7 @@ burada tutuldu, ayrı bir dosyaya bölünmedi.
 from datetime import date
 from typing import Any, Dict, Optional
 
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.utils.type_helpers import safe_float
 
 logger = get_logger(__name__)
@@ -329,9 +329,7 @@ async def predict_via_estimator(
                 PREDICTION_TIMEOUT_SECONDS,
                 data.arac_id,
             )
-            from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
-                record_silent_fallback,
-            )
+            from v2.modules.platform_infra.public import record_silent_fallback
 
             record_silent_fallback("sefer_estimator_timeout", arac_id=data.arac_id)
             return None, None, None
@@ -435,9 +433,7 @@ async def predict_outbound(
                 PREDICTION_TIMEOUT_SECONDS,
                 data.arac_id,
             )
-            from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
-                record_silent_fallback,
-            )
+            from v2.modules.platform_infra.public import record_silent_fallback
 
             record_silent_fallback("legacy_predict_timeout", arac_id=data.arac_id)
             return None, None, None

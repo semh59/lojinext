@@ -4,14 +4,14 @@ from datetime import date
 from typing import Any, Optional, cast
 
 from app.core.services.route_validator import RouteValidator
-from v2.modules.platform_infra.events.event_bus import (
+from v2.modules.platform_infra.public import (
     Event,
     EventBus,
     EventType,
     get_event_bus,
+    get_logger,
+    monitor_errors,
 )
-from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.return_trip import handle_round_trip_on_update
 from v2.modules.trip.application.sla import check_sla_delay

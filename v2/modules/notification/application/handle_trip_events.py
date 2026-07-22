@@ -20,8 +20,12 @@ from v2.modules.notification.infrastructure.models import (
 from v2.modules.notification.infrastructure.ws_broadcaster import (
     notification_ws_manager,
 )
-from v2.modules.platform_infra.events.event_bus import Event, EventType, get_event_bus
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import (
+    Event,
+    EventType,
+    get_event_bus,
+    get_logger,
+)
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

@@ -35,7 +35,7 @@ except ImportError:
     LIGHTGBM_AVAILABLE = False
 
 from app.config import settings
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.prediction_ml.public import get_prediction_service
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
@@ -624,6 +624,6 @@ class AnomalyDetector:
 
 def get_anomaly_detector() -> AnomalyDetector:
     """Delegates to the DI container for the singleton AnomalyDetector instance."""
-    from v2.modules.platform_infra.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().anomaly_detector

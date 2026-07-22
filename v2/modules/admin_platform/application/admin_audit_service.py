@@ -12,7 +12,7 @@ from fastapi import Request
 
 from v2.modules.admin_platform.infrastructure.models import AdminAuditLog
 from v2.modules.auth_rbac.public import Kullanici
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

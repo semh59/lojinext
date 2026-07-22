@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.prediction_ml.domain.advanced_lstm import (
     FORECAST_DAYS as _DEFAULT_FORECAST_DAYS,
 )
@@ -340,6 +340,6 @@ class TimeSeriesService:
 
 
 def get_time_series_service() -> TimeSeriesService:
-    from v2.modules.platform_infra.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().time_series_service

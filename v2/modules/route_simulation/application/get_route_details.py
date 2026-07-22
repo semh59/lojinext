@@ -14,10 +14,10 @@ import os
 from typing import Dict, Optional, Tuple
 
 from app.config import settings
-from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.platform_infra.resilience.circuit_breaker import (
+from v2.modules.platform_infra.public import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
+    get_logger,
 )
 from v2.modules.route_simulation.application.get_route_difficulty import (
     get_route_difficulty,

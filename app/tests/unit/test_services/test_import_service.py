@@ -480,7 +480,7 @@ class TestProcessImports:
                 return_value=df,
             ),
             patch(
-                "v2.modules.platform_infra.events.event_bus.get_event_bus",
+                "v2.modules.platform_infra.public.get_event_bus",
                 return_value=SimpleNamespace(publish_async=AsyncMock()),
             ),
         ):

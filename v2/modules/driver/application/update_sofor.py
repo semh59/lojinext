@@ -4,8 +4,11 @@ from typing import Any
 
 from v2.modules.driver.application._locks import SOFOR_WRITE_LOCK
 from v2.modules.driver.application.get_score import calculate_hybrid_score
-from v2.modules.platform_infra.events.event_bus import EventType, publishes
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import (
+    EventType,
+    get_logger,
+    publishes,
+)
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

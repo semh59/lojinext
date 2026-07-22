@@ -616,7 +616,7 @@ async def test_refresh_stats_production_path_creates_bg_task(monkeypatch):
     with (
         patch("asyncio.create_task", side_effect=_track_task),
         patch(
-            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.public.AsyncSessionLocal",
             return_value=fake_session,
         ),
         patch(

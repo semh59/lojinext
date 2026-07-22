@@ -20,8 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import text
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import AsyncSessionLocal, get_logger
 
 logger = get_logger(__name__)
 
@@ -35,7 +34,10 @@ async def list_error_events(
     page_size: int = 50,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """Paginated/filtered error_events listesi. Returns (items, total)."""
-    from v2.modules.platform_infra.monitoring.models import ErrorLayer, ErrorSeverity
+    from v2.modules.platform_infra.public import (
+    ErrorLayer,
+    ErrorSeverity,
+    )
 
     valid_layers = {e.value for e in ErrorLayer}
     valid_severities = {e.value for e in ErrorSeverity}

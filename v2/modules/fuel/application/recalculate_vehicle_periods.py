@@ -9,7 +9,7 @@ from v2.modules.fuel.domain.period_matcher import (
     sync_create_fuel_periods,
     sync_match_periods_with_trips,
 )
-from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
+from v2.modules.platform_infra.public import get_cache_manager
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import Sefer
 

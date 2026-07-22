@@ -1833,3 +1833,52 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-platform_infra]
+name = platform_infra'nin ic detaylari yalniz public.py uzerinden erisilebilir
+type = forbidden
+source_modules =
+    v2.modules.location.application
+    v2.modules.route_simulation.application
+    v2.modules.notification.application
+    v2.modules.fleet.application
+    v2.modules.fuel.application
+    v2.modules.driver.application
+    v2.modules.auth_rbac.application
+    v2.modules.anomaly.application
+    v2.modules.import_excel.application
+    v2.modules.reports.application
+    v2.modules.analytics_executive.application
+    v2.modules.ai_assistant.application
+    v2.modules.prediction_ml.application
+    v2.modules.trip.application
+    v2.modules.admin_platform.application
+forbidden_modules =
+    v2.modules.platform_infra.cache
+    v2.modules.platform_infra.events
+    v2.modules.platform_infra.monitoring
+    v2.modules.platform_infra.resilience
+    v2.modules.platform_infra.middleware
+    v2.modules.platform_infra.database
+    v2.modules.platform_infra.container
+    v2.modules.platform_infra.security
+    v2.modules.platform_infra.context
+    v2.modules.platform_infra.logging
+    v2.modules.platform_infra.audit
+    v2.modules.platform_infra.background
+    v2.modules.platform_infra.websocket
+# grimp'in normal "forbidden" davranışı TÜM transitif zinciri tarar — bu,
+# platform_infra.public'in KENDİSİ (sanctioned gateway) monitoring/events/vb.
+# alt modüllerini import ettiği ve HEMEN HEMEN HER iş modülünün başka bir
+# modülün public.py'sini (kendi api/infrastructure katmanı platform_infra'yı
+# doğrudan kullanan) transitif olarak import ettiği için — 179 gerçek
+# (ve tamamen meşru, api/infrastructure/domain katmanlarının kendisi zaten
+# platform_infra'yı DOĞRUDAN kullanabilir, yalnız application katmanı
+# public.py üzerinden gitmeli) zincirde YANLIŞ-POZİTİF üretti. allow_
+# indirect_imports=true bunu yalnız DOĞRUDAN import kontrolüne indirger
+# (grimp `find_modules_directly_imported_by`) — application dosyalarının
+# artık hiçbiri platform_infra alt modüllerini doğrudan import etmiyor
+# (hepsi public.py'ye yönlendirildi, bkz. bu dalganın commit 10 notu),
+# bu yüzden kontrat şimdi anlamlı bir şekilde geçiyor/kırılıyor.
+allow_indirect_imports = true
+unmatched_ignore_imports_alerting = error

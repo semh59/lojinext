@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from sqlalchemy import func, select
 
 from v2.modules.fleet.public import count_active_vehicles
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
@@ -150,6 +150,6 @@ class LicenseEngine:
 
 
 def get_license_engine() -> LicenseEngine:
-    from v2.modules.platform_infra.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().license_service

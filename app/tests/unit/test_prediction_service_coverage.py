@@ -866,7 +866,7 @@ async def test_train_xgboost_model_success():
     )
 
     with patch(
-        "v2.modules.platform_infra.audit.audit_logger.log_audit_event", new=AsyncMock()
+        "v2.modules.platform_infra.public.log_audit_event", new=AsyncMock()
     ):
         result = await svc.train_xgboost_model(arac_id=1, user_id=5)
 
@@ -887,7 +887,7 @@ async def test_train_xgboost_model_failure():
     )
 
     with patch(
-        "v2.modules.platform_infra.audit.audit_logger.log_audit_event", new=AsyncMock()
+        "v2.modules.platform_infra.public.log_audit_event", new=AsyncMock()
     ):
         result = await svc.train_xgboost_model(arac_id=99)
 

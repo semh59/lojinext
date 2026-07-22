@@ -4,14 +4,14 @@ from datetime import date
 from typing import Any
 
 from v2.modules.fuel.domain.entities import YakitAlimiCreate
-from v2.modules.platform_infra.events.event_bus import (
+from v2.modules.platform_infra.public import (
     Event,
     EventType,
     get_event_bus,
+    get_logger,
+    monitor_errors,
     publishes,
 )
-from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 

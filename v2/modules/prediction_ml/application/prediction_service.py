@@ -484,7 +484,7 @@ class PredictionService:
 
         user_id audit log'a yazılır (kim tetiklediyse).
         """
-        from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+        from v2.modules.platform_infra.public import log_audit_event
 
         # ensemble_service uses train_for_vehicle method
         res = await self.ensemble_service.train_for_vehicle(arac_id)
@@ -513,6 +513,6 @@ class PredictionService:
 
 def get_prediction_service() -> PredictionService:
     """Delegates to the DI container for the singleton PredictionService instance."""
-    from v2.modules.platform_infra.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().prediction_service

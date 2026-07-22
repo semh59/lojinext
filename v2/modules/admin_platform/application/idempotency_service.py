@@ -33,7 +33,7 @@ senaryo, sessizce geri geliyor). Empirik kanıt: `test_trip_create_same_idempote
 kırmızıydı — rezervasyon satırı ilk isteğin sonunda DB'de HİÇ yoktu.
 
 Fix: idempotency defteri artık çağıranın UoW'undan TAMAMEN BAĞIMSIZ, kendi
-kısa ömürlü session'ında anında commit ediyor (`v2.modules.platform_infra.database.connection`
+kısa ömürlü session'ında anında commit ediyor (`v2.modules.platform_infra.public`
 üzerinden, modül attribute erişimiyle — test fixture'ının monkeypatch'i hâlâ
 geçerli oluyor). Böylece ana iş-transaction'ında (add_sefer içinde) her ne
 olursa olsun (cancel/rollback/retry), rezervasyon kaydı ETKİLENMİYOR. Bu,
@@ -54,7 +54,7 @@ from typing import Any, Optional
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
-import v2.modules.platform_infra.database.connection as db_connection
+import v2.modules.platform_infra.public as platform_infra_public
 from v2.modules.admin_platform.infrastructure.models import IdempotencyKey
 
 # Reservation sentinel — finalize_response() overwrites this before commit.
@@ -117,7 +117,7 @@ async def reserve_or_get_cached(
     """
     request_hash = _hash_request_body(request_body)
 
-    async with db_connection.AsyncSessionLocal() as session:
+    async with platform_infra_public.AsyncSessionLocal() as session:
         existing = await _select_existing(session, key=key, endpoint=endpoint)
         if existing is not None:
             return _resolve_existing(existing, request_hash)
@@ -170,7 +170,7 @@ async def finalize_response(
 ) -> None:
     """Rezervasyonu gerçek yanıtla günceller — kendi bağımsız session'ında
     anında commit eder (bkz. `reserve_or_get_cached` docstring'i)."""
-    async with db_connection.AsyncSessionLocal() as session:
+    async with platform_infra_public.AsyncSessionLocal() as session:
         await session.execute(
             update(IdempotencyKey)
             .where(IdempotencyKey.key == key, IdempotencyKey.endpoint == endpoint)
@@ -186,7 +186,7 @@ async def release_reservation(*, key: str, endpoint: str) -> None:
     olan (henüz finalize edilmemiş) satırı siler — zaten finalize edilmiş
     bir satırı asla silmez (nadir bir geç-hata senaryosunda önbelleklenmiş
     başarılı yanıtı bozmamak için)."""
-    async with db_connection.AsyncSessionLocal() as session:
+    async with platform_infra_public.AsyncSessionLocal() as session:
         await session.execute(
             delete(IdempotencyKey).where(
                 IdempotencyKey.key == key,

@@ -10,9 +10,11 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from v2.modules.admin_platform.infrastructure.repository import get_admin_config_repo
-from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
-from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import (
+    get_logger,
+    get_pubsub_manager,
+    get_redis_cache,
+)
 
 logger = get_logger(__name__)
 

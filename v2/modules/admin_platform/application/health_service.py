@@ -9,8 +9,7 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.config import settings
-from v2.modules.platform_infra.database.connection import engine
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import engine, get_logger
 
 try:
     import sentry_sdk
@@ -36,9 +35,7 @@ class HealthService:
         self._bg_tasks: set[asyncio.Task] = set()
 
     def _get_backup_manager(self):
-        from v2.modules.platform_infra.database.backup_manager import (
-            DatabaseBackupManager,
-        )
+        from v2.modules.platform_infra.public import DatabaseBackupManager
 
         return DatabaseBackupManager()
 
@@ -61,9 +58,7 @@ class HealthService:
         her zaman güncel master'ı sorgular, dead-hostname'e sabitlenmez)."""
         start = time.time()
         try:
-            from v2.modules.platform_infra.cache.redis_client_factory import (
-                get_async_redis_client,
-            )
+            from v2.modules.platform_infra.public import get_async_redis_client
 
             client = get_async_redis_client(socket_connect_timeout=2, socket_timeout=2)
             await client.ping()
@@ -79,7 +74,7 @@ class HealthService:
         """AI modellerinin yüklenme durumu"""
         try:
             from v2.modules.ai_assistant.public import get_rag_engine
-            from v2.modules.platform_infra.container import get_container
+            from v2.modules.platform_infra.public import get_container
 
             rag = get_rag_engine()
             rag_stats = rag.get_stats()
@@ -122,9 +117,7 @@ class HealthService:
 
     async def get_circuit_breakers(self) -> List[Dict[str, Any]]:
         """Sistemdeki gercek circuit breaker registry durumunu don."""
-        from v2.modules.platform_infra.resilience.circuit_breaker import (
-            CircuitBreakerRegistry,
-        )
+        from v2.modules.platform_infra.public import CircuitBreakerRegistry
 
         return [
             {
@@ -175,9 +168,7 @@ class HealthService:
         """Var olan breaker'i sifirla."""
         from fastapi import HTTPException
 
-        from v2.modules.platform_infra.resilience.circuit_breaker import (
-            CircuitBreakerRegistry,
-        )
+        from v2.modules.platform_infra.public import CircuitBreakerRegistry
 
         if not CircuitBreakerRegistry.reset(service_name):
             raise HTTPException(

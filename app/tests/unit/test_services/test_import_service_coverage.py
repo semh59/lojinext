@@ -852,7 +852,7 @@ class TestExecuteImportSeferPath:
         }
 
         with patch(
-            "v2.modules.platform_infra.events.event_bus.get_event_bus",
+            "v2.modules.platform_infra.public.get_event_bus",
             return_value=SimpleNamespace(publish_async=AsyncMock()),
         ):
             result = await execute_import(upload, "sefer", real_master.user.id, mapping)
@@ -953,7 +953,7 @@ class TestExecuteImportSeferPath:
         }
 
         with patch(
-            "v2.modules.platform_infra.events.event_bus.get_event_bus",
+            "v2.modules.platform_infra.public.get_event_bus",
             return_value=SimpleNamespace(publish_async=AsyncMock()),
         ):
             result = await execute_import(upload, "sefer", real_master.user.id, mapping)

@@ -28,7 +28,7 @@ from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.public import SEFER_STATUS_PLANLANDI
 

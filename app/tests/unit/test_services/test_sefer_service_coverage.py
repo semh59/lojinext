@@ -241,12 +241,14 @@ class TestApprovalDelegation:
 
 class TestGetSeferServiceFactory:
     def test_returns_sefer_service_instance(self):
-        import v2.modules.platform_infra.container as container_mod
+        import v2.modules.platform_infra.public as platform_infra_public
 
         mock_container = MagicMock()
         mock_container.sefer_service = MagicMock(spec=SeferService)
 
-        with patch.object(container_mod, "get_container", return_value=mock_container):
+        with patch.object(
+            platform_infra_public, "get_container", return_value=mock_container
+        ):
             from v2.modules.trip.application.trip_service import get_sefer_service
 
             result = get_sefer_service()

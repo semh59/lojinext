@@ -114,10 +114,10 @@ async def execute_import(
                     # şifreleme + blind-index + trigram burada elle
                     # uygulanır (aksi halde ad_soyad_bidx UNIQUE NOT NULL
                     # ihlali ile import çöker).
-                    from v2.modules.platform_infra.security.pii_encryption import (
-                        blind_index,
-                        encrypt_pii,
-                        trigram_blind_indexes,
+                    from v2.modules.platform_infra.public import (
+    blind_index,
+    encrypt_pii,
+    trigram_blind_indexes,
                     )
 
                     raw_ad_soyad = vrow["ad_soyad"]
@@ -204,10 +204,10 @@ async def execute_import(
                     inserted_ids.append(sefer_id)
                     basarili += 1
 
-                    from v2.modules.platform_infra.events.event_bus import (
-                        Event,
-                        EventType,
-                        get_event_bus,
+                    from v2.modules.platform_infra.public import (
+    Event,
+    EventType,
+    get_event_bus,
                     )
 
                     await get_event_bus().publish_async(

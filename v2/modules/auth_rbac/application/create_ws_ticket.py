@@ -2,8 +2,7 @@
 
 import uuid
 
-from v2.modules.platform_infra.cache.redis_pubsub import set_redis_val
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger, set_redis_val
 
 logger = get_logger(__name__)
 

@@ -185,8 +185,9 @@ injection.
 - `app/core/services/{weather_service,route_validator,openroute_service,
   route_calibration_service}.py` — route_simulation'ın henüz taşınmamış
   eski dosyaları (kök CLAUDE.md'de dokümante).
-- `app/database/{connection.py,db_session.py,init_db.py}` — DB bootstrap/
-  engine kurulumu, orijinal 22 dosyalık envanterde hiç yoktu, kapsam dışı.
+- `v2/modules/platform_infra/database/{connection.py,db_session.py,init_db.py}`
+  (dalga 17'de `app/database/`'den taşındı) — DB bootstrap/engine kurulumu,
+  orijinal 22 dosyalık envanterde hiç yoktu, kapsam dışı.
 - `app/schemas/telegram.py` — iş-alanına özgü Telegram bot şemaları
   (trip/driver/admin_platform'un konusu), generic değil.
 - `app/schemas/trip_planner.py` — zaten `v2.modules.ai_assistant.schemas`'a

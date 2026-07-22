@@ -8,7 +8,7 @@ state (arka plan task'larını GC'den koruyan set — B.1 istisnası, MLService'
 ``_locks`` dict'iyle aynı gerekçe kategorisi).
 """
 
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
@@ -47,7 +47,7 @@ async def refresh_stats(uow: UnitOfWork) -> None:
         return
 
     async def _refresh_in_bg() -> None:
-        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.public import AsyncSessionLocal
         from v2.modules.trip.infrastructure.repository import SeferRepository
 
         try:

@@ -110,7 +110,7 @@ class TripPlannerEngine:
         if not inp.guzergah_id:
             return 1.0
         try:
-            from v2.modules.platform_infra.container import get_container
+            from v2.modules.platform_infra.public import get_container
             from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
         except Exception:  # pragma: no cover
             return 1.0

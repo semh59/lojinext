@@ -4,7 +4,7 @@ from typing import Optional
 
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.location.schemas import LokasyonResponse
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 

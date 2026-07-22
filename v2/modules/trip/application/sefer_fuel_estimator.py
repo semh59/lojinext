@@ -34,8 +34,7 @@ from app.core.services.weather_service import (
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.public import Dorse
 from v2.modules.location.public import Lokasyon
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import AsyncSessionLocal, get_logger
 from v2.modules.prediction_ml.public import (
     combine_factors,
     weather_precipitation_factor,
@@ -348,9 +347,7 @@ class SeferFuelEstimator:
             # precip adjustment factors fall back to neutral (1.0). Record it on
             # the same probe as its elevation sibling so ops can alarm on a rate
             # instead of grepping WARNING lines.
-            from v2.modules.platform_infra.monitoring.silent_fallback_probe import (
-                record_silent_fallback,
-            )
+            from v2.modules.platform_infra.public import record_silent_fallback
 
             record_silent_fallback(
                 "open_meteo_weather_failed", error=type(exc).__name__

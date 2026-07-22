@@ -27,7 +27,7 @@ else:
         EMBEDDING_AVAILABLE = False
 
 from v2.modules.ai_assistant.infrastructure.rag.vector_store import FAISSVectorStore
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 
@@ -240,6 +240,6 @@ class SmartAIService:
 
 
 def get_smart_ai() -> SmartAIService:
-    from v2.modules.platform_infra.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().smart_ai_service

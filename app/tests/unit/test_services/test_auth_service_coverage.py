@@ -198,7 +198,7 @@ class TestAuthServiceAuthenticate:
                 return_value=False,
             ),
             patch(
-                "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
+                "v2.modules.platform_infra.public.log_audit_event",
                 new_callable=AsyncMock,
             ) as mock_audit,
         ):
@@ -543,7 +543,7 @@ class TestAuthServiceRefreshSession:
                 "v2.modules.auth_rbac.application.auth_service.jwt_handler.decode_refresh_token",
                 return_value={"sub": "test@example.com"},
             ),
-            patch("v2.modules.platform_infra.monitoring.emit") as mock_emit,
+            patch("v2.modules.platform_infra.public.emit") as mock_emit,
         ):
             service = _bind_auth_service(uow)
             with pytest.raises(HTTPException):

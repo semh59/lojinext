@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
 logger = get_logger(__name__)

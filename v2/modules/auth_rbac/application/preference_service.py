@@ -7,7 +7,7 @@ bir fonksiyon, opsiyonel ``uow: UnitOfWork | None = None`` alır.
 from typing import Any, List, Optional
 
 from v2.modules.auth_rbac.infrastructure.models import KullaniciAyari
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

@@ -287,7 +287,7 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     ikinci commit yakalanmamış `IntegrityError` ile patlıyordu (500).
 
     `reserve_or_get_cached`/`finalize_response` artık kendi bağımsız
-    session'larını `v2.modules.platform_infra.database.connection.AsyncSessionLocal` üzerinden açıp
+    session'larını `v2.modules.platform_infra.public.AsyncSessionLocal` üzerinden açıp
     anında commit ediyor (derin kontrol bulgusu #2 — bkz. idempotency_service.py
     modül docstring'i). Bu testte o isim GERÇEK bir `async_sessionmaker`'a
     (fixture'ın `async_db_engine`'ine bağlı) monkeypatch'lenir — fixture'ın
@@ -296,7 +296,7 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    import v2.modules.platform_infra.database.connection as db_connection
+    import v2.modules.platform_infra.public as platform_infra_public
     from v2.modules.admin_platform.application.idempotency_service import (
         IdempotencyKeyInProgressError,
         finalize_response,
@@ -307,7 +307,7 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     real_session_local = async_sessionmaker(
         bind=async_db_engine, class_=AsyncSession, expire_on_commit=False
     )
-    monkeypatch.setattr(db_connection, "AsyncSessionLocal", real_session_local)
+    monkeypatch.setattr(platform_infra_public, "AsyncSessionLocal", real_session_local)
 
     key = f"race-key-{uuid.uuid4().hex}"
     endpoint = "TEST /race"

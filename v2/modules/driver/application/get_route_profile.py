@@ -6,7 +6,7 @@ from v2.modules.driver.application.route_profile import ROUTE_TYPES, classify_ro
 from v2.modules.driver.infrastructure.driver_trip_queries import (
     get_driver_trips_with_route_analysis,
 )
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

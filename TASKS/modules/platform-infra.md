@@ -152,8 +152,33 @@ madde 0'ıyla aynı disiplin).
      `__pycache__` kalıntısı var, hiçbir gerçek `.py` dosyası yok (ilgili
      repo'lar zaten ilgili v2 modüllerine taşınmış). Klasör + pyc
      kalıntısı silinmeli.
-   Bu 7 kalemin taşınması/silinmesi HENÜZ UYGULANMADI (yalnız tespit) —
-   DURMA NOKTASI gereği kullanıcı onayı bekliyor.
+
+   ✅ **Yukarıdaki 7 kalem UYGULANDI (2026-07-22, kullanıcı onayıyla)**:
+   `container_health.py`/`ml_probe.py`/`retry.py`/`external_service.py`
+   `git mv` ile taşındı (tüketiciler + inline-import test patch hedefleri
+   güncellendi, dlq_tasks.py/outbox_tasks.py'deki gibi taşıma-notu
+   docstring'i eklendi); `idempotency.py` (+ kendi 2 test dosyası:
+   `app/tests/unit/test_coverage_boost.py`'nin `TestIdempotencyGuard`
+   sınıfı + kök `tests/unit/test_idempotency.py` bütünüyle) ve
+   `events/contracts.py` (+ `event_bus.py`'nin `publish_typed()` metodu,
+   sıfır gerçek çağıranı olduğu için — + 2 test dosyasının ilgili
+   testleri) silindi; `app/database/repositories/` (yalnız `__pycache__`
+   kalıntısı) temizlendi. `ml_probe.py`'nin prediction_ml'e taşınması
+   `domain/ensemble_core.py`'nin kendi modülünün `infrastructure/`'ına
+   erişmesini gerektirdiği için `module-cross-domain-infra-independence`
+   + `module-internal-layers` kontratlarına 1 yeni `ignore_imports` satırı
+   eklendi (`ensemble_core.py -> ml_probe.py`, telemetri side-effect'i,
+   gerçek domain iş kuralı değil). `external_service.py`'nin taşınması
+   `app/core/services/weather_service.py` (route_simulation'ın henüz
+   taşınmamış eski dosyası) üzerinden GEÇİŞLİ bir zincir açığa çıkardı
+   (`prediction_ml.application`/`trip.application` → `weather_service` →
+   `route_simulation.infrastructure.external_service`) —
+   `public-surface-only-prediction_ml`/`public-surface-only-trip`
+   kontratlarına `app.core.services.weather_service ->
+   v2.modules.route_simulation.infrastructure.external_service` ignore
+   satırı eklendi (zincirin YENİ ucu, `weather_service`'in kendisi zaten
+   container.py üzerinden ignore edilmiş bir bağımlılıktı). Tam doğrulama
+   (ruff/mypy/lint-imports/pytest) ile onaylandı.
 
    ✅ **`app/workers/tasks/{dlq_tasks,outbox_tasks}.py` — İNCELENDİ ve
    DÜZELTİLDİ (2026-07-21)**: ikisi de aslında platform-genel DEĞİLDİ.

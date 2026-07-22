@@ -1,5 +1,9 @@
 """Async retry helper with exponential backoff (Phase 2.4).
 
+`app/infrastructure/resilience/retry.py`'den dalga 17 (platform-infra)
+denetiminde taşındı — tek çağıranı route_simulation (`mapbox_client.py`/
+`open_meteo_client.py`), genel-amaçlı bir platform-infra soyutlaması değil.
+
 Plan §10 risk satırı: "Mapbox quota/cost" + ek "Open-Meteo SLA".
 Dış HTTP servislerine transient 5xx, timeout veya network hatasında
 3 deneme exponential backoff (0.5s → 1s → 2s, default).

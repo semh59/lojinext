@@ -18,7 +18,9 @@ WebSocket'i.
 NE YAPMAZ: `error_events`/`error_occurrences`/`error_hourly_stats`
 tablolarının YAZIM yolu (`app/infrastructure/monitoring/` — cross-cutting
 altyapı, audit_logger.py/event_bus.py ile aynı kategori; bu modül yalnız
-admin-facing okuma/yönetim katmanını sağlar), veritabanı yedekleme
+admin-facing okuma/yönetim katmanını sağlar; `container_health.py` bu
+alt sistemden dalga 17'de admin_platform'a taşındı, aşağıya bkz.),
+veritabanı yedekleme
 zamanlanmış görevi (`app/workers/tasks/backup_tasks.py` — Celery beat
 cron job, `app/infrastructure/database/backup_manager.py`'yi kullanır;
 `HealthService.trigger_manual_backup()` da aynı infra manager'ı BAĞIMSIZ
@@ -150,7 +152,17 @@ training_ws_manager: ConnectionManager
 
 # Repository
 AdminConfigRepository, get_admin_config_repo(session) -> AdminConfigRepository
+
+# Docker container sağlık sorgusu (Telegram bot container'ları, admin Integrations paneli)
+get_container_status(compose_service: str) -> ContainerStatus
 ```
+
+**Dalga 17 (platform-infra) eklentisi**: `infrastructure/container_health.py`
+`app/infrastructure/monitoring/container_health.py`'den taşındı — tek
+çağıranı `api/admin_integrations_routes.py` idi (monitoring alt
+sisteminin genel-amaçlı bir parçası değil, admin_platform'un kendi
+Integrations panel özelliği). `app.infrastructure.monitoring`'e (models/
+emit) bağımlılığı yok, yalnız `httpx`/`app.config`/logger kullanıyor.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 

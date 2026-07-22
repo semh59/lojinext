@@ -106,7 +106,9 @@ async def get_route_details(
         }
 
     try:
-        from app.services.external_service import get_external_service
+        from v2.modules.route_simulation.infrastructure.external_service import (
+            get_external_service,
+        )
 
         ext_service = get_external_service()
         client = await ext_service._get_client()

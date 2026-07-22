@@ -15,7 +15,6 @@ from pydantic import BaseModel, Field
 from app.api.middleware.rate_limiter import limiter
 from app.config import settings
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.container_health import get_container_status
 from v2.modules.admin_platform.application.admin_audit_service import (
     log_config_change,
 )
@@ -24,6 +23,9 @@ from v2.modules.admin_platform.application.integration_secrets import (
     IntegrationStatus,
     get_integration_statuses,
     set_integration_secret,
+)
+from v2.modules.admin_platform.infrastructure.container_health import (
+    get_container_status,
 )
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
 

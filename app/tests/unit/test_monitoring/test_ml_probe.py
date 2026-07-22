@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from app.infrastructure.monitoring.ml_probe import MLProbe
+from v2.modules.prediction_ml.infrastructure.ml_probe import MLProbe
 
 
 def test_no_alert_below_100_predictions():

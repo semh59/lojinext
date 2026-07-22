@@ -11,7 +11,7 @@ import asyncio
 import httpx
 import pytest
 
-from app.infrastructure.resilience.retry import with_async_retry
+from v2.modules.route_simulation.infrastructure.retry import with_async_retry
 
 
 async def test_first_attempt_success_returns_result():
@@ -28,7 +28,7 @@ async def test_retries_on_request_error_and_eventually_succeeds(monkeypatch):
     async def fake_sleep(s):
         sleeps.append(s)
 
-    monkeypatch.setattr("app.infrastructure.resilience.retry.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("v2.modules.route_simulation.infrastructure.retry.asyncio.sleep", fake_sleep)
 
     attempts = {"count": 0}
 
@@ -49,7 +49,7 @@ async def test_exhausts_attempts_raises_last_exception(monkeypatch):
     async def fake_sleep(_s):
         pass
 
-    monkeypatch.setattr("app.infrastructure.resilience.retry.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("v2.modules.route_simulation.infrastructure.retry.asyncio.sleep", fake_sleep)
 
     async def always_fail():
         raise httpx.ReadError("oops")
@@ -64,7 +64,7 @@ async def test_non_retryable_exception_propagates_immediately(monkeypatch):
     async def fake_sleep(s):
         sleeps.append(s)
 
-    monkeypatch.setattr("app.infrastructure.resilience.retry.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("v2.modules.route_simulation.infrastructure.retry.asyncio.sleep", fake_sleep)
 
     async def fn():
         raise ValueError("not retryable")
@@ -87,7 +87,7 @@ async def test_custom_retry_on_classes(monkeypatch):
     async def fake_sleep(_s):
         pass
 
-    monkeypatch.setattr("app.infrastructure.resilience.retry.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("v2.modules.route_simulation.infrastructure.retry.asyncio.sleep", fake_sleep)
 
     attempts = {"n": 0}
 
@@ -120,7 +120,7 @@ async def test_timeout_error_is_retryable_by_default(monkeypatch):
     async def fake_sleep(s):
         sleeps.append(s)
 
-    monkeypatch.setattr("app.infrastructure.resilience.retry.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("v2.modules.route_simulation.infrastructure.retry.asyncio.sleep", fake_sleep)
 
     attempts = {"n": 0}
 

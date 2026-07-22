@@ -1,3 +1,12 @@
+"""`app/services/external_service.py`'den dalga 17 (platform-infra)
+denetiminde taşındı — içeriği tamamen Open-Meteo hava durumu entegrasyonu,
+iki gerçek çağıranı da route_simulation domain'i içinde (`app/core/
+services/weather_service.py` + `application/get_route_details.py`).
+Genel-amaçlı bir "dış servis" soyutlaması değildi; route_simulation'ın
+kendi `infrastructure/open_meteo_client.py`'siyle olası birleştirme
+ayrı bir karar.
+"""
+
 import asyncio
 import threading
 from datetime import datetime, timezone

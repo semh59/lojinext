@@ -974,7 +974,9 @@ class EnsembleFuelPredictor:
             with self._model_lock:
                 if not self.is_trained or not SKLEARN_AVAILABLE:
                     try:
-                        from app.infrastructure.monitoring.ml_probe import get_ml_probe
+                        from v2.modules.prediction_ml.infrastructure.ml_probe import (
+                            get_ml_probe,
+                        )
 
                         get_ml_probe().record_prediction(
                             model_id=str(getattr(self, "_model_id", "ensemble")),
@@ -1036,7 +1038,9 @@ class EnsembleFuelPredictor:
                         f"xgb_res={xgb_residual}, lgb_res={lgb_residual}"
                     )
                     try:
-                        from app.infrastructure.monitoring.ml_probe import get_ml_probe
+                        from v2.modules.prediction_ml.infrastructure.ml_probe import (
+                            get_ml_probe,
+                        )
 
                         get_ml_probe().record_prediction(
                             model_id=str(getattr(self, "_model_id", "ensemble")),
@@ -1064,7 +1068,9 @@ class EnsembleFuelPredictor:
                 uncertainty = 1.96 * inter_model_std
 
                 try:
-                    from app.infrastructure.monitoring.ml_probe import get_ml_probe
+                    from v2.modules.prediction_ml.infrastructure.ml_probe import (
+                        get_ml_probe,
+                    )
 
                     get_ml_probe().record_prediction(
                         model_id=str(getattr(self, "_model_id", "ensemble")),

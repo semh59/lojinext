@@ -135,6 +135,17 @@ Trainer
 EDİLMEZ — yalnız modülün kendi `api/admin_ml.py`'si ve `ensemble_service.py`
 (`_register_model_version` üzerinden) kullanır, dış modül tüketicisi yok.
 
+**Dalga 17 (platform-infra) eklentisi**: `infrastructure/ml_probe.py`
+(`MLProbe`/`get_ml_probe`) `app/infrastructure/monitoring/ml_probe.py`'den
+taşındı — tek çağıranı `ensemble_service.py`/`ensemble_core.py` idi
+(fallback-oranı takibi tamamen bu modüle özgü). `public.py`'de export
+EDİLMEZ (yalnız modülün kendi içinde kullanılıyor). `ensemble_core.py`
+(domain) bunu import ettiği için `module-cross-domain-infra-independence`/
+`module-internal-layers` kontratlarına 1 satır `ignore_imports` eklendi
+(telemetri side-effect'i, gerçek domain iş kuralı değil — `.importlinter`'da
+gerekçeli). Kendi `app.infrastructure.monitoring.models`/`emit`
+bağımlılığı sürüyor (platform-geneli monitoring alt sistemi, taşınmadı).
+
 ## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar)
 
 Diğer modüllerdeki `RouteSimulator`/`LokasyonHydrator`/`DriverCoachingEngine`

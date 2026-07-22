@@ -270,7 +270,7 @@ class TestGetRouteDetailsException:
         reproducible via real infra -- documented mock (forces the outer
         except Exception branch in get_route_details)."""
         with patch(
-            "app.services.external_service.get_external_service",
+            "v2.modules.route_simulation.infrastructure.external_service.get_external_service",
             side_effect=RuntimeError("external crashed"),
         ):
             result = await get_route_details(

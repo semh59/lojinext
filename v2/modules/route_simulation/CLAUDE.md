@@ -22,6 +22,21 @@ tüketicisi yok).
 `weather_service.py`, `route_validator.py`, `openroute_service.py`
 (geocode wrapper), `route_calibration_service.py`, `admin_calibration.py`
 endpoint'i henüz v2'ye taşınmadı — eski `app/` yolunda kalıyor.
+**Dalga 17 (platform-infra) eklentisi**: `infrastructure/retry.py`
+(`with_async_retry`, `app/infrastructure/resilience/retry.py`'den —
+tek çağıranı `mapbox_client.py`/`open_meteo_client.py` idi) ve
+`infrastructure/external_service.py` (`ExternalService`,
+`app/services/external_service.py`'den — tek çağıranları
+`weather_service.py` + `get_route_details.py` idi, tamamen Open-Meteo'ya
+özgü) bu modüle taşındı. `external_service.py` `weather_service.py`
+üzerinden hâlâ dolaylı kullanılıyor (`weather_service.py` kendisi henüz
+v2'ye taşınmadığı için bu, `app.core.services.weather_service ->
+v2.modules.route_simulation.infrastructure.external_service` şeklinde
+`.importlinter`'da (`public-surface-only-prediction_ml`/`-trip`
+kontratları) gerekçeli bir ignore satırı gerektirdi — `weather_service.py`
+taşındığında bu ignore da kalkacak). `open_meteo_client.py`'nin kendi
+retry deseniyle `external_service.py`'nin retry mantığının birleştirilmesi
+ayrı bir karar, bu dalganın kapsamı dışı.
 `route_similarity.py` bu modüle AİT DEĞİLDİ — task dosyasının stale
 envanterinde route_simulation'a bağlıymış gibi görünse de gerçekte
 prediction_ml'in bir parçası (`domain/route_similarity.py`, dalga 13'te

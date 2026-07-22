@@ -8,7 +8,6 @@ Targets uncovered lines:
 - _is_duplicate: memory cache trimmed when over _max_processed_cache
 - _handle_failure: DLQ overflow (pop oldest), Redis lpush success, Redis lpush failure
 - publish: async callback via asyncio.create_task (coroutine branch)
-- publish_typed: EventType mapping from typed contract
 - EventBus singleton: double __new__ returns same instance
 """
 
@@ -237,57 +236,6 @@ async def test_publish_async_failing_handler_recorded_in_dlq(clean_event_bus):
 
     assert len(bus._failed_events) == 1
     assert bus._failed_events[0][1] == "bad_async_handler"
-
-
-# ---------------------------------------------------------------------------
-# publish_typed — typed contract event mapping
-# ---------------------------------------------------------------------------
-
-
-def test_publish_typed_dispatches_to_subscribers(clean_event_bus):
-    """publish_typed maps a typed BaseEvent to an Event and routes it."""
-    from app.infrastructure.events import contracts
-
-    bus = clean_event_bus
-    bus._redis = None
-    received = []
-
-    def handler(event: Event):
-        received.append(event)
-
-    bus.subscribe(EventType.SEFER_ADDED, handler)
-
-    typed_event = contracts.TripCreatedEvent(
-        event_id="typed-01",
-        event_type=EventType.SEFER_ADDED,
-        payload={"sefer_id": 100},
-    )
-    bus.publish_typed(typed_event)
-
-    assert len(received) == 1
-    assert received[0].data == {"sefer_id": 100}
-
-
-def test_publish_typed_with_string_event_type(clean_event_bus):
-    """publish_typed handles event_type as EventType enum value (not plain string)."""
-    from app.infrastructure.events import contracts
-
-    bus = clean_event_bus
-    bus._redis = None
-    received = []
-
-    def handler(event: Event):
-        received.append(event)
-
-    bus.subscribe(EventType.YAKIT_ADDED, handler)
-
-    typed_event = contracts.FuelUpdatedEvent(
-        event_id="typed-fuel-01",
-        event_type=EventType.YAKIT_ADDED,
-        payload={"litre": 50},
-    )
-    bus.publish_typed(typed_event)
-    assert len(received) == 1
 
 
 # ---------------------------------------------------------------------------

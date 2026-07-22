@@ -240,7 +240,9 @@ class EnsemblePredictorService:
                     f"No existing persistent model for vehicle {arac_id} or load failed: {e}"
                 )
                 try:
-                    from app.infrastructure.monitoring.ml_probe import get_ml_probe
+                    from v2.modules.prediction_ml.infrastructure.ml_probe import (
+                        get_ml_probe,
+                    )
 
                     get_ml_probe().record_model_load_failure(
                         model_id=f"ensemble_v2_{arac_id}", exc=e

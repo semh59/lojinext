@@ -1,3 +1,14 @@
+"""ML tahmin fallback-oranı probe'u.
+
+`app/infrastructure/monitoring/ml_probe.py`'den dalga 17 (platform-infra)
+denetiminde taşındı — tek çağıranı prediction_ml (`ensemble_service.py`/
+`ensemble_core.py`), fallback-oranı takibi tamamen ML tahmin domain'ine
+özgü. `app.infrastructure.monitoring.models`'a (ErrorEvent/ErrorLayer/
+ErrorSeverity) ve `app.infrastructure.monitoring.emit`'e bağımlılığı
+sürüyor — bunlar platform-geneli monitoring alt sisteminin (dalga 16'da
+kasıtlı olarak ertelenen ~2300 satırlık kısım) parçası, taşınmadı.
+"""
+
 from __future__ import annotations
 
 import threading

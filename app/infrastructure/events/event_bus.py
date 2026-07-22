@@ -9,7 +9,6 @@ import json
 import os
 import sys
 import threading
-import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -29,7 +28,6 @@ from typing import (
 import redis
 
 from app.infrastructure.cache.redis_cache import get_redis_cache
-from app.infrastructure.events import contracts
 from app.infrastructure.events.event_types import EventType
 from app.infrastructure.logging.logger import get_logger
 
@@ -327,23 +325,6 @@ class EventBus:
                 self._redis.delete(self._dlq_key)
             except Exception as exc:
                 logger.warning(f"EventBus Redis reset failed: {exc}")
-
-    def publish_typed(self, event: contracts.BaseEvent):
-        event_type = (
-            event.event_type
-            if isinstance(event.event_type, EventType)
-            else EventType(event.event_type.value)
-        )
-        mapped = Event(
-            type=event_type,
-            data=event.payload if hasattr(event, "payload") else {},
-            timestamp=event.timestamp.replace(tzinfo=timezone.utc),
-            event_id=event.event_id or uuid.uuid4().hex,
-            correlation_id=event.correlation_id,
-            version=event.version,
-            source="typed",
-        )
-        self.publish(mapped)
 
 
 def get_event_bus() -> EventBus:

@@ -304,7 +304,7 @@ class TestGetPredictorDiskLoad:
             ),
             patch("pathlib.Path.exists", return_value=True),
             patch(
-                "app.infrastructure.monitoring.ml_probe.get_ml_probe",
+                "v2.modules.prediction_ml.infrastructure.ml_probe.get_ml_probe",
                 return_value=mock_probe,
             ),
         ):
@@ -332,7 +332,7 @@ class TestGetPredictorDiskLoad:
             ),
             patch("pathlib.Path.exists", return_value=True),
             patch(
-                "app.infrastructure.monitoring.ml_probe.get_ml_probe",
+                "v2.modules.prediction_ml.infrastructure.ml_probe.get_ml_probe",
                 side_effect=ImportError("probe not installed"),
             ),
         ):

@@ -8,7 +8,9 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from app.infrastructure.monitoring.container_health import get_container_status
+from v2.modules.admin_platform.infrastructure.container_health import (
+    get_container_status,
+)
 
 pytestmark = pytest.mark.unit
 

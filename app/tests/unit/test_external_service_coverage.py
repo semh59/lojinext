@@ -1,7 +1,7 @@
 """
 ExternalService coverage tests.
 
-Targets missing lines in app/services/external_service.py (~30% → ≥70%).
+Targets missing lines in v2/modules/route_simulation/infrastructure/external_service.py (~30% → ≥70%).
 Covers:
   - Circuit breaker logic (closed, open, half-open recovery)
   - get_weather_forecast (happy path, circuit open, HTTP error, network exception)
@@ -27,7 +27,9 @@ pytestmark = pytest.mark.unit
 
 def _make_service():
     """Fresh ExternalService with mocked HTTP client factory."""
-    from app.services.external_service import ExternalService
+    from v2.modules.route_simulation.infrastructure.external_service import (
+        ExternalService,
+    )
 
     svc = ExternalService()
     return svc
@@ -366,7 +368,7 @@ class TestClientLifecycle:
         fake_client.is_closed = False
 
         with patch(
-            "app.services.external_service.get_monitored_client",
+            "v2.modules.route_simulation.infrastructure.external_service.get_monitored_client",
             return_value=fake_client,
         ):
             client = await svc._get_client()
@@ -380,7 +382,7 @@ class TestClientLifecycle:
         svc._client = fake_client
 
         with patch(
-            "app.services.external_service.get_monitored_client",
+            "v2.modules.route_simulation.infrastructure.external_service.get_monitored_client",
         ) as mock_factory:
             client = await svc._get_client()
 
@@ -395,13 +397,15 @@ class TestClientLifecycle:
 
 class TestGetExternalServiceSingleton:
     def test_returns_same_instance(self):
-        import app.services.external_service as ext_mod
+        import v2.modules.route_simulation.infrastructure.external_service as ext_mod
 
         # Reset singleton for a clean test
         original = ext_mod._external_service
         ext_mod._external_service = None
         try:
-            from app.services.external_service import get_external_service
+            from v2.modules.route_simulation.infrastructure.external_service import (
+                get_external_service,
+            )
 
             svc1 = get_external_service()
             svc2 = get_external_service()
@@ -410,7 +414,10 @@ class TestGetExternalServiceSingleton:
             ext_mod._external_service = original
 
     def test_returns_external_service_instance(self):
-        from app.services.external_service import ExternalService, get_external_service
+        from v2.modules.route_simulation.infrastructure.external_service import (
+            ExternalService,
+            get_external_service,
+        )
 
         svc = get_external_service()
         assert isinstance(svc, ExternalService)

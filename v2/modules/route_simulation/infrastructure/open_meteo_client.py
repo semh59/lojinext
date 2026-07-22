@@ -31,7 +31,7 @@ import httpx
 from app.config import settings
 from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
 from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.retry import with_async_retry
+from v2.modules.route_simulation.infrastructure.retry import with_async_retry
 
 logger = get_logger(__name__)
 

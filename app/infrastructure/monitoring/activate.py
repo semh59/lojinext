@@ -54,7 +54,7 @@ def _self_test() -> None:
     visible even when the event bus is down.
     """
     try:
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         if mgr.redis is None:

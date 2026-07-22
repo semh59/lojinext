@@ -27,9 +27,9 @@ from typing import (
 
 import redis
 
-from app.infrastructure.cache.redis_cache import get_redis_cache
 from app.infrastructure.events.event_types import EventType
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 
 logger = get_logger(__name__)
 
@@ -138,7 +138,7 @@ class EventBus:
                 # Tier E madde 31 — Sentinel açıkken ham env-var URL fallback'i
                 # kullanma (yanlış/tek-instans hedefe düşer); factory'nin
                 # Sentinel-farkında yolunu izle.
-                from app.infrastructure.cache.redis_client_factory import (
+                from v2.modules.platform_infra.cache.redis_client_factory import (
                     get_sync_redis_client,
                 )
 

@@ -317,7 +317,7 @@ async def test_write_redis_no_redis_returns_early():
     bus = ErrorEventBus()
     ev = make_event()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = None
         await bus._write_redis([ev])
 
@@ -342,7 +342,7 @@ async def test_write_redis_pipeline_executes():
     mock_redis = MagicMock()
     mock_redis.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = mock_redis
         await bus._write_redis([ev])
 
@@ -369,7 +369,7 @@ async def test_write_redis_exception_logged():
     mock_redis = MagicMock()
     mock_redis.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = mock_redis
         await bus._write_redis([ev])  # must not raise
 

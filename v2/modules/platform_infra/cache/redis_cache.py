@@ -20,8 +20,8 @@ try:
 except ImportError:
     REDIS_AVAILABLE = False
 
-from app.infrastructure.cache.cache_manager import get_cache_manager
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
 logger = get_logger(__name__)
 
@@ -89,7 +89,7 @@ class RedisCache:
         connect_timeout = 0.1 if is_testing else 2.0
 
         try:
-            from app.infrastructure.cache.redis_client_factory import (
+            from v2.modules.platform_infra.cache.redis_client_factory import (
                 get_sync_redis_client,
             )
 

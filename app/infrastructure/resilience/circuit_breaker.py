@@ -12,8 +12,8 @@ from functools import wraps
 from typing import Callable, Dict, Optional, Tuple
 
 from app.config import settings
-from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
 logger = get_logger(__name__)
 

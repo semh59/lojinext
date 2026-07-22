@@ -35,10 +35,12 @@ async def test_trigger_dashboard_update_publishes():
     mock_pubsub.publish = AsyncMock()
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
         return_value=mock_pubsub,
     ):
-        from app.infrastructure.cache.cache_invalidation import trigger_dashboard_update
+        from v2.modules.platform_infra.cache.cache_invalidation import (
+            trigger_dashboard_update,
+        )
 
         await trigger_dashboard_update()
 
@@ -53,10 +55,12 @@ async def test_trigger_dashboard_update_handles_exception():
     mock_pubsub.publish = AsyncMock(side_effect=ConnectionError("redis down"))
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
         return_value=mock_pubsub,
     ):
-        from app.infrastructure.cache.cache_invalidation import trigger_dashboard_update
+        from v2.modules.platform_infra.cache.cache_invalidation import (
+            trigger_dashboard_update,
+        )
 
         # Must not raise
         await trigger_dashboard_update()
@@ -74,15 +78,17 @@ def _setup_with_mocks():
 
     with (
         patch(
-            "app.infrastructure.cache.cache_invalidation.get_event_bus",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_event_bus",
             return_value=mock_bus,
         ),
         patch(
-            "app.infrastructure.cache.cache_invalidation.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_cache_manager",
             return_value=mock_cache,
         ),
     ):
-        from app.infrastructure.cache.cache_invalidation import setup_cache_invalidation
+        from v2.modules.platform_infra.cache.cache_invalidation import (
+            setup_cache_invalidation,
+        )
 
         setup_cache_invalidation()
 
@@ -151,15 +157,15 @@ def _get_handler_sync(event_type_name: str):
 
     with (
         patch(
-            "app.infrastructure.cache.cache_invalidation.get_event_bus",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_event_bus",
             return_value=mock_bus,
         ),
         patch(
-            "app.infrastructure.cache.cache_invalidation.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_cache_manager",
             return_value=mock_cache,
         ),
     ):
-        import app.infrastructure.cache.cache_invalidation as ci_mod
+        import v2.modules.platform_infra.cache.cache_invalidation as ci_mod
 
         ci_mod.setup_cache_invalidation()
 
@@ -179,7 +185,7 @@ async def test_sefer_handler_deletes_stats_patterns():
     event = _make_event(EventType.SEFER_ADDED, data={})
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ) as mock_trigger:
         await handler(event)
@@ -200,7 +206,7 @@ async def test_sefer_handler_deletes_arac_specific_pattern():
     event = _make_event(EventType.SEFER_ADDED, data={"result": {"arac_id": 17}})
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)
@@ -217,7 +223,7 @@ async def test_sefer_handler_no_arac_specific_when_result_not_dict():
     event = _make_event(EventType.SEFER_UPDATED, data={"result": "string_value"})
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)
@@ -234,7 +240,7 @@ async def test_yakit_handler_deletes_yakit_patterns():
     event = _make_event(EventType.YAKIT_ADDED)
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)
@@ -252,7 +258,7 @@ async def test_arac_handler_deletes_arac_and_stats():
     event = _make_event(EventType.ARAC_ADDED)
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)
@@ -269,7 +275,7 @@ async def test_sofor_handler_deletes_sofor_patterns():
     event = _make_event(EventType.SOFOR_ADDED)
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)
@@ -286,7 +292,7 @@ async def test_calculation_handler_deletes_periyot_regression():
     event = _make_event(EventType.PERIYOT_CREATED)
 
     with patch(
-        "app.infrastructure.cache.cache_invalidation.trigger_dashboard_update",
+        "v2.modules.platform_infra.cache.cache_invalidation.trigger_dashboard_update",
         new_callable=AsyncMock,
     ):
         await handler(event)

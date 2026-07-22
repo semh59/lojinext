@@ -147,7 +147,7 @@ async def test_increment_redis_no_redis():
     """mgr._redis is None → returns 0."""
     mw = _make_middleware()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value._redis = None
         result = await mw._increment_redis("bucket")
 
@@ -163,7 +163,7 @@ async def test_increment_redis_success_first_call():
     mock_redis.incr = AsyncMock(return_value=1)
     mock_redis.expire = AsyncMock()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value._redis = mock_redis
         result = await mw._increment_redis("bucket")
 
@@ -180,7 +180,7 @@ async def test_increment_redis_subsequent_calls_no_expire():
     mock_redis.incr = AsyncMock(return_value=5)
     mock_redis.expire = AsyncMock()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value._redis = mock_redis
         result = await mw._increment_redis("b2")
 
@@ -194,7 +194,7 @@ async def test_increment_redis_exception_returns_zero():
     mw = _make_middleware()
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         side_effect=Exception("Redis unreachable"),
     ):
         result = await mw._increment_redis("b3")

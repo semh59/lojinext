@@ -182,7 +182,7 @@ class ErrorEventBus:
                 )
 
     async def _write_redis(self, batch: list[ErrorEvent]) -> None:
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         # Fix 5: use public .redis property instead of private ._redis

@@ -78,7 +78,7 @@ async def test_drain_sync_fallback_redis_error():
 @pytest.mark.asyncio
 async def test_run_digest_no_redis():
     """Test digest task when Redis unavailable."""
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = None
 
         # Should return early without error
@@ -91,7 +91,7 @@ async def test_run_digest_no_errors():
     redis = AsyncMock()
     redis.keys = AsyncMock(return_value=[])
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis
 
         with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
@@ -112,7 +112,7 @@ async def test_run_digest_with_error_keys():
     pipe.execute = AsyncMock(return_value=[{}])
     redis_mock.pipeline = MagicMock(return_value=pipe)
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis_mock
         with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
             await _run_digest()
@@ -135,7 +135,7 @@ async def test_run_digest_redis_scan_error():
     redis = AsyncMock()
     redis.keys = AsyncMock(side_effect=Exception("Redis unavailable"))
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis
 
         with patch("app.workers.tasks.error_digest._drain_sync_fallback"):

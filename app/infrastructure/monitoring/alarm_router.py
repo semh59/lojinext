@@ -81,7 +81,7 @@ class AnomalyDetector:
         """Returns True if current window shows a statistical anomaly (Z > 3)."""
         import datetime
 
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         # Fix 5 (event_bus): use public .redis property
@@ -222,7 +222,7 @@ class AlarmRouter:
                 logger.debug("Sentry capture failed: %s", exc)
 
     async def _increment_digest_counter(self, event: ErrorEvent) -> None:
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         # Fix 5 (event_bus): use public .redis property

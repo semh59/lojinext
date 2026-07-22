@@ -29,8 +29,11 @@ from typing import Iterable, List, Optional, Sequence, Tuple
 import httpx
 
 from app.config import settings
-from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.cache.cache_manager import (
+    CacheManager,
+    get_cache_manager,
+)
 from v2.modules.route_simulation.infrastructure.retry import with_async_retry
 
 logger = get_logger(__name__)

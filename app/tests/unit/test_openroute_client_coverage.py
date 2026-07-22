@@ -488,7 +488,7 @@ async def test_get_from_cache_exception_returns_none():
             side_effect=AsyncCtx,
         ),
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value=None),
         ),
     ):

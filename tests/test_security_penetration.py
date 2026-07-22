@@ -64,7 +64,7 @@ class TestSecurityPenetration:
         """Test Path Traversal logic in generic file handlers"""
         # Simulating logic found in CacheManager or FileUpload
         key = "../../etc/passwd"
-        from app.infrastructure.cache.cache_manager import get_cache_manager
+        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
         cm = get_cache_manager()
 

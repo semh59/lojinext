@@ -9,7 +9,7 @@ rather than asserting on a MagicMock.
 
 import pytest
 
-from app.infrastructure.cache.cache_manager import (
+from v2.modules.platform_infra.cache.cache_manager import (
     CacheManager,
     get_cache_manager,
 )

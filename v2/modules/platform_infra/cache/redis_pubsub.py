@@ -50,7 +50,7 @@ class RedisPubSubManager:
 
         redis_ssl = _s.REDIS_SSL
 
-        from app.infrastructure.cache.redis_client_factory import (
+        from v2.modules.platform_infra.cache.redis_client_factory import (
             get_async_redis_client,
         )
 

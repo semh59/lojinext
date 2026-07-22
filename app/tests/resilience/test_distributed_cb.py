@@ -2,10 +2,10 @@ from unittest.mock import patch
 
 import pytest
 
-from app.infrastructure.cache.redis_pubsub import RedisPubSubManager
 from app.infrastructure.resilience.circuit_breaker import (
     CircuitBreaker,
 )
+from v2.modules.platform_infra.cache.redis_pubsub import RedisPubSubManager
 
 
 @pytest.mark.asyncio

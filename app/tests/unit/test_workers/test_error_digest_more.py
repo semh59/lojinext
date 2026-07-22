@@ -447,7 +447,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
     mock_sess.execute = AsyncMock()
     mock_sess.commit = AsyncMock()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis_mock
         with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
             with patch(

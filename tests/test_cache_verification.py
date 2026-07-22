@@ -7,8 +7,8 @@ try:
     import redis
 except ImportError:
     redis = None
-from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
-from app.infrastructure.cache.redis_cache import RedisCache
+from v2.modules.platform_infra.cache.cache_manager import CacheManager, get_cache_manager
+from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
 
 # Test için CacheManager'ı override edelim

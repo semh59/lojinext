@@ -369,7 +369,7 @@ class OpenRouteClient:
 
         # lokasyonlar'da bulunamadı — Redis'te ad-hoc rota cache kontrol et.
         try:
-            from app.infrastructure.cache.redis_pubsub import get_redis_val
+            from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
 
             _rkey = (
                 f"ors:route:{round(lat1, 4)},{round(lon1, 4)}"
@@ -441,7 +441,9 @@ class OpenRouteClient:
                 else:
                     # Eşleşen lokasyonlar satırı yok — Redis'e ad-hoc cache yaz.
                     try:
-                        from app.infrastructure.cache.redis_pubsub import set_redis_val
+                        from v2.modules.platform_infra.cache.redis_pubsub import (
+                            set_redis_val,
+                        )
 
                         _rkey = (
                             f"ors:route:{round(lat1, 4)},{round(lon1, 4)}"

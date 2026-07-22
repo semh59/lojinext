@@ -85,7 +85,7 @@ _THRESHOLD_KEY = "FUEL_COVERAGE_ALERT_THRESHOLD_PCT"
 
 
 async def _set_threshold_row(db_session, value: str) -> None:
-    from app.infrastructure.cache.redis_cache import get_redis_cache
+    from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 
     await db_session.execute(
         text(
@@ -107,7 +107,7 @@ async def _clean_threshold_config(db_session):
     dosyası koşumundan kalma "90" değeri bu dosyayı BAĞIMSIZ koştuğunda bile
     sızıntı yapabiliyordu (kanıtlanmış davranış). Her testten önce/sonra
     cache'i açıkça sıfırla ki testler fallback (%50 default) ile başlasın."""
-    from app.infrastructure.cache.redis_cache import get_redis_cache
+    from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 
     get_redis_cache().delete(f"config:val:{_THRESHOLD_KEY}")
     yield

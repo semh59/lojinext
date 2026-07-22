@@ -132,7 +132,7 @@ def mock_redis_for_cache_manager():
     """
     import redis as _redis_sync
 
-    import app.infrastructure.cache.cache_manager as cm_mod
+    import v2.modules.platform_infra.cache.cache_manager as cm_mod
     from app.config import settings
 
     client = _redis_sync.from_url(settings.REDIS_URL)

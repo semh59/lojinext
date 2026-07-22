@@ -59,7 +59,7 @@ class HealthService:
         her zaman güncel master'ı sorgular, dead-hostname'e sabitlenmez)."""
         start = time.time()
         try:
-            from app.infrastructure.cache.redis_client_factory import (
+            from v2.modules.platform_infra.cache.redis_client_factory import (
                 get_async_redis_client,
             )
 

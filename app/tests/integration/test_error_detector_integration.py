@@ -465,7 +465,7 @@ async def test_sse_token_endpoint_returns_token(async_client, admin_auth_headers
     mock_mgr.redis = mock_redis
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
         response = await async_client.post(

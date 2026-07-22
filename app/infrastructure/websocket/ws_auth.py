@@ -26,7 +26,7 @@ from v2.modules.auth_rbac.public import (
 
 async def verify_ws_ticket(ticket: str) -> Optional[str]:
     """Look up a short-lived WS ticket in Redis and return the owner's email."""
-    from app.infrastructure.cache.redis_pubsub import get_redis_val
+    from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
 
     email = await get_redis_val(f"ws_ticket:{ticket}")
     return email or None

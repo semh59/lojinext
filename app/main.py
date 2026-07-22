@@ -304,7 +304,7 @@ async def lifespan(app: FastAPI):
     # prod'da tetiklenmiyordu. Her biri kendi try/except'i içinde — biri
     # başarısız olursa diğerlerini veya app startup'ı engellemez.
     try:
-        from app.infrastructure.cache.cache_invalidation import (
+        from v2.modules.platform_infra.cache.cache_invalidation import (
             setup_cache_invalidation,
         )
 
@@ -802,7 +802,7 @@ async def readiness() -> JSONResponse:
 
     # Redis check
     try:
-        from app.infrastructure.cache.redis_pubsub import get_redis_val
+        from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
 
         await asyncio.wait_for(get_redis_val("__ping__"), timeout=1.0)
         checks["redis"] = "ok"

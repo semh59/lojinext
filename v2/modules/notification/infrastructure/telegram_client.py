@@ -122,7 +122,7 @@ async def _push_to_sync_fallback(
     import json
 
     try:
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         if mgr.redis is None:

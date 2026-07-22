@@ -176,7 +176,7 @@ async def test_check_beat_health_emits_for_missing_task(monkeypatch):
     # The functions are imported inside check_beat_health; patch at source
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
         patch("app.infrastructure.monitoring.aemit", fake_aemit),
     ):
@@ -205,7 +205,7 @@ async def test_check_beat_health_no_emit_for_recent_task(monkeypatch):
 
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
         patch("app.infrastructure.monitoring.aemit", fake_aemit),
     ):
@@ -233,7 +233,7 @@ async def test_check_beat_health_emits_for_expired_task(monkeypatch):
 
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
         patch("app.infrastructure.monitoring.aemit", fake_aemit),
     ):
@@ -257,7 +257,7 @@ async def test_write_heartbeat_async_calls_set_redis_val(monkeypatch):
         calls.append((key, val, expire))
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.set_redis_val", fake_set_redis_val
+        "v2.modules.platform_infra.cache.redis_pubsub.set_redis_val", fake_set_redis_val
     ):
         await cp._write_heartbeat_async("beat:last_run:test.task")
 

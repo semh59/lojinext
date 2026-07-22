@@ -8,7 +8,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 from app.config import settings
-from app.infrastructure.cache.redis_client_factory import (
+from v2.modules.platform_infra.cache.redis_client_factory import (
     get_celery_broker_transport_options,
     get_celery_broker_url,
     get_celery_result_backend_url,

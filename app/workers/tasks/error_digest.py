@@ -58,8 +58,8 @@ async def _drain_sync_fallback(redis) -> None:
 
 
 async def _run_digest() -> None:
-    from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
     from v2.modules.notification.public import notify_error
+    from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
     mgr = get_pubsub_manager()
     redis = mgr.redis

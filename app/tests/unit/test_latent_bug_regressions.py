@@ -52,7 +52,7 @@ def test_fuel_async_upload_imports_resolve():
 
 def test_redis_cache_get_stats_memory_backend_no_crash():
     """get_stats() on the memory backend must not raise AttributeError."""
-    from app.infrastructure.cache.redis_cache import RedisCache
+    from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
     rc = RedisCache()
     rc._redis_client = None  # force memory/fallback path
@@ -69,7 +69,7 @@ def test_redis_cache_no_phantom_fallback_attr_references():
     """The removed phantom attributes must not reappear in the class."""
     import inspect
 
-    from app.infrastructure.cache import redis_cache
+    from v2.modules.platform_infra.cache import redis_cache
 
     src = inspect.getsource(redis_cache)
     assert "_fallback_cache" not in src
@@ -78,7 +78,7 @@ def test_redis_cache_no_phantom_fallback_attr_references():
 
 def test_redis_cache_get_stats_redis_backend():
     """get_stats() on the redis backend reports redis info without touching fallback."""
-    from app.infrastructure.cache.redis_cache import RedisCache
+    from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
     rc = RedisCache()
     mock_client = MagicMock()

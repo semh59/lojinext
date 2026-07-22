@@ -10,7 +10,7 @@ import pytest
 
 # The functions under test import get_pubsub_manager lazily inside function bodies,
 # so we must patch it at the definition site.
-_PUBSUB_PATH = "app.infrastructure.cache.redis_pubsub.get_pubsub_manager"
+_PUBSUB_PATH = "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager"
 
 
 # ─── POST /error-stream-token ──────────────────────────────────────────────────

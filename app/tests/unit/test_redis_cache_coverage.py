@@ -39,7 +39,7 @@ pytestmark = pytest.mark.unit
 @pytest.fixture(autouse=True)
 def reset_redis_cache_singleton():
     """Reset RedisCache singleton before and after each test."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     rc_mod.RedisCache._instance = None
     yield
@@ -53,7 +53,7 @@ def reset_redis_cache_singleton():
 
 def _make_cache_with_redis(fake_redis=None):
     """Create a RedisCache instance that bypasses _connect and injects a mock client."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     cache = rc_mod.RedisCache.__new__(rc_mod.RedisCache)
     cache._initialized = True
@@ -426,7 +426,7 @@ def test_get_stats_redis_info_exception():
 
 async def test_cached_decorator_async_miss_and_hit():
     """cached decorator stores result on miss and returns it on hit."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     # Use fallback-only cache so we can control get/set
     mock_cache = _make_cache_fallback_only()
@@ -456,7 +456,7 @@ async def test_cached_decorator_async_miss_and_hit():
 
 def test_cached_decorator_sync_miss_and_hit():
     """cached decorator works for sync functions too."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     mock_cache = _make_cache_fallback_only()
     call_count = 0
@@ -489,7 +489,7 @@ def test_cached_decorator_sync_miss_and_hit():
 
 def test_get_redis_cache_returns_singleton():
     """get_redis_cache returns the same instance on multiple calls."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     # Bypass actual connect by patching _connect
     with patch.object(rc_mod.RedisCache, "_connect", return_value=None):
@@ -510,7 +510,7 @@ def test_connect_with_redis_host_env_success(monkeypatch):
     redis_client_factory.get_sync_redis_client (Sentinel-aware), so that's
     the boundary to mock now instead of the module-level `redis` import.
     """
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     monkeypatch.setenv("REDIS_HOST", "localhost")
 
@@ -518,7 +518,7 @@ def test_connect_with_redis_host_env_success(monkeypatch):
     mock_redis_instance.ping.return_value = True
 
     with patch(
-        "app.infrastructure.cache.redis_client_factory.get_sync_redis_client",
+        "v2.modules.platform_infra.cache.redis_client_factory.get_sync_redis_client",
         return_value=mock_redis_instance,
     ):
         cache = rc_mod.RedisCache.__new__(rc_mod.RedisCache)
@@ -533,7 +533,7 @@ def test_connect_with_redis_host_env_success(monkeypatch):
 
 def test_connect_with_redis_host_env_failure(monkeypatch):
     """_connect falls back to None when ping raises."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     monkeypatch.setenv("REDIS_HOST", "localhost")
 
@@ -557,7 +557,7 @@ def test_connect_with_redis_host_env_failure(monkeypatch):
 
 def test_connect_redis_not_available():
     """_connect skips when REDIS_AVAILABLE is False."""
-    import app.infrastructure.cache.redis_cache as rc_mod
+    import v2.modules.platform_infra.cache.redis_cache as rc_mod
 
     with patch.object(rc_mod, "REDIS_AVAILABLE", False):
         cache = rc_mod.RedisCache.__new__(rc_mod.RedisCache)

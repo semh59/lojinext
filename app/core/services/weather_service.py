@@ -75,7 +75,7 @@ class WeatherService:
         if not midpoints:
             return []
 
-        from app.infrastructure.cache.cache_manager import get_cache_manager
+        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
         cache = get_cache_manager()
         result: List[Optional[WeatherSample]] = [None] * len(midpoints)

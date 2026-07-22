@@ -22,7 +22,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-_PUBSUB_PATH = "app.infrastructure.cache.redis_pubsub.get_pubsub_manager"
+_PUBSUB_PATH = "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager"
 
 
 # ---------------------------------------------------------------------------

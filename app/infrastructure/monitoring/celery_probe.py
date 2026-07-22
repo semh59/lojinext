@@ -240,7 +240,7 @@ def _write_heartbeat_sync_redis(task_name: str) -> None:
 
 
 async def _write_heartbeat_async(key: str) -> None:
-    from app.infrastructure.cache.redis_pubsub import set_redis_val
+    from v2.modules.platform_infra.cache.redis_pubsub import set_redis_val
 
     await set_redis_val(key, time.time(), expire=7200)
 
@@ -250,8 +250,8 @@ async def check_beat_health() -> None:
 
     Called by digest task.
     """
-    from app.infrastructure.cache.redis_pubsub import get_redis_val
     from app.infrastructure.monitoring import aemit
+    from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
 
     for task_name, max_silence_sec in BEAT_EXPECTED_TASKS.items():
         last_val = await get_redis_val(_record_heartbeat_key(task_name))

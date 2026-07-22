@@ -108,7 +108,7 @@ async def create_sse_token(
     Issue a short-lived one-time SSE token for EventSource authentication.
     Admin only. Token is valid for 90 seconds and consumed on first use.
     """
-    from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+    from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
     token = str(uuid.uuid4())
     mgr = get_pubsub_manager()
@@ -145,7 +145,7 @@ async def error_stream(request: Request):
     Event format: data: {"id": 1, "layer": "db", "severity": "critical", ...}
     Keepalive:    : keepalive
     """
-    from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+    from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
     token = request.query_params.get("token", "")
     if not token:

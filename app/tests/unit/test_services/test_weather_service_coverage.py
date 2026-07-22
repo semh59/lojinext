@@ -383,7 +383,7 @@ class TestRouteWeatherSamples:
         mock_cache.set = MagicMock()
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -413,7 +413,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -432,7 +432,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0), (30.0, 42.0)])
@@ -450,7 +450,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -481,7 +481,7 @@ class TestRouteWeatherSamples:
 
         # Same coord repeated
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
             return_value=mock_cache,
         ):
             await svc.get_route_weather_samples([(29.0, 41.0), (29.0, 41.0)])

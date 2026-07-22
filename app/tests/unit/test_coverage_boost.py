@@ -865,15 +865,15 @@ class TestCacheInvalidationSetup:
         mock_cache = MagicMock()
         with (
             patch(
-                "app.infrastructure.cache.cache_invalidation.get_event_bus",
+                "v2.modules.platform_infra.cache.cache_invalidation.get_event_bus",
                 return_value=mock_bus,
             ),
             patch(
-                "app.infrastructure.cache.cache_invalidation.get_cache_manager",
+                "v2.modules.platform_infra.cache.cache_invalidation.get_cache_manager",
                 return_value=mock_cache,
             ),
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 setup_cache_invalidation,
             )
 
@@ -885,10 +885,10 @@ class TestCacheInvalidationSetup:
         mock_pubsub = MagicMock()
         mock_pubsub.publish = AsyncMock(return_value=None)
         with patch(
-            "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
             return_value=mock_pubsub,
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 trigger_dashboard_update,
             )
 
@@ -900,10 +900,10 @@ class TestCacheInvalidationSetup:
         mock_pubsub = MagicMock()
         mock_pubsub.publish = AsyncMock(side_effect=Exception("Redis down"))
         with patch(
-            "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
             return_value=mock_pubsub,
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 trigger_dashboard_update,
             )
 
@@ -914,7 +914,7 @@ class TestInterfacesImport:
     """Smoke-test that misc module-level code is importable (coverage counting)."""
 
     def test_cache_invalidation_importable(self):
-        from app.infrastructure.cache import cache_invalidation  # noqa: F401
+        from v2.modules.platform_infra.cache import cache_invalidation  # noqa: F401
 
         assert hasattr(cache_invalidation, "__name__")
 

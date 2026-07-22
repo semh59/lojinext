@@ -70,7 +70,7 @@ class BackgroundJobManager:
                         inst._redis = cls._redis_override
                     else:
                         from app.config import settings
-                        from app.infrastructure.cache.redis_client_factory import (
+                        from v2.modules.platform_infra.cache.redis_client_factory import (
                             get_sync_redis_client,
                         )
 

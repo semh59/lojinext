@@ -207,10 +207,10 @@ class TestRelayDispatchesRealHandlersWithoutCrashing:
     try/except in EventBus.publish_async), never break the relay."""
 
     async def test_relay_processes_arac_added_with_real_subscribers(self, db_session):
-        from app.infrastructure.cache.cache_invalidation import (
+        from app.infrastructure.events.event_bus import get_event_bus
+        from v2.modules.platform_infra.cache.cache_invalidation import (
             setup_cache_invalidation,
         )
-        from app.infrastructure.events.event_bus import get_event_bus
         from v2.modules.shared_kernel.infrastructure.outbox import OutboxService
 
         bus = get_event_bus()

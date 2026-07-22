@@ -201,7 +201,7 @@ async def test_readiness_db_down_returns_503(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value=None),
         ):
             resp = await async_client.get("/health/readiness")
@@ -225,7 +225,7 @@ async def test_readiness_all_ok(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value="pong"),
         ):
             resp = await async_client.get("/health/readiness")
@@ -249,7 +249,7 @@ async def test_readiness_redis_down_returns_503(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(side_effect=Exception("Redis down")),
         ):
             resp = await async_client.get("/health/readiness")

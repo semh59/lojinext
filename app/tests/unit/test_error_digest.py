@@ -32,7 +32,7 @@ async def test_digest_uses_public_redis_property():
 
     # All imports in _run_digest are lazy — patch at source modules
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
         from app.workers.tasks.error_digest import _run_digest
@@ -49,7 +49,7 @@ async def test_digest_exits_when_redis_is_none():
     mock_mgr.redis = None
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
         from app.workers.tasks.error_digest import _run_digest
@@ -91,7 +91,7 @@ async def test_digest_sends_telegram_when_keys_present():
 
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
             return_value=mock_mgr,
         ),
         patch(

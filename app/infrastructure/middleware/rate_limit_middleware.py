@@ -142,7 +142,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     async def _increment_redis(self, bucket: str) -> int:
         """Returns the new count in Redis, or 0 if Redis is unavailable."""
         try:
-            from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+            from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
             mgr = get_pubsub_manager()
             if mgr._redis is None:

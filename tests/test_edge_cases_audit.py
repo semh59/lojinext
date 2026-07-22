@@ -325,7 +325,7 @@ class TestConcurrentAccess:
         """Cache eşzamanlı erişimde thread-safe olmalı."""
         import threading
 
-        from app.infrastructure.cache.cache_manager import CacheManager
+        from v2.modules.platform_infra.cache.cache_manager import CacheManager
 
         cache = CacheManager()
         cache.clear()

@@ -2,8 +2,8 @@
 
 import uuid
 
-from app.infrastructure.cache.redis_pubsub import set_redis_val
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.cache.redis_pubsub import set_redis_val
 
 logger = get_logger(__name__)
 

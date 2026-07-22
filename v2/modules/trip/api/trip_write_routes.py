@@ -2,7 +2,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 
-from app.api.deps import get_sefer_service
 from v2.modules.admin_platform.public import (
     IdempotencyKeyConflictError,
     IdempotencyKeyInProgressError,
@@ -16,7 +15,13 @@ from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.public import UOWDep
 from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.shared_kernel.exceptions import DomainError
-from v2.modules.trip.public import SeferCreate, SeferResponse, SeferService, SeferUpdate
+from v2.modules.trip.public import (
+    SeferCreate,
+    SeferResponse,
+    SeferService,
+    SeferUpdate,
+    get_sefer_service_for_request,
+)
 
 logger = get_logger(__name__)
 
@@ -35,7 +40,7 @@ async def create_sefer(
     sefer: SeferCreate,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
     uow: UOWDep,
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ):
     """Yeni sefer oluştur (Service Layer).
@@ -166,7 +171,7 @@ async def create_sefer(
 async def create_return_trip(
     sefer_id: int,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Mevcut bir sefer baz alınarak dönüş seferi oluştur (Backend mantığı)."""
     try:
@@ -214,7 +219,7 @@ async def update_sefer(
     sefer_id: int,
     sefer_in: SeferUpdate,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Sefer güncelle (Service Layer)."""
     try:
@@ -251,7 +256,7 @@ async def update_sefer(
 async def delete_sefer(
     sefer_id: int,
     current_admin: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Seferi soft-delete olarak iptal eder."""
 

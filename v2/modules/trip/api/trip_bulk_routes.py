@@ -2,7 +2,6 @@ from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.deps import get_sefer_service
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
@@ -13,6 +12,7 @@ from v2.modules.trip.public import (
     SeferBulkResponse,
     SeferBulkStatusUpdate,
     SeferService,
+    get_sefer_service_for_request,
 )
 
 logger = get_logger(__name__)
@@ -28,7 +28,7 @@ router = APIRouter()
 async def bulk_update_trip_status(
     data: SeferBulkStatusUpdate,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Secili seferlerin durumunu toplu guncelle (SUPERVISOR+)."""
     if len(data.sefer_ids) > 500:
@@ -49,7 +49,7 @@ async def bulk_update_trip_status(
 async def bulk_cancel_trips(
     data: SeferBulkCancel,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Secili seferleri toplu iptal et (SUPERVISOR+)."""
     if len(data.sefer_ids) > 500:
@@ -63,7 +63,7 @@ async def bulk_cancel_trips(
 async def bulk_delete_trips(
     data: SeferBulkDelete,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:write"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ) -> Any:
     """Secilen seferleri toplu sil."""
     sefer_ids = data.sefer_ids

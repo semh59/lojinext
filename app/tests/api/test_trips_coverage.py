@@ -97,18 +97,18 @@ def _make_sefer_response_obj():
 
 @contextmanager
 def _override_sefer_service(mock_svc):
-    """Override get_sefer_service FastAPI dependency with a mock."""
-    from app.api.deps import get_sefer_service
+    """Override get_sefer_service_for_request FastAPI dependency with a mock."""
     from app.main import app
+    from v2.modules.trip.public import get_sefer_service_for_request
 
     async def _fake():
         return mock_svc
 
-    app.dependency_overrides[get_sefer_service] = _fake
+    app.dependency_overrides[get_sefer_service_for_request] = _fake
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_sefer_service, None)
+        app.dependency_overrides.pop(get_sefer_service_for_request, None)
 
 
 @contextmanager

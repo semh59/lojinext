@@ -4,7 +4,6 @@ from typing import Annotated, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_sefer_service
 from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
 from v2.modules.platform_infra.public import SessionDep
 from v2.modules.route_simulation.application.weather_service import (
@@ -15,7 +14,11 @@ from v2.modules.route_simulation.schemas import (
     TripWeatherImpactResponse,
     WeatherDashboardResponse,
 )
-from v2.modules.trip.public import SEFER_STATUS_PLANLANDI, SeferService
+from v2.modules.trip.public import (
+    SEFER_STATUS_PLANLANDI,
+    SeferService,
+    get_sefer_service_for_request,
+)
 
 router = APIRouter()
 
@@ -102,7 +105,7 @@ async def get_trip_weather_impact(
 async def get_dashboard_weather_summary(
     service: WeatherServiceDep,
     db: SessionDep,
-    sefer_service: Annotated[SeferService, Depends(get_sefer_service)],
+    sefer_service: Annotated[SeferService, Depends(get_sefer_service_for_request)],
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ) -> dict[str, Any]:
     """Return dashboard weather risk summary for active trips."""

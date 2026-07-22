@@ -1,9 +1,14 @@
-"""Tests for app/api/deps.py + v2/modules/auth_rbac/application/authenticate.py
-(auth-specific factories moved there 2026-07-22, Kalem 3 commit 1) — real DB,
-real JWT, real Redis blacklist.
+"""Tests for the former app/api/deps.py's factory functions — now split
+across v2/modules/auth_rbac/application/authenticate.py (auth-specific
+factories, Kalem 3 commit 1) and
+v2/modules/trip/application/trip_service.py::get_sefer_service_for_request
+(request-scoped SeferService factory, Kalem 3 commit 3) — real DB, real
+JWT, real Redis blacklist. ``app/api/deps.py`` itself no longer exists
+(deleted in Kalem 3 commit 3, along with app/api/v1/api.py — see
+v2/modules/platform_infra/CLAUDE.md).
 
 2026-07-22 (Kalem 3 commit 2): ``get_background_job_manager`` was removed
-from ``app/api/deps.py`` entirely (all callers now use
+entirely (all callers now use
 ``v2.modules.platform_infra.public.get_job_manager`` directly) — its
 coverage test here was dropped as redundant with
 ``app/tests/unit/test_infrastructure/test_job_manager.py``, which already
@@ -238,12 +243,14 @@ async def test_service_factories_build_real_services():
     calls the auth_service module's free functions directly with an
     explicit uow= kwarg (no DI factory to assert on).
     """
-    from app.api import deps
     from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
-    from v2.modules.trip.application.trip_service import SeferService
+    from v2.modules.trip.application.trip_service import (
+        SeferService,
+        get_sefer_service_for_request,
+    )
 
     async with UnitOfWork() as uow:
-        assert isinstance(await deps.get_sefer_service(uow), SeferService)
+        assert isinstance(await get_sefer_service_for_request(uow), SeferService)
 
 
 # ---------------------------------------------------------------------------

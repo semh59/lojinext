@@ -1,3 +1,10 @@
+"""Router-aggregation composition root (~50 include_router calls, zero
+business logic) — moved from app/api/v1/api.py 2026-07-22 (Kalem 3 commit 3),
+same "pure composition-root" category as container.py. Mechanical move,
+router-ordering + include_router calls preserved byte-for-byte (see the
+trip_read_router ordering note below — never reorder without re-reading it).
+"""
+
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (

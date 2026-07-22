@@ -17,6 +17,7 @@ from typing import Any, Dict, List, Optional
 from v2.modules.auth_rbac.public import Kullanici
 from v2.modules.platform_infra.public import (
     EventBus,
+    UOWDep,
     get_event_bus,
     get_logger,
 )
@@ -213,3 +214,18 @@ def get_sefer_service() -> SeferService:
     from v2.modules.platform_infra.public import get_container
 
     return get_container().sefer_service
+
+
+async def get_sefer_service_for_request(uow: UOWDep) -> SeferService:
+    """Per-request SeferService factory (moved from app/api/deps.py, Kalem 3
+    commit 3) — NOT the same thing as ``get_sefer_service()`` above.
+
+    That one is a no-arg getter backed by ``container.py``'s app-lifetime
+    singleton (UoW-less, stateless-service style). This one builds a fresh
+    ``SeferService`` from the per-request ``UnitOfWork`` injected via
+    ``UOWDep`` (transaction-scoped, commits/rolls back with the request
+    lifecycle) — the "two-layered DI architecture" documented in the old
+    ``app/api/deps.py`` docstring. Endpoints that need transaction-scoped
+    behavior depend on this one; container-lifetime callers use the other.
+    """
+    return SeferService(repo=uow.sefer_repo)

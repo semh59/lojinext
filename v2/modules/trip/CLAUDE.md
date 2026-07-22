@@ -52,6 +52,11 @@ gerekçe orada.
 # facade (sınıf istisnası, aşağıya bkz.)
 SeferService, get_sefer_service() -> SeferService
 
+# per-request factory (2026-07-22, Kalem 3 commit 3 — app/api/deps.py'den
+# taşındı; get_sefer_service()'in YUKARIDAKİ container-tabanlı, argümansız
+# hâliyle KARIŞTIRILMASIN — bu, UOWDep'ten fresh bir SeferService kurar)
+get_sefer_service_for_request(uow: UOWDep) -> SeferService
+
 # read
 get_by_id(sefer_id, current_user=None, repo=None) -> Optional[Sefer]
 get_sefer_by_id(sefer_id, current_user=None, repo=None) -> Optional[dict]
@@ -231,6 +236,17 @@ konumu URL'i etkilemez, `include_router(prefix=...)` belirler):
 | `import_excel/api/trip_import_routes.py` | import_excel | Excel import (sync/async) |
 | `analytics_executive/api/trip_analytics_routes.py` | analytics_executive | cost-analysis, stats (async job pattern) |
 | `ai_assistant/api/plan_wizard_routes.py` | ai_assistant | trip planner wizard |
+
+**2026-07-22 (Kalem 3 commit 3)**: `api.py`'nin KENDİSİ (~50
+`include_router()` çağrısı, bu 8 route dosyası dahil hepsini
+`prefix="/trips"` ile mount eden composition-root) `app/api/v1/api.py`'den
+`v2/modules/platform_infra/api_router.py`'ye taşındı — yalnız
+include_router aggregator'ının fiziksel konumu değişti, yukarıdaki 8 route
+dosyasının kendisi YERİNDE kaldı, URL'ler/sıralama DEĞİŞMEDİ (`app.routes`
+üzerinden + gerçek `TestClient` isteğiyle 245 route'un tamamı doğrulandı —
+özellikle `trip_read_router`'ın catch-all'ının en son kaydedildiği).
+`app/main.py` artık `from v2.modules.platform_infra.api_router import
+api_router` import ediyor.
 
 ## İzin verilen / yasak import'lar (import-linter özeti)
 

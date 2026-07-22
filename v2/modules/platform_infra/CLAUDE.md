@@ -33,6 +33,9 @@ v2/modules/platform_infra/
 ├── container.py                  # DI composition root (event_bus + 8 lazy-singleton property)
 ├── api_deps.py                   # per-request DI alias'lari (SessionDep, UOWDep) — container.py'nin
 │                                  # per-request ikizi, app/api/deps.py'den tasindi (2026-07-22, Kalem 3 commit 2)
+├── api_router.py                 # ~50 include_router cagrisi, sifir is mantigi — app/api/v1/api.py'den
+│                                  # tasindi (2026-07-22, Kalem 3 commit 3), ayni "pure composition-root"
+│                                  # kategorisi (container.py ile); app/main.py bunu import eder
 ├── metrics.py                    # Prometheus custom sayaclar (graceful no-op)
 ├── cache/                        # Redis cache/pub-sub (5 dosya)
 │   ├── cache_manager.py          # CacheManager, get_cache_manager
@@ -214,11 +217,26 @@ export edilen senkron fonksiyon) ile birebir aynı sonucu üretir; ekstra
 indirection'a gerek yoktu. ~20 tüketici dosyasının (route dosyaları +
 testler, kök `tests/` dahil) import'ları `v2.modules.platform_infra.
 public`'e güncellendi. `app/api/deps.py`'de yalnız `get_sefer_service`
-(trip'in request-scoped `SeferService` factory'si) kaldı — Kalem 3'ün
-commit 3'ünde `trip` modülüne taşınacak, o zaman `app/api/deps.py` +
-`app/api/v1/api.py` tamamen silinecek (bkz. `v2/modules/auth_rbac/
-CLAUDE.md`'nin bu taşımanın commit 1'ini — auth sembollerini —
-dokümante eden notu).
+(trip'in request-scoped `SeferService` factory'si) kalmıştı.
+
+**Commit 3 (aynı gün)**: bu son sembol de taşındı —
+`v2/modules/trip/application/trip_service.py::get_sefer_service_for_request`
+(YENİ AD — trip.public'in zaten var olan argümansız, container-tabanlı
+`get_sefer_service()`'iyle İSİM ÇAKIŞMASINI önlemek için; ikisi FARKLI
+şeyler, bkz. `trip/CLAUDE.md`), `trip.public`'ten export edilir. Aynı
+commit'te `app/api/v1/api.py`'nin ~50 `include_router()` çağrısı da
+(sıfır iş mantığı, `container.py` ile aynı "pure composition-root"
+kategorisi) yeni `api_router.py`'ye taşındı — router-sıralama-hassas
+kritik yorum (`trip_read_router`'ın catch-all'ının en son eklenmesi)
+birebir korundu, `app/main.py`'nin tek satırlık import'u güncellendi.
+`app/api/deps.py` + `app/api/v1/api.py` TAMAMEN SİLİNDİ — `app/api/`
+altında yalnız bilinen FAZ4 shim'leri (`v1/endpoints/{ai,feedback}.py`)
+kaldı. Doğrulama: tam pytest suite + gerçek `TestClient` ile en az 5
+endpoint'in manuel smoke-testi (`/trips/stats`, `/trips/export`,
+`/trips/{id}`, `/auth/token`, `/openapi.json`) — router sıralamasının
+245 route'ta da bozulmadığı hem `app.routes` listesi hem gerçek
+request/response ile doğrulandı (bkz. `trip/CLAUDE.md`'nin router
+bölünmesi notu).
 
 ## Test stratejisi
 

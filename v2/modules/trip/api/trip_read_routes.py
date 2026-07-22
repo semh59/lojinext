@@ -3,11 +3,15 @@ from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.api.deps import get_sefer_service
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError
-from v2.modules.trip.public import SeferListResponse, SeferResponse, SeferService
+from v2.modules.trip.public import (
+    SeferListResponse,
+    SeferResponse,
+    SeferService,
+    get_sefer_service_for_request,
+)
 from v2.modules.trip.schemas import TripTimelineResponse
 
 logger = get_logger(__name__)
@@ -18,7 +22,7 @@ router = APIRouter()
 @router.get("/", response_model=SeferListResponse)
 async def read_seferler(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     baslangic_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -61,7 +65,7 @@ async def read_seferler(
 @router.get("/today", response_model=SeferListResponse)
 async def read_bugunun_seferleri(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Bugünün seferlerini listele."""
     try:
@@ -82,7 +86,7 @@ async def read_bugunun_seferleri(
 @router.get("/beklemede", response_model=List[SeferResponse])
 async def beklemede_seferler(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:onayla"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
 ):
@@ -102,7 +106,7 @@ async def beklemede_seferler(
 async def read_sefer(
     sefer_id: int,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Tekil sefer getir (Güvenli)."""
     sefer = await service.get_by_id(sefer_id, current_user=current_user)
@@ -115,7 +119,7 @@ async def read_sefer(
 async def get_sefer_timeline(
     sefer_id: int,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
 ):
     """Seferin kronolojik olay akışını (audit log) getirir."""
     try:

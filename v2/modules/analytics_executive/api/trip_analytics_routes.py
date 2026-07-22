@@ -13,7 +13,6 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.deps import get_sefer_service
 from v2.modules.analytics_executive.schemas import FuelPerformanceAnalyticsResponse
 from v2.modules.auth_rbac.public import (
     Kullanici,
@@ -27,7 +26,11 @@ from v2.modules.platform_infra.background.job_manager import (
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.public import get_job_manager
 from v2.modules.shared_kernel.exceptions import DomainError
-from v2.modules.trip.public import SeferService, SeferStatsResponse
+from v2.modules.trip.public import (
+    SeferService,
+    SeferStatsResponse,
+    get_sefer_service_for_request,
+)
 
 logger = get_logger(__name__)
 
@@ -37,7 +40,7 @@ router = APIRouter()
 @router.get("/stats", response_model=SeferStatsResponse)
 async def get_trip_stats(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     durum: Optional[str] = Query(None, description="Filtrelemek istenen sefer durumu"),
     baslangic_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),
     bitis_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -78,7 +81,7 @@ async def get_trip_stats(
 )
 async def get_fuel_performance_analytics(
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     durum: Optional[str] = Query(None),
     baslangic_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),
     bitis_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),
@@ -119,7 +122,7 @@ async def get_fuel_performance_analytics(
 async def analyze_trip_costs(
     sefer_id: int,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     job_manager: BackgroundJobManager = Depends(get_job_manager),
 ):
     """

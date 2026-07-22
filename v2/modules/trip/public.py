@@ -42,7 +42,11 @@ from v2.modules.trip.application.trip_prediction_enrichment import (
     build_prediction_route_analysis,
     extract_prediction_values,
 )
-from v2.modules.trip.application.trip_service import SeferService, get_sefer_service
+from v2.modules.trip.application.trip_service import (
+    SeferService,
+    get_sefer_service,
+    get_sefer_service_for_request,
+)
 from v2.modules.trip.application.trip_stats import (
     get_fuel_performance_analytics,
     get_trip_stats,
@@ -80,6 +84,7 @@ __all__ = [
     # facade (sınıf istisnası)
     "SeferService",
     "get_sefer_service",
+    "get_sefer_service_for_request",
     # read
     "get_by_id",
     "get_sefer_by_id",

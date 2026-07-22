@@ -97,17 +97,17 @@ def _make_stats_dict(**kwargs):
 
 @contextmanager
 def _override_sefer_service(mock_svc):
-    from app.api.deps import get_sefer_service
     from app.main import app
+    from v2.modules.trip.public import get_sefer_service_for_request
 
     async def _fake():
         return mock_svc
 
-    app.dependency_overrides[get_sefer_service] = _fake
+    app.dependency_overrides[get_sefer_service_for_request] = _fake
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_sefer_service, None)
+        app.dependency_overrides.pop(get_sefer_service_for_request, None)
 
 
 @contextmanager

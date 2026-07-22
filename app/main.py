@@ -15,8 +15,8 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError as SAOperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.v1.api import api_router
 from app.config import settings
+from v2.modules.platform_infra.api_router import api_router
 from v2.modules.platform_infra.context.correlation_middleware import (
     CorrelationMiddleware,
 )

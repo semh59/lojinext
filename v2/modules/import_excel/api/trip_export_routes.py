@@ -13,13 +13,12 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import get_sefer_service
 from v2.modules.auth_rbac.public import Kullanici, require_permissions
 from v2.modules.import_excel.public import export_data, generate_template
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.shared_kernel.exceptions import DomainError
 from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
-from v2.modules.trip.public import SeferService
+from v2.modules.trip.public import SeferService, get_sefer_service_for_request
 
 logger = get_logger(__name__)
 
@@ -35,7 +34,7 @@ router = APIRouter()
 async def export_seferler(
     background_tasks: BackgroundTasks,
     current_user: Annotated[Kullanici, Depends(require_permissions("sefer:read"))],
-    service: SeferService = Depends(get_sefer_service),
+    service: SeferService = Depends(get_sefer_service_for_request),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     baslangic_tarih: Optional[str] = Query(None, description="YYYY-MM-DD"),

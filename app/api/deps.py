@@ -10,7 +10,7 @@ Bu modül, endpoint handler'larının ``Depends()`` ile bağlandığı kısa
      garantisi request lifecycle'ına bağlıdır.
    • Kullanım alanı: domain CRUD endpoint'leri (araç, şoför, sefer, yakıt…)
 
-2. ``app/core/container.py``
+2. ``v2/modules/platform_infra/container.py``
    • Uygulama ömrü boyunca yaşayan singleton servisler tutar
      (ML motoru, AI/RAG, anomali dedektörü, hava durumu vb.).
    • UoW gerektirmeyen, durumsuz (stateless) veya pahalı başlangıç

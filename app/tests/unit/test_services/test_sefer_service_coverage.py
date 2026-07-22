@@ -241,7 +241,7 @@ class TestApprovalDelegation:
 
 class TestGetSeferServiceFactory:
     def test_returns_sefer_service_instance(self):
-        import app.core.container as container_mod
+        import v2.modules.platform_infra.container as container_mod
 
         mock_container = MagicMock()
         mock_container.sefer_service = MagicMock(spec=SeferService)

@@ -4,7 +4,7 @@ LojiNext AI RAG service.
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: RAG + LLM servisi — FAISS vektör indeksi ve embedding modeli yüklenir.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 """
 
 import asyncio
@@ -240,6 +240,6 @@ class SmartAIService:
 
 
 def get_smart_ai() -> SmartAIService:
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().smart_ai_service

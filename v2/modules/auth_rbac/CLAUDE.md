@@ -133,8 +133,9 @@ edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
    isim alanı (Permission enum ile birlikte gruplu kullanım), CRUD-benzeri bir
    servis değil.
 2. **`LicenseEngine`** (`application/license_service.py`) — env'den bir kez
-   yüklenen `_LICENSE_HASHES` mutable state'i olan, `app/core/container.py`
-   lazy-property singleton'ı olarak yaşayan bir motor. Driver'ın
+   yüklenen `_LICENSE_HASHES` mutable state'i olan, `v2/modules/
+   platform_infra/container.py` lazy-property singleton'ı olarak yaşayan bir
+   motor. Driver'ın
    `DriverPerformanceML`'iyle aynı gerekçe sınıfı (mutable durum, yeniden
    hesaplaması pahalı/anlamsız).
 3. **`TokenBlacklist`** (`infrastructure/token_blacklist.py` — 2026-07-18'de
@@ -154,7 +155,7 @@ edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
-**Diğer taşınan modüllerden FARKLI**: `app/infrastructure/events/event_bus.py::EventType`
+**Diğer taşınan modüllerden FARKLI**: `v2/modules/platform_infra/events/event_bus.py::EventType`
 içinde KULLANICI_ADDED/UPDATED/DELETED veya ROL_* için hiçbir enum değeri
 YOK — bu modül hiçbir zaman event-bus'a bağlanmadı (taşımadan önce de
 böyleydi, regresyon değil, `grep -rn "KULLANICI_\|ROL_ADDED"` ile
@@ -303,7 +304,7 @@ diğer modüllerin yalnız `public`/`events`'ini import edebilir (KEPT).
 Diğer modüller bu modüle yalnız `v2.modules.auth_rbac.public` üzerinden
 erişir; istisnalar (kontrat ignore listesinde dokümante): `app/api/deps.py`
 (composition-root — public'e geçmek `PermissionChecker` üzerinden döngü
-üretir), `app/core/container.py`/`app/database/repositories/__init__.py`
+üretir), `v2/modules/platform_infra/container.py`/`app/database/repositories/__init__.py`
 (proje-geneli DI-wiring istisnası), `app/main.py`/`app/infrastructure/
 websocket/ws_auth.py` (2026-07-18'den beri public üzerinden).
 

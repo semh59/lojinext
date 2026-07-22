@@ -1,8 +1,8 @@
 import asyncio
 
-from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.ai_assistant.infrastructure.rag.rag_engine import get_rag_engine
+from v2.modules.platform_infra.events.event_bus import Event, EventType, get_event_bus
 
 logger = get_logger(__name__)
 

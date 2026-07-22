@@ -2,7 +2,7 @@
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: ML ensemble yakıt tahmini — model dosyaları başlangıçta bir kez yüklenir.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 """
 
 import asyncio
@@ -513,6 +513,6 @@ class PredictionService:
 
 def get_prediction_service() -> PredictionService:
     """Delegates to the DI container for the singleton PredictionService instance."""
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().prediction_service

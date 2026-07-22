@@ -30,7 +30,7 @@ def _make_service():
 
 
 def _make_event(data: dict):
-    from app.infrastructure.events.event_bus import Event, EventType
+    from v2.modules.platform_infra.events.event_bus import Event, EventType
 
     return Event(type=EventType.ARAC_ADDED, data=data)
 

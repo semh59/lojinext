@@ -14,7 +14,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 SEFER_UPDATED = EventType.SEFER_UPDATED
 SLA_DELAY = EventType.SLA_DELAY

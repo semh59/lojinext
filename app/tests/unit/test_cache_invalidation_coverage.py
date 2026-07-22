@@ -19,7 +19,7 @@ pytestmark = pytest.mark.unit
 
 def _make_event(event_type, data=None):
     """Build a minimal Event-like object."""
-    from app.infrastructure.events.event_bus import Event
+    from v2.modules.platform_infra.events.event_bus import Event
 
     return Event(type=event_type, data=data or {})
 
@@ -97,7 +97,7 @@ def _setup_with_mocks():
 
 def test_setup_registers_sefer_handlers():
     mock_bus, _ = _setup_with_mocks()
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     subscribed_types = [call.args[0] for call in mock_bus.subscribe.call_args_list]
     assert EventType.SEFER_ADDED in subscribed_types
@@ -107,7 +107,7 @@ def test_setup_registers_sefer_handlers():
 
 def test_setup_registers_yakit_handlers():
     mock_bus, _ = _setup_with_mocks()
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     subscribed_types = [call.args[0] for call in mock_bus.subscribe.call_args_list]
     assert EventType.YAKIT_ADDED in subscribed_types
@@ -117,7 +117,7 @@ def test_setup_registers_yakit_handlers():
 
 def test_setup_registers_arac_handlers():
     mock_bus, _ = _setup_with_mocks()
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     subscribed_types = [call.args[0] for call in mock_bus.subscribe.call_args_list]
     assert EventType.ARAC_ADDED in subscribed_types
@@ -127,7 +127,7 @@ def test_setup_registers_arac_handlers():
 
 def test_setup_registers_sofor_handlers():
     mock_bus, _ = _setup_with_mocks()
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     subscribed_types = [call.args[0] for call in mock_bus.subscribe.call_args_list]
     assert EventType.SOFOR_ADDED in subscribed_types
@@ -137,7 +137,7 @@ def test_setup_registers_sofor_handlers():
 
 def test_setup_registers_calculation_and_settings_handlers():
     mock_bus, _ = _setup_with_mocks()
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     subscribed_types = [call.args[0] for call in mock_bus.subscribe.call_args_list]
     assert EventType.PERIYOT_CREATED in subscribed_types
@@ -169,7 +169,7 @@ def _get_handler_sync(event_type_name: str):
 
         ci_mod.setup_cache_invalidation()
 
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     target = EventType[event_type_name]
     for call in mock_bus.subscribe.call_args_list:
@@ -180,7 +180,7 @@ def _get_handler_sync(event_type_name: str):
 
 async def test_sefer_handler_deletes_stats_patterns():
     handler, mock_cache = _get_handler_sync("SEFER_ADDED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.SEFER_ADDED, data={})
 
@@ -201,7 +201,7 @@ async def test_sefer_handler_deletes_stats_patterns():
 async def test_sefer_handler_deletes_arac_specific_pattern():
     """When event.data contains result.arac_id, the arac-specific key is deleted."""
     handler, mock_cache = _get_handler_sync("SEFER_ADDED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.SEFER_ADDED, data={"result": {"arac_id": 17}})
 
@@ -218,7 +218,7 @@ async def test_sefer_handler_deletes_arac_specific_pattern():
 async def test_sefer_handler_no_arac_specific_when_result_not_dict():
     """When result is not a dict, no arac-specific key is added."""
     handler, mock_cache = _get_handler_sync("SEFER_UPDATED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.SEFER_UPDATED, data={"result": "string_value"})
 
@@ -235,7 +235,7 @@ async def test_sefer_handler_no_arac_specific_when_result_not_dict():
 
 async def test_yakit_handler_deletes_yakit_patterns():
     handler, mock_cache = _get_handler_sync("YAKIT_ADDED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.YAKIT_ADDED)
 
@@ -253,7 +253,7 @@ async def test_yakit_handler_deletes_yakit_patterns():
 
 async def test_arac_handler_deletes_arac_and_stats():
     handler, mock_cache = _get_handler_sync("ARAC_ADDED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.ARAC_ADDED)
 
@@ -270,7 +270,7 @@ async def test_arac_handler_deletes_arac_and_stats():
 
 async def test_sofor_handler_deletes_sofor_patterns():
     handler, mock_cache = _get_handler_sync("SOFOR_ADDED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.SOFOR_ADDED)
 
@@ -287,7 +287,7 @@ async def test_sofor_handler_deletes_sofor_patterns():
 
 async def test_calculation_handler_deletes_periyot_regression():
     handler, mock_cache = _get_handler_sync("PERIYOT_CREATED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.PERIYOT_CREATED)
 
@@ -304,7 +304,7 @@ async def test_calculation_handler_deletes_periyot_regression():
 
 async def test_settings_handler_clears_all_cache():
     handler, mock_cache = _get_handler_sync("SETTINGS_CHANGED")
-    from app.infrastructure.events.event_types import EventType
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event = _make_event(EventType.SETTINGS_CHANGED)
     await handler(event)

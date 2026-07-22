@@ -204,7 +204,7 @@ async def execute_import(
                     inserted_ids.append(sefer_id)
                     basarili += 1
 
-                    from app.infrastructure.events.event_bus import (
+                    from v2.modules.platform_infra.events.event_bus import (
                         Event,
                         EventType,
                         get_event_bus,

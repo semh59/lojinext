@@ -14,9 +14,9 @@ gitmeli.
 from datetime import date
 from typing import Any, Dict, List, Optional
 
-from app.infrastructure.events.event_bus import EventBus, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.platform_infra.events.event_bus import EventBus, get_event_bus
 from v2.modules.trip.application import list_trips, onay
 from v2.modules.trip.application.add_trip import add_sefer as _add_sefer
 from v2.modules.trip.application.bulk_add_trips import bulk_add_sefer as _bulk_add_sefer
@@ -207,6 +207,6 @@ class SeferService:
 
 def get_sefer_service() -> SeferService:
     """Dependency Injection provider for SeferService."""
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().sefer_service

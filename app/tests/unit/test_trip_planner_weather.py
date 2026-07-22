@@ -53,7 +53,7 @@ def _patch_container_weather(monkeypatch, weather_service):
     """get_container().weather_service'i fake ile değiştir."""
     fake = type("FakeContainer", (), {})()
     fake.weather_service = weather_service
-    monkeypatch.setattr("app.core.container.get_container", lambda: fake)
+    monkeypatch.setattr("v2.modules.platform_infra.container.get_container", lambda: fake)
 
 
 def _make_engine():

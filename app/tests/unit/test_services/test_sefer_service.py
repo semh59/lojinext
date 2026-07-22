@@ -10,8 +10,8 @@ from datetime import date, timedelta
 import pytest
 from pydantic import ValidationError
 
-from app.infrastructure.events.event_bus import get_event_bus
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.platform_infra.events.event_bus import get_event_bus
 from v2.modules.trip.application.trip_service import SeferService
 from v2.modules.trip.infrastructure.repository import SeferRepository
 from v2.modules.trip.schemas import SeferCreate

@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/infrastructure/events/event_bus.py.
+Additional coverage tests for v2/modules/platform_infra/events/event_bus.py.
 
 Targets uncovered lines:
 - _connect_redis: fallback to direct Redis connection when cache is unavailable
@@ -16,12 +16,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.infrastructure.events.event_bus import (
+from v2.modules.platform_infra.events.event_bus import (
     Event,
     EventBus,
     get_event_bus,
 )
-from app.infrastructure.events.event_types import EventType
+from v2.modules.platform_infra.events.event_types import EventType
 
 pytestmark = pytest.mark.unit
 
@@ -308,7 +308,7 @@ def test_connect_redis_ping_failure_sets_redis_none():
     mock_redis_class.from_url = MagicMock(return_value=mock_redis_instance)
 
     with (
-        patch("app.infrastructure.events.event_bus.get_redis_cache") as mock_cache,
+        patch("v2.modules.platform_infra.events.event_bus.get_redis_cache") as mock_cache,
         patch("redis.Redis", mock_redis_class),
     ):
         mock_cache.side_effect = Exception("cache unavailable")

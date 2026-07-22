@@ -9,10 +9,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.infrastructure.events.event_bus import Event, EventBus, EventType
 from v2.modules.fleet.domain.entities import Arac
 from v2.modules.fuel.domain.entities import YakitAlimi, YakitPeriyodu
 from v2.modules.platform_infra.cache.cache_manager import CacheManager, _sign
+from v2.modules.platform_infra.events.event_bus import Event, EventBus, EventType
 from v2.modules.trip.domain.entities import Sefer
 
 

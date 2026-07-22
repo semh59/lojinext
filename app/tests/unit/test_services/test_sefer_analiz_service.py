@@ -155,7 +155,7 @@ class TestReconcileCosts:
         ):
             await reconcile_costs(sefer_id=1)
 
-        from app.infrastructure.events.event_bus import EventType
+        from v2.modules.platform_infra.events.event_bus import EventType
 
         calls = event_bus.publish_simple_async.call_args_list
         event_types = [c.args[0] for c in calls]
@@ -254,7 +254,7 @@ class TestReconcileCosts:
         ):
             await reconcile_costs(sefer_id=1, consumption_threshold=10.0)
 
-        from app.infrastructure.events.event_bus import EventType
+        from v2.modules.platform_infra.events.event_bus import EventType
 
         calls = event_bus.publish_simple_async.call_args_list
         event_types = [c.args[0] for c in calls]

@@ -2,7 +2,7 @@
 
 STATUS: farklı olarak diğer taşınan modüllerden (location/notification/
 fleet/fuel/driver — hepsinin ölü `@publishes` decorator'lı KULLANICI_*/
-YAKIT_*/ARAC_* event tipleri vardı), ``app/infrastructure/events/
+YAKIT_*/ARAC_* event tipleri vardı), ``v2/modules/platform_infra/events/
 event_bus.py::EventType`` içinde KULLANICI_ADDED/UPDATED/DELETED veya
 ROL_ADDED/UPDATED gibi bir enum değeri YOK — bu modül hiçbir zaman
 event-bus'a bağlanmadı (taşımadan önce de böyleydi, regresyon değil,

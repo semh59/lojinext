@@ -119,6 +119,6 @@ class AIService:
 
 
 def get_ai_service() -> AIService:
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().ai_service

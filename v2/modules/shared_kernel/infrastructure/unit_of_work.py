@@ -39,7 +39,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.connection import AsyncSessionLocal
 from app.database.db_session import _session_ctx
-from app.infrastructure.events.event_bus import EventBus, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.admin_platform.infrastructure.repository import AdminConfigRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
@@ -65,6 +64,7 @@ from v2.modules.fuel.infrastructure.repository import YakitRepository
 from v2.modules.import_excel.infrastructure.repository import ImportHistoryRepository
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.notification.infrastructure.repository import NotificationRepository
+from v2.modules.platform_infra.events.event_bus import EventBus, get_event_bus
 from v2.modules.prediction_ml.infrastructure.ml_training_repo import (
     MLTrainingRepository,
 )

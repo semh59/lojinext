@@ -215,7 +215,7 @@ async def test_lifespan_startup_and_shutdown():
             "v2.modules.prediction_ml.public.get_ensemble_service",
         ),
         patch(
-            "app.core.container.get_container",
+            "v2.modules.platform_infra.container.get_container",
             return_value=mock_container,
         ),
         patch(

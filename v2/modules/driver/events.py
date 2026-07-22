@@ -18,7 +18,7 @@ nothing anywhere invoked it, so this subscription never existed at
 runtime.
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 SOFOR_ADDED = EventType.SOFOR_ADDED
 SOFOR_UPDATED = EventType.SOFOR_UPDATED

@@ -3,14 +3,14 @@ from pathlib import Path
 import pytest
 
 from app.infrastructure.audit.audit_logger import audit_log as canonical_audit_log
-from app.infrastructure.events.event_bus import EventType as BusEventType
-from app.infrastructure.events.event_types import EventType as CanonicalEventType
 from app.infrastructure.logging.audit_logger import (
     _mask_sensitive_data,
 )
 from app.infrastructure.logging.audit_logger import (
     audit_log as compat_audit_log,
 )
+from v2.modules.platform_infra.events.event_bus import EventType as BusEventType
+from v2.modules.platform_infra.events.event_types import EventType as CanonicalEventType
 
 
 def test_event_type_uses_single_canonical_source():

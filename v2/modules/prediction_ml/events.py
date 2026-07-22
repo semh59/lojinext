@@ -19,7 +19,7 @@ Her iki handler da ``app/main.py``'nin lifespan startup'ında
 ile bağlanır.
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 YAKIT_ADDED = EventType.YAKIT_ADDED
 SEFER_ADDED = EventType.SEFER_ADDED

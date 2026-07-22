@@ -7,7 +7,7 @@ TASKS/modules/auth-rbac.md and .importlinter's forbidden-imports contract).
 — hiçbir gerçek tüketici buradan geçmiyordu. 7 kardeş v2 modülü +
 `app/core/services/sefer_read_service.py` + 5 admin endpoint + 3 script
 artık gerçekten ``public`` üzerinden gidiyor (düzeltildi). ``app/api/
-deps.py``/``app/core/container.py``/``app/database/repositories/
+deps.py``/``v2/modules/platform_infra/container.py``/``app/database/repositories/
 __init__.py``/``app/infrastructure/websocket/ws_auth.py``/``app/main.py``
 hâlâ dokümante edilmiş composition-root/framework-wiring istisnası (bkz.
 aşağı) — bu proje genelinde tutarlı bir karar, auth_rbac'a özgü değil.

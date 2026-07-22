@@ -284,8 +284,9 @@ yaşayan cohesive bir dosya kaybedilirdi.
   `app.api.v1.endpoints.internal`'dan alınıyordu; mekanik taşıma bunu
   birebir korudu, yeni bir sızıntı değil.
 - **`get_internal_service`/`InternalService` container property'si
-  kaldırıldı**: `app/core/container.py`'nin `internal_service` lazy
-  property'si ve `__init__`'teki `self._internal_service` alanı silindi
+  kaldırıldı**: DI container'ın (o zaman `app/core/container.py`, dalga
+  17'de `v2/modules/platform_infra/container.py`'ye taşındı) `internal_service`
+  lazy property'si ve `__init__`'teki `self._internal_service` alanı silindi
   — dissolve edilen sınıfın artık DI-injected bir instance'ı yok, her
   tüketici `telegram_bridge.py`'nin free function'larını doğrudan
   çağırıyor.

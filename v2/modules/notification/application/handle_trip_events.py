@@ -12,7 +12,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List
 
-from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.notification.events import SeferUpdatedPayload, SlaDelayPayload
 from v2.modules.notification.infrastructure.models import (
@@ -22,6 +21,7 @@ from v2.modules.notification.infrastructure.models import (
 from v2.modules.notification.infrastructure.ws_broadcaster import (
     notification_ws_manager,
 )
+from v2.modules.platform_infra.events.event_bus import Event, EventType, get_event_bus
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

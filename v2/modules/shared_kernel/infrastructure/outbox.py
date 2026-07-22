@@ -35,9 +35,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.events.event_bus import Event, get_event_bus
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.resilience.shutdown import is_stopping
+from v2.modules.platform_infra.events.event_bus import Event, get_event_bus
 from v2.modules.shared_kernel.infrastructure.base import Base, get_utc_now
 
 logger = get_logger(__name__)
@@ -153,7 +153,7 @@ class OutboxService:
                     break
 
                 try:
-                    from app.infrastructure.events.event_types import EventType
+                    from v2.modules.platform_infra.events.event_types import EventType
 
                     event = Event(
                         type=EventType(db_event.event_type),

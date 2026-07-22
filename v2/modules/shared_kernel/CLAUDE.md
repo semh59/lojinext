@@ -176,8 +176,9 @@ injection.
 
 ## Kapsam dışı bırakılanlar (shared_kernel'e AİT DEĞİL, karıştırılmasın)
 
-- `app/core/container.py` — DI composition root, bootstrap-seviyesi,
-  ayrı bir konsept (muhtemelen `platform_infra`/dalga 17).
+- `v2/modules/platform_infra/container.py` (dalga 17'de `app/core/
+  container.py`'den taşındı) — DI composition root, bootstrap-seviyesi,
+  ayrı bir konsept.
 - `app/core/ai/*` (5 dosya) — ai_assistant modülünün henüz taşınmamış
   eski dosyaları (kendi CLAUDE.md'sinde dokümante, bu modülün kapsamı
   dışı).

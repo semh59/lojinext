@@ -2,7 +2,7 @@
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: Anomali tespiti — Isolation Forest + LGBM modelleri başlangıçta yüklenir.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 
 ``AnomalyDetector`` sınıf istisnası (B.1): ``RouteSimulator``/``LokasyonHydrator``/
 ``DriverPerformanceML`` ile aynı gerekçe — sklearn ``IsolationForest`` +
@@ -624,6 +624,6 @@ class AnomalyDetector:
 
 def get_anomaly_detector() -> AnomalyDetector:
     """Delegates to the DI container for the singleton AnomalyDetector instance."""
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().anomaly_detector

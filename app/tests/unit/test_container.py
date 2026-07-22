@@ -7,7 +7,7 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from app.core.container import Container, get_container
+from v2.modules.platform_infra.container import Container, get_container
 
 
 class TestNoModuleLevelContainerImport:
@@ -23,7 +23,7 @@ class TestNoModuleLevelContainerImport:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
+            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "
@@ -70,7 +70,7 @@ class TestContainerLazyLoading:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
+            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "

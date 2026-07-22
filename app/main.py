@@ -372,7 +372,7 @@ async def lifespan(app: FastAPI):
                 t.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
 
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         get_container().shutdown()
         await engine.dispose()

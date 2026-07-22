@@ -7,13 +7,13 @@ to ensure clean state.  Redis is disabled (no REDIS_URL env set in unit tests).
 
 import pytest
 
-from app.infrastructure.events.event_bus import (
+from v2.modules.platform_infra.events.event_bus import (
     Event,
     EventBus,
     get_event_bus,
     publishes,
 )
-from app.infrastructure.events.event_types import EventType
+from v2.modules.platform_infra.events.event_types import EventType
 
 pytestmark = pytest.mark.unit
 

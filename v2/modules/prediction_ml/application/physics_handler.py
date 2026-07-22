@@ -1,8 +1,8 @@
 import asyncio
 from datetime import date
 
-from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.events.event_bus import Event, EventType, get_event_bus
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,

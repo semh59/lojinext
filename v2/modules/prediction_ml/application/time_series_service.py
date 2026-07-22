@@ -3,7 +3,7 @@
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: ARIMA zaman serisi tahmini — model başlangıçta başlatılır.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 """
 
 from __future__ import annotations
@@ -340,6 +340,6 @@ class TimeSeriesService:
 
 
 def get_time_series_service() -> TimeSeriesService:
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().time_series_service

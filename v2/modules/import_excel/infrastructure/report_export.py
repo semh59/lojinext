@@ -2,7 +2,7 @@
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: Dışa aktarma servisi — Excel/PDF üretimi, stateless.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 """
 
 import os
@@ -359,6 +359,6 @@ class ExportService:
 
 def get_export_service() -> ExportService:
     """Delegates to the DI container for the singleton ExportService instance."""
-    from app.core.container import get_container
+    from v2.modules.platform_infra.container import get_container
 
     return get_container().export_service

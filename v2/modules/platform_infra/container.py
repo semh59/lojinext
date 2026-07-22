@@ -1,6 +1,11 @@
 """
 TIR Yakıt Takip Sistemi - Uygulama Ömürlü DI Container.
 
+`app/core/container.py`'den dalga 17 (platform_infra) denetiminde taşındı —
+mekanik taşıma, davranış değişikliği yok (bkz. `TASKS/modules/
+platform-infra.md`). TYPE_CHECKING/deferred-import deseni ve tüm lazy
+singleton mekaniği birebir korundu.
+
 Bu container yalnızca **uygulama ömrü boyunca yaşayan singleton** servisleri
 barındırır: ML/AI motorları, anomali dedektörü, hava durumu servisi vb.
 
@@ -22,10 +27,10 @@ import threading
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from app.infrastructure.events.event_bus import EventBus
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
     from v2.modules.auth_rbac.application.license_service import LicenseEngine
+    from v2.modules.platform_infra.events.event_bus import EventBus
     from v2.modules.prediction_ml.application.prediction_service import (
         PredictionService,
     )
@@ -104,7 +109,7 @@ class Container:
         if self._event_bus is None:
             with self._lock:
                 if self._event_bus is None:
-                    from app.infrastructure.events.event_bus import get_event_bus
+                    from v2.modules.platform_infra.events.event_bus import get_event_bus
 
                     self._event_bus = get_event_bus()
         return self._event_bus

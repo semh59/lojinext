@@ -1,6 +1,6 @@
 """Event surface of the trip module.
 
-Trip kendi ``EventType``'ını tanımlamaz — `app.infrastructure.events.event_bus.EventType`
+Trip kendi ``EventType``'ını tanımlamaz — `v2.modules.platform_infra.events.event_bus.EventType`
 üzerinden paylaşılan sabitleri kullanır (henüz `shared_kernel`'e taşınmadı).
 
 **Yayınlar:**
@@ -21,6 +21,6 @@ Trip kendi ``EventType``'ını tanımlamaz — `app.infrastructure.events.event_
 (trip → diğer modüller).
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 __all__ = ["EventType"]

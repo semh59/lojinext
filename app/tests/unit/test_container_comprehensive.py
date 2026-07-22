@@ -39,14 +39,14 @@ sys.path.insert(0, str(APP_DIR))
 
 def setup_module(module):
     """Modül başlangıcında container'ı sıfırla."""
-    from app.core.container import reset_container
+    from v2.modules.platform_infra.container import reset_container
 
     reset_container()
 
 
 def teardown_module(module):
     """Modül sonunda container'ı sıfırla."""
-    from app.core.container import reset_container
+    from v2.modules.platform_infra.container import reset_container
 
     reset_container()
 
@@ -54,7 +54,7 @@ def teardown_module(module):
 @pytest.fixture
 def fresh_container():
     """Her test için temiz container sağlar."""
-    from app.core.container import get_container, reset_container
+    from v2.modules.platform_infra.container import get_container, reset_container
 
     reset_container()
     container = get_container()
@@ -90,7 +90,7 @@ class TestContainerSingleton:
 
     def test_get_container_returns_same_instance(self):
         """get_container() her çağrıda aynı instance'ı döndürmeli."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container1 = get_container()
         container2 = get_container()
@@ -102,7 +102,7 @@ class TestContainerSingleton:
 
     def test_singleton_preserves_state(self):
         """Singleton instance state'i korumalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container1 = get_container()
         # State'i kontrol et
@@ -114,7 +114,7 @@ class TestContainerSingleton:
 
     def test_reset_clears_singleton(self):
         """reset_container() singleton'ı temizlemeli."""
-        from app.core.container import get_container, reset_container
+        from v2.modules.platform_infra.container import get_container, reset_container
 
         container1 = get_container()
         original_id = id(container1)
@@ -145,7 +145,7 @@ class TestContainerInitialization:
         gidiyordu, container'daki ayrı kopyaları hiçbir yerden okunmuyordu
         (bkz. ``TASKS/modules/platform-infra.md`` madde 0).
         """
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -153,7 +153,7 @@ class TestContainerInitialization:
 
     def test_all_services_initialized(self):
         """Tüm servisler initialize edilmeli."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -170,7 +170,7 @@ class TestContainerInitialization:
 
     def test_event_bus_initialized(self):
         """EventBus initialize edilmeli."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -178,7 +178,7 @@ class TestContainerInitialization:
 
     def test_container_is_correct_type(self):
         """Container doğru tipte olmalı."""
-        from app.core.container import Container, get_container
+        from v2.modules.platform_infra.container import Container, get_container
 
         container = get_container()
 
@@ -195,7 +195,7 @@ class TestDependencyInjection:
 
     def test_sefer_service_has_correct_repo(self):
         """SeferService doğru repository'yi almalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -216,7 +216,7 @@ class TestDependencyInjection:
 
     def test_all_services_share_same_event_bus(self):
         """Event-publishing servisler aynı EventBus'ı paylaşmalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -284,7 +284,7 @@ class TestFactoryFunctions:
 
     def test_get_sefer_service_returns_container_instance(self):
         """get_sefer_service() Container'daki instance'ı döndürmeli."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
         from v2.modules.trip.application.trip_service import get_sefer_service
 
         container = get_container()
@@ -323,7 +323,7 @@ class TestThreadSafety:
 
     def test_concurrent_get_container_returns_same_instance(self):
         """Concurrent get_container() çağrıları aynı instance döndürmeli."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         results = []
         num_threads = 20
@@ -345,7 +345,7 @@ class TestThreadSafety:
 
     def test_concurrent_service_access(self):
         """Concurrent servis erişimi thread-safe olmalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
         errors = []
@@ -383,7 +383,7 @@ class TestContainerReset:
 
     def test_reset_clears_container(self):
         """reset_container() container'ı temizlemeli."""
-        from app.core.container import get_container, reset_container
+        from v2.modules.platform_infra.container import get_container, reset_container
 
         container1 = get_container()
         service1 = container1.sefer_service
@@ -399,7 +399,7 @@ class TestContainerReset:
 
     def test_multiple_resets_work(self):
         """Birden fazla reset çalışmalı."""
-        from app.core.container import get_container, reset_container
+        from v2.modules.platform_infra.container import get_container, reset_container
 
         containers = []
         for i in range(3):
@@ -411,7 +411,7 @@ class TestContainerReset:
 
     def test_fresh_container_after_reset_is_functional(self):
         """Reset sonrası yeni container fonksiyonel olmalı."""
-        from app.core.container import get_container, reset_container
+        from v2.modules.platform_infra.container import get_container, reset_container
 
         reset_container()
         container = get_container()
@@ -442,7 +442,11 @@ class TestEdgeCases:
 
     def test_container_initialization_is_idempotent(self):
         """Container birden fazla kez oluşturulabilmeli (reset sonrası)."""
-        from app.core.container import Container, get_container, reset_container
+        from v2.modules.platform_infra.container import (
+            Container,
+            get_container,
+            reset_container,
+        )
 
         # İlk oluşturma
         container1 = get_container()
@@ -459,7 +463,7 @@ class TestEdgeCases:
 
     def test_container_services_are_not_none_after_init(self):
         """Container init sonrası hiçbir servis None olmamalı (Property erişimi sonrası)."""
-        from app.core.container import Container
+        from v2.modules.platform_infra.container import Container
 
         container = Container()
 
@@ -485,7 +489,7 @@ class TestContainerIntegration:
 
     def test_full_dependency_chain_works(self):
         """Tam bağımlılık zinciri çalışmalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 
@@ -500,7 +504,7 @@ class TestContainerIntegration:
 
     def test_event_bus_consistency(self):
         """Tüm event-publishing servisler aynı bus'ı kullanmalı."""
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         container = get_container()
 

@@ -1,6 +1,6 @@
 """Event surface of the admin_platform module.
 
-admin_platform does not publish or listen to any ``app.infrastructure.events
+admin_platform does not publish or listen to any ``v2.modules.platform_infra.events
 .event_bus.EventType`` domain event — it has no ``EventType`` entries of its
 own and no ``@publishes``/handler wiring.
 

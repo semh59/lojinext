@@ -5,9 +5,9 @@ from typing import Any, Optional, cast
 
 from app.core.services.route_validator import RouteValidator
 from app.infrastructure.audit import audit_log
-from app.infrastructure.events.event_bus import EventType, publishes
 from app.infrastructure.logging.logger import get_logger
 from app.infrastructure.monitoring.service_probe import monitor_errors
+from v2.modules.platform_infra.events.event_bus import EventType, publishes
 from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork

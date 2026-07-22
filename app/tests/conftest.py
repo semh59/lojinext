@@ -36,7 +36,6 @@ os.environ["OPENROUTE_API_KEY"] = "dummy_test_key"
 os.environ["CORS_ORIGINS"] = "http://localhost"
 os.environ["MAPBOX_API_KEY"] = ""
 
-import app.core.container as container_mod  # noqa: E402
 import v2.modules.admin_platform.infrastructure.repository as admin_config_mod  # noqa: E402
 import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
 import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
@@ -44,6 +43,7 @@ import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: 
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
 import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
+import v2.modules.platform_infra.container as container_mod  # noqa: E402
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
 
 # error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
@@ -158,7 +158,7 @@ def reset_event_bus_singleton():
     The singleton is lazy — resetting _instance forces re-init on next access,
     which picks up the fresh CacheManager that mock_redis_for_cache_manager sets up.
     """
-    from app.infrastructure.events import event_bus as eb_mod
+    from v2.modules.platform_infra.events import event_bus as eb_mod
 
     eb_mod.EventBus._instance = None
     yield

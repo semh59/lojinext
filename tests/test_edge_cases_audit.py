@@ -365,7 +365,7 @@ class TestConcurrentAccess:
         """Singleton pattern thread-safe olmalı."""
         from concurrent.futures import ThreadPoolExecutor
 
-        from app.core.container import get_container, reset_container
+        from v2.modules.platform_infra.container import get_container, reset_container
 
         reset_container()
         results = []

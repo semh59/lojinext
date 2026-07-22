@@ -31,7 +31,7 @@ def test_wind_factor_below_cap_unchanged():
 
 def test_seasonal_factor_capped(monkeypatch):
     from app.config import settings as s
-    from app.core.services.weather_service import WeatherService
+    from v2.modules.route_simulation.application.weather_service import WeatherService
 
     monkeypatch.setattr(s, "SEASONAL_FACTOR_MAX", 1.03)
     ws = WeatherService()

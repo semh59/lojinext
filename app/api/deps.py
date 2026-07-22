@@ -37,7 +37,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.core.services.weather_service import WeatherService, get_weather_service
 
 # NOT (2026-07-18 denetimi): bu üç import auth_rbac.public YERİNE bilinçli
 # olarak domain-leaf yollarından yapılır — public.py, `PermissionChecker`
@@ -62,7 +61,6 @@ reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/tok
 
 SessionDep = Annotated[AsyncSession, Depends(get_db)]
 TokenDep = Annotated[str, Depends(reusable_oauth2)]
-WeatherServiceDep = Annotated[WeatherService, Depends(get_weather_service)]
 UOWDep = Annotated[UnitOfWork, Depends(get_uow)]
 
 

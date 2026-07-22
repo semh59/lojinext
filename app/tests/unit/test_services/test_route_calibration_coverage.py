@@ -1,4 +1,4 @@
-"""Tests for app/core/services/route_calibration_service.py — fully real DB.
+"""Tests for v2/modules/route_simulation/application/route_calibration_service.py — fully real DB.
 
 Every test runs the service against a real ``UnitOfWork`` (whose session is the
 conftest-monkeypatched test session) over real seeded Sefer / Lokasyon /
@@ -17,8 +17,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from app.core.services.route_calibration_service import RouteCalibrationService
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sefer, seed_sofor
+from v2.modules.route_simulation.application.route_calibration_service import (
+    RouteCalibrationService,
+)
 from v2.modules.route_simulation.public import GuzergahKalibrasyon
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
@@ -192,7 +194,9 @@ class TestGetCalibrationForLokasyon:
 class TestCalibrateRouteEarlyReturns:
     async def test_raises_without_shapely(self, db_session):
         """Missing optional dependency → RuntimeError (no DB write reached)."""
-        from app.core.services import route_calibration_service as mod
+        from v2.modules.route_simulation.application import (
+            route_calibration_service as mod,
+        )
 
         orig_line, orig_from = mod.LineString, mod.from_shape
         try:
@@ -207,7 +211,9 @@ class TestCalibrateRouteEarlyReturns:
             mod.LineString, mod.from_shape = orig_line, orig_from
 
     async def test_returns_false_missing_sefer(self, db_session):
-        from app.core.services import route_calibration_service as mod
+        from v2.modules.route_simulation.application import (
+            route_calibration_service as mod,
+        )
 
         if mod.LineString is None:
             pytest.skip("shapely not installed")
@@ -218,7 +224,9 @@ class TestCalibrateRouteEarlyReturns:
         assert result is False
 
     async def test_returns_false_insufficient_coords(self, db_session):
-        from app.core.services import route_calibration_service as mod
+        from v2.modules.route_simulation.application import (
+            route_calibration_service as mod,
+        )
 
         if mod.LineString is None:
             pytest.skip("shapely not installed")
@@ -296,7 +304,9 @@ class TestMatchSeferToPathStoredCalibration:
 
 class TestCalibrateRouteWritePath:
     async def test_creates_new_calibration(self, db_session):
-        from app.core.services import route_calibration_service as mod
+        from v2.modules.route_simulation.application import (
+            route_calibration_service as mod,
+        )
 
         if mod.LineString is None:
             pytest.skip("shapely not installed")
@@ -325,7 +335,9 @@ class TestCalibrateRouteWritePath:
         assert len(bytes(row.hedef_path)) > 0
 
     async def test_updates_existing_calibration_resets_match_count(self, db_session):
-        from app.core.services import route_calibration_service as mod
+        from v2.modules.route_simulation.application import (
+            route_calibration_service as mod,
+        )
 
         if mod.LineString is None:
             pytest.skip("shapely not installed")

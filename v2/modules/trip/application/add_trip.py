@@ -3,7 +3,6 @@
 from datetime import date
 from typing import Any, Optional, cast
 
-from app.core.services.route_validator import RouteValidator
 from v2.modules.platform_infra.public import (
     EventType,
     audit_log,
@@ -11,6 +10,7 @@ from v2.modules.platform_infra.public import (
     monitor_errors,
     publishes,
 )
+from v2.modules.route_simulation.public import RouteValidator
 from v2.modules.shared_kernel.exceptions import RouteProcessingError
 from v2.modules.shared_kernel.infrastructure.outbox import get_outbox_service
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork

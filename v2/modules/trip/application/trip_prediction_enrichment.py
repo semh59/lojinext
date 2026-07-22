@@ -370,8 +370,8 @@ async def predict_outbound(
     if settings.USE_SEFER_FUEL_ESTIMATOR:
         return await predict_via_estimator(uow, data, trip_date, route_dict)
     try:
-        from app.core.services.weather_service import get_weather_service
         from v2.modules.prediction_ml.public import get_prediction_service
+        from v2.modules.route_simulation.public import get_weather_service
 
         pred_service = get_prediction_service()
         weather_service = get_weather_service()

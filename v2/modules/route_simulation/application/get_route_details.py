@@ -4,10 +4,10 @@ Production rule: provider failures must surface as provider failures. The
 service must not fabricate route geometry, road-class breakdowns, or segment
 analysis when live routing is unavailable.
 
-NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) henüz
-v2'ye taşınmadı — eski yoldan import ediliyor, dokümante edilmiş geçici
-bağımlılık. ``get_prediction_service`` (prediction_ml) 2026-07-18'de
-``v2.modules.prediction_ml.public`` üzerinden erişecek şekilde güncellendi.
+``RouteValidator`` (``domain/route_validator.py``) 2026-07-22'de bu modüle
+taşındı — artık modül-içi doğrudan import. ``get_prediction_service``
+(prediction_ml) 2026-07-18'de ``v2.modules.prediction_ml.public`` üzerinden
+erişecek şekilde güncellendi.
 """
 
 import os
@@ -68,7 +68,7 @@ async def get_route_details(
 
     Returns an error payload with `error_code` when provider access fails.
     """
-    from app.core.services.route_validator import RouteValidator
+    from v2.modules.route_simulation.domain.route_validator import RouteValidator
 
     lon1, lat1 = start_coords
     lon2, lat2 = end_coords

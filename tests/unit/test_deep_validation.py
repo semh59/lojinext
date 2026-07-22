@@ -5,11 +5,11 @@ import pytest
 
 sys.path.append(os.getcwd())
 
-from app.core.services.route_validator import RouteValidator
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
 )
+from v2.modules.route_simulation.domain.route_validator import RouteValidator
 
 
 class TestDeepValidation:

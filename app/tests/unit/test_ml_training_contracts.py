@@ -189,7 +189,7 @@ async def test_train_for_vehicle_uses_each_trip_date_for_seasonal_factor(monkeyp
         return 1.18 if target_date.month == 1 else 0.91
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=get_seasonal_factor),
     )
     monkeypatch.setattr(
@@ -231,7 +231,7 @@ async def test_predict_consumption_uses_dorse_repo_without_uow(monkeypatch):
     service.get_predictor = MagicMock(return_value=predictor)
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.05),
     )
     monkeypatch.setattr(
@@ -281,7 +281,7 @@ async def test_predict_consumption_prefers_vehicle_class_fallback_before_general
     )
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.0),
     )
     monkeypatch.setattr(

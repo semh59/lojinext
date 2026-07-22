@@ -96,10 +96,10 @@ Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **rep
 - Tüm tüketiciler güncellendi: `container.py`, `import_service.py`, `sefer_fuel_estimator.py` (P4-5 canlı tahmin pipeline'ı!), `api.py`, location modülünün 2 dosyası, 3 script (`enrich_existing_data.py`, `calibrate_physics.py`, `validate_tractive_offline.py`).
 - **~25 test dosyası** güncellendi (import path + patch-target düzeltmesi, çoğu mekanik).
 
-**🔲 route_simulation'da KALAN (route_simulation'ın kendi ileriki dilimi, kapsam dışı bırakılmadı):**
-- `weather_service.py`, `route_validator.py`, `openroute_service.py` (geocode wrapper), `route_calibration_service.py`, `app/api/v1/endpoints/{weather,admin_calibration}.py`, `app/core/ml/route_similarity.py` — hâlâ eski `app/` yolunda, v2'nin geçici (dokümante) bağımlılığı.
-- `public.py`/`events.py`/`schemas.py` henüz yok — location modülü şu an `application/`'dan doğrudan import ediyor (mimari borç, `route_simulation/CLAUDE.md`'de dokümante).
-- `scripts/backfill_route_pairs.py` henüz kontrol edilmedi.
+**🔲 route_simulation'da KALAN (route_simulation'ın kendi ileriki dilimi, kapsam dışı bırakılmadı):** — ✅ **TAMAMEN KAPANDI (2026-07-22)**. Bu blok dalga 1'in (bu bölümün ilk yazıldığı an) durumunu yansıtıyordu; her madde ayrı ayrı sonradan çözüldü:
+- ~~`weather_service.py`, `route_validator.py`, `route_calibration_service.py`, `app/api/v1/endpoints/{weather,admin_calibration}.py`~~ — 2026-07-22'de bu modüle taşındı (kök CLAUDE.md'nin "Faz 1 bitince v2'ye taşıma biter" hedefinin son parçası). `openroute_service.py` (geocode wrapper) BU modüle ait değil (location'ın bağımlılığı) — `app/core/services/`'te bilinçli olarak kalıyor. `app/core/ml/route_similarity.py` de bu modüle ait değildi zaten (prediction_ml'in parçası, dalga 13'te oraya taşındı — `route_simulation/CLAUDE.md`'de dokümante).
+- ~~`public.py`/`events.py`/`schemas.py` henüz yok~~ — 2026-07-18'de eklendi.
+- `scripts/backfill_route_pairs.py` kontrol edildi (prediction_ml migrasyonu sırasında, `SeferORM` kullanıyor, route_simulation'la ilgisiz).
 
 **✅ Kritik bulgu + fix (detective review sırasında):** `app/tests/conftest.py` iki kez (`lokasyon_repo` VE `route_repo` singleton reset satırları) silinen eski modülleri import ediyordu — bu, conftest yüklenemediği için **TÜM 541 test dosyasının** collect edilememesi anlamına geliyordu (yalnız location/route_simulation değil). Düzeltildi + doğrulandı: `docker compose exec backend python -m pytest app/tests --collect-only` → 6765+ test, 0 hata.
 

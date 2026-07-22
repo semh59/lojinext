@@ -1,3 +1,12 @@
+"""RouteValidator — anormal eğim (grade) verisini tespit edip düzeltir.
+
+2026-07-22'de `app/core/services/route_validator.py`'den taşındı (mekanik,
+davranış değişikliği yok). Saf/stateless bir sınıf (yalnız @staticmethod) —
+I/O yok, `domain/` katmanına uygun. Cross-module tüketiciler
+(`trip.application.{add_trip,update_trip,return_trip}`) artık
+`v2.modules.route_simulation.public`'ten import eder.
+"""
+
 from typing import Dict, Tuple
 
 

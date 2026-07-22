@@ -9,6 +9,13 @@ yoktu ve tüketiciler iç yollardan import ediyordu (dokümante borç,
 
 Not: modülün kendi `api/route_routes.py`'si iç yolları kullanmaya devam
 eder (modül-içi erişim serbesttir).
+
+2026-07-22: `app/`'de kalan son gerçek-kullanımlı route_simulation kodu
+(`weather_service.py`, `route_validator.py`) bu modüle taşındı (kök
+CLAUDE.md'nin "Faz 1 bitince v2'ye taşıma biter" hedefi) — `WeatherService`/
+`WeatherSample`/`get_weather_service`/`RouteValidator` artık burada export
+ediliyor; trip/prediction_ml'in bu iki sembole olan cross-module erişimi
+`app.core.services.*`'ten buraya yönlendirildi.
 """
 
 from v2.modules.route_simulation.application.get_route_details import (
@@ -22,6 +29,12 @@ from v2.modules.route_simulation.application.simulate_route import (
     SimulationResult,
     get_route_simulator,
 )
+from v2.modules.route_simulation.application.weather_service import (
+    WeatherSample,
+    WeatherService,
+    get_weather_service,
+)
+from v2.modules.route_simulation.domain.route_validator import RouteValidator
 from v2.modules.route_simulation.domain.segment_resampler import resample_segments
 from v2.modules.route_simulation.domain.segment_simulator import (
     SegmentInput,
@@ -60,4 +73,10 @@ __all__ = [
     "OpenMeteoElevationClient",
     "get_elevation_client",
     "OpenRouteClient",
+    # weather (2026-07-22'de taşındı)
+    "WeatherService",
+    "WeatherSample",
+    "get_weather_service",
+    # route validation (2026-07-22'de taşındı)
+    "RouteValidator",
 ]

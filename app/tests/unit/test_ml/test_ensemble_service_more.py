@@ -377,7 +377,7 @@ class TestTrainForVehicleAracEntityFail:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -442,7 +442,7 @@ class TestTrainForVehicleSoforKatsayi:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -502,7 +502,7 @@ class TestTrainForVehicleSaveExceptions:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -554,7 +554,7 @@ class TestTrainForVehicleSaveExceptions:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -603,7 +603,7 @@ class TestTrainForVehicleSaveExceptions:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -800,7 +800,7 @@ class TestPredictConsumptionDorse:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -849,7 +849,7 @@ class TestPredictConsumptionDorse:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -884,7 +884,7 @@ class TestPredictConsumptionEntityMapFail:
 
         with (
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -931,7 +931,7 @@ class TestPredictConsumptionSoforStats:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -994,7 +994,7 @@ class TestPredictConsumptionGeneralModelFallback:
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(

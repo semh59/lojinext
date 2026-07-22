@@ -8,7 +8,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.services.weather_service import WeatherSample, WeatherService
+from v2.modules.route_simulation.application.weather_service import (
+    WeatherSample,
+    WeatherService,
+)
 
 
 class FakeCache:
@@ -38,7 +41,7 @@ class FakeExternal:
 
 def _patch_cache(monkeypatch, fake_cache: FakeCache):
     monkeypatch.setattr(
-        "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
+        "v2.modules.platform_infra.public.get_cache_manager",
         lambda: fake_cache,
     )
 
@@ -197,7 +200,7 @@ async def test_cache_exception_falls_through_to_fetch(monkeypatch):
             pass
 
     monkeypatch.setattr(
-        "v2.modules.platform_infra.cache.cache_manager.get_cache_manager",
+        "v2.modules.platform_infra.public.get_cache_manager",
         lambda: BrokenCache(),
     )
 

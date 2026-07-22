@@ -131,7 +131,7 @@ HTTP → api/v1/endpoints → core/services (or services/) → database/reposito
 | Module | Status | CLAUDE.md |
 |---|---|---|
 | `location` | Done (code) — CRUD, geocoding, route hydration | `v2/modules/location/CLAUDE.md` |
-| `route_simulation` | Done (code) — ORS/Mapbox/Open-Meteo clients + segment simulator + `/routes` endpoints + `public.py`/`events.py` (added 2026-07-18); `weather_service.py`/`route_validator.py`/`openroute_service.py`/`route_calibration_service.py`/`admin_calibration.py` endpoint still on old `app/` paths | `v2/modules/route_simulation/CLAUDE.md` |
+| `route_simulation` | Done (code) — ORS/Mapbox/Open-Meteo clients + segment simulator + `/routes` endpoints + `public.py`/`events.py` (added 2026-07-18); `weather_service.py`/`route_validator.py`/`route_calibration_service.py`/`admin_calibration.py` endpoint migrated to this module 2026-07-22 (only `openroute_service.py`'s live geocode surface stays in `app/core/services/` — it's `location`'s dependency, not this module's) | `v2/modules/route_simulation/CLAUDE.md` |
 | `notification` | Done (code) | `v2/modules/notification/CLAUDE.md` |
 | `fleet` | Done (code) | `v2/modules/fleet/CLAUDE.md` |
 | `fuel` | Done (code) | `v2/modules/fuel/CLAUDE.md` |

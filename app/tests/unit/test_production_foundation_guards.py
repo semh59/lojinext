@@ -505,7 +505,12 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
         / "time_series_service.py"
     ).read_text(encoding="utf-8")
     route_calibration_service = (
-        ROOT / "app" / "core" / "services" / "route_calibration_service.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "route_simulation"
+        / "application"
+        / "route_calibration_service.py"
     ).read_text(encoding="utf-8")
     route_service = (
         ROOT
@@ -516,7 +521,12 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
         / "get_route_details.py"
     ).read_text(encoding="utf-8")
     weather_service = (
-        ROOT / "app" / "core" / "services" / "weather_service.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "route_simulation"
+        / "application"
+        / "weather_service.py"
     ).read_text(encoding="utf-8")
     lightgbm_predictor = (
         ROOT / "v2" / "modules" / "prediction_ml" / "domain" / "lightgbm_predictor.py"

@@ -282,7 +282,7 @@ async def test_predict_outbound_no_guzergah_id_skips_weather():
             return_value=mock_pred,
         ),
         patch(
-            "app.core.services.weather_service.get_weather_service",
+            "v2.modules.route_simulation.public.get_weather_service",
             return_value=mock_weather,
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
@@ -315,7 +315,7 @@ async def test_predict_outbound_weather_no_lat_skips_call():
             return_value=mock_pred,
         ),
         patch(
-            "app.core.services.weather_service.get_weather_service",
+            "v2.modules.route_simulation.public.get_weather_service",
             return_value=mock_weather,
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
@@ -346,7 +346,7 @@ async def test_predict_outbound_timeout_returns_none_triple():
             return_value=mock_pred,
         ),
         patch(
-            "app.core.services.weather_service.get_weather_service",
+            "v2.modules.route_simulation.public.get_weather_service",
             return_value=mock_weather,
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),
@@ -400,7 +400,7 @@ async def test_predict_outbound_general_exception_returns_none_triple():
             return_value=mock_pred,
         ),
         patch(
-            "app.core.services.weather_service.get_weather_service",
+            "v2.modules.route_simulation.public.get_weather_service",
             return_value=MagicMock(),
         ),
         patch("app.config.settings.USE_SEFER_FUEL_ESTIMATOR", False),

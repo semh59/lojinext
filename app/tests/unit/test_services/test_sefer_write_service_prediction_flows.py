@@ -4,8 +4,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import app.core.services.weather_service as weather_module
 import v2.modules.prediction_ml.public as prediction_module
+import v2.modules.route_simulation.public as weather_module
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application import (
     add_trip,

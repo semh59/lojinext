@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.core.services.weather_service import WeatherService
+from v2.modules.route_simulation.application.weather_service import WeatherService
 
 
 @pytest.mark.asyncio

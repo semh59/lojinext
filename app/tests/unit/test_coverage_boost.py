@@ -10,13 +10,13 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.services.route_validator import RouteValidator
 from app.main import (
     business_exception_handler,
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
 )
+from v2.modules.route_simulation.domain.route_validator import RouteValidator
 from v2.modules.shared_kernel.errors import (
     BusinessException,
     DiagnosticHelper,

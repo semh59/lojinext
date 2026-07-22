@@ -127,10 +127,12 @@ __all__ = [
     # ORM tabloları (models.py bölünmesi — dalga 16 task #58). `SeferORM`
     # adı bilinçli: `Sefer` adı yukarıdaki Pydantic domain entity tarafından
     # kullanılıyor, aynı public.py'de iki farklı sınıf aynı isimle export
-    # edilemez. Cross-module tüketiciler (analytics_executive/auth_rbac/
-    # driver/prediction_ml) tipli SQLAlchemy select() sorguları için gerçek
-    # ORM sınıfına ihtiyaç duyuyor (raw SQL değil) — "geçici borç" olarak
-    # zaten dokümante edilmişti (bkz. license_service.py).
+    # edilemez. Cross-module tüketiciler (analytics_executive/driver/
+    # prediction_ml) tipli SQLAlchemy select() sorguları için gerçek ORM
+    # sınıfına ihtiyaç duyuyor (raw SQL değil) — "geçici borç" olarak
+    # dokümante edilmişti. (auth_rbac'ın kendi tüketicisi —
+    # LicenseEngine.check_monthly_trip_limit — 2026-07-22'de LicenseEngine'le
+    # birlikte silindi.)
     "SeferORM",
     "SeferLog",
     "SeferBelge",

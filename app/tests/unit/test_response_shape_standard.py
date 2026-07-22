@@ -136,7 +136,7 @@ async def test_calibration_returns_success_true(db_session):
     from unittest.mock import AsyncMock as AM
     from unittest.mock import patch as stdlib_patch
 
-    from app.api.v1.endpoints import admin_calibration as cal_mod
+    from v2.modules.route_simulation.api import admin_calibration_routes as cal_mod
 
     mock_service_instance = AM()
     mock_service_instance.calibrate_route_from_trip = AM(return_value=True)

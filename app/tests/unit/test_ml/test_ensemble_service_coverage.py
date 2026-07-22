@@ -380,7 +380,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -419,7 +419,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -467,7 +467,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -504,7 +504,7 @@ class TestTrainForVehicle:
 
         with (
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -548,7 +548,7 @@ class TestTrainForVehicle:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -602,7 +602,7 @@ class TestTrainForVehicle:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -747,7 +747,7 @@ class TestPredictBatch:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(

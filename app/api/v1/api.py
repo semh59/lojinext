@@ -1,10 +1,8 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
-    admin_calibration,
     ai,
     feedback,
-    weather,
 )
 from v2.modules.admin_platform.api.admin_config_routes import (
     router as admin_config_router,
@@ -90,7 +88,11 @@ from v2.modules.reports.api.page_view_routes import (
 from v2.modules.reports.api.page_view_routes import router as page_view_router
 from v2.modules.reports.api.studio_routes import router as reports_studio_router
 from v2.modules.reports.api.triage_routes import router as today_triage_router
+from v2.modules.route_simulation.api.admin_calibration_routes import (
+    router as admin_calibration_router,
+)
 from v2.modules.route_simulation.api.route_routes import router as route_router
+from v2.modules.route_simulation.api.weather_routes import router as weather_router
 from v2.modules.trip.api.trip_approval_routes import router as trip_approval_router
 from v2.modules.trip.api.trip_bulk_routes import router as trip_bulk_router
 from v2.modules.trip.api.trip_read_routes import router as trip_read_router
@@ -102,7 +104,7 @@ api_router.include_router(location_router, prefix="/locations", tags=["locations
 api_router.include_router(
     maintenance_router, prefix="/maintenance", tags=["maintenance"]
 )
-api_router.include_router(weather.router, prefix="/weather", tags=["weather"])
+api_router.include_router(weather_router, prefix="/weather", tags=["weather"])
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(
     admin_config_router, prefix="/admin/config", tags=["admin-config"]
@@ -170,7 +172,7 @@ api_router.include_router(
     admin_attribution_router, prefix="/admin/attribution", tags=["admin-attribution"]
 )
 api_router.include_router(
-    admin_calibration.router, prefix="/admin/calibration", tags=["admin-calibration"]
+    admin_calibration_router, prefix="/admin/calibration", tags=["admin-calibration"]
 )
 api_router.include_router(
     admin_fuel_accuracy, prefix="/admin", tags=["admin-fuel-accuracy"]

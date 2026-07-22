@@ -3,7 +3,6 @@
 from datetime import date
 from typing import Any, Optional, cast
 
-from app.core.services.route_validator import RouteValidator
 from v2.modules.platform_infra.public import (
     Event,
     EventBus,
@@ -12,6 +11,7 @@ from v2.modules.platform_infra.public import (
     get_logger,
     monitor_errors,
 )
+from v2.modules.route_simulation.public import RouteValidator
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.return_trip import handle_round_trip_on_update
 from v2.modules.trip.application.sla import check_sla_delay

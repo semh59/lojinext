@@ -7,7 +7,10 @@ try:
     import redis
 except ImportError:
     redis = None
-from v2.modules.platform_infra.cache.cache_manager import CacheManager, get_cache_manager
+from v2.modules.platform_infra.cache.cache_manager import (
+    CacheManager,
+    get_cache_manager,
+)
 from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
 

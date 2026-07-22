@@ -11,8 +11,8 @@ from typing import List, Optional
 
 import pytest
 
-from app.core.services.weather_service import WeatherSample
 from v2.modules.route_simulation.application.simulate_route import SimulationResult
+from v2.modules.route_simulation.application.weather_service import WeatherSample
 from v2.modules.route_simulation.domain.segment_simulator import (
     SegmentOutput,
     SegmentSummary,

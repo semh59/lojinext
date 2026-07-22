@@ -12,10 +12,14 @@ async def test_get_weather_forecast_success(
     """Test weather forecast retrieval → 200.
 
     The endpoint is POST /weather/forecast, not GET /weather/forecast.
-    WeatherService is injected via WeatherServiceDep; patch get_weather_service.
+    WeatherService is injected via a local Annotated[...] dependency in
+    weather_routes.py; override get_weather_service directly.
     """
-    from app.core.services.weather_service import WeatherService, get_weather_service
     from app.main import app
+    from v2.modules.route_simulation.application.weather_service import (
+        WeatherService,
+        get_weather_service,
+    )
 
     mock_svc = AsyncMock(spec=WeatherService)
     mock_svc.get_forecast_analysis = AsyncMock(
@@ -60,8 +64,11 @@ async def test_get_weather_current_conditions(
 
     There is no GET /current endpoint; use POST /trip-impact instead.
     """
-    from app.core.services.weather_service import WeatherService, get_weather_service
     from app.main import app
+    from v2.modules.route_simulation.application.weather_service import (
+        WeatherService,
+        get_weather_service,
+    )
 
     # Tier E madde 33: shape matches WeatherService.get_trip_impact_analysis's
     # real success return dict — endpoint now has

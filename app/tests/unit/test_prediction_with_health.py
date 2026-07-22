@@ -110,6 +110,7 @@ def _patch_dependencies(
 ):
     """PredictionService'in indirect bağımlılıklarını mocka tabi tutar."""
     import v2.modules.prediction_ml.application.prediction_service as ps_mod
+    import v2.modules.route_simulation.public as route_simulation_public
 
     uow_inst = uow_factory()
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst))
@@ -120,7 +121,11 @@ def _patch_dependencies(
         def get_seasonal_factor(self, _d):
             return weather_factor
 
-    monkeypatch.setattr(ps_mod, "WeatherService", _FakeWeatherService)
+    # WeatherService artık PredictionService.__init__ içinde inline import
+    # ediliyor (route_simulation.public -> ... -> prediction_ml.public
+    # circular-import'unu kırmak için, 2026-07-22) — kaynak modülü patch et,
+    # ps_mod'un artık modül-seviyesi bir WeatherService attribute'u yok.
+    monkeypatch.setattr(route_simulation_public, "WeatherService", _FakeWeatherService)
 
     # Ensemble'ı no-op → her zaman physics fallback path'i (cleaner test)
     async def _no_ensemble(*args, **kwargs):

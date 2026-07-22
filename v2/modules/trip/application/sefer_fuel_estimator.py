@@ -27,10 +27,6 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from app.config import settings
-from app.core.services.weather_service import (
-    WeatherSample,
-    WeatherService,
-)
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.public import Dorse
 from v2.modules.location.public import Lokasyon
@@ -49,6 +45,8 @@ if TYPE_CHECKING:
 from v2.modules.route_simulation.public import (
     RouteSimulator,
     SimulationResult,
+    WeatherSample,
+    WeatherService,
     get_route_simulator,
 )
 

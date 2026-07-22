@@ -11,7 +11,6 @@ from datetime import date
 from typing import Any, Dict, Optional
 
 from app.config import settings
-from app.core.services.weather_service import WeatherService
 from v2.modules.prediction_ml.application.ensemble_orchestration import (
     process_ensemble_result,
     run_ensemble_prediction,
@@ -41,6 +40,14 @@ class PredictionService:
     """
 
     def __init__(self):
+        # Lazy import: route_simulation.public eagerly imports
+        # get_route_details -> mapbox_client -> segment_simulator, which
+        # imports prediction_ml.public -- a module-level import here would
+        # create a real import cycle back into this very module (caught
+        # live: ImportError "cannot import name 'FuelPrediction' from
+        # partially initialized module 'v2.modules.prediction_ml.public'").
+        from v2.modules.route_simulation.public import WeatherService
+
         self.weather_service = WeatherService()
         self.ensemble_service = get_ensemble_service()
 

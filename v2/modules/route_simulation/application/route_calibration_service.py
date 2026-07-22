@@ -1,3 +1,14 @@
+"""RouteCalibrationService — Golden Path kalibrasyonu (PostGIS spatial matching).
+
+2026-07-22'de `app/core/services/route_calibration_service.py`'den taşındı
+(route_simulation'ın kod-tarafı v2 taşıması geç kalmıştı, kök CLAUDE.md'nin
+"Faz 1 bitince v2'ye taşıma biter" hedefi kapsamında tamamlandı). Mekanik
+taşıma, davranış değişikliği yok — yalnız `GuzergahKalibrasyon` importu artık
+kendi modülünün `infrastructure/models.py`'sinden doğrudan geliyor (önceden
+`v2.modules.route_simulation.public` üzerinden dolanıyordu, gereksizdi:
+public.py yalnız DIŞ modüller için, aynı modül içi erişim serbesttir).
+"""
+
 from typing import Any, Dict, Optional
 
 from sqlalchemy import select
@@ -9,8 +20,8 @@ except ImportError:
     LineString = None
     from_shape = None
 
-from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.route_simulation.public import GuzergahKalibrasyon
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.route_simulation.infrastructure.models import GuzergahKalibrasyon
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)

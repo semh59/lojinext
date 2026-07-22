@@ -1,4 +1,4 @@
-"""Weather endpoint unit tests — app/api/v1/endpoints/weather.py
+"""Weather endpoint unit tests — v2/modules/route_simulation/api/weather_routes.py
 
 Tests cover:
 - POST /weather/forecast: success, service failure 503
@@ -26,12 +26,11 @@ def _make_client():
 
 def _override_deps(fake_user, weather_svc, sefer_svc=None, db_mock=None):
     """Return a context dict of dependency overrides."""
-    from app.api.deps import (
-        get_current_active_user,
-        get_sefer_service,
+    from app.api.deps import get_current_active_user, get_sefer_service
+    from v2.modules.platform_infra.database.connection import get_db
+    from v2.modules.route_simulation.application.weather_service import (
         get_weather_service,
     )
-    from v2.modules.platform_infra.database.connection import get_db
 
     overrides = {}
 

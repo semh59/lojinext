@@ -197,7 +197,7 @@ async def create_return_trip(sefer_id: int, user_id: Optional[int] = None) -> in
     Mevcut seferden otomatik dönüş seferi oluşturur.
     Yerleri ve tırmanış/iniş değerlerini ters çevirerek boş sefer oluşturur.
     """
-    from app.core.services.route_validator import RouteValidator
+    from v2.modules.route_simulation.public import RouteValidator
 
     try:
         async with get_uow() as uow:

@@ -3,6 +3,16 @@ Weather service for forecast lookups and fuel-impact analysis.
 
 Production rule: if live weather data is unavailable, the service must surface
 that fact instead of returning seasonal synthetic values as if they were real.
+
+2026-07-22'de `app/core/services/weather_service.py`'den taşındı (mekanik,
+davranış değişikliği yok — route_simulation'ın kod-tarafı v2 taşıması geç
+kalmıştı, kök CLAUDE.md'nin "Faz 1 bitince v2'ye taşıma biter" hedefi
+kapsamında tamamlandı). Sınıf istisnası: `ExternalService` (aynı modülün
+Open-Meteo client'ı) + in-memory forecast cache state taşıyan tek-pipeline,
+`RouteSimulator` ile aynı gerekçe kategorisi. Cross-module tüketiciler
+(trip'in `trip_prediction_enrichment.py`/`sefer_fuel_estimator.py`,
+prediction_ml'in `prediction_service.py`/`ensemble_service.py`) artık
+`v2.modules.route_simulation.public`'ten import eder.
 """
 
 import threading
@@ -12,7 +22,7 @@ from datetime import datetime as dt_datetime
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.config import settings
-from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 from v2.modules.route_simulation.infrastructure.external_service import ExternalService
 
 logger = get_logger(__name__)
@@ -75,7 +85,7 @@ class WeatherService:
         if not midpoints:
             return []
 
-        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
+        from v2.modules.platform_infra.public import get_cache_manager
 
         cache = get_cache_manager()
         result: List[Optional[WeatherSample]] = [None] * len(midpoints)

@@ -139,7 +139,7 @@ async def test_get_distance_api_success_returns_source_api():
             client, "_call_api", new_callable=AsyncMock, return_value=api_result
         ),
         patch(
-            "app.core.services.route_validator.RouteValidator.validate_and_correct",
+            "v2.modules.route_simulation.domain.route_validator.RouteValidator.validate_and_correct",
             side_effect=lambda x: x,
         ),
     ):
@@ -164,7 +164,7 @@ async def test_get_distance_cache_hit_returns_source_cache():
             client, "_get_from_cache", new_callable=AsyncMock, return_value=cached
         ),
         patch(
-            "app.core.services.route_validator.RouteValidator.validate_and_correct",
+            "v2.modules.route_simulation.domain.route_validator.RouteValidator.validate_and_correct",
             side_effect=lambda x: x,
         ),
     ):

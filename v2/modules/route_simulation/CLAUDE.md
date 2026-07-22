@@ -9,34 +9,45 @@ Directions (hibrit fallback + segment-mode kaynağı). `route_paths`,
 
 NE YAPMAZ: lokasyon CRUD'u (location modülünün işi), yakıt tahmin ML
 modeli (prediction_ml — bu modül yalnız `v2.modules.prediction_ml.public.
-PhysicsBasedFuelPredictor`'ı tüketir), hava durumu (weather_service.py
-henüz bu modüle taşınmadı).
+PhysicsBasedFuelPredictor`'ı tüketir). Hava durumu analizi
+(`WeatherService`) 2026-07-22'de bu modüle taşındı (aşağıya bkz.) —
+artık BU modülün sorumluluğu.
 
-**DURUM (dürüst, 2026-07-18 tam-denetim düzeltmesi sonrası)**:
+**DURUM (dürüst, 2026-07-22 taşıma tamamlandıktan sonra)**:
 `application/`+`api/`+`domain/`+`infrastructure/` dolu; `public.py` ve
 `events.py` 2026-07-18'de eklendi — diğer modüller (location) ve app-tarafı
 tüketiciler (`sefer_fuel_estimator.py`, scriptler) artık `public.py`
-üzerinden import ediyor (eski "public'i yok" borcu kapandı). `schemas.py`
-hâlâ yok (route şemaları api/route_routes.py içinde — modülün dış şema
-tüketicisi yok).
-`weather_service.py`, `route_validator.py`, `openroute_service.py`
-(geocode wrapper), `route_calibration_service.py`, `admin_calibration.py`
-endpoint'i henüz v2'ye taşınmadı — eski `app/` yolunda kalıyor.
+üzerinden import ediyor (eski "public'i yok" borcu kapandı). `schemas.py`'de
+route şemaları + `weather_service.py`'nin taşınmasıyla gelen
+`TripWeatherImpactResponse`/`WeatherDashboardResponse` var.
+
+✅ **TAMAMLANDI (2026-07-22)**: `weather_service.py` (→
+`application/weather_service.py`), `route_validator.py` (→
+`domain/route_validator.py`), `route_calibration_service.py` (→
+`application/route_calibration_service.py`), `admin_calibration.py`
+endpoint'i (→ `api/admin_calibration_routes.py`) ve `weather.py` endpoint'i
+(→ `api/weather_routes.py`) `app/`'den bu modüle taşındı — kök CLAUDE.md'nin
+"Faz 1 bitince v2'ye taşıma biter" hedefinin son parçasıydı. Mekanik taşıma,
+davranış değişikliği yok; cross-module tüketiciler (trip'in
+`trip_prediction_enrichment.py`/`sefer_fuel_estimator.py`/`{add,update,
+return}_trip.py`, prediction_ml'in `prediction_service.py`/
+`ensemble_service.py`) artık `WeatherService`/`WeatherSample`/
+`get_weather_service`/`RouteValidator`'ı `v2.modules.route_simulation.public`
+üzerinden import ediyor. `openroute_service.py`'nin GEOCODE yüzeyi (bu
+modüle AİT DEĞİL — location'ın bağımlılığı) hâlâ `app/core/services/`'te
+kalıyor, kendi 2026-07-22 dead-code temizliğinde rota-profili tarafı zaten
+silinmişti (bkz. o dosyanın kendi docstring'i).
 **Dalga 17 (platform-infra) eklentisi**: `infrastructure/retry.py`
 (`with_async_retry`, `app/infrastructure/resilience/retry.py`'den —
 tek çağıranı `mapbox_client.py`/`open_meteo_client.py` idi) ve
 `infrastructure/external_service.py` (`ExternalService`,
 `app/services/external_service.py`'den — tek çağıranları
-`weather_service.py` + `get_route_details.py` idi, tamamen Open-Meteo'ya
-özgü) bu modüle taşındı. `external_service.py` `weather_service.py`
-üzerinden hâlâ dolaylı kullanılıyor (`weather_service.py` kendisi henüz
-v2'ye taşınmadığı için bu, `app.core.services.weather_service ->
-v2.modules.route_simulation.infrastructure.external_service` şeklinde
-`.importlinter`'da (`public-surface-only-prediction_ml`/`-trip`
-kontratları) gerekçeli bir ignore satırı gerektirdi — `weather_service.py`
-taşındığında bu ignore da kalkacak). `open_meteo_client.py`'nin kendi
-retry deseniyle `external_service.py`'nin retry mantığının birleştirilmesi
-ayrı bir karar, bu dalganın kapsamı dışı.
+`application/weather_service.py` + `application/get_route_details.py` idi,
+tamamen Open-Meteo'ya özgü) bu modüle taşındı. `weather_service.py`'nin
+kendisi 2026-07-22'de bu modüle taşındığı için `external_service.py` artık
+modül-içi doğrudan kullanılıyor — eski cross-module ignore satırı kalktı.
+`open_meteo_client.py`'nin kendi retry deseniyle `external_service.py`'nin
+retry mantığının birleştirilmesi ayrı bir karar, bu dalganın kapsamı dışı.
 `route_similarity.py` bu modüle AİT DEĞİLDİ — task dosyasının stale
 envanterinde route_simulation'a bağlıymış gibi görünse de gerçekte
 prediction_ml'in bir parçası (`domain/route_similarity.py`, dalga 13'te
@@ -85,8 +96,28 @@ OpenMeteoElevationClient, get_elevation_client()
 RouteRepository, get_route_repo(session=None)          # route_paths (ORS cache)
 SimulationRepository(session=db)                        # route_simulations + route_segments
 
+# application/weather_service.py (2026-07-22'de taşındı)
+WeatherService, WeatherSample, get_weather_service()
+  .get_route_weather_samples(midpoints) -> list[Optional[WeatherSample]]  # batch, Redis cached
+  .get_forecast_analysis(lat, lon) -> dict
+  .get_trip_impact_analysis(cikis_lat, cikis_lon, varis_lat, varis_lon) -> dict
+  .calculate_weather_fuel_impact(temp, precip, wind) -> float
+  .get_seasonal_factor(target_date) -> float
+
+# domain/route_validator.py (2026-07-22'de taşındı) — saf, I/O yok
+RouteValidator.validate_and_correct(route_data: dict) -> dict
+
 # api/route_routes.py
 router  # POST /analyze, POST /simulate, GET /simulate/{id}
+
+# api/weather_routes.py (2026-07-22'de taşındı)
+router  # POST /forecast, POST /trip-impact, GET /dashboard-summary
+
+# api/admin_calibration_routes.py (2026-07-22'de taşındı) — public.py'ye
+# EXPORT EDİLMEZ (tek tüketicisi kendi modülü, RouteCalibrationService de
+# public.py'de yok — dış modül tüketicisi yok, admin_calibration_routes.py
+# `application/route_calibration_service.py`'yi modül-içi doğrudan import eder)
+router  # POST /calibrate/{sefer_id}, GET /match/{sefer_id}
 ```
 
 **Önemli**: `RouteService` sınıfı YOK (2026-07-13'te bölündü — STATUS.md'nin
@@ -112,6 +143,15 @@ property'leri de hiçbir prod kod tarafından çağrılmadığı için kaldırı
    `location.public.geocode_location`'ı kullanıyor. Sınıf artık yalnız
    ORS distance + cache sorumluluğu taşıyor (Redis/in-memory cache
    metotları `get_distance`'ın parçası, ayrı sorumluluk değil).
+3. **`WeatherService`** (`application/weather_service.py`, 2026-07-22'de
+   taşındı) — constructor-injected `ExternalService` (Open-Meteo client) +
+   in-memory forecast cache state taşıyan tek-pipeline, `RouteSimulator`
+   ile aynı gerekçe kategorisi.
+4. **`RouteCalibrationService`** (`application/route_calibration_service.py`,
+   2026-07-22'de taşındı) — constructor-injected `UnitOfWork`, tek-cohesive
+   PostGIS spatial-matching pipeline'ı (`SeferFuelEstimator` ile aynı
+   gerekçe: constructor bağımlılığı, CRUD-benzeri değil). Public.py'ye
+   export EDİLMEZ — tek tüketicisi kendi `api/admin_calibration_routes.py`'si.
 
 ## Yayınladığı / dinlediği event'ler
 
@@ -130,9 +170,14 @@ Yok — bu modül event-bus üzerinden hiçbir şey publish/subscribe etmiyor
   `FuelPrediction` alır (2026-07-18: eski `app.core.ml.physics_fuel_predictor`
   bypass'ı kapandı). `get_route_details.py` de `public.get_prediction_service`
   kullanıyor.
-- **route_validator** (senkron, geçici): `RouteService` ve `OpenRouteClient`
-  `app.core.services.route_validator.RouteValidator`'ı eski yoldan
-  kullanıyor (henüz v2'ye taşınmadı).
+- **trip (senkron, ters yön)**: `application/{add_trip,update_trip,
+  return_trip}.py` bu modülün `RouteValidator.validate_and_correct`'ini
+  `v2.modules.route_simulation.public` üzerinden çağırır (sefer
+  create/update'te rota eğim anomalisi düzeltmesi).
+- **prediction_ml (senkron, ters yön)**: `application/{prediction_service,
+  ensemble_service}.py` bu modülün `WeatherService`/`get_weather_service`'ini
+  `v2.modules.route_simulation.public` üzerinden kullanır (mevsimsel
+  faktör hesabı).
 - **admin_platform** (taşındı, dalga 15, ileri yön): `OpenRouteClient`/
   `MapboxClient` `v2.modules.admin_platform.public.get_integration_secret`
   kullanıyor (eskiden `app.core.services.integration_secrets`'ten,
@@ -194,21 +239,38 @@ Kolon adları `total_km`/`total_l`/`total_eta_sec`/`avg_l_per_100km` —
   hata senaryosu seçimi — bkz. `api_stub/main.py`).
 - `app/tests/api/test_routes_*.py`, `test_locations_*.py` (route-info kısmı) —
   endpoint testleri.
+- `app/tests/api/test_weather*.py`, `test_admin_calibration.py`,
+  `app/tests/unit/test_services/{test_weather_service_coverage,
+  test_weather_service_truthfulness,test_route_calibration_coverage}.py`,
+  `app/tests/unit/test_route_validator.py`, `test_weather_route_samples.py`
+  (2026-07-22'de bu modüle taşınan `weather_service.py`/`route_validator.py`/
+  `route_calibration_service.py`/`weather.py`/`admin_calibration.py`
+  endpoint'lerinin testleri — dosyalar `app/tests/`'te KALDI, yalnız import
+  path'leri güncellendi, testler fiziksel olarak taşınmadı).
 - Free-function `unittest.mock.patch` hedefi: modül-seviyesi importlar için
   TÜKETEN modül (`v2.modules.route_simulation.api.route_routes.get_route_details`
   gibi); fonksiyon-içi (inline) importlar için KAYNAK modül
   (`v2.modules.route_simulation.application.get_route_details.get_prediction_service`
   gibi — `get_prediction_service` orada her çağrıda taze import edilir).
+  Cross-module tüketicilerin (trip/prediction_ml) inline `get_weather_service`/
+  `RouteValidator` import'ları artık `v2.modules.route_simulation.public`'ten
+  geldiği için o testlerin patch hedefi de `v2.modules.route_simulation.public.*`
+  (kaynak modül artık public.py — `test_ensemble_service_*.py`,
+  `test_sefer_write_more.py`, `test_sefer_write_service_prediction_flows.py`,
+  `test_ml_training_contracts.py`, `test_openroute_client_coverage.py`).
 
 ## İzin verilen / yasak import'lar (import-linter özeti)
 
 `.importlinter`'ın `public-surface-only-route_simulation` kontratı:
 `application/` katmanı diğer modüllerin yalnız `public`/`events`'ini
 import edebilir (2026-07-18'den beri KEPT). Diğer modüller bu modüle
-yalnız `v2.modules.route_simulation.public` üzerinden erişir. Geçici
-istisnalar (eski `app/` yolları — `weather_service`, `openroute_service`)
-kontratın ignore listesinde dokümante; `prediction_ml` 2026-07-18'de
-taşındı, bu modül artık ona `public.py` üzerinden erişiyor (istisna değil).
+yalnız `v2.modules.route_simulation.public` üzerinden erişir. 2026-07-22'de
+`weather_service.py`/`route_validator.py` taşındıktan sonra geçici
+istisna kalmadı — trip/prediction_ml'in bu ikisine erişimi artık
+`public.py` üzerinden (istisna değil, sanctioned surface).
+`openroute_service.py`'nin (geocode-only, `location`'ın bağımlılığı,
+bu modüle ait değil) `app/core/services/`'te kalması ayrı, dokümante
+bir durum — bu modülün kapsamı dışı.
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 

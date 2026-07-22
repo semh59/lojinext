@@ -4,21 +4,21 @@ from typing import Annotated, Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import (
-    SessionDep,
-    WeatherServiceDep,
-    get_current_active_user,
-    get_sefer_service,
-)
+from app.api.deps import SessionDep, get_current_active_user, get_sefer_service
 from v2.modules.auth_rbac.public import Kullanici
+from v2.modules.route_simulation.application.weather_service import (
+    WeatherService,
+    get_weather_service,
+)
 from v2.modules.route_simulation.schemas import (
     TripWeatherImpactResponse,
     WeatherDashboardResponse,
 )
-from v2.modules.trip.application.trip_service import SeferService
-from v2.modules.trip.sefer_status import SEFER_STATUS_PLANLANDI
+from v2.modules.trip.public import SEFER_STATUS_PLANLANDI, SeferService
 
 router = APIRouter()
+
+WeatherServiceDep = Annotated[WeatherService, Depends(get_weather_service)]
 
 
 class WeatherRequest(BaseModel):

@@ -1,6 +1,13 @@
 """
 Rate limiter adapter.
 
+`app/api/middleware/rate_limiter.py`'den taşındı — main.py'nin
+`app.state.limiter` wiring'i + 5 iş modülünün endpoint'lerindeki
+`@limiter.limit(...)` decorator'ları, genuinely cross-cutting. Bu,
+platform_infra'nın kendi Redis-backed `resilience/rate_limiter.py`'sinden
+(`AsyncRateLimiter`/`RateLimiterDependency`) TAMAMEN AYRI bir mekanizma —
+slowapi'nin senkron decorator-tabanlı rate limiting'i.
+
 If `slowapi` is not installed, expose a no-op limiter so module imports do not
 break in lightweight test/dev environments.
 """

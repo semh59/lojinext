@@ -56,10 +56,13 @@ v2/modules/platform_infra/
 │   ├── circuit_breaker.py         # CircuitBreaker, CircuitBreakerRegistry
 │   ├── rate_limiter.py            # AsyncRateLimiter, RateLimiterDependency, RateLimiterRegistry
 │   └── shutdown.py                # register_shutdown_handlers, is_stopping
-├── middleware/                    # ASGI middleware (3 dosya, main.py'nin zincirinde kayitli)
+├── middleware/                    # ASGI middleware (4 dosya, main.py'nin zincirinde kayitli)
 │   ├── body_size_middleware.py    # MaxBodySizeMiddleware (413 DoS backstop)
 │   ├── logging_middleware.py      # RequestLoggingMiddleware
-│   └── rate_limit_middleware.py   # RateLimitMiddleware, get_real_client_ip
+│   ├── rate_limit_middleware.py   # RateLimitMiddleware, get_real_client_ip (Redis-backed, custom)
+│   └── slowapi_limiter.py         # slowapi Limiter adaptori — main.py'nin app.state.limiter +
+│                                   # 5 modulun @limiter.limit(...) decorator'lari (TAMAMEN AYRI
+│                                   # bir mekanizma, rate_limit_middleware.py ile karistirilmasin)
 ├── database/                      # DB engine/session bootstrap (4 dosya)
 │   ├── connection.py              # engine, AsyncSessionLocal, get_db, session_scope
 │   ├── db_session.py              # _session_ctx, get_async_session_context
@@ -75,12 +78,15 @@ v2/modules/platform_infra/
 │   └── logger.py                  # get_logger, setup_logging, get_audit_logger (17+ cagiran — en yogun dosya)
 ├── audit/
 │   └── audit_logger.py            # audit_log decorator, log_audit_event, admin_audit_log cift-yazim
-├── background/                    # Celery + async job manager (2 dosya)
+├── background/                    # Celery + async job manager (4 dosya)
 │   ├── celery_app.py              # celery_app, beat_schedule (12 modulun task'ini register eder)
-│   └── job_manager.py             # BackgroundJobManager, AsyncJobStatus (Redis-backed job durumu)
-└── websocket/                     # admin_platform+notification arasinda paylasilan WS altyapisi (2 dosya)
-    ├── connection_manager.py      # ConnectionManager (per-user WS registry)
-    └── ws_auth.py                 # verify_ws_token, resolve_ws_identity, is_admin_email
+│   ├── job_manager.py             # BackgroundJobManager, AsyncJobStatus (Redis-backed job durumu)
+│   ├── backup_tasks.py            # tum PostgreSQL DB'yi yedekler (gunluk beat) — genuinely platform-genel
+│   └── error_digest.py            # 5-dk error digest + monthly partition + db health check task'lari
+├── websocket/                     # admin_platform+notification arasinda paylasilan WS altyapisi (2 dosya)
+│   ├── connection_manager.py      # ConnectionManager (per-user WS registry)
+│   └── ws_auth.py                 # verify_ws_token, resolve_ws_identity, is_admin_email
+└── api_utils.py                   # parse_date_param — fuel+reports'un paylastigi generic tarih-parse helper'i
 ```
 
 ## İsim çakışması: iki `get_event_bus`
@@ -169,6 +175,28 @@ doğrudan yollarından import etmeye devam eder.
 - `database/init_db.py::init_primary_data` — sıfır gerçek prod çağıranı
   var ama elle-çalıştırılan bir dev-bootstrap script'i (production-guard'ı
   var) — silme kararı ayrı bir onay gerektirir, mekanik olarak taşındı.
+
+## Sonradan bulunan 2. tur (2026-07-22, "V2 dışında kalan var mı" denetimi)
+
+Dalga 17'nin 10-commit taşıması bittikten sonra yapılan ek bir kalıntı
+taramasında bulunup taşınan/silinen 4 kalem:
+
+- `app/api/middleware/rate_limiter.py` → `middleware/slowapi_limiter.py`
+  — 6+ modül + main.py kullanıyordu, orijinal taramada kaçmıştı.
+- `app/api/v1/utils.py` → `api_utils.py` — yalnız 2 modül (fuel, reports)
+  kullanıyor, "3+ modül" eşiğinin altında ama küçük/generic olduğu için
+  yine de taşındı.
+- `app/core/services/ai_service.py` — **silindi** (ölü kod). `app/core/ai/*`
+  ve diğer "FAZ4'te silinir" shim'lerinden farklı olarak bunun hiçbir
+  gerçek çağıranı (test dahi) yoktu — dokümante edilmemiş, sessizce
+  orphan kalmış bir shim'di.
+- `app/workers/tasks/{backup_tasks,error_digest}.py` →
+  `background/{backup_tasks,error_digest}.py` — ikisi de "monitoring henüz
+  taşınmadı, tek başına taşımak tutarsız olur" gerekçesiyle dalga 17'nin
+  başında `app/`'de bırakılmıştı; monitoring artık taşındığı için (commit 5)
+  bu gerekçe geçersiz oldu. `app/workers/` paketi (yalnız ölü bir
+  `run_prediction_task` re-export'u kalmıştı, gerçek çağıranı yoktu)
+  tamamen silindi.
 
 ## Test stratejisi
 

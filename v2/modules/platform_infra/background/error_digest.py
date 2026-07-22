@@ -2,6 +2,12 @@
 Error monitoring Celery tasks:
  - monitoring.error_digest        : 5-min digest + materialized view refresh
  - monitoring.create_monthly_partition: create next month's error_occurrences partition
+
+`app/workers/tasks/error_digest.py`'den taşındı — dalga 16'da bilinçli
+olarak `monitoring/` taşınmadan tek başına taşınması tutarsız olacağı için
+`app/workers/tasks/`'ta bırakılmıştı. Monitoring artık taşındığı için
+(dalga 17 commit 5) o gerekçe geçersiz oldu; `backup_tasks.py`'yle
+birlikte celery_app.py'nin yanına taşındı.
 """
 
 import asyncio

@@ -15,7 +15,6 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError as SAOperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.middleware.rate_limiter import limiter
 from app.api.v1.api import api_router
 from app.config import settings
 from v2.modules.platform_infra.context.correlation_middleware import (
@@ -33,6 +32,7 @@ from v2.modules.platform_infra.middleware.logging_middleware import (
 from v2.modules.platform_infra.middleware.rate_limit_middleware import (
     RateLimitMiddleware,
 )
+from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 from v2.modules.shared_kernel.errors import BusinessException
 from v2.modules.shared_kernel.exceptions import (
     AnomalyDetectionError,

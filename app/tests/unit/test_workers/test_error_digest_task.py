@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.workers.tasks.error_digest import (
+from v2.modules.platform_infra.background.error_digest import (
     _drain_sync_fallback,
     _run_digest,
     error_digest,
@@ -94,7 +94,7 @@ async def test_run_digest_no_errors():
     with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis
 
-        with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
+        with patch("v2.modules.platform_infra.background.error_digest._drain_sync_fallback"):
             await _run_digest()
 
             redis.keys.assert_called_once()
@@ -114,7 +114,7 @@ async def test_run_digest_with_error_keys():
 
     with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis_mock
-        with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
+        with patch("v2.modules.platform_infra.background.error_digest._drain_sync_fallback"):
             await _run_digest()
 
     redis_mock.keys.assert_called_once()
@@ -122,7 +122,7 @@ async def test_run_digest_with_error_keys():
 
 def test_error_digest_task_runs():
     """Test error_digest Celery task executes (CELERY_EAGER mode)."""
-    with patch("app.workers.tasks.error_digest._run_digest") as mock_run:
+    with patch("v2.modules.platform_infra.background.error_digest._run_digest") as mock_run:
         mock_run.return_value = None
 
         # Task should execute in eager mode without raising
@@ -138,6 +138,6 @@ async def test_run_digest_redis_scan_error():
     with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis
 
-        with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
+        with patch("v2.modules.platform_infra.background.error_digest._drain_sync_fallback"):
             # Should handle error gracefully
             await _run_digest()

@@ -1,4 +1,8 @@
-"""Shared helpers for API v1 endpoint handlers."""
+"""Shared helpers for API v1 endpoint handlers.
+
+`app/api/v1/utils.py`'den taşındı — fuel ve reports modüllerinin endpoint
+handler'ları tarafından paylaşılan generic bir tarih-parse helper'ı.
+"""
 
 from datetime import date, datetime
 from typing import Optional

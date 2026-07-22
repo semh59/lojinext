@@ -157,9 +157,6 @@ celery_app = get_celery_app()
 # Ensure tasks are registered
 from celery.signals import worker_process_init  # noqa: E402
 
-# OPS-002 — Nightly DB backup task
-import app.workers.tasks.backup_tasks  # noqa: E402,F401
-import app.workers.tasks.error_digest  # noqa: E402,F401
 import v2.modules.analytics_executive.infrastructure.compliance_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.cluster_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.theft_tasks  # noqa: E402,F401
@@ -167,6 +164,10 @@ import v2.modules.driver.infrastructure.coaching_tasks  # noqa: E402,F401
 import v2.modules.fuel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.import_excel.infrastructure.tasks  # noqa: E402,F401
 import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
+
+# OPS-002 — Nightly DB backup task
+import v2.modules.platform_infra.background.backup_tasks  # noqa: E402,F401
+import v2.modules.platform_infra.background.error_digest  # noqa: E402,F401
 import v2.modules.prediction_ml.infrastructure.dlq_tasks  # noqa: E402,F401
 import v2.modules.prediction_ml.infrastructure.prediction_backfill_tasks  # noqa: E402,F401
 import v2.modules.prediction_ml.infrastructure.prediction_tasks  # noqa: E402,F401

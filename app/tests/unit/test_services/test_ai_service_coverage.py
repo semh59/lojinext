@@ -1,5 +1,5 @@
 """
-Coverage tests for app/core/services/ai_service.py
+Coverage tests for v2/modules/ai_assistant/application/orchestrate_ai_response.py
 Targets uncovered branches: _sanitize_prompt, _build_context,
 generate_response, get_progress error path. (predict_trip_fuel/
 detect_anomalies/_get_predictor_for_vehicle 2026-07-18 ölü-kod

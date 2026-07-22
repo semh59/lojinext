@@ -35,7 +35,7 @@ async def test_digest_uses_public_redis_property():
         "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
-        from app.workers.tasks.error_digest import _run_digest
+        from v2.modules.platform_infra.background.error_digest import _run_digest
 
         await _run_digest()
 
@@ -52,7 +52,7 @@ async def test_digest_exits_when_redis_is_none():
         "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
-        from app.workers.tasks.error_digest import _run_digest
+        from v2.modules.platform_infra.background.error_digest import _run_digest
 
         await _run_digest()
     # No assertion needed — no exception = correct early return
@@ -102,9 +102,9 @@ async def test_digest_sends_telegram_when_keys_present():
             "v2.modules.platform_infra.monitoring.celery_probe.check_beat_health", mock_beat
         ),
         patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", _make_session_mock()),
-        patch("app.workers.tasks.error_digest._check_queue_depth", mock_queue),
+        patch("v2.modules.platform_infra.background.error_digest._check_queue_depth", mock_queue),
     ):
-        from app.workers.tasks.error_digest import _run_digest
+        from v2.modules.platform_infra.background.error_digest import _run_digest
 
         await _run_digest()
 

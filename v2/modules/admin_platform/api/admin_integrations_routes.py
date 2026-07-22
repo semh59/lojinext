@@ -12,7 +12,6 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.api.middleware.rate_limiter import limiter
 from app.config import settings
 from v2.modules.admin_platform.application.admin_audit_service import (
     log_config_change,
@@ -28,6 +27,7 @@ from v2.modules.admin_platform.infrastructure.container_health import (
 )
 from v2.modules.auth_rbac.public import Kullanici, require_yetki
 from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
 router = APIRouter()
 logger = get_logger(__name__)

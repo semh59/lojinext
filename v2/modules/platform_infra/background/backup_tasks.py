@@ -1,6 +1,12 @@
 """
 Zamanlanmış veritabanı yedek görevi.
 Celery beat tarafından günlük tetiklenir (celery_app.py beat_schedule).
+
+`app/workers/tasks/backup_tasks.py`'den taşındı — tüm PostgreSQL DB'yi
+yedekler, gerçekten platform-genel (hiçbir tek iş modülüne ait değil).
+Monitoring'in taşınmasıyla (dalga 17 commit 5) `app/workers/tasks/`'ta
+kalmasının artık bir gerekçesi kalmadığı için `error_digest.py`'yle
+birlikte celery_app.py'nin yanına taşındı.
 """
 
 import asyncio

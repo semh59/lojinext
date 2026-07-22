@@ -27,7 +27,6 @@ from app.api.deps import (
     get_current_active_user,
     require_permissions,
 )
-from app.api.v1.utils import parse_date_param
 from app.config import settings
 from v2.modules.admin_platform.api.internal_routes import (
     _ALLOWED_MIME_TYPES,
@@ -65,6 +64,7 @@ from v2.modules.fuel.schemas import (
     YakitResponse,
     YakitUpdate,
 )
+from v2.modules.platform_infra.api_utils import parse_date_param
 from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client

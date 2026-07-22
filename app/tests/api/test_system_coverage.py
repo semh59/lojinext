@@ -173,7 +173,7 @@ async def test_error_report_batch_too_large(async_client, admin_auth_headers):
     }
     reports = [report] * 21
 
-    from app.api.middleware.rate_limiter import limiter
+    from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
     prev_enabled = limiter.enabled
     limiter.enabled = False

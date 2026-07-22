@@ -27,7 +27,7 @@ class TestCeleryTasks:
 
     def test_error_digest_task_is_registered(self):
         """error_digest task is registered with the correct name."""
-        from app.workers.tasks.error_digest import error_digest
+        from v2.modules.platform_infra.background.error_digest import error_digest
 
         assert error_digest.name == "monitoring.error_digest"
 
@@ -95,7 +95,7 @@ class TestCeleryTasks:
 
     def test_error_digest_task_ignore_result(self):
         """error_digest is configured with ignore_result=True (fire-and-forget)."""
-        from app.workers.tasks.error_digest import error_digest
+        from v2.modules.platform_infra.background.error_digest import error_digest
 
         assert error_digest.ignore_result is True
 

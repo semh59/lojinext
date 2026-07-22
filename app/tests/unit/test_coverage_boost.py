@@ -705,22 +705,22 @@ class TestPolylineDecoder:
 
 
 class TestParseDateParam:
-    """Tests for app.api.v1.utils.parse_date_param."""
+    """Tests for v2.modules.platform_infra.api_utils.parse_date_param."""
 
     def test_none_returns_none(self):
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         assert parse_date_param(None) is None
 
     def test_empty_string_returns_none(self):
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         assert parse_date_param("") is None
 
     def test_valid_date(self):
         from datetime import date
 
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         result = parse_date_param("2024-03-15")
         assert result == date(2024, 3, 15)
@@ -728,7 +728,7 @@ class TestParseDateParam:
     def test_invalid_format_raises_400(self):
         from fastapi import HTTPException
 
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         with pytest.raises(HTTPException) as exc_info:
             parse_date_param("15-03-2024", field_name="tarih")
@@ -740,17 +740,17 @@ class TestRateLimiterModule:
     """Ensure rate_limiter module loads and exposes a limiter object."""
 
     def test_limiter_importable(self):
-        from app.api.middleware.rate_limiter import limiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
         assert limiter is not None
 
     def test_limiter_has_limit_method(self):
-        from app.api.middleware.rate_limiter import limiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
         assert callable(getattr(limiter, "limit", None))
 
     def test_noop_limiter_passthrough(self):
-        from app.api.middleware.rate_limiter import _NoopLimiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import _NoopLimiter
 
         noop = _NoopLimiter()
         decorator = noop.limit("10/minute")
@@ -765,7 +765,7 @@ class TestRateLimiterModule:
         """2026-07-01 prod-grade denetimi P1: slowapi eksikse prod'da
         fail-closed — uygulama sessizce rate-limit'siz ayağa kalkmak yerine
         başlamayı reddetmeli."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         monkeypatch.setattr(rl_module, "Limiter", None)
         with pytest.raises(RuntimeError, match="refusing to start in production"):
@@ -774,7 +774,7 @@ class TestRateLimiterModule:
     def test_build_limiter_falls_back_in_dev_without_slowapi(self, monkeypatch):
         """Dev/test ortamında slowapi eksikliği eski fail-open (NoopLimiter +
         critical log) davranışını korur — yerel geliştirmeyi bloklamaz."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         monkeypatch.setattr(rl_module, "Limiter", None)
         result = rl_module._build_limiter("dev")
@@ -783,7 +783,7 @@ class TestRateLimiterModule:
     def test_build_limiter_uses_real_limiter_when_slowapi_available(self):
         """slowapi kuruluysa (bu test ortamında olduğu gibi) prod'da da
         sorunsuz gerçek Limiter döner — fail-closed dalı hiç tetiklenmez."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         if rl_module.Limiter is None:
             pytest.skip("slowapi not installed in this environment")

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.workers.tasks.error_digest import (
+from v2.modules.platform_infra.background.error_digest import (
     _check_queue_depth,
     _create_partition,
     _db_health_check,
@@ -218,7 +218,7 @@ def test_db_health_check_celery_task_name():
 def test_db_health_check_greenlet_runtime_error_suppressed():
     """RuntimeError with 'greenlet' substring is caught and logged, not re-raised."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("greenlet_spawn not called"),
     ):
         # Should not raise
@@ -228,7 +228,7 @@ def test_db_health_check_greenlet_runtime_error_suppressed():
 def test_db_health_check_different_loop_runtime_error_suppressed():
     """RuntimeError with 'different loop' is caught."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("attached to a different loop"),
     ):
         db_health_check()
@@ -237,7 +237,7 @@ def test_db_health_check_different_loop_runtime_error_suppressed():
 def test_db_health_check_other_runtime_error_reraises():
     """RuntimeError without greenlet/loop fingerprint is re-raised."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("some other error"),
     ):
         with pytest.raises(RuntimeError, match="some other error"):
@@ -449,7 +449,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
 
     with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis_mock
-        with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
+        with patch("v2.modules.platform_infra.background.error_digest._drain_sync_fallback"):
             with patch(
                 "v2.modules.notification.public.notify_error",
                 new_callable=AsyncMock,
@@ -463,7 +463,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
                         new_callable=AsyncMock,
                     ) as mock_beat:
                         with patch(
-                            "app.workers.tasks.error_digest._check_queue_depth",
+                            "v2.modules.platform_infra.background.error_digest._check_queue_depth",
                             new_callable=AsyncMock,
                         ) as mock_depth:
                             await _run_digest()

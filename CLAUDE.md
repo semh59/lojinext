@@ -191,7 +191,7 @@ These are **separate**. Endpoint handlers import from `app/schemas/`; service in
 
 ### AI / RAG
 
-`app/core/ai/rag_engine.py` — FAISS vector store with `sentence-transformers/all-MiniLM-L6-v2` (384-dim). LLM inference via Groq (`llama-3.1-70b-versatile`). `smart_ai_service.py` orchestrates RAG + LLM. Index persisted to `app/data/ai_kb/`.
+`v2/modules/ai_assistant/infrastructure/rag/rag_engine.py` — FAISS vector store with `sentence-transformers/all-MiniLM-L6-v2` (384-dim). LLM inference via Groq (`llama-3.1-70b-versatile`). `v2/modules/ai_assistant/application/knowledge_base.py`'s `SmartAIService` orchestrates RAG + LLM. Index persisted to `app/data/ai_kb/`. (`app/core/ai/rag_engine.py` and `app/services/smart_ai_service.py` are 1-line `FAZ4'te silinir` wildcard shims re-exporting the above — see `v2/modules/ai_assistant/CLAUDE.md`.)
 
 ### Frontend page structure
 
@@ -258,7 +258,7 @@ The system runs **single-tenant**: no `tenant_id` column on any table and no row
 
 ### Celery
 
-`v2/modules/platform_infra/background/celery_app.py` — broker Redis, results Redis. Beat schedule includes outbox relay. Task modules: `app/workers/tasks/`. `CELERY_EAGER=True` in test env runs tasks inline (set in `app/config.py`).
+`v2/modules/platform_infra/background/celery_app.py` — broker Redis, results Redis. Beat schedule includes outbox relay. Most task modules live in each owning module's own `v2/modules/<name>/infrastructure/` (e.g. `dlq_tasks.py`, `theft_tasks.py`); the two genuinely platform-general ones (`backup_tasks.py`, `error_digest.py`) live alongside `celery_app.py` in `v2/modules/platform_infra/background/`. `CELERY_EAGER=True` in test env runs tasks inline (set in `app/config.py`).
 
 ### Domain exceptions
 

@@ -397,7 +397,7 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
             return getattr(self._session, name)
 
     wrapper = NonClosingSession(session)
-    monkeypatch.setattr("app.database.connection.AsyncSessionLocal", wrapper)
+    monkeypatch.setattr("v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper)
     monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
 
     # Sync support
@@ -407,7 +407,7 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
         bind=sync_engine, autocommit=False, autoflush=False
     )
     monkeypatch.setattr(
-        "app.database.connection.SyncSessionLocal", SyncTestingSessionLocal
+        "v2.modules.platform_infra.database.connection.SyncSessionLocal", SyncTestingSessionLocal
     )
 
     # Clear all user tables before each test so the session-scoped schema

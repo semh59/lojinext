@@ -514,7 +514,7 @@ async def test_auto_explain_evicts_old_fingerprints():
     mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
         patch("app.infrastructure.monitoring.aemit", AsyncMock()),
     ):
         dp._explain_sem = None  # reset semaphore
@@ -564,7 +564,7 @@ async def test_auto_explain_full_path_with_seq_scan():
         emitted.append(event)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
         patch("app.infrastructure.monitoring.aemit", fake_aemit),
     ):
         await dp._auto_explain(stmt, None, 2500.0)

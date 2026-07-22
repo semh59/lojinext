@@ -831,7 +831,7 @@ class TestRefreshStatsMv:
         mock_engine = MagicMock()
         mock_engine.execution_options.return_value.connect.return_value = mock_conn
 
-        with patch("app.database.connection.engine", mock_engine):
+        with patch("v2.modules.platform_infra.database.connection.engine", mock_engine):
             await repo.refresh_stats_mv()
 
         mock_conn.execute.assert_called_once()

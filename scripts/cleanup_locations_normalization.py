@@ -7,7 +7,7 @@ from sqlalchemy import select
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from app.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
 
 

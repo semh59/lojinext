@@ -111,8 +111,8 @@ class Benchmark:
 
 def create_benchmarks() -> List[Benchmark]:
     """Create benchmark suite."""
-    from app.database.connection import get_connection
     from v2.modules.fleet.public import get_all_vehicles
+    from v2.modules.platform_infra.database.connection import get_connection
     from v2.modules.reports.public import (
         generate_fleet_summary,
         generate_monthly_trend,

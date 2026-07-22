@@ -15,13 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.config import settings
-from app.database.connection import AsyncSessionLocal
 from v2.modules.auth_rbac.public import (
     Kullanici,
     Permission,
     SecurityService,
     blacklist,
 )
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
 
 async def verify_ws_ticket(ticket: str) -> Optional[str]:

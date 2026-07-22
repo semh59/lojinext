@@ -105,8 +105,8 @@ class TestGetFuelAccuracy:
     async def test_no_data_returns_zero_sample_size(self):
         """get_fuel_accuracy returns zeros when no completed trips."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         mock_db = _setup_db_mock(agg_row=None)
@@ -134,8 +134,8 @@ class TestGetFuelAccuracy:
     async def test_with_data_returns_metrics(self):
         """get_fuel_accuracy returns MAPE/RMSE when data exists."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         agg_row = _make_row(
@@ -178,8 +178,8 @@ class TestGetFuelAccuracy:
     async def test_arac_id_filter_passed_to_query(self):
         """get_fuel_accuracy accepts arac_id query param."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         mock_db = _setup_db_mock(agg_row=None)
@@ -202,8 +202,8 @@ class TestGetFuelAccuracy:
     async def test_sofor_id_filter_accepted(self):
         """get_fuel_accuracy accepts sofor_id query param."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         mock_db = _setup_db_mock(agg_row=None)
@@ -226,8 +226,8 @@ class TestGetFuelAccuracy:
     async def test_null_metrics_returned_as_none(self):
         """get_fuel_accuracy returns None for NULL metric fields."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         agg_row = _make_row(
@@ -265,8 +265,8 @@ class TestGetFuelAccuracy:
     async def test_days_param_validation(self):
         """get_fuel_accuracy rejects days < 1."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
 
@@ -288,8 +288,8 @@ class TestGetFuelAccuracy:
     async def test_days_param_max_validation(self):
         """get_fuel_accuracy rejects days > 365."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
 
@@ -311,8 +311,8 @@ class TestGetFuelAccuracy:
     async def test_full_coverage_calculation(self):
         """coverage_pct is correctly computed as sample/total * 100."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         agg_row = _make_row(sample_size=25, total_completed=100)
@@ -338,8 +338,8 @@ class TestGetFuelAccuracy:
     async def test_breakdown_null_mape_handled(self):
         """get_fuel_accuracy handles NULL mape_pct in breakdown rows."""
         from app.api.deps import get_current_active_admin
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.platform_infra.database.connection import get_db
 
         admin = _make_admin_user()
         agg_row = _make_row(sample_size=3, total_completed=3)

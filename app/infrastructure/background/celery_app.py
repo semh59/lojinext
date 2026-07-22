@@ -189,7 +189,7 @@ def init_worker(*args, **kwargs):
     # MissingGreenlet).  The child then opens fresh connections on its own
     # event loop when the first task runs.
     try:
-        from app.database.connection import engine
+        from v2.modules.platform_infra.database.connection import engine
 
         engine.sync_engine.pool.dispose(close=False)
     except Exception:

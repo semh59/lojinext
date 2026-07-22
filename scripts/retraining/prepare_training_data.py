@@ -4,7 +4,7 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import select
 
-from app.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
 from v2.modules.trip.public import SeferORM as Sefer
 

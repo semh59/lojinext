@@ -919,7 +919,7 @@ class TestInterfacesImport:
         assert hasattr(cache_invalidation, "__name__")
 
     def test_init_db_importable(self):
-        from app.database import init_db  # noqa: F401
+        from v2.modules.platform_infra.database import init_db  # noqa: F401
 
         assert hasattr(init_db, "__name__")
 

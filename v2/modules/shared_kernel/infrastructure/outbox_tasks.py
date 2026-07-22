@@ -38,7 +38,7 @@ def relay_outbox_events(self):
         # Celery fork workers inherit the parent's connection pool; those
         # connections are bound to the parent's event loop and will raise
         # "Future attached to a different loop" when reused in asyncio.run().
-        from app.database.connection import engine
+        from v2.modules.platform_infra.database.connection import engine
 
         engine.sync_engine.dispose()
         asyncio.run(run_relay())

@@ -118,8 +118,8 @@ async def test_predict_sofor_score_exact_maximum(async_client, admin_auth_header
 
 async def test_predict_sofor_id_found_null_score(async_client, admin_auth_headers):
     """sofor_id provided, sofor found but score is None → uses default 1.0."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     fake_sofor = MagicMock()
     fake_sofor.id = 1
@@ -148,8 +148,8 @@ async def test_predict_sofor_id_found_null_score(async_client, admin_auth_header
 
 async def test_predict_sofor_id_found_with_score(async_client, admin_auth_headers):
     """sofor_id provided, sofor found with score=1.5 → uses 1.5."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     fake_sofor = MagicMock()
     fake_sofor.id = 2
@@ -183,8 +183,8 @@ async def test_predict_sofor_id_found_with_score(async_client, admin_auth_header
 
 async def test_comparison_with_trips_all_buckets(async_client, admin_auth_headers):
     """GET /comparison with mock DB rows → exercises good/warning/error buckets."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     # Build fake trip objects covering three accuracy buckets:
     # good (pct <= 5), warning (5 < pct <= 15), error (pct > 15)
@@ -234,8 +234,8 @@ async def test_comparison_with_trips_all_buckets(async_client, admin_auth_header
 
 async def test_comparison_pct_error_predicted_zero(async_client, admin_auth_headers):
     """GET /comparison handles predicted=0 gracefully (pct_err=100 → error bucket)."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     t = MagicMock()
     t.tuketim = 30.0
@@ -277,8 +277,8 @@ async def test_comparison_pct_error_predicted_zero(async_client, admin_auth_head
 
 async def test_comparison_with_arac_id_and_trips(async_client, admin_auth_headers):
     """GET /comparison?arac_id=1 with matching trips → non-zero metrics."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     t = MagicMock()
     t.tuketim = 32.0

@@ -198,8 +198,8 @@ async def error_stream(request: Request):
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    from app.database.connection import AsyncSessionLocal
     from v2.modules.auth_rbac.public import Kullanici as KullaniciModel
+    from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
     try:
         async with AsyncSessionLocal() as session:

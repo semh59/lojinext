@@ -6,7 +6,7 @@ Previously these built a service via ``InternalService.__new__`` and injected
 repo method was called* rather than *the persisted result*. ``InternalService``
 was dissolved to free functions (B.1 — no genuine mutable state); each
 function calls ``get_sofor_repo()`` internally, whose ``_get_session()`` falls
-through to ``app.database.connection.AsyncSessionLocal`` which the
+through to ``v2.modules.platform_infra.database.connection.AsyncSessionLocal`` which the
 ``db_session`` fixture monkeypatches to the shared test session — so the
 underlying repo reads/writes the real test DB. We seed real Sofor/Sefer rows
 and assert real results (returned dicts, persisted SeferBelge rows, real PDF

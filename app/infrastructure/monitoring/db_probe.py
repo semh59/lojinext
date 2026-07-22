@@ -312,7 +312,7 @@ async def _auto_explain(
             return
 
         async with _explain_sem:
-            from app.database.connection import engine
+            from v2.modules.platform_infra.database.connection import engine
 
             async with engine.connect() as conn:
                 raw = await conn.get_raw_connection()

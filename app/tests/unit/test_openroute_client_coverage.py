@@ -484,7 +484,7 @@ async def test_get_from_cache_exception_returns_none():
 
     with (
         patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             side_effect=AsyncCtx,
         ),
         patch(
@@ -563,7 +563,7 @@ async def test_save_to_cache_exception_does_not_raise():
             pass
 
     with patch(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         side_effect=AsyncCtx,
     ):
         # Should not raise

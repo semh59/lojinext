@@ -154,7 +154,7 @@ async def test_fleet_stats_happy_path(async_client, admin_auth_headers):
             pass
 
     with patch(
-        "app.database.connection.get_db", return_value=_async_gen(FakeSession())
+        "v2.modules.platform_infra.database.connection.get_db", return_value=_async_gen(FakeSession())
     ):
         resp = await async_client.get(f"{BASE}/fleet-stats", headers=admin_auth_headers)
 

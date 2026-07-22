@@ -80,7 +80,7 @@ class TestCeleryTasks:
         mock_engine = MagicMock()
         mock_engine.sync_engine = MagicMock()
 
-        import app.database.connection as db_connection_mod
+        import v2.modules.platform_infra.database.connection as db_connection_mod
 
         orig_engine = db_connection_mod.engine
         db_connection_mod.engine = mock_engine

@@ -9,8 +9,8 @@ from uuid import uuid4
 from sqlalchemy import text
 
 from app.config import settings
-from app.database.connection import engine
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.database.connection import engine
 
 try:
     import sentry_sdk

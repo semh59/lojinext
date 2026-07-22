@@ -193,7 +193,7 @@ class BackgroundJobManager:
         # audit-log attribution) but reset _session_ctx to its default
         # (None) so func's own UnitOfWork opens a fresh, independent
         # session instead of inheriting the request's.
-        from app.database.db_session import _session_ctx
+        from v2.modules.platform_infra.database.db_session import _session_ctx
 
         task_ctx = contextvars.copy_context()
         task_ctx.run(_session_ctx.set, None)

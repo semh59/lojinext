@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from app.database.connection import engine
+from v2.modules.platform_infra.database.connection import engine
 from v2.modules.shared_kernel.infrastructure.base import Base
 
 # Setup logging

@@ -130,7 +130,7 @@ async def test_error_stream_db_lookup_failure_returns_401(async_client):
 
     with patch(_PUBSUB_PATH, return_value=fake_mgr):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             side_effect=Exception("DB failure"),
         ):
             resp = await async_client.get(

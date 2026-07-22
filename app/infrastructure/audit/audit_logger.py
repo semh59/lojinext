@@ -50,7 +50,7 @@ async def _persist_audit_to_db(
     try:
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         # JSONB kolonlarına insert için Python objesini JSON string'e çevir;
         # `CAST(:x AS JSONB)` ile asyncpg adaptasyonu güvenli.

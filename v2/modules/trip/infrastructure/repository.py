@@ -814,7 +814,7 @@ class SeferRepository(BaseRepository[Sefer]):
         oluşturulmadı. O dalga gelene kadar burada kalıyor (bkz.
         ``application/stats_refresh.py``'nin docstring'i).
         """
-        from app.database.connection import engine
+        from v2.modules.platform_infra.database.connection import engine
 
         try:
             async with engine.execution_options(

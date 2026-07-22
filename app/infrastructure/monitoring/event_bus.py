@@ -214,7 +214,7 @@ class ErrorEventBus:
         # Fix 2: bulk insert — single INSERT per table for the whole batch
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         # Pre-aggregate: deduplicate by fingerprint to avoid
         # "ON CONFLICT DO UPDATE command cannot affect row a second time"
@@ -330,7 +330,7 @@ class ErrorEventBus:
 
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         today = datetime.date.today()
         partition_name = f"error_occurrences_{today.year}_{today.month:02d}"

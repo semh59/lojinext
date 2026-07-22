@@ -101,7 +101,7 @@ async def test_digest_sends_telegram_when_keys_present():
         patch(
             "app.infrastructure.monitoring.celery_probe.check_beat_health", mock_beat
         ),
-        patch("app.database.connection.AsyncSessionLocal", _make_session_mock()),
+        patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", _make_session_mock()),
         patch("app.workers.tasks.error_digest._check_queue_depth", mock_queue),
     ):
         from app.workers.tasks.error_digest import _run_digest

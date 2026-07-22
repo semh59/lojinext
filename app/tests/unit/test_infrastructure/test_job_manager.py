@@ -311,7 +311,7 @@ class TestJobManager:
         must run the task in a context where _session_ctx is reset to its
         default (None) so func's own UnitOfWork opens an independent
         session."""
-        from app.database.db_session import _session_ctx
+        from v2.modules.platform_infra.database.db_session import _session_ctx
 
         mgr = BackgroundJobManager()
         seen_session_ctx = {}

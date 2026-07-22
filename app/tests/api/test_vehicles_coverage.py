@@ -235,7 +235,7 @@ async def test_get_vehicle_no_auth(async_client):
 
 async def test_get_vehicle_not_found(async_client, admin_auth_headers):
     """Returns 404 when vehicle not in DB."""
-    with patch("app.database.connection.get_db") as _:
+    with patch("v2.modules.platform_infra.database.connection.get_db") as _:
         # Use the real DB session but mock db.get to return None
         from app.main import app
 
@@ -244,7 +244,7 @@ async def test_get_vehicle_not_found(async_client, admin_auth_headers):
             mock_session.get = AsyncMock(return_value=None)
             yield mock_session
 
-        from app.database.connection import get_db
+        from v2.modules.platform_infra.database.connection import get_db
 
         app.dependency_overrides[get_db] = _fake_get_db
         try:
@@ -547,7 +547,7 @@ async def test_update_vehicle_no_auth(async_client):
 async def test_update_vehicle_not_found(async_client, admin_auth_headers):
     """Returns 404 when use-case returns False."""
     with patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=False)):
-        from app.database.connection import get_db
+        from v2.modules.platform_infra.database.connection import get_db
 
         async def _fake_get_db():
             mock_session = AsyncMock()

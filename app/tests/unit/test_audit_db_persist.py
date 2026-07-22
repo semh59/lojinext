@@ -50,7 +50,7 @@ async def test_persist_audit_to_db_writes_to_admin_audit_log(monkeypatch):
         return FakeSession()
 
     monkeypatch.setattr(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         _fake_session_factory,
     )
 
@@ -94,7 +94,7 @@ async def test_persist_audit_swallows_db_errors(monkeypatch, caplog):
         raise RuntimeError("DB down")
 
     monkeypatch.setattr(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         _broken_factory,
     )
 
@@ -231,7 +231,7 @@ async def test_persist_sanitizes_synthetic_superadmin_id(monkeypatch):
             return False
 
     monkeypatch.setattr(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         lambda: FakeSession(),
     )
 
@@ -287,7 +287,7 @@ async def test_persist_uses_savepoint_when_in_transaction(monkeypatch):
             return FakeSavepointCtx()
 
     monkeypatch.setattr(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         lambda: FakeSharedSession(),
     )
 
@@ -323,7 +323,7 @@ async def test_persist_handles_none_and_empty_gracefully(monkeypatch):
             return False
 
     monkeypatch.setattr(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         lambda: FakeSession(),
     )
 

@@ -2,7 +2,7 @@ import asyncio
 
 from sqlalchemy import delete
 
-from app.database.connection import engine
+from v2.modules.platform_infra.database.connection import engine
 from v2.modules.auth_rbac.public import Kullanici
 
 

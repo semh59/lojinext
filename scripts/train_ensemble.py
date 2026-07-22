@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import select
 
-from app.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from app.infrastructure.logging.logger import setup_logging
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.prediction_ml.public import get_ensemble_service

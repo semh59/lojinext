@@ -31,7 +31,7 @@ def _override_deps(fake_user, weather_svc, sefer_svc=None, db_mock=None):
         get_sefer_service,
         get_weather_service,
     )
-    from app.database.connection import get_db
+    from v2.modules.platform_infra.database.connection import get_db
 
     overrides = {}
 

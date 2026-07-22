@@ -6,7 +6,7 @@ round-trip ile degistirildi. Everything internal runs for real:
   - PolylineDecoder + RouteAnalyzer (a real Google-encoded polyline decoded
     from the stub's canned response and analysed for real -- stub'in
     extras'i gercek ORS "values" formatinda, "summary" degil),
-    (conftest monkeypatches app.database.connection.AsyncSessionLocal to the
+    (conftest monkeypatches v2.modules.platform_infra.database.connection.AsyncSessionLocal to the
     shared test session).
 """
 

@@ -33,7 +33,7 @@ senaryo, sessizce geri geliyor). Empirik kanıt: `test_trip_create_same_idempote
 kırmızıydı — rezervasyon satırı ilk isteğin sonunda DB'de HİÇ yoktu.
 
 Fix: idempotency defteri artık çağıranın UoW'undan TAMAMEN BAĞIMSIZ, kendi
-kısa ömürlü session'ında anında commit ediyor (`app.database.connection`
+kısa ömürlü session'ında anında commit ediyor (`v2.modules.platform_infra.database.connection`
 üzerinden, modül attribute erişimiyle — test fixture'ının monkeypatch'i hâlâ
 geçerli oluyor). Böylece ana iş-transaction'ında (add_sefer içinde) her ne
 olursa olsun (cancel/rollback/retry), rezervasyon kaydı ETKİLENMİYOR. Bu,
@@ -54,7 +54,7 @@ from typing import Any, Optional
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
-import app.database.connection as db_connection
+import v2.modules.platform_infra.database.connection as db_connection
 from v2.modules.admin_platform.infrastructure.models import IdempotencyKey
 
 # Reservation sentinel — finalize_response() overwrites this before commit.

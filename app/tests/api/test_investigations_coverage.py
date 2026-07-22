@@ -136,8 +136,8 @@ def _make_db_mock(
 @contextmanager
 def _override_db(mock_db):
     """Override the SessionDep (get_db) dependency."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     async def _fake_db():
         yield mock_db

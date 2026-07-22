@@ -285,7 +285,7 @@ async def test_ensure_current_partition_december():
     fake_dt_module = types.ModuleType("datetime")
     fake_dt_module.date = fake_date
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch.dict("sys.modules", {"datetime": fake_dt_module}):
             await bus._ensure_current_partition()
 
@@ -304,7 +304,7 @@ async def test_ensure_current_partition_exception_logged():
     mock_session.execute = AsyncMock(side_effect=Exception("already exists"))
     mock_session.commit = AsyncMock()
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         await bus._ensure_current_partition()  # must not raise
 
 

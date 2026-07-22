@@ -104,7 +104,7 @@ async def test_get_session_acquires_from_pool_when_none():
     async def _fake_local():
         yield fake_pool_session
 
-    with patch("app.database.connection.AsyncSessionLocal", side_effect=_fake_local):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", side_effect=_fake_local):
         async with repo._get_session() as s:
             assert s is fake_pool_session
 

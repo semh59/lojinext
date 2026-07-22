@@ -135,7 +135,7 @@ async def test_create_partition_december_wraps_year():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -164,7 +164,7 @@ async def test_create_partition_mid_year():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -194,7 +194,7 @@ async def test_create_partition_execute_exception_continues():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -300,7 +300,7 @@ async def test_db_health_check_long_running_tx_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
@@ -329,7 +329,7 @@ async def test_db_health_check_critical_tx_severity():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
@@ -359,7 +359,7 @@ async def test_db_health_check_lock_wait_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
@@ -388,7 +388,7 @@ async def test_db_health_check_lock_wait_critical_above_15s():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
@@ -418,7 +418,7 @@ async def test_db_health_check_table_bloat_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
@@ -455,7 +455,7 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
                 new_callable=AsyncMock,
             ):
                 with patch(
-                    "app.database.connection.AsyncSessionLocal",
+                    "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
                     return_value=mock_sess,
                 ):
                     with patch(

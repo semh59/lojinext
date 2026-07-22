@@ -156,10 +156,10 @@ def db_session_factory(db_engine, monkeypatch):
     """Session scoped session maker that also patches the globally used SessionLocals."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
-    import app.database.connection  # noqa: E402
+    import v2.modules.platform_infra.database.connection  # noqa: E402
     import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
 
-    monkeypatch.setattr(app.database.connection, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory)
     monkeypatch.setattr(v2.modules.shared_kernel.infrastructure.unit_of_work, "AsyncSessionLocal", factory)
 
     return factory

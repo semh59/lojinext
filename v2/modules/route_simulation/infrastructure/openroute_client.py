@@ -325,7 +325,7 @@ class OpenRouteClient:
 
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         try:
             async with AsyncSessionLocal() as session:
@@ -396,7 +396,7 @@ class OpenRouteClient:
 
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         try:
             async with AsyncSessionLocal() as session:

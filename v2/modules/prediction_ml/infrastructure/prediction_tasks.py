@@ -11,9 +11,9 @@ from typing import cast
 
 import redis
 
-from app.database.connection import AsyncSessionLocal
 from app.infrastructure.background.celery_app import celery_app
 from v2.modules.ai_assistant.public import LLMMessage, get_llm_client
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.prediction_ml.infrastructure.models import PredictionResult
 
 _log = logging.getLogger(__name__)

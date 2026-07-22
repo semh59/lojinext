@@ -120,7 +120,7 @@ async def _run_digest() -> None:
     try:
         from sqlalchemy import text
 
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
         async with AsyncSessionLocal() as session:
             await session.execute(
@@ -190,7 +190,7 @@ async def _create_partition() -> None:
 
     from sqlalchemy import text
 
-    from app.database.connection import AsyncSessionLocal
+    from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
     today = datetime.date.today()
 
@@ -240,7 +240,7 @@ async def _create_partition() -> None:
 )
 def db_health_check(self):
     """Detect long-running transactions, lock waits, and table bloat."""
-    from app.database.connection import engine
+    from v2.modules.platform_infra.database.connection import engine
 
     try:
         asyncio.run(_db_health_check())
@@ -271,13 +271,13 @@ def db_health_check(self):
 async def _db_health_check() -> None:
     from sqlalchemy import text
 
-    from app.database.connection import AsyncSessionLocal
     from app.infrastructure.monitoring import aemit
     from app.infrastructure.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
     )
+    from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         # Long-running transactions (>30s)

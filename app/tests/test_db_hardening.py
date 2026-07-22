@@ -4,7 +4,11 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from app.database.connection import AsyncSessionLocal, engine, get_sync_session
+from v2.modules.platform_infra.database.connection import (
+    AsyncSessionLocal,
+    engine,
+    get_sync_session,
+)
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
@@ -172,7 +176,7 @@ async def test_auth_service_authenticate_does_not_leak_connection(db_session):
 async def test_sync_session_auto_commit():
     """Verify that sync session helper commits on success."""
     # This is harder to test without a real DB but we can mock the session
-    with patch("app.database.connection.SyncSessionLocal") as mock_session_factory:
+    with patch("v2.modules.platform_infra.database.connection.SyncSessionLocal") as mock_session_factory:
         mock_session = mock_session_factory.return_value
         with get_sync_session():
             pass

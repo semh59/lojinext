@@ -16,8 +16,8 @@ import logging
 
 from sqlalchemy import select
 
-from app.database.connection import AsyncSessionLocal
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.prediction_ml.application.ensemble_service import get_ensemble_service
 
 logger = logging.getLogger(__name__)

@@ -13,7 +13,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
 _session_ctx: contextvars.ContextVar[Optional[AsyncSession]] = contextvars.ContextVar(
     "lojinext_db_session", default=None

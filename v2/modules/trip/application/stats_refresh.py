@@ -47,7 +47,7 @@ async def refresh_stats(uow: UnitOfWork) -> None:
         return
 
     async def _refresh_in_bg() -> None:
-        from app.database.connection import AsyncSessionLocal
+        from v2.modules.platform_infra.database.connection import AsyncSessionLocal
         from v2.modules.trip.infrastructure.repository import SeferRepository
 
         try:

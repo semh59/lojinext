@@ -142,7 +142,7 @@ async def test_error_stream_valid_token_deleted_before_db_check():
     with (
         patch(_PUBSUB_PATH, return_value=mock_mgr),
         patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ),
     ):

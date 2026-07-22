@@ -20,8 +20,8 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 
 from sqlalchemy import text
 
-from app.database.connection import AsyncSessionLocal
 from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
 logger = get_logger(__name__)
 

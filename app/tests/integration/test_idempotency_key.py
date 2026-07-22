@@ -287,7 +287,7 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     ikinci commit yakalanmamış `IntegrityError` ile patlıyordu (500).
 
     `reserve_or_get_cached`/`finalize_response` artık kendi bağımsız
-    session'larını `app.database.connection.AsyncSessionLocal` üzerinden açıp
+    session'larını `v2.modules.platform_infra.database.connection.AsyncSessionLocal` üzerinden açıp
     anında commit ediyor (derin kontrol bulgusu #2 — bkz. idempotency_service.py
     modül docstring'i). Bu testte o isim GERÇEK bir `async_sessionmaker`'a
     (fixture'ın `async_db_engine`'ine bağlı) monkeypatch'lenir — fixture'ın
@@ -296,7 +296,7 @@ async def test_reserve_or_get_cached_concurrent_first_use_does_not_500(
     from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    import app.database.connection as db_connection
+    import v2.modules.platform_infra.database.connection as db_connection
     from v2.modules.admin_platform.application.idempotency_service import (
         IdempotencyKeyInProgressError,
         finalize_response,

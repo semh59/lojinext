@@ -31,11 +31,11 @@ from app.core.services.weather_service import (
     WeatherSample,
     WeatherService,
 )
-from app.database.connection import AsyncSessionLocal
 from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fleet.public import Dorse
 from v2.modules.location.public import Lokasyon
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.prediction_ml.public import (
     combine_factors,
     weather_precipitation_factor,

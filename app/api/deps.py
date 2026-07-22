@@ -38,7 +38,6 @@ from sqlalchemy.orm import selectinload
 
 from app.config import settings
 from app.core.services.weather_service import WeatherService, get_weather_service
-from app.database.connection import get_db
 from app.infrastructure.background.job_manager import (
     BackgroundJobManager,
     get_job_manager,
@@ -54,6 +53,7 @@ from v2.modules.auth_rbac.domain import jwt_handler
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
 from v2.modules.auth_rbac.infrastructure.models import Kullanici, Rol
 from v2.modules.auth_rbac.infrastructure.token_blacklist import blacklist
+from v2.modules.platform_infra.database.connection import get_db
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork, get_uow
 
 logger = get_logger(__name__)

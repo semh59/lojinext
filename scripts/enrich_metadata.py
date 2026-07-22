@@ -9,7 +9,7 @@ from sqlalchemy import select
 sys.path.append(os.getcwd())
 
 from app.config import settings
-from app.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
 
 # COORDINATE MAPPING

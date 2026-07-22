@@ -189,7 +189,7 @@ async def test_auto_explain_runs_for_asyncpg_style_params():
     mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
         patch("app.infrastructure.monitoring.aemit", AsyncMock()),
     ):
         await dp._auto_explain(stmt, (1,), 3000.0)

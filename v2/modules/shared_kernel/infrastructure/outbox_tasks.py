@@ -1,4 +1,9 @@
-"""Outbox event relay tasks."""
+"""Outbox event relay tasks.
+
+`app/workers/tasks/outbox_tasks.py`'den dalga 17 (platform-infra) denetiminde
+taşındı — bu task'ın tek işi `v2.modules.shared_kernel.infrastructure.outbox`'ı
+periyodik relay etmek, OutboxEvent zaten shared_kernel'de yaşıyor (dalga 16).
+"""
 
 from app.infrastructure.background.celery_app import celery_app
 from app.infrastructure.logging.logger import get_logger

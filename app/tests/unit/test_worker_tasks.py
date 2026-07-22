@@ -17,9 +17,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.return_value = None  # kuyruk boş
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -38,9 +40,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -54,9 +58,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -74,9 +80,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run(requeue=True)
 
@@ -96,7 +104,9 @@ class TestRelayOutboxEvents:
             "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
-            from app.workers.tasks.outbox_tasks import relay_outbox_events
+            from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+                relay_outbox_events,
+            )
 
             relay_outbox_events.run()  # should complete without exception
 
@@ -109,7 +119,9 @@ class TestRelayOutboxEvents:
             "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
-            from app.workers.tasks.outbox_tasks import relay_outbox_events
+            from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+                relay_outbox_events,
+            )
 
             relay_outbox_events.run()
 

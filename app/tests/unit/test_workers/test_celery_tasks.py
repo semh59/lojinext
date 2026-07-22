@@ -19,7 +19,9 @@ class TestCeleryTasks:
 
     def test_relay_outbox_events_is_registered(self):
         """relay_outbox_events task is registered with the correct name."""
-        from app.workers.tasks.outbox_tasks import relay_outbox_events
+        from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+            relay_outbox_events,
+        )
 
         assert relay_outbox_events.name == "infrastructure.relay_outbox_events"
 
@@ -47,13 +49,17 @@ class TestCeleryTasks:
 
     def test_relay_outbox_events_max_retries(self):
         """relay_outbox_events task has max_retries=5."""
-        from app.workers.tasks.outbox_tasks import relay_outbox_events
+        from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+            relay_outbox_events,
+        )
 
         assert relay_outbox_events.max_retries == 5
 
     def test_relay_outbox_events_acks_late(self):
         """relay_outbox_events uses acks_late=True for at-least-once delivery."""
-        from app.workers.tasks.outbox_tasks import relay_outbox_events
+        from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+            relay_outbox_events,
+        )
 
         assert relay_outbox_events.acks_late is True
 
@@ -66,7 +72,9 @@ class TestCeleryTasks:
 
     def test_relay_outbox_events_retries_on_connection_error(self):
         """relay_outbox_events raises (retries) when a ConnectionError occurs."""
-        from app.workers.tasks.outbox_tasks import relay_outbox_events
+        from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+            relay_outbox_events,
+        )
 
         # engine is imported locally inside the task; mock it at source
         mock_engine = MagicMock()

@@ -1,5 +1,12 @@
 """
 DLQ tüketim/gözlem task'ları.
+
+`app/workers/tasks/dlq_tasks.py`'den dalga 17 (platform-infra) denetiminde
+taşındı — task adı (``prediction.drain_dlq``) ve Redis anahtarları
+(``pred:dlq``/``pred:retry``) tamamen bu modüle özgü (`infrastructure/
+prediction_tasks.py` zaten ``pred:dlq``'ya yazıyor); genel platform-infra
+değil, route_simulation'ın `admin_calibration.py`/`weather.py`'si gibi
+tek-modüllük bir kalıntıydı.
 """
 
 import json

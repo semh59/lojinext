@@ -97,12 +97,81 @@ madde 0'ıyla aynı disiplin).
 5. **Gerçek platform_infra envanteri (registry'siz, doğrudan)**: cache/
    events/monitoring/resilience/middleware (`app/infrastructure/*`),
    Sentry/Prometheus/OTEL/exception-handler'lar (`main.py` 206-282,
-   375-748), `app/services/external_service.py`,
-   `app/workers/tasks/{dlq_tasks,outbox_tasks}.py`, `app/database/
-   {connection,db_session,init_db}.py` — bunların hangilerinin GERÇEKTEN
-   cross-cutting kalıp hangilerinin belirli bir modüle ait olduğu (madde 1
-   deki gibi tek tek `grep`le) HENÜZ İNCELENMEDİ, kullanıcı onayıyla
-   sıradaki adım olarak planlanabilir.
+   375-748), `app/services/external_service.py`, `app/database/
+   {connection,db_session,init_db}.py`.
+
+   ✅ **`app/infrastructure/{cache,events,monitoring,resilience,middleware}`,
+   `app/database/*`, `app/services/external_service.py` — İNCELENDİ
+   (2026-07-21/22, madde 1'deki gibi dosya-başına `grep -rln` ile gerçek
+   çağıran sayımı yapıldı, container.py denetimiyle aynı disiplin).**
+   Sonuç: büyük çoğunluğu (cache/ 5 dosya, events/event_bus.py+event_types.py,
+   monitoring/ 11/13 dosya, resilience/circuit_breaker.py+rate_limiter.py+
+   shutdown.py, middleware/ 3 dosya, database/connection.py+db_session.py+
+   init_db.py) 3+ bağımsız modül tarafından kullanılıyor — gerçekten
+   cross-cutting, platform_infra'da KALACAK. Ama 5 kalem tek-modül kalıntısı
+   veya ölü kod olarak bulundu (dlq_tasks.py/outbox_tasks.py'yle AYNI desen
+   — isim/kullanım tek modüle kenetli ama "platform-genel" klasörde
+   yaşıyor):
+   - **`app/infrastructure/monitoring/container_health.py`** → tek çağıran
+     `v2/modules/admin_platform/api/admin_integrations_routes.py` (Telegram
+     bot Docker durumu, admin Integrations paneli). Taşınacak yer:
+     `v2/modules/admin_platform/infrastructure/container_health.py`.
+   - **`app/infrastructure/monitoring/ml_probe.py`** → tek çağıran modül
+     prediction_ml (`application/ensemble_service.py`,
+     `domain/ensemble_core.py`). Taşınacak yer:
+     `v2/modules/prediction_ml/infrastructure/ml_probe.py`.
+   - **`app/infrastructure/resilience/retry.py`** → tek çağıran modül
+     route_simulation (`mapbox_client.py`, `open_meteo_client.py` — kök
+     CLAUDE.md'nin Open-Meteo gotcha'sının bahsettiği `with_async_retry`
+     deseni). Taşınacak yer:
+     `v2/modules/route_simulation/infrastructure/retry.py`.
+   - **`app/services/external_service.py`** → 2 çağıran, ikisi de
+     route_simulation domain'i (`app/core/services/weather_service.py` +
+     `v2/modules/route_simulation/application/get_route_details.py`).
+     Tamamen Open-Meteo'ya özgü (`get_weather_forecast`/
+     `get_weather_current_batch`/`get_weather_archive`), route_simulation'ın
+     kendi `infrastructure/open_meteo_client.py`'siyle olası çakışma/
+     birleştirme fırsatı var. Taşınacak yer:
+     `v2/modules/route_simulation/infrastructure/` (birleştirme kararı ayrı).
+   - **`app/infrastructure/resilience/idempotency.py`** — **ölü kod**,
+     sıfır gerçek prod çağıran (yalnız kendi test dosyası). Gerçek/aktif
+     idempotency-key altyapısı zaten `v2/modules/admin_platform/
+     application/idempotency_service.py`'de yaşıyor (kök CLAUDE.md'de
+     dokümante) — bu eski `IdempotencyGuard`/`IdempotencyKeyDependency`
+     hiçbir router'a wire edilmemiş, terk edilmiş bir öncül implementasyon.
+     Silinmeli, taşınmayacak.
+   - **`app/infrastructure/events/contracts.py`** — **ölü kod adayı**:
+     tek kullanıcısı `event_bus.py`'nin `publish_typed()` metodu, ama
+     `publish_typed`'ın kendisinin sıfır prod çağıranı var (yalnız 2 test
+     dosyası). `TripCreatedEvent`/`FuelUpdatedEvent`/
+     `ModelRetrainRequestedEvent` tipli event-contract deneyi hiç adopte
+     edilmemiş — gerçek kod hep untyped `Event`/`EventType`+`publish()`
+     kullanıyor. Silinmeli (veya platform_infra'ya "kullanılmıyor"
+     notuyla taşınmalı — karar bekliyor).
+   - **`app/database/repositories/`** — klasörün içinde artık yalnız
+     `__pycache__` kalıntısı var, hiçbir gerçek `.py` dosyası yok (ilgili
+     repo'lar zaten ilgili v2 modüllerine taşınmış). Klasör + pyc
+     kalıntısı silinmeli.
+   Bu 7 kalemin taşınması/silinmesi HENÜZ UYGULANMADI (yalnız tespit) —
+   DURMA NOKTASI gereği kullanıcı onayı bekliyor.
+
+   ✅ **`app/workers/tasks/{dlq_tasks,outbox_tasks}.py` — İNCELENDİ ve
+   DÜZELTİLDİ (2026-07-21)**: ikisi de aslında platform-genel DEĞİLDİ.
+   `dlq_tasks.py`'nin task adı (`prediction.drain_dlq`) ve Redis anahtarları
+   (`pred:dlq`/`pred:retry`) tamamen prediction_ml'e özgüydü
+   (`infrastructure/prediction_tasks.py` zaten `pred:dlq`'ya yazıyor) —
+   `v2/modules/prediction_ml/infrastructure/dlq_tasks.py`'ye taşındı.
+   `outbox_tasks.py`'nin tek işi shared_kernel'in `OutboxEvent`'ini relay
+   etmekti — `v2/modules/shared_kernel/infrastructure/outbox_tasks.py`'ye
+   taşındı. `celery_app.py`'nin task-registrasyon import'ları + 2 test
+   dosyası (`test_worker_tasks.py`, `test_workers/test_celery_tasks.py`)
+   güncellendi; Celery task adları (`beat_schedule`'daki string'ler)
+   DEĞİŞMEDİ, yalnız Python import yolu değişti. `app/workers/tasks/`'ta
+   kalan `backup_tasks.py` (tüm PostgreSQL DB'yi yedekler, gerçekten
+   platform-genel) ve `error_digest.py` (dalga 16'da bilinçli olarak
+   `app/infrastructure/monitoring/`'de bırakılan ~2300 satırlık alt
+   sistemin bir parçası, o taşınmadan tek başına taşınması tutarsız olurdu)
+   dokunulmadan kaldı.
 
 ---
 

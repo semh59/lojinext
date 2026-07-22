@@ -33,7 +33,9 @@ def dedupe_geocode_results(results: list[dict]) -> list[dict]:
 async def geocode_via_openroute(q: str, limit: int = 5) -> list[dict]:
     from urllib.parse import urlsplit, urlunsplit
 
-    from app.core.services.openroute_service import get_openroute_service
+    from v2.modules.location.infrastructure.openroute_geocode_client import (
+        get_openroute_service,
+    )
 
     openroute_service = get_openroute_service()
     if not await openroute_service.is_configured_async():
@@ -132,7 +134,9 @@ async def geocode_via_nominatim(q: str, limit: int = 5) -> list[dict]:
 
 
 def geocode_via_offline(q: str) -> list[dict]:
-    from app.core.services.openroute_service import get_openroute_service
+    from v2.modules.location.infrastructure.openroute_geocode_client import (
+        get_openroute_service,
+    )
 
     coords = get_openroute_service().geocode_offline(q)
     if not coords:

@@ -34,9 +34,11 @@ return}_trip.py`, prediction_ml'in `prediction_service.py`/
 `ensemble_service.py`) artık `WeatherService`/`WeatherSample`/
 `get_weather_service`/`RouteValidator`'ı `v2.modules.route_simulation.public`
 üzerinden import ediyor. `openroute_service.py`'nin GEOCODE yüzeyi (bu
-modüle AİT DEĞİL — location'ın bağımlılığı) hâlâ `app/core/services/`'te
-kalıyor, kendi 2026-07-22 dead-code temizliğinde rota-profili tarafı zaten
-silinmişti (bkz. o dosyanın kendi docstring'i).
+modüle AİT DEĞİL — location'ın bağımlılığı) 2026-07-22'de (aynı gün, bu
+notun yazılışından sonraki bir turda) `v2/modules/location/infrastructure/
+openroute_geocode_client.py`'ye taşındı — `TASKS/bug-openroute-client-
+architectural-leak.md`'nin kabul kriteri artık tam karşılanıyor, `app/core/
+services/` dizini tamamen silindi.
 **Dalga 17 (platform-infra) eklentisi**: `infrastructure/retry.py`
 (`with_async_retry`, `app/infrastructure/resilience/retry.py`'den —
 tek çağıranı `mapbox_client.py`/`open_meteo_client.py` idi) ve
@@ -268,9 +270,10 @@ yalnız `v2.modules.route_simulation.public` üzerinden erişir. 2026-07-22'de
 `weather_service.py`/`route_validator.py` taşındıktan sonra geçici
 istisna kalmadı — trip/prediction_ml'in bu ikisine erişimi artık
 `public.py` üzerinden (istisna değil, sanctioned surface).
-`openroute_service.py`'nin (geocode-only, `location`'ın bağımlılığı,
-bu modüle ait değil) `app/core/services/`'te kalması ayrı, dokümante
-bir durum — bu modülün kapsamı dışı.
+Geocode-only `openroute_service.py` (`location`'ın bağımlılığı, hiçbir zaman
+bu modüle ait olmadı) 2026-07-22'de `location/infrastructure/
+openroute_geocode_client.py`'ye taşındı — bu modülün artık kapsamında bile
+değil, tek bir referans satırı bile yok.
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 

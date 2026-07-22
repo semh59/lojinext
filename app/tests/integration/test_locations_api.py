@@ -62,7 +62,7 @@ async def test_api_geocode_location(
 ):
     """GET /geocode?q=... → gerçek LokasyonService + gerçek ORS api_stub
     round-trip (stub sorgu metnini label olarak yansıtır)."""
-    import app.core.services.openroute_service as ors_mod
+    import v2.modules.location.infrastructure.openroute_geocode_client as ors_mod
 
     ors_mod._openroute_service = None  # reset singleton
     monkeypatch.setattr(ors_mod.settings, "OPENROUTESERVICE_API_KEY", "test-key")

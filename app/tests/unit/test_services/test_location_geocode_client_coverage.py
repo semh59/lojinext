@@ -1,5 +1,5 @@
 """
-Coverage tests for app/core/services/openroute_service.py
+Coverage tests for v2/modules/location/infrastructure/openroute_geocode_client.py
 Targets: offline fallback, geocode paths.
 
 2026-07-22 dead-code denetimi: rota-profili hesaplama tarafının (RouteProfile,
@@ -9,13 +9,18 @@ silindi (sıfır prod çağıranı vardı, v2/modules/route_simulation'ın kendi
 RouteSimulator/get_route_details pipeline'ı tarafından zaten ikame edilmişti).
 
 0-mock epiği (Faz1 dilim5) notu: `geocode()`'un ağ yolu DAHA ÖNCE bilerek
-mock'lu bırakılmadı — grep ile doğrulandı ki bu metod, `openroute_service.py`
+mock'lu bırakılmadı — grep ile doğrulandı ki bu metod, bu dosya
 dışında hiçbir gerçek prod kod yolundan çağrılmıyor (sadece bu test dosyası
-ve `get_openroute_service()` singleton'ı kullanıyor; `lokasyon_service.py`
-kendi `_geocode_with_openroute`'unu yazıp `openroute_service._get_client()`/
-`base_url`'i ödünç alıyor, `.geocode()`'u DEĞİL). Gerçek prod'da kullanılan
+ve `get_openroute_service()` singleton'ı kullanıyor; `geocode_providers.py`'nin
+`geocode_via_openroute`'u kendi URL'ini yazıp bu dosyanın `_get_client()`/
+`base_url`'ini ödünç alıyor, `.geocode()`'u DEĞİL). Gerçek prod'da kullanılan
 yüzey (`is_configured_async`, `_get_client`, `base_url`, `geocode_url`,
 `geocode_offline`) zaten mock'suz test ediliyor.
+
+2026-07-22: dosya `app/core/services/openroute_service.py`'den
+`v2/modules/location/infrastructure/openroute_geocode_client.py`'ye taşındı
+(mekanik taşıma), test dosyası da bu isimle location modülünün test
+kümesinde kaldı.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,13 +33,15 @@ pytestmark = pytest.mark.unit
 def _make_service(api_key="testkey123"):
     """Return an OpenRouteService instance with a controlled api_key."""
     from app.config import settings
-    from app.core.services.openroute_service import OpenRouteService
+    from v2.modules.location.infrastructure.openroute_geocode_client import (
+        OpenRouteService,
+    )
 
     svc = OpenRouteService.__new__(OpenRouteService)
     svc.api_key = api_key
     svc.base_url = settings.OPENROUTE_API_BASE_URL
     # geocode_url is normally derived from base_url's origin in __init__
-    # (see openroute_service.py) — __new__ bypasses that, so set it
+    # (see openroute_geocode_client.py) — __new__ bypasses that, so set it
     # explicitly (same pattern as OpenRouteClient's tests).
     svc.geocode_url = "https://api.openrouteservice.org/geocode/search"
     svc._client = None
@@ -88,7 +95,9 @@ def test_geocode_url_derived_from_base_url_origin():
     openroute_client.py/lokasyon_service.py'de düzeltilmiş ama bu dosyada
     kaçırılmış aynı bug (f"{base_url}/geocode/search" hep /v2 altına
     ekleyip prod'da her zaman 404 dönüyordu)."""
-    from app.core.services.openroute_service import OpenRouteService
+    from v2.modules.location.infrastructure.openroute_geocode_client import (
+        OpenRouteService,
+    )
 
     svc = OpenRouteService(api_key="test-key")
 
@@ -180,7 +189,9 @@ def test_geocode_offline_case_insensitive():
 
 
 def test_get_openroute_service_singleton():
-    from app.core.services.openroute_service import get_openroute_service
+    from v2.modules.location.infrastructure.openroute_geocode_client import (
+        get_openroute_service,
+    )
 
     s1 = get_openroute_service()
     s2 = get_openroute_service()

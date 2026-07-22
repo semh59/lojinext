@@ -293,12 +293,12 @@ jobs:
         # analytics_executive, ai_assistant, prediction_ml, trip,
         # admin_platform + 1 public-surface-only-platform_infra, added
         # 2026-07-22 once dalga 17 landed — same pattern as every module
-        # before it). Explicitly EXCLUDES the pre-existing legacy
-        # `report-only` contract (app.core.services vs app.services drift,
-        # unrelated to the v2/ modular-monolith refactor, documented +
-        # out of scope — see the separate report-only step below) so that
-        # gating the NEW boundaries doesn't get blocked by OLD, already-known
-        # drift this refactor isn't touching.
+        # before it). The pre-existing legacy `report-only` contract
+        # (app.core.services vs app.services drift) was REMOVED from
+        # .importlinter 2026-07-22 once `app.core.services` stopped
+        # existing entirely (its last file moved into v2/modules/location/)
+        # — the independence check it tracked became moot, so there is no
+        # longer a separate non-blocking report step below.
         #
         # shared_kernel (dalga 16) deliberately has NO public-surface-only
         # contract of its own (documented exemption — see
@@ -325,14 +325,6 @@ jobs:
             --contract public-surface-only-trip \
             --contract public-surface-only-admin_platform \
             --contract public-surface-only-platform_infra
-
-      - name: Import boundary report — legacy app.core.services/app.services drift (non-blocking)
-        # Pre-existing FAZ0 report-only contract (app.core.services <-> app.services
-        # circular dependency) — known, documented, out of scope for the v2/
-        # modular-monolith refactor. Kept as a non-blocking informational report;
-        # promoting THIS to a gate would be a separate, unrelated cleanup task.
-        run: lint-imports --config .importlinter --contract report-only || true
-        continue-on-error: true
 
       - name: Backend type check (mypy)
         # Soft-baseline gate: fails only if the error count GROWS beyond the

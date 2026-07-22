@@ -9,8 +9,14 @@ is_configured(), close()) silindi — sıfır prod çağıranı vardı (yalnız 
 dedike testleri), v2/modules/route_simulation'ın kendi RouteSimulator/
 get_route_details pipeline'ı tarafından zaten ikame edilmişti. Geocode
 tarafı (bu dosyanın geri kalanı) hâlâ canlı —
-v2/modules/location/infrastructure/geocode_providers.py'nin 3 aşamalı
-geocode fallback zincirinin 2 aşaması burayı kullanıyor.
+geocode_providers.py'nin 3 aşamalı geocode fallback zincirinin 2 aşaması
+burayı kullanıyor.
+
+2026-07-22: dosya `app/core/services/openroute_service.py`'den bu modüle
+taşındı (mekanik taşıma, davranış değişikliği yok) — geocode zaten
+yalnızca `location`'ın kendi fallback zinciri tarafından kullanılıyordu,
+`route_simulation`'a ait değildi (bkz. TASKS/bug-openroute-client-
+architectural-leak.md).
 """
 
 import threading

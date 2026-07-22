@@ -186,3 +186,16 @@ gate'e geçildi**:
       broken` (1 broken = kapsam dışı, önceden var olan FAZ0 kontratı)
 - [x] Gerçek gate'e (continue-on-error kaldırma) geçilmedi — ayrı onay
       bekliyor, bu turun kapsamı dışında.
+
+## ✅ `report-only` kontratı TAMAMEN KALDIRILDI (2026-07-22)
+
+Bu dosya boyunca "kapsam dışı, önceden var olan drift" olarak bırakılan
+FAZ0 `report-only` kontratı (`app.core.services` vs `app.services`) artık
+GEÇERSİZ hale geldi: `app.core.services` paketi 2026-07-22'de (son dosyası
+`openroute_service.py`'nin `v2/modules/location/`'a taşınmasıyla)
+tamamen ortadan kalktı. Bir tarafı yok olan bir "independence" kontratı
+anlamsız — `.importlinter`'dan kontrat silindi, `.github/workflows/
+ci.yml`'nin ayrı non-blocking "Import boundary report" adımı da kaldırıldı
+(artık `--contract report-only` diye bir şey yok, çalıştırılsa "contract
+not found" hatası verirdi). `lint-imports` artık **18/18 kept, 0 broken**
+— bu dosyanın izlediği son bilinen borç da kapandı.

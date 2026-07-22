@@ -263,7 +263,7 @@ async def test_geocode_success(
 ):
     """GET /geocode?q=... → 200 list of suggestions (gerçek servis, ORS
     gerçek api_stub'a (Faz 0/1) işaret eder — deterministik, gerçek ağ değil)."""
-    import app.core.services.openroute_service as ors_mod
+    import v2.modules.location.infrastructure.openroute_geocode_client as ors_mod
 
     ors_mod._openroute_service = None  # reset singleton
     monkeypatch.setattr(ors_mod.settings, "OPENROUTESERVICE_API_KEY", "test-key")

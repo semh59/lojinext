@@ -1,5 +1,15 @@
 # BUG — `OpenRouteClient` mimari sızıntısı: 3 ilgisiz sorumluluk + tablo-sahipliği ihlali
 
+> ✅ **TAMAMEN ÇÖZÜLDÜ (2026-07-22, ikinci-dilim taşıması).** 2026-07-18'de
+> bilinçli olarak kapsam dışı bırakılan 3. madde de tamamlandı:
+> `app.core.services.openroute_service.py` `v2/modules/location/
+> infrastructure/openroute_geocode_client.py`'ye taşındı (mekanik taşıma,
+> davranış değişikliği yok) — `location`'ın `geocode_providers.py`'si bu
+> dosyanın HTTP client'ını/offline-tablosunu zaten kullanıyordu, artık
+> kendi modülünün içinde. `app/core/services/` dizini (README.md +
+> __init__.py dahil) tamamen silindi. Artık gerçekten TEK geocode
+> implementasyonu var. Aşağıdaki 2026-07-18 notu (ilk 2 madde) korunuyor:
+
 > ✅ **ÇÖZÜLDÜ (2026-07-18, tam-denetim düzeltme turu).** Aşağıdaki
 > "Önerilen çözüm"ün 1-2. maddeleri uygulandı: `geocode`/`_call_geocode_api`
 > ve `update_route_distance` silindi (3. implementasyon — `app.core.services.
@@ -11,8 +21,8 @@
 > `test_route_api.py`) ilgili ölü-kod testleri kaldırılarak güncellendi.
 > `OpenRouteClient` artık yalnız ORS distance+cache sorumluluğu taşıyor.
 > Kabul kriterlerinin 1-2-4-5-6. maddeleri karşılandı; 3. madde (üçüncü
-> geocode implementasyonunun da birleştirilmesi) bilinçli olarak kapsam
-> dışı bırakıldı — ayrı bir görev gerektirir.
+> geocode implementasyonunun da birleştirilmesi) 2026-07-22'de yukarıda
+> tamamlandı.
 
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
@@ -114,7 +124,7 @@ içerikleri karşılaştırılarak) ortaya çıktı.
 ## Kabul kriterleri
 - [x] `OpenRouteClient` yalnız `get_distance`/cache sorumluluğunu taşıyor
 - [x] `lokasyonlar` tablosuna route_simulation'dan hiçbir yazma yolu kalmadı
-- [ ] ~~Tek bir OpenRoute-geocode implementasyonu kaldı (üç değil)~~ — **KISMEN**: üç implementasyondan biri (`OpenRouteClient.geocode()`) silindi, ikisi kaldı (`location/infrastructure/geocode_providers.py::geocode_via_openroute` — kanonik, ve eski `app/core/services/openroute_service.py` — henüz taşınmamış, madde 3 kararıyla bilinçli olarak dokunulmadı). Tam "tek implementasyon" hedefi route_simulation'ın ikinci-dilim taşımasını bekliyor.
+- [x] Tek bir OpenRoute-geocode implementasyonu kaldı (üç değil) — 2026-07-22'de tamamlandı: `OpenRouteClient.geocode()` (2026-07-18'de silindi) ve eski `app/core/services/openroute_service.py` (2026-07-22'de `location/infrastructure/openroute_geocode_client.py`'ye taşındı) kalmadı, geriye yalnız `location/infrastructure/geocode_providers.py`'nin kanonik ORS→Nominatim→offline zinciri kaldı (offline/client kısmı artık kendi modülünün içinde).
 - [x] `scripts/enrich_existing_data.py` güncellendi (`location.public.geocode_location` kullanıyor) — manuel çalıştırma doğrulaması Docker gerektirdiği için bu ad-hoc ortamda yapılamadı, yalnız syntax/import zinciri doğrulandı
 - [x] Test dosyaları güncellendi (`test_openroute_client_coverage.py`/`_more.py`, `test_infrastructure/test_openroute_client.py`, `test_route_api.py` — ölü-kod testleri kaldırıldı), gerçek Postgres+Redis+api-stub'a karşı yeşil (39/39 passed)
 - [x] `TASKS/STATUS.md`'deki ilgili not "ÇÖZÜLDÜ" olarak güncellendi (kaldırılmadı — geçmiş kaydı korunuyor, madde 3'ün kısmi kaldığı da not düşüldü)

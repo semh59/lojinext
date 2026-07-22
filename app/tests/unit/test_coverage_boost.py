@@ -795,7 +795,9 @@ class TestOpenRouteServiceOffline:
     """Tests for OpenRouteService offline (no-API) code paths."""
 
     def test_instantiation(self):
-        from app.core.services.openroute_service import OpenRouteService
+        from v2.modules.location.infrastructure.openroute_geocode_client import (
+            OpenRouteService,
+        )
 
         svc = OpenRouteService(api_key="")
         assert svc is not None
@@ -870,9 +872,11 @@ class TestInterfacesImport:
         assert hasattr(init_db, "__name__")
 
     def test_openroute_service_importable(self):
-        from app.core.services import openroute_service  # noqa: F401
+        from v2.modules.location.infrastructure import (  # noqa: F401
+            openroute_geocode_client,
+        )
 
-        assert hasattr(openroute_service, "__name__")
+        assert hasattr(openroute_geocode_client, "__name__")
 
     def test_rag_sync_service_importable(self):
         from app.core.ai import rag_sync_service  # noqa: F401

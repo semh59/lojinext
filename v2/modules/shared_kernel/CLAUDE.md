@@ -182,11 +182,11 @@ injection.
 - `app/core/ai/*` (5 dosya) — gerçek kod zaten `v2/modules/ai_assistant/`'a
   taşındı, bunlar geriye kalan 1-satırlık "FAZ4'te silinir" wildcard shim'ler
   (kendi CLAUDE.md'sinde dokümante, bu modülün kapsamı dışı).
-- `app/core/services/openroute_service.py` — location modülünün canlı
-  geocode bağımlılığı, kasıtlı olarak `app/`'de kalıyor (kök CLAUDE.md'de
-  dokümante). `weather_service.py`/`route_validator.py`/
-  `route_calibration_service.py` 2026-07-22'de route_simulation'a taşındı,
-  bu listede artık yok.
+- ~~`app/core/services/openroute_service.py`~~ — 2026-07-22'de
+  `location/infrastructure/openroute_geocode_client.py`'ye taşındı,
+  `app/core/services/` dizini tamamen silindi; bu listede artık yok.
+  `weather_service.py`/`route_validator.py`/`route_calibration_service.py`
+  aynı gün daha önce route_simulation'a taşınmıştı.
 - `v2/modules/platform_infra/database/{connection.py,db_session.py,init_db.py}`
   (dalga 17'de `app/database/`'den taşındı) — DB bootstrap/engine kurulumu,
   orijinal 22 dosyalık envanterde hiç yoktu, kapsam dışı.

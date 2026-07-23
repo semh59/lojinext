@@ -150,7 +150,7 @@ jobs:
         run: |
           python - <<'PY'
           import celery
-          from app.infrastructure.background.celery_app import celery_app
+          from v2.modules.platform_infra.background.celery_app import celery_app
 
           print(f"Celery import OK: version={celery.__version__}")
           print(f"Celery app OK: name={celery_app.main}")

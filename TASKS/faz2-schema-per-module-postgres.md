@@ -1,5 +1,15 @@
 # FAZ2 — Şema-Başına-Modül (PostgreSQL)
 
+> 🟡 **PİLOT TAMAMLANDI (2026-07-23)** — `import_excel`/`iceri_aktarim_gecmisi`
+> ilk dalga olarak taşındı (`alembic/versions/0047_import_excel_schema_move.py`).
+> Kalan 13 şema/42 tablo henüz başlamadı, her biri ayrı onaylı oturum
+> gerektiriyor (session hijyeni). Pilot sırasında bu dosyanın orijinal
+> planını düzelten/tamamlayan bulgular için aşağıdaki "Pilot sonrası
+> bulgular" bölümüne bakın — özellikle **search_path tasarım kararı**
+> (madde 32'nin altındaki "raw-SQL siteleri" sorununu bu dosyanın hiç
+> öngörmediği bir yöntemle çözüyor) ve **index yeniden adlandırma**
+> gerekliliği (gerçek `alembic check` koşumunda bulundu, aşağıda).
+
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
 **Amaç:** 43 tabloyu 13 PostgreSQL şemasına dağıtmak (kod sınırından AYRI, Sert Kısıt 5). `SET SCHEMA` metadata-only ama kısa ACCESS EXCLUSIVE gerektirir.
@@ -66,9 +76,62 @@ context.configure(
 Her migration dosyası bağımsız `downgrade()` içerir (`SET SCHEMA public`). Bir tablo taşındıktan sonra sorun çıkarsa, o TEK tabloyu geri almak yeterli — toplu rollback gerekmez (tablo-tablo taşımanın avantajı).
 
 ## Kabul Kriterleri
-- [ ] 14 şema oluşturuldu (FAZ0 kararı: iceri_aktarim_gecmisi → import_excel)
-- [ ] 43 tablo dağıtıldı, her biri ayrı migration, ayrı downgrade
-- [ ] `include_schemas=True` + `version_table_schema` aktif
-- [ ] MV/trigger/partition'lar doğru şemada
-- [ ] `e2e_pilot_smoke.py` + `p51_real_world_validation.py` her tablo taşımasından sonra PASS
-- [ ] `m_ops` rolü tanımlı, 16 script'in erişimi doğrulandı
+- [x] 14 şemadan 1'i oluşturuldu (`import_excel` — pilot); 13'ü kalan dalgalarda
+- [x] 43 tablodan 1'i dağıtıldı (`iceri_aktarim_gecmisi`), ayrı migration + ayrı downgrade — gerçek Postgres'te upgrade→downgrade→upgrade döngüsü doğrulandı
+- [x] `include_schemas=True` aktif (pilotta eklendi); `version_table_schema="platform"` HENÜZ EKLENMEDİ (platform şeması henüz yok, o dalgaya ertelendi — bkz. aşağı)
+- [ ] MV/trigger/partition'lar doğru şemada (pilotun kapsamı dışı, ilgili tablolar henüz taşınmadı)
+- [ ] `e2e_pilot_smoke.py` + `p51_real_world_validation.py` her tablo taşımasından sonra PASS (bu pilotta gerçek Docker/Redis gerektiren tam smoke koşulmadı — bkz. "Doğrulama" notu)
+- [ ] `m_ops` rolü tanımlı, 16 script'in erişimi doğrulandı (henüz başlanmadı)
+
+## Pilot sonrası bulgular (2026-07-23) — sıradaki dalgalar için ZORUNLU okuma
+
+**1. `MEMORY/PROGRESS.md`'nin raw-SQL sayısı BAYAT:** "32 site / analiz_repo.py'de
+56 çağrı" ölçümü v2/ taşımasından ÖNCEKİ hale ait. İki araştırma ajanıyla
+yapılan güncel tarama: `analytics_executive/infrastructure/
+executive_read_models.py` = 17 çağrı (56 değil); ama toplamda
+**~75 dosyada ~200 raw-SQL/`execute_query()` çağrı sitesi** var (32 değil) —
+`BaseRepository.execute_query()` helper'ı (kendisi `text()` sarıyor) her
+modüle yayıldığı için naif `text(` grep'i bunu kaçırıyor.
+
+**2. Bu doküman "her siteyi şema-nitele" varsayıyordu — bunun yerine
+`search_path` kullanıldı ve gerçek Postgres'te uçtan uca doğrulandı:**
+Her taşınan şema, migration içinde `ALTER ROLE CURRENT_USER SET search_path
+= public, <şema>, ...`'a eklenir. Bare sorgular (`FROM seferler`) hiç
+değiştirilmeden çalışmaya devam eder. **Kritik gotcha (gerçek Postgres'te
+bulundu, `alembic/env.py`'de düzeltildi):** rolün search_path'i genişleyince
+Postgres'in `schema=None` ("varsayılan şema") tablo numaralandırması da
+search_path'teki TÜM şemaları tarar — bu, alembic'in autogenerate/`check`
+karşılaştırmasında taşınan tabloyu hem "varsayılan şema" hem "kendi şeması"
+geçişinde bulup hayalet bir "kaldırılacak tablo" farkı üretiyordu. Çözüm:
+`alembic/env.py`'nin KENDİ migration bağlantısı, migration'lar zaten açıkça
+şema-nitelikli olduğu için (`CREATE SCHEMA`/`ALTER TABLE SET SCHEMA`/`ALTER
+INDEX <şema>.<isim>`), search_path'i `public`'e sabitliyor — yalnız
+alembic'in kendi reflection/check'i için, uygulamanın çalışma-zamanı
+rolünün search_path'ini ETKİLEMEDEN. `connection.execute()`'un SQLAlchemy
+2.0'da örtük transaction başlattığını ve `commit()` edilmezse `with`
+bloğu çıkışında SESSİZCE rollback olduğunu (tüm migration'ı geri alarak,
+hatasız görünüp) unutmayın — bu satırı hemen `connection.commit()` ile
+kapatın.
+
+**3. İndeks yeniden adlandırma gerekli (gerçek `alembic check` koşumunda
+bulundu):** `alembic/env.py`'nin naming_convention'ı (`"ix":
+"ix_%(column_0_label)s"`) `__table_args__`'a `schema=` eklenince
+`column_0_label`'ı şema-önekli üretmeye başlıyor (`ix_<tablo>_<kolon>` →
+`ix_<şema>_<tablo>_<kolon>`) — PK/FK isimleri (`%(table_name)s` tabanlı,
+şema-bağımsız) ETKİLENMİYOR, yalnız index'ler. Her migration'ın `upgrade()`'i
+DB'deki eski-isimli index'leri `ALTER INDEX <şema>.<eski> RENAME TO <yeni>`
+ile yeniden adlandırmalı (metadata-only, yeniden inşa gerektirmez),
+`downgrade()` tersini yapmalı — yoksa `alembic check` drift raporlar.
+
+**4. `app/tests/conftest.py` + kök `tests/conftest.py` genelleştirildi
+(bir daha dokunulmasına gerek yok):** her ikisi de artık `Base.metadata.
+tables`'tan dinamik olarak toplanan şema kümesini kullanıyor (CREATE
+SCHEMA + search_path/connect_args) — yeni bir şema taşındığında bu
+dosyalara TEKRAR dokunmak gerekmiyor, model'e `schema=` eklemek yeterli.
+
+**Doğrulama notu:** Bu pilot gerçek bir Postgres 16 kurulumuna karşı uçtan
+uca doğrulandı (upgrade/downgrade/re-upgrade + `alembic check` + gerçek
+`app/tests/` suite'inden 53+ test, import_excel'in execute_import/
+rollback_import akışı dahil) — ama gerçek Docker/docker-compose (bu oturumun
+sandbox'ında yok) + `e2e_pilot_smoke.py`/`p51_real_world_validation.py`
+koşulmadı, CI'da doğrulanmalı.

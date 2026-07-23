@@ -19,7 +19,7 @@
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
 | **FAZ1** — Kod sınırları (17 kalem) | 🟢 KOD TARAFI TAMAMLANDI (2026-07-22) — 17/17 kalem branch'te; kalan tek şey "5 ardışık gün main'de yeşil" burn-in penceresi (takvim-zamanı gerektirir, tek oturumda gözlenemez) | Dalga 1-16 main'de/branch'te yeşil (aşağıdaki tablo). Dalga 17 (platform-infra) 2026-07-22'de 10 commit'lik bir alt-dalgayla tamamlandı: cache/events/container/resilience/database/monitoring/security/context/logging/audit/background/middleware/websocket taşındı + `public.py` + kendi `public-surface-only-platform_infra` import-linter kontratı yazıldı + CI'nın blocking gate adımına eklendi (`.github/workflows/ci.yml`, önceden eksikti — bu turda düzeltildi). Ardından "V2 dışında kalan var mı" denetiminde bulunan 4 ek kalem de taşındı/silindi (`app/api/middleware/rate_limiter.py`→platform_infra, `app/api/v1/utils.py`→platform_infra, ölü `app/core/services/ai_service.py` silindi, `app/workers/tasks/{backup_tasks,error_digest}.py`→platform_infra/background). Her adım tam doğrulamayla (ruff/mypy/lint-imports/alembic check/pytest, bilinen baseline 17 failed/6560 passed/28 skipped) ayrı commit+push edildi. |
-| **FAZ2** — Veri sınırları | 🟡 BAŞLADI (2026-07-23) | 3 alt-görevden 1'i (`faz2-guvenlik-state-redis.md`) tamamlandı; diğer 2'si (`faz2-schema-per-module-postgres.md`, `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md`) ayrı onay bekliyor — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
+| **FAZ2** — Veri sınırları | 🟡 DEVAM EDİYOR (2026-07-23) | 3 alt-görevden 1'i (`faz2-guvenlik-state-redis.md`) tamamlandı; `faz2-schema-per-module-postgres.md` pilot dalgasıyla (import_excel) başladı (13 şema/42 tablo kaldı); `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md` giriş kriterini bekliyor — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor (ama bkz. not) | **Kısmi erken tamamlama (2026-07-22, kullanıcı onayıyla DURMA NOKTASI dar kapsamda aşıldı):** madde 2'nin ("shim temizliği") 9 kalemi — `app/api/v1/endpoints/{ai,feedback}.py`, `app/core/ai/*` (5 dosya), `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` — sıfır gerçek tüketici doğrulandıktan sonra silindi (gerçek kod zaten `v2/modules/ai_assistant/`'da). `app/api/`, `app/core/`, `app/services/`, `app/schemas/` dizinleri artık yok. FAZ4'ün diğer maddeleri (ignore_imports sıfırlama, xenon, dosya-kalite baseline, retro raporu) hâlâ FAZ3'ü bekliyor. |
 
@@ -1970,32 +1970,69 @@ uyarı" ikileminde fail-closed seçildi). `ruff`/`mypy` temiz, izole venv'de
 smoke testi bu oturumun sandbox'ında YAPILAMADI (Docker daemon yok) — CI'nin
 gerçek koşusuyla tamamlanacak.
 
-### faz2-schema-per-module-postgres.md — 🔲 henüz başlamadı, bu oturumda EK BULGULAR
+### faz2-schema-per-module-postgres.md — 🟡 PİLOT TAMAMLANDI (2026-07-23)
 
-Bu görev dosyası incelenirken, dosyanın kendisinde belirtilmeyen 3 ek zorunlu
-değişiklik bulundu — bir sonraki oturum bunları sıfırdan keşfetmesin diye
-buraya not düşülüyor:
+`import_excel`/`iceri_aktarim_gecmisi` ilk dalga olarak taşındı — en küçük
+şema (1 tablo), FAZ0'da zaten sahiplik kararı verilmişti. Detay + kabul
+kriterleri `TASKS/faz2-schema-per-module-postgres.md`'nin kendi "Pilot
+sonrası bulgular" bölümünde. Özet:
 
-1. **ORM model `schema=` eksik:** `grep -rn '"schema":' v2/modules/*/
-   infrastructure/models.py` sıfır sonuç veriyor — hiçbir tablo sınıfı
-   `__table_args__ = {"schema": "..."}` bildirmiyor. Yalnız `ALTER TABLE ...
-   SET SCHEMA` migration'ı yapıp ORM'u güncellemezsek, SQLAlchemy sorguları
-   eski (unqualified/`public`) adı aramaya devam eder.
-2. **`app/tests/conftest.py`'nin reset'i yalnız `public` şemasını hedefliyor:**
-   bugünkü `DROP SCHEMA public CASCADE` + `CREATE SCHEMA public` + `Base.
-   metadata.create_all` deseni, tablolar modül şemalarına taşındıktan sonra
-   o tabloları hiç görmez — ilk tablo taşındığı anda test suite'i (conftest
-   fixture'ı DB'yi doğru resetlemediği için) sessizce bozulur. Reset mantığı
-   TÜM 14 modül şemasını kapsayacak şekilde genişletilmeli.
-3. **32 raw-SQL sitesi bare tablo adı kullanıyor** (`analiz_repo.py` en
-   ağırı, MEMORY §2.2) — `search_path` genişletilmeden veya sorgular şema-
-   nitelikli hale getirilmeden, tablo taşındıktan sonra bu siteler
-   "relation does not exist" ile patlar.
-
-Öneri (bir sonraki oturum için): FAZ1'in modül-dalgaları gibi en küçük
-şemadan (örn. `import_excel` — tek tablo, `iceri_aktarim_gecmisi`) pilot
-olarak başlanması, yukarıdaki 3 maddenin pilot PR'ında birlikte çözülmesi.
-Kullanıcı onayı olmadan başlanmayacak (DURMA NOKTASI).
+- **Model:** `IceriAktarimGecmisi`'ye `__table_args__ = {"schema":
+  "import_excel"}` eklendi (repository %100 ORM olduğu için başka kod
+  değişikliği gerekmedi).
+- **Yeni migration** (`alembic/versions/0047_import_excel_schema_move.py`):
+  `CREATE SCHEMA` + `ALTER TABLE SET SCHEMA` + 3 index'in yeniden
+  adlandırılması (aşağıda) + `ALTER ROLE CURRENT_USER SET search_path`.
+- **Tasarım kararı (kullanıcı onayıyla): `search_path`, rewrite değil.**
+  MEMORY/PROGRESS.md'nin "32 raw-SQL sitesi" rakamı BAYAT çıktı — gerçek
+  tarama ~75 dosyada ~200 site buldu (`BaseRepository.execute_query()`
+  helper'ı yayıldıkça doküman güncellenmemiş). ~200 siteyi tek tek şema-
+  nitelemek yerine, taşınan her şema migration içinde rolün search_path'ine
+  eklenir — bare sorgular hiç değiştirilmeden çalışır, ileriki rol-izolasyonu
+  fazını zayıflatmaz (search_path yalnız ad-çözümleme, yetki değil).
+- **2 gerçek gotcha, GERÇEK bir Postgres 16 kurulumuna karşı bulundu ve
+  düzeltildi** (bu oturumda `service postgresql start` ile kuruldu, sandbox'ta
+  zaten mevcut çıktı):
+  1. Naming convention (`"ix": "ix_%(column_0_label)s"`) şema eklenince
+     index adlarını şema-önekli üretmeye başlıyor — DB'deki eski-isimli
+     index'ler `ALTER INDEX RENAME` ile güncellenmezse `alembic check` drift
+     raporluyor (PK/FK etkilenmiyor, yalnız index'ler).
+  2. Rolün search_path'i genişleyince Postgres'in `schema=None` tablo
+     numaralandırması TÜM search_path şemalarını tarıyor — alembic'in kendi
+     autogenerate/check'i taşınan tabloyu iki geçişte de bulup hayalet bir
+     "kaldır" farkı üretiyordu. `alembic/env.py`'nin migration bağlantısı
+     artık kendi search_path'ini `public`'e sabitliyor (yalnız alembic'in
+     reflection'ı için, uygulamanın rol-seviyesi ayarını etkilemeden).
+  3. (Süreç notu, kendi kendine bulunup düzeltildi) `SET search_path`'i
+     `connection.commit()` etmeden bırakmak SQLAlchemy 2.0'da örtük bir
+     transaction'ı açık bırakıyor — `with` bloğu çıkışında sessizce rollback
+     olup TÜM migration'ı (hatasız görünerek) geri alıyordu.
+- **`app/tests/conftest.py` + kök `tests/conftest.py`:** ikisi de artık
+  `Base.metadata.tables`'tan dinamik şema kümesi türetiyor (CREATE SCHEMA +
+  search_path/connect_args + `current_schemas(false)` tabanlı sequence-reset)
+  — gelecek dalgalar bu dosyalara BİR DAHA dokunmuyor, yalnız modele
+  `schema=` eklemek yeterli.
+- **Frontend:** `VeriYonetimPage.test.tsx`'in raw `psql` seed/cleanup'ı
+  (`postgres` superuser rolüyle bağlanıyor, migration'ın `ALTER ROLE`'ünü
+  miras almaz) `import_excel.iceri_aktarim_gecmisi` olarak açıkça nitelendi.
+- **Doğrulama (gerçek, bu oturumda koşuldu — Docker yok ama Postgres 16 +
+  Redis sandbox'ta zaten kuruluydu, `service postgresql start` ile
+  ayağa kaldırıldı):** `alembic upgrade head` → `alembic check` (temiz) →
+  `alembic downgrade -1` (tablo public'e geri döndü, search_path resetlendi)
+  → `alembic upgrade head` tekrar → `alembic check` (temiz) — tam döngü
+  doğrulandı. Gerçek `app/tests/` suite'inden import_excel'e özgü 53+ test
+  (execute_import/rollback_import dahil, gerçek raw-SQL INSERT/rollback
+  yolu) izole bir venv'de gerçek DB'ye karşı PASSED (birkaç ek "error"
+  yalnız pytest-asyncio'nun fixture-teardown'ında event-loop kapanışı
+  gürültüsüydü — testlerin kendisi ayrı ayrı koşulunca "1 passed" veriyordu,
+  gerçek regresyon değil). `ruff`/`mypy` temiz (mypy'nin 4 hatası
+  `trip/infrastructure/repository.py`'de pre-existing baseline, dokunulmadı).
+  **Yapılamayan:** gerçek docker-compose + `e2e_pilot_smoke.py`/
+  `p51_real_world_validation.py` (görev dosyasının kendi çıkış kriteri) —
+  CI'da doğrulanmalı.
+- **Kalan:** 13 şema/42 tablo — her biri ayrı onaylı oturum (session
+  hijyeni). `platform` şeması (içinde `version_table_schema` taşıması var)
+  ve `m_ops` rolü henüz ele alınmadı.
 
 ### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🔲 bekliyor
 

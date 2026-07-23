@@ -9,7 +9,7 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() == "ascii":
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from alembic import context
 
@@ -127,6 +127,7 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=_compare_type,
         include_object=_include_object,
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -142,11 +143,40 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # FAZ2 (schema-per-module): the app's DB role has its persistent
+        # search_path extended per schema-move migration (`ALTER ROLE
+        # CURRENT_USER SET search_path = public, <schema>, ...`, see e.g.
+        # `0047_import_excel_schema_move.py`) so its OWN raw-SQL call sites
+        # keep resolving bare table names. But Postgres's `schema=None`
+        # ("default schema") table enumeration is search_path-driven too —
+        # so alembic's autogenerate/`check` comparison (which does one pass
+        # for `schema=None` and one pass per named schema) would see moved
+        # tables show up in BOTH the default-schema pass and their own
+        # named-schema pass, a phantom duplicate that autogenerate reports
+        # as a spurious drop (confirmed with a real Postgres instance).
+        # Migrations here are already explicitly schema-qualified (`CREATE
+        # SCHEMA`/`ALTER TABLE ... SET SCHEMA`/`ALTER INDEX <schema>.<name>`)
+        # so they never rely on the expanded search_path — pin this
+        # session to `public` only, for the reflection/comparison alembic
+        # itself does.
+        # Committed in its own mini-transaction — SQLAlchemy 2.0 Connections
+        # auto-begin a transaction on first execute(), and leaving it open
+        # (uncommitted) here would get silently ROLLED BACK when this `with`
+        # block exits, taking every subsequent migration in this same run
+        # down with it (found the hard way: a full `upgrade head` run
+        # appeared to succeed — no error — but left an EMPTY database,
+        # because `context.begin_transaction()` joined this already-open
+        # transaction instead of owning a fresh one). Committing this one
+        # statement immediately keeps it fully isolated from whatever
+        # transaction alembic itself manages next.
+        connection.execute(text("SET search_path TO public"))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=_compare_type,
             include_object=_include_object,
+            include_schemas=True,
         )
 
         with context.begin_transaction():

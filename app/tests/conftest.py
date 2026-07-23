@@ -249,11 +249,25 @@ async def async_db_engine(temp_db_url):
     # fresh backend connection. It also eliminates the "garbage collector is
     # trying to clean up non-checked-in connection" / "Event loop is closed"
     # teardown noise from pooled async connections outliving the event loop.
+    #
+    # FAZ2 (schema-per-module): tables move out of `public` one module-schema
+    # at a time (`__table_args__ = {"schema": "..."}` on the ORM model). Prod
+    # picks this up via each migration's `ALTER ROLE CURRENT_USER SET
+    # search_path = ...` (see `alembic/versions/0047_import_excel_schema_move.py`),
+    # but this fixture bypasses Alembic entirely (schema reset via
+    # `create_all`, not migrations) — so it must set the same search_path
+    # itself, derived from whatever schemas the ORM models actually declare,
+    # so this never needs another manual edit as later waves add schemas.
+    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         temp_db_url,
         echo=False,
         poolclass=NullPool,
-        connect_args={"command_timeout": 10},
+        connect_args={
+            "command_timeout": 10,
+            "server_settings": {"search_path": _search_path},
+        },
     )
 
     # Initialize the schema through ORM metadata.
@@ -278,6 +292,11 @@ async def async_db_engine(temp_db_url):
         # Drop the schema completely to avoid any corrupt data from SQL_ASCII encoding
         await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
+        # Module schemas (FAZ2): create every schema the ORM models declare
+        # (derived above into _extra_schemas) before create_all runs, else
+        # it fails with "schema does not exist" for any moved table.
+        for _schema_name in _extra_schemas:
+            await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{_schema_name}"'))
 
         # Attempt to activate PostGIS via SAVEPOINT so a failure does NOT abort
         # the current transaction block.  Falls back to LargeBinary for the one
@@ -450,11 +469,15 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
     if user_tables:
         for table_name in reversed(user_tables):
             await session.execute(text(f'DELETE FROM "{table_name}"'))
-        # Reset all sequences in the public schema so IDs stay deterministic.
+        # Reset all sequences in every schema on this session's search_path
+        # (not just `public`) so IDs stay deterministic — FAZ2: tables move
+        # to module schemas over time, `current_schemas(false)` tracks
+        # whatever this connection's search_path actually is (set in
+        # `async_db_engine` above), no hardcoded schema list to maintain here.
         await session.execute(
             text(
                 "SELECT setval(quote_ident(schemaname) || '.' || quote_ident(sequencename), 1, false) "
-                "FROM pg_sequences WHERE schemaname = 'public'"
+                "FROM pg_sequences WHERE schemaname = ANY(current_schemas(false))"
             )
         )
         await session.commit()

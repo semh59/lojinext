@@ -22,6 +22,7 @@ class IceriAktarimGecmisi(Base):
     """
 
     __tablename__ = "iceri_aktarim_gecmisi"
+    __table_args__ = {"schema": "import_excel"}
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True

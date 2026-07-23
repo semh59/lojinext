@@ -40,10 +40,17 @@ const PSQL_CMD =
 
 const MARKER = "vitest-veriyonetim-regression";
 
+// FAZ2 (schema-per-module): iceri_aktarim_gecmisi moved to the import_excel
+// schema (alembic/versions/0047_import_excel_schema_move.py). This psql
+// invocation connects as its own `postgres` role, not the app's DB role, so
+// it does NOT inherit the migration's `ALTER ROLE CURRENT_USER SET
+// search_path` — the table name must be schema-qualified explicitly here.
+const TABLE = "import_excel.iceri_aktarim_gecmisi";
+
 function seedImportRows(): void {
   const sql = `
-    DELETE FROM iceri_aktarim_gecmisi WHERE dosya_adi LIKE '${MARKER}%';
-    INSERT INTO iceri_aktarim_gecmisi
+    DELETE FROM ${TABLE} WHERE dosya_adi LIKE '${MARKER}%';
+    INSERT INTO ${TABLE}
       (dosya_adi, aktarim_tipi, durum, toplam_kayit, basarili_kayit, hatali_kayit)
     VALUES
       ('${MARKER}-completed.xlsx', 'arac', 'COMPLETED', 10, 10, 0),
@@ -55,7 +62,7 @@ function seedImportRows(): void {
 
 function cleanupImportRows(): void {
   execSync(`${PSQL_CMD} -v ON_ERROR_STOP=1`, {
-    input: `DELETE FROM iceri_aktarim_gecmisi WHERE dosya_adi LIKE '${MARKER}%';`,
+    input: `DELETE FROM ${TABLE} WHERE dosya_adi LIKE '${MARKER}%';`,
   });
 }
 

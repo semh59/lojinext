@@ -106,6 +106,14 @@ async def _reset_public_schema(conn) -> None:
     user = os.getenv("POSTGRES_USER", "lojinext_user")
     await conn.execute(text(f"GRANT ALL ON SCHEMA public TO {user}"))
     await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+    # FAZ2 (schema-per-module): create every schema the ORM models declare
+    # (see app/tests/conftest.py's async_db_engine fixture for the full
+    # rationale) — else create_all fails once a model has a schema= that
+    # doesn't exist yet.
+    from v2.modules.shared_kernel.infrastructure.base import Base
+
+    for schema_name in sorted({t.schema for t in Base.metadata.tables.values() if t.schema}):
+        await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
 
 
 @pytest.fixture(autouse=True)
@@ -137,10 +145,15 @@ async def db_engine():
             f"Resolved value: {TEST_DATABASE_URL}"
         )
 
+    from v2.modules.shared_kernel.infrastructure.base import Base
+
+    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
+        connect_args={"server_settings": {"search_path": _search_path}},
     )
     if engine.dialect.name != "postgresql":
         await engine.dispose()

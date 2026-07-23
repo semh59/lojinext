@@ -503,7 +503,7 @@ jobs:
         # 14:13'teki commit) → gerçek unit-lane değeri CI'da %84, lokalde
         # %83.61 ölçüldü; 85 gate'i hiç yeşil olmadı. 83'e çekildi —
         # nihai kalite gate'i değişmeden Combined %92'de kalıyor.
-        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov=v2 --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
 
       # ---- 0-mock Faz 2: vitest real-backend testleri gerçek backend ister ----
       # (docker-github plan Bölüm 3'ün CI ayağı.) Sıra: taze DB (alembic ile,
@@ -587,25 +587,25 @@ jobs:
           retention-days: 14
 
       - name: Integration — DB schema integrity
-        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — API contracts
-        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — Business lifecycle
-        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Security — RBAC coverage
-        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — ML/AI pipeline
-        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — remaining (legacy + other integration tests, includes Tier F madde 37's 46 reclassified files)
-        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
+        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
 
       - name: Deep audit tests (auth isolation + integrity, excluding stress)
-        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       # Tier F madde 37 (2026-07-03): asıl %92 coverage hedefi burada,
       # yukarıdaki unit adımı + TÜM integration adımlarının aynı .coverage

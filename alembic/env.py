@@ -128,6 +128,7 @@ def run_migrations_offline() -> None:
         compare_type=_compare_type,
         include_object=_include_object,
         include_schemas=True,
+        version_table_schema="platform",
     )
 
     with context.begin_transaction():
@@ -171,12 +172,41 @@ def run_migrations_online() -> None:
         # transaction alembic itself manages next.
         connection.execute(text("SET search_path TO public"))
         connection.commit()
+        # `version_table_schema="platform"` below means alembic writes its
+        # OWN bookkeeping table as `platform.alembic_version`. On a brand
+        # new database that schema doesn't exist yet — alembic does not
+        # auto-create it, so bootstrapping revision 0001 from empty would
+        # fail before anything else runs. Pre-create it unconditionally
+        # (idempotent, harmless once 0060_platform_schema_move's own
+        # `CREATE SCHEMA IF NOT EXISTS platform` also runs later in the
+        # chain). This only covers fresh databases; an existing database
+        # that already has data up to a pre-0060 revision needs the
+        # documented two-phase cutover instead — see
+        # `scripts/faz2_move_alembic_version_to_platform.py`.
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS platform"))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=_compare_type,
             include_object=_include_object,
             include_schemas=True,
+            # FAZ2 (schema-per-module), platform-schema dalgası (0060):
+            # alembic_version taşındı (bkz. scripts/faz2_move_alembic_
+            # version_to_platform.py) — bu satır alembic'in kendi versiyon
+            # takibini "platform"a şema-nitelenmiş olarak yapmasını
+            # sağlıyor. Yukarıdaki "SET search_path TO public" pinini
+            # "platform" da içerecek şekilde GENİŞLETMEYE gerek yok:
+            # version_table_schema verildiğinde alembic kendi Table
+            # objesini HER ZAMAN "platform.alembic_version" olarak
+            # şema-nitelenmiş üretir (search_path'e güvenmez) — pini
+            # genişletmek yalnızca platform şemasındaki tabloların
+            # `schema=None` enumeration geçişinde hayalet-duplicate
+            # üretmesine yol açardı (yukarıdaki yorumun asıl kaçındığı
+            # sorun). Bu değişiklik, "platform" şeması + alembic_version
+            # taşındıktan SONRA canlıya alınmalı — bkz. cutover script'inin
+            # kendi docstring'i.
+            version_table_schema="platform",
         )
 
         with context.begin_transaction():

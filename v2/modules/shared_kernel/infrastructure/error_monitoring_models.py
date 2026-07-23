@@ -82,7 +82,7 @@ class ErrorEvent(Base):
     )
     trace_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
     path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     stack_trace: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -94,7 +94,7 @@ class ErrorEvent(Base):
         DateTime(timezone=True), nullable=True
     )
     resolved_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
 
     __table_args__ = (
@@ -110,6 +110,7 @@ class ErrorEvent(Base):
             "trace_id",
             postgresql_where=text("trace_id IS NOT NULL"),
         ),
+        {"schema": "platform"},
     )
 
 
@@ -140,5 +141,5 @@ class ErrorOccurrence(Base):
         Index("idx_error_occurrences_time", "occurred_at", "layer"),
         # postgresql_partition_by tells SQLAlchemy this is a declarative-only hint;
         # the actual PARTITION BY clause was written in the Alembic migration.
-        {"postgresql_partition_by": "RANGE (occurred_at)"},
+        {"postgresql_partition_by": "RANGE (occurred_at)", "schema": "platform"},
     )

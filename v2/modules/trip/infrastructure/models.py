@@ -80,6 +80,7 @@ class Sefer(Base):
             "onay_durumu",
             postgresql_where=text("onay_durumu IS NOT NULL"),
         ),
+        {"schema": "trip"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -92,7 +93,9 @@ class Sefer(Base):
 
     # Foreign Keys
     guzergah_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("lokasyonlar.id", ondelete="RESTRICT"), index=True, nullable=True
+        ForeignKey("location.lokasyonlar.id", ondelete="RESTRICT"),
+        index=True,
+        nullable=True,
     )
     route_pair_id: Mapped[Optional[str]] = mapped_column(
         String(64), index=True
@@ -100,21 +103,21 @@ class Sefer(Base):
     # Phase 4.4: SeferFuelEstimator tahmininin route_simulations row'una bağı
     route_simulation_id: Mapped[Optional[int]] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"),
-        ForeignKey("route_simulations.id", ondelete="SET NULL"),
+        ForeignKey("route_simulation.route_simulations.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="RESTRICT"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="RESTRICT"), index=True
     )
     dorse_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("dorseler.id", ondelete="SET NULL"), index=True
+        ForeignKey("fleet.dorseler.id", ondelete="SET NULL"), index=True
     )
     sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="RESTRICT"), index=True
+        ForeignKey("driver.soforler.id", ondelete="RESTRICT"), index=True
     )
     periyot_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("yakit_periyotlari.id", ondelete="SET NULL"), index=True
+        ForeignKey("fuel.yakit_periyotlari.id", ondelete="SET NULL"), index=True
     )  # 2026-07-01 P1 madde 14: gerçek FK (bkz. migration 0035)
 
     # Weight Info
@@ -172,10 +175,10 @@ class Sefer(Base):
 
     # Audit Logs
     created_by_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), index=True
     )
     updated_by_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), index=True
     )
     iptal_nedeni: Mapped[Optional[str]] = mapped_column(String(255))
     # B-004: Optimistic Locking — her update'te version +1 artar
@@ -188,7 +191,9 @@ class Sefer(Base):
         String(20), nullable=True
     )  # NULL=web-girildi, beklemede, onaylandi, reddedildi
     onaylayan_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        Integer,
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     # Meta
@@ -216,15 +221,17 @@ class Sefer(Base):
 
 class SeferLog(Base):
     __tablename__ = "seferler_log"
+    __table_args__ = {"schema": "trip"}
+
     id: Mapped[int] = mapped_column(primary_key=True)
     sefer_id: Mapped[int] = mapped_column(
-        ForeignKey("seferler.id", ondelete="CASCADE"), index=True
+        ForeignKey("trip.seferler.id", ondelete="CASCADE"), index=True
     )
     degisen_alan: Mapped[Optional[str]] = mapped_column(String(50))
     eski_deger: Mapped[Optional[str]] = mapped_column(String)
     yeni_deger: Mapped[Optional[str]] = mapped_column(String)
     degistiren_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
     islem_tipi: Mapped[str] = mapped_column(String(20))  # INSERT, UPDATE, DELETE
     created_at: Mapped[datetime] = mapped_column(
@@ -237,13 +244,16 @@ class SeferBelge(Base):
     """Şoförlerden Telegram üzerinden gelen fotoğraf + OCR sonuçları"""
 
     __tablename__ = "sefer_belgeler"
+    __table_args__ = {"schema": "trip"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("driver.soforler.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     sefer_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("seferler.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("trip.seferler.id", ondelete="SET NULL"), nullable=True, index=True
     )
     telegram_mesaj_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     belge_tipi: Mapped[str] = mapped_column(

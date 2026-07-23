@@ -51,6 +51,7 @@ class Arac(Base):
     __table_args__ = (
         CheckConstraint("tank_kapasitesi > 0", name="check_tank_kapasitesi_positive"),
         Index("idx_arac_aktif", "aktif"),
+        {"schema": "fleet"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -109,7 +110,7 @@ class Arac(Base):
     )
     onay_tarihi: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     olusturan_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
 
     # Relationships (intra-fleet only — bkz. modül docstring'i)
@@ -128,7 +129,7 @@ class Arac(Base):
 
 class Dorse(Base):
     __tablename__ = "dorseler"
-    __table_args__ = (Index("idx_dorse_aktif", "aktif"),)
+    __table_args__ = (Index("idx_dorse_aktif", "aktif"), {"schema": "fleet"})
 
     id: Mapped[int] = mapped_column(primary_key=True)
     plaka: Mapped[str] = mapped_column(String(20), unique=True, index=True)
@@ -181,10 +182,11 @@ class Dorse(Base):
 
 class VehicleEventLog(Base, AsyncAttrs):
     __tablename__ = "vehicle_event_log"
+    __table_args__ = {"schema": "fleet"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="CASCADE"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
     )
     event_type: Mapped[str] = mapped_column(String(50), index=True)
     old_status: Mapped[Optional[str]] = mapped_column(String(50))
@@ -202,14 +204,15 @@ class VehicleEventLog(Base, AsyncAttrs):
 
 class AracBakim(Base):
     __tablename__ = "arac_bakimlari"
+    __table_args__ = {"schema": "fleet"}
 
     # Modifying maintenance logic to support either an Arac or a Dorse
     id: Mapped[int] = mapped_column(primary_key=True)
     arac_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("araclar.id", ondelete="CASCADE"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
     )
     dorse_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("dorseler.id", ondelete="CASCADE"), index=True
+        ForeignKey("fleet.dorseler.id", ondelete="CASCADE"), index=True
     )
     bakim_tipi: Mapped[BakimTipi] = mapped_column(
         String(20), default=BakimTipi.PERIYODIK
@@ -235,11 +238,14 @@ class VehicleSpecTimeline(Base):
     """Historical timeline of vehicle specifications for audit and calculation consistency."""
 
     __tablename__ = "vehicle_spec_timeline"
-    __table_args__ = (Index("idx_spec_arac_tarih", "arac_id", "gecerlilik_tarihi"),)
+    __table_args__ = (
+        Index("idx_spec_arac_tarih", "arac_id", "gecerlilik_tarihi"),
+        {"schema": "fleet"},
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), nullable=False
     )
 
     # Tracked Specs
@@ -252,7 +258,7 @@ class VehicleSpecTimeline(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     degistiren_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
     notlar: Mapped[Optional[str]] = mapped_column(Text)
 

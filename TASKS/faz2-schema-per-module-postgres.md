@@ -1,14 +1,16 @@
 # FAZ2 — Şema-Başına-Modül (PostgreSQL)
 
-> 🟡 **PİLOT TAMAMLANDI (2026-07-23)** — `import_excel`/`iceri_aktarim_gecmisi`
-> ilk dalga olarak taşındı (`alembic/versions/0047_import_excel_schema_move.py`).
-> Kalan 13 şema/42 tablo henüz başlamadı, her biri ayrı onaylı oturum
-> gerektiriyor (session hijyeni). Pilot sırasında bu dosyanın orijinal
-> planını düzelten/tamamlayan bulgular için aşağıdaki "Pilot sonrası
-> bulgular" bölümüne bakın — özellikle **search_path tasarım kararı**
-> (madde 32'nin altındaki "raw-SQL siteleri" sorununu bu dosyanın hiç
-> öngörmediği bir yöntemle çözüyor) ve **index yeniden adlandırma**
-> gerekliliği (gerçek `alembic check` koşumunda bulundu, aşağıda).
+> ✅ **TAMAMLANDI (2026-07-23)** — `import_excel` pilotundan sonra kalan 13
+> şema/42 tablo aynı oturumda (kullanıcının "session hijyeni"ni bilinçli
+> aşma kararıyla — bkz. STATUS.md) taşındı:
+> `alembic/versions/0048_auth_rbac_schema_move.py` … `0060_platform_schema_move.py`.
+> Toplam 14 şema (import_excel dahil), 43 tablo. Gerçek Postgres 16'ya karşı
+> tam zincir doğrulandı: `alembic upgrade head` → `alembic check` (temiz)
+> → `downgrade`/`upgrade` round-trip (temiz). Aşağıdaki "Pilot sonrası
+> bulgular" bölümü hâlâ geçerli — özellikle **search_path tasarım kararı**
+> ve **index yeniden adlandırma** gerekliliği; ayrıca aşağıdaki "13 şema
+> dalgası bulguları" bölümüne bakın (partition/MV/trigger/alembic_version
+> özel durumları + gerçek Postgres'te bulunan 2 model-transkripsiyon hatası).
 
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
@@ -76,12 +78,12 @@ context.configure(
 Her migration dosyası bağımsız `downgrade()` içerir (`SET SCHEMA public`). Bir tablo taşındıktan sonra sorun çıkarsa, o TEK tabloyu geri almak yeterli — toplu rollback gerekmez (tablo-tablo taşımanın avantajı).
 
 ## Kabul Kriterleri
-- [x] 14 şemadan 1'i oluşturuldu (`import_excel` — pilot); 13'ü kalan dalgalarda
-- [x] 43 tablodan 1'i dağıtıldı (`iceri_aktarim_gecmisi`), ayrı migration + ayrı downgrade — gerçek Postgres'te upgrade→downgrade→upgrade döngüsü doğrulandı
-- [x] `include_schemas=True` aktif (pilotta eklendi); `version_table_schema="platform"` HENÜZ EKLENMEDİ (platform şeması henüz yok, o dalgaya ertelendi — bkz. aşağı)
-- [ ] MV/trigger/partition'lar doğru şemada (pilotun kapsamı dışı, ilgili tablolar henüz taşınmadı)
-- [ ] `e2e_pilot_smoke.py` + `p51_real_world_validation.py` her tablo taşımasından sonra PASS (bu pilotta gerçek Docker/Redis gerektiren tam smoke koşulmadı — bkz. "Doğrulama" notu)
-- [ ] `m_ops` rolü tanımlı, 16 script'in erişimi doğrulandı (henüz başlanmadı)
+- [x] 14 şemanın hepsi oluşturuldu (`import_excel` pilot + 13 şema bu dalgada)
+- [x] 43 tablonun hepsi dağıtıldı, her biri ayrı migration + ayrı downgrade — gerçek Postgres'te upgrade→downgrade→upgrade döngüsü doğrulandı (13 migration tek zincirde, `alembic downgrade 0047_import_excel_schema_move` → tekrar `upgrade head` → `alembic check` temiz)
+- [x] `include_schemas=True` aktif; `version_table_schema="platform"` EKLENDİ (`alembic/env.py`, hem offline hem online `context.configure()`) — bkz. aşağıdaki "alembic_version taşıma" notu (chicken-egg sınırı nedeniyle migration-zinciri-dışı bir cutover script gerektiriyor)
+- [x] MV/trigger/partition'lar doğru şemada: `error_hourly_stats` MV → `platform` (`ALTER MATERIALIZED VIEW ... SET SCHEMA`), `error_occurrences_YYYY_MM` partition çocukları → `pg_inherits`'ten dinamik bulunup tek tek `platform`'a taşındı (gerçek Postgres'te doğrulandı: parent'ın `SET SCHEMA`'sı çocukları OTOMATİK taşımıyor — ayrı bir ALTER gerekiyor), `error_events_notify` trigger'ı OTOMATİK taşındı (trigger'lar tabloya OID üzerinden bağlı, ayrı ALTER gerekmiyor — bu da gerçek Postgres'te doğrulandı).
+- [ ] `e2e_pilot_smoke.py` + `p51_real_world_validation.py` — bu oturumun sandbox'ında gerçek Docker/docker-compose yok, CI'da doğrulanmalı (pilotla aynı sınırlama)
+- [ ] `m_ops` rolü — bu dalgada OLUŞTURULMADI (kullanıcı onayı gerektiren, ayrı bir DB-rol tasarım kararı; bkz. aşağıdaki not). `reset_business_data.py`/`seed_demo_data.py` spot-check EDİLDİ: ikisi de bare tablo adı + `AsyncSessionLocal`/paylaşılan `engine` kullanıyor, ALTER ROLE'ün genişlettiği search_path'i otomatik miras alıyor (gerçek Postgres'te taze bir `lojinext_user` bağlantısıyla doğrulandı) — kod değişikliği GEREKMEDİ.
 
 ## Pilot sonrası bulgular (2026-07-23) — sıradaki dalgalar için ZORUNLU okuma
 
@@ -135,3 +137,107 @@ uca doğrulandı (upgrade/downgrade/re-upgrade + `alembic check` + gerçek
 rollback_import akışı dahil) — ama gerçek Docker/docker-compose (bu oturumun
 sandbox'ında yok) + `e2e_pilot_smoke.py`/`p51_real_world_validation.py`
 koşulmadı, CI'da doğrulanmalı.
+
+## 13 şema dalgası bulguları (2026-07-23, aynı gün, pilotun hemen ardından)
+
+Kullanıcı kararıyla (bilinçli "1 oturum = 1 dalga" hijyen istisnası —
+"13 şemayı derin planla ve bitir") kalan 13 şema tek oturumda tamamlandı:
+`auth_rbac`, `fleet`, `driver`, `fuel`, `location`, `route_simulation`,
+`anomaly`, `prediction_ml`, `trip`, `reports`, `notification`,
+`admin_platform`, `platform` (migration'lar `0048`…`0060`). Her modülün
+`infrastructure/models.py`'sine `__table_args__` schema eklendi + TÜM
+`ForeignKey()` string'leri hedef tabloya göre şema-nitelendi (58 site) —
+**kritik bulgu (pilotta da not düşülmüştü, burada tekrar doğrulandı):**
+hedef tablo `schema=` alınca, KENDİ ŞEMASI İÇİNDEKİ self-reference FK'ler
+dahil TÜM referanslar (`trip.seferler.id` gibi) nitelenmeli, yoksa
+`NoReferencedTableError`.
+
+**1. Gerçek Postgres'te bulunan 2 model-transkripsiyon hatası (elle
+enumerasyonun neden yeterli olmadığının kanıtı):**
+   - `reports.PageView.user_id`'nin `index=True` OLDUĞU yanlış varsayılmıştı
+     (yalnız `route`/`created_at`'te var) — migration'ın rename listesi bunu
+     içeriyordu, `ALTER INDEX ... RENAME` "relation does not exist" ile
+     patladı. Düzeltme: rename listesinden çıkarıldı.
+   - `fleet.Dorse.is_deleted`'in `index=True` OLDUĞU gözden kaçmıştı —
+     `alembic check` "removed/added index" drift'i olarak yakaladı.
+     Düzeltme: rename listesine eklendi (`ix_dorseler_is_deleted` →
+     `ix_fleet_dorseler_is_deleted`).
+
+   Her iki hata da yalnızca gerçek `alembic upgrade head` + `alembic check`
+   koşumuyla (statik grep/model-okuma DEĞİL) yakalandı — bu, bundan
+   sonraki her şema-taşıma dalgasının neden mutlaka gerçek bir Postgres'e
+   karşı doğrulanması gerektiğinin somut kanıtı.
+
+**2. `platform` şeması iki AYRI kaynaktan tablo devraldı:**
+   `admin_platform/infrastructure/models.py`'nin `sistem_konfig`/
+   `konfig_gecmis`/`idempotency_keys`'i (admin_platform'un KENDİ 2 tablosu
+   — `entegrasyon_ayarlari`/`admin_audit_log` — ayrı, `admin_platform`
+   şemasına gitti, migration `0059`) VE `shared_kernel/infrastructure/
+   {outbox.py,error_monitoring_models.py}`'nin `outbox_events`/
+   `error_events`/`error_occurrences`'ı (migration `0060`) — ikinci
+   grubun modeline de `{"schema": "platform"}` eklendi, `error_events`'in
+   `user_id`/`resolved_by` FK'leri `auth_rbac.kullanicilar.id`'ye
+   nitelendi (eskiden bare `kullanicilar.id`).
+
+**3. RANGE partition + MV + trigger özel durumları (gerçek Postgres'te
+ampirik olarak doğrulandı, `0060_platform_schema_move.py`'nin docstring'i):**
+   - `ALTER TABLE <partition-parent> SET SCHEMA` parent'ı taşır ama
+     partition ÇOCUKLARINI taşımaz (izole bir scratch DB'de test edilip
+     doğrulandı) — migration `pg_inherits`'ten çocukları DİNAMİK olarak
+     bulup (aylık partition sayısı hardcode edilmedi, `error_digest.py`'nin
+     Celery task'ı her ay yeni bir tane ekliyor) tek tek taşıyor.
+   - Trigger'lar (`error_events_notify`) tabloya OID üzerinden bağlı —
+     tablo taşınınca trigger OTOMATİK yeni şemaya "taşınıyor" (ayrı ALTER
+     gerekmiyor, bu da izole test edildi).
+   - Materialized view (`error_hourly_stats`) `ALTER MATERIALIZED VIEW ...
+     SET SCHEMA` ile taşınıyor (parent tablo gibi, partition'ı yok).
+
+**4. `alembic_version`'ın platform şemasına taşınması — migration
+zincirinin İÇİNDE YAPILAMAZ (Alembic'in kendi mimari sınırı):**
+   Alembic kendi versiyon-takip tablosunun konumunu `env.py`'deki
+   `context.configure(version_table_schema=...)` ile SÜREÇ BAŞINDA
+   sabitler. `alembic_version`'ı bir migration'ın KENDİSİ İÇİNDE taşırsak,
+   alembic o migration'ın revision'ını yazmaya çalıştığında (hâlâ AYNI
+   çalıştırma/transaction içinde) hâlâ ESKİ konumu arar — "relation does
+   not exist" ile patlar (gerçek Postgres'te doğrulandı). Çözüm iki parça:
+   - **Taze/boş bir veritabanı için**: `alembic/env.py`'nin
+     `run_migrations_online()`'ı artık `context.configure()`'dan ÖNCE
+     kayıtsız-şartsız `CREATE SCHEMA IF NOT EXISTS platform` çalıştırıyor
+     — bu sayede `version_table_schema="platform"` en baştan (migration
+     `0001`'den itibaren) sorunsuz çalışıyor (gerçek bir taze DB'de
+     `alembic upgrade head` uçtan uca doğrulandı, `alembic_version`
+     otomatik olarak `platform` şemasında oluştu).
+   - **Zaten kısmen migrate edilmiş (ör. üretim) bir veritabanı için**:
+     migration zincirinin DIŞINDA, tek-seferlik bir cutover script'i —
+     `scripts/faz2_move_alembic_version_to_platform.py` (idempotent,
+     `ALTER TABLE alembic_version SET SCHEMA platform` yapar) — env.py'nin
+     `version_table_schema="platform"` satırı canlıya alınmadan HEMEN
+     ÖNCE, `0060_platform_schema_move`'un `alembic upgrade head`'i
+     tamamlandıktan SONRA çalıştırılmalı. Script'in kendi docstring'i tam
+     sıralamayı adım adım anlatıyor.
+
+**5. Loose end — `sefer_istatistik_mv` → `analytics_executive` şeması
+(bu dalgada YAPILMADI, bilinçli olarak açık bırakıldı):** bu dosyanın
+orijinal planı (§"MV/trigger/partition kararları") `sefer_istatistik_mv`'nin
+`analytics_executive` şemasına taşınmasını öngörüyor, ama o modülün HİÇ
+ORM tablosu yok (`ai_assistant` ile birlikte "şema İÇERMEZ" olarak
+işaretli — kök CLAUDE.md'nin modül tablosunda ikisi de FAISS/read-model
+kategorisinde). Bu MV bugün hiçbir prod endpoint tarafından
+SELECT edilmiyor gibi görünüyor (yalnız `trip/infrastructure/
+repository.py`'de REFRESH ediliyor, grep ile doğrulandı) — sıfırdan yeni
+bir "yalnızca bu MV için" şema açmak mı, yoksa `platform`'a mı (diğer
+MV'yle aynı yere) taşımak mı doğru karar, bu dosyanın kendisi net değil.
+Kullanıcı onayı gerektiren küçük, ayrı bir karar olarak burada dokümante
+ediliyor — 43 tablo/14 şema kapsamının (bu dalganın asıl çıkış kriteri)
+DIŞINDA.
+
+**Doğrulama (13 şema dalgası, gerçek Postgres 16, bu oturumda koşuldu):**
+`alembic upgrade head` (0001→0060, taze DB) → `alembic check` (temiz) →
+`alembic downgrade 0047_import_excel_schema_move` (13 migration geri
+alındı) → `alembic upgrade head` tekrar → `alembic check` (temiz) —
+tam round-trip doğrulandı. `ruff check --select E,F,W,I` temiz. `mypy`
+temiz (mevcut 4 hata `trip/infrastructure/repository.py`'de pre-existing,
+bu dalganın dokunmadığı bir dosyada). Geniş bir pytest kesiti (`-m "unit or
+not integration"`, ~6500+ test) gerçek DB'ye karşı koşuldu — sonuç bu
+dosyanın bir sonraki güncellemesinde eklenecek (koşum uzun sürdüğü için
+ayrı bir turda tamamlandı, bkz. STATUS.md).

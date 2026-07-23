@@ -40,13 +40,14 @@ class EgitimKuyrugu(Base):
             "durum IN ('WAITING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELED')",
             name="check_egitim_kuyrugu_durum_enum",
         ),
+        {"schema": "prediction_ml"},
     )
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="CASCADE"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
     )
     hedef_versiyon: Mapped[int] = mapped_column(Integer, nullable=False)
 
@@ -81,7 +82,7 @@ class EgitimKuyrugu(Base):
     # auth_rbac'a taşındı, relationship() cross-module olduğu için kaldırıldı
     # — dalga 16 task #58)
     tetikleyen_kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
 
 
@@ -92,7 +93,7 @@ class ModelVersiyon(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="CASCADE"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
     )
     versiyon: Mapped[int] = mapped_column(Integer, nullable=False)
     egitim_tarihi: Mapped[datetime] = mapped_column(
@@ -131,7 +132,7 @@ class ModelVersiyon(Base):
     # FK id kalır; Kullanici auth_rbac'a taşındı, relationship() cross-module
     # olduğu için kaldırıldı (dalga 16 task #58)
     egiten_kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
     tetikleyici: Mapped[str] = mapped_column(String(50), default="otomatik")
 
@@ -142,6 +143,7 @@ class ModelVersiyon(Base):
         ),
         UniqueConstraint("arac_id", "versiyon", name="uq_arac_versiyon"),
         Index("idx_model_arac_versiyon", "arac_id", text("versiyon DESC")),
+        {"schema": "prediction_ml"},
     )
 
 
@@ -151,6 +153,7 @@ class PredictionResult(Base):
     """
 
     __tablename__ = "prediction_results"
+    __table_args__ = {"schema": "prediction_ml"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     task_id: Mapped[str] = mapped_column(
@@ -165,7 +168,9 @@ class PredictionResult(Base):
         DateTime(timezone=True), nullable=True
     )
     user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

@@ -42,12 +42,13 @@ class EntegrasyonAyari(Base):
     """
 
     __tablename__ = "entegrasyon_ayarlari"
+    __table_args__ = {"schema": "admin_platform"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     servis_adi: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     deger_sifreli: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     guncelleyen_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
     guncellenme_tarihi: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True)
@@ -59,12 +60,13 @@ class EntegrasyonAyari(Base):
 
 class AdminAuditLog(Base):
     __tablename__ = "admin_audit_log"
+    __table_args__ = {"schema": "admin_platform"}
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
     kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), index=True
     )
     kullanici_email: Mapped[Optional[str]] = mapped_column(String(255))
     aksiyon_tipi: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -86,6 +88,7 @@ class AdminAuditLog(Base):
 
 class SistemKonfig(Base):
     __tablename__ = "sistem_konfig"
+    __table_args__ = {"schema": "platform"}
 
     anahtar: Mapped[str] = mapped_column(String(100), primary_key=True)
     deger: Mapped[dict] = mapped_column(JSONB, nullable=False)
@@ -105,12 +108,13 @@ class SistemKonfig(Base):
         nullable=False,
     )
     guncelleyen_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
 
 
 class KonfigGecmis(Base):
     __tablename__ = "konfig_gecmis"
+    __table_args__ = {"schema": "platform"}
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
@@ -120,7 +124,7 @@ class KonfigGecmis(Base):
     yeni_deger: Mapped[dict] = mapped_column(JSONB, nullable=False)
     degisiklik_sebebi: Mapped[Optional[str]] = mapped_column(Text)
     guncelleyen_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), index=True
     )
     zaman: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -145,6 +149,7 @@ class IdempotencyKey(Base):
     __tablename__ = "idempotency_keys"
     __table_args__ = (
         UniqueConstraint("key", "endpoint", name="uq_idempotency_key_endpoint"),
+        {"schema": "platform"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

@@ -21,12 +21,13 @@ from v2.modules.shared_kernel.infrastructure.base import Base, get_utc_now
 
 class BildirimKurali(Base):
     __tablename__ = "bildirim_kurallari"
+    __table_args__ = {"schema": "notification"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     olay_tipi: Mapped[str] = mapped_column(String(50), index=True)
     kanallar: Mapped[List[str]] = mapped_column(JSONB)
     alici_rol_id: Mapped[int] = mapped_column(
-        ForeignKey("roller.id", ondelete="RESTRICT"), index=True
+        ForeignKey("auth_rbac.roller.id", ondelete="RESTRICT"), index=True
     )
     aktif: Mapped[bool] = mapped_column(Boolean, default=True)
 
@@ -39,10 +40,11 @@ class BildirimDurumu(str, enum.Enum):
 
 class BildirimGecmisi(Base):
     __tablename__ = "bildirim_gecmisi"
+    __table_args__ = {"schema": "notification"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kullanici_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="CASCADE"), index=True
     )
     baslik: Mapped[str] = mapped_column(String(200))
     icerik: Mapped[str] = mapped_column(Text)
@@ -68,11 +70,14 @@ class PushSubscription(Base):
     """
 
     __tablename__ = "push_subscriptions"
-    __table_args__ = (Index("ix_push_subscriptions_user_id", "user_id"),)
+    __table_args__ = (
+        Index("ix_push_subscriptions_user_id", "user_id"),
+        {"schema": "notification"},
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="CASCADE"), nullable=False
     )
     endpoint: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     p256dh: Mapped[str] = mapped_column(Text, nullable=False)

@@ -34,6 +34,7 @@ class Lokasyon(Base):
     __tablename__ = "lokasyonlar"
     __table_args__ = (
         UniqueConstraint("cikis_yeri", "varis_yeri", name="uq_cikis_varis"),
+        {"schema": "location"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -137,13 +138,14 @@ class LokasyonSegment(Base):
             "lokasyon_id", "seq", name="uq_lokasyon_segments_lokasyon_seq"
         ),
         Index("ix_lokasyon_segments_lokasyon_id", "lokasyon_id"),
+        {"schema": "location"},
     )
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
     lokasyon_id: Mapped[int] = mapped_column(
-        ForeignKey("lokasyonlar.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("location.lokasyonlar.id", ondelete="CASCADE"), nullable=False
     )
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
 

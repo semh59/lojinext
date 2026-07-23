@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
 from v2.modules.platform_infra.public import get_logger
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
-from v2.modules.trip.schemas import SeferCreate
+from v2.modules.trip.public import SeferCreate
 
 logger = get_logger(__name__)
 

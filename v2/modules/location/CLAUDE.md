@@ -55,8 +55,17 @@ fonksiyon, caller kendi `UnitOfWork`'ünden aldığı `LokasyonRepository`'yi
 
 `LOKASYON_ADDED`, `LOKASYON_UPDATED`, `LOKASYON_DELETED` — `@publishes(...)`
 decorator'ı `create_location`/`update_location`/`delete_location` üzerinde
-var ama **repo-genelinde ölü kod**: hiçbir yerde `event_bus.publish(...)`
-çağrısı yok, `_publishes` attribute'u okunmuyor. Bu modülün getirdiği bir
+hâlâ yalnız metadata (`_publishes` attribute'u okunmuyor), AMA fonksiyonlar
+gerçekten `save_outbox_event(repo.session, EventType.LOKASYON_X,
+{"result": id})` ile outbox'a yazıyor (aynı UoW/session) — bu satır eskiden
+"hiçbir yerde `event_bus.publish(...)` çağrısı yok" diyerek bunu da ölü kod
+gibi gösteriyordu, ❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif
+denetiminde bulundu — `fleet`'in aynı sınıftaki daha ciddi versiyonuyla
+birlikte, bkz. `fleet/CLAUDE.md`)**. Outbox satırı gerçek ve Celery'nin
+60s'lik relay task'ı bunu gerçek `event_bus.publish()`'e çevirir — ama
+`events.py`'nin kendi (doğru) notunun söylediği gibi şu an `LOKASYON_*`'i
+dinleyen HİÇBİR abone yok (fleet'in `ARAC_*`'ının aksine), yani publish
+edilen event'ler zararsızca hiçbir yere gitmiyor. Bu modülün getirdiği bir
 regresyon değil — pre-existing bir davranış boşluğu, dokümante edildi.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)

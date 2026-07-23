@@ -873,3 +873,37 @@ async def test_add_sefer_round_trip_invokes_create_return(monkeypatch):
             await add_sefer(data)
 
     mock_return.assert_awaited_once()
+
+
+# ============================================================
+# 17. add_sefer: SEFER_ADDED outbox payload carries arac_id
+#     (prediction_ml's ModelTrainingHandler keys off event.data["arac_id"] —
+#     a missing key means auto-retrain silently never fires for this event)
+# ============================================================
+
+
+async def test_add_sefer_outbox_payload_carries_arac_id(monkeypatch):
+    uow = DummyUoW()
+    uow.sefer_repo.add = AsyncMock(return_value=55)
+    uow.arac_repo.get_by_id = AsyncMock(
+        return_value={"aktif": True, "bos_agirlik_kg": 8000}
+    )
+    uow.sofor_repo.get_by_id = AsyncMock(return_value={"aktif": True})
+
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+
+    mock_outbox = MagicMock()
+    mock_outbox.save_event = AsyncMock()
+    monkeypatch.setattr(add_trip, "get_outbox_service", lambda: mock_outbox)
+
+    with patch.object(
+        add_trip,
+        "predict_outbound",
+        new=AsyncMock(return_value=(None, None, None)),
+    ):
+        data = _sefer_create(arac_id=42)
+        await add_sefer(data)
+
+    call_kwargs = mock_outbox.save_event.await_args.kwargs
+    assert call_kwargs["payload"]["arac_id"] == 42

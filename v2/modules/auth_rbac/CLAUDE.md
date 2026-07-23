@@ -229,10 +229,15 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   artık `auth_rbac.public` üzerinden.
 - **fleet, anomaly, import_excel, analytics_executive, reports** —
   `require_yetki`'yi artık `auth_rbac.public` üzerinden import ediyor.
-- **trip, fuel, driver, route_simulation, prediction_ml** — bu modüller
-  henüz auth_rbac'a doğrudan bir simge import etmiyor (yalnız `app/api/
-  deps.py`'nin genel `get_current_active_user`/`require_permissions`
-  wiring'ini dolaylı kullanıyor).
+- **trip, fuel, driver, route_simulation, prediction_ml** — ❌
+  **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+  satır eskiden bu modüllerin auth_rbac'a "henüz doğrudan bir simge
+  import etmediğini, yalnız `app/api/deps.py`'nin dolaylı wiring'ini
+  kullandığını" söylüyordu — o dosya artık yok, ve gerçekte bu 5 modülün
+  `api/*.py` dosyalarının HEPSİ `get_current_active_user`/
+  `require_permissions`/`require_yetki`'yi doğrudan
+  `v2.modules.auth_rbac.public`'ten import ediyor (diğer taşınan
+  modüllerle aynı desen, istisna değil).
 
 ## Modüle özel iş kuralları & gotcha'lar
 

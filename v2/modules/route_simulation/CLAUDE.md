@@ -55,9 +55,26 @@ envanterinde route_simulation'a bağlıymış gibi görünse de gerçekte
 prediction_ml'in bir parçası (`domain/route_similarity.py`, dalga 13'te
 taşındı, ai_assistant'ın `plan_trip.py`'si kullanıyor).
 
-## Public API (public.py imzaları — 2026-07-18'den beri VAR)
+## Public API (public.py `__all__`'ında GERÇEKTEN export edilenler)
+
+❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+bölüm "public.py imzaları" başlığı altında var-olmayan bir
+`get_route_repo(session=None)` factory fonksiyonunu listeliyordu (öyle bir
+fonksiyon repo genelinde hiç yazılmamış — `RouteRepository`'ye erişim
+`uow.route_repo` lazy-property'siyle, `SimulationRepository`'ye erişim
+doğrudan `SimulationRepository(session=db)` constructor'ıyla), ve
+modül-içi-kullanım semboller (`create_route_simulation`/
+`get_route_simulation_by_id`, `RouteAnalyzer`/`analyze_segments`,
+`GradeClass`/`assign_grade_class`, `haversine`/`segment_distance`/
+`analyze_elevation_profile`, `SegmentInput/Output/Summary`,
+`simulate_segment`) `public.py`'nin gerçek `__all__`'ında YOK ama aynı
+başlık altında yazılıydı. Aşağıdaki liste gerçek `public.py`'nin
+`__all__`'ıyla birebir eşleşiyor:
 
 ```python
+# ORM (dalga 16 task #58)
+RoutePath, GuzergahKalibrasyon, RouteSimulation, RouteSegment
+
 # application/get_route_details.py — TEK use-case, free function (B.1 uyumlu)
 get_route_details(start_coords, end_coords, use_cache=True, include_details=False) -> dict
 
@@ -65,13 +82,37 @@ get_route_details(start_coords, end_coords, use_cache=True, include_details=Fals
 get_route_difficulty(ascent, descent, distance_km) -> str
 
 # application/simulate_route.py
-RouteSimulator, get_route_simulator()
+RouteSimulator, SimulationResult, get_route_simulator()
   .simulate(cikis_lon, cikis_lat, varis_lon, varis_lat, ton=15.0, arac_yasi=5,
             target_length_km=0.5, vehicle=None) -> Optional[SimulationResult]
 # (Sınıf olarak kaldı — TEK use-case/tek pipeline, LokasyonHydrator ile aynı
 # gerekçe: constructor yalnız mapbox_client/elevation_client DI'sini tutuyor.)
 
-# application/create_route_simulation.py (dalga-1-6+8 B.1 dedektif denetiminde eklendi, 2026-07-15)
+resample_segments(segments, coords, target_length_km=0.5)
+SegmentInput
+simulate_route(...)
+
+# infrastructure/
+MapboxClient, OpenMeteoElevationClient, get_elevation_client(), OpenRouteClient
+
+# application/weather_service.py (2026-07-22'de taşındı)
+WeatherService, WeatherSample, get_weather_service()
+  .get_route_weather_samples(midpoints) -> list[Optional[WeatherSample]]  # batch, Redis cached
+  .get_forecast_analysis(lat, lon) -> dict
+  .get_trip_impact_analysis(cikis_lat, cikis_lon, varis_lat, varis_lon) -> dict
+  .calculate_weather_fuel_impact(temp, precip, wind) -> float
+  .get_seasonal_factor(target_date) -> float
+
+# domain/route_validator.py (2026-07-22'de taşındı) — saf, I/O yok
+RouteValidator.validate_and_correct(route_data: dict) -> dict
+```
+
+**Modülün KENDİ İÇİNDE olup public.py'ye EXPORT EDİLMEYEN** semboller
+(dış modül tüketicisi yok, yalnız `api/route_routes.py`/kendi
+`application/`'ı tüketir):
+
+```python
+# application/create_route_simulation.py (dalga-1-6+8, 2026-07-15)
 create_route_simulation(db, simulator, *, lokasyon_id, arac_id, cikis_lon, cikis_lat,
                          varis_lon, varis_lat, ton, arac_yasi, segment_length_m,
                          current_user_id) -> RouteSimulation  # segments eager-loaded
@@ -88,26 +129,11 @@ analyze_elevation_profile(geometry) -> dict
 PolylineDecoder.decode(polyline_str) -> list[tuple[float, float]]
 RouteAnalyzer / route_analyzer.analyze_segments(geometry_points, extras, reference_distance_m) -> dict
 GradeClass, assign_grade_class(grade_pct) -> GradeClass
-SegmentInput, SegmentOutput, SegmentSummary, simulate_segment(), simulate_route()
-resample_segments(segments, coords, target_length_km=0.5)
+SegmentOutput, SegmentSummary, simulate_segment()
 
-# infrastructure/
-MapboxClient, get_mapbox_client()
-OpenRouteClient, get_route_client()
-OpenMeteoElevationClient, get_elevation_client()
-RouteRepository, get_route_repo(session=None)          # route_paths (ORS cache)
-SimulationRepository(session=db)                        # route_simulations + route_segments
-
-# application/weather_service.py (2026-07-22'de taşındı)
-WeatherService, WeatherSample, get_weather_service()
-  .get_route_weather_samples(midpoints) -> list[Optional[WeatherSample]]  # batch, Redis cached
-  .get_forecast_analysis(lat, lon) -> dict
-  .get_trip_impact_analysis(cikis_lat, cikis_lon, varis_lat, varis_lon) -> dict
-  .calculate_weather_fuel_impact(temp, precip, wind) -> float
-  .get_seasonal_factor(target_date) -> float
-
-# domain/route_validator.py (2026-07-22'de taşındı) — saf, I/O yok
-RouteValidator.validate_and_correct(route_data: dict) -> dict
+# infrastructure/ — repository erişimi FACTORY FONKSİYONU DEĞİL:
+RouteRepository            # erişim: uow.route_repo (UnitOfWork lazy-property)
+SimulationRepository(session=db)   # erişim: doğrudan constructor, route_simulations + route_segments
 
 # api/route_routes.py
 router  # POST /analyze, POST /simulate, GET /simulate/{id}

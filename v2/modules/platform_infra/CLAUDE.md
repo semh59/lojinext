@@ -114,6 +114,26 @@ erişmeye ihtiyaç duymadı. Spekülatif olarak eklenmiş, hiç kullanılmamış
 bir "ileri güvenlik supabı"ydı — projenin kendi "hipotetik gelecek
 ihtiyaçları için kod ekleme" karşıtı ilkesiyle tutarlı şekilde kaldırıldı.
 
+## İkinci isim çakışması: iki `ErrorEvent` (2026-07-23 bağımsız denetimde bulundu)
+
+`v2.modules.platform_infra.monitoring.models.ErrorEvent` (düz
+`@dataclass`, yukarıdaki gözlemlenebilirlik/alarm alt sistemine ait,
+`platform_infra.public`'ten export edilir) ile
+`v2.modules.shared_kernel.infrastructure.error_monitoring_models.ErrorEvent`
+(SQLAlchemy ORM sınıfı, `error_events` tablosu, `shared_kernel.public`'ten
+export edilir) tamamen ilgisiz iki sınıf, aynı bare isim `ErrorEvent`.
+Çakışma yalnızca `error_monitoring_models.py`'nin kendi docstring'inde
+itiraf ediliyordu, bu dosyada hiç anılmıyordu. Şu an ikisini aynı
+namespace'te birlikte import eden gerçek kod yok (aktif bug değil) — ama
+biri ileride `from platform_infra.public import ErrorEvent` ve
+`from shared_kernel.public import ErrorEvent`'i aynı dosyada yan yana
+kullanırsa sessizce yanlış sınıfı import eder. Yukarıdaki `get_event_bus`
+çakışmasıyla aynı kategori: isimlendirme çakışması, davranış hatası
+değil. Import ederken her zaman modül-nitelikli (`from
+v2.modules.platform_infra.public import ErrorEvent as
+MonitoringErrorEvent` gibi) kullanmak veya kaynağı açıkça dokümante etmek
+önerilir.
+
 ## Public API (public.py'nin gerçekte export ettiği — özet)
 
 Tam liste `public.py`'nin `__all__`'ında; kategoriler: per-request DI

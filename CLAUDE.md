@@ -426,8 +426,8 @@ All settings in `app/config.py` (`pydantic_settings.BaseSettings`). Reference vi
 3. `alembic check` — no schema drift
 4. `pip-audit` / `npm audit --omit dev` — no known CVEs
 5. `ruff check` — no lint errors
-6. `mypy` — no type errors
-7. `pytest` unit + integration with 70 % coverage minimum
+6. `mypy` — baseline-relative, not zero-error (`ci.yml`: `BASELINE=7`; fails only if the *new* error count exceeds 7, not if it's nonzero — see the mypy step's own inline comments)
+7. `pytest` unit + integration — the real blocking threshold is the **combined** coverage gate at `--fail-under=92` (`ci.yml`'s "Combined coverage gate" step, unit+all-integration lanes merged); the per-lane unit-only step uses a softer `--cov-fail-under=83` that is NOT the final gate (2026-07-04 recalibration, see that step's inline comments) — the 70 % figure in this repo's dev-facing `pytest -m "unit or not integration" ...` command under Commands above is a even-lower local sanity floor, not what CI enforces
 8. `vitest --run` + `vite build`
 9. `lint-imports` (import-linter) — all 18 v2/-modules contracts (1
    independence + 1 layers + 16 `public-surface-only-<module>`, one per

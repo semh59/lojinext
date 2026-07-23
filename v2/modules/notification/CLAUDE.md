@@ -95,9 +95,14 @@ doğrudan çağrılan bir yol).
   dedektif denetimi bulgusu, bkz. `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
   madde 3).
 - **auth_rbac** (senkron, out-edge): `application/quiet_hours.py`'nin
-  `is_user_quiet_now`'ı `v2.modules.auth_rbac.application.preference_service`'i
-  doğrudan import eder (dalga 6'da güncellendi — eski `app.core.services.
-  preference_service.PreferenceService` yolu artık yok).
+  `is_user_quiet_now`'ı `v2.modules.auth_rbac.public.get_preferences`'i
+  (fonksiyon-içi import) çağırır — public.py üzerinden, `application/`
+  katmanına doğrudan erişim YOK. ❌ **DÜZELTİLDİ (2026-07-23, bağımsız
+  dedektif denetiminde bulundu)**: bu satır eskiden yanlışlıkla
+  `auth_rbac.application.preference_service`'i doğrudan import ettiğini
+  söylüyordu (public.py sınırını ihlal eden, gerçekte olmayan daha kötü
+  bir durumu tarif ediyordu) — koddaki gerçek import her zaman
+  `auth_rbac.public` üzerindendi.
 - **analytics_executive** (senkron, in-edge): `compliance_tasks.py`
   (muayene push hatırlatma) `send_push_broadcast`'i `notification.public`
   üzerinden import eder (2026-07-18: public'e çevrildi). ~~`generate_insights.py`'nin

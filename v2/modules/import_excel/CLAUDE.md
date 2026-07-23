@@ -9,8 +9,9 @@ Excel export + şablon üretimi, OCR belge işleme Celery task'ı.
 
 NE YAPMAZ: hiçbir domain entity'sinin (arac/surucu/sefer/yakit/lokasyon)
 gerçek CRUD iş kuralını uygulamaz — yalnız Excel'i parse edip ilgili
-modülün `bulk_add_*`/`create_*` fonksiyonunu çağırır. `SeferService`
-(trip, henüz taşınmadı) hâlâ gerçek sefer create iş kuralının sahibi.
+modülün `bulk_add_*`/`create_*` fonksiyonunu çağırır. `trip.public.
+bulk_add_sefer`/`add_sefer` (trip modülü, taşındı) hâlâ gerçek sefer
+create iş kuralının sahibi.
 
 ## Public API (public.py imzaları)
 
@@ -115,11 +116,18 @@ kendi SELECT'ini atsaydı N+1 regresyonu olurdu.
 
 ## Senkron konuştuğu modüller (yön: import_excel → X, B.2 kararı: hepsi public.py üzerinden)
 
-- **trip (henüz taşınmadı)**: `process_sefer_import`/`import_sefer_excel_upload`
-  `get_container().sefer_service.bulk_add_sefer(...)` çağırır (container
-  üzerinden geçici erişim, trip taşınınca doğrudan `v2.modules.trip.public`
-  olacak). `execute_import`'un sefer dalı ayrıca `EventType.SEFER_UPDATED`
-  publish eder (trip'in event'i, bu modülün sahibi olmadığı — events.py'de not).
+- **trip (taşındı)**: `process_sefer_import`/`import_sefer_excel_upload`
+  doğrudan `v2.modules.trip.public.bulk_add_sefer`'i çağırır (2026-07-23
+  denetiminde bulundu: bu iki dosya zaten `trip.public`'i kullanıyordu,
+  ama aynı iki dosyanın `SeferCreate` şema importu hâlâ eski
+  `v2.modules.trip.schemas`'tan doğrudan geliyordu — public.py'yi atlayan
+  bu satır `v2.modules.trip.public import SeferCreate`'e düzeltildi;
+  `.importlinter` bunu hiçbir kontratta yakalamıyordu çünkü hiçbir
+  `public-surface-only-*` kontratının `forbidden_modules` listesi
+  `*.schemas` alt-modüllerini kapsamıyor — ayrı bir sistemik denetim
+  kalemi, bkz. kök `CLAUDE.md`). `execute_import`'un sefer dalı ayrıca
+  `EventType.SEFER_UPDATED` publish eder (trip'in event'i, bu modülün
+  sahibi olmadığı — events.py'de not).
 - **fuel (taşındı)**: `process_yakit_import` → `bulk_add_yakit` +
   `recalculate_vehicle_periods`.
 - **fleet (taşındı)**: `process_vehicle_import` → `v2.modules.fleet.public.

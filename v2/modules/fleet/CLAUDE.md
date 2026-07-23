@@ -74,11 +74,25 @@ geçirir) çünkü orijinal kod hiç kendi UoW'unu açmıyordu.
 ## Yayınladığı / dinlediği event'ler (events.py DTO'ları)
 
 `ARAC_ADDED`, `ARAC_UPDATED`, `ARAC_DELETED` — `@publishes(...)` decorator'ı
-`create_vehicle`/`update_vehicle`/`delete_vehicle` üzerinde var ama
-**repo-genelinde ölü kod**: hiçbir yerde `event_bus.publish(...)` çağrısı
-yok, `_publishes` attribute'u okunmuyor (location'ın aynı bulgusunun
-tekrarı — dalga 3'te tekrar doğrulandı). Bu modülün getirdiği bir
-regresyon değil.
+`create_vehicle`/`update_vehicle`/`delete_vehicle` üzerinde sadece
+metadata (gerçek publish mekanizması değil, bkz. aşağı). Gerçek yayın
+`save_outbox_event(uow.session, EventType.ARAC_*, {"result": arac_id})`
+ile outbox'a yazılıyor, Celery'nin 60s'lik `relay-outbox-events` task'ı
+bunu gerçek `event_bus.publish()`'e çeviriyor.
+
+❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+bölüm eskiden "repo-genelinde ölü kod, hiçbir yerde `event_bus.publish(...)`
+çağrısı yok" diyordu — bu YANLIŞTI ve `location`'ın aynı (doğru) iddiasından
+mekanik olarak kopyalanmıştı (dalga 3), hiç doğrulanmamıştı. Gerçekte bu 3
+event'in İKİ CANLI abonesi var: `platform_infra/cache/cache_invalidation.py`
+(`on_arac_change` — `arac:*`/`stats:filo*` cache pattern'lerini temizler,
+payload-agnostic) ve `ai_assistant/infrastructure/rag/rag_sync_service.py`
+(`_on_arac_changed` — ARAC_ADDED/UPDATED'i dinleyip aracı RAG'e
+indeksler, `event.data["result"]`'in publisher'ın hep gönderdiği bare-int
+olduğunu bilerek doğru dallanıyor). Yani bir aracı ekleme/güncelleme/silme
+gerçekten ~60s içinde RAG re-index + cache invalidation tetikliyor —
+"ölü kod" değil, canlı bir yan etki zinciri; bu koda dokunan biri blast
+radius'unu buna göre değerlendirmeli.
 
 ## TOCTOU kilit değişikliği (davranışsal not, dalga 3)
 

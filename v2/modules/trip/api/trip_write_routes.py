@@ -133,10 +133,6 @@ async def create_sefer(
         if idempotency_key:
             await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
         raise
-    except HTTPException:
-        if idempotency_key:
-            await release_reservation(key=idempotency_key, endpoint=_ENDPOINT)
-        raise
     except Exception as e:
         import traceback
 

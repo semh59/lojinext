@@ -250,12 +250,21 @@ sırasında birebir korundu — mekanik taşıma, davranış değişikliği yok.
 
 Kendi `EventType`'ını tanımlamaz. **Dinler**: `YAKIT_ADDED`/`SEFER_ADDED`
 (`ModelTrainingHandler` — her 5 yeni kayıtta arka planda otomatik retrain
-tetikler), `SEFER_UPDATED` (`PhysicsRecalculationHandler` — manuel override
+tetikler; `on_data_added` `event.data["arac_id"]`'ye bağımlı, yoksa sessizce
+sayaç artırmadan döner), `SEFER_UPDATED` (`PhysicsRecalculationHandler` — manuel override
 sonrası fizik tabanlı tüketimi yeniden hesaplar, `trigger="physics_recalculation"`
 ile sonsuz döngüyü engeller). **Yayınlar**: `CACHE_INVALIDATED` (retrain
 sonrası), `SEFER_UPDATED` (fizik yeniden hesaplama sonrası). Her iki handler
 da `app/main.py` lifespan startup'ında bağlanır
 (`get_model_training_handler().setup()` / `get_physics_handler().register()`).
+
+**2026-07-23 bug-fix (bağımsız dedektif denetiminde bulundu)**: trip'in
+`SEFER_ADDED` outbox payload'ı `arac_id` taşımıyordu (yalnız `sefer_id`/
+`sefer_no`) — `on_data_added` bunu bulamadığı için sefer-girişiyle büyüyen
+araçlarda otomatik retrain hiç tetiklenmiyordu (yakıt-girişi tarafı
+YAKIT_ADDED'in `arac_id` içermesi sayesinde zaten çalışıyordu). `trip/
+application/add_trip.py`'nin payload'ına `arac_id` eklenerek düzeltildi —
+bkz. `trip/CLAUDE.md`/`trip/events.py`.
 
 ## Şema & tablo sahipliği
 

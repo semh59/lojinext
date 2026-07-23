@@ -147,7 +147,9 @@ update_trip, return_trip, bulk_add_trips) tüketilir, dış modül tüketicisi y
 Kendi `EventType`'ını tanımlamaz, paylaşılan
 `app.infrastructure.events.event_bus.EventType` sabitlerini kullanır.
 
-**Yayınlar**: `SEFER_ADDED` (`add_sefer`, outbox), `SEFER_DELETED`
+**Yayınlar**: `SEFER_ADDED` (`add_sefer`, outbox, payload
+`{sefer_id, sefer_no, arac_id}` — `arac_id` 2026-07-23'te eklendi, bkz.
+`events.py`'nin düzeltme notu), `SEFER_DELETED`
 (`delete_sefer`), `SEFER_UPDATED` (`reconcile_costs` — maliyet dağıtımı
 sonrası), `ROUTE_COMPLETED` (`update_sefer_uow` — durum Completed'e
 geçtiğinde), `SLA_DELAY` (`sla.py::check_sla_delay`, outbox), `ANOMALY_DETECTED`

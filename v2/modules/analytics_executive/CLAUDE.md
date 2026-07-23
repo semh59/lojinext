@@ -56,9 +56,6 @@ get_vehicle_cost_comparison(months=3) -> list[dict]
 calculate_savings_potential(target_consumption=30.0) -> dict
 calculate_roi(investment, months=12, target_consumption=30.0) -> dict
 
-# Insights (InsightEngine'dan free function'lara — B.1, ölü kod, bkz. aşağı)
-generate_all_and_save() -> int
-
 # Repository
 AnalizRepository, get_analiz_repo(session=None) -> AnalizRepository
 ```
@@ -85,16 +82,20 @@ kaldırma emsaliyle aynı gerekçe, ama kapsam daha geniş — bu kez 2 tam
 sınıf). Etkilenen ~20 test dosyası da kaldırıldı/dönüştürüldü (bkz. test
 stratejisi).
 
-## `InsightEngine` — free function'a bölündü ama HÂLÂ ölü kod (yanlışlıkla silinmedi, bilinçli tutuldu)
+## `InsightEngine` — ✅ SİLİNDİ (aşağıdaki 2026-07-18 bölümüne bkz.)
 
-`generate_all_and_save()`/`generate_fleet_insights()`/vb. hiçbir Celery
-task/endpoint'ten tetiklenmiyor (grep: `generate_all_and_save` çağrısı
-kendi dosyası + testler dışında sıfır sonuç). `AnalizService`/
-`DashboardService`'ten FARKLI olarak bu SİLİNMEDİ — kullanıcının kararı
-yalnız o ikisini kapsıyordu (2026-07-16). Kod gerçek + iyi test edilmiş
-(bulk insight üretimi + `anomalies` tablosuna alert yazma + kritik/yüksek
-push tetikleme) — ileride bir cron/endpoint'e bağlanabilir. Bağlanırsa
-davranış değişikliği gerektirir, ayrı bir karar.
+~~`InsightEngine` free function'a bölündü ama HÂLÂ ölü kod (yanlışlıkla
+silinmedi, bilinçli tutuldu)~~ — bu, 2026-07-16'da yazılan ARA bir
+durumdu (`generate_all_and_save()`/`generate_fleet_insights()`/vb.
+hiçbir Celery task/endpoint'ten tetiklenmiyordu, ama `AnalizService`/
+`DashboardService`'ten FARKLI olarak o turda SİLİNMEMİŞTİ). ❌
+**DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+bölüm AYNI DOSYANIN aşağıdaki "✅ 2026-07-18 ölü-kod temizliği" bölümüyle
+çelişiyordu — `generate_insights.py` (bu sınıfın free-function hali) iki
+gün sonra (2026-07-18) kullanıcı kararıyla GERÇEKTEN silindi, ama bu üst
+bölüm hiç güncellenmemişti. Yukarıdaki "Public API" listesindeki
+`generate_all_and_save()` satırı da aynı nedenle kaldırıldı — gerçek
+`public.py`'de artık yok.
 
 ## ✅ `get_driver_comparison` (driver_metrics_queries.py) — 2026-07-18'de SİLİNDİ
 
@@ -190,9 +191,15 @@ get_analiz_repo()` üzerinden çağırıyor.
   olarak silindi).
 - **auth_rbac (taşındı)**: `api/executive_routes.py`
   `v2.modules.auth_rbac.public.require_yetki` kullanır (public.py üzerinden).
-- **anomaly (taşındı, geçici)**: `aggregate_cross_feature`'ın D.4 kalemi
-  `app.core.ml.vehicle_health_factor`'ı çağırır (henüz taşınmamış — ayrı
-  bir modülün dosyası, bu dalganın kapsamı dışı).
+- **prediction_ml (taşındı)**: `aggregate_cross_feature`'ın D.4 kalemi
+  (bakım kaynaklı fazladan yakıt kaybı hesabı) `v2.modules.prediction_ml.
+  public.compute_maintenance_factor`/`fetch_health_input_batch`'i
+  (fonksiyon-içi import) çağırır. ❌ **DÜZELTİLDİ (2026-07-23, bağımsız
+  dedektif denetiminde bulundu)**: bu satır eskiden "anomaly" başlığı
+  altında ve `app.core.ml.vehicle_health_factor`'ın "henüz taşınmamış"
+  olduğunu söylüyordu — ikisi de yanlıştı: hedef modül `anomaly` değil
+  `prediction_ml`, ve bağımlılık zaten taşınmış, `prediction_ml.public`
+  üzerinden gidiyor (kontrat ihlali yok).
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 

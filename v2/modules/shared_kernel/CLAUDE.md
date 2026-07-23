@@ -37,7 +37,18 @@ olarak yok — unutulmadı:
   `@publishes`/`register_handlers` çağırmaz (`grep -rn "publishes\|
   register_handlers" v2/modules/shared_kernel/` sıfır sonuç verir).
 
-## İçerik envanteri (dalga 16, task #58/#59 — `app/`'den taşındı)
+## İçerik envanteri (dalga 16, task #58/#59 — `app/`'den taşındı; 20 dosya)
+
+❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+ağaç dalga 16 kapandığındaki 19-dosyalık envanteri gösteriyordu.
+`infrastructure/outbox_tasks.py` dalga 16 KAPANDIKTAN SONRA, dalga 17'nin
+(platform_infra) kendi taşıma turunda buraya eklendi (`app/workers/tasks/
+outbox_tasks.py`'den — mantıken doğru yere, `OutboxEvent` zaten
+shared_kernel'de yaşıyor) ama bu dosya hiç güncellenmemişti. Gerçek dosya
+sayısı 20 (`TASKS/modules/shared-kernel.md`'nin kabul kriteri "≤22" —
+hâlâ tavanın altında, ama bu, shared_kernel'in kendi "yalnız küçülebilir,
+başka bir modülün dalgası sırasında büyümemeli" ilkesinin harfiyen bir
+ihlali — ayrı, dokümante edilmiş bir not olarak burada bırakılıyor):
 
 ```
 v2/modules/shared_kernel/
@@ -51,6 +62,7 @@ v2/modules/shared_kernel/
 │   ├── base_repository.py                 # BaseRepository[T] — generic CRUD (27 gerçek çağıran)
 │   ├── unit_of_work.py                    # UnitOfWork, get_uow, unit_of_work (168 gerçek çağıran — TÜM modüller)
 │   ├── outbox.py                          # OutboxEvent ORM + save_outbox_event/OutboxService (dalga 16 task #58)
+│   ├── outbox_tasks.py                    # relay_outbox_events Celery task (dalga 17'de app/workers/tasks/'ten eklendi — public.py'ye export EDİLMEZ, yalnız platform_infra/background/celery_app.py'nin dosya-sonu import'uyla kaydolur)
 │   └── error_monitoring_models.py         # ErrorEvent/ErrorOccurrence ORM (dalga 16 task #58 — hiçbir prod çağıranı yok, yalnız Alembic şema kaydı)
 ├── schemas/
 │   ├── base.py                            # ResponseMeta, StandardResponse
@@ -60,6 +72,23 @@ v2/modules/shared_kernel/
     ├── clock.py                           # current_date (test-edilebilir clock injection)
     └── type_helpers.py                    # safe_float
 ```
+
+**Not (aynı denetimde bulunan, ilgili ikinci kalem)**: `outbox_tasks.py`
+da (yukarıdaki `base.py`'nin `EncryptedPII`'si gibi) shared_kernel'in
+"hiçbir dış bağımlılığı yok" ilkesinin bir istisnası — modül-seviyesinde
+`v2.modules.platform_infra.background.celery_app.celery_app` ve
+`platform_infra.logging.logger`'ı import ediyor. Bu, `base.py`'nin
+`EncryptedPII`'sinden FARKLI olarak lazy DEĞİL, ama güvenli: Celery'nin
+standart "task modüllerini `celery_app` objesi tanımlandıktan SONRA,
+dosyanın en altında import et" deseni (`celery_app.py:178`'deki `# noqa:
+E402,F401` bunu işaret ediyor) — döngü, `outbox_tasks.py` import
+edildiğinde `celery_app` sembolü `sys.modules`'ta zaten tanımlanmış
+olduğu için pratikte hiç patlamıyor (gerçek `pytest --collect-only` ve
+tam test suite ile doğrulandı). Yine de `.importlinter` bu kenarı
+izlemiyor (shared_kernel'in kasıtlı olarak kontratı yok) — ikisi de
+(`base.py`'nin `EncryptedPII`'si + `outbox_tasks.py`) shared_kernel'in
+platform_infra'ya toplam 2 dokümante, düşük-riskli, izlenmeyen
+bağımlılığı olarak burada not düşülüyor.
 
 ## Public API (public.py imzaları)
 

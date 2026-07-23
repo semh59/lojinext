@@ -2,11 +2,21 @@
 
 > **Önce `TASKS/STATUS.md`'yi oku.** Hangi modülün sırada olduğunu, oturum-hijyeni kuralını (bir oturum = bir modül) ve bilinen açık notları orada bulursun — bu dosyayı (README) baştan sona yeniden okumana gerek yok.
 
+> ❌ **BAYAT PLAN UYARISI (2026-07-23, bağımsız dedektif denetiminde
+> bulundu, düzeltildi)**: bu dosya FAZ1'in ORİJİNAL planını anlatıyor —
+> `TASKS/STATUS.md`'nin 2026-07-12 KARAR bölümünün dokümante ettiği 2 büyük
+> sapmayı yansıtmıyordu: (1) yeni modül kodu `app/modules/<x>/` DEĞİL,
+> **`v2/modules/<x>/`** altında yazıldı; (2) `faz1-registry-iskelet-ve-shim.md`
+> (`ModuleSpec`+registry deseni) TERK EDİLDİ (kasıtlı) — hiç inşa
+> edilmedi, gerçek yürütülüş doğrudan `v2/modules/<x>/`'e taşımaydı. Aşağıdaki
+> metin artık bu haliyle YANLIŞ YÖNLENDİRİR; güncel gerçek durum için her
+> zaman `STATUS.md`'ye güven, bu dosyayı yalnız tarihsel bağlam için oku.
+
 ## DURMA NOKTASI
 
 **Hiçbir görev dosyası, kullanıcının o dosyaya özel onayı olmadan uygulanmaz.** Bu dizin tamamen plandır. Bir görev dosyasını uygulamaya başlamadan önce:
 1. Kullanıcıdan o spesifik dosya için onay al.
-2. İlgili modül görev dosyasıysa, önce `app/modules/<x>/CLAUDE.md`'yi Read ile oku (henüz yoksa, o görev dosyasının 7. adımı önce onu oluşturur).
+2. İlgili modül görev dosyasıysa, önce `v2/modules/<x>/CLAUDE.md`'yi Read ile oku (henüz yoksa, o görev dosyasının 7. adımı önce onu oluşturur; ~~`app/modules/<x>/`~~ — bu yol hiç kullanılmadı, bkz. yukarıdaki uyarı).
 3. Görev tamamlanınca gerçek CI koşumu (lokal + pipeline) ile doğrula — "muhtemelen geçti" kabul edilmez, kanıt şart (bkz. proje kuralı `no_error_no_fake_code`).
 
 ## FAZ Tablosu (giriş/çıkış kriterleri)
@@ -14,7 +24,7 @@
 | FAZ | İçerik | GİRİŞ | ÇIKIŞ |
 |---|---|---|---|
 | **0** Ölçüm & emniyet | baseline JSON, import-linter rapor modu, açık soru doğrulamaları | Bu planın onayı | baseline repo'da; main YEŞİL |
-| **1** Kod sınırları | modül iskeleti, taşıma dalgaları, import-linter gate, davranışsal testler | FAZ0 çıkışı | 15 modül + shared_kernel erimesi + platform-infra registry finali; gate 5 ardışık gün yeşil |
+| **1** Kod sınırları | modül iskeleti, taşıma dalgaları, import-linter gate, davranışsal testler | FAZ0 çıkışı | 15 modül + shared_kernel erimesi + platform-infra son dalgası (registry deseni DEĞİL — terk edildi, bkz. yukarıdaki uyarı); gate 5 ardışık gün yeşil |
 | **2** Veri sınırları | 14 şema, PG rolleri, fk_registry, güvenlik state→Redis | FAZ1 çıkışı (5 gün yeşil) | 43 tablo modül şemalarında; rol ihlali runtime'da permission-denied |
 | **3** Dil geçişi (BAĞIMSIZ) | kod/DB/API → İngilizce; UI i18n TR/EN kalır | FAZ2 çıkışı + prod satır ölçümü | eski anahtar okuması 0 (≥14 gün); contract/drop |
 | **4** Sıkılaştırma | baseline sıfırlama, shim temizliği, retro | FAZ3 çıkışı | kontratlar strict, retro raporu |
@@ -25,7 +35,7 @@ Sınır-enforcement (FAZ1-2) ile dil geçişi (FAZ3) **ASLA aynı PR'da değil**
 
 ```
 faz0-baseline-olcum-ve-rapor-modu.md          # FAZ0 — tek görev dosyası
-faz1-registry-iskelet-ve-shim.md              # FAZ1 çatı: ModuleSpec + registry
+faz1-registry-iskelet-ve-shim.md              # FAZ1 çatı: ModuleSpec + registry — ⛔ TERK EDİLDİ (kasıtlı), bkz. STATUS.md
 faz1-import-linter-baseline-ve-gate.md        # FAZ1 çatı: kontrat + baseline
 faz1-davranissal-mimari-testler.md            # FAZ1 çatı: pytest-archon + el yazması
 faz1-dosya-kalite-ve-kisalik-gate.md          # FAZ1 çatı: LOC/CC/kısalık kuralı
@@ -62,7 +72,7 @@ bug-connection-pool-leak-under-load.md        # BAĞIMSIZ bug — dalga sırası
 14. trip               (out=20/in=18 — en karmaşık split, sefer_write_service dahil)
 15. admin-platform
 16. shared-kernel       (erime — modül taşımaları bittikçe küçülür, FAZ1 sonunda son hâli)
-17. platform-infra      (registry finali — main.py/container.py/api.py'nin kalıntısı)
+17. platform-infra      (son dalga — main.py/container.py/api.py'nin kalıntısı; "registry finali" DEĞİL, o desen terk edildi)
 ```
 
 Her dalga: 1 modül = 1 PR = 1 onay turu. Bir dalga başlamadan önceki dalganın CI'ı yeşil olmalı.

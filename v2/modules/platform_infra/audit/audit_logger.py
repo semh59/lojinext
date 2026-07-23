@@ -71,9 +71,10 @@ async def _persist_audit_to_db(
         )
 
         # user_id INTEGER veya None — string gelirse atla. Süper admin
-        # synthetic id=0 (app/api/deps.py:156,163) kullanıyor; kullanicilar
-        # tablosunda karşılığı yok → FK violation. <=0 olanları NULL'a
-        # düşürüp insert'i geçirelim.
+        # break-glass synthetic id=0 kullanıyor (v2/modules/auth_rbac/
+        # application/authenticate.py:146,152 — taşındı, eskiden app/api/
+        # deps.py'deydi); kullanicilar tablosunda karşılığı yok → FK
+        # violation. <=0 olanları NULL'a düşürüp insert'i geçirelim.
         user_id_int: Optional[int]
         if user_id is None:
             user_id_int = None

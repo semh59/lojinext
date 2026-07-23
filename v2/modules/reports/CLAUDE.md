@@ -113,18 +113,27 @@ sonuç verdi, taşıma bunu değiştirmedi).
 - **analytics_executive (taşındı, geçici)**: `ReportRepos.analiz_repo`
   = `v2.modules.analytics_executive.infrastructure.executive_read_models`
   (bulk fleet/vehicle/driver istatistikleri, `ReportRepos`'a artık `session`
-  alanı da eklendi) ve `advanced_reports_routes.py`'nin maliyet endpoint'leri
-  `v2.modules.analytics_executive.application.analyze_costs`'un free
-  function'larını (`calculate_period_cost`/`get_monthly_trend`/
-  `get_vehicle_cost_comparison` as `analyze_vehicle_cost_comparison`/
-  `calculate_savings_potential`/`calculate_roi`) doğrudan çağırır —
-  `public.py` üzerinden değil, henüz mimari borç.
-- **trip (henüz taşınmadı, geçici)**: `ReportRepos.sefer_repo` yok
-  (`generate_fleet_summary`'nin kendisi sefer_repo'ya ihtiyaç duymuyor) —
-  `application/get_dashboard_counters.py::get_dashboard_counters(uow, ...)`
-  `uow.sefer_repo.count_today(...)`'u doğrudan `app.database.repositories.
-  sefer_repo`'dan kullanır (`aggregate_today_triage`/`compute_fleet_comparison`
-  ile aynı desen: `ReportRepos`'a sığmayan, `uow` alan use-case).
+  alanı da eklendi). `advanced_reports_routes.py`'nin maliyet endpoint'leri
+  `v2.modules.analytics_executive.public`'in free function'larını
+  (`calculate_period_cost`/`get_monthly_trend`/`get_vehicle_cost_comparison`
+  as `analyze_vehicle_cost_comparison`/`calculate_savings_potential`/
+  `calculate_roi`) çağırır. ❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif
+  denetiminde bulundu)**: bu satır bunun "`public.py` üzerinden değil,
+  henüz mimari borç" olduğunu söylüyordu — kod zaten `public.py`'den
+  import ediyor (`advanced_reports_routes.py:15-22`), borç önceki bir
+  turda kapatılmış ama bu not güncellenmemişti.
+- **trip (taşındı)**: `ReportRepos.sefer_repo` yok (`generate_fleet_summary`'nin
+  kendisi sefer_repo'ya ihtiyaç duymuyor) — `application/
+  get_dashboard_counters.py::get_dashboard_counters(uow, ...)`
+  `uow.sefer_repo.count_today(...)`'u kullanır (`aggregate_today_triage`/
+  `compute_fleet_comparison` ile aynı desen: `ReportRepos`'a sığmayan,
+  `uow` alan use-case). ❌ **DÜZELTİLDİ (2026-07-23)**: bu satır eskiden
+  `uow.sefer_repo`'nun "doğrudan `app.database.repositories.sefer_repo`'dan"
+  geldiğini söylüyordu — o dizin dalga 16'da (shared_kernel) tamamen
+  silindi; `uow.sefer_repo` artık `shared_kernel.infrastructure.
+  unit_of_work.UnitOfWork`'ün `SeferRepository(u.session)`'a bağlanan bir
+  lazy-property'si (`v2.modules.trip.infrastructure.repository.
+  SeferRepository`), trip taşındığından beri.
 - **Ters yön (X → reports, bu modül sağlayıcı):** driver'ın
   `SoforSeferPDFService` (`infrastructure/pdf_export.py`)
   `PDFReportGenerator`'dan miras alır; import_excel'in `ExportService`

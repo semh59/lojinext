@@ -182,6 +182,12 @@ istisnaları #2/#7).
   `uow.analiz_repo` (get_dashboard_stats/get_recent_unread_alerts).
   (Eski `build_context.py`'nin fleet/fuel/reports/analytics/driver
   bağlantıları dosyayla birlikte 2026-07-18'de silindi.)
+- **fleet (taşındı — 2026-07-23'te eklendi, bağımsız dedektif denetiminde
+  bulunan eksik kayıt)**: `AIService._build_context`
+  (`application/orchestrate_ai_response.py:63`) AYRICA
+  `uow.arac_repo.get_all(limit=5)` çağırır (fleet'in
+  `AracRepository`'si, `UnitOfWork` üzerinden) — chatbot bağlamına birkaç
+  araç örneği eklemek için. Bu satır eskiden dokümante edilmemişti.
 - **driver (taşındı)**: `plan_trip.py` → `v2.modules.driver.public.
   {classify_route, get_route_profile_sofor, get_score_breakdown_sofor}`.
 - **notification (taşındı)**: `api/feedback_routes.py` →
@@ -288,9 +294,12 @@ notification'a hep `public.py` üzerinden gidiyor.
   fonksiyonlar, DB yok).
 - `app/tests/unit/test_smart_ai_service_coverage.py` → import path
   `v2.modules.ai_assistant.application.knowledge_base`.
-- `app/tests/integration/test_plan_wizard_endpoint.py` → endpoint hâlâ
-  `app/api/v1/endpoints/trips.py`'de (trip taşınmadı), yalnız import path
-  güncellendi.
+- `app/tests/integration/test_plan_wizard_endpoint.py` → endpoint artık
+  bu modülün kendi `api/plan_wizard_routes.py`'sinde (dalga 14'te
+  `app/api/v1/endpoints/trips.py`'den taşındı, o dosya artık yok — bu
+  satır eskiden "trip taşınmadı" diyordu, ❌ **DÜZELTİLDİ 2026-07-23**,
+  bu dosyanın kendi yukarıdaki "Senkron konuştuğu modüller" bölümüyle de
+  çelişiyordu), yalnız import path güncellendi.
 - `app/tests/security/test_ai_security.py`, `app/tests/unit/test_ai_security.py`,
   `app/tests/test_ai_security.py`, `app/tests/unit/test_ai_privacy.py`,
   `app/tests/unit/test_ai_deep_remediation.py`, `app/tests/unit/test_ai/

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, List, Tuple, cast
 from v2.modules.shared_kernel.exceptions import ImportValidationError
 
 if TYPE_CHECKING:
-    from v2.modules.trip.schemas import SeferCreate
+    from v2.modules.trip.public import SeferCreate
 from v2.modules.import_excel.domain.entity_resolvers import (
     resolve_arac_id,
     resolve_dorse_id,

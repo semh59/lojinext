@@ -16,10 +16,15 @@ barındırır: ML/AI motorları, anomali dedektörü, hava durumu servisi vb.
 
 ─── Ne BURAYA girmez ───────────────────────────────────────────────────────
 • Transaction-scoped domain servisleri (AracService, SeferService, …)
-  → Bunlar ``app/api/deps.py`` içindeki Depends() factory'leri aracılığıyla
-    her request'te UnitOfWork ile birlikte oluşturulur.
+  → Bunlar her request'te ``Depends()`` + UnitOfWork ile birlikte
+    oluşturulur — ör. ``SeferService`` için ``v2.modules.trip.public.
+    get_sefer_service_for_request(uow: UOWDep)``.
 
-DI mimarisinin tam açıklaması: ``app/api/deps.py`` modül docstring'ine bakın.
+DI mimarisinin per-request tarafı: ``v2/modules/platform_infra/api_deps.py``
+(jenerik ``SessionDep``/``UOWDep`` alias'ları) + her modülün kendi
+per-request factory'si (trip'inki yukarıda). **2026-07-23 düzeltmesi**: bu
+docstring önceden ``app/api/deps.py``'ye işaret ediyordu — o dosya (ve
+``app/api/`` dizininin tamamı) 2026-07-22'de tamamen silindi.
 ────────────────────────────────────────────────────────────────────────────
 """
 
@@ -57,7 +62,8 @@ class Container:
     - BURAYA GİRER (singleton): ML model yüklemesi, AI engine, external API client,
       pahalı başlangıç maliyeti, durumsuz / değiştirilemez servisler.
     - BURAYA GİRMEZ (per-request): Transaction-scoped domain CRUD servisleri.
-      Bunlar app/api/deps.py'de Depends() + UoW ile oluşturulur.
+      Bunlar Depends() + UoW ile, her modülün kendi per-request factory'sinde
+      oluşturulur (ör. trip.public.get_sefer_service_for_request).
 
     Circular import kuralı: Servisler container'a doğrudan modül seviyesinde
     referans vermemeli. Fonksiyon içi deferred import kullanılmalı.

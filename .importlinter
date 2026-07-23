@@ -3,6 +3,19 @@ root_packages =
     app
     v2
 
+# 2026-07-23 (bağımsız dedektif denetiminde bulunan sistemik kör nokta
+# düzeltmesi): her 15 `public-surface-only-<module>` kontratının
+# `forbidden_modules` listesi eskiden yalnız `<module>.{api,application,
+# domain,infrastructure}` içeriyordu — modül KÖKÜNDEKİ `schemas.py` (ve
+# trip'in `sefer_status.py`/`trip_status.py`'si) bu listede YOKTU. Bu,
+# `import_excel.application.sefer_importer.py`'nin `v2.modules.trip.schemas`'ı
+# `trip.public`'i atlayıp doğrudan import etmesini `lint-imports`'un
+# "KEPT" göstermesine yol açmıştı (gerçek ihlal, kontrat kör noktasından
+# kaçıyordu). Her 15 kontrata ilgili `<module>.schemas` (+ trip için
+# `.sefer_status`/`.trip_status`) satırları eklendi; ihlal
+# (`import_excel.application.sefer_importer`/`sefer_upload_importer` →
+# `trip.schemas`) ayrıca kaynağında `trip.public` importuna düzeltildi.
+
 [importlinter:contract:module-cross-domain-infra-independence]
 name = 15 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
 type = independence
@@ -188,58 +201,74 @@ forbidden_modules =
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -297,58 +326,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -406,58 +451,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -515,58 +576,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -624,58 +701,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -733,58 +826,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -842,58 +951,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -951,58 +1076,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1060,58 +1201,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1169,58 +1326,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1278,38 +1451,47 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
@@ -1317,14 +1499,19 @@ forbidden_modules =
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1382,42 +1569,52 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
@@ -1425,14 +1622,19 @@ forbidden_modules =
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1490,58 +1692,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1599,58 +1817,72 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.admin_platform.api
     v2.modules.admin_platform.application
     v2.modules.admin_platform.domain
     v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
@@ -1708,58 +1940,74 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
     v2.modules.prediction_ml.api
     v2.modules.prediction_ml.application
     v2.modules.prediction_ml.domain
     v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
     v2.modules.trip.api
     v2.modules.trip.application
     v2.modules.trip.domain
     v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
 ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
     v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service

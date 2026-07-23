@@ -36,10 +36,24 @@ NOT (2026-07-22 güncellemesi): ``get_current_user``/``get_current_active_user``
 (public.py zaten ``PermissionChecker``'ı import ediyordu). Dosyalar
 v2/modules/ İÇİNE taşınınca (ve ``permission_checker.py`` da aynı turda
 ``application/``'a taşınınca, artık sibling import) döngü kendiliğinden
-çözüldü. ``SessionDep``/``UOWDep``/``get_background_job_manager``/
-``get_sefer_service`` (jenerik per-request DI alias'ları, auth_rbac'a ait
-değil) hâlâ ``app/api/deps.py``'de — bunlar ayrı bir taşımanın konusu
-(`platform_infra`/`trip`).
+çözüldü.
+
+**2026-07-22 GÜNCEL (aynı gün, Kalem 3 commit 2-3 — bu docstring önceki
+turda güncellenmemiş kalmıştı, ❌ düzeltildi 2026-07-23 bağımsız dedektif
+denetiminde)**: yukarıdaki paragrafın son cümlesi hâlâ ``SessionDep``/
+``UOWDep``/``get_background_job_manager``/``get_sefer_service``'in
+"``app/api/deps.py``'de" olduğunu söylüyordu — o dosya (ve ``app/api/``
+dizininin tamamı) artık MEVCUT DEĞİL. Gerçek durum: ``SessionDep``/
+``UOWDep`` ``v2/modules/platform_infra/api_deps.py``'ye taşındı
+(``platform_infra.public``'ten export), ``get_background_job_manager``
+tamamen silindi (tüm tüketiciler ``platform_infra.public.get_job_manager``
+kullanıyor), ``get_sefer_service`` (per-request factory) ``v2/modules/
+trip/application/trip_service.py``'ye ``get_sefer_service_for_request``
+adıyla taşındı (``trip.public``'ten export — container-tabanlı,
+argümansız ``get_sefer_service()``'ten KASITLI olarak farklı isim, bkz.
+``trip/CLAUDE.md``). Bunların hiçbiri auth_rbac'a ait değildi zaten
+(jenerik per-request DI alias'ları) — bu modülün kendi kapsamını
+etkilemiyor.
 """
 
 from v2.modules.auth_rbac.application import auth_service, role_service

@@ -155,7 +155,11 @@ async def add_sefer(data: SeferCreate, user_id: Optional[int] = None) -> int:
         outbox = get_outbox_service()
         await outbox.save_event(
             event_type=EventType.SEFER_ADDED,
-            payload={"sefer_id": int(sefer_id), "sefer_no": data.sefer_no},
+            payload={
+                "sefer_id": int(sefer_id),
+                "sefer_no": data.sefer_no,
+                "arac_id": data.arac_id,
+            },
             uow=uow,
         )
 

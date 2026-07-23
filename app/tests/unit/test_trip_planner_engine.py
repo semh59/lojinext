@@ -133,7 +133,7 @@ def _patched_engine(monkeypatch):
     ]
 
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoW(arac_rows, sofor_rows),
     )
     monkeypatch.setattr(
@@ -273,7 +273,7 @@ async def test_engine_empty_candidates_returns_empty_lists(monkeypatch):
     import v2.modules.ai_assistant.application.plan_trip as planner_mod
 
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoW([], []),
     )
     monkeypatch.setattr(

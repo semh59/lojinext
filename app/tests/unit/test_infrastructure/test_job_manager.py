@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.infrastructure.background.job_manager import (
+from v2.modules.platform_infra.background.job_manager import (
     AsyncJobStatus,
     BackgroundJobManager,
     get_job_manager,
@@ -311,7 +311,7 @@ class TestJobManager:
         must run the task in a context where _session_ctx is reset to its
         default (None) so func's own UnitOfWork opens an independent
         session."""
-        from app.database.db_session import _session_ctx
+        from v2.modules.platform_infra.database.db_session import _session_ctx
 
         mgr = BackgroundJobManager()
         seen_session_ctx = {}
@@ -335,7 +335,7 @@ class TestJobManager:
         """Regression guard for the fix above: only _session_ctx should be
         reset — correlation_id/user_id (used for audit-log attribution of
         background-job side effects) must still propagate to the task."""
-        from app.infrastructure.context.request_context import (
+        from v2.modules.platform_infra.context.request_context import (
             get_correlation_id,
             set_correlation_id,
         )

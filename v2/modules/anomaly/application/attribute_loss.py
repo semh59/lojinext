@@ -14,9 +14,13 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.event_bus import Event, EventType, get_event_bus
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import (
+    Event,
+    EventType,
+    get_event_bus,
+    get_logger,
+)
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

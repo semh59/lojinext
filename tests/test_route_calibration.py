@@ -3,7 +3,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.route_calibration_service import RouteCalibrationService
+from v2.modules.route_simulation.application.route_calibration_service import (
+    RouteCalibrationService,
+)
 
 
 @pytest.mark.asyncio
@@ -26,8 +28,8 @@ async def test_calibrate_route_from_trip_logic():
     uow.session.add = MagicMock()
 
     with (
-        patch("app.core.services.route_calibration_service.LineString") as mock_line,
-        patch("app.core.services.route_calibration_service.from_shape") as mock_shape,
+        patch("v2.modules.route_simulation.application.route_calibration_service.LineString") as mock_line,
+        patch("v2.modules.route_simulation.application.route_calibration_service.from_shape") as mock_shape,
     ):
         mock_line.return_value = MagicMock()
         # calibrate now stores bytes(from_shape(...).data) — a plain BYTEA column,

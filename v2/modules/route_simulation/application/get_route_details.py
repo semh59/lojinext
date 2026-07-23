@@ -4,26 +4,27 @@ Production rule: provider failures must surface as provider failures. The
 service must not fabricate route geometry, road-class breakdowns, or segment
 analysis when live routing is unavailable.
 
-NOT (cross-module, geçici): ``RouteValidator`` (route_validator.py) ve
-``prediction_service`` (prediction_ml modülü) henüz v2'ye taşınmadı — eski
-yoldan import ediliyor, dokümante edilmiş geçici bağımlılık.
+``RouteValidator`` (``domain/route_validator.py``) 2026-07-22'de bu modüle
+taşındı — artık modül-içi doğrudan import. ``get_prediction_service``
+(prediction_ml) 2026-07-18'de ``v2.modules.prediction_ml.public`` üzerinden
+erişecek şekilde güncellendi.
 """
 
 import os
 from typing import Dict, Optional, Tuple
 
 from app.config import settings
-from app.database.unit_of_work import unit_of_work as get_uow
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.circuit_breaker import (
+from v2.modules.platform_infra.public import (
     CircuitBreakerError,
     CircuitBreakerRegistry,
+    get_logger,
 )
 from v2.modules.route_simulation.application.get_route_difficulty import (
     get_route_difficulty,
 )
 from v2.modules.route_simulation.domain.route_analyzer import route_analyzer
 from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
+from v2.modules.shared_kernel.infrastructure.unit_of_work import unit_of_work as get_uow
 
 logger = get_logger(__name__)
 
@@ -47,9 +48,11 @@ def _env_api_key() -> Optional[str]:
 
 async def _resolve_api_key() -> Optional[str]:
     """DB-configured key (admin UI) takes priority over the .env fallback —
-    see app.core.services.integration_secrets. Re-resolved on every call so
+    see v2.modules.admin_platform.public. Re-resolved on every call so
     an admin-entered key takes effect without a restart."""
-    from app.core.services.integration_secrets import get_integration_secret
+    from v2.modules.admin_platform.public import (
+        get_integration_secret,
+    )
 
     return await get_integration_secret("openroute", _env_api_key())
 
@@ -65,7 +68,7 @@ async def get_route_details(
 
     Returns an error payload with `error_code` when provider access fails.
     """
-    from app.core.services.route_validator import RouteValidator
+    from v2.modules.route_simulation.domain.route_validator import RouteValidator
 
     lon1, lat1 = start_coords
     lon2, lat2 = end_coords
@@ -103,7 +106,9 @@ async def get_route_details(
         }
 
     try:
-        from app.services.external_service import get_external_service
+        from v2.modules.route_simulation.infrastructure.external_service import (
+            get_external_service,
+        )
 
         ext_service = get_external_service()
         client = await ext_service._get_client()
@@ -297,7 +302,7 @@ async def get_route_details(
         )
 
         try:
-            from app.services.prediction_service import get_prediction_service
+            from v2.modules.prediction_ml.public import get_prediction_service
 
             pred_service = get_prediction_service()
             fuel_estimate = await pred_service.predict_consumption(

@@ -9,8 +9,9 @@ Excel export + şablon üretimi, OCR belge işleme Celery task'ı.
 
 NE YAPMAZ: hiçbir domain entity'sinin (arac/surucu/sefer/yakit/lokasyon)
 gerçek CRUD iş kuralını uygulamaz — yalnız Excel'i parse edip ilgili
-modülün `bulk_add_*`/`create_*` fonksiyonunu çağırır. `SeferService`
-(trip, henüz taşınmadı) hâlâ gerçek sefer create iş kuralının sahibi.
+modülün `bulk_add_*`/`create_*` fonksiyonunu çağırır. `trip.public.
+bulk_add_sefer`/`add_sefer` (trip modülü, taşındı) hâlâ gerçek sefer
+create iş kuralının sahibi.
 
 ## Public API (public.py imzaları)
 
@@ -115,16 +116,23 @@ kendi SELECT'ini atsaydı N+1 regresyonu olurdu.
 
 ## Senkron konuştuğu modüller (yön: import_excel → X, B.2 kararı: hepsi public.py üzerinden)
 
-- **trip (henüz taşınmadı)**: `process_sefer_import`/`import_sefer_excel_upload`
-  `get_container().sefer_service.bulk_add_sefer(...)` çağırır (container
-  üzerinden geçici erişim, trip taşınınca doğrudan `v2.modules.trip.public`
-  olacak). `execute_import`'un sefer dalı ayrıca `EventType.SEFER_UPDATED`
-  publish eder (trip'in event'i, bu modülün sahibi olmadığı — events.py'de not).
+- **trip (taşındı)**: `process_sefer_import`/`import_sefer_excel_upload`
+  doğrudan `v2.modules.trip.public.bulk_add_sefer`'i çağırır (2026-07-23
+  denetiminde bulundu: bu iki dosya zaten `trip.public`'i kullanıyordu,
+  ama aynı iki dosyanın `SeferCreate` şema importu hâlâ eski
+  `v2.modules.trip.schemas`'tan doğrudan geliyordu — public.py'yi atlayan
+  bu satır `v2.modules.trip.public import SeferCreate`'e düzeltildi;
+  `.importlinter` bunu hiçbir kontratta yakalamıyordu çünkü hiçbir
+  `public-surface-only-*` kontratının `forbidden_modules` listesi
+  `*.schemas` alt-modüllerini kapsamıyor — ayrı bir sistemik denetim
+  kalemi, bkz. kök `CLAUDE.md`). `execute_import`'un sefer dalı ayrıca
+  `EventType.SEFER_UPDATED` publish eder (trip'in event'i, bu modülün
+  sahibi olmadığı — events.py'de not).
 - **fuel (taşındı)**: `process_yakit_import` → `bulk_add_yakit` +
   `recalculate_vehicle_periods`.
-- **fleet (taşındı)**: `process_vehicle_import` → `bulk_add_vehicles`
-  (hâlâ `v2.modules.fleet.application.bulk_add_vehicles`'tan doğrudan —
-  fleet'in kendi public.py sınır düzeltmesi bu dalganın kapsamı dışında);
+- **fleet (taşındı)**: `process_vehicle_import` → `v2.modules.fleet.public.
+  bulk_add_vehicles` + `AracCreate` (2026-07-18 düzeltmesi — eskiden
+  `application`/`schemas`'tan doğrudandı);
   `export_trailers.py::import_trailers`/`get_trailer_template`/
   `export_all_trailers` bu modülün `public.py`'sini (`parse_dorse_excel`/
   `generate_template`/`export_data`) çağırır (YÖN TERSİ: fleet tüketici).
@@ -202,3 +210,28 @@ import ihtiyaçları için bu modülün `public.py`'sini çağırır (`export_da
 - `app/tests/unit/test_workers/test_ocr_tasks_coverage.py` → import path güncellendi.
 - Kök `tests/` klasörü (dalga 1/3/4/8 gotcha'sı) — `test_import_pipeline.py`,
   `test_excel_export*.py`, `test_export.py` tarandı ve dönüştürüldü.
+
+## Yayınladığı / dinlediği event'ler (events.py)
+
+Kendi event'i yok (`events.py` docstring'i): `execute_import`'un sefer
+dalı trip'in sahibi olduğu `EventType.SEFER_UPDATED`'ı publish eder
+(orada dokümante); OCR Celery task'ı event-bus kullanmaz (Celery
+`.delay()` senkron kuyruğu).
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-import_excel` kontratı:
+`application/` diğer modüllerin yalnız `public`/`events`'ini import
+edebilir (2026-07-18'den beri KEPT — `vehicle_importer.py`'nin
+`fleet.schemas`+`fleet.application.bulk_add_vehicles` ve
+`yakit_importer.py`'nin `fuel.schemas` doğrudan importları aynı gün
+`fleet.public`/`fuel.public`'e çevrildi; `infrastructure/
+report_export.py`'nin `reports.infrastructure.pdf_export` importu da
+`reports.public.get_report_generator` oldu). Trip'e erişim container
+üzerinden (geçici, trip taşınınca `trip.public`).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`içeri aktarma`=import, `dışa aktarma`=export, `önizleme`=preview,
+`geri alma`=rollback, `sütun eşleme`=column mapping, `şablon`=template,
+`satır doğrulama`=row validation, `belge`=document (OCR).

@@ -1,7 +1,10 @@
 import pytest
 
-from app.schemas.validators import sanitize_string, validate_safe_string
 from v2.modules.ai_assistant.application.orchestrate_ai_response import AIService
+from v2.modules.shared_kernel.schemas.validators import (
+    sanitize_string,
+    validate_safe_string,
+)
 
 
 class TestSecurityPenetration:
@@ -61,7 +64,7 @@ class TestSecurityPenetration:
         """Test Path Traversal logic in generic file handlers"""
         # Simulating logic found in CacheManager or FileUpload
         key = "../../etc/passwd"
-        from app.infrastructure.cache.cache_manager import get_cache_manager
+        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
         cm = get_cache_manager()
 

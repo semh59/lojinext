@@ -11,7 +11,7 @@ Beklenen: get_active_trailers() sadece aktif=TRUE ve is_deleted=FALSE dorseler d
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Dorse
+from v2.modules.fleet.public import Dorse
 
 pytestmark = pytest.mark.integration
 

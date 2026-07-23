@@ -70,7 +70,7 @@ def _mock_prediction_service(**overrides):
         }
     )
 
-    with patch("app.api.v1.endpoints.predictions.PredictionService", return_value=svc):
+    with patch("v2.modules.prediction_ml.api.predictions.PredictionService", return_value=svc):
         yield svc
 
 
@@ -221,7 +221,7 @@ class TestEnqueuePrediction:
         fake_task = MagicMock()
         fake_task.id = "test-task-uuid-1234"
 
-        with patch("app.api.v1.endpoints.predictions.celery_app") as mock_celery:
+        with patch("v2.modules.prediction_ml.api.predictions.celery_app") as mock_celery:
             mock_celery.send_task.return_value = fake_task
             resp = await async_client.post(
                 "/api/v1/predictions",
@@ -254,7 +254,7 @@ class TestPredictionStatus:
         fake_result.result = None
 
         with patch(
-            "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/abc-123",
@@ -273,7 +273,7 @@ class TestPredictionStatus:
         }
 
         with patch(
-            "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/abc-success",
@@ -370,7 +370,7 @@ class TestEnsembleStatus:
         fake_predictor.weights = {"physics": 0.8, "xgboost": 0.05}
 
         with patch(
-            "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+            "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
             return_value=fake_predictor,
         ):
             resp = await async_client.get(
@@ -416,7 +416,7 @@ class TestTimeSeriesStatus:
         # get_time_series_service is imported inside the endpoint function body,
         # so patch at the source module level.
         with patch(
-            "app.services.time_series_service.get_time_series_service",
+            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
             return_value=fake_ts_service,
         ):
             resp = await async_client.get(
@@ -452,7 +452,7 @@ class TestTimeSeriesForecast:
         )
 
         with patch(
-            "app.services.time_series_service.get_time_series_service",
+            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
             return_value=fake_ts_service,
         ):
             resp = await async_client.post(
@@ -479,7 +479,7 @@ class TestTimeSeriesForecast:
         )
 
         with patch(
-            "app.services.time_series_service.get_time_series_service",
+            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
             return_value=fake_ts_service,
         ):
             resp = await async_client.post(
@@ -524,7 +524,7 @@ class TestTimeSeriesTrend:
         )
 
         with patch(
-            "app.services.time_series_service.get_time_series_service",
+            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
             return_value=fake_ts_service,
         ):
             resp = await async_client.get(
@@ -549,7 +549,7 @@ class TestTimeSeriesTrend:
         )
 
         with patch(
-            "app.services.time_series_service.get_time_series_service",
+            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
             return_value=fake_ts_service,
         ):
             resp = await async_client.get(
@@ -583,7 +583,7 @@ class TestPredictionStream:
         fake_result.result = {"answer": "done", "finished_at": "2026-06-01T10:00:00Z"}
 
         with patch(
-            "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/stream-task/stream",
@@ -611,7 +611,7 @@ class TestPredictFuelDriverDBLookup:
         self, async_client, admin_auth_headers, db_session
     ):
         """When sofor_id is provided and exists, use sofor.score."""
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sofor = Sofor(
             ad_soyad="Test Sofor",
@@ -665,7 +665,9 @@ class TestPredictionComparisonWithAracId:
 
 class TestBuildTimeSeriesErrorResponse:
     def test_builds_correct_body(self):
-        from app.api.v1.endpoints.predictions import _build_time_series_error_response
+        from v2.modules.prediction_ml.api.predictions import (
+            _build_time_series_error_response,
+        )
 
         result = {
             "error": "Not enough data",
@@ -683,7 +685,9 @@ class TestBuildTimeSeriesErrorResponse:
         assert "timestamp" in body
 
     def test_uses_default_message_when_no_error_key(self):
-        from app.api.v1.endpoints.predictions import _build_time_series_error_response
+        from v2.modules.prediction_ml.api.predictions import (
+            _build_time_series_error_response,
+        )
 
         resp = _build_time_series_error_response({}, "default msg")
         import json

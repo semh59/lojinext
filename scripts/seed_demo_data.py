@@ -21,8 +21,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.database.connection import engine
-from app.database.models import Arac, Lokasyon, Sefer, Sofor, YakitAlimi
+from v2.modules.platform_infra.database.connection import engine
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
+from v2.modules.location.public import Lokasyon
+from v2.modules.trip.public import SeferORM as Sefer
 
 random.seed(42)
 

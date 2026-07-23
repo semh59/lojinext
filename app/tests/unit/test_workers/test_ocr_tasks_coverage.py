@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -88,14 +88,14 @@ class TestOcrTaskRegistration:
     def test_task_registered_with_worker_via_celery_app_import_list(self):
         """Regression guard (2026-07-17 dedektif denetimi): `ocr.process_belge`
         yalnız task modülünü doğrudan import ederek değil, worker'ın gerçekten
-        yüklediği `app.infrastructure.background.celery_app`'in kendi
+        yüklediği `v2.modules.platform_infra.background.celery_app`'in kendi
         `celery_app.tasks` registry'sinden de görünür olmalı — aksi halde
         `.delay()` çağıran gerçek kod (`internal.py`'nin Telegram belge-yükleme
         akışı) worker'da `NotRegistered` ile sessizce patlar (task modülü
         `celery_app.py`'nin explicit import listesinde YOKTU, wave 9 taşımasında
         atlanmıştı — diğer testler task fonksiyonunu doğrudan import ettiği için
         bunu hiç yakalamamıştı)."""
-        from app.infrastructure.background.celery_app import celery_app
+        from v2.modules.platform_infra.background.celery_app import celery_app
 
         assert "ocr.process_belge" in celery_app.tasks
 

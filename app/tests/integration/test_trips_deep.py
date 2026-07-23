@@ -6,7 +6,8 @@ import pytest
 @pytest.fixture
 async def sample_arac_sofor(arac_repo, sofor_repo):
     """Test için araç ve şoför hazırla"""
-    from app.core.entities import AracCreate, SoforCreate
+    from v2.modules.driver.schemas import SoforCreate
+    from v2.modules.fleet.schemas import AracCreate
 
     arac_id = await arac_repo.create(
         **AracCreate(

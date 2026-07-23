@@ -10,9 +10,6 @@ from typing import Annotated, Any, cast
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.config import settings
-from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.audit.audit_logger import log_audit_event
 from v2.modules.analytics_executive.application.aggregate_cross_feature import (
     aggregate_cross_feature,
 )
@@ -54,7 +51,9 @@ from v2.modules.analytics_executive.schemas import (
     WhatIfRequest,
     WhatIfResponse,
 )
-from v2.modules.auth_rbac.public import require_yetki
+from v2.modules.auth_rbac.public import Kullanici, require_yetki
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

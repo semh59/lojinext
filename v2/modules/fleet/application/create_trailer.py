@@ -11,8 +11,8 @@ pasif kaydı görüp elle reaktive de edemiyordu) — kalıcı çıkmaz sokak.
 
 import asyncio
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 

@@ -12,8 +12,8 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from app.core.exceptions import ImportValidationError
-from app.schemas.validators import PLAKA_PATTERN
+from v2.modules.shared_kernel.exceptions import ImportValidationError
+from v2.modules.shared_kernel.schemas.validators import PLAKA_PATTERN
 
 # Desteklenen tarih formatları (multi-locale support)
 DATE_FORMATS = [

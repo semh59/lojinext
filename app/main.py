@@ -15,11 +15,26 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import OperationalError as SAOperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api.middleware.rate_limiter import limiter
-from app.api.v1.api import api_router
 from app.config import settings
-from app.core.errors import BusinessException
-from app.core.exceptions import (
+from v2.modules.platform_infra.api_router import api_router
+from v2.modules.platform_infra.context.correlation_middleware import (
+    CorrelationMiddleware,
+)
+from v2.modules.platform_infra.context.request_context import get_correlation_id
+from v2.modules.platform_infra.database.connection import engine
+from v2.modules.platform_infra.logging.logger import setup_logging
+from v2.modules.platform_infra.middleware.body_size_middleware import (
+    MaxBodySizeMiddleware,
+)
+from v2.modules.platform_infra.middleware.logging_middleware import (
+    RequestLoggingMiddleware,
+)
+from v2.modules.platform_infra.middleware.rate_limit_middleware import (
+    RateLimitMiddleware,
+)
+from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
+from v2.modules.shared_kernel.errors import BusinessException
+from v2.modules.shared_kernel.exceptions import (
     AnomalyDetectionError,
     AuditLogError,
     DomainError,
@@ -30,13 +45,6 @@ from app.core.exceptions import (
     MLPredictionError,
     RouteProcessingError,
 )
-from app.database.connection import engine
-from app.infrastructure.context.correlation_middleware import CorrelationMiddleware
-from app.infrastructure.context.request_context import get_correlation_id
-from app.infrastructure.logging.logger import setup_logging
-from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
-from app.infrastructure.middleware.logging_middleware import RequestLoggingMiddleware
-from app.infrastructure.middleware.rate_limit_middleware import RateLimitMiddleware
 
 logger = setup_logging(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
@@ -160,7 +168,7 @@ def _sentry_before_send(event, hint):
     # emails/phones/TCKN and sensitive keys never leave. Defensive: never let a
     # scrub failure drop the error report.
     try:
-        from app.infrastructure.security.pii_scrubber import scrub_pii
+        from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
 
         event = scrub_pii(event)
     except Exception:
@@ -171,8 +179,8 @@ def _sentry_before_send(event, hint):
     # and AlarmRouter's 15-min dedup prevents double-notification for errors
     # already handled by the individual exception handlers.
     try:
-        from app.infrastructure.monitoring.event_bus import get_event_bus
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -285,16 +293,16 @@ def _wire_observability(app: FastAPI) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting LojiNext (%s)", settings.ENVIRONMENT)
-    from app.infrastructure.resilience.shutdown import register_shutdown_handlers
+    from v2.modules.platform_infra.resilience.shutdown import register_shutdown_handlers
 
     register_shutdown_handlers()
-    from app.infrastructure.monitoring.event_bus import get_event_bus
+    from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
 
     bus = get_event_bus()
     bus.start()
 
-    from app.infrastructure.background.celery_app import celery_app as _celery
-    from app.infrastructure.monitoring.activate import activate_all_probes
+    from v2.modules.platform_infra.background.celery_app import celery_app as _celery
+    from v2.modules.platform_infra.monitoring.activate import activate_all_probes
 
     activate_all_probes(engine, _celery)
 
@@ -304,7 +312,7 @@ async def lifespan(app: FastAPI):
     # prod'da tetiklenmiyordu. Her biri kendi try/except'i içinde — biri
     # başarısız olursa diğerlerini veya app startup'ı engellemez.
     try:
-        from app.infrastructure.cache.cache_invalidation import (
+        from v2.modules.platform_infra.cache.cache_invalidation import (
             setup_cache_invalidation,
         )
 
@@ -313,16 +321,14 @@ async def lifespan(app: FastAPI):
         logger.warning("Cache invalidation listener setup failed: %s", exc)
 
     try:
-        from app.core.handlers.model_training_handler import (
-            get_model_training_handler,
-        )
+        from v2.modules.prediction_ml.public import get_model_training_handler
 
         get_model_training_handler().setup()
     except Exception as exc:  # pragma: no cover
         logger.warning("ModelTrainingHandler setup failed: %s", exc)
 
     try:
-        from app.core.handlers.physics_handler import get_physics_handler
+        from v2.modules.prediction_ml.public import get_physics_handler
 
         get_physics_handler().register()
     except Exception as exc:  # pragma: no cover
@@ -336,49 +342,18 @@ async def lifespan(app: FastAPI):
         logger.warning("Notification event handlers registration failed: %s", exc)
 
     try:
-        from v2.modules.ai_assistant.infrastructure.rag.rag_sync_service import (
-            get_rag_sync_service,
-        )
+        from v2.modules.ai_assistant.public import get_rag_sync_service
 
         await get_rag_sync_service().initialize()
     except Exception as exc:  # pragma: no cover
         logger.warning("RAGSyncService initialization failed: %s", exc)
 
-    # ML predictor warm-up — aktif tüm araç modellerini önceden initialize et
-    # ki ilk POST /trips ML cold-start için 4-10sn beklemesin (LRU cache miss).
-    # Vehicle 0 (general fallback) her zaman dahil; aktif araç id'leri DB'den.
+    # ML predictor warm-up (v2.modules.prediction_ml.application.model_warmup'a
+    # taşındı, dalga 17 — projenin ilk modül-startup hook'u).
     try:
-        import asyncio as _asyncio
+        from v2.modules.prediction_ml.public import schedule_predictor_warmup
 
-        from app.core.ml.ensemble_predictor import get_ensemble_service
-
-        async def _warmup_all_predictors() -> None:
-            ids: list[int] = [0]  # general/fallback
-            try:
-                from sqlalchemy import select as _select
-
-                from app.database.connection import AsyncSessionLocal
-                from app.database.models import Arac
-
-                async with AsyncSessionLocal() as session:
-                    rows = await session.execute(
-                        _select(Arac.id).where(Arac.aktif.is_(True))
-                    )
-                    ids.extend(r[0] for r in rows.all())
-            except Exception as exc:
-                logger.debug("Arac fetch for warm-up failed: %s", exc)
-
-            def _init(arac_id: int) -> None:
-                try:
-                    get_ensemble_service().get_predictor(arac_id)
-                except Exception as exc:  # pragma: no cover
-                    logger.debug("Predictor warm-up %s skipped: %s", arac_id, exc)
-
-            for arac_id in ids:
-                await _asyncio.to_thread(_init, arac_id)
-            logger.info("ML predictor warm-up complete for %d models", len(ids))
-
-        _task = _asyncio.create_task(_warmup_all_predictors())
+        _task = schedule_predictor_warmup()
         _bg_tasks.add(_task)
         _task.add_done_callback(_bg_tasks.discard)
     except Exception as exc:  # pragma: no cover
@@ -390,12 +365,13 @@ async def lifespan(app: FastAPI):
         await bus.stop()
 
         # Sentry LOJINEXT-1C5: cancel + await any in-flight fire-and-forget
-        # tasks (alarm_router's Telegram notify_error, this module's ML
-        # warm-up) before disposing the engine/closing the loop — otherwise
+        # tasks (alarm_router's Telegram notify_error, the ML predictor
+        # warm-up scheduled above) before disposing the engine/closing the
+        # loop — otherwise
         # a task still mid-DNS-lookup when the loop closes leaves its
         # executor Future's eventual result with nowhere to go, surfacing
         # as asyncio's "Future exception was never retrieved".
-        from app.infrastructure.monitoring.alarm_router import drain_bg_tasks
+        from v2.modules.platform_infra.monitoring.alarm_router import drain_bg_tasks
 
         await drain_bg_tasks()
         pending = [t for t in list(_bg_tasks) if not t.done()]
@@ -404,7 +380,7 @@ async def lifespan(app: FastAPI):
                 t.cancel()
             await asyncio.gather(*pending, return_exceptions=True)
 
-        from app.core.container import get_container
+        from v2.modules.platform_infra.container import get_container
 
         get_container().shutdown()
         await engine.dispose()
@@ -496,8 +472,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         # radius olurdu). Best-effort: audit DB yazımı asıl 403 yanıtını
         # asla bloklamaz/bozmaz.
         try:
-            from app.infrastructure.audit.audit_logger import log_audit_event
-            from v2.modules.auth_rbac.domain import jwt_handler
+            from v2.modules.auth_rbac.public import jwt_handler
+            from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
             sub = None
             auth_header = request.headers.get("authorization", "")
@@ -522,8 +498,8 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
         except Exception as audit_exc:  # pragma: no cover
             logger.warning("403 audit log failed: %s", audit_exc)
     if exc.status_code >= 500:
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -651,8 +627,8 @@ async def domain_error_handler(request: Request, exc: DomainError):
             type(exc).__name__,
             exc,
         )
-        from app.infrastructure.monitoring import aemit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.monitoring import aemit
+        from v2.modules.platform_infra.monitoring.models import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
@@ -700,8 +676,8 @@ async def db_operational_error_handler(request: Request, exc: SAOperationalError
         sentry_sdk.capture_exception(exc)
     except Exception:
         pass
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
@@ -765,8 +741,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
         pass
     # _sentry_before_send also emits to ErrorEventBus, but aemit is the
     # authoritative path — AlarmRouter's 15-min dedup prevents double-notification.
-    from app.infrastructure.monitoring import aemit
-    from app.infrastructure.monitoring.models import (
+    from v2.modules.platform_infra.monitoring import aemit
+    from v2.modules.platform_infra.monitoring.models import (
         ErrorEvent,
         ErrorLayer,
         ErrorSeverity,
@@ -834,7 +810,7 @@ async def readiness() -> JSONResponse:
 
     # Redis check
     try:
-        from app.infrastructure.cache.redis_pubsub import get_redis_val
+        from v2.modules.platform_infra.cache.redis_pubsub import get_redis_val
 
         await asyncio.wait_for(get_redis_val("__ping__"), timeout=1.0)
         checks["redis"] = "ok"
@@ -852,6 +828,6 @@ async def readiness() -> JSONResponse:
 @app.get("/.well-known/jwks.json", include_in_schema=False)
 async def jwks() -> dict[str, Any]:
     """RS256 JWKS endpoint (only meaningful when ALGORITHM=RS256)."""
-    from v2.modules.auth_rbac.domain.security import get_jwks
+    from v2.modules.auth_rbac.public import get_jwks
 
     return get_jwks()

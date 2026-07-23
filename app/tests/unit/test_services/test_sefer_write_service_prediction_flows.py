@@ -4,11 +4,16 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-import app.core.services.weather_service as weather_module
-import app.services.prediction_service as prediction_module
-from app.core.entities.models import SeferCreate, SeferUpdate
-from app.core.services.sefer_write_service import SeferWriteService
-from app.database.unit_of_work import UnitOfWork
+import v2.modules.prediction_ml.public as prediction_module
+import v2.modules.route_simulation.public as weather_module
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.application import (
+    add_trip,
+    bulk_add_trips,
+    return_trip,
+    update_trip,
+)
+from v2.modules.trip.schemas import SeferCreate, SeferUpdate
 
 
 class DummyUnitOfWork:
@@ -131,7 +136,6 @@ async def test_add_sefer_persists_canonical_prediction_contract(monkeypatch):
         lambda: weather_service,
     )
 
-    service = SeferWriteService(event_bus=MagicMock())
     data = SeferCreate(
         tarih=date(2026, 3, 19),
         saat="09:30",
@@ -150,7 +154,7 @@ async def test_add_sefer_persists_canonical_prediction_contract(monkeypatch):
         is_round_trip=False,
     )
 
-    sefer_id = await service.add_sefer(data, user_id=44)
+    sefer_id = await add_trip.add_sefer(data, user_id=44)
 
     assert sefer_id == 101
     create_kwargs = uow.sefer_repo.add.await_args.kwargs
@@ -209,8 +213,7 @@ async def test_update_sefer_reprediction_uses_current_route_details(monkeypatch)
         ),
     )
 
-    service = SeferWriteService(event_bus=MagicMock())
-    success = await service._update_sefer_uow(
+    success = await update_trip.update_sefer_uow(
         uow,
         55,
         SeferUpdate(net_kg=15000),
@@ -265,7 +268,6 @@ async def test_bulk_add_sefer_persists_canonical_prediction_contract(monkeypatch
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
-    service = SeferWriteService(event_bus=MagicMock())
     payload = [
         SeferCreate(
             tarih=date(2026, 3, 19),
@@ -283,7 +285,7 @@ async def test_bulk_add_sefer_persists_canonical_prediction_contract(monkeypatch
         )
     ]
 
-    created = await service.bulk_add_sefer(payload)
+    created = await bulk_add_trips.bulk_add_sefer(payload)
 
     assert created == 1
     batch_items = uow.sefer_repo.bulk_create.await_args.args[0]
@@ -313,7 +315,6 @@ async def test_create_return_trip_persists_canonical_prediction_contract(monkeyp
         ),
     )
 
-    service = SeferWriteService(event_bus=MagicMock())
     data = SeferCreate(
         tarih=date(2026, 3, 19),
         saat="16:20",
@@ -338,11 +339,11 @@ async def test_create_return_trip_persists_canonical_prediction_contract(monkeyp
         "sehir_ici_mesafe_km": 18.0,
     }
 
-    await service._create_return_trip(
+    await return_trip.build_return_trip(
         uow,
         data,
-        trip_date=date(2026, 3, 20),
-        ref_sefer_id=88,
+        date(2026, 3, 20),
+        88,
         weather_factor=1.11,
         route_details=route_details,
         user_id=5,
@@ -401,7 +402,6 @@ async def test_add_sefer_does_not_mark_weather_factor_when_weather_is_unavailabl
         lambda: weather_service,
     )
 
-    service = SeferWriteService(event_bus=MagicMock())
     data = SeferCreate(
         tarih=date(2026, 3, 20),
         saat="08:15",
@@ -420,7 +420,7 @@ async def test_add_sefer_does_not_mark_weather_factor_when_weather_is_unavailabl
         is_round_trip=False,
     )
 
-    await service.add_sefer(data, user_id=55)
+    await add_trip.add_sefer(data, user_id=55)
 
     create_kwargs = uow.sefer_repo.add.await_args.kwargs
     assert (

@@ -201,7 +201,7 @@ async def test_readiness_db_down_returns_503(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value=None),
         ):
             resp = await async_client.get("/health/readiness")
@@ -225,7 +225,7 @@ async def test_readiness_all_ok(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value="pong"),
         ):
             resp = await async_client.get("/health/readiness")
@@ -249,7 +249,7 @@ async def test_readiness_redis_down_returns_503(async_client):
         mock_engine.connect.return_value = mock_conn_ctx
 
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(side_effect=Exception("Redis down")),
         ):
             resp = await async_client.get("/health/readiness")
@@ -289,7 +289,7 @@ async def test_http_exception_handler_404(async_client):
 
 async def test_domain_error_handler_fuel_calculation(async_client):
     """FuelCalculationError → 422 via domain_error_handler."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     @app.get("/test-fuel-error")
     async def _raise_fuel_error():
@@ -310,7 +310,7 @@ async def test_domain_error_handler_fuel_calculation(async_client):
 
 async def test_domain_error_handler_ml_prediction(async_client):
     """MLPredictionError → 503 via domain_error_handler."""
-    from app.core.exceptions import MLPredictionError
+    from v2.modules.shared_kernel.exceptions import MLPredictionError
 
     @app.get("/test-ml-error")
     async def _raise_ml_error():
@@ -329,7 +329,7 @@ async def test_domain_error_handler_ml_prediction(async_client):
 
 async def test_domain_error_handler_route_processing_424(async_client):
     """RouteProcessingError with provider_status=429 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-error")
     async def _raise_route_error():
@@ -403,7 +403,7 @@ async def test_http_exception_403_writes_admin_audit_log(async_client):
 
     try:
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new_callable=AsyncMock,
         ) as mock_audit:
             resp = await async_client.get(
@@ -432,7 +432,7 @@ async def test_http_exception_403_audit_failure_does_not_break_response(async_cl
 
     try:
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new_callable=AsyncMock,
             side_effect=RuntimeError("db down"),
         ):
@@ -475,7 +475,7 @@ async def test_http_exception_500_triggers_monitoring(async_client):
     async def _raise_500():
         raise StarletteHTTPException(status_code=500, detail="Internal issue")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-500-http")
             assert resp.status_code == 500
@@ -500,7 +500,7 @@ async def test_db_operational_error_handler(async_client):
     async def _raise_db_error():
         raise SAOperationalError("conn fail", params=None, orig=Exception("conn fail"))
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-db-op-error")
             assert resp.status_code == 503
@@ -527,9 +527,9 @@ async def test_unhandled_exception_handler(async_client):
 
     # Patch both the inline import location AND the monitoring module
     with (
-        patch("app.infrastructure.monitoring.aemit", new=AsyncMock()),
+        patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()),
         patch(
-            "app.infrastructure.monitoring.__init__.aemit", new=AsyncMock(), create=True
+            "v2.modules.platform_infra.monitoring.__init__.aemit", new=AsyncMock(), create=True
         ),
     ):
         try:
@@ -555,13 +555,13 @@ async def test_unhandled_exception_handler(async_client):
 
 async def test_audit_log_error_handler(async_client):
     """AuditLogError → 500 via domain_error_handler."""
-    from app.core.exceptions import AuditLogError
+    from v2.modules.shared_kernel.exceptions import AuditLogError
 
     @app.get("/test-audit-error")
     async def _raise_audit():
         raise AuditLogError("Audit yazılamadı")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-audit-error")
             assert resp.status_code == 500
@@ -580,7 +580,7 @@ async def test_audit_log_error_handler(async_client):
 
 async def test_import_validation_error_handler(async_client):
     """ImportValidationError → 422 via domain_error_handler."""
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     @app.get("/test-import-error")
     async def _raise_import():

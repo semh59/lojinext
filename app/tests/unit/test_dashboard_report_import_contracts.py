@@ -10,7 +10,6 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.generate_monthly_trend import generate_monthly_trend
@@ -22,6 +21,7 @@ from v2.modules.reports.application.get_monthly_comparison import (
     get_monthly_comparison,
 )
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
 
@@ -88,7 +88,7 @@ async def test_dashboard_service_filters_deleted_trip_count_and_recent_list(
     The filtering behavior lives in SeferRepository, not in DashboardService
     itself — so asserting the repo output is the correct behavioral test here.
     """
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     arac = await seed_arac(db_session, plaka="34TST002")
     sofor = await seed_sofor(db_session, ad_soyad="Test Sofor")

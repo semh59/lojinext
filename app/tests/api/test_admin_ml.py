@@ -57,7 +57,7 @@ async def test_ml_train_admin_gets_200_or_202(
     """
     from datetime import datetime, timezone
 
-    from app.schemas.ml_schemas import MLTaskRead
+    from v2.modules.prediction_ml.schemas import MLTaskRead
 
     fake_task = MLTaskRead(
         id=1,
@@ -73,7 +73,7 @@ async def test_ml_train_admin_gets_200_or_202(
     )
 
     with patch(
-        "app.core.services.ml_service.MLService.schedule_training",
+        "v2.modules.prediction_ml.application.ml_service.MLService.schedule_training",
         new=AsyncMock(return_value=fake_task),
     ):
         response = await async_client.post(

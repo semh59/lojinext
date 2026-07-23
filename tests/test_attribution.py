@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.events.event_bus import Event, EventType
 from v2.modules.anomaly.application.attribute_loss import override_attribution
+from v2.modules.platform_infra.events.event_bus import Event, EventType
 
 
 @pytest.mark.asyncio
@@ -37,11 +37,13 @@ async def test_attribution_override_publishes_event():
 @pytest.mark.asyncio
 async def test_physics_handler_execution():
     """Verify physics handler recalculation."""
-    from app.core.handlers.physics_handler import PhysicsRecalculationHandler
+    from v2.modules.prediction_ml.application.physics_handler import (
+        PhysicsRecalculationHandler,
+    )
 
     with (
-        patch("app.core.handlers.physics_handler.get_event_bus") as mock_get_event_bus,
-        patch("app.core.handlers.physics_handler.UnitOfWork") as mock_uow_cls,
+        patch("v2.modules.prediction_ml.application.physics_handler.get_event_bus") as mock_get_event_bus,
+        patch("v2.modules.prediction_ml.application.physics_handler.UnitOfWork") as mock_uow_cls,
     ):
         mock_event_bus = MagicMock()
         mock_event_bus.publish_async = AsyncMock()

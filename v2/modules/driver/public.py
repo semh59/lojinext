@@ -14,6 +14,24 @@ rationale (constructor-injected clients / stateful trained ML model).
 
 from v2.modules.driver.application.add_sofor import add_sofor, bulk_add_sofor
 from v2.modules.driver.application.delete_sofor import bulk_delete, delete_sofor
+from v2.modules.driver.application.driver_stats import (
+    calculate_elite_performance_score,
+    calculate_performance_score,
+    calculate_trend,
+    compare_drivers,
+    get_driver_stats,
+    get_driver_trend,
+    get_route_performance,
+)
+from v2.modules.driver.application.evaluation import (
+    DereceEnum,
+    GuzergahPerformans,
+    SoforDegerlendirme,
+    TrendEnum,
+    evaluate_driver,
+    get_all_evaluations,
+    get_rankings,
+)
 from v2.modules.driver.application.generate_coaching import (
     DriverCoachingEngine,
     get_driver_coaching_engine,
@@ -35,35 +53,26 @@ from v2.modules.driver.application.list_sofor import (
 from v2.modules.driver.application.record_coaching_delivery import (
     record_coaching_delivery,
 )
+from v2.modules.driver.application.route_profile import (
+    ROUTE_TYPES,
+    classify_route,
+    get_driver_route_coefficient,
+)
 from v2.modules.driver.application.update_sofor import update_score, update_sofor
-from v2.modules.driver.domain.driver_stats import (
-    calculate_elite_performance_score,
-    calculate_performance_score,
-    calculate_trend,
-    compare_drivers,
-    get_driver_stats,
-    get_driver_trend,
-    get_route_performance,
-)
-from v2.modules.driver.domain.evaluation import (
-    DereceEnum,
-    GuzergahPerformans,
-    SoforDegerlendirme,
-    TrendEnum,
-    evaluate_driver,
-    get_all_evaluations,
-    get_rankings,
-)
 from v2.modules.driver.domain.performance_ml import (
     DriverPerformanceML,
     DriverScorePrediction,
     get_driver_performance_ml,
 )
-from v2.modules.driver.domain.route_profile import (
-    ROUTE_TYPES,
-    classify_route,
-    get_driver_route_coefficient,
+from v2.modules.driver.infrastructure.driver_trip_queries import (
+    get_by_sofor_id,
+    get_driver_trips_by_route_type,
+    get_driver_trips_with_route_analysis,
+    get_recent_trips_batch,
+    get_with_route_analysis,
+    search_driver_ids_by_name,
 )
+from v2.modules.driver.infrastructure.models import CoachingDelivery, Sofor
 from v2.modules.driver.infrastructure.pdf_export import SoforSeferPDFService
 from v2.modules.driver.infrastructure.repository import SoforRepository, get_sofor_repo
 from v2.modules.driver.schemas import (
@@ -134,6 +143,16 @@ __all__ = [
     # repository
     "SoforRepository",
     "get_sofor_repo",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Sofor",
+    "CoachingDelivery",
+    # trip-özel sefer sorguları (dalga 14 — sefer_repo.py'den taşındı)
+    "get_by_sofor_id",
+    "get_with_route_analysis",
+    "get_driver_trips_with_route_analysis",
+    "get_driver_trips_by_route_type",
+    "get_recent_trips_batch",
+    "search_driver_ids_by_name",
     # schemas
     "SoforCreate",
     "SoforUpdate",

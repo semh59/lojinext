@@ -22,8 +22,6 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List
 
-from app.database.unit_of_work import UnitOfWork
-from v2.modules.ai_assistant.infrastructure.llm.groq_client import get_groq_service
 from v2.modules.anomaly.public import get_anomaly_detector
 from v2.modules.driver.application.get_route_profile import get_route_profile_sofor
 from v2.modules.driver.application.get_score import get_score_breakdown_sofor
@@ -33,6 +31,7 @@ from v2.modules.driver.schemas import (
     CoachingInsightsResponse,
     CoachingPriority,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +72,10 @@ class DriverCoachingEngine:
     """Stateless engine — paylaşılan singleton olarak kullanılır."""
 
     def __init__(self) -> None:
+        # Lazy import: ai_assistant.public üst-düzeyde import edilirse
+        # build_context -> driver.public -> bu dosya döngüsü oluşur.
+        from v2.modules.ai_assistant.public import get_groq_service
+
         self.groq = get_groq_service()
         self.detector = get_anomaly_detector()
 

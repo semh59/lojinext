@@ -152,9 +152,9 @@ class TestAnalyzeRouteEndpoint:
 
     async def test_analyze_route_provider_error_returns_503(self):
         """analyze_route returns 503 when get_route_details reports error."""
-        from app.api.deps import get_current_active_user
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
+        from v2.modules.platform_infra.database.connection import get_db
 
         fake_user = MagicMock()
         fake_user.id = 1
@@ -195,9 +195,9 @@ class TestAnalyzeRouteEndpoint:
 
     async def test_analyze_route_success_returns_200(self):
         """analyze_route returns 200 when get_route_details succeeds."""
-        from app.api.deps import get_current_active_user
-        from app.database.connection import get_db
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
+        from v2.modules.platform_infra.database.connection import get_db
 
         fake_user = MagicMock()
         fake_user.id = 1
@@ -258,10 +258,12 @@ class TestSimulateRouteLogic:
         from httpx import AsyncClient
         from httpx._transports.asgi import ASGITransport
 
-        from app.api.deps import get_current_active_user
-        from app.database.connection import get_db
-        from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
         from app.main import app
+        from v2.modules.auth_rbac.public import get_current_active_user
+        from v2.modules.platform_infra.database.connection import get_db
+        from v2.modules.platform_infra.resilience.rate_limiter import (
+            RateLimiterDependency,
+        )
         from v2.modules.route_simulation.application.simulate_route import (
             get_route_simulator,
         )
@@ -323,7 +325,7 @@ class TestSimulateRouteLogic:
         self, async_client, admin_auth_headers, db_session
     ):
         """simulate_route returns 422 when lokasyon has no lat/lon (real seeded row)."""
-        from app.database.models import Lokasyon
+        from v2.modules.location.public import Lokasyon
 
         lok = Lokasyon(
             cikis_yeri="SimMissCoordsC",
@@ -353,7 +355,7 @@ class TestSimulateRouteLogic:
         varis_lat düz DB float kolonu, Pydantic kısıtı yok."""
         import v2.modules.route_simulation.application.simulate_route as sim_mod
         from app.config import settings
-        from app.database.models import Lokasyon
+        from v2.modules.location.public import Lokasyon
 
         fake_key = MagicMock()
         fake_key.__bool__ = lambda self: True

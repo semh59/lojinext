@@ -12,7 +12,9 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
-from app.core.integrations.avl.mobiliz import MobilizAVLProvider
+from v2.modules.admin_platform.infrastructure.integrations.avl.mobiliz import (
+    MobilizAVLProvider,
+)
 
 pytestmark = pytest.mark.unit
 

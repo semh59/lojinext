@@ -6,10 +6,10 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import select
 
-from app.core.ml.ensemble_predictor import get_ensemble_service
-from app.database.connection import AsyncSessionLocal
-from app.database.models import Arac
-from app.infrastructure.logging.logger import setup_logging
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.logging.logger import setup_logging
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.prediction_ml.public import get_ensemble_service
 
 # Project root
 sys.path.append(os.getcwd())
@@ -75,7 +75,7 @@ async def train_fleet() -> None:
                 # Optional VIF analysis for feature-correlation checks.
                 if result.get("feature_matrix") is not None:
                     try:
-                        from app.core.ml.ensemble_predictor import (
+                        from v2.modules.prediction_ml.public import (
                             EnsembleFuelPredictor,
                         )
 

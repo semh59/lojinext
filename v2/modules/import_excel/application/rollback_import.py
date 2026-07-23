@@ -3,8 +3,8 @@
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

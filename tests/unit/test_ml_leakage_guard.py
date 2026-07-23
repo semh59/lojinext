@@ -65,7 +65,7 @@ class TestTemporalSplit:
         would still produce the correct boundaries.
         """
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         n = 25
         start = date(2024, 1, 1)
@@ -105,7 +105,7 @@ class TestTemporalSplit:
         those labels contaminating the residuals computed on train.
         """
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         n = 30
         start = date(2023, 6, 1)
@@ -136,7 +136,7 @@ class TestLabelLeakGuard:
         replaced with the physics prediction.
         """
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         n = 20
         records = _make_sefer(n, date(2024, 1, 1))
@@ -158,7 +158,7 @@ class TestLabelLeakGuard:
 
     def test_none_consumption_rows_are_dropped(self):
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         records = _make_sefer(15, date(2024, 3, 1))
         for r in records[:3]:
@@ -171,7 +171,7 @@ class TestLabelLeakGuard:
     def test_all_zero_consumption_fails_gracefully(self):
         """If ALL rows have tuketim ≤ 0, fit must return success=False."""
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         records = _make_sefer(15, date(2024, 1, 1))
         for r in records:
@@ -198,7 +198,7 @@ class TestConfidenceInterval:
         regardless — that's the old broken behaviour.
         """
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import (
+        from v2.modules.prediction_ml.domain.ensemble_core import (
             EnsembleFuelPredictor,
         )
 
@@ -245,7 +245,7 @@ class TestConfidenceInterval:
     def test_confidence_interval_widens_with_disagreement(self):
         """When models disagree the interval must be wider than when they agree."""
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         predictor.is_trained = True
@@ -300,7 +300,7 @@ class TestFeatureSchemaMismatch:
 
     def test_extra_features_raises_runtime_error(self):
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         predictor.is_trained = True
@@ -316,7 +316,7 @@ class TestFeatureSchemaMismatch:
     def test_mismatch_marks_model_untrained(self):
         """After a schema mismatch, is_trained must be False → physics fallback."""
         pytest.importorskip("sklearn")
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         predictor.is_trained = True

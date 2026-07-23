@@ -1,4 +1,4 @@
-from app.core.ml.physics_fuel_predictor import (
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     VehicleSpecs,
 )

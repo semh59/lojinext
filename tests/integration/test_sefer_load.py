@@ -3,7 +3,9 @@ import uuid
 
 import pytest
 
-from app.database.models import Arac, Lokasyon, Sofor
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.location.public import Lokasyon
 
 pytestmark = pytest.mark.asyncio
 
@@ -52,7 +54,7 @@ class TestSeferLoadAPI:
             app.state.limiter.enabled = False
 
         # 2. Bypass custom RateLimitMiddleware using monkeypatch (for safety)
-        from app.infrastructure.middleware.rate_limit_middleware import (
+        from v2.modules.platform_infra.middleware.rate_limit_middleware import (
             RateLimitMiddleware,
         )
 
@@ -62,7 +64,7 @@ class TestSeferLoadAPI:
         monkeypatch.setattr(RateLimitMiddleware, "dispatch", mock_dispatch)
 
         # 3. Bypass low-level AsyncRateLimiter for external services (OpenRoute etc.)
-        from app.infrastructure.resilience.rate_limiter import AsyncRateLimiter
+        from v2.modules.platform_infra.resilience.rate_limiter import AsyncRateLimiter
 
         async def mock_acquire(self):
             pass

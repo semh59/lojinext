@@ -4,8 +4,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import text
 
-from app.database.connection import AsyncSessionLocal, engine, get_sync_session
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.platform_infra.database.connection import (
+    AsyncSessionLocal,
+    engine,
+    get_sync_session,
+)
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 def test_simple_sync_check():
@@ -35,7 +39,7 @@ async def test_uow_ghost_transaction_detection(caplog):
 
     async with UnitOfWork() as uow:
         # Create a model without committing to trigger the ghost transaction branch
-        from app.database.models import Arac
+        from v2.modules.fleet.public import AracORM as Arac
 
         uow.session.add(Arac(plaka="34GHOST"))
         # Do nothing, just exit
@@ -127,9 +131,9 @@ async def test_auth_service_authenticate_does_not_leak_connection(db_session):
     """
     from unittest.mock import MagicMock
 
-    from app.database.unit_of_work import get_uow
     from app.tests._helpers.seed import seed_kullanici
     from v2.modules.auth_rbac.application import auth_service
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import get_uow
 
     user = await seed_kullanici(db_session, email="leak-repro@test.local")
     await db_session.commit()
@@ -172,7 +176,7 @@ async def test_auth_service_authenticate_does_not_leak_connection(db_session):
 async def test_sync_session_auto_commit():
     """Verify that sync session helper commits on success."""
     # This is harder to test without a real DB but we can mock the session
-    with patch("app.database.connection.SyncSessionLocal") as mock_session_factory:
+    with patch("v2.modules.platform_infra.database.connection.SyncSessionLocal") as mock_session_factory:
         mock_session = mock_session_factory.return_value
         with get_sync_session():
             pass

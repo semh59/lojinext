@@ -9,8 +9,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.config import settings
-from app.database.connection import engine
-from app.database.models import Kullanici, Rol
+from v2.modules.platform_infra.database.connection import engine
+from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.auth_rbac.public import hash_password as get_password_hash
 
 

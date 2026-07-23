@@ -8,8 +8,11 @@ import uuid  # noqa: E402
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app.infrastructure.logging.logger import LOG_DIR, get_audit_logger  # noqa: E402
 from app.main import app  # noqa: E402
+from v2.modules.platform_infra.logging.logger import (  # noqa: E402
+    LOG_DIR,
+    get_audit_logger,
+)
 
 
 def test_request_logging_and_correlation_id(caplog):
@@ -20,7 +23,7 @@ def test_request_logging_and_correlation_id(caplog):
     2. Middleware 'Incoming Request' ve 'Request Completed'/'Slow Request' loglamalı.
     3. Loglanan correlation_id response header ile eşleşmeli.
     """
-    middleware_logger = "app.infrastructure.middleware.logging_middleware"
+    middleware_logger = "v2.modules.platform_infra.middleware.logging_middleware"
 
     with caplog.at_level(logging.INFO, logger=middleware_logger):
         with TestClient(app) as client:

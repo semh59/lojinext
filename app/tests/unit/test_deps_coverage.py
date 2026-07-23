@@ -1,4 +1,18 @@
-"""Tests for app/api/deps.py — real DB, real JWT, real Redis blacklist.
+"""Tests for the former app/api/deps.py's factory functions — now split
+across v2/modules/auth_rbac/application/authenticate.py (auth-specific
+factories, Kalem 3 commit 1) and
+v2/modules/trip/application/trip_service.py::get_sefer_service_for_request
+(request-scoped SeferService factory, Kalem 3 commit 3) — real DB, real
+JWT, real Redis blacklist. ``app/api/deps.py`` itself no longer exists
+(deleted in Kalem 3 commit 3, along with app/api/v1/api.py — see
+v2/modules/platform_infra/CLAUDE.md).
+
+2026-07-22 (Kalem 3 commit 2): ``get_background_job_manager`` was removed
+entirely (all callers now use
+``v2.modules.platform_infra.public.get_job_manager`` directly) — its
+coverage test here was dropped as redundant with
+``app/tests/unit/test_infrastructure/test_job_manager.py``, which already
+asserts ``get_job_manager()`` returns the real singleton.
 
 Previously these overrode get_db with an AsyncMock session, built MagicMock
 Kullanici/Rol objects, and patched blacklist/job-manager internals, asserting on
@@ -18,9 +32,9 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Kullanici, Rol
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.domain.security import create_access_token
+from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
@@ -92,8 +106,11 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
 
     from fastapi import HTTPException
 
-    from app.api import deps
-    from v2.modules.auth_rbac.domain.token_blacklist import TokenBlacklist, blacklist
+    from v2.modules.auth_rbac.infrastructure.token_blacklist import (
+        TokenBlacklist,
+        blacklist,
+    )
+    from v2.modules.auth_rbac.public import get_current_user
 
     # Undo the autouse bypass for THIS test → real is_blacklisted.
     monkeypatch.setattr(
@@ -107,7 +124,7 @@ async def test_get_current_user_blacklisted_token(db_session, monkeypatch):
     assert await blacklist.is_blacklisted(token) is True  # real Redis round-trip
 
     with pytest.raises(HTTPException) as exc:
-        await deps.get_current_user(_real_request(), db_session, token)
+        await get_current_user(_real_request(), db_session, token)
     assert exc.value.status_code == 401
     assert "blacklisted" in str(exc.value.detail).lower()
 
@@ -174,8 +191,8 @@ async def test_get_current_user_super_admin_virtual_user(async_client, db_sessio
 async def test_get_current_user_super_admin_resolves_real_db_id(db_session):
     """ARCH-001: super-admin token resolves to the real seeded admin row (real id +
     is_env_superadmin marker) so audit captures a real user_id."""
-    from app.api import deps
     from app.config import settings
+    from v2.modules.auth_rbac.public import get_current_user
 
     uid = await _seed_user(
         db_session, email=settings.SUPER_ADMIN_USERNAME, is_admin=True
@@ -185,7 +202,7 @@ async def test_get_current_user_super_admin_resolves_real_db_id(db_session):
         expires_delta=timedelta(minutes=30),
     )
 
-    user = await deps.get_current_user(_real_request(), db_session, token)
+    user = await get_current_user(_real_request(), db_session, token)
 
     assert user.id == uid
     assert user.email == settings.SUPER_ADMIN_USERNAME
@@ -226,21 +243,14 @@ async def test_service_factories_build_real_services():
     calls the auth_service module's free functions directly with an
     explicit uow= kwarg (no DI factory to assert on).
     """
-    from app.api import deps
-    from app.core.services.sefer_service import SeferService
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+    from v2.modules.trip.application.trip_service import (
+        SeferService,
+        get_sefer_service_for_request,
+    )
 
     async with UnitOfWork() as uow:
-        assert isinstance(await deps.get_sefer_service(uow), SeferService)
-
-
-async def test_get_background_job_manager_returns_manager():
-    """get_background_job_manager returns the real BackgroundJobManager singleton."""
-    from app.api.deps import get_background_job_manager
-    from app.infrastructure.background.job_manager import BackgroundJobManager
-
-    mgr = await get_background_job_manager()
-    assert isinstance(mgr, BackgroundJobManager)
+        assert isinstance(await get_sefer_service_for_request(uow), SeferService)
 
 
 # ---------------------------------------------------------------------------
@@ -250,8 +260,8 @@ async def test_get_background_job_manager_returns_manager():
 
 async def test_require_permissions_factory_returns_callable():
     """require_permissions returns an async callable checker."""
-    from app.api.deps import require_permissions
     from v2.modules.auth_rbac.domain.security_service import Permission
+    from v2.modules.auth_rbac.public import require_permissions
 
     checker = require_permissions(Permission.ADMIN)
     assert callable(checker)
@@ -261,8 +271,8 @@ async def test_require_permissions_denies_without_perm():
     """A real non-admin user is denied ADMIN by the real SecurityService → 403."""
     from fastapi import HTTPException
 
-    from app.api.deps import require_permissions
     from v2.modules.auth_rbac.domain.security_service import Permission
+    from v2.modules.auth_rbac.public import require_permissions
 
     # Real entities (no mock); verify_permission reads user.rol.yetkiler.
     user = Kullanici(id=1, email="user@x.com", aktif=True, sifre_hash="x")

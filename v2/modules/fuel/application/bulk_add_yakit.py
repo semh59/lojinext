@@ -4,11 +4,10 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import List
 
-from app.core.entities.models import YakitAlimiCreate
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.event_bus import EventType
-from app.infrastructure.events.outbox_service import save_outbox_event
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.fuel.domain.entities import YakitAlimiCreate
+from v2.modules.platform_infra.public import EventType, get_logger
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

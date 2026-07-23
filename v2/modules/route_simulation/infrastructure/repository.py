@@ -7,9 +7,9 @@ from typing import Dict, Optional
 
 from sqlalchemy import and_, select
 
-from app.database.base_repository import BaseRepository
-from app.database.models import RoutePath
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.route_simulation.infrastructure.models import RoutePath
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 

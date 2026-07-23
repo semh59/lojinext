@@ -15,7 +15,6 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from app.core.ml.route_similarity import find_similar_trips
 from v2.modules.ai_assistant.domain.planner_scoring import (
     ARAC_WEIGHTS,
     DEFAULT_TOP_N,
@@ -36,6 +35,7 @@ from v2.modules.ai_assistant.domain.planner_scoring import (
     _vehicle_reasons,
 )
 from v2.modules.driver.public import classify_route
+from v2.modules.prediction_ml.public import find_similar_trips
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class TripPlannerEngine:
 
     async def _fetch_route_analysis(self, inp: PlanInput) -> None:
         """guzergah_id'den Lokasyon.route_analysis'i çek; inp'i in-place günceller."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         try:
             async with UnitOfWork() as uow:
@@ -110,8 +110,8 @@ class TripPlannerEngine:
         if not inp.guzergah_id:
             return 1.0
         try:
-            from app.core.container import get_container
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.platform_infra.public import get_container
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
         except Exception:  # pragma: no cover
             return 1.0
         try:
@@ -138,7 +138,7 @@ class TripPlannerEngine:
 
     # ── Aşama 3: aday shortlist ──
     async def _shortlist(self, inp: PlanInput):
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             vehicles = await uow.arac_repo.get_eligible_for_planning(
@@ -260,11 +260,11 @@ class TripPlannerEngine:
         if not drivers:
             return []
 
-        from app.database.unit_of_work import UnitOfWork
         from v2.modules.driver.public import (
             get_route_profile_sofor,
             get_score_breakdown_sofor,
         )
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         out: List[DriverCandidate] = []
         async with UnitOfWork() as uow:

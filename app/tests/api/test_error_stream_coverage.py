@@ -7,7 +7,7 @@ import pytest
 
 pytestmark = pytest.mark.unit
 
-_PUBSUB_PATH = "app.infrastructure.cache.redis_pubsub.get_pubsub_manager"
+_PUBSUB_PATH = "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager"
 
 
 # ─── POST /system/error-stream-token ─────────────────────────────────────────
@@ -130,7 +130,7 @@ async def test_error_stream_db_lookup_failure_returns_401(async_client):
 
     with patch(_PUBSUB_PATH, return_value=fake_mgr):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             side_effect=Exception("DB failure"),
         ):
             resp = await async_client.get(
@@ -144,8 +144,8 @@ async def test_error_stream_inactive_user_returns_403(async_client, db_session):
     """Token valid but user is inactive → 403."""
     from sqlalchemy import select
 
-    from app.database.models import Kullanici, Rol
     from v2.modules.auth_rbac.domain.security import get_password_hash
+    from v2.modules.auth_rbac.public import Kullanici, Rol
 
     # Ensure role exists
     result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -199,7 +199,10 @@ async def test_error_stream_none_redis_uses_mgr_get(async_client):
 
 async def test_sse_generator_too_many_streams():
     """When semaphore is locked, generator yields error event and returns."""
-    from app.api.v1.endpoints.error_stream import _SSE_SEMAPHORE, _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import (
+        _SSE_SEMAPHORE,
+        _sse_generator,
+    )
 
     # Acquire all 20 slots to trigger the "too many streams" branch
     acquired = []
@@ -224,7 +227,7 @@ async def test_sse_generator_too_many_streams():
 
 async def test_sse_generator_disconnects_cleanly():
     """Generator exits on disconnected request without yielding data."""
-    from app.api.v1.endpoints.error_stream import _sse_generator
+    from v2.modules.admin_platform.api.error_stream_routes import _sse_generator
 
     request = MagicMock()
     request.is_disconnected = AsyncMock(return_value=True)

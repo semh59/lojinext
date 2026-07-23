@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, ".")
 
-from app.core.ml.benchmark import (
+from v2.modules.prediction_ml.domain.benchmark import (
     ABTestFramework,
     ABTestResult,
     BenchmarkResult,

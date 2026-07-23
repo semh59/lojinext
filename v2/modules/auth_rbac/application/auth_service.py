@@ -23,12 +23,14 @@ from typing import Optional, Tuple
 from fastapi import HTTPException, Request, status
 
 from app.config import settings
-from app.database.models import KullaniciOturumu
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.audit.audit_logger import audit_logger
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
 from v2.modules.auth_rbac.domain import jwt_handler
+from v2.modules.auth_rbac.infrastructure.models import KullaniciOturumu
+from v2.modules.platform_infra.public import (
+    RateLimiterRegistry,
+    audit_logger,
+    get_logger,
+)
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 
@@ -155,7 +157,7 @@ async def _authenticate(
         # önceden yalnız dosya loguna düşüyordu, admin_audit_log'a hiç
         # yazılmıyordu — saldırı tespiti/trace UI'da görünmüyordu.
         try:
-            from app.infrastructure.audit.audit_logger import log_audit_event
+            from v2.modules.platform_infra.public import log_audit_event
 
             await log_audit_event(
                 action="auth.failed_login",
@@ -229,11 +231,11 @@ async def _refresh_session(uow: UnitOfWork, refresh_token: str) -> Tuple[str, st
         payload = jwt_handler.decode_refresh_token(refresh_token)
         email = payload.get("sub")
     except Exception as e:
-        from app.infrastructure.monitoring import emit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.public import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
+            emit,
         )
 
         emit(
@@ -267,11 +269,11 @@ async def _refresh_session(uow: UnitOfWork, refresh_token: str) -> Tuple[str, st
         # reuse signal so theft patterns are detectable. (Full reuse
         # detection that revokes the live session family needs token
         # lineage tracking — ARCH-018 follow-up.)
-        from app.infrastructure.monitoring import emit
-        from app.infrastructure.monitoring.models import (
+        from v2.modules.platform_infra.public import (
             ErrorEvent,
             ErrorLayer,
             ErrorSeverity,
+            emit,
         )
 
         emit(

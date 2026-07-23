@@ -24,7 +24,7 @@ async def test_sofor_score_range_constraint_enforced(db_session):
     - IntegrityError beklenir (CheckConstraint violation)
     """
 
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     try:
         # Try to create with invalid score (violates constraint)

@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.background.celery_app import get_celery_app
+from v2.modules.platform_infra.background.celery_app import get_celery_app
 
 pytestmark = pytest.mark.unit
 

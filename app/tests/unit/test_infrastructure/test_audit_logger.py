@@ -10,7 +10,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.infrastructure.audit.audit_logger import (
+from v2.modules.platform_infra.audit.audit_logger import (
     _mask_sensitive_data,
     audit_log,
     log_audit_event,
@@ -19,7 +19,7 @@ from app.infrastructure.audit.audit_logger import (
 pytestmark = pytest.mark.unit
 
 # Patch target for DB persist — best-effort; always mock it in unit tests.
-_PERSIST_PATCH = "app.infrastructure.audit.audit_logger._persist_audit_to_db"
+_PERSIST_PATCH = "v2.modules.platform_infra.audit.audit_logger._persist_audit_to_db"
 
 
 class TestMaskSensitiveData:
@@ -83,7 +83,7 @@ class TestAuditLogDecorator:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -105,7 +105,7 @@ class TestAuditLogDecorator:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.error.side_effect = lambda msg: log_entries.append(msg)
 
@@ -124,7 +124,7 @@ class TestAuditLogDecorator:
     async def test_edge_case_empty(self):
         """audit_log with empty action string still decorates correctly."""
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
-            with patch("app.infrastructure.audit.audit_logger.audit_logger"):
+            with patch("v2.modules.platform_infra.audit.audit_logger.audit_logger"):
 
                 @audit_log(action="")
                 async def no_op():
@@ -138,7 +138,7 @@ class TestAuditLogDecorator:
         """Sync function wrapped by audit_log does not require event loop."""
         log_entries = []
 
-        with patch("app.infrastructure.audit.audit_logger.audit_logger") as mock_logger:
+        with patch("v2.modules.platform_infra.audit.audit_logger.audit_logger") as mock_logger:
             mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
             @audit_log(action="SYNC_ACTION")
@@ -171,7 +171,7 @@ class TestAuditLogDecorator:
     async def test_return_type_validation(self):
         """audit_log preserves complex return types (list, dict, int)."""
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
-            with patch("app.infrastructure.audit.audit_logger.audit_logger"):
+            with patch("v2.modules.platform_infra.audit.audit_logger.audit_logger"):
 
                 @audit_log(action="RETURN_TEST")
                 async def returns_list():
@@ -183,7 +183,7 @@ class TestAuditLogDecorator:
 
     def test_service_exists(self):
         """audit_log is importable from the module."""
-        from app.infrastructure.audit.audit_logger import audit_log  # noqa: F401
+        from v2.modules.platform_infra.audit.audit_logger import audit_log  # noqa: F401
 
         assert callable(audit_log)
 
@@ -209,7 +209,7 @@ class TestAuditLogDecorator:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -231,7 +231,7 @@ class TestLogAuditEvent:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -254,7 +254,7 @@ class TestLogAuditEvent:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -288,7 +288,7 @@ class TestLogAuditEvent:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -316,7 +316,7 @@ class TestLogAuditEvent:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock):
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 
@@ -329,7 +329,7 @@ class TestLogAuditEvent:
     async def test_log_audit_event_calls_persist_db(self):
         """log_audit_event calls _persist_audit_to_db."""
         with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:
-            with patch("app.infrastructure.audit.audit_logger.audit_logger"):
+            with patch("v2.modules.platform_infra.audit.audit_logger.audit_logger"):
                 await log_audit_event(
                     action="IMPORT_EXCEL",
                     module="seferler",
@@ -342,7 +342,7 @@ class TestLogAuditEvent:
     async def test_log_audit_event_defaults_basarili_true(self):
         """Backward-compat: basarili not passed → True (unchanged default)."""
         with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:
-            with patch("app.infrastructure.audit.audit_logger.audit_logger"):
+            with patch("v2.modules.platform_infra.audit.audit_logger.audit_logger"):
                 await log_audit_event(action="UPDATE_USER", module="kullanicilar")
 
         _, kwargs = mock_persist.await_args
@@ -358,7 +358,7 @@ class TestLogAuditEvent:
 
         with patch(_PERSIST_PATCH, new_callable=AsyncMock) as mock_persist:
             with patch(
-                "app.infrastructure.audit.audit_logger.audit_logger"
+                "v2.modules.platform_infra.audit.audit_logger.audit_logger"
             ) as mock_logger:
                 mock_logger.info.side_effect = lambda msg: log_entries.append(msg)
 

@@ -3,8 +3,8 @@ from typing import List
 
 from sqlalchemy import and_, select
 
-from app.database.base_repository import BaseRepository
-from app.database.models import AracBakim
+from v2.modules.fleet.infrastructure.models import AracBakim
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class MaintenanceRepository(BaseRepository[AracBakim]):

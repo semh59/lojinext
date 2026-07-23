@@ -18,11 +18,11 @@ from typing import Any, Dict, List
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import text
 
-from app.core.utils.sefer_status import SEFER_STATUS_PLANLANDI
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.import_excel.application.preview_import import parse_import_file
 from v2.modules.import_excel.domain.constants import SUPPORTED_TYPES
 from v2.modules.import_excel.domain.row_validators import validate_import_rows
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.public import SEFER_STATUS_PLANLANDI
 
 
 async def execute_import(
@@ -114,10 +114,10 @@ async def execute_import(
                     # şifreleme + blind-index + trigram burada elle
                     # uygulanır (aksi halde ad_soyad_bidx UNIQUE NOT NULL
                     # ihlali ile import çöker).
-                    from app.infrastructure.security.pii_encryption import (
-                        blind_index,
-                        encrypt_pii,
-                        trigram_blind_indexes,
+                    from v2.modules.platform_infra.public import (
+    blind_index,
+    encrypt_pii,
+    trigram_blind_indexes,
                     )
 
                     raw_ad_soyad = vrow["ad_soyad"]
@@ -204,10 +204,10 @@ async def execute_import(
                     inserted_ids.append(sefer_id)
                     basarili += 1
 
-                    from app.infrastructure.events.event_bus import (
-                        Event,
-                        EventType,
-                        get_event_bus,
+                    from v2.modules.platform_infra.public import (
+    Event,
+    EventType,
+    get_event_bus,
                     )
 
                     await get_event_bus().publish_async(

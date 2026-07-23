@@ -4,16 +4,16 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from app.core.entities import YakitAlimiCreate
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.update_yakit import update_yakit
+from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
 
 @pytest.fixture
 async def test_arac_id(db_session):
     """Test için geçici araç oluştur"""
-    from app.core.entities import AracCreate
     from v2.modules.fleet.application.create_vehicle import create_vehicle
+    from v2.modules.fleet.schemas import AracCreate
 
     arac_id = await create_vehicle(
         AracCreate(
@@ -38,7 +38,7 @@ async def test_yakit_ekleme_basarili(yakit_repo, test_arac_id):
     y_id = await add_yakit(dto)
 
     # DB'den oku ve doğrula
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         kayit = await uow.yakit_repo.get_by_id(y_id)
@@ -64,7 +64,7 @@ async def test_hatali_veri_engelleme(test_arac_id):
         )
 
     # DB'ye yazılmadığını doğrula (Service çağrılmadı bile)
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         # Instead of expecting exactly 0, just make sure there is no record with that price or litre
@@ -86,13 +86,13 @@ async def test_update_islemi(test_arac_id):
     y_id = await add_yakit(dto)
 
     # Güncelle (Fiyat değişti)
-    from app.core.entities.models import YakitUpdate
+    from v2.modules.fuel.schemas import YakitUpdate
 
     update_dto = YakitUpdate(fiyat_tl=Decimal("50.0"), litre=50.0)
     await update_yakit(y_id, update_dto)
 
     # Kontrol et
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         kayit = await uow.yakit_repo.get_by_id(y_id)

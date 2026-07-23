@@ -74,7 +74,7 @@ class TestCoachingEndpoints:
     ):
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sid = await self._create_sofor(async_client, admin_auth_headers)
         await db_session.execute(
@@ -125,7 +125,7 @@ class TestCoachingEndpoints:
         """Q2: parse_mode=HTML + html.escape(); injection denemesi escape edilir."""
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         sid = await self._create_sofor(async_client, admin_auth_headers)
         await db_session.execute(
@@ -178,7 +178,7 @@ class TestCoachingEndpoints:
 @pytest.mark.asyncio
 async def test_celery_beat_schedule_includes_weekly_digest():
     """coaching.weekly_digest beat_schedule'da kayıtlı + Pazartesi 09:00 UTC."""
-    from app.infrastructure.background.celery_app import celery_app
+    from v2.modules.platform_infra.background.celery_app import celery_app
 
     sched = celery_app.conf.beat_schedule
     assert "coaching-weekly-digest-mondays" in sched

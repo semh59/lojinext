@@ -24,9 +24,8 @@ Sentinel davranışlar:
 - Bütün elevation çağrısı None → grade_pct=0 default (degrade ama tamamlanır)
 - Bazı elevation None → o bucket için grade=0 fallback
 
-NOT (cross-module, geçici): ``VehicleSpecs`` (physics_fuel_predictor)
-prediction_ml modülüne ait, henüz taşınmadı — eski yoldan import ediliyor,
-dokümante edilmiş geçici bağımlılık.
+NOT (cross-module): ``VehicleSpecs`` prediction_ml modülüne ait —
+``v2.modules.prediction_ml.public`` üzerinden import edilir.
 """
 
 from __future__ import annotations
@@ -34,8 +33,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
-from app.core.ml.physics_fuel_predictor import VehicleSpecs
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.prediction_ml.public import VehicleSpecs
 from v2.modules.route_simulation.domain.segment_resampler import resample_segments
 from v2.modules.route_simulation.domain.segment_simulator import (
     SegmentInput,

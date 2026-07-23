@@ -11,9 +11,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.driver.application.generate_coaching import DriverCoachingEngine
 from v2.modules.driver.schemas import CoachingInsightsResponse
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 # ── Test fixtures ─────────────────────────────────────────────────────────
 

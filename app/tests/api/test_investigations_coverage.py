@@ -136,8 +136,8 @@ def _make_db_mock(
 @contextmanager
 def _override_db(mock_db):
     """Override the SessionDep (get_db) dependency."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     async def _fake_db():
         yield mock_db
@@ -345,7 +345,7 @@ async def test_create_investigation_disabled(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_create_investigation_already_exists(async_client, admin_auth_headers):
     """POST /admin/investigations → 409 when investigation already exists for anomaly."""
-    from app.database.models import Anomaly, FuelInvestigation
+    from v2.modules.anomaly.public import Anomaly, FuelInvestigation
 
     fake_anomaly = MagicMock(spec=Anomaly)
     fake_anomaly.id = 10
@@ -383,7 +383,7 @@ async def test_create_investigation_already_exists(async_client, admin_auth_head
 @pytest.mark.asyncio
 async def test_create_investigation_success(async_client, admin_auth_headers):
     """POST /admin/investigations → 201 with valid anomaly and no existing inv."""
-    from app.database.models import Anomaly
+    from v2.modules.anomaly.public import Anomaly
     from v2.modules.anomaly.schemas import TheftClassification
 
     fake_anomaly = MagicMock(spec=Anomaly)
@@ -454,7 +454,7 @@ async def test_create_investigation_success(async_client, admin_auth_headers):
         mock_clf_factory.return_value = mock_clf
 
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with patch(
@@ -512,7 +512,7 @@ async def test_update_investigation_disabled(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_investigation_terminal_status(async_client, admin_auth_headers):
     """PATCH /admin/investigations/1 → 409 when already closed."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -554,7 +554,7 @@ async def test_delete_investigation_not_found(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_delete_investigation_already_closed(async_client, admin_auth_headers):
     """DELETE /admin/investigations/1 when already closed → 204 (idempotent)."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -569,7 +569,7 @@ async def test_delete_investigation_already_closed(async_client, admin_auth_head
 @pytest.mark.asyncio
 async def test_delete_investigation_success(async_client, admin_auth_headers):
     """DELETE /admin/investigations/1 open investigation → 204."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -579,7 +579,7 @@ async def test_delete_investigation_success(async_client, admin_auth_headers):
     db.commit = AsyncMock()
 
     with patch(
-        "app.infrastructure.audit.audit_logger.log_audit_event",
+        "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
         new=AsyncMock(),
     ):
         with _override_db(db):
@@ -635,7 +635,7 @@ async def test_reclassify_disabled(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_reclassify_anomaly_not_found(async_client, admin_auth_headers):
     """POST /admin/investigations/1/classify → 404 (anomaly missing)."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -666,7 +666,7 @@ async def test_reclassify_anomaly_not_found(async_client, admin_auth_headers):
 
 def _make_open_inv_mock():
     """Return a MagicMock FuelInvestigation in 'open' status."""
-    from app.database.models import FuelInvestigation
+    from v2.modules.anomaly.public import FuelInvestigation
 
     fake_inv = MagicMock(spec=FuelInvestigation)
     fake_inv.id = 1
@@ -720,7 +720,7 @@ async def test_update_investigation_status_change(async_client, admin_auth_heade
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -745,7 +745,7 @@ async def test_update_investigation_notes_only(async_client, admin_auth_headers)
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -770,7 +770,7 @@ async def test_update_investigation_assign_user(async_client, admin_auth_headers
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -795,7 +795,7 @@ async def test_update_investigation_resolve_with_type(async_client, admin_auth_h
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -841,7 +841,7 @@ async def test_update_investigation_evidence_files(async_client, admin_auth_head
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -866,7 +866,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
         new=AsyncMock(return_value=inv_row),
     ):
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):
@@ -886,7 +886,7 @@ async def test_update_investigation_status_resolved(async_client, admin_auth_hea
 @pytest.mark.asyncio
 async def test_reclassify_success(async_client, admin_auth_headers):
     """POST /admin/investigations/1/classify with valid inv + anomaly → 200."""
-    from app.database.models import Anomaly, FuelInvestigation
+    from v2.modules.anomaly.public import Anomaly, FuelInvestigation
     from v2.modules.anomaly.schemas import TheftClassification
 
     fake_inv = MagicMock(spec=FuelInvestigation)
@@ -931,7 +931,7 @@ async def test_reclassify_success(async_client, admin_auth_headers):
         mock_clf_factory.return_value = mock_clf
 
         with patch(
-            "app.infrastructure.audit.audit_logger.log_audit_event",
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
             new=AsyncMock(),
         ):
             with _override_db(db):

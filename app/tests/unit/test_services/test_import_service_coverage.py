@@ -21,14 +21,12 @@ patch hedefi HER ZAMAN tüketen modül (`v2.modules.import_excel.application.
 import io
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pandas as pd
 import pytest
 from sqlalchemy import func, select
 
-from app.database.models import Sefer, Sofor, YakitAlimi
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import (
     seed_arac,
     seed_dorse,
@@ -36,6 +34,8 @@ from app.tests._helpers.seed import (
     seed_lokasyon,
     seed_sofor,
 )
+from v2.modules.driver.public import Sofor
+from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 from v2.modules.import_excel.application.execute_import import execute_import
 from v2.modules.import_excel.application.preview_import import (
     parse_and_preview,
@@ -51,6 +51,8 @@ from v2.modules.import_excel.application.yakit_importer import process_yakit_imp
 from v2.modules.import_excel.domain.entity_resolvers import resolve_dorse_id
 from v2.modules.import_excel.domain.field_validators import normalize_text
 from v2.modules.import_excel.domain.row_validators import validate_import_rows
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------
@@ -60,14 +62,15 @@ pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def svc(monkeypatch):
-    """``sefer_service.bulk_add_sefer`` container üzerinden çağrılıyor (trip
-    henüz taşınmadı) — container.sefer_service patch'lenir, mock namespace
-    üzerinden erişilir (`svc.sefer_service.bulk_add_sefer`)."""
-    mock_sefer_service = AsyncMock()
-    mock_container = MagicMock()
-    mock_container.sefer_service = mock_sefer_service
-    monkeypatch.setattr("app.core.container.get_container", lambda: mock_container)
-    return SimpleNamespace(sefer_service=mock_sefer_service)
+    """``process_sefer_import`` artık ``v2.modules.trip.public.bulk_add_sefer``'i
+    doğrudan çağırıyor (dalga 14 — container üzerinden değil). Inline
+    (fonksiyon-içi) import olduğu için patch hedefi KAYNAK modül, tüketen
+    modül değil."""
+    mock_bulk_add_sefer = AsyncMock(return_value=0)
+    monkeypatch.setattr(
+        "v2.modules.trip.public.bulk_add_sefer", mock_bulk_add_sefer
+    )
+    return SimpleNamespace(bulk_add_sefer=mock_bulk_add_sefer)
 
 
 @pytest.fixture
@@ -199,7 +202,7 @@ class TestParseImportFile:
         kullanmıyor — kendi doğrudan `pd.read_excel` çağrısı var, bu yüzden
         oradaki satır sınırı bu yolu KAPSAMAZ. Ayrı bir guard gerekiyordu."""
         import v2.modules.import_excel.application.preview_import as mod
-        from app.core.exceptions import ExcelExportError
+        from v2.modules.shared_kernel.exceptions import ExcelExportError
 
         monkeypatch.setattr(mod, "MAX_EXCEL_ROWS", 2)
         df = pd.DataFrame([{"plaka": "06TIR001"}] * 3)
@@ -401,7 +404,7 @@ class TestExecuteImport:
         assert result["basarili"] == 1
         db = real_master.db
         db.expire_all()
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         count = (
             await db.execute(
@@ -664,7 +667,7 @@ class TestProcessSeferImportExtra:
                 "bitis_km": 450,
             }
         ]
-        svc.sefer_service.bulk_add_sefer = AsyncMock(return_value=1)
+        svc.bulk_add_sefer.return_value = 1
 
         count, errors = await process_sefer_import(b"fake")
         assert count == 1
@@ -849,7 +852,7 @@ class TestExecuteImportSeferPath:
         }
 
         with patch(
-            "app.infrastructure.events.event_bus.get_event_bus",
+            "v2.modules.platform_infra.public.get_event_bus",
             return_value=SimpleNamespace(publish_async=AsyncMock()),
         ):
             result = await execute_import(upload, "sefer", real_master.user.id, mapping)
@@ -950,7 +953,7 @@ class TestExecuteImportSeferPath:
         }
 
         with patch(
-            "app.infrastructure.events.event_bus.get_event_bus",
+            "v2.modules.platform_infra.public.get_event_bus",
             return_value=SimpleNamespace(publish_async=AsyncMock()),
         ):
             result = await execute_import(upload, "sefer", real_master.user.id, mapping)
@@ -1097,9 +1100,7 @@ class TestProcessSeferImportErrorBranches:
         ]
 
         # Make bulk_add_sefer raise after validation passes
-        svc.sefer_service.bulk_add_sefer = AsyncMock(
-            side_effect=RuntimeError("DB crash")
-        )
+        svc.bulk_add_sefer.side_effect = RuntimeError("DB crash")
 
         count, errors = await process_sefer_import(b"fake")
         # bulk_add_sefer raising after validation passes is caught by the

@@ -14,11 +14,14 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, field_validator
 
-from app.api.deps import get_current_active_admin, get_current_active_user
-from app.database.models import Kullanici
-from app.schemas.api_responses import MessageResponse
 from v2.modules.auth_rbac.application import user_service
+from v2.modules.auth_rbac.application.authenticate import (
+    get_current_active_admin,
+    get_current_active_user,
+)
+from v2.modules.auth_rbac.infrastructure.models import Kullanici
 from v2.modules.auth_rbac.schemas import KullaniciRead
+from v2.modules.shared_kernel.schemas.api_responses import MessageResponse
 
 router = APIRouter()
 
@@ -34,7 +37,9 @@ class ChangePasswordRequest(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         return validate_password_complexity(v)
 

@@ -3,12 +3,13 @@
 import asyncio
 from typing import List
 
-from app.core.entities import Sefer, YakitPeriyodu
+from v2.modules.fuel.domain.entities import YakitPeriyodu
 from v2.modules.fuel.domain.period_matcher import (
     PeriyotSeferMatch,
     sync_distribute_fuel_to_trips,
     sync_match_periods_with_trips,
 )
+from v2.modules.trip.public import Sefer
 
 
 async def distribute_fuel_to_trips(

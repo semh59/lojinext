@@ -30,26 +30,26 @@ pytestmark = pytest.mark.unit
 
 class TestSimpleResponses:
     def test_circuit_breaker_reset(self):
-        from app.schemas.api_responses import CircuitBreakerResetResponse
+        from v2.modules.admin_platform.schemas import CircuitBreakerResetResponse
 
         r = CircuitBreakerResetResponse(success=True, message="Reset OK")
         assert r.success is True
         assert r.message == "Reset OK"
 
     def test_backup_trigger(self):
-        from app.schemas.api_responses import BackupTriggerResponse
+        from v2.modules.admin_platform.schemas import BackupTriggerResponse
 
         r = BackupTriggerResponse(message="Backup started", task_id="abc-123")
         assert r.task_id == "abc-123"
 
     def test_mark_all_read(self):
-        from app.schemas.api_responses import MarkAllReadResponse
+        from v2.modules.notification.schemas import MarkAllReadResponse
 
         r = MarkAllReadResponse(success=True, count=5)
         assert r.count == 5
 
     def test_mark_single_read(self):
-        from app.schemas.api_responses import MarkSingleReadResponse
+        from v2.modules.notification.schemas import MarkSingleReadResponse
 
         r = MarkSingleReadResponse(success=False)
         assert r.success is False
@@ -62,7 +62,7 @@ class TestSimpleResponses:
 
 class TestNotificationRuleResponse:
     def test_valid(self):
-        from app.schemas.api_responses import NotificationRuleResponse
+        from v2.modules.notification.schemas import NotificationRuleResponse
 
         r = NotificationRuleResponse(
             id=1,
@@ -76,7 +76,7 @@ class TestNotificationRuleResponse:
         assert r.aktif is True
 
     def test_extra_fields_allowed(self):
-        from app.schemas.api_responses import NotificationRuleResponse
+        from v2.modules.notification.schemas import NotificationRuleResponse
 
         r = NotificationRuleResponse(
             id=2,
@@ -96,7 +96,7 @@ class TestNotificationRuleResponse:
 
 class TestNotificationItemResponseMore:
     def test_heal_datetime_string_none_returns_now(self):
-        from app.schemas.api_responses import NotificationItemResponse
+        from v2.modules.notification.schemas import NotificationItemResponse
 
         item = NotificationItemResponse(
             id=10,
@@ -112,7 +112,7 @@ class TestNotificationItemResponseMore:
         assert len(item.olusturma_tarihi) > 0
 
     def test_olay_tipi_none_stays_none(self):
-        from app.schemas.api_responses import NotificationItemResponse
+        from v2.modules.notification.schemas import NotificationItemResponse
 
         item = NotificationItemResponse(
             id=11,
@@ -127,7 +127,7 @@ class TestNotificationItemResponseMore:
         assert item.olay_tipi is None
 
     def test_kanal_empty_becomes_bilinmiyor(self):
-        from app.schemas.api_responses import NotificationItemResponse
+        from v2.modules.notification.schemas import NotificationItemResponse
 
         item = NotificationItemResponse(
             id=12,
@@ -141,7 +141,7 @@ class TestNotificationItemResponseMore:
         assert item.kanal == "BİLİNMİYOR"
 
     def test_icerik_none_becomes_bilinmiyor(self):
-        from app.schemas.api_responses import NotificationItemResponse
+        from v2.modules.notification.schemas import NotificationItemResponse
 
         item = NotificationItemResponse(
             id=13,
@@ -164,7 +164,7 @@ class TestMaintenanceRecordResponseMore:
     def test_valid_maliyet_positive(self):
         from decimal import Decimal
 
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=20,
@@ -176,7 +176,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.maliyet == Decimal("1500.50")
 
     def test_heal_update_time_isostring(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=21,
@@ -189,7 +189,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.guncelleme_tarihi.year == 2026
 
     def test_heal_update_time_bad_value_becomes_none(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=22,
@@ -201,7 +201,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.guncelleme_tarihi is None
 
     def test_heal_update_time_datetime_passthrough(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         dt = datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
         rec = MaintenanceRecordResponse(
@@ -214,7 +214,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.guncelleme_tarihi == dt
 
     def test_km_bilgisi_string_parsed(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=24,
@@ -225,7 +225,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.km_bilgisi == 50000
 
     def test_km_bilgisi_bad_string_becomes_zero(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=25,
@@ -236,7 +236,7 @@ class TestMaintenanceRecordResponseMore:
         assert rec.km_bilgisi == 0
 
     def test_tamamlandi_defaults_false(self):
-        from app.schemas.api_responses import MaintenanceRecordResponse
+        from v2.modules.fleet.schemas import MaintenanceRecordResponse
 
         rec = MaintenanceRecordResponse(
             id=26,
@@ -254,7 +254,7 @@ class TestMaintenanceRecordResponseMore:
 
 class TestMaintenanceAlertItem:
     def test_valid(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=1,
@@ -268,7 +268,7 @@ class TestMaintenanceAlertItem:
         assert item.vade_durumu == "UPCOMING"
 
     def test_empty_plaka_becomes_bilinmiyor(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=2,
@@ -280,7 +280,7 @@ class TestMaintenanceAlertItem:
         assert item.plaka == "BİLİNMİYOR"
 
     def test_empty_bakim_tipi_becomes_bilinmiyor(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=3,
@@ -292,7 +292,7 @@ class TestMaintenanceAlertItem:
         assert item.bakim_tipi == "BİLİNMİYOR"
 
     def test_tarih_from_isostring(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=4,
@@ -304,7 +304,7 @@ class TestMaintenanceAlertItem:
         assert isinstance(item.tarih, datetime)
 
     def test_tarih_bad_value_becomes_now(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=5,
@@ -316,7 +316,7 @@ class TestMaintenanceAlertItem:
         assert isinstance(item.tarih, datetime)
 
     def test_tarih_none_becomes_now(self):
-        from app.schemas.api_responses import MaintenanceAlertItem
+        from v2.modules.fleet.schemas import MaintenanceAlertItem
 
         item = MaintenanceAlertItem(
             id=6,
@@ -335,31 +335,31 @@ class TestMaintenanceAlertItem:
 
 class TestFuelStatsResponseMore:
     def test_bad_count_string_becomes_none(self):
-        from app.schemas.api_responses import FuelStatsResponse
+        from v2.modules.fuel.schemas import FuelStatsResponse
 
         r = FuelStatsResponse(kayit_sayisi="not-an-int")
         assert r.kayit_sayisi is None
 
     def test_zero_count_accepted(self):
-        from app.schemas.api_responses import FuelStatsResponse
+        from v2.modules.fuel.schemas import FuelStatsResponse
 
         r = FuelStatsResponse(kayit_sayisi=0)
         assert r.kayit_sayisi == 0
 
     def test_extra_fields_tolerated(self):
-        from app.schemas.api_responses import FuelStatsResponse
+        from v2.modules.fuel.schemas import FuelStatsResponse
 
         r = FuelStatsResponse(toplam_litre=500.0, per_vehicle={"1": 250.0})
         assert r.per_vehicle == {"1": 250.0}
 
     def test_bad_float_toplam_maliyet_becomes_none(self):
-        from app.schemas.api_responses import FuelStatsResponse
+        from v2.modules.fuel.schemas import FuelStatsResponse
 
         r = FuelStatsResponse(toplam_maliyet="abc")
         assert r.toplam_maliyet is None
 
     def test_bad_float_ortalama_birim_fiyat_becomes_none(self):
-        from app.schemas.api_responses import FuelStatsResponse
+        from v2.modules.fuel.schemas import FuelStatsResponse
 
         r = FuelStatsResponse(ortalama_birim_fiyat="xyz")
         assert r.ortalama_birim_fiyat is None
@@ -372,7 +372,7 @@ class TestFuelStatsResponseMore:
 
 class TestWeatherSchemas:
     def test_weather_trip_detail_valid(self):
-        from app.schemas.api_responses import WeatherTripDetail
+        from v2.modules.route_simulation.schemas import WeatherTripDetail
 
         d = WeatherTripDetail(
             trip_id=1, plaka="34ABC", risk="High", impact=0.85, error_code=None
@@ -381,7 +381,7 @@ class TestWeatherSchemas:
         assert d.impact == 0.85
 
     def test_weather_trip_detail_unavailable(self):
-        from app.schemas.api_responses import WeatherTripDetail
+        from v2.modules.route_simulation.schemas import WeatherTripDetail
 
         d = WeatherTripDetail(
             trip_id=2, plaka="06XY", risk="Unavailable", error_code="TIMEOUT"
@@ -390,7 +390,7 @@ class TestWeatherSchemas:
         assert d.impact is None
 
     def test_weather_dashboard_response(self):
-        from app.schemas.api_responses import (
+        from v2.modules.route_simulation.schemas import (
             WeatherDashboardResponse,
             WeatherTripDetail,
         )
@@ -409,7 +409,7 @@ class TestWeatherSchemas:
         assert len(r.details) == 1
 
     def test_weather_dashboard_empty_details(self):
-        from app.schemas.api_responses import WeatherDashboardResponse
+        from v2.modules.route_simulation.schemas import WeatherDashboardResponse
 
         r = WeatherDashboardResponse(
             total_active=0,
@@ -429,33 +429,33 @@ class TestWeatherSchemas:
 
 class TestRouteInfoResponseMore:
     def test_bad_float_becomes_none(self):
-        from app.schemas.api_responses import RouteInfoResponse
+        from v2.modules.location.schemas import RouteInfoResponse
 
         r = RouteInfoResponse(distance_km="bad_val")
         assert r.distance_km is None
 
     def test_zero_float_accepted(self):
-        from app.schemas.api_responses import RouteInfoResponse
+        from v2.modules.location.schemas import RouteInfoResponse
 
         r = RouteInfoResponse(distance_km=0.0)
         assert r.distance_km == 0.0
 
     def test_all_optional_fields_none(self):
-        from app.schemas.api_responses import RouteInfoResponse
+        from v2.modules.location.schemas import RouteInfoResponse
 
         r = RouteInfoResponse()
         assert r.distance_km is None
         assert r.source is None
 
     def test_otoban_and_sehir_fields(self):
-        from app.schemas.api_responses import RouteInfoResponse
+        from v2.modules.location.schemas import RouteInfoResponse
 
         r = RouteInfoResponse(otoban_mesafe_km=200.0, sehir_ici_mesafe_km=50.0)
         assert r.otoban_mesafe_km == 200.0
         assert r.sehir_ici_mesafe_km == 50.0
 
     def test_negative_otoban_becomes_none(self):
-        from app.schemas.api_responses import RouteInfoResponse
+        from v2.modules.location.schemas import RouteInfoResponse
 
         r = RouteInfoResponse(otoban_mesafe_km=-1.0)
         assert r.otoban_mesafe_km is None
@@ -468,19 +468,19 @@ class TestRouteInfoResponseMore:
 
 class TestRouteAnalysisResponseMore:
     def test_none_difficulty_is_none(self):
-        from app.schemas.api_responses import RouteAnalysisResponse
+        from v2.modules.route_simulation.schemas import RouteAnalysisResponse
 
         r = RouteAnalysisResponse()
         assert r.difficulty is None
 
     def test_whitespace_difficulty_becomes_none(self):
-        from app.schemas.api_responses import RouteAnalysisResponse
+        from v2.modules.route_simulation.schemas import RouteAnalysisResponse
 
         r = RouteAnalysisResponse(difficulty="   ")
         assert r.difficulty is None
 
     def test_valid_difficulty(self):
-        from app.schemas.api_responses import RouteAnalysisResponse
+        from v2.modules.route_simulation.schemas import RouteAnalysisResponse
 
         r = RouteAnalysisResponse(difficulty="Düz")
         assert r.difficulty == "Düz"

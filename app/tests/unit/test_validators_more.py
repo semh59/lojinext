@@ -28,25 +28,25 @@ pytestmark = pytest.mark.unit
 
 class TestSanitizeStringExtended:
     def test_preserves_newline(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         result = sanitize_string("line1\nline2")
         assert "\n" in result
 
     def test_preserves_tab(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         result = sanitize_string("col1\tcol2")
         assert "\t" in result
 
     def test_preserves_carriage_return(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         result = sanitize_string("line1\rline2")
         assert "\r" in result
 
     def test_removes_control_chars(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         # \x01 is a control character that should be removed
         result = sanitize_string("hello\x01world")
@@ -58,7 +58,7 @@ class TestSanitizeStringExtended:
         """Unicode NFC normalization: NFD combining char → NFC composed."""
         import unicodedata
 
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         # Compose: e + combining acute accent → é (NFC)
         nfd_string = "é"  # NFD form: e + ́
@@ -66,12 +66,12 @@ class TestSanitizeStringExtended:
         assert unicodedata.is_normalized("NFC", result)
 
     def test_empty_string_passthrough(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         assert sanitize_string("") == ""
 
     def test_only_whitespace_becomes_empty(self):
-        from app.schemas.validators import sanitize_string
+        from v2.modules.shared_kernel.schemas.validators import sanitize_string
 
         result = sanitize_string("   ")
         assert result == ""
@@ -84,55 +84,55 @@ class TestSanitizeStringExtended:
 
 class TestCheckXssAllPatterns:
     def test_object_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<object data='x'></object>")
 
     def test_embed_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<embed src='x'>")
 
     def test_form_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<form action='x'>")
 
     def test_style_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<style>body{}</style>")
 
     def test_link_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<link rel='stylesheet'>")
 
     def test_meta_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<meta http-equiv='refresh'>")
 
     def test_svg_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<svg onload='alert(1)'>")
 
     def test_math_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<math><mfrac>")
 
     def test_base_tag_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<base href='http://evil.com'>")
@@ -140,7 +140,7 @@ class TestCheckXssAllPatterns:
     def test_data_uri_allowed_in_free_text(self):
         # AUDIT-106: "data:" XSS pattern'inden kaldırıldı (serbest-metin notlarda
         # meşru; React çıktı-escaping korur). <h1> tehlikeli pattern değil → geçer.
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         assert (
             check_xss("data:text/html,<h1>test</h1>") == "data:text/html,<h1>test</h1>"
@@ -150,34 +150,34 @@ class TestCheckXssAllPatterns:
             check_xss("<script>alert(1)</script>")
 
     def test_vbscript_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("vbscript:msgbox(1)")
 
     def test_css_expression_raises(self):
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("background: expression(alert(1))")
 
     def test_case_insensitive_script(self):
         """Pattern is case-insensitive: SCRIPT should also raise."""
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("<SCRIPT>alert(1)</SCRIPT>")
 
     def test_space_inside_tag(self):
         """< script> (with space) also detected."""
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         with pytest.raises(ValueError):
             check_xss("< script>alert(1)</ script>")
 
     def test_normal_html_content_safe(self):
         """Normal text with < > that doesn't match patterns."""
-        from app.schemas.validators import check_xss
+        from v2.modules.shared_kernel.schemas.validators import check_xss
 
         # This is just text comparison, not a tag
         result = check_xss("price > 100 and cost < 200")
@@ -191,45 +191,45 @@ class TestCheckXssAllPatterns:
 
 class TestCheckSqlInjectionAllPatterns:
     def test_semicolon_comment_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("value; -- drop table")
 
     def test_or_quote_pattern_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("' OR '1'='1")
 
     def test_and_quote_pattern_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("' AND '1'='1")
 
     def test_delete_from_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("DELETE FROM kullanicilar WHERE 1=1")
 
     def test_insert_into_raises(self):
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("INSERT INTO users VALUES (1, 'x')")
 
     def test_case_insensitive_union(self):
         """UNION SELECT is case-insensitive."""
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         with pytest.raises(ValueError):
             check_sql_injection("union select * from users")
 
     def test_normal_sql_keywords_in_text_safe(self):
         """Normal text with SQL keywords is safe (not matching patterns)."""
-        from app.schemas.validators import check_sql_injection
+        from v2.modules.shared_kernel.schemas.validators import check_sql_injection
 
         # "selection" contains "select" but not "UNION SELECT"
         result = check_sql_injection("My route selection criteria")
@@ -243,18 +243,18 @@ class TestCheckSqlInjectionAllPatterns:
 
 class TestValidateSafeStringExtended:
     def test_non_string_passthrough(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         assert validate_safe_string(42) == 42
 
     def test_list_passthrough(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         lst = [1, 2, 3]
         assert validate_safe_string(lst) == lst
 
     def test_empty_string_returns_empty(self):
-        from app.schemas.validators import validate_safe_string
+        from v2.modules.shared_kernel.schemas.validators import validate_safe_string
 
         assert validate_safe_string("") == ""
 
@@ -266,14 +266,14 @@ class TestValidateSafeStringExtended:
 
 class TestValidateUsernameExtended:
     def test_strips_whitespace_before_validation(self):
-        from app.schemas.validators import validate_username
+        from v2.modules.shared_kernel.schemas.validators import validate_username
 
         # After sanitize, "admin " becomes "admin" → valid alphanumeric
         result = validate_username("admin ")
         assert result == "admin"
 
     def test_empty_string_raises(self):
-        from app.schemas.validators import validate_username
+        from v2.modules.shared_kernel.schemas.validators import validate_username
 
         with pytest.raises(ValueError):
             validate_username("@#$")
@@ -286,20 +286,20 @@ class TestValidateUsernameExtended:
 
 class TestValidateNameExtended:
     def test_name_with_hyphen_and_dot(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         # Hyphen and dot are allowed
         result = validate_name("Ali-Veli Yılmaz.")
         assert result == "Ali-Veli Yılmaz."
 
     def test_turkish_chars_valid(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         result = validate_name("İğüşöçĞÜŞÖÇ")
         assert "İ" in result
 
     def test_numbers_in_name_raise(self):
-        from app.schemas.validators import validate_name
+        from v2.modules.shared_kernel.schemas.validators import validate_name
 
         with pytest.raises(ValueError):
             validate_name("Ali123")
@@ -313,20 +313,20 @@ class TestValidateNameExtended:
 class TestMaskPhoneExtended:
     def test_exactly_4_digits(self):
         """Exactly 4 digits: >= 4 so masking applies."""
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         result = mask_phone("1234")
         assert result is not None
         assert result.startswith("1234")
 
     def test_empty_string_returns_empty(self):
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         result = mask_phone("")
         assert result == ""
 
     def test_long_phone_masked(self):
-        from app.schemas.validators import mask_phone
+        from v2.modules.shared_kernel.schemas.validators import mask_phone
 
         result = mask_phone("+90 532 123 45 67")
         assert "***" in result
@@ -339,20 +339,20 @@ class TestMaskPhoneExtended:
 
 class TestValidateDictSizeExtended:
     def test_custom_max_keys(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         d = {str(i): i for i in range(5)}
         assert validate_dict_size(d, max_keys=10) == d
 
     def test_exceeds_custom_max_keys(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         d = {str(i): i for i in range(6)}
         with pytest.raises(ValueError, match="5"):
             validate_dict_size(d, max_keys=5)
 
     def test_exactly_at_limit_passes(self):
-        from app.schemas.validators import validate_dict_size
+        from v2.modules.shared_kernel.schemas.validators import validate_dict_size
 
         d = {str(i): i for i in range(100)}
         result = validate_dict_size(d, max_keys=100)
@@ -366,18 +366,24 @@ class TestValidateDictSizeExtended:
 
 class TestValidatePasswordComplexityExtended:
     def test_none_passthrough(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         assert validate_password_complexity(None) is None
 
     def test_valid_complex_password(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         result = validate_password_complexity("SecurePass1!")
         assert result == "SecurePass1!"
 
     def test_valid_turkish_password(self):
-        from app.schemas.validators import validate_password_complexity
+        from v2.modules.shared_kernel.schemas.validators import (
+            validate_password_complexity,
+        )
 
         result = validate_password_complexity("ŞifreGüçlü1")
         assert "1" in result
@@ -390,19 +396,19 @@ class TestValidatePasswordComplexityExtended:
 
 class TestValidatePhoneExtended:
     def test_empty_string_returns_none(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         result = validate_phone("")
         assert result is None
 
     def test_exactly_10_digits_valid(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         result = validate_phone("0532123456")
         assert result == "0532123456"
 
     def test_exactly_15_digits_valid(self):
-        from app.schemas.validators import validate_phone
+        from v2.modules.shared_kernel.schemas.validators import validate_phone
 
         result = validate_phone("905321234567890")
         assert "9053" in result
@@ -415,32 +421,38 @@ class TestValidatePhoneExtended:
 
 class TestValidatorFactories:
     def test_create_safe_string_validator(self):
-        from app.schemas.validators import create_safe_string_validator
+        from v2.modules.shared_kernel.schemas.validators import (
+            create_safe_string_validator,
+        )
 
         # Returns a Pydantic descriptor proxy (not directly callable in Pydantic v2)
         validator = create_safe_string_validator("name")
         assert validator is not None
 
     def test_create_username_validator(self):
-        from app.schemas.validators import create_username_validator
+        from v2.modules.shared_kernel.schemas.validators import (
+            create_username_validator,
+        )
 
         validator = create_username_validator("username")
         assert validator is not None
 
     def test_create_name_validator(self):
-        from app.schemas.validators import create_name_validator
+        from v2.modules.shared_kernel.schemas.validators import create_name_validator
 
         validator = create_name_validator("ad_soyad")
         assert validator is not None
 
     def test_create_password_validator(self):
-        from app.schemas.validators import create_password_validator
+        from v2.modules.shared_kernel.schemas.validators import (
+            create_password_validator,
+        )
 
         validator = create_password_validator("password")
         assert validator is not None
 
     def test_create_phone_validator(self):
-        from app.schemas.validators import create_phone_validator
+        from v2.modules.shared_kernel.schemas.validators import create_phone_validator
 
         validator = create_phone_validator("telefon")
         assert validator is not None
@@ -449,7 +461,9 @@ class TestValidatorFactories:
         """Factory validator works inside a Pydantic model."""
         from pydantic import BaseModel
 
-        from app.schemas.validators import create_safe_string_validator
+        from v2.modules.shared_kernel.schemas.validators import (
+            create_safe_string_validator,
+        )
 
         class TestModel(BaseModel):
             name: str | None = None
@@ -462,7 +476,9 @@ class TestValidatorFactories:
         """XSS content raises ValidationError inside a model using factory."""
         from pydantic import BaseModel, ValidationError
 
-        from app.schemas.validators import create_safe_string_validator
+        from v2.modules.shared_kernel.schemas.validators import (
+            create_safe_string_validator,
+        )
 
         class TestModel(BaseModel):
             content: str | None = None

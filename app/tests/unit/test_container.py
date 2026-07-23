@@ -7,7 +7,7 @@ import pytest
 # Add project root to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from app.core.container import Container, get_container
+from v2.modules.platform_infra.container import Container, get_container
 
 
 class TestNoModuleLevelContainerImport:
@@ -23,7 +23,7 @@ class TestNoModuleLevelContainerImport:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
+            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "
@@ -53,9 +53,8 @@ class TestContainerLazyLoading:
         assert hasattr(container, "time_series_service")
         # Infrastructure
         assert hasattr(container, "event_bus")
-        assert hasattr(container, "health_service")
-        # Repos
-        assert hasattr(container, "arac_repo")
+        # Repos (yalnız sefer_repo kaldı — diğerleri dalga 17 denetiminde
+        # sıfır-çağıran bulunup kaldırıldı, bkz. platform-infra.md madde 0)
         assert hasattr(container, "sefer_repo")
 
     def test_no_module_level_container_import_in_endpoint_services(self):
@@ -71,7 +70,7 @@ class TestContainerLazyLoading:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "app.core.container":
+            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "
@@ -86,23 +85,31 @@ class TestContainer(unittest.TestCase):
 
         self.assertIsInstance(container, Container)
 
-        # Check Repos
-        self.assertIsNotNone(container.arac_repo)
+        # Check Repos (yalnız sefer_repo kaldı — arac/sofor/yakit/lokasyon/
+        # dorse/analiz_repo dalga 17 denetiminde sıfır-çağıran bulunup
+        # kaldırıldı: gerçek prod kod hepsi uow.<repo>/module-level singleton
+        # getter'lar üzerinden gidiyordu, container'daki AYRI kopyaları
+        # hiçbir yerden okunmuyordu — bkz. platform-infra.md madde 0)
         self.assertIsNotNone(container.sefer_repo)
-        self.assertIsNotNone(container.sofor_repo)
-        self.assertIsNotNone(container.yakit_repo)
 
         # Check Services
         self.assertIsNotNone(container.sefer_service)
         # NOT: container.analiz_service YOK — AnalizService sınıfı B.1
         # dead-code temizliğinde kaldırıldı (dalga 11, hiçbir prod kod
-        # çağırmıyordu), container.analiz_repo hâlâ var (read-model repo).
+        # çağırmıyordu). container.analiz_repo de dalga 17'de aynı gerekçeyle
+        # kaldırıldı (yukarıya bkz.) — reports modülü kendi ReportRepos
+        # bundle'ını kullanıyor, container'ınkini hiç okumuyordu.
         # NOT: container.import_service YOK — ImportService sınıfı B.1
         # free-function geçişinde kaldırıldı (dalga 9), import_excel modülü
         # artık container'a değil v2.modules.import_excel.public'e bağlı.
         # NOT: container.report_service YOK — ReportService sınıfı B.1
         # free-function geçişinde kaldırıldı (dalga 10), reports modülü
         # artık container'a değil v2.modules.reports.public'e bağlı.
+        # NOT: container.health_service/external_service YOK — dalga 17
+        # denetiminde sıfır-çağıran bulunup kaldırıldı (health_routes.py
+        # admin_platform.public'i doğrudan kullanıyor; weather_service.py
+        # kendi ExternalService() default'unu kuruyor, container'ınkini
+        # hiç okumuyordu).
 
         # Check Injection (White-box testing)
         self.assertEqual(container.sefer_service.repo, container.sefer_repo)

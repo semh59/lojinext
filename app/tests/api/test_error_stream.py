@@ -18,7 +18,7 @@ async def test_error_stream_endpoint(async_client, admin_auth_headers, monkeypat
     # Mock pubsub manager to avoid Redis connection attempt.
     from unittest.mock import MagicMock
 
-    import app.infrastructure.cache.redis_pubsub as pubsub_mod
+    import v2.modules.platform_infra.cache.redis_pubsub as pubsub_mod
 
     mock_mgr = MagicMock()
     mock_mgr.redis = None  # Use memory fallback path
@@ -40,7 +40,7 @@ async def test_error_stream_with_filter(async_client, admin_auth_headers, monkey
     # GET /system/error-stream with invalid token → 401 (token not found)
     from unittest.mock import MagicMock
 
-    import app.infrastructure.cache.redis_pubsub as pubsub_mod
+    import v2.modules.platform_infra.cache.redis_pubsub as pubsub_mod
 
     mock_mgr = MagicMock()
     mock_mgr.redis = None

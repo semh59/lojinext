@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from sqlalchemy import insert
 
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 
@@ -15,7 +15,7 @@ async def test_get_driver_coaching_insights(
     async_client, admin_auth_headers, db_session
 ):
     """Test getting driver coaching insights with real data."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     # Create test driver
     sofor_result = await db_session.execute(
@@ -46,7 +46,7 @@ async def test_get_driver_coaching_insights(
 @pytest.mark.integration
 async def test_coaching_weekly_digest(async_client, admin_auth_headers, db_session):
     """Test weekly coaching digest generation."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     sofor_result = await db_session.execute(
         insert(Sofor).values(
@@ -78,7 +78,7 @@ async def test_coaching_performance_trends(
     async_client, admin_auth_headers, db_session
 ):
     """Test driver performance trend analysis."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     sofor_result = await db_session.execute(
         insert(Sofor).values(
@@ -108,7 +108,7 @@ async def test_coaching_performance_trends(
 @pytest.mark.integration
 async def test_coaching_goals_setting(async_client, admin_auth_headers, db_session):
     """Test setting coaching goals for driver."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     sofor_result = await db_session.execute(
         insert(Sofor).values(
@@ -143,7 +143,7 @@ async def test_coaching_goals_setting(async_client, admin_auth_headers, db_sessi
 @pytest.mark.integration
 async def test_coaching_requires_auth(async_client, db_session):
     """Test coaching endpoint requires authentication."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     sofor_result = await db_session.execute(
         insert(Sofor).values(

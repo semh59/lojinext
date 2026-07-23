@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.asyncio
 class TestAnomalyActions:
     async def _seed_anomaly(self, db_session) -> int:
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         row = Anomaly(
             tarih=date.today(),

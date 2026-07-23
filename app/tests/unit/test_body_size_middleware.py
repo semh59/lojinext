@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock
 import pytest
 from starlette.requests import Request
 
-from app.infrastructure.middleware.body_size_middleware import MaxBodySizeMiddleware
+from v2.modules.platform_infra.middleware.body_size_middleware import (
+    MaxBodySizeMiddleware,
+)
 
 pytestmark = pytest.mark.unit
 

@@ -21,7 +21,7 @@ pytestmark = pytest.mark.unit
 
 def test_job_manager_factory_name_exists():
     """The factory fuel.py imports must actually exist in the module."""
-    from app.infrastructure.background import job_manager
+    from v2.modules.platform_infra.background import job_manager
 
     assert hasattr(job_manager, "get_job_manager")
     # The buggy name must NOT be what the endpoint relies on.
@@ -33,7 +33,7 @@ def test_fuel_async_upload_imports_resolve():
 
     Reproduces the exact import the endpoint performs at request time.
     """
-    from app.infrastructure.background.job_manager import (  # noqa: F401
+    from v2.modules.platform_infra.background.job_manager import (  # noqa: F401
         get_job_manager,
     )
 
@@ -52,7 +52,7 @@ def test_fuel_async_upload_imports_resolve():
 
 def test_redis_cache_get_stats_memory_backend_no_crash():
     """get_stats() on the memory backend must not raise AttributeError."""
-    from app.infrastructure.cache.redis_cache import RedisCache
+    from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
     rc = RedisCache()
     rc._redis_client = None  # force memory/fallback path
@@ -69,7 +69,7 @@ def test_redis_cache_no_phantom_fallback_attr_references():
     """The removed phantom attributes must not reappear in the class."""
     import inspect
 
-    from app.infrastructure.cache import redis_cache
+    from v2.modules.platform_infra.cache import redis_cache
 
     src = inspect.getsource(redis_cache)
     assert "_fallback_cache" not in src
@@ -78,7 +78,7 @@ def test_redis_cache_no_phantom_fallback_attr_references():
 
 def test_redis_cache_get_stats_redis_backend():
     """get_stats() on the redis backend reports redis info without touching fallback."""
-    from app.infrastructure.cache.redis_cache import RedisCache
+    from v2.modules.platform_infra.cache.redis_cache import RedisCache
 
     rc = RedisCache()
     mock_client = MagicMock()

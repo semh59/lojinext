@@ -13,18 +13,19 @@ from decimal import Decimal
 
 import pytest
 
-from app.core.entities.models import Sefer, YakitAlimi, YakitPeriyodu
 from v2.modules.fuel.application.calculate_period import create_fuel_periods
 from v2.modules.fuel.application.distribute_fuel_to_trips import (
     distribute_fuel_to_trips,
     match_periods_with_trips,
 )
+from v2.modules.fuel.domain.entities import YakitAlimi, YakitPeriyodu
 from v2.modules.fuel.domain.period_matcher import (
     evaluate_consumption_status,
     sync_create_fuel_periods,
     sync_distribute_fuel_to_trips,
     sync_match_periods_with_trips,
 )
+from v2.modules.trip.domain.entities import Sefer
 
 pytestmark = pytest.mark.unit
 

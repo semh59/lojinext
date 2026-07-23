@@ -1,4 +1,4 @@
-from app.core.services.route_validator import RouteValidator
+from v2.modules.route_simulation.domain.route_validator import RouteValidator
 
 
 class TestRouteValidator:

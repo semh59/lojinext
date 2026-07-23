@@ -346,7 +346,7 @@ class TestGetAnomalyDetector:
         from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 
         # get_container is imported inside the function; patch it at the source
-        with patch("app.core.container.get_container") as mock_gc:
+        with patch("v2.modules.platform_infra.public.get_container") as mock_gc:
             mock_container = MagicMock()
             mock_container.anomaly_detector = AnomalyDetector()
             mock_gc.return_value = mock_container

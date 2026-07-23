@@ -168,7 +168,7 @@ async def test_push_to_sync_fallback_uses_async_redis_not_blocking_client():
     mock_manager.redis = mock_redis
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_manager,
     ):
         await _push_to_sync_fallback(
@@ -190,7 +190,7 @@ async def test_push_to_sync_fallback_noop_when_redis_unavailable():
     mock_manager.redis = None
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_manager,
     ):
         await _push_to_sync_fallback(

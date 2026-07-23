@@ -71,7 +71,9 @@ def _y_actual(n: int = 15, base: float = 32.0) -> np.ndarray:
 
 class TestIsLightGBMAvailable:
     def test_returns_bool(self):
-        from app.core.ml.lightgbm_predictor import is_lightgbm_available
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            is_lightgbm_available,
+        )
 
         result = is_lightgbm_available()
         assert isinstance(result, bool)
@@ -84,7 +86,9 @@ class TestIsLightGBMAvailable:
 
 class TestLightGBMFuelPredictorInit:
     def test_default_init(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         assert p.is_trained is False
@@ -92,7 +96,9 @@ class TestLightGBMFuelPredictorInit:
         assert len(p.FEATURE_NAMES) > 0
 
     def test_custom_params_override_defaults(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor(params={"num_leaves": 63, "learning_rate": 0.1})
         assert p.params["num_leaves"] == 63
@@ -101,13 +107,17 @@ class TestLightGBMFuelPredictorInit:
         assert "objective" in p.params
 
     def test_feature_names_count(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         assert len(p.FEATURE_NAMES) == 17  # per source
 
     def test_zorluk_map(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         assert p.ZORLUK_MAP["Kolay"] == 0
@@ -122,21 +132,27 @@ class TestLightGBMFuelPredictorInit:
 
 class TestPrepareFeatures:
     def test_basic_shape(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features([_make_sefer()])
         assert X.shape == (1, len(p.FEATURE_NAMES))
 
     def test_batch_shape(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features(_batch(5))
         assert X.shape == (5, len(p.FEATURE_NAMES))
 
     def test_zero_mesafe_yuk_yogunlugu_is_zero(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features([_make_sefer(mesafe_km=0)])
@@ -144,21 +160,27 @@ class TestPrepareFeatures:
         assert X[0, 5] == 0.0
 
     def test_zorluk_kolay(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features([_make_sefer(zorluk="Kolay")])
         assert X[0, 6] == 0  # ZORLUK_MAP["Kolay"] = 0
 
     def test_zorluk_zor(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features([_make_sefer(zorluk="Zor")])
         assert X[0, 6] == 2  # ZORLUK_MAP["Zor"] = 2
 
     def test_unknown_zorluk_defaults_to_normal(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features([_make_sefer(zorluk="BilinmeyenZorluk")])
@@ -166,7 +188,9 @@ class TestPrepareFeatures:
 
     def test_rota_detay_route_analysis_extracted(self):
         """Route analysis embedded in rota_detay should populate ratios."""
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         sefer = _make_sefer(
@@ -184,7 +208,9 @@ class TestPrepareFeatures:
 
     def test_none_optional_fields_default(self):
         """None values for optional numeric fields must default to 0/1.0."""
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         sefer = {"mesafe_km": 500, "ton": None, "ascent_m": None}
@@ -193,14 +219,18 @@ class TestPrepareFeatures:
         assert np.all(np.isfinite(X))
 
     def test_no_nan_in_features(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         X = p.prepare_features(_batch(10))
         assert not np.any(np.isnan(X))
 
     def test_net_elevation_derived(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         sefer = _make_sefer(ascent_m=1000, descent_m=600)
@@ -216,7 +246,7 @@ class TestPrepareFeatures:
 
 class TestFitGuards:
     def test_no_lgb_returns_error(self):
-        from app.core.ml import lightgbm_predictor
+        from v2.modules.prediction_ml.domain import lightgbm_predictor
 
         original = lightgbm_predictor.LIGHTGBM_AVAILABLE
         try:
@@ -229,7 +259,7 @@ class TestFitGuards:
             lightgbm_predictor.LIGHTGBM_AVAILABLE = original
 
     def test_insufficient_data_returns_error(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -249,7 +279,7 @@ class TestFitGuards:
         length matches the actual train/val splits computed from n=15 samples
         (validation_split=0.2 → n_val=3, n_train=12).
         """
-        from app.core.ml import lightgbm_predictor
+        from v2.modules.prediction_ml.domain import lightgbm_predictor
 
         if not lightgbm_predictor.LIGHTGBM_AVAILABLE:
             pytest.skip("LightGBM not installed")
@@ -266,7 +296,7 @@ class TestFitGuards:
         mock_model.feature_importance.return_value = np.ones(n_features)
         mock_model.best_iteration = 50
 
-        with patch("app.core.ml.lightgbm_predictor.lgb") as mock_lgb:
+        with patch("v2.modules.prediction_ml.domain.lightgbm_predictor.lgb") as mock_lgb:
             mock_lgb.Dataset.return_value = MagicMock()
             mock_lgb.early_stopping.return_value = MagicMock()
             mock_lgb.log_evaluation.return_value = MagicMock()
@@ -288,14 +318,18 @@ class TestFitGuards:
 
 class TestPredictGuards:
     def test_predict_raises_when_not_trained(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         with pytest.raises(RuntimeError, match="eğitilmedi"):
             p.predict(_make_sefer())
 
     def test_predict_batch_raises_when_not_trained(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         with pytest.raises(RuntimeError, match="eğitilmedi"):
@@ -303,7 +337,7 @@ class TestPredictGuards:
 
     def test_predict_uses_validation_margin(self):
         """When prediction_interval_margin_ is set, confidence interval uses it."""
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -327,7 +361,7 @@ class TestPredictGuards:
 
     def test_predict_fallback_margin_from_training_stats(self):
         """When prediction_interval_margin_ is None, uses training_stats.val_mae."""
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -350,7 +384,7 @@ class TestPredictGuards:
         assert high > low
 
     def test_predict_batch_returns_array(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -377,14 +411,18 @@ class TestPredictGuards:
 
 class TestGetFeatureImportance:
     def test_returns_empty_dict_before_training(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         result = p.get_feature_importance()
         assert result == {}
 
     def test_returns_copy(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         p.feature_importance_ = {"ton": 0.4}
@@ -401,14 +439,16 @@ class TestGetFeatureImportance:
 
 class TestSaveLoadGuards:
     def test_save_raises_when_not_trained(self):
-        from app.core.ml.lightgbm_predictor import LightGBMFuelPredictor
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMFuelPredictor,
+        )
 
         p = LightGBMFuelPredictor()
         with pytest.raises(RuntimeError, match="eğitilmedi"):
             p.save_model("/tmp/test_lgb.txt")
 
     def test_load_raises_when_no_lgb(self):
-        from app.core.ml import lightgbm_predictor
+        from v2.modules.prediction_ml.domain import lightgbm_predictor
 
         original = lightgbm_predictor.LIGHTGBM_AVAILABLE
         try:
@@ -420,7 +460,7 @@ class TestSaveLoadGuards:
             lightgbm_predictor.LIGHTGBM_AVAILABLE = original
 
     def test_load_raises_file_not_found(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -433,7 +473,7 @@ class TestSaveLoadGuards:
             p.load_model("/tmp/nonexistent_lgb_model.txt")
 
     def test_load_raises_if_too_large(self, tmp_path):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMFuelPredictor,
         )
@@ -460,7 +500,7 @@ class TestSaveLoadGuards:
 
 class TestAnomalyClassifier:
     def test_init_without_lgb(self):
-        from app.core.ml import lightgbm_predictor
+        from v2.modules.prediction_ml.domain import lightgbm_predictor
 
         original = lightgbm_predictor.LIGHTGBM_AVAILABLE
         try:
@@ -471,7 +511,7 @@ class TestAnomalyClassifier:
             lightgbm_predictor.LIGHTGBM_AVAILABLE = original
 
     def test_fit_without_lgb_returns_error(self):
-        from app.core.ml import lightgbm_predictor
+        from v2.modules.prediction_ml.domain import lightgbm_predictor
 
         original = lightgbm_predictor.LIGHTGBM_AVAILABLE
         try:
@@ -484,7 +524,7 @@ class TestAnomalyClassifier:
             lightgbm_predictor.LIGHTGBM_AVAILABLE = original
 
     def test_predict_raises_when_not_trained(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMAnomalyClassifier,
         )
@@ -498,7 +538,7 @@ class TestAnomalyClassifier:
             clf.predict(X)
 
     def test_predict_proba_raises_when_not_trained(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMAnomalyClassifier,
         )
@@ -511,21 +551,25 @@ class TestAnomalyClassifier:
             clf.predict_proba(np.random.rand(3, 5))
 
     def test_severity_map_keys(self):
-        from app.core.ml.lightgbm_predictor import LightGBMAnomalyClassifier
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMAnomalyClassifier,
+        )
 
         clf = LightGBMAnomalyClassifier()
         for severity in ("normal", "low", "medium", "high", "critical"):
             assert severity in clf.SEVERITY_MAP
 
     def test_reverse_map_coverage(self):
-        from app.core.ml.lightgbm_predictor import LightGBMAnomalyClassifier
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LightGBMAnomalyClassifier,
+        )
 
         clf = LightGBMAnomalyClassifier()
         for i in range(5):
             assert i in clf.REVERSE_MAP
 
     def test_fit_success_with_mocked_lgb(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMAnomalyClassifier,
         )
@@ -552,7 +596,7 @@ class TestAnomalyClassifier:
         assert "accuracy" in result
 
     def test_predict_reverses_map(self):
-        from app.core.ml.lightgbm_predictor import (
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
             LIGHTGBM_AVAILABLE,
             LightGBMAnomalyClassifier,
         )
@@ -578,7 +622,9 @@ class TestAnomalyClassifier:
 
 class TestLGBMPredictionResult:
     def test_fields(self):
-        from app.core.ml.lightgbm_predictor import LGBMPredictionResult
+        from v2.modules.prediction_ml.domain.lightgbm_predictor import (
+            LGBMPredictionResult,
+        )
 
         r = LGBMPredictionResult(
             prediction=33.5,

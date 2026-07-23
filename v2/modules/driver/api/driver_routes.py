@@ -21,17 +21,11 @@ from fastapi import (
 from fastapi.responses import StreamingResponse
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import get_current_active_admin, get_current_active_user
-from app.core.exceptions import DomainError
-from app.database.models import Kullanici
-from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    DriverFleetStatsResponse,
-    UploadResultResponse,
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
 )
-from app.schemas.base import ResponseMeta, StandardResponse
 from v2.modules.driver.application.delete_sofor import bulk_delete
 from v2.modules.driver.application.delete_sofor import (
     delete_sofor as delete_sofor_usecase,
@@ -48,6 +42,7 @@ from v2.modules.driver.application.update_sofor import (
     update_sofor as update_sofor_usecase,
 )
 from v2.modules.driver.schemas import (
+    DriverFleetStatsResponse,
     DriverPerformanceSchema,
     DriverRouteProfileSchema,
     DriverScoreBreakdownSchema,
@@ -56,6 +51,14 @@ from v2.modules.driver.schemas import (
     SoforUpdate,
 )
 from v2.modules.import_excel.public import export_data, generate_template
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.shared_kernel.exceptions import DomainError
+from v2.modules.shared_kernel.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    UploadResultResponse,
+)
+from v2.modules.shared_kernel.schemas.base import ResponseMeta, StandardResponse
 
 logger = get_logger(__name__)
 

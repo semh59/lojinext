@@ -12,9 +12,9 @@ deleted / default-flagged).
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import Kullanici, KullaniciAyari, Rol
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.auth_rbac.application import preference_service
+from v2.modules.auth_rbac.public import Kullanici, KullaniciAyari, Rol
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 

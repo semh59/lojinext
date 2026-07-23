@@ -6,12 +6,10 @@ import asyncio
 import logging
 from typing import Any
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.background.celery_app import celery_app
 from v2.modules.analytics_executive.application.scan_compliance import scan_compliance
-from v2.modules.notification.application.send_push_broadcast import (
-    send_push_broadcast,
-)
+from v2.modules.notification.public import send_push_broadcast
+from v2.modules.platform_infra.background.celery_app import celery_app
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = logging.getLogger(__name__)
 

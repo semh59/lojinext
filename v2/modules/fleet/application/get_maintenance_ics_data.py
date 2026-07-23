@@ -11,8 +11,8 @@ from typing import Optional, Tuple
 
 from sqlalchemy import select
 
-from app.database.models import Arac, AracBakim
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.fleet.infrastructure.models import Arac, AracBakim
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def get_maintenance_ics_data(

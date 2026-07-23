@@ -16,9 +16,11 @@ dosya bazında sistemin en yoğun raw-SQL kaynağı.
 
 NE YAPMAZ: sayfa-görüntüleme analitiği (`page_views` — reports'un işi,
 aşağıdaki "page_views tutarsızlığı çözüldü" notuna bakın), driver bulk
-metrikleri (`get_bulk_driver_metrics`/`get_driver_comparison` — driver'ın
-işi, aşağıya bakın), ML model parametreleri (prediction_ml dalga 13'e
-kadar burada geçici kalıyor).
+metrikleri (`get_bulk_driver_metrics` — driver'ın işi, aşağıya bakın),
+gerçek ML tahmin pipeline'ı (prediction_ml, dalga 13'te taşındı — bu
+modülün `get_training_seferler` (dead) SİLİNDİ; `save_model_params`/
+`get_model_params`/`get_daily_summary_for_ml` bilinçli olarak BURADA
+KALDI, aşağıya bakın).
 
 ## Public API (public.py imzaları)
 
@@ -54,9 +56,6 @@ get_vehicle_cost_comparison(months=3) -> list[dict]
 calculate_savings_potential(target_consumption=30.0) -> dict
 calculate_roi(investment, months=12, target_consumption=30.0) -> dict
 
-# Insights (InsightEngine'dan free function'lara — B.1, ölü kod, bkz. aşağı)
-generate_all_and_save() -> int
-
 # Repository
 AnalizRepository, get_analiz_repo(session=None) -> AnalizRepository
 ```
@@ -83,23 +82,28 @@ kaldırma emsaliyle aynı gerekçe, ama kapsam daha geniş — bu kez 2 tam
 sınıf). Etkilenen ~20 test dosyası da kaldırıldı/dönüştürüldü (bkz. test
 stratejisi).
 
-## `InsightEngine` — free function'a bölündü ama HÂLÂ ölü kod (yanlışlıkla silinmedi, bilinçli tutuldu)
+## `InsightEngine` — ✅ SİLİNDİ (aşağıdaki 2026-07-18 bölümüne bkz.)
 
-`generate_all_and_save()`/`generate_fleet_insights()`/vb. hiçbir Celery
-task/endpoint'ten tetiklenmiyor (grep: `generate_all_and_save` çağrısı
-kendi dosyası + testler dışında sıfır sonuç). `AnalizService`/
-`DashboardService`'ten FARKLI olarak bu SİLİNMEDİ — kullanıcının kararı
-yalnız o ikisini kapsıyordu (2026-07-16). Kod gerçek + iyi test edilmiş
-(bulk insight üretimi + `anomalies` tablosuna alert yazma + kritik/yüksek
-push tetikleme) — ileride bir cron/endpoint'e bağlanabilir. Bağlanırsa
-davranış değişikliği gerektirir, ayrı bir karar.
+~~`InsightEngine` free function'a bölündü ama HÂLÂ ölü kod (yanlışlıkla
+silinmedi, bilinçli tutuldu)~~ — bu, 2026-07-16'da yazılan ARA bir
+durumdu (`generate_all_and_save()`/`generate_fleet_insights()`/vb.
+hiçbir Celery task/endpoint'ten tetiklenmiyordu, ama `AnalizService`/
+`DashboardService`'ten FARKLI olarak o turda SİLİNMEMİŞTİ). ❌
+**DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+bölüm AYNI DOSYANIN aşağıdaki "✅ 2026-07-18 ölü-kod temizliği" bölümüyle
+çelişiyordu — `generate_insights.py` (bu sınıfın free-function hali) iki
+gün sonra (2026-07-18) kullanıcı kararıyla GERÇEKTEN silindi, ama bu üst
+bölüm hiç güncellenmemişti. Yukarıdaki "Public API" listesindeki
+`generate_all_and_save()` satırı da aynı nedenle kaldırıldı — gerçek
+`public.py`'de artık yok.
 
-## `get_driver_comparison` (driver_metrics_queries.py) de aynı sınıf — ölü kod, silinmedi
+## ✅ `get_driver_comparison` (driver_metrics_queries.py) — 2026-07-18'de SİLİNDİ
 
-Bkz. driver modülünün CLAUDE.md'si — bu fonksiyon hiçbir prod endpoint'ten
-çağrılmıyor (`get_driver_comparison_pdf` adı benziyor ama farklı bir
-fonksiyon, `get_driver_stats`'i kullanıyor). Taşımadan önce de aynı
-durumdaydı, davranış değişikliği gerektirmediği için olduğu gibi taşındı.
+Aynı sınıf ölü koddu: hiçbir prod endpoint'ten çağrılmıyordu
+(`get_driver_comparison_pdf` adı benziyordu ama farklı bir fonksiyon,
+`get_driver_stats`'i kullanıyor). Kullanıcı kararıyla ("ölü kod yasak")
+dosyasından silindi — bkz. aşağıdaki "2026-07-18 ölü-kod temizliği"
+bölümü.
 
 ## 🔴 Bulgu + düzeltme: driver bulk metrikleri hiç taşınmamıştı (dalga 5 gap'i)
 
@@ -110,7 +114,8 @@ geçici bağımlılık" olarak doğru dokümante etmişti, task dosyasının
 varsayımı yanlıştı). Bu dalgada düzeltildi: `v2/modules/driver/
 infrastructure/driver_metrics_queries.py` (yeni dosya) — free function
 (B.1, tek-tablo CRUD değil çapraz-tablo salt-okunur agregat). Çağıranlar
-(`driver/domain/driver_stats.py`, `driver/domain/evaluation.py`)
+(`driver/application/driver_stats.py`, `driver/application/evaluation.py`
+— 2026-07-18'de `domain/`'den taşındı, domain saf/I/O'suz kuralı)
 güncellendi; `v2/modules/reports/infrastructure/repo_access.py`'nin
 `ReportRepos`'una `session` alanı eklendi (evaluation.py'nin `_HasAnalizRepo`
 duck-type fallback'i `ReportRepos` gibi session'sız bundle'larla da
@@ -130,22 +135,16 @@ infrastructure/analytics_tasks.py, api/page_view_routes.py}` +
 yanlıştı (`executive.py`(8)+`analytics.py`(2)) — gerçek analytics_executive
 route sayısı **8**.
 
-## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 2 adet)
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalan — 1 adet)
 
-**DÜZELTME (2026-07-17 ikinci-tur dedektif denetimi):** bu bölüm önceden
-"1 adet" diyordu ve yalnız `AnalizRepository`'yi sayıyordu —
-`application/generate_insights.py::_UnitOfWorkContext` de gerçek bir sınıf
-olarak var, sayım eksikti.
+**DÜZELTME (2026-07-18 tam-denetim turu):** bu bölüm 2 adet diyordu —
+`_UnitOfWorkContext` (`application/generate_insights.py`'de yaşıyordu)
+dosyasıyla birlikte ölü-kod olarak silindiği için sayım tekrar 1'e düştü.
 
 1. **`AnalizRepository`** (`infrastructure/executive_read_models.py`) — her
    modüldeki repository sınıfı gibi (`AracRepository`, `YakitRepository`, vb.)
    `BaseRepository[Sefer]`'den türeyen bir CRUD/query sınıfı; repo katmanı
    zaten B.1'in istisnası (bkz. root CLAUDE.md "Repository pattern").
-2. **`_UnitOfWorkContext`** (`application/generate_insights.py`) — tek
-   metodu `get_uow()`'un mock'lanabilir olmasını sağlayan async
-   context-manager adaptörü; iş mantığı taşımıyor, zararsız ama
-   `AnalizRepository` gibi repo-istisnası kapsamına girmediği için ayrı
-   bir madde olarak sayılması gerekiyordu.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -162,30 +161,45 @@ dokümante edildi).
 çok-CTE cross-domain JOIN (yakit_alimlari+seferler), servis-çağrısına
 çevirmek N+1 üretir (heavy-split ajanının ölçülü uyarısı, task dosyası §5.6).
 
-ML-parametre metodları (`get_training_seferler`/`save_model_params`/
-`get_model_params`/`get_daily_summary_for_ml`) prediction_ml (dalga 13)
-taşınana kadar burada kalıyor (task dosyasının kararı).
+✅ **KISMEN ÇÖZÜLDÜ (2026-07-18, prediction_ml dalga 13)**: 4 ML-parametre
+metodundan `get_training_seferler` (sıfır prod çağıran, grep ile doğrulandı)
+kullanıcı onayıyla SİLİNDİ. Diğer 3'ü (`save_model_params`/`get_model_params`/
+`get_daily_summary_for_ml`) BİLİNÇLİ OLARAK burada kaldı — prediction_ml'in
+kendi task dosyası bunları taşımayı öneriyordu ama gerçek taşıma (çapraz-modül
+repo-metod relocasyonu) davranış-değişikliği riski taşıdığından bu dalganın
+"mekanik taşıma" kapsamının dışında bırakıldı; `ensemble_service.py`/
+`kalman_estimator.py` bu 3 metodu hâlâ `v2.modules.analytics_executive.public.
+get_analiz_repo()` üzerinden çağırıyor.
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **driver (taşındı)**: `driver/domain/driver_stats.py`/`evaluation.py`
-  `AnalizRepository.get_filo_ortalama_tuketim` kullanır (bulk metrikler
-  artık driver'ın kendi `driver_metrics_queries.py`'sinde, bkz. yukarı).
-- **fuel (taşındı)**: `fuel/domain/consumption_prediction.py`
-  `get_analiz_repo()`'yu doğrudan çağırır (şoför-bazlı tüketim düzeltme).
+- **driver (taşındı)**: `driver/application/driver_stats.py`/`evaluation.py`
+  (2026-07-18'de `domain/`'den taşındı) `AnalizRepository.
+  get_filo_ortalama_tuketim` kullanır (bulk metrikler artık driver'ın
+  kendi `driver_metrics_queries.py`'sinde, bkz. yukarı).
+- ~~fuel (tersine)~~: `fuel/domain/consumption_prediction.py` 2026-07-18
+  ölü-kod temizliğinde silindi — bu bağımlılık artık yok.
 - **reports (taşındı)**: `ReportRepos.analiz_repo` = bu modülün
   `AnalizRepository`'si; `advanced_reports_routes.py` maliyet
   endpoint'leri `analyze_costs.py`'nin free function'larını çağırır.
 - **fleet (taşındı, geçici)**: `project_cashflow`
   `v2.modules.fleet.application.maintenance_prediction.MaintenancePredictor`'ı
   çağırır.
-- **notification (taşındı)**: `generate_insights.py`/`compliance_tasks.py`
-  `v2.modules.notification.application.send_push_broadcast`'i çağırır.
+- **notification (taşındı)**: `compliance_tasks.py`
+  `v2.modules.notification.public.send_push_broadcast`'i çağırır
+  (2026-07-18: public'e çevrildi; `generate_insights.py` aynı gün ölü kod
+  olarak silindi).
 - **auth_rbac (taşındı)**: `api/executive_routes.py`
-  `v2.modules.auth_rbac.domain.permission_checker.require_yetki` kullanır.
-- **anomaly (taşındı, geçici)**: `aggregate_cross_feature`'ın D.4 kalemi
-  `app.core.ml.vehicle_health_factor`'ı çağırır (henüz taşınmamış — ayrı
-  bir modülün dosyası, bu dalganın kapsamı dışı).
+  `v2.modules.auth_rbac.public.require_yetki` kullanır (public.py üzerinden).
+- **prediction_ml (taşındı)**: `aggregate_cross_feature`'ın D.4 kalemi
+  (bakım kaynaklı fazladan yakıt kaybı hesabı) `v2.modules.prediction_ml.
+  public.compute_maintenance_factor`/`fetch_health_input_batch`'i
+  (fonksiyon-içi import) çağırır. ❌ **DÜZELTİLDİ (2026-07-23, bağımsız
+  dedektif denetiminde bulundu)**: bu satır eskiden "anomaly" başlığı
+  altında ve `app.core.ml.vehicle_health_factor`'ın "henüz taşınmamış"
+  olduğunu söylüyordu — ikisi de yanlıştı: hedef modül `anomaly` değil
+  `prediction_ml`, ve bağımlılık zaten taşınmış, `prediction_ml.public`
+  üzerinden gidiyor (kontrat ihlali yok).
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 
@@ -201,3 +215,42 @@ taşınana kadar burada kalıyor (task dosyasının kararı).
 - `AnalizService`/`DashboardService`'e özgü test dosyaları (`test_analiz_
   service*.py`, `test_service_optimizations.py`'nin dashboard kısmı)
   kaldırıldı (sınıflar silindi).
+
+## ✅ 2026-07-18 ölü-kod temizliği (tam-denetim düzeltme turu)
+
+- `application/generate_insights.py` (InsightEngine'in free-function
+  hali — "bilinçli tutuldu" notuyla bekliyordu) kullanıcı kararıyla
+  SİLİNDİ: `Insight`/`generate_all_and_save` public export'ları,
+  `executive_read_models.bulk_create_alerts` (tek çağıranı buydu) ve
+  testleri (`test_insight_engine_coverage.py`, `test_insight_serious_push.py`)
+  birlikte kaldırıldı. `get_recent_unread_alerts` CANLI kalıyor
+  (AIService._build_context okuyor).
+- driver'daki aynı-sınıf ölü `get_driver_comparison`
+  (`driver/infrastructure/driver_metrics_queries.py`) da silindi.
+- `infrastructure/pdf_export.py` artık `PDFReportGenerator`'ı
+  `reports.public`'ten alıyor.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-analytics_executive` kontratı:
+`application/` diğer modüllerin yalnız `public`/`events`'ini import
+edebilir (2026-07-18'den beri KEPT). Diğer modüller bu modüle yalnız
+`v2.modules.analytics_executive.public` üzerinden erişir (`get_analiz_repo`
+dahil — container.py/repositories/__init__.py composition-root istisnası
+hariç, proje-geneli desen).
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`filo verimlilik endeksi`=fleet efficiency index, `nakit akışı`=cashflow,
+`karbon ayak izi`=carbon footprint, `uyum/denetim`=compliance,
+`ne-olur-eğer`=what-if, `otobüs faktörü`=bus factor,
+`maliyet kırılımı`=cost breakdown, `içgörü`=insight (silindi),
+`yönetici kokpiti`=executive cockpit.
+
+## Modüle özel iş kuralları & gotcha'lar
+
+- Read-model modülüdür: `AnalizRepository` cross-domain SELECT'lerin tek
+  meşru evi (seferler/araclar/yakit_alimlari üzerinde raw-SQL agregasyon)
+  — FAZ2'de SELECT-only grant'lerle şemalara bölünecek.
+- `_UnitOfWorkContext` (application/generate_insights.py'deydi) dosyayla
+  birlikte silindi — artık 1 sınıf istisnası var (`AnalizRepository`).

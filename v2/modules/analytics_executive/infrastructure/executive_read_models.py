@@ -20,10 +20,17 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
-from app.database.base_repository import BaseRepository
-from app.database.models import Anomaly, Sefer, YakitFormul
-from app.infrastructure.logging.logger import get_logger
+# fuel.public değil infrastructure.models doğrudan: fuel.public, add_yakit
+# üzerinden v2.modules.shared_kernel.infrastructure.unit_of_work'e bağımlı, ve BU dosya zaten
+# app/database/unit_of_work.py'nin kendisi tarafından import ediliyor
+# (analiz_repo property) — public.py üzerinden gidilirse döngüsel import
+# oluşur (unit_of_work -> executive_read_models -> fuel.public -> add_yakit
+# -> unit_of_work). reports'un ReportRepos.yakit_repo = v2.modules.fuel.
+# infrastructure.repository ile aynı, zaten dokümante edilmiş geçici
+# infra-to-infra bağımlılık deseni.
+from v2.modules.fuel.infrastructure.models import YakitFormul
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 
@@ -31,11 +38,19 @@ logger = get_logger(__name__)
 DEFAULT_FILO_ORTALAMA = 32.0
 
 
-class AnalizRepository(BaseRepository[Sefer]):
+class AnalizRepository(BaseRepository[Any]):
     """Analiz ve istatistik veritabanı operasyonları (Async)"""
 
-    # BaseRepository gereksinimi için default model (seferler üzerinden çok analiz yapılıyor)
-    model = Sefer
+    def __init__(self, session: Any = None) -> None:
+        # Lazy import — aynı sebep: unit_of_work.py -> executive_read_models.py
+        # -> trip.public -> add_trip.py -> unit_of_work.py çemberini kırar
+        # (bkz. get_training_seferler'daki lazy-import notu). `model` hiçbir
+        # metotta gerçekten kullanılmıyor (bu repo tamamen raw-SQL) — yalnız
+        # BaseRepository.__init__'in `model is None` guard'ı için gerekli.
+        from v2.modules.trip.public import SeferORM
+
+        self.model = SeferORM
+        super().__init__(session)
 
     # =========================================================================
     # ML VERİLERİ (prediction_ml dalgası [13] taşıyana kadar burada — task
@@ -50,6 +65,16 @@ class AnalizRepository(BaseRepository[Sefer]):
         [v2.1] FK join on guzergah_id — text-match join removed to avoid
         false positives and to stay consistent with get_for_training.
         """
+        # Lazy import (dalga 16'da doğrulandı — sebep güncellendi): bu dosya
+        # v2.modules.shared_kernel.infrastructure.unit_of_work.py'nin `analiz_repo` lazy property'si
+        # için DOĞRUDAN import ediliyor; trip.public zincirinin ucu
+        # (add_trip.py) da `v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork`'ü import
+        # ediyor — top-level yapılırsa unit_of_work.py kendi kendini
+        # yüklerken çöker (ImportError: partially initialized module).
+        # Ampirik doğrulama: top-level'a alınıp `import app.main` denendi,
+        # gerçekten patladı.
+        from v2.modules.trip.public import SEFER_STATUS_TAMAMLANDI
+
         # Input validation
         limit = max(1, min(int(limit or 200), 1000))
         offset = max(0, int(offset or 0))
@@ -380,53 +405,16 @@ class AnalizRepository(BaseRepository[Sefer]):
             logger.error("Recent alerts query failed", exc_info=True)
             return []
 
-    async def bulk_create_alerts(self, payloads: List[Dict[str, Any]]) -> int:
-        """Sistem insight'larını alert deposuna (anomalies tablosu) toplu yazar.
-
-        ``insight_engine.generate_all_and_save`` için yazma tarafı.
-        ``anomalies`` sistemin alert deposudur (``get_recent_unread_alerts``
-        oradan okur). Insight'lar numerik sapma içermediği için
-        ``deger/beklenen_deger/sapma_yuzde`` 0.0 sentinel ile, ``tip='insight'``
-        olarak yazılır; payload'un title+message'ı ``aciklama``da birleştirilir.
-        Eklenen satır sayısını döner.
-        """
-        if not payloads:
-            return 0
-
-        session = self.session
-        today = datetime.now(timezone.utc).date()
-        rows = [
-            {
-                "tarih": today,
-                "tip": "insight",
-                "kaynak_tip": p.get("kaynak_tur") or "sistem",
-                "kaynak_id": p.get("kaynak_id") or 0,
-                "deger": 0.0,
-                "beklenen_deger": 0.0,
-                "sapma_yuzde": 0.0,
-                "severity": p.get("severity") or "low",
-                "aciklama": f"{p.get('title', '')}: {p.get('message', '')}".strip(": "),
-            }
-            for p in payloads
-        ]
-        try:
-            await session.execute(insert(Anomaly), rows)
-            if self._session is None:
-                await session.commit()
-            return len(rows)
-        except Exception as e:
-            if self._session is None:
-                await session.rollback()
-            logger.error(f"Error bulk-creating insight alerts: {e}")
-            raise e
-
+    # 2026-07-18 ölü-kod temizliği: bulk_create_alerts silindi — tek
+    # çağıranı generate_all_and_save (insight motoru) idi, o da ölü kod
+    # olarak silindi. get_recent_unread_alerts (aşağıda) CANLI kalıyor
+    # (AIService._build_context okuyor).
     # NOT: bulk_create_anomalies/get_anomalies_filtered/get_anomaly_by_id/
     # update_anomaly dalga 8'de v2/modules/anomaly/infrastructure/
-    # anomaly_repository.py'ye taşındı (uow.anomaly_repo). bulk_create_alerts
-    # (yukarıda) ve get_recent_unread_alerts (aşağıda) taşınmadı — bunlar
-    # ``anomalies`` tablosuna insight-alert yazan/okuyan AYRI bir yol
-    # (task dosyasının 15 metodluk listesinde yok), analytics_executive'in
-    # kendi sorumluluğu olarak burada kalıyor.
+    # anomaly_repository.py'ye taşındı (uow.anomaly_repo).
+    # get_recent_unread_alerts ``anomalies`` tablosundan insight-alert okuyan
+    # AYRI bir yol (task dosyasının 15 metodluk listesinde yok),
+    # analytics_executive'in kendi sorumluluğu olarak burada kalıyor.
 
     async def get_period_stats(self, start: date, end: date) -> Dict:
         """Dönem bazlı yakıt ve sefer özeti (ReportService için)"""

@@ -108,7 +108,7 @@ async def test_list_vehicles_service_raises_domain_error(
     async_client, admin_auth_headers
 ):
     """DomainError from use-case propagates correctly."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with patch(
         f"{ROUTES}.get_all_vehicles_paged",
@@ -162,7 +162,7 @@ async def test_create_vehicle_no_auth(async_client):
 
 async def test_create_vehicle_happy_path(async_client, admin_auth_headers, db_session):
     """Returns 201 and vehicle on success (seeds real Arac; use-case mock returns its id)."""
-    from app.database.models import Arac
+    from v2.modules.fleet.public import AracORM as Arac
 
     arac = Arac(plaka="34VHC001", marka="Mercedes")
     db_session.add(arac)
@@ -235,7 +235,7 @@ async def test_get_vehicle_no_auth(async_client):
 
 async def test_get_vehicle_not_found(async_client, admin_auth_headers):
     """Returns 404 when vehicle not in DB."""
-    with patch("app.database.connection.get_db") as _:
+    with patch("v2.modules.platform_infra.database.connection.get_db") as _:
         # Use the real DB session but mock db.get to return None
         from app.main import app
 
@@ -244,7 +244,7 @@ async def test_get_vehicle_not_found(async_client, admin_auth_headers):
             mock_session.get = AsyncMock(return_value=None)
             yield mock_session
 
-        from app.database.connection import get_db
+        from v2.modules.platform_infra.database.connection import get_db
 
         app.dependency_overrides[get_db] = _fake_get_db
         try:
@@ -363,7 +363,7 @@ async def test_get_vehicle_stats_not_found(async_client, admin_auth_headers):
 
 async def test_get_vehicle_stats_happy_path(async_client, admin_auth_headers):
     """Returns VehicleStats on success."""
-    from app.core.entities.models import VehicleStats
+    from v2.modules.fleet.domain.entities import VehicleStats
 
     mock_stats = MagicMock(spec=VehicleStats)
     mock_stats.arac_id = 1
@@ -547,7 +547,7 @@ async def test_update_vehicle_no_auth(async_client):
 async def test_update_vehicle_not_found(async_client, admin_auth_headers):
     """Returns 404 when use-case returns False."""
     with patch(f"{ROUTES}.update_vehicle", AsyncMock(return_value=False)):
-        from app.database.connection import get_db
+        from v2.modules.platform_infra.database.connection import get_db
 
         async def _fake_get_db():
             mock_session = AsyncMock()
@@ -747,7 +747,7 @@ async def test_inspection_alerts_happy_path(async_client, admin_auth_headers):
 
 async def test_delete_vehicle_domain_error_propagates(async_client, admin_auth_headers):
     """DomainError from delete_vehicle propagates as-is (422)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.delete_vehicle",

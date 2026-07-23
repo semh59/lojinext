@@ -10,13 +10,15 @@ from datetime import date
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.database.models import Arac, Kullanici, Lokasyon, Rol, Sofor
-
 # Import app and models
 from app.main import app
 
 # Use global Test Database Configuration from conftest
 from tests.conftest import TEST_DATABASE_URL
+from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.location.public import Lokasyon
 
 
 def _unwrap_standard_response(payload):
@@ -132,13 +134,12 @@ async def test_route(test_session):
 def override_deps(test_session, test_user):
     """Override FastAPI dependencies and UoW for testing."""
 
-    from app.api.deps import (
-        get_background_job_manager,
+    from v2.modules.auth_rbac.public import (
         get_current_active_admin,
         get_current_superadmin,
         get_current_user,
-        get_db,
     )
+    from v2.modules.platform_infra.public import get_db, get_job_manager
 
     async def override_get_db():
         yield test_session
@@ -164,12 +165,10 @@ def override_deps(test_session, test_user):
     app.dependency_overrides[get_current_user] = override_get_user
     app.dependency_overrides[get_current_active_admin] = override_get_user
     app.dependency_overrides[get_current_superadmin] = override_get_user
-    app.dependency_overrides[get_background_job_manager] = (
-        lambda: FakeBackgroundJobManager()
-    )
+    app.dependency_overrides[get_job_manager] = lambda: FakeBackgroundJobManager()
 
     # Monkey patch UoW to always use test_session
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     original_aenter = UnitOfWork.__aenter__
 
@@ -184,8 +183,8 @@ def override_deps(test_session, test_user):
     # Patch execute_query to fix SQLite JSON/Enum string deserialization
     import json
 
-    from app.core.entities.models import DurumEnum
-    from app.database.base_repository import BaseRepository
+    from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
+    from v2.modules.trip.domain.entities import DurumEnum
 
     # Build DurumEnum name → value mapping for SQLite compat
     _durum_map = {f"DurumEnum.{e.name}": e.value for e in DurumEnum}

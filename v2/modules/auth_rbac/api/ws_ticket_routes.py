@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.api.deps import get_current_active_user
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.application.authenticate import get_current_active_user
 from v2.modules.auth_rbac.application.create_ws_ticket import (
     create_ws_ticket as create_ws_ticket_usecase,
 )
+from v2.modules.auth_rbac.infrastructure.models import Kullanici
 
 router = APIRouter()
 

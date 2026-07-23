@@ -7,7 +7,7 @@ from typing import Dict, List
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import YakitAlimi
+from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 
 
 async def get_consumption_trend(session: AsyncSession, months: int = 6) -> List[Dict]:

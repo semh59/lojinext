@@ -14,7 +14,7 @@ düzeltildi — endpoint yeri/sahipliği ayrı bir karar gerektirir.
 
 from typing import Any, Dict
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def get_fleet_insights(days: int) -> Dict[str, Any]:

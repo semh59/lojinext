@@ -15,11 +15,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import insert
 
-from app.database.models import Arac, BakimTipi, Dorse
 from v2.modules.fleet.application.create_maintenance_record import (
     create_breakdown,
     create_maintenance_record,
 )
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fleet.public import BakimTipi, Dorse
 
 pytestmark = pytest.mark.integration
 

@@ -19,8 +19,30 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 ALEMBIC_DIR = os.path.abspath(os.path.dirname(__file__))
 ACTIVE_VERSION_DIR = os.path.join(ALEMBIC_DIR, "versions")
 
+# models.py bölünmesi (dalga 16, task #58): tablo sınıfları taşındıkça
+# v2/modules/<name>/infrastructure/models.py'ye gidiyor. Bu dosyalar aynı
+# paylaşılan Base'i (v2.modules.shared_kernel.infrastructure.base) kullanır
+# ama sınıfları Base.metadata'ya kaydettirmek için import EDİLMİŞ olmaları
+# gerekir — aksi halde alembic bu tabloları "silinmiş" sanır (autogenerate/
+# `alembic check` DROP TABLE üretir). Her yeni modül taşındığında buraya
+# eklenmeli.
+import v2.modules.admin_platform.infrastructure.models  # noqa: E402,F401
+import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
+import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
+import v2.modules.driver.infrastructure.models  # noqa: E402,F401
+import v2.modules.fleet.infrastructure.models  # noqa: E402,F401
+import v2.modules.fuel.infrastructure.models  # noqa: E402,F401
+import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.location.infrastructure.models  # noqa: E402,F401
+import v2.modules.notification.infrastructure.models  # noqa: E402,F401
+import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
+import v2.modules.reports.infrastructure.models  # noqa: E402,F401
+import v2.modules.route_simulation.infrastructure.models  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
+import v2.modules.trip.infrastructure.models  # noqa: E402,F401
 from app.config import settings
-from app.database.models import Base
+from v2.modules.shared_kernel.infrastructure.base import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

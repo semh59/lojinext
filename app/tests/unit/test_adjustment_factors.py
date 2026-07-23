@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.ml.adjustment_factors import (
+from v2.modules.prediction_ml.domain.adjustment_factors import (
     combine_factors,
     weather_precipitation_factor,
     weather_temperature_factor,

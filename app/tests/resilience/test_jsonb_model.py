@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy import select, text
 
-from app.database.models import OutboxEvent
+from v2.modules.shared_kernel.infrastructure.outbox import OutboxEvent
 
 
 @pytest.mark.asyncio

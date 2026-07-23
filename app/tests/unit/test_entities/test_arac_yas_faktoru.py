@@ -10,7 +10,7 @@ edilişinde `TypeError: '<=' not supported between instances of 'NoneType' and
 
 import pytest
 
-from app.core.entities.models import Arac
+from v2.modules.fleet.domain.entities import Arac
 
 pytestmark = pytest.mark.unit
 

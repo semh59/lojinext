@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Optional
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.auth_rbac.domain.security import get_password_hash, verify_password
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def list_users(

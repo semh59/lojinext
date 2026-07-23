@@ -31,10 +31,10 @@ def _make_session(rows=None):
 @contextlib.contextmanager
 def _patch_uow_and_trainer(rows=None, trainer=None):
     """
-    Patch UnitOfWork dunders and app.core.ml.training.trainer.Trainer.
+    Patch UnitOfWork dunders and v2.modules.prediction_ml.application.trainer.Trainer.
     """
-    import app.core.ml.training.trainer as trainer_mod
-    from app.database.unit_of_work import UnitOfWork
+    import v2.modules.prediction_ml.application.trainer as trainer_mod
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     mock_session = _make_session(rows)
     fake_uow = MagicMock()
@@ -65,7 +65,7 @@ async def test_run_async_no_vehicles_returns_zero_counts():
     mock_trainer.train_for_vehicle = AsyncMock(return_value={"success": True})
 
     with _patch_uow_and_trainer(rows=[], trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -83,7 +83,7 @@ async def test_run_async_all_success():
     mock_trainer.train_for_vehicle = AsyncMock(return_value={"success": True})
 
     with _patch_uow_and_trainer(rows=rows, trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -102,7 +102,7 @@ async def test_run_async_insufficient_data_counted_as_skipped():
     )
 
     with _patch_uow_and_trainer(rows=rows, trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -121,7 +121,7 @@ async def test_run_async_non_yetersiz_error_counted_as_failed():
     )
 
     with _patch_uow_and_trainer(rows=rows, trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -146,7 +146,7 @@ async def test_run_async_exception_counted_as_failed():
     mock_trainer.train_for_vehicle = train_side_effect
 
     with _patch_uow_and_trainer(rows=rows, trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -177,7 +177,7 @@ async def test_run_async_mixed_results():
     mock_trainer.train_for_vehicle = train_side_effect
 
     with _patch_uow_and_trainer(rows=rows, trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -192,7 +192,7 @@ async def test_run_async_result_dict_keys_present():
     mock_trainer = MagicMock()
 
     with _patch_uow_and_trainer(rows=[], trainer=mock_trainer):
-        from app.core.ml.training.scheduler_task import _run_async
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import _run_async
 
         results = await _run_async()
 
@@ -206,7 +206,9 @@ async def test_run_async_result_dict_keys_present():
 
 def test_weekly_retrain_task_exists():
     """Task is registered as a shared_task with the correct name."""
-    from app.core.ml.training.scheduler_task import weekly_retrain_all_vehicles
+    from v2.modules.prediction_ml.infrastructure.scheduler_task import (
+        weekly_retrain_all_vehicles,
+    )
 
     assert hasattr(weekly_retrain_all_vehicles, "name")
     assert "weekly_retrain_all_vehicles" in weekly_retrain_all_vehicles.name
@@ -218,13 +220,15 @@ def test_weekly_retrain_task_calls_run_async():
 
     with (
         patch(
-            "app.core.ml.training.scheduler_task._run_async",
+            "v2.modules.prediction_ml.infrastructure.scheduler_task._run_async",
         ),
         patch(
-            "app.core.ml.training.scheduler_task.asyncio.run", return_value=expected
+            "v2.modules.prediction_ml.infrastructure.scheduler_task.asyncio.run", return_value=expected
         ) as mock_asyncio_run,
     ):
-        from app.core.ml.training.scheduler_task import weekly_retrain_all_vehicles
+        from v2.modules.prediction_ml.infrastructure.scheduler_task import (
+            weekly_retrain_all_vehicles,
+        )
 
         result = weekly_retrain_all_vehicles()
 

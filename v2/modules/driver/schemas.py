@@ -17,7 +17,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
-from app.schemas.validators import (
+from v2.modules.shared_kernel.schemas.validators import (
     mask_phone,
     sanitize_string,
     validate_phone,
@@ -362,3 +362,11 @@ class CoachingEffectivenessResponse(BaseModel):
         ...,
         description="UI'da açıkça gösterilecek istatistiksel uyarı",
     )
+
+
+# ─── Sürücü-filo istatistik response şeması (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class DriverFleetStatsResponse(BaseModel):
+    total: int
+    active: int

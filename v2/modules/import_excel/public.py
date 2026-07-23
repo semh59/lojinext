@@ -23,6 +23,7 @@ from v2.modules.import_excel.infrastructure.exporters import (
     export_data,
     generate_template,
 )
+from v2.modules.import_excel.infrastructure.models import IceriAktarimGecmisi
 from v2.modules.import_excel.infrastructure.parsers import parse_dorse_excel
 from v2.modules.import_excel.infrastructure.report_export import (
     ExportService,
@@ -31,6 +32,8 @@ from v2.modules.import_excel.infrastructure.report_export import (
 from v2.modules.import_excel.infrastructure.tasks import process_belge_ocr
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "IceriAktarimGecmisi",
     "ExportService",
     "execute_import",
     "export_data",

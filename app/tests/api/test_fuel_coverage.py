@@ -521,7 +521,7 @@ async def test_upload_yakit_excel_async_mode(async_client, admin_auth_headers):
     """POST /fuel/excel/upload?async_mode=true → 200 with task_id.
 
     The endpoint lazily imports ``get_job_manager`` from
-    app.infrastructure.background.job_manager. We patch that factory so the
+    v2.modules.platform_infra.background.job_manager. We patch that factory so the
     submitted job returns a deterministic task_id. (Regression: the endpoint
     previously imported the non-existent ``get_background_job_manager`` and
     crashed on this path — see test_latent_bug_regressions.py.)
@@ -530,7 +530,7 @@ async def test_upload_yakit_excel_async_mode(async_client, admin_auth_headers):
     mock_jm.submit = AsyncMock(return_value="task-abc-123")
 
     with patch(
-        "app.infrastructure.background.job_manager.get_job_manager",
+        "v2.modules.platform_infra.background.job_manager.get_job_manager",
         return_value=mock_jm,
     ):
         resp = await async_client.post(

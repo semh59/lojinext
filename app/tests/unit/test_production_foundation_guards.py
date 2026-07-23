@@ -497,10 +497,20 @@ def test_active_foundation_routes_use_resource_only_turkish_copy():
 
 def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
     time_series_service = (
-        ROOT / "app" / "services" / "time_series_service.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "prediction_ml"
+        / "application"
+        / "time_series_service.py"
     ).read_text(encoding="utf-8")
     route_calibration_service = (
-        ROOT / "app" / "core" / "services" / "route_calibration_service.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "route_simulation"
+        / "application"
+        / "route_calibration_service.py"
     ).read_text(encoding="utf-8")
     route_service = (
         ROOT
@@ -511,13 +521,18 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
         / "get_route_details.py"
     ).read_text(encoding="utf-8")
     weather_service = (
-        ROOT / "app" / "core" / "services" / "weather_service.py"
+        ROOT
+        / "v2"
+        / "modules"
+        / "route_simulation"
+        / "application"
+        / "weather_service.py"
     ).read_text(encoding="utf-8")
     lightgbm_predictor = (
-        ROOT / "app" / "core" / "ml" / "lightgbm_predictor.py"
+        ROOT / "v2" / "modules" / "prediction_ml" / "domain" / "lightgbm_predictor.py"
     ).read_text(encoding="utf-8")
     sefer_repo = (
-        ROOT / "app" / "database" / "repositories" / "sefer_repo.py"
+        ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
 
     assert "Cold-Start-Mock" not in time_series_service
@@ -562,26 +577,37 @@ def test_frontend_public_trip_contract_no_longer_exposes_is_real():
 
 
 def test_backend_trip_contract_no_longer_exposes_is_real():
-    trip_schema = (ROOT / "app" / "schemas" / "sefer.py").read_text(encoding="utf-8")
-    trip_entities = (ROOT / "app" / "core" / "entities" / "models.py").read_text(
+    """dalga 14/16'da trip modülüne taşındı: app/schemas/sefer.py ->
+    v2/modules/trip/schemas.py, app/core/entities/models.py ->
+    v2/modules/trip/domain/entities.py, app/core/services/
+    sefer_write_service.py (B.1'de dissolve edildi) -> v2/modules/trip/
+    application/*.py (tüm dosyalar birleşik taranır)."""
+    trip_schema = (ROOT / "v2" / "modules" / "trip" / "schemas.py").read_text(
         encoding="utf-8"
     )
-    trip_write_service = (
-        ROOT / "app" / "core" / "services" / "sefer_write_service.py"
+    trip_entities = (
+        ROOT / "v2" / "modules" / "trip" / "domain" / "entities.py"
     ).read_text(encoding="utf-8")
+    trip_application = "".join(
+        p.read_text(encoding="utf-8")
+        for p in (ROOT / "v2" / "modules" / "trip" / "application").glob("*.py")
+    )
 
     assert LEGACY_REAL_FIELD not in trip_schema
     assert LEGACY_REAL_OPTIONAL not in trip_schema
     assert LEGACY_REAL_ENTITY not in trip_entities
     assert LEGACY_REAL_OPTIONAL not in trip_entities
-    assert LEGACY_REAL_ASSIGNMENT not in trip_write_service
-    assert LEGACY_REAL_FALLBACK not in trip_write_service
+    assert LEGACY_REAL_ASSIGNMENT not in trip_application
+    assert LEGACY_REAL_FALLBACK not in trip_application
 
 
 def test_runtime_and_persistence_layers_no_longer_reference_is_real():
-    db_models = (ROOT / "app" / "database" / "models.py").read_text(encoding="utf-8")
+    # app/database/models.py dalga 16 (task #58) sonunda tamamen dissolve
+    # edildi (tüm ORM sınıfları v2/modules/<isim>/infrastructure/models.py'ye
+    # taşındı, dosyanın kendisi silindi) — bu yüzden artık taranacak bir
+    # dosya kalmadı, eski satır kaldırıldı.
     trip_repo = (
-        ROOT / "app" / "database" / "repositories" / "sefer_repo.py"
+        ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
     analytics_repo = (
         ROOT
@@ -602,7 +628,6 @@ def test_runtime_and_persistence_layers_no_longer_reference_is_real():
         encoding="utf-8"
     )
 
-    assert LEGACY_REAL_FLAG not in db_models
     assert LEGACY_REAL_FLAG not in trip_repo
     assert LEGACY_REAL_FLAG not in analytics_repo
     assert LEGACY_REAL_FLAG not in vehicle_repo

@@ -166,10 +166,10 @@ def test_generate_ics_naive_datetime_treated_as_utc():
 
 def test_generate_ics_handles_enum_bakim_tipi():
     """BakimTipi enum'u .value ile string'e çevrilir."""
-    from app.database.models import BakimTipi
     from v2.modules.fleet.application.export_maintenance_calendar import (
         generate_ics_for_maintenance,
     )
+    from v2.modules.fleet.public import BakimTipi
 
     bakim = _StubBakim(
         id=1,

@@ -13,8 +13,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import BildirimGecmisi, BildirimKurali, Kullanici, Rol
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.notification.public import BildirimGecmisi, BildirimKurali
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
@@ -63,11 +64,11 @@ async def test_notification_uses_bulk_query_not_per_rule(db_session):
     """handle_event fetches users with ONE bulk query and persists exactly the
     right notifications to the real DB (no N+1 per rule)."""
     import v2.modules.notification.application.handle_trip_events as ns_mod
-    from app.infrastructure.events.event_bus import Event
-    from app.infrastructure.events.event_types import EventType
     from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
         KullaniciRepository,
     )
+    from v2.modules.platform_infra.events.event_bus import Event
+    from v2.modules.platform_infra.events.event_types import EventType
 
     event_type = EventType.SEFER_ADDED
     olay = event_type.value

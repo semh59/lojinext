@@ -17,7 +17,7 @@ ever invoked anywhere, a repo-wide gap documented in
 ``v2/modules/notification/CLAUDE.md`` and fixed for every module at once).
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 ARAC_ADDED = EventType.ARAC_ADDED
 ARAC_UPDATED = EventType.ARAC_UPDATED

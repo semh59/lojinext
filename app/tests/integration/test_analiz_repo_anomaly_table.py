@@ -15,7 +15,7 @@ from datetime import date
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Anomaly
+from v2.modules.anomaly.public import Anomaly
 
 
 @pytest.mark.integration

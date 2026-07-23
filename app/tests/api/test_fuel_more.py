@@ -82,7 +82,7 @@ _CREATE_PAYLOAD = {
 @pytest.mark.asyncio
 async def test_get_fuel_stats_domain_error_reraised(async_client, admin_auth_headers):
     """DomainError from get_stats is re-raised (not wrapped in 500)."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.get_stats",
@@ -103,7 +103,7 @@ async def test_read_yakit_alimlari_domain_error_reraised(
     async_client, admin_auth_headers
 ):
     """DomainError from get_all_paged is re-raised (not wrapped in 500)."""
-    from app.core.exceptions import ImportValidationError
+    from v2.modules.shared_kernel.exceptions import ImportValidationError
 
     with patch(
         f"{ROUTES}.get_all_paged",
@@ -121,7 +121,7 @@ async def test_read_yakit_alimlari_domain_error_reraised(
 @pytest.mark.asyncio
 async def test_create_yakit_domain_error_reraised(async_client, admin_auth_headers):
     """DomainError from add_yakit is re-raised."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     with patch(
         f"{ROUTES}.add_yakit",
@@ -141,7 +141,7 @@ async def test_create_yakit_domain_error_reraised(async_client, admin_auth_heade
 @pytest.mark.asyncio
 async def test_update_yakit_domain_error_reraised(async_client, admin_auth_headers):
     """DomainError from update_yakit is re-raised."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     with patch(
         f"{ROUTES}.update_yakit_usecase",
@@ -244,7 +244,7 @@ async def test_export_yakit_alimlari_domain_error_reraised(
     async_client, admin_auth_headers
 ):
     """GET /fuel/excel/export — DomainError re-raised."""
-    from app.core.exceptions import ExcelExportError
+    from v2.modules.shared_kernel.exceptions import ExcelExportError
 
     with patch(
         f"{ROUTES}.get_all_paged",
@@ -282,7 +282,7 @@ async def test_export_returns_list_items_not_dict(async_client, admin_auth_heade
 @pytest.mark.asyncio
 async def test_get_fuel_excel_template_domain_error(async_client, admin_auth_headers):
     """GET /fuel/excel/template — DomainError re-raised."""
-    from app.core.exceptions import ExcelExportError
+    from v2.modules.shared_kernel.exceptions import ExcelExportError
 
     with patch(
         "v2.modules.import_excel.public.generate_template",

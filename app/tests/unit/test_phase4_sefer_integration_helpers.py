@@ -13,11 +13,11 @@ Integration testler (DB'li) Phase 4.4 sonrası CI'da koşacak — sefer create
 from __future__ import annotations
 
 from app.config import settings
-from app.core.services.sefer_fuel_estimator import (
+from v2.modules.shared_kernel.infrastructure.base import Base
+from v2.modules.trip.application.sefer_fuel_estimator import (
     FactorBreakdown,
     SeferFuelEstimate,
 )
-from app.database.models import Base
 
 
 def test_legacy_prediction_dict_has_required_keys():
@@ -100,7 +100,9 @@ def test_sefer_repo_allowed_whitelist_phase44():
     """Phase 4.4: route_simulation_id + tahmini_tuketim allowed'da olmalı."""
     import re
 
-    src = open("app/database/repositories/sefer_repo.py", encoding="utf-8").read()
+    src = open(
+        "v2/modules/trip/infrastructure/repository.py", encoding="utf-8"
+    ).read()
     # allowed bloğunu bul
     m = re.search(r"allowed\s*=\s*\{([^}]+)\}", src)
     assert m is not None

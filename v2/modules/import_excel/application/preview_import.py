@@ -6,10 +6,10 @@ from typing import Any, Dict, List
 import pandas as pd
 from fastapi import HTTPException, UploadFile
 
-from app.core.exceptions import ExcelExportError
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.constants import SUPPORTED_TYPES
 from v2.modules.import_excel.infrastructure.parsers import MAX_EXCEL_ROWS
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.exceptions import ExcelExportError
 
 logger = get_logger(__name__)
 

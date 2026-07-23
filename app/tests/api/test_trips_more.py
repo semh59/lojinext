@@ -76,7 +76,7 @@ def _make_sefer_response_dict(**kwargs):
 
 
 def _make_sefer_response_obj():
-    from app.schemas.sefer import SeferResponse
+    from v2.modules.trip.schemas import SeferResponse
 
     return SeferResponse.model_validate(_make_sefer_response_dict())
 
@@ -97,32 +97,32 @@ def _make_stats_dict(**kwargs):
 
 @contextmanager
 def _override_sefer_service(mock_svc):
-    from app.api.deps import get_sefer_service
     from app.main import app
+    from v2.modules.trip.public import get_sefer_service_for_request
 
     async def _fake():
         return mock_svc
 
-    app.dependency_overrides[get_sefer_service] = _fake
+    app.dependency_overrides[get_sefer_service_for_request] = _fake
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_sefer_service, None)
+        app.dependency_overrides.pop(get_sefer_service_for_request, None)
 
 
 @contextmanager
 def _override_job_manager(mock_jm):
-    from app.api.deps import get_background_job_manager
     from app.main import app
+    from v2.modules.platform_infra.public import get_job_manager
 
     async def _fake_jm():
         return mock_jm
 
-    app.dependency_overrides[get_background_job_manager] = _fake_jm
+    app.dependency_overrides[get_job_manager] = _fake_jm
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_background_job_manager, None)
+        app.dependency_overrides.pop(get_job_manager, None)
 
 
 _SEFER_CREATE_PAYLOAD = dict(
@@ -154,7 +154,7 @@ async def test_export_sefer_with_tarih_attribute(async_client, admin_auth_header
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.export_data",
+            "v2.modules.import_excel.api.trip_export_routes.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -180,7 +180,7 @@ async def test_export_sefer_item_without_tarih(async_client, admin_auth_headers)
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.export_data",
+            "v2.modules.import_excel.api.trip_export_routes.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -271,7 +271,7 @@ async def test_create_sefer_validation_error_in_serialization(
     mock_svc.get_sefer_by_id = AsyncMock(return_value={"id": "not-an-int-that-parses"})
     with _override_sefer_service(mock_svc):
         with patch(
-            "app.schemas.sefer.SeferResponse.model_validate",
+            "v2.modules.trip.schemas.SeferResponse.model_validate",
             side_effect=ValidationError.from_exception_data(
                 "SeferResponse",
                 [
@@ -386,7 +386,7 @@ async def test_update_sefer_get_updated_returns_none(async_client, admin_auth_he
 @pytest.mark.asyncio
 async def test_sefer_onayla_domain_error(async_client, admin_auth_headers):
     """POST /{id}/onayla DomainError is re-raised (not caught as 500)."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     sefer_obj = _make_sefer_response_obj()
     mock_svc = AsyncMock()
@@ -409,7 +409,7 @@ async def test_sefer_onayla_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_sefer_reddet_domain_error(async_client, admin_auth_headers):
     """POST /{id}/reddet DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     sefer_obj = _make_sefer_response_obj()
     mock_svc = AsyncMock()
@@ -431,7 +431,7 @@ async def test_sefer_reddet_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_beklemede_domain_error(async_client, admin_auth_headers):
     """GET /beklemede DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_by_onay_durumu = AsyncMock(side_effect=DomainError("domain err"))
@@ -503,7 +503,7 @@ async def test_create_return_trip_serialization_error(async_client, admin_auth_h
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.schemas.sefer.SeferResponse.model_validate",
+            "v2.modules.trip.schemas.SeferResponse.model_validate",
             side_effect=ValidationError.from_exception_data(
                 "SeferResponse",
                 [
@@ -531,7 +531,7 @@ async def test_create_return_trip_serialization_error(async_client, admin_auth_h
 @pytest.mark.asyncio
 async def test_read_seferler_domain_error(async_client, admin_auth_headers):
     """GET / DomainError is re-raised (not caught as 500)."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain err"))
@@ -548,7 +548,7 @@ async def test_read_seferler_domain_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_read_today_domain_error(async_client, admin_auth_headers):
     """GET /today DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(side_effect=DomainError("domain err"))

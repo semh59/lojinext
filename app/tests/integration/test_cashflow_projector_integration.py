@@ -13,8 +13,10 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Arac, Sefer, Sofor
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.platform_infra.security.pii_encryption import blind_index
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 
@@ -77,10 +79,10 @@ async def test_project_cashflow_counts_planned_trips(db_session):
     BUG-002 regression: project_cashflow must find 'Planned' trips.
     If the SQL uses Turkish 'Planlandı', fuel_rows is empty → weeks all 0.
     """
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.analytics_executive.application.project_cashflow import (
         project_cashflow,
     )
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     arac_id = await _insert_arac(db_session)
     sofor_id = await _insert_sofor(db_session)
@@ -106,10 +108,10 @@ async def test_project_cashflow_excludes_completed_trips(db_session):
     Completed and Cancelled trips must NOT contribute to the fuel projection
     (they're in the past or abandoned).
     """
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.analytics_executive.application.project_cashflow import (
         project_cashflow,
     )
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     arac_id = await _insert_arac(db_session)
     sofor_id = await _insert_sofor(db_session)
@@ -154,11 +156,11 @@ async def test_project_cashflow_returns_cashflow_projection(db_session):
     project_cashflow must return a CashflowProjection dataclass with
     .weeks, .horizon_days, and .assumptions attributes.
     """
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.analytics_executive.application.project_cashflow import (
         CashflowProjection,
         project_cashflow,
     )
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         result = await project_cashflow(uow, horizon_days=14, diesel_price_tl=48.0)

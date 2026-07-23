@@ -14,9 +14,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
 
-from app.core.utils.clock import current_date
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.utils.clock import current_date
 
 logger = get_logger(__name__)
 

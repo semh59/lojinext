@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/infrastructure/monitoring/service_probe.py
+Additional coverage tests for v2/modules/platform_infra/monitoring/service_probe.py
 Covers: sync monitor_errors, no-reraise path, capture_result, intentional_fallback,
         assert_invariant with metadata, setup_asyncio_exception_handler.
 """
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.unit
 
 async def test_monitor_errors_no_reraise_returns_none():
     """reraise=False: exception is swallowed, None returned."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     # RuntimeError: ValueError artık iş-validasyonu olarak SKIP edilip her
     # zaman reraise edilir (LOJINEXT-1CW fix'i) — bu test reraise=False
@@ -31,7 +31,7 @@ async def test_monitor_errors_no_reraise_returns_none():
         raise RuntimeError("swallowed")
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ):
         result = await fragile()
 
@@ -40,14 +40,14 @@ async def test_monitor_errors_no_reraise_returns_none():
 
 async def test_monitor_errors_capture_result_emits_warning_on_none():
     """capture_result=True and fn returns None → WARNING emitted."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="test", capture_result=True)
     async def returns_none():
         return None
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         result = await returns_none()
 
@@ -59,14 +59,14 @@ async def test_monitor_errors_capture_result_emits_warning_on_none():
 
 async def test_monitor_errors_capture_result_no_emit_when_value_returned():
     """capture_result=True but fn returns a value → no emit."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="test", capture_result=True)
     async def returns_value():
         return {"id": 1}
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         result = await returns_value()
 
@@ -78,14 +78,14 @@ async def test_monitor_errors_skips_http_exception():
     """HTTPException is not emitted and re-raised directly."""
     from fastapi import HTTPException
 
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="test")
     async def http_fail():
         raise HTTPException(status_code=404, detail="not found")
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         with pytest.raises(HTTPException):
             await http_fail()
@@ -94,14 +94,14 @@ async def test_monitor_errors_skips_http_exception():
 
 async def test_monitor_errors_includes_call_chain_in_metadata():
     """Emitted ErrorEvent should include fn qualname in metadata."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="chain_test")
     async def inner_fn():
         raise RuntimeError("chain test")
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         with pytest.raises(RuntimeError):
             await inner_fn()
@@ -112,14 +112,14 @@ async def test_monitor_errors_includes_call_chain_in_metadata():
 
 async def test_monitor_errors_custom_severity():
     """Custom severity string is passed to ErrorEvent."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="test", severity="warning", reraise=False)
     async def warning_fn():
         raise RuntimeError("warning level")
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         await warning_fn()
 
@@ -134,7 +134,7 @@ async def test_monitor_errors_custom_severity():
 
 def test_monitor_errors_sync_reraises():
     """Sync function with reraise=True should re-raise non-domain errors."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     # RuntimeError: bkz. yukarıdaki not (ValueError artık emit edilmeden
     # reraise edilir).
@@ -142,7 +142,7 @@ def test_monitor_errors_sync_reraises():
     def sync_fail():
         raise RuntimeError("sync boom")
 
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
         with pytest.raises(RuntimeError):
             sync_fail()
         mock_emit.assert_called_once()
@@ -150,13 +150,13 @@ def test_monitor_errors_sync_reraises():
 
 def test_monitor_errors_sync_no_reraise():
     """Sync function with reraise=False swallows exception."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="sync_test", reraise=False)
     def sync_swallow():
         raise RuntimeError("swallowed sync")
 
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
         result = sync_swallow()
 
     assert result is None
@@ -165,14 +165,14 @@ def test_monitor_errors_sync_no_reraise():
 
 def test_monitor_errors_sync_skips_domain_error():
     """Sync: DomainError passes through without emit."""
-    from app.core.exceptions import DomainError
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     @monitor_errors(category="sync_test")
     def domain_sync():
         raise DomainError("domain issue sync")
 
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
         with pytest.raises(DomainError):
             domain_sync()
         mock_emit.assert_not_called()
@@ -181,13 +181,13 @@ def test_monitor_errors_sync_skips_domain_error():
 def test_monitor_errors_sync_skips_http_exception():
     from fastapi import HTTPException
 
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="sync_test")
     def http_sync():
         raise HTTPException(status_code=400)
 
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
         with pytest.raises(HTTPException):
             http_sync()
         mock_emit.assert_not_called()
@@ -195,13 +195,13 @@ def test_monitor_errors_sync_skips_http_exception():
 
 def test_monitor_errors_sync_normal_return():
     """Sync function that returns normally — no emit."""
-    from app.infrastructure.monitoring.service_probe import monitor_errors
+    from v2.modules.platform_infra.monitoring.service_probe import monitor_errors
 
     @monitor_errors(category="sync_test")
     def ok():
         return 42
 
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
         result = ok()
 
     assert result == 42
@@ -215,14 +215,14 @@ def test_monitor_errors_sync_normal_return():
 
 async def test_intentional_fallback_success_path():
     """No exception: function result is returned as-is."""
-    from app.infrastructure.monitoring.service_probe import intentional_fallback
+    from v2.modules.platform_infra.monitoring.service_probe import intentional_fallback
 
     @intentional_fallback("test reason")
     async def ok_fn():
         return {"status": "ok"}
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         result = await ok_fn()
 
@@ -232,14 +232,14 @@ async def test_intentional_fallback_success_path():
 
 async def test_intentional_fallback_emits_warning():
     """Exception → WARNING emitted with reason in message."""
-    from app.infrastructure.monitoring.service_probe import intentional_fallback
+    from v2.modules.platform_infra.monitoring.service_probe import intentional_fallback
 
     @intentional_fallback("external API down")
     async def external_call():
         raise TimeoutError("timeout")
 
     with patch(
-        "app.infrastructure.monitoring.service_probe.aemit", new_callable=AsyncMock
+        "v2.modules.platform_infra.monitoring.service_probe.aemit", new_callable=AsyncMock
     ) as mock_emit:
         result = await external_call()
 
@@ -256,8 +256,8 @@ async def test_intentional_fallback_emits_warning():
 
 
 def test_assert_invariant_with_metadata():
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
-        from app.infrastructure.monitoring.service_probe import assert_invariant
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
+        from v2.modules.platform_infra.monitoring.service_probe import assert_invariant
 
         assert_invariant(False, "bad state", metadata={"field": "fuel_lt"})
 
@@ -266,8 +266,8 @@ def test_assert_invariant_with_metadata():
 
 
 def test_assert_invariant_warning_severity():
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
-        from app.infrastructure.monitoring.service_probe import assert_invariant
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
+        from v2.modules.platform_infra.monitoring.service_probe import assert_invariant
 
         assert_invariant(False, "soft warning", severity="warning")
 
@@ -276,8 +276,8 @@ def test_assert_invariant_warning_severity():
 
 
 def test_assert_invariant_true_is_noop():
-    with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
-        from app.infrastructure.monitoring.service_probe import assert_invariant
+    with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
+        from v2.modules.platform_infra.monitoring.service_probe import assert_invariant
 
         assert_invariant(True, "should not emit", metadata={"x": 1})
 
@@ -291,7 +291,7 @@ def test_assert_invariant_true_is_noop():
 
 async def test_setup_asyncio_exception_handler_registers():
     """Called from async context (running loop exists) — sets exception handler."""
-    from app.infrastructure.monitoring.service_probe import (
+    from v2.modules.platform_infra.monitoring.service_probe import (
         setup_asyncio_exception_handler,
     )
 
@@ -308,7 +308,7 @@ async def test_setup_asyncio_exception_handler_registers():
 
 async def test_setup_asyncio_handler_emits_on_unhandled():
     """The installed handler emits an ErrorEvent when called."""
-    from app.infrastructure.monitoring.service_probe import (
+    from v2.modules.platform_infra.monitoring.service_probe import (
         setup_asyncio_exception_handler,
     )
 
@@ -316,7 +316,7 @@ async def test_setup_asyncio_handler_emits_on_unhandled():
     original_handler = loop.get_exception_handler()
 
     try:
-        with patch("app.infrastructure.monitoring.service_probe.emit") as mock_emit:
+        with patch("v2.modules.platform_infra.monitoring.service_probe.emit") as mock_emit:
             setup_asyncio_exception_handler()
             installed = loop.get_exception_handler()
             assert installed is not None
@@ -334,7 +334,7 @@ async def test_setup_asyncio_handler_emits_on_unhandled():
 
 def test_setup_asyncio_exception_handler_no_loop(monkeypatch):
     """No running loop → function returns early without error."""
-    from app.infrastructure.monitoring.service_probe import (
+    from v2.modules.platform_infra.monitoring.service_probe import (
         setup_asyncio_exception_handler,
     )
 

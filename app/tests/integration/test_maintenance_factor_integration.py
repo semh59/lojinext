@@ -20,7 +20,9 @@ async def test_apply_maintenance_factor_updates_tahmini_tuketim():
     sefer_write_service._extract_prediction_values reads this as the primary
     key; if not updated the DB column receives the unadjusted value.
     """
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {
         "tahmini_tuketim": 30.0,
@@ -40,7 +42,9 @@ async def test_apply_maintenance_factor_updates_tahmini_litre():
     apply_maintenance_factor must multiply 'tahmini_litre'.
     trip_planner reads this key for vehicle fuel ranking.
     """
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {
         "tahmini_tuketim": 30.0,
@@ -57,7 +61,9 @@ async def test_apply_maintenance_factor_updates_tahmini_litre():
 
 async def test_apply_maintenance_factor_updates_all_three_keys():
     """Full three-key contract: all three must be multiplied by the same factor."""
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     factor = 1.07
     payload = {
@@ -78,7 +84,9 @@ async def test_apply_maintenance_factor_updates_all_three_keys():
 
 async def test_apply_maintenance_factor_factor_one_is_noop():
     """factor=1.0 must return unchanged payload (no-op path)."""
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {
         "tahmini_tuketim": 30.0,
@@ -94,7 +102,9 @@ async def test_apply_maintenance_factor_factor_one_is_noop():
 
 async def test_apply_maintenance_factor_missing_keys_graceful():
     """Payload with only prediction_liters (legacy) still works."""
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     payload = {"prediction_liters": 100.0}
     result = apply_maintenance_factor(payload, factor=1.10, reason="test")
@@ -109,8 +119,12 @@ async def test_apply_maintenance_factor_with_real_prediction_response():
     End-to-end: call real prediction_service (physics-only, arac_id=0),
     apply factor, verify all primary keys are multiplied together.
     """
-    from app.core.ml.vehicle_health_factor import apply_maintenance_factor
-    from app.services.prediction_service import get_prediction_service
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
+    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
+        apply_maintenance_factor,
+    )
 
     svc = get_prediction_service()
     pred = await svc.predict_consumption(

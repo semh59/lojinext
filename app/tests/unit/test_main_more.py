@@ -99,7 +99,7 @@ def test_sentry_before_send_handles_event_bus_emit_failure():
     hint = {}
 
     with patch(
-        "app.infrastructure.monitoring.event_bus.get_event_bus",
+        "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
         side_effect=RuntimeError("bus not available"),
     ):
         result = _sentry_before_send(event, hint)
@@ -116,7 +116,7 @@ def test_sentry_before_send_emits_error_severity_not_warning():
     never overridden in any deployment config — so WARNING here meant every
     Sentry-captured error silently never reached Telegram, contradicting this
     function's own docstring."""
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     exc = RuntimeError("boom")
     event = {"message": "boom", "event_id": "sev1"}
@@ -129,7 +129,7 @@ def test_sentry_before_send_emits_error_severity_not_warning():
             captured["event"] = ev
 
     with patch(
-        "app.infrastructure.monitoring.event_bus.get_event_bus",
+        "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
         return_value=FakeBus(),
     ):
         _sentry_before_send(event, hint)
@@ -216,13 +216,13 @@ def test_sanitize_validation_errors_multiple_errors():
 
 async def test_domain_error_anomaly_detection(async_client):
     """AnomalyDetectionError → 503."""
-    from app.core.exceptions import AnomalyDetectionError
+    from v2.modules.shared_kernel.exceptions import AnomalyDetectionError
 
     @app.get("/test-anomaly-error")
     async def _raise():
         raise AnomalyDetectionError("Anomaly detector unavailable")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-anomaly-error")
             assert resp.status_code == 503
@@ -236,7 +236,7 @@ async def test_domain_error_anomaly_detection(async_client):
 
 async def test_domain_error_excel_export(async_client):
     """ExcelExportError → 422."""
-    from app.core.exceptions import ExcelExportError
+    from v2.modules.shared_kernel.exceptions import ExcelExportError
 
     @app.get("/test-excel-error")
     async def _raise():
@@ -253,7 +253,7 @@ async def test_domain_error_excel_export(async_client):
 
 async def test_domain_error_route_processing_provider_403(async_client):
     """RouteProcessingError with provider_status=403 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-403")
     async def _raise():
@@ -270,7 +270,7 @@ async def test_domain_error_route_processing_provider_403(async_client):
 
 async def test_domain_error_route_processing_provider_404(async_client):
     """RouteProcessingError with provider_status=404 → 424."""
-    from app.core.exceptions import RouteProcessingError
+    from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
     @app.get("/test-route-404-provider")
     async def _raise():
@@ -289,7 +289,7 @@ async def test_domain_error_route_processing_provider_404(async_client):
 
 async def test_domain_error_fuel_calculation_has_details(async_client):
     """FuelCalculationError response includes 'details' key."""
-    from app.core.exceptions import FuelCalculationError
+    from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
     @app.get("/test-fuel-calc-detail")
     async def _raise():
@@ -336,7 +336,7 @@ async def test_http_exception_handler_dict_detail_with_error_message_key(async_c
 async def test_jwks_endpoint(async_client):
     """GET /.well-known/jwks.json returns a dict."""
     with patch(
-        "v2.modules.auth_rbac.domain.security.get_jwks", return_value={"keys": []}
+        "v2.modules.auth_rbac.public.get_jwks", return_value={"keys": []}
     ):
         resp = await async_client.get("/.well-known/jwks.json")
     assert resp.status_code == 200

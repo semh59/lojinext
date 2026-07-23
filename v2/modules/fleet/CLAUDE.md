@@ -17,7 +17,6 @@ bulgusu), sefer planlama (trip), Excel import orkestrasyonu (import_excel
 ```python
 # Vehicle
 create_vehicle(data: AracCreate, uow=None) -> int
-count_active_vehicles() -> int                # LicenseEngine (auth_rbac) araç limit kontrolü için
 update_vehicle(arac_id: int, data: AracUpdate, uow=None) -> bool
 delete_vehicle(arac_id: int) -> bool          # smart delete: aktif→pasif→hard
 delete_all_vehicles() -> int
@@ -30,13 +29,13 @@ get_vehicle_stats(arac_id: int) -> VehicleStats | None
 get_vehicle_fleet_stats() -> dict            # {total, active, inspection_expiring, inspection_overdue}
 get_vehicle_inspection_alerts(within_days: int) -> dict   # {expiring: [...], overdue: [...]}
 get_vehicle_events(arac_id: int, limit=20) -> list[dict]  # vehicle_event_log, son N kayıt
+# log_vehicle_event artık application/vehicle_event_log.py'de (2026-07-18: DB'ye yazan yardımcı domain/'den taşındı — domain saf/I/O'suz kuralı)
 
 # Trailer — repo parametresi caller'ın UoW'undan geçirilir (uow.dorse_repo)
 create_trailer(repo, **data) -> int
 update_trailer(repo, dorse_id: int, **data) -> bool
 delete_trailer(repo, dorse_id: int) -> bool
 get_trailer_by_id(repo, dorse_id: int, include_inactive=False) -> dict | None
-get_all_trailers(repo, **kwargs) -> list[dict]
 get_all_trailers_paged(repo, skip=0, limit=100, ...) -> list[dict]
 export_all_trailers(repo) -> bytes
 get_trailer_template() -> bytes
@@ -75,11 +74,25 @@ geçirir) çünkü orijinal kod hiç kendi UoW'unu açmıyordu.
 ## Yayınladığı / dinlediği event'ler (events.py DTO'ları)
 
 `ARAC_ADDED`, `ARAC_UPDATED`, `ARAC_DELETED` — `@publishes(...)` decorator'ı
-`create_vehicle`/`update_vehicle`/`delete_vehicle` üzerinde var ama
-**repo-genelinde ölü kod**: hiçbir yerde `event_bus.publish(...)` çağrısı
-yok, `_publishes` attribute'u okunmuyor (location'ın aynı bulgusunun
-tekrarı — dalga 3'te tekrar doğrulandı). Bu modülün getirdiği bir
-regresyon değil.
+`create_vehicle`/`update_vehicle`/`delete_vehicle` üzerinde sadece
+metadata (gerçek publish mekanizması değil, bkz. aşağı). Gerçek yayın
+`save_outbox_event(uow.session, EventType.ARAC_*, {"result": arac_id})`
+ile outbox'a yazılıyor, Celery'nin 60s'lik `relay-outbox-events` task'ı
+bunu gerçek `event_bus.publish()`'e çeviriyor.
+
+❌ **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+bölüm eskiden "repo-genelinde ölü kod, hiçbir yerde `event_bus.publish(...)`
+çağrısı yok" diyordu — bu YANLIŞTI ve `location`'ın aynı (doğru) iddiasından
+mekanik olarak kopyalanmıştı (dalga 3), hiç doğrulanmamıştı. Gerçekte bu 3
+event'in İKİ CANLI abonesi var: `platform_infra/cache/cache_invalidation.py`
+(`on_arac_change` — `arac:*`/`stats:filo*` cache pattern'lerini temizler,
+payload-agnostic) ve `ai_assistant/infrastructure/rag/rag_sync_service.py`
+(`_on_arac_changed` — ARAC_ADDED/UPDATED'i dinleyip aracı RAG'e
+indeksler, `event.data["result"]`'in publisher'ın hep gönderdiği bare-int
+olduğunu bilerek doğru dallanıyor). Yani bir aracı ekleme/güncelleme/silme
+gerçekten ~60s içinde RAG re-index + cache invalidation tetikliyor —
+"ölü kod" değil, canlı bir yan etki zinciri; bu koda dokunan biri blast
+radius'unu buna göre değerlendirmeli.
 
 ## TOCTOU kilit değişikliği (davranışsal not, dalga 3)
 
@@ -147,6 +160,14 @@ geçici borç olarak kalıyor, dokümante edildi.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **SİLİNDİ (2026-07-22, kullanıcı kararı — LicenseEngine "abandoned"
+  kabul edildi)** — `count_active_vehicles()` (`application/
+  count_active_vehicles.py`) yalnızca `auth_rbac`'ın `LicenseEngine.
+  check_car_limit()`'i için var olan tek-satırlık bir sarmalayıcıydı
+  (`uow.arac_repo.count_active()`'i saran). `LicenseEngine` tamamen
+  silinince bu wrapper da öksüz kaldı — `AracRepository.count_active()`'in
+  kendisi `reports` modülünün dashboard sayaçlarında hâlâ canlı kullanılıyor,
+  yalnız bu fleet-public sarmalayıcı gitti.
 - ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
   denetiminde bulundu)** — `vehicle_routes.py::create_arac` ve
   `trailer_routes.py::create_dorse` oluşturulan kaydı aynı transaction

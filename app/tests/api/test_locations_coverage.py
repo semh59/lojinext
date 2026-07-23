@@ -97,7 +97,7 @@ def _patch_location_route_function(name, side_effect=None, return_value=None):
 @pytest.mark.asyncio
 async def test_list_locations_success(async_client, admin_auth_headers, db_session):
     """GET / with valid auth and a real seeded location → 200."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     db_session.add(
         Lokasyon(cikis_yeri="ListSuccA", varis_yeri="ListSuccB", mesafe_km=450.0)
@@ -124,7 +124,7 @@ async def test_list_locations_with_filters(
     async_client, admin_auth_headers, db_session
 ):
     """GET / with zorluk and search query params → 200, gerçek DB filtresi."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     db_session.add(
         Lokasyon(
@@ -168,7 +168,7 @@ async def test_list_locations_service_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_get_location_success(async_client, admin_auth_headers, db_session):
     """GET /{id} → 200 with real seeded location data."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="GetSuccA", varis_yeri="GetSuccB", mesafe_km=450.0)
     db_session.add(lok)
@@ -263,7 +263,7 @@ async def test_geocode_success(
 ):
     """GET /geocode?q=... → 200 list of suggestions (gerçek servis, ORS
     gerçek api_stub'a (Faz 0/1) işaret eder — deterministik, gerçek ağ değil)."""
-    import app.core.services.openroute_service as ors_mod
+    import v2.modules.location.infrastructure.openroute_geocode_client as ors_mod
 
     ors_mod._openroute_service = None  # reset singleton
     monkeypatch.setattr(ors_mod.settings, "OPENROUTESERVICE_API_KEY", "test-key")
@@ -377,7 +377,7 @@ async def test_unique_names_no_auth(async_client):
 @pytest.mark.asyncio
 async def test_unique_names_success(async_client, admin_auth_headers, db_session):
     """GET /unique-names → 200 list of strings (real DB with seeded Lokasyon)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     db_session.add(
         Lokasyon(cikis_yeri="Istanbul", varis_yeri="Ankara", mesafe_km=450.0)
@@ -568,7 +568,7 @@ async def test_upload_no_auth(async_client):
 async def test_create_location_success(async_client, admin_auth_headers):
     """POST / with valid body → 201 (real DB insert via test session)."""
     with patch(
-        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+        "v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock(return_value=None)
     ):
         resp = await async_client.post(
             "/api/v1/locations/",
@@ -603,14 +603,14 @@ async def test_create_location_value_error(async_client, admin_auth_headers):
 @pytest.mark.asyncio
 async def test_update_location_success(async_client, admin_auth_headers, db_session):
     """PUT /{id} → 200 (real DB: seeds Lokasyon, real update via test session)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="UpdSucc", varis_yeri="UpdSuccV", mesafe_km=450.0)
     db_session.add(lok)
     await db_session.flush()
 
     with patch(
-        "app.infrastructure.audit.log_audit_event", new=AsyncMock(return_value=None)
+        "v2.modules.platform_infra.audit.log_audit_event", new=AsyncMock(return_value=None)
     ):
         resp = await async_client.put(
             f"/api/v1/locations/{lok.id}",
@@ -647,7 +647,7 @@ async def test_delete_location_active_success(
     async_client, admin_auth_headers, db_session
 ):
     """DELETE /{id} active location → soft-delete → 200 (real DB via test session)."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(
         cikis_yeri="DelSuA", varis_yeri="DelSuB", mesafe_km=100.0, aktif=True
@@ -677,7 +677,7 @@ async def test_delete_location_value_error(
     async_client, admin_auth_headers, db_session
 ):
     """DELETE /{id} service raises ValueError (active trips) → 409."""
-    from app.database.models import Lokasyon
+    from v2.modules.location.public import Lokasyon
 
     lok = Lokasyon(cikis_yeri="DelVE", varis_yeri="DelVEB", mesafe_km=100.0, aktif=True)
     db_session.add(lok)

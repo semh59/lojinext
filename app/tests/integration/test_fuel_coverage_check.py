@@ -21,7 +21,10 @@ pytestmark = pytest.mark.integration
 
 
 async def _seed_vehicle_and_driver(db_session) -> tuple[int, int]:
-    from app.infrastructure.security.pii_encryption import blind_index, encrypt_pii
+    from v2.modules.platform_infra.security.pii_encryption import (
+        blind_index,
+        encrypt_pii,
+    )
 
     vehicle = await db_session.execute(
         text(
@@ -85,7 +88,7 @@ _THRESHOLD_KEY = "FUEL_COVERAGE_ALERT_THRESHOLD_PCT"
 
 
 async def _set_threshold_row(db_session, value: str) -> None:
-    from app.infrastructure.cache.redis_cache import get_redis_cache
+    from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 
     await db_session.execute(
         text(
@@ -107,7 +110,7 @@ async def _clean_threshold_config(db_session):
     dosyası koşumundan kalma "90" değeri bu dosyayı BAĞIMSIZ koştuğunda bile
     sızıntı yapabiliyordu (kanıtlanmış davranış). Her testten önce/sonra
     cache'i açıkça sıfırla ki testler fallback (%50 default) ile başlasın."""
-    from app.infrastructure.cache.redis_cache import get_redis_cache
+    from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
 
     get_redis_cache().delete(f"config:val:{_THRESHOLD_KEY}")
     yield
@@ -144,7 +147,7 @@ class TestFuelCoverageCheckTask:
             calls.append({"level": level, "message": message, "path": path})
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -171,7 +174,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -195,7 +198,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 
@@ -221,7 +224,7 @@ class TestFuelCoverageCheckTask:
             calls.append(message)
 
         monkeypatch.setattr(
-            "v2.modules.notification.infrastructure.telegram_client.notify_error",
+            "v2.modules.notification.public.notify_error",
             _fake_notify_error,
         )
 

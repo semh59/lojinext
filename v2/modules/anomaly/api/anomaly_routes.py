@@ -3,11 +3,7 @@ from typing import Annotated, Any, Dict, List, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_current_active_user, require_permissions
 from app.config import settings
-from app.database.models import Kullanici
-from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.anomaly.application.detect_anomaly import (
     SeverityEnum,
     get_anomaly_detector,
@@ -19,6 +15,13 @@ from v2.modules.anomaly.application.get_fleet_insights import (
     get_fleet_insights as get_fleet_insights_usecase,
 )
 from v2.modules.anomaly.domain.clustering import cluster_anomalies
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_user,
+    require_permissions,
+)
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

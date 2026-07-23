@@ -82,7 +82,7 @@ async def aggregate_cross_feature(
 
     maintenance_loss_l = 0.0
     try:
-        from app.core.ml.vehicle_health_factor import (
+        from v2.modules.prediction_ml.public import (
             compute_maintenance_factor,
             fetch_health_input_batch,
         )

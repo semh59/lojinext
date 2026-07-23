@@ -141,7 +141,9 @@ class TestGeocodeViaOpenroute:
     (Faz 0/1) işaret eder — sys.modules/httpx mock'u değil."""
 
     def _real_ors(self, configured: bool = True):
-        from app.core.services.openroute_service import OpenRouteService
+        from v2.modules.location.infrastructure.openroute_geocode_client import (
+            OpenRouteService,
+        )
 
         ors = OpenRouteService(api_key="test-key")
         ors.base_url = "http://localhost:9000/v2"
@@ -156,7 +158,7 @@ class TestGeocodeViaOpenroute:
         ors = self._real_ors(configured=False)
 
         with patch(
-            "app.core.services.openroute_service.get_openroute_service",
+            "v2.modules.location.infrastructure.openroute_geocode_client.get_openroute_service",
             return_value=ors,
         ):
             result = await geocode_via_openroute("Istanbul")
@@ -167,7 +169,7 @@ class TestGeocodeViaOpenroute:
         ors = self._real_ors()
 
         with patch(
-            "app.core.services.openroute_service.get_openroute_service",
+            "v2.modules.location.infrastructure.openroute_geocode_client.get_openroute_service",
             return_value=ors,
         ):
             # __ERROR401__ sentinel (bkz. api_stub/main.py) gerçek 401 döner.
@@ -179,7 +181,7 @@ class TestGeocodeViaOpenroute:
         ors = self._real_ors()
 
         with patch(
-            "app.core.services.openroute_service.get_openroute_service",
+            "v2.modules.location.infrastructure.openroute_geocode_client.get_openroute_service",
             return_value=ors,
         ):
             result = await geocode_via_openroute("Istanbul")
@@ -194,7 +196,7 @@ class TestGeocodeViaOpenroute:
         ors.base_url = "http://localhost:1/v2"  # gerçek bağlantı hatası
 
         with patch(
-            "app.core.services.openroute_service.get_openroute_service",
+            "v2.modules.location.infrastructure.openroute_geocode_client.get_openroute_service",
             return_value=ors,
         ):
             result = await geocode_via_openroute("Istanbul")
@@ -207,7 +209,7 @@ class TestGeocodeViaOpenroute:
         ors = self._real_ors()
 
         with patch(
-            "app.core.services.openroute_service.get_openroute_service",
+            "v2.modules.location.infrastructure.openroute_geocode_client.get_openroute_service",
             return_value=ors,
         ):
             result = await geocode_via_openroute("__MULTI_ONE_BAD__")

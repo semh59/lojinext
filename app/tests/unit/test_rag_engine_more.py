@@ -7,7 +7,6 @@ Targets uncovered branches not covered by test_rag_engine_coverage.py:
 - FAISSVectorStore.search (no index)
 - RAGEngine._generate_embedding (embedder None raises)
 - RAGEngine.index_vehicle/driver error path (exception in vector_store.add)
-- RAGEngine.bulk_index with None lists
 - RAGEngine.search error path
 - RAGEngine.search_for_context truncation "[... Diğer]"
 - RAGEngine.clear_index exception path
@@ -274,65 +273,6 @@ async def test_rag_engine_index_trip_exception():
             {"id": 10, "cikis_yeri": "A", "varis_yeri": "B"}
         )
     assert result is False
-
-
-# ---------------------------------------------------------------------------
-# RAGEngine.index_alert — exception path
-# ---------------------------------------------------------------------------
-
-
-async def test_rag_engine_index_alert_exception():
-    engine = _make_rag_engine(initialized=True)
-
-    with patch.object(
-        engine, "_generate_embedding", new=AsyncMock(side_effect=RuntimeError("fail"))
-    ):
-        result = await engine.index_alert({"id": 5, "title": "Test"})
-    assert result is False
-
-
-# ---------------------------------------------------------------------------
-# RAGEngine.index_log — exception path
-# ---------------------------------------------------------------------------
-
-
-async def test_rag_engine_index_log_exception():
-    engine = _make_rag_engine(initialized=True)
-
-    with patch.object(
-        engine, "_generate_embedding", new=AsyncMock(side_effect=RuntimeError("fail"))
-    ):
-        result = await engine.index_log({"message": "test log"})
-    assert result is False
-
-
-# ---------------------------------------------------------------------------
-# RAGEngine.index_event — exception path
-# ---------------------------------------------------------------------------
-
-
-async def test_rag_engine_index_event_exception():
-    engine = _make_rag_engine(initialized=True)
-
-    with patch.object(
-        engine, "_generate_embedding", new=AsyncMock(side_effect=RuntimeError("fail"))
-    ):
-        result = await engine.index_event("MY_EVENT", {"key": "val"})
-    assert result is False
-
-
-# ---------------------------------------------------------------------------
-# RAGEngine.bulk_index — None lists pass silently
-# ---------------------------------------------------------------------------
-
-
-async def test_rag_engine_bulk_index_none_lists():
-    engine = _make_rag_engine(initialized=True)
-    result = await engine.bulk_index(
-        vehicles=None, drivers=None, trips=None, alerts=None
-    )
-    assert result["total"] == 0
-    assert result["errors"] == 0
 
 
 # ---------------------------------------------------------------------------

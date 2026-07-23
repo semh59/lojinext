@@ -44,7 +44,7 @@ def _mock_ml_load_model_for_tests():
     when both directories are collected in the same pytest session.
     """
     patcher = patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor.load_model",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor.load_model",
         new=mock_load_model,
     )
     patcher.start()
@@ -114,14 +114,14 @@ def bypass_token_blacklist(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.is_blacklisted",
+        "v2.modules.auth_rbac.infrastructure.token_blacklist.blacklist.is_blacklisted",
         _not_blacklisted,
     )
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_registry():
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
     yield
@@ -156,31 +156,28 @@ def db_session_factory(db_engine, monkeypatch):
     """Session scoped session maker that also patches the globally used SessionLocals."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
-    import app.database.connection  # noqa: E402
-    import app.database.unit_of_work  # noqa: E402
+    import v2.modules.platform_infra.database.connection  # noqa: E402
+    import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
 
-    monkeypatch.setattr(app.database.connection, "AsyncSessionLocal", factory)
-    monkeypatch.setattr(app.database.unit_of_work, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(v2.modules.shared_kernel.infrastructure.unit_of_work, "AsyncSessionLocal", factory)
 
     return factory
 
 
 @pytest_asyncio.fixture(scope="function")
 async def setup_test_db(db_engine, db_session_factory):
-    from app.database.models import (
-        Base,
-        Kullanici,
-        Rol,
-    )
+    from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.shared_kernel.infrastructure.base import Base
 
     original_environment = settings.ENVIRONMENT
     original_alembic_ready = settings.ALEMBIC_READY
     settings.ENVIRONMENT = "test"
     settings.ALEMBIC_READY = True
 
-    from app.api.deps import get_db
     from app.main import app
     from v2.modules.auth_rbac.domain.security import get_password_hash
+    from v2.modules.platform_infra.public import get_db
 
     async def override_get_db():
         async with db_session_factory() as session:
@@ -376,7 +373,7 @@ def mocker():
 @pytest_asyncio.fixture(scope="function")
 async def sofor_id(db_session_factory, setup_test_db):
     """Seed a disposable driver record for legacy delete smoke tests."""
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     async with db_session_factory() as session:
         sofor = Sofor(

@@ -387,8 +387,8 @@ async def test_get_prediction_for_arac_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_create_maintenance_success(monkeypatch):
-    from app.database.models import BakimTipi
     from v2.modules.fleet.api import admin_maintenance_routes as mod
+    from v2.modules.fleet.public import BakimTipi
 
     record = _make_bakim_record(id=42, bakim_tipi="PERIYODIK")
 

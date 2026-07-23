@@ -5,13 +5,13 @@ Concurrent edit behavior tests for the trip module.
 from datetime import date
 from types import SimpleNamespace
 
-from app.core.utils.sefer_status import (
+from v2.modules.trip.schemas import SeferUpdate
+from v2.modules.trip.sefer_status import (
     SEFER_STATUS_IPTAL,
     SEFER_STATUS_PLANLANDI,
     SEFER_STATUS_TAMAMLANDI,
     SEFER_STATUS_TRANSITIONS,
 )
-from app.schemas.sefer import SeferUpdate
 
 
 def _make_mock_sefer(id: int = 1, durum: str = SEFER_STATUS_PLANLANDI, **overrides):

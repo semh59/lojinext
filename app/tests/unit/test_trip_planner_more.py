@@ -384,7 +384,7 @@ async def test_fetch_route_analysis_exception_silenced():
     )
 
     with patch(
-        "app.database.unit_of_work.UnitOfWork", side_effect=RuntimeError("DB error")
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork", side_effect=RuntimeError("DB error")
     ):
         await engine._fetch_route_analysis(inp)  # Should not raise
 
@@ -393,9 +393,9 @@ async def test_fetch_route_analysis_exception_silenced():
 
 
 async def test_fetch_route_analysis_lok_none():
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
     from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(
@@ -422,9 +422,9 @@ async def test_fetch_route_analysis_lok_none():
 
 
 async def test_fetch_route_analysis_sets_route_analysis():
-    from app.database.unit_of_work import UnitOfWork
     from v2.modules.ai_assistant.application.plan_trip import TripPlannerEngine
     from v2.modules.ai_assistant.domain.planner_scoring import PlanInput
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     engine = TripPlannerEngine(prediction_service=MagicMock())
     inp = PlanInput(

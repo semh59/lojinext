@@ -10,7 +10,7 @@ import json
 import logging
 
 from app.config import settings
-from app.database.models import PushSubscription
+from v2.modules.notification.infrastructure.models import PushSubscription
 
 logger = logging.getLogger(__name__)
 

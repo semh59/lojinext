@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.services.ml_service import MLService
-from app.database.models import EgitimKuyrugu
+from v2.modules.prediction_ml.application.ml_service import MLService
+from v2.modules.prediction_ml.public import EgitimKuyrugu
 
 
 @pytest.mark.asyncio
@@ -55,7 +55,7 @@ async def test_ml_complete_training_logic():
     # WS broadcaster mock
     mock_ws = AsyncMock()
 
-    with patch("app.core.services.ml_service.training_ws_manager", mock_ws):
+    with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager", mock_ws):
         service = MLService(uow=mock_uow)
 
         await service.update_task_progress(task_id=1, ilerleme=100.0, durum="COMPLETED")

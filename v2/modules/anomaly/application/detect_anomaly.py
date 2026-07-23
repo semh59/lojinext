@@ -2,7 +2,7 @@
 TYPE: SINGLETON
 SCOPE: Application lifetime
 SINGLETON_REASON: Anomali tespiti — Isolation Forest + LGBM modelleri başlangıçta yüklenir.
-CREATED_BY: app/core/container.py (lazy property)
+CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 
 ``AnomalyDetector`` sınıf istisnası (B.1): ``RouteSimulator``/``LokasyonHydrator``/
 ``DriverPerformanceML`` ile aynı gerekçe — sklearn ``IsolationForest`` +
@@ -35,9 +35,9 @@ except ImportError:
     LIGHTGBM_AVAILABLE = False
 
 from app.config import settings
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
-from app.services.prediction_service import get_prediction_service
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.prediction_ml.public import get_prediction_service
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 
@@ -144,7 +144,9 @@ class AnomalyDetector:
         if len(consumptions) < 5:
             return []
 
-        from app.core.services.runtime_config import get_runtime_float
+        from v2.modules.admin_platform.public import (
+            get_runtime_float,
+        )
 
         z_threshold = await get_runtime_float(
             "ANOMALY_Z_THRESHOLD", settings.ANOMALY_Z_THRESHOLD
@@ -622,6 +624,6 @@ class AnomalyDetector:
 
 def get_anomaly_detector() -> AnomalyDetector:
     """Delegates to the DI container for the singleton AnomalyDetector instance."""
-    from app.core.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().anomaly_detector

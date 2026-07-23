@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 
@@ -17,7 +17,9 @@ async def test_predict_fuel_consumption_full_flow(
 
     from sqlalchemy import insert
 
-    from app.database.models import Arac, Sefer, Sofor
+    from v2.modules.driver.public import Sofor
+    from v2.modules.fleet.public import AracORM as Arac
+    from v2.modules.trip.public import SeferORM as Sefer
 
     # Create vehicle
     arac_result = await db_session.execute(
@@ -97,7 +99,7 @@ async def test_coaching_insights_real_flow(
 
     from sqlalchemy import insert
 
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     # Create driver for coaching analysis
     sofor_result = await db_session.execute(
@@ -167,7 +169,7 @@ async def test_coaching_recommendations(async_client, admin_auth_headers, db_ses
 
     from sqlalchemy import insert
 
-    from app.database.models import Sofor
+    from v2.modules.driver.public import Sofor
 
     # Create low-score driver
     sofor_result = await db_session.execute(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.database.connection import _build_async_connect_args
+from v2.modules.platform_infra.database.connection import _build_async_connect_args
 
 pytestmark = pytest.mark.unit
 

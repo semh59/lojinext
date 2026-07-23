@@ -53,7 +53,7 @@ def _patch_container_weather(monkeypatch, weather_service):
     """get_container().weather_service'i fake ile değiştir."""
     fake = type("FakeContainer", (), {})()
     fake.weather_service = weather_service
-    monkeypatch.setattr("app.core.container.get_container", lambda: fake)
+    monkeypatch.setattr("v2.modules.platform_infra.public.get_container", lambda: fake)
 
 
 def _make_engine():
@@ -86,7 +86,7 @@ async def test_weather_no_guzergah_id_returns_neutral():
 @pytest.mark.asyncio
 async def test_weather_lokasyon_not_found_returns_neutral(monkeypatch):
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(None),
     )
     engine = _make_engine()
@@ -104,7 +104,7 @@ async def test_weather_missing_coords_returns_neutral(monkeypatch):
         "varis_lon": None,
     }
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(incomplete),
     )
     engine = _make_engine()
@@ -121,7 +121,7 @@ async def test_weather_success_returns_fuel_impact_factor(monkeypatch):
         "varis_lon": 29.0,
     }
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(full),
     )
     _patch_container_weather(
@@ -143,7 +143,7 @@ async def test_weather_service_failure_returns_neutral(monkeypatch):
         "varis_lon": 29.0,
     }
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(full),
     )
     _patch_container_weather(
@@ -165,7 +165,7 @@ async def test_weather_exception_returns_neutral(monkeypatch):
         "varis_lon": 29.0,
     }
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(full),
     )
     _patch_container_weather(
@@ -187,7 +187,7 @@ async def test_weather_null_fuel_impact_returns_neutral(monkeypatch):
         "varis_lon": 29.0,
     }
     monkeypatch.setattr(
-        "app.database.unit_of_work.UnitOfWork",
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork",
         lambda: _FakeUoWWithLokasyon(full),
     )
     _patch_container_weather(

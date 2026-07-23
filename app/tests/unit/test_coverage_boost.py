@@ -10,17 +10,17 @@ from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.core.errors import (
-    BusinessException,
-    DiagnosticHelper,
-    create_error_response,
-)
-from app.core.services.route_validator import RouteValidator
 from app.main import (
     business_exception_handler,
     http_exception_handler,
     unhandled_exception_handler,
     validation_exception_handler,
+)
+from v2.modules.route_simulation.domain.route_validator import RouteValidator
+from v2.modules.shared_kernel.errors import (
+    BusinessException,
+    DiagnosticHelper,
+    create_error_response,
 )
 
 pytestmark = pytest.mark.integration
@@ -444,7 +444,7 @@ class TestUserService:
 
     @pytest.mark.asyncio
     async def test_create_user_success(self, svc, db_session):
-        from app.database.models import Rol
+        from v2.modules.auth_rbac.public import Rol
 
         rol = Rol(ad="create-user-test-rol", yetkiler={})
         db_session.add(rol)
@@ -472,7 +472,7 @@ class TestUserService:
         # Documented boundary: `kullanici_repo.update` returning False while the
         # row exists is a TOCTOU race condition guard — unreachable in a
         # single-tenant real DB. Kept mocked to preserve the dead-code branch.
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         existing = {"id": 1, "email": "a@b.com"}
         mock_uow = MagicMock()
@@ -494,7 +494,7 @@ class TestUserService:
         # Documented boundary: create succeeds but immediate get_by_id returns
         # None is physically impossible in a non-distributed DB — tested via
         # injection to cover the defensive guard branch.
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         mock_uow = MagicMock()
         mock_uow.kullanici_repo = MagicMock()
@@ -560,7 +560,7 @@ class TestMaintenanceService:
 
         from fastapi import HTTPException
 
-        from app.database.models import BakimTipi
+        from v2.modules.fleet.public import BakimTipi
 
         with pytest.raises(HTTPException) as exc_info:
             await svc.create_maintenance_record(
@@ -584,8 +584,8 @@ class TestMaintenanceService:
     async def test_mark_as_completed_true(self, svc, db_session):
         from datetime import datetime, timezone
 
-        from app.database.models import AracBakim, BakimTipi
         from app.tests._helpers.seed import seed_arac
+        from v2.modules.fleet.public import AracBakim, BakimTipi
 
         arac = await seed_arac(db_session, plaka="34COMP01")
         await db_session.flush()
@@ -618,8 +618,8 @@ class TestMaintenanceService:
     async def test_get_upcoming_alerts_with_items(self, svc, db_session):
         from datetime import datetime, timedelta, timezone
 
-        from app.database.models import AracBakim, BakimTipi
         from app.tests._helpers.seed import seed_arac
+        from v2.modules.fleet.public import AracBakim, BakimTipi
 
         arac = await seed_arac(db_session, plaka="34ALT001")
         await db_session.flush()
@@ -651,132 +651,6 @@ class TestMaintenanceService:
         assert len(result) == 2
         assert all(r["vade_durumu"] == "UPCOMING" for r in result)
         assert result[0]["plaka"] == "34ALT001"
-
-
-# ---------------------------------------------------------------------------
-# IdempotencyGuard
-# ---------------------------------------------------------------------------
-
-
-class TestIdempotencyGuard:
-    @pytest.mark.asyncio
-    async def test_no_key_passes_through(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value=None)
-        result = await guard(req)
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_redis_none_passes_through(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value="test-key-123")
-        req.state = MagicMock()
-        req.state.user = None
-        with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
-            return_value=None,
-        ):
-            result = await guard(req)
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_new_key_stored_in_redis(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value="unique-key-456")
-        req.state = MagicMock()
-        req.state.user = None
-        mock_redis = AsyncMock()
-        # AUDIT-153: atomik set_nx (get-then-set TOCTOU yerine). True = yeni anahtar.
-        mock_redis.set_nx = AsyncMock(return_value=True)
-        with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
-            return_value=mock_redis,
-        ):
-            result = await guard(req)
-        assert result is None
-        mock_redis.set_nx.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_duplicate_key_raises_409(self):
-        from fastapi import HTTPException
-
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value="dup-key-789")
-        req.state = MagicMock()
-        req.state.user = None
-        mock_redis = AsyncMock()
-        # AUDIT-153: set_nx False → anahtar zaten var (duplicate) → 409.
-        mock_redis.set_nx = AsyncMock(return_value=False)
-        with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
-            return_value=mock_redis,
-        ):
-            with pytest.raises(HTTPException) as exc_info:
-                await guard(req)
-        assert exc_info.value.status_code == 409
-
-    @pytest.mark.asyncio
-    async def test_redis_exception_does_not_block(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value="error-key")
-        req.state = MagicMock()
-        req.state.user = None
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(side_effect=Exception("Redis down"))
-        with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
-            return_value=mock_redis,
-        ):
-            result = await guard(req)
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_key_dependency_factory(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyKeyDependency
-
-        dep = IdempotencyKeyDependency("create_trip")
-        assert dep.operation_name == "create_trip"
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value=None)
-        result = await dep(req)
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_idempotency_with_authenticated_user(self):
-        from app.infrastructure.resilience.idempotency import IdempotencyGuard
-
-        guard = IdempotencyGuard()
-        req = MagicMock(spec=Request)
-        req.headers.get = MagicMock(return_value="auth-key-001")
-        mock_user = MagicMock()
-        mock_user.id = 42
-        req.state = MagicMock()
-        req.state.user = mock_user
-        mock_redis = AsyncMock()
-        # AUDIT-153: atomik set_nx — user-scoped cache_key ilk argümandır.
-        mock_redis.set_nx = AsyncMock(return_value=True)
-        with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
-            return_value=mock_redis,
-        ):
-            await guard(req)
-        call_args = mock_redis.set_nx.call_args[0]
-        assert "42" in call_args[0]
 
 
 # ---------------------------------------------------------------------------
@@ -831,22 +705,22 @@ class TestPolylineDecoder:
 
 
 class TestParseDateParam:
-    """Tests for app.api.v1.utils.parse_date_param."""
+    """Tests for v2.modules.platform_infra.api_utils.parse_date_param."""
 
     def test_none_returns_none(self):
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         assert parse_date_param(None) is None
 
     def test_empty_string_returns_none(self):
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         assert parse_date_param("") is None
 
     def test_valid_date(self):
         from datetime import date
 
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         result = parse_date_param("2024-03-15")
         assert result == date(2024, 3, 15)
@@ -854,7 +728,7 @@ class TestParseDateParam:
     def test_invalid_format_raises_400(self):
         from fastapi import HTTPException
 
-        from app.api.v1.utils import parse_date_param
+        from v2.modules.platform_infra.api_utils import parse_date_param
 
         with pytest.raises(HTTPException) as exc_info:
             parse_date_param("15-03-2024", field_name="tarih")
@@ -866,17 +740,17 @@ class TestRateLimiterModule:
     """Ensure rate_limiter module loads and exposes a limiter object."""
 
     def test_limiter_importable(self):
-        from app.api.middleware.rate_limiter import limiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
         assert limiter is not None
 
     def test_limiter_has_limit_method(self):
-        from app.api.middleware.rate_limiter import limiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
 
         assert callable(getattr(limiter, "limit", None))
 
     def test_noop_limiter_passthrough(self):
-        from app.api.middleware.rate_limiter import _NoopLimiter
+        from v2.modules.platform_infra.middleware.slowapi_limiter import _NoopLimiter
 
         noop = _NoopLimiter()
         decorator = noop.limit("10/minute")
@@ -891,7 +765,7 @@ class TestRateLimiterModule:
         """2026-07-01 prod-grade denetimi P1: slowapi eksikse prod'da
         fail-closed — uygulama sessizce rate-limit'siz ayağa kalkmak yerine
         başlamayı reddetmeli."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         monkeypatch.setattr(rl_module, "Limiter", None)
         with pytest.raises(RuntimeError, match="refusing to start in production"):
@@ -900,7 +774,7 @@ class TestRateLimiterModule:
     def test_build_limiter_falls_back_in_dev_without_slowapi(self, monkeypatch):
         """Dev/test ortamında slowapi eksikliği eski fail-open (NoopLimiter +
         critical log) davranışını korur — yerel geliştirmeyi bloklamaz."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         monkeypatch.setattr(rl_module, "Limiter", None)
         result = rl_module._build_limiter("dev")
@@ -909,7 +783,7 @@ class TestRateLimiterModule:
     def test_build_limiter_uses_real_limiter_when_slowapi_available(self):
         """slowapi kuruluysa (bu test ortamında olduğu gibi) prod'da da
         sorunsuz gerçek Limiter döner — fail-closed dalı hiç tetiklenmez."""
-        import app.api.middleware.rate_limiter as rl_module
+        import v2.modules.platform_infra.middleware.slowapi_limiter as rl_module
 
         if rl_module.Limiter is None:
             pytest.skip("slowapi not installed in this environment")
@@ -921,64 +795,12 @@ class TestOpenRouteServiceOffline:
     """Tests for OpenRouteService offline (no-API) code paths."""
 
     def test_instantiation(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        svc = OpenRouteService(api_key="")
-        assert svc is not None
-
-    def test_is_configured_false_without_key(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        with patch("app.core.services.openroute_service.settings") as mock_settings:
-            mock_settings.OPENROUTESERVICE_API_KEY = ""
-            mock_settings.OPENROUTE_API_BASE_URL = "https://api.openrouteservice.org/v2"
-            svc = OpenRouteService(api_key="")
-        svc.api_key = ""  # ensure key is cleared for the check
-        assert svc.is_configured() is False
-
-    def test_is_configured_true_with_key(self):
-        from app.core.services.openroute_service import (
-            HTTPX_AVAILABLE,
+        from v2.modules.location.infrastructure.openroute_geocode_client import (
             OpenRouteService,
         )
 
-        svc = OpenRouteService(api_key="test-key-123")
-        assert svc.is_configured() == HTTPX_AVAILABLE
-
-    def test_haversine_distance(self):
-        from app.core.services.openroute_service import OpenRouteService
-
         svc = OpenRouteService(api_key="")
-        # Istanbul (28.97, 41.01) → Ankara (32.86, 39.92) ≈ 352 km
-        dist = svc._haversine_distance(28.97, 41.01, 32.86, 39.92)
-        assert 300 < dist < 420
-
-    def test_haversine_same_point(self):
-        from app.core.services.openroute_service import OpenRouteService
-
-        svc = OpenRouteService(api_key="")
-        dist = svc._haversine_distance(28.97, 41.01, 28.97, 41.01)
-        assert dist < 0.001
-
-    def test_get_route_profile_offline(self):
-        from app.core.services.openroute_service import OpenRouteService, RouteProfile
-
-        svc = OpenRouteService(api_key="")
-        profile = svc.get_route_profile_offline((28.97, 41.01), (32.86, 39.92))
-        assert isinstance(profile, RouteProfile)
-        assert profile.distance_km > 0
-        assert profile.duration_hours > 0
-        assert profile.ascent_m >= 0
-        assert profile.descent_m >= 0
-
-    @pytest.mark.asyncio
-    async def test_get_route_profile_falls_back_offline_when_unconfigured(self):
-        from app.core.services.openroute_service import OpenRouteService, RouteProfile
-
-        svc = OpenRouteService(api_key="")
-        profile = await svc.get_route_profile((28.97, 41.01), (32.86, 39.92))
-        assert isinstance(profile, RouteProfile)
-        assert profile.distance_km > 0
+        assert svc is not None
 
 
 class TestCacheInvalidationSetup:
@@ -991,15 +813,15 @@ class TestCacheInvalidationSetup:
         mock_cache = MagicMock()
         with (
             patch(
-                "app.infrastructure.cache.cache_invalidation.get_event_bus",
+                "v2.modules.platform_infra.cache.cache_invalidation.get_event_bus",
                 return_value=mock_bus,
             ),
             patch(
-                "app.infrastructure.cache.cache_invalidation.get_cache_manager",
+                "v2.modules.platform_infra.cache.cache_invalidation.get_cache_manager",
                 return_value=mock_cache,
             ),
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 setup_cache_invalidation,
             )
 
@@ -1011,10 +833,10 @@ class TestCacheInvalidationSetup:
         mock_pubsub = MagicMock()
         mock_pubsub.publish = AsyncMock(return_value=None)
         with patch(
-            "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
             return_value=mock_pubsub,
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 trigger_dashboard_update,
             )
 
@@ -1026,10 +848,10 @@ class TestCacheInvalidationSetup:
         mock_pubsub = MagicMock()
         mock_pubsub.publish = AsyncMock(side_effect=Exception("Redis down"))
         with patch(
-            "app.infrastructure.cache.cache_invalidation.get_pubsub_manager",
+            "v2.modules.platform_infra.cache.cache_invalidation.get_pubsub_manager",
             return_value=mock_pubsub,
         ):
-            from app.infrastructure.cache.cache_invalidation import (
+            from v2.modules.platform_infra.cache.cache_invalidation import (
                 trigger_dashboard_update,
             )
 
@@ -1037,50 +859,24 @@ class TestCacheInvalidationSetup:
 
 
 class TestInterfacesImport:
-    """Ensure interface module-level code (imports + TypeVar) is counted as covered."""
-
-    def test_interfaces_importable(self):
-        # Confirm these are abstract (can't be instantiated)
-        import inspect
-
-        from app.core.interfaces import (
-            IAracRepository,
-            ILokasyonRepository,
-            IPeriyotRepository,
-            ISeferRepository,
-            ISoforRepository,
-            IYakitRepository,
-        )
-
-        for cls in (
-            IAracRepository,
-            ISoforRepository,
-            IYakitRepository,
-            ISeferRepository,
-            ILokasyonRepository,
-            IPeriyotRepository,
-        ):
-            assert inspect.isabstract(cls)
+    """Smoke-test that misc module-level code is importable (coverage counting)."""
 
     def test_cache_invalidation_importable(self):
-        from app.infrastructure.cache import cache_invalidation  # noqa: F401
+        from v2.modules.platform_infra.cache import cache_invalidation  # noqa: F401
 
         assert hasattr(cache_invalidation, "__name__")
 
     def test_init_db_importable(self):
-        from app.database import init_db  # noqa: F401
+        from v2.modules.platform_infra.database import init_db  # noqa: F401
 
         assert hasattr(init_db, "__name__")
 
     def test_openroute_service_importable(self):
-        from app.core.services import openroute_service  # noqa: F401
+        from v2.modules.location.infrastructure import (  # noqa: F401
+            openroute_geocode_client,
+        )
 
-        assert hasattr(openroute_service, "__name__")
-
-    def test_rag_sync_service_importable(self):
-        from app.core.ai import rag_sync_service  # noqa: F401
-
-        assert hasattr(rag_sync_service, "__name__")
+        assert hasattr(openroute_geocode_client, "__name__")
 
 
 # ---------------------------------------------------------------------------
@@ -1090,7 +886,7 @@ class TestInterfacesImport:
 
 class TestSystemErrorReport:
     def test_frontend_error_report_schema(self):
-        from app.api.v1.endpoints.system import FrontendErrorReport
+        from v2.modules.admin_platform.api.system_routes import FrontendErrorReport
 
         report = FrontendErrorReport(
             message="TypeError: Cannot read property 'x' of null",
@@ -1104,7 +900,7 @@ class TestSystemErrorReport:
         assert report.stack is None
 
     def test_frontend_error_report_default_severity(self):
-        from app.api.v1.endpoints.system import FrontendErrorReport
+        from v2.modules.admin_platform.api.system_routes import FrontendErrorReport
 
         report = FrontendErrorReport(
             message="Something broke",
@@ -1120,7 +916,7 @@ class TestSystemErrorReport:
 
         from starlette.requests import Request as StarletteRequest
 
-        from app.api.v1.endpoints.system import (
+        from v2.modules.admin_platform.api.system_routes import (
             FrontendErrorReport,
             receive_frontend_error,
         )
@@ -1146,7 +942,7 @@ class TestSystemErrorReport:
         mock_user.id = 1
 
         with patch(
-            "app.infrastructure.monitoring.event_bus.ErrorEventBus.emit",
+            "v2.modules.platform_infra.monitoring.event_bus.ErrorEventBus.emit",
             new_callable=AsyncMock,
         ):
             result = await receive_frontend_error(report, real_request, mock_user)

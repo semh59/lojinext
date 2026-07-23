@@ -13,11 +13,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.core.exceptions import RouteProcessingError
 from v2.modules.route_simulation.infrastructure.openroute_client import (
     OpenRouteClient,
     get_route_client,
 )
+from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
 pytestmark = pytest.mark.integration
 
@@ -31,7 +31,6 @@ _STUB_BASE_URL = "http://localhost:9000/v2"
 def _make_client(api_key: str = "test-key") -> OpenRouteClient:
     client = OpenRouteClient(api_key=api_key)
     client.base_url = _STUB_BASE_URL
-    client.geocode_url = "http://localhost:9000/geocode/search"
     return client
 
 
@@ -140,7 +139,7 @@ async def test_get_distance_api_success_returns_source_api():
             client, "_call_api", new_callable=AsyncMock, return_value=api_result
         ),
         patch(
-            "app.core.services.route_validator.RouteValidator.validate_and_correct",
+            "v2.modules.route_simulation.domain.route_validator.RouteValidator.validate_and_correct",
             side_effect=lambda x: x,
         ),
     ):
@@ -165,7 +164,7 @@ async def test_get_distance_cache_hit_returns_source_cache():
             client, "_get_from_cache", new_callable=AsyncMock, return_value=cached
         ),
         patch(
-            "app.core.services.route_validator.RouteValidator.validate_and_correct",
+            "v2.modules.route_simulation.domain.route_validator.RouteValidator.validate_and_correct",
             side_effect=lambda x: x,
         ),
     ):
@@ -182,7 +181,7 @@ async def test_get_distance_cache_hit_returns_source_cache():
 
 
 async def test_get_distance_circuit_breaker_open_returns_none():
-    from app.infrastructure.resilience.circuit_breaker import CircuitBreakerError
+    from v2.modules.platform_infra.resilience.circuit_breaker import CircuitBreakerError
 
     client = _make_client()
     breaker = MagicMock()
@@ -273,47 +272,6 @@ async def test_call_api_timeout_raises_route_processing_error():
     client._client = httpx.AsyncClient(timeout=1.0)
     with pytest.raises(RouteProcessingError):
         await client._call_api((0.0, 0.0), (0.0, 408.0))
-
-
-# ---------------------------------------------------------------------------
-# geocode
-# ---------------------------------------------------------------------------
-
-
-async def test_geocode_empty_text_returns_none():
-    client = _make_client()
-    result = await client.geocode("")
-    assert result is None
-
-
-async def test_geocode_no_api_key_returns_none():
-    client = _make_client(api_key="dummy")
-    client.api_key = None  # Force None after construction
-    result = await client.geocode("Ankara")
-    assert result is None
-
-
-async def test_geocode_success_returns_lat_lon():
-    client = _make_client()
-    result = await client.geocode("Ankara")
-
-    assert result is not None
-    lat, lon = result
-    # api_stub'ın deterministik canned response'u.
-    assert lat == pytest.approx(39.93, abs=0.001)
-    assert lon == pytest.approx(32.85, abs=0.001)
-
-
-async def test_geocode_no_features_returns_none():
-    client = _make_client()
-    result = await client.geocode("__EMPTY__")
-    assert result is None
-
-
-async def test_geocode_api_error_status_returns_none():
-    client = _make_client()
-    result = await client.geocode("__ERROR401__")
-    assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -526,11 +484,11 @@ async def test_get_from_cache_exception_returns_none():
 
     with (
         patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             side_effect=AsyncCtx,
         ),
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val",
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val",
             new=AsyncMock(return_value=None),
         ),
     ):
@@ -605,7 +563,7 @@ async def test_save_to_cache_exception_does_not_raise():
             pass
 
     with patch(
-        "app.database.connection.AsyncSessionLocal",
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
         side_effect=AsyncCtx,
     ):
         # Should not raise

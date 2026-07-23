@@ -27,7 +27,8 @@ async def test_same_vehicle_concurrent_trips(db_session, async_client, auth_head
     5. Final state: Exactly 10 trips in DB OR <10 with clear conflict resolution
     """
 
-    from app.database.models import Arac, Sefer
+    from v2.modules.fleet.public import AracORM as Arac
+    from v2.modules.trip.public import SeferORM as Sefer
 
     # Create vehicle
     arac_result = await db_session.execute(
@@ -113,7 +114,8 @@ async def test_fuel_km_counter_no_race(db_session, async_client, auth_headers):
     4. No lost updates, final state consistent
     """
 
-    from app.database.models import Arac, YakitAlimi
+    from v2.modules.fleet.public import AracORM as Arac
+    from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 
     # Create vehicle
     arac_result = await db_session.execute(
@@ -130,7 +132,7 @@ async def test_fuel_km_counter_no_race(db_session, async_client, auth_headers):
     await db_session.commit()
 
     # Create 5 concurrent fuel records using separate transactions
-    from app.database.unit_of_work import UnitOfWork
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async def add_fuel(index):
         try:

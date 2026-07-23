@@ -4,11 +4,9 @@ from typing import Annotated, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep, get_current_active_user
-from app.core.exceptions import DomainError
-from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import SessionDep
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.get_consumption_trend import (
     get_consumption_trend as get_consumption_trend_usecase,
@@ -17,6 +15,8 @@ from v2.modules.reports.application.get_dashboard_counters import (
     get_dashboard_counters,
 )
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
+from v2.modules.shared_kernel.exceptions import DomainError
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

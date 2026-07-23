@@ -11,10 +11,9 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_current_active_user
-from app.database.models import Kullanici
-from app.infrastructure.logging.logger import get_logger
-from v2.modules.notification.infrastructure.telegram_client import notify_feedback
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
+from v2.modules.notification.public import notify_feedback
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 

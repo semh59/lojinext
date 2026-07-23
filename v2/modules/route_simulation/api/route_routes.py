@@ -4,10 +4,9 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from app.api.deps import SessionDep, get_current_active_user
-from app.database.models import Kullanici, RouteSegment, RouteSimulation
-from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import RouteAnalysisResponse
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
+from v2.modules.platform_infra.public import SessionDep
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
 from v2.modules.route_simulation.application.create_route_simulation import (
     create_route_simulation,
     get_route_simulation_by_id,
@@ -22,6 +21,11 @@ from v2.modules.route_simulation.application.simulate_route import (
     RouteSimulator,
     get_route_simulator,
 )
+from v2.modules.route_simulation.infrastructure.models import (
+    RouteSegment,
+    RouteSimulation,
+)
+from v2.modules.route_simulation.schemas import RouteAnalysisResponse
 
 router = APIRouter()
 

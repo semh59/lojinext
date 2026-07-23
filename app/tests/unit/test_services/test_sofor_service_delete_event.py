@@ -26,8 +26,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.driver.application.delete_sofor import delete_sofor
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def test_delete_sofor_no_event_on_commit_failure(mock_event_bus):

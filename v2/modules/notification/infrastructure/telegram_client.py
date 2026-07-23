@@ -10,7 +10,7 @@ import asyncio
 import logging
 import os
 
-from app.infrastructure.monitoring.external_api_probe import get_monitored_client
+from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ async def _push_to_sync_fallback(
     import json
 
     try:
-        from app.infrastructure.cache.redis_pubsub import get_pubsub_manager
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
         mgr = get_pubsub_manager()
         if mgr.redis is None:

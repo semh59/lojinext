@@ -1,6 +1,6 @@
 """coaching_tasks.py birim testleri — gerçek kaynak yapısına göre.
 
-0-mock (Dilim 32): patch("app.database.unit_of_work.UnitOfWork") replaced with
+0-mock (Dilim 32): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
 """
 
@@ -8,13 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.driver.infrastructure.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
     evaluate_pending_deliveries,
     weekly_coaching_digest,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 

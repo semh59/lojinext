@@ -7,12 +7,14 @@ the backend can see this one itself — no docker-socket-proxy needed."""
 
 from pydantic import SecretStr
 
-from app.api.v1.endpoints.admin_integrations import _env_fallback_present
+from v2.modules.admin_platform.api.admin_integrations_routes import (
+    _env_fallback_present,
+)
 
 
 def test_mapbox_present(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.MAPBOX_API_KEY",
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.MAPBOX_API_KEY",
         SecretStr("pk.fake"),  # pragma: allowlist secret
     )
     assert _env_fallback_present("mapbox") is True
@@ -20,14 +22,14 @@ def test_mapbox_present(monkeypatch):
 
 def test_mapbox_absent_when_none(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.MAPBOX_API_KEY", None
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.MAPBOX_API_KEY", None
     )
     assert _env_fallback_present("mapbox") is False
 
 
 def test_mapbox_absent_when_empty_secret(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.MAPBOX_API_KEY",
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.MAPBOX_API_KEY",
         SecretStr(""),
     )
     assert _env_fallback_present("mapbox") is False
@@ -35,7 +37,7 @@ def test_mapbox_absent_when_empty_secret(monkeypatch):
 
 def test_openroute_present(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.OPENROUTESERVICE_API_KEY",
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.OPENROUTESERVICE_API_KEY",
         "fake-key",  # pragma: allowlist secret
     )
     assert _env_fallback_present("openroute") is True
@@ -43,7 +45,7 @@ def test_openroute_present(monkeypatch):
 
 def test_openroute_absent_when_empty(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.OPENROUTESERVICE_API_KEY",
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.OPENROUTESERVICE_API_KEY",
         "",
     )
     assert _env_fallback_present("openroute") is False
@@ -51,7 +53,7 @@ def test_openroute_absent_when_empty(monkeypatch):
 
 def test_groq_present(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.GROQ_API_KEY",
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.GROQ_API_KEY",
         SecretStr("gsk-fake"),  # pragma: allowlist secret
     )
     assert _env_fallback_present("groq") is True
@@ -59,7 +61,7 @@ def test_groq_present(monkeypatch):
 
 def test_groq_absent_when_none(monkeypatch):
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_integrations.settings.GROQ_API_KEY", None
+        "v2.modules.admin_platform.api.admin_integrations_routes.settings.GROQ_API_KEY", None
     )
     assert _env_fallback_present("groq") is False
 

@@ -46,7 +46,7 @@ class TestInternalCoachingSnapshot:
         """telegram_id'si set olan şoför için snapshot döner."""
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         # Yeni şoför oluştur
         suffix = uuid.uuid4().hex[:4].upper()

@@ -28,8 +28,8 @@ from typing import Optional
 
 from sqlalchemy import delete, select
 
-from app.database.models import PushSubscription
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.notification.infrastructure.models import PushSubscription
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def subscribe_push(

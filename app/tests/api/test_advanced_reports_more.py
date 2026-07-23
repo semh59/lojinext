@@ -48,7 +48,7 @@ def _make_cost_breakdown(**kwargs):
 
 async def test_fleet_summary_pdf_domain_error(async_client, admin_auth_headers):
     """GET /pdf/fleet-summary DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with patch(
         "v2.modules.reports.api.advanced_reports_routes.generate_fleet_summary",
@@ -172,7 +172,7 @@ async def test_driver_comparison_pdf_generic_exception(
 
 async def test_driver_comparison_pdf_domain_error(async_client, admin_auth_headers):
     """GET /pdf/driver-comparison DomainError → re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     with patch(
         "v2.modules.driver.public.get_driver_stats",
@@ -193,7 +193,7 @@ async def test_driver_comparison_pdf_domain_error(async_client, admin_auth_heade
 
 async def test_cost_period_domain_error(async_client, admin_auth_headers):
     """GET /cost/period DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_period_cost = AsyncMock(
@@ -375,7 +375,7 @@ async def test_vehicle_cost_comparison_generic_exception(
 
 async def test_savings_potential_domain_error(async_client, admin_auth_headers):
     """GET /cost/savings-potential DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_savings_potential = AsyncMock(
@@ -400,7 +400,7 @@ async def test_savings_potential_domain_error(async_client, admin_auth_headers):
 
 async def test_roi_domain_error(async_client, admin_auth_headers):
     """GET /cost/roi DomainError is re-raised."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     mock_analyzer = MagicMock()
     mock_analyzer.calculate_roi = AsyncMock(side_effect=DomainError("domain error"))

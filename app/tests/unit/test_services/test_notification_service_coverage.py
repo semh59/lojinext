@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.events.event_bus import Event, EventType
 from v2.modules.notification.application import handle_trip_events as mod
 from v2.modules.notification.application.get_user_notifications import (
     get_user_notifications,
@@ -19,6 +18,7 @@ from v2.modules.notification.application.mark_all_notifications_read import (
     mark_all_as_read,
 )
 from v2.modules.notification.application.mark_notification_read import mark_as_read
+from v2.modules.platform_infra.events.event_bus import Event, EventType
 
 pytestmark = pytest.mark.unit
 

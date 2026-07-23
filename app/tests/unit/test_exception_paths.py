@@ -7,7 +7,7 @@ Puan 1 (exception hiyerarşisi) değişikliklerinin regresyon güvencesi.
 
 import pytest
 
-from app.core.exceptions import ImportValidationError
+from v2.modules.shared_kernel.exceptions import ImportValidationError
 
 
 class TestImportValidationError:
@@ -25,7 +25,7 @@ class TestImportValidationError:
         assert exc.errors == []
 
     def test_is_domain_error(self):
-        from app.core.exceptions import DomainError
+        from v2.modules.shared_kernel.exceptions import DomainError
 
         exc = ImportValidationError(["test"])
         assert isinstance(exc, DomainError)
@@ -35,22 +35,22 @@ class TestImportServiceValidation:
     """domain/field_validators.py::validate_plaka doğru hata fırlatmalı."""
 
     def test_validate_plaka_empty_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_plaka
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError, match="[Pp]laka"):
             validate_plaka(None)
 
     def test_validate_plaka_too_short_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_plaka
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             validate_plaka("AB")
 
     def test_validate_plaka_invalid_format_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_plaka
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError, match="[Ff]ormat"):
             validate_plaka("INVALID###")
@@ -62,15 +62,15 @@ class TestImportServiceValidation:
         assert result == "34ABC123"
 
     def test_validate_name_too_short_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_name
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             validate_name("A")
 
     def test_validate_name_empty_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_name
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             validate_name("")
@@ -82,8 +82,8 @@ class TestImportServiceValidation:
         assert result == "Ahmet Çelik"
 
     def test_validate_numeric_invalid_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.field_validators import validate_numeric
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         with pytest.raises(ImportValidationError):
             validate_numeric("abc", "mesafe")
@@ -95,8 +95,8 @@ class TestImportServiceValidation:
         assert result == 42.5
 
     def test_resolve_arac_id_not_found_raises(self):
-        from app.core.exceptions import ImportValidationError
         from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         vehicles = [{"plaka": "34ABC123", "id": 1}]
         with pytest.raises(ImportValidationError):
@@ -126,7 +126,7 @@ class TestDomainExceptionHierarchy:
     """Exception sınıf hiyerarşisi doğru kurulmuş olmalı."""
 
     def test_all_exceptions_inherit_domain_error(self):
-        from app.core.exceptions import (
+        from v2.modules.shared_kernel.exceptions import (
             AnomalyDetectionError,
             AuditLogError,
             DomainError,
@@ -151,7 +151,10 @@ class TestDomainExceptionHierarchy:
             )
 
     def test_fuel_calculation_error_is_catchable_as_domain_error(self):
-        from app.core.exceptions import DomainError, FuelCalculationError
+        from v2.modules.shared_kernel.exceptions import (
+            DomainError,
+            FuelCalculationError,
+        )
 
         with pytest.raises(DomainError):
             raise FuelCalculationError("test")
@@ -159,7 +162,9 @@ class TestDomainExceptionHierarchy:
 
 class TestBaseRepositorySafety:
     def test_instantiation_without_model_raises_type_error(self):
-        from app.database.base_repository import BaseRepository
+        from v2.modules.shared_kernel.infrastructure.base_repository import (
+            BaseRepository,
+        )
 
         class ModellessRepo(BaseRepository):
             model = None
@@ -183,7 +188,8 @@ class TestBaseRepositorySafety:
 
 class TestDomainErrorHTTPMapping:
     def test_http_mapping_table_contains_expected_codes(self):
-        from app.core.exceptions import (
+        from app.main import _DOMAIN_ERROR_STATUS
+        from v2.modules.shared_kernel.exceptions import (
             AnomalyDetectionError,
             AuditLogError,
             ExcelExportError,
@@ -192,7 +198,6 @@ class TestDomainErrorHTTPMapping:
             MLPredictionError,
             RouteProcessingError,
         )
-        from app.main import _DOMAIN_ERROR_STATUS
 
         assert _DOMAIN_ERROR_STATUS[FuelCalculationError] == 422
         assert _DOMAIN_ERROR_STATUS[ImportValidationError] == 422
@@ -209,8 +214,8 @@ class TestDomainErrorHTTPMapping:
 
         from fastapi import Request
 
-        from app.core.exceptions import MLPredictionError
         from app.main import domain_error_handler
+        from v2.modules.shared_kernel.exceptions import MLPredictionError
 
         exc = MLPredictionError("Model yüklenemedi", reason="MODEL_NOT_FOUND")
         request = MagicMock(spec=Request)
@@ -229,8 +234,8 @@ class TestDomainErrorHTTPMapping:
 
         from fastapi import Request
 
-        from app.core.exceptions import ImportValidationError
         from app.main import domain_error_handler
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         exc = ImportValidationError(["Plaka boş", "Tarih geçersiz"], row=3)
         request = MagicMock(spec=Request)
@@ -245,7 +250,7 @@ class TestDomainErrorHTTPMapping:
 
 class TestDomainErrorContextFields:
     def test_fuel_calculation_error_carries_context(self):
-        from app.core.exceptions import FuelCalculationError
+        from v2.modules.shared_kernel.exceptions import FuelCalculationError
 
         exc = FuelCalculationError(
             "Depo aşımı",
@@ -262,7 +267,7 @@ class TestDomainErrorContextFields:
         assert d["message"] == "Depo aşımı"
 
     def test_import_validation_error_carries_row_and_errors(self):
-        from app.core.exceptions import ImportValidationError
+        from v2.modules.shared_kernel.exceptions import ImportValidationError
 
         exc = ImportValidationError(["Plaka boş", "Tarih geçersiz"], row=5)
         assert exc.row == 5
@@ -272,7 +277,7 @@ class TestDomainErrorContextFields:
         assert d["errors"] == ["Plaka boş", "Tarih geçersiz"]
 
     def test_domain_error_to_dict_without_optionals(self):
-        from app.core.exceptions import RouteProcessingError
+        from v2.modules.shared_kernel.exceptions import RouteProcessingError
 
         exc = RouteProcessingError("test")
         d = exc.to_dict()
@@ -281,7 +286,7 @@ class TestDomainErrorContextFields:
         assert d["message"] == "test"
 
     def test_all_subclasses_accept_context_kwargs(self):
-        from app.core.exceptions import (
+        from v2.modules.shared_kernel.exceptions import (
             AnomalyDetectionError,
             AuditLogError,
             DomainError,

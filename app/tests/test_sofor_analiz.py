@@ -1,6 +1,6 @@
 """
 TIR Yakıt Takip Sistemi - Faz 3 Şoför Analiz Testleri (Async & Pytest)
-v2.modules.driver.domain.driver_stats free function'ları için entegrasyon
+v2.modules.driver.application.driver_stats free function'ları için entegrasyon
 ve birim testleri.
 
 NOT: eski ``SoforAnalizService`` sınıfı silindi (B.1 free-function split,
@@ -12,17 +12,19 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.core.entities.models import DriverStats
-from v2.modules.driver.domain import driver_stats as driver_stats_mod
-from v2.modules.driver.domain.driver_stats import (
+from app.tests._helpers.seed import seed_arac, seed_sefer, seed_sofor
+from v2.modules.driver.application import driver_stats as driver_stats_mod
+from v2.modules.driver.application.driver_stats import (
     calculate_performance_score,
     calculate_trend,
     compare_drivers,
     get_driver_stats,
 )
+from v2.modules.driver.domain.entities import DriverStats
 from v2.modules.driver.infrastructure import (
     driver_metrics_queries as driver_metrics_queries_mod,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 class TestDriverStatsEntity:
@@ -67,7 +69,7 @@ class TestDriverStatsEntity:
 
 
 class TestDriverStatsFreeFunctions:
-    """v2.modules.driver.domain.driver_stats birim testleri"""
+    """v2.modules.driver.application.driver_stats birim testleri"""
 
     @pytest.fixture
     def mock_uow(self):
@@ -116,26 +118,31 @@ class TestDriverStatsFreeFunctions:
         result = await get_driver_stats(uow=mock_uow)
         assert result == []
 
+    @pytest.mark.integration
     @pytest.mark.asyncio
-    async def test_get_driver_stats_with_data(self, mock_uow):
-        """Şoför istatistikleri - veri ile"""
-        mock_uow.sofor_repo.get_sefer_stats.return_value = [
-            {
-                "sofor_id": 1,
-                "ad_soyad": "Test Şoför",
-                "toplam_sefer": 20,
-                "toplam_km": 10000,
-                "toplam_ton": 500.0,
-                "ort_tuketim": 32.0,
-                "en_iyi_tuketim": 28.0,
-                "en_kotu_tuketim": 36.0,
-                "bos_sefer_sayisi": 5,
-            }
-        ]
+    async def test_get_driver_stats_with_data(self, db_session):
+        """Şoför istatistikleri - gerçek DB.
 
-        mock_uow.analiz_repo.get_filo_ortalama_tuketim.return_value = 35.0
-        mock_uow.sofor_repo.get_yakit_tuketimi.return_value = []  # for trend
-        mock_uow.sofor_repo.get_guzergah_performansi.return_value = []
+        2026-07-22: eski ``mock_uow`` (MagicMock) sürümü kırılmıştı —
+        ``get_driver_stats`` artık elite skor için `driver_trip_queries.
+        get_recent_trips_batch`'i (ayrı bir session açan/`uow.session`
+        üzerinden raw SQL çalıştıran serbest fonksiyon) çağırıyor;
+        `MagicMock`'un `.session`'ı awaitable olmayan bir `MagicMock`
+        döndürdüğünden `TypeError` alınıyordu. `_calc_elite_from_trips`
+        (ML/prediction_ml sınır katmanı) dışında artık mock yok.
+        """
+        arac = await seed_arac(db_session, plaka="34SFTST1")
+        sofor = await seed_sofor(db_session, ad_soyad="Test Şoför")
+        await seed_sefer(
+            db_session,
+            arac_id=arac.id,
+            sofor_id=sofor.id,
+            sefer_no="SFTST-01",
+            mesafe_km=500.0,
+            net_kg=5000,
+            tuketim=32.0,
+        )
+        await db_session.commit()
 
         # AUDIT-045 refactor: elite skor _calc_elite_from_trips ile hesaplanır.
         with patch.object(
@@ -143,12 +150,14 @@ class TestDriverStatsFreeFunctions:
         ) as mock_elite:
             mock_elite.return_value = 85.0
 
-            result = await get_driver_stats(sofor_id=1, uow=mock_uow)
+            async with UnitOfWork() as uow:
+                result = await get_driver_stats(sofor_id=sofor.id, uow=uow)
 
             assert len(result) == 1
-            assert result[0].sofor_id == 1
+            assert result[0].sofor_id == sofor.id
             assert result[0].ad_soyad == "Test Şoför"
             assert result[0].performans_puani == 85.0
+            assert result[0].toplam_sefer == 1
 
     @pytest.mark.asyncio
     async def test_compare_drivers_ranking(self, mock_uow):

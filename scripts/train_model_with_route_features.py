@@ -12,10 +12,10 @@ sys.path.append(project_root)
 # Load env explicitly
 load_dotenv(os.path.join(project_root, ".env"))
 
-from app.core.ml.ensemble_predictor import EnsemblePredictorService
-from app.database.connection import AsyncSessionLocal
-from app.database.models import Sefer
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.prediction_ml.public import EnsemblePredictorService
+from v2.modules.trip.public import SeferORM as Sefer
 
 logger = get_logger(__name__)
 

@@ -1,5 +1,5 @@
 """Clock injection regression — date.today() kullanımının
-app.core.utils.clock üzerinden gittiğini doğrular.
+v2.modules.shared_kernel.utils.clock üzerinden gittiğini doğrular.
 
 Audit (AUDIT_REPORT_FINAL) "Fake items: date.today()" işaretlediği
 servisler: analytics_executive'in cost analizi (analyze_costs.py),
@@ -15,7 +15,7 @@ from datetime import date
 
 def test_clock_helper_exposes_current_date():
     """clock.current_date() default olarak gerçek bugünü döner."""
-    from app.core.utils.clock import current_date
+    from v2.modules.shared_kernel.utils.clock import current_date
 
     today = current_date()
     assert isinstance(today, date)
@@ -25,10 +25,10 @@ def test_clock_helper_monkeypatchable(monkeypatch):
     """monkeypatch ile sabit tarih döndürülebilmeli."""
     fixed = date(2026, 1, 1)
     monkeypatch.setattr(
-        "app.core.utils.clock.current_date",
+        "v2.modules.shared_kernel.utils.clock.current_date",
         lambda: fixed,
     )
-    from app.core.utils.clock import current_date
+    from v2.modules.shared_kernel.utils.clock import current_date
 
     assert current_date() == fixed
 

@@ -6,7 +6,8 @@ relationship'in iki yönlü çalıştığı.
 
 from __future__ import annotations
 
-from app.database.models import Base, RouteSegment, RouteSimulation
+from v2.modules.route_simulation.public import RouteSegment, RouteSimulation
+from v2.modules.shared_kernel.infrastructure.base import Base
 
 
 def test_models_registered_in_metadata():

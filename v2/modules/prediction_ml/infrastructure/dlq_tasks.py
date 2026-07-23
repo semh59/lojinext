@@ -1,0 +1,55 @@
+"""
+DLQ tüketim/gözlem task'ları.
+
+`app/workers/tasks/dlq_tasks.py`'den dalga 17 (platform-infra) denetiminde
+taşındı — task adı (``prediction.drain_dlq``) ve Redis anahtarları
+(``pred:dlq``/``pred:retry``) tamamen bu modüle özgü (`infrastructure/
+prediction_tasks.py` zaten ``pred:dlq``'ya yazıyor); genel platform-infra
+değil, route_simulation'ın `admin_calibration.py`/`weather.py`'si gibi
+tek-modüllük bir kalıntıydı.
+"""
+
+import json
+from datetime import datetime
+from typing import Optional, cast
+
+import redis
+
+from v2.modules.platform_infra.background.celery_app import celery_app
+from v2.modules.platform_infra.logging.logger import get_logger
+
+logger = get_logger(__name__)
+
+REDIS_URL = celery_app.conf.broker_url
+
+
+@celery_app.task(name="prediction.drain_dlq", bind=True, max_retries=0)
+def drain_prediction_dlq(self, requeue: bool = False):
+    """
+    pred:dlq kuyruğundaki hatalı işleri loglar; opsiyonel yeniden kuyruğa alır.
+    """
+    r = redis.Redis.from_url(REDIS_URL)
+    drained = 0
+    while True:
+        raw = cast(Optional[bytes], r.rpop("pred:dlq"))
+        if not raw:
+            break
+        drained += 1
+        try:
+            payload = json.loads(raw)
+        except Exception:
+            payload = {"raw": raw.decode("utf-8", errors="ignore")}
+
+        logger.error("[DLQ] prediction task failed: %s", payload)
+
+        if requeue:
+            r.lpush("pred:retry", raw)
+            logger.info(
+                "[DLQ] requeued to pred:retry: task_id=%s", payload.get("task_id")
+            )
+
+    if drained:
+        from datetime import timezone
+
+        return {"drained": drained, "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"drained": 0}

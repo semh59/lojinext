@@ -21,12 +21,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
 from app.tests._helpers.seed import seed_arac, seed_yakit
 from v2.modules.fuel.application.recalculate_vehicle_periods import (
     recalculate_vehicle_periods,
 )
 from v2.modules.fuel.domain.period_matcher import sync_distribute_fuel_to_trips
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -37,7 +37,7 @@ pytestmark = pytest.mark.unit
 
 
 def _sefer(id, arac_id, tarih_str, mesafe_km=300, net_kg=15000):
-    from app.core.entities.models import Sefer
+    from v2.modules.trip.domain.entities import Sefer
 
     return Sefer(
         id=id,
@@ -53,7 +53,7 @@ def _sefer(id, arac_id, tarih_str, mesafe_km=300, net_kg=15000):
 
 
 def _make_period(toplam_yakit=1000.0, arac_id=1):
-    from app.core.entities.models import YakitPeriyodu
+    from v2.modules.fuel.domain.entities import YakitPeriyodu
 
     return YakitPeriyodu(
         arac_id=arac_id,

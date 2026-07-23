@@ -5,8 +5,8 @@ Bu dosya, Backend Core bileşenlerini (Services, AI, ML) kapsamlı şekilde test
 
 Kapsam:
 - Servisler: ai_service, analiz_service, anomaly_detector, cost_analyzer,
-             insight_engine, weather_service, yakit_tahmin_service
-- AI: rag_engine, recommendation_engine, context_builder, prompt_tuner
+             weather_service (insight_engine/yakit_tahmin 2026-07-18 temizliğinde silindi)
+- AI: rag_engine (recommendation_engine/context_builder/prompt_tuner 2026-07-18 ölü-kod temizliğinde silindi)
 - ML: ensemble_predictor, kalman_estimator, physics_fuel_predictor, time_series_predictor
 
 Test Yaklaşımı:
@@ -20,7 +20,7 @@ Test Yaklaşımı:
 import sys
 from datetime import date
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import numpy as np
 import pytest
@@ -245,7 +245,7 @@ class TestPhysicsFuelPredictor:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             PhysicsBasedFuelPredictor,
             VehicleSpecs,
         )
@@ -261,7 +261,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_basic_scenario(self, predictor):
         """Temel tahmin senaryosu"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -275,7 +277,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_with_elevation_gain(self, predictor):
         """Yokuş yukarı senaryo - daha fazla yakıt"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         flat_conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -293,7 +297,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_with_elevation_loss(self, predictor):
         """Yokuş aşağı senaryo - daha az yakıt"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         flat_conditions = RouteConditions(
             distance_km=100, load_ton=20.0, avg_speed_kmh=80, ascent_m=0, descent_m=0
@@ -311,7 +317,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_heavier_load_consumes_more(self, predictor):
         """Ağır yük daha fazla yakıt tüketir"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         light_load = RouteConditions(distance_km=100, load_ton=10.0, avg_speed_kmh=80)
 
@@ -324,7 +332,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_higher_speed_consumes_more(self, predictor):
         """Yüksek hız daha fazla yakıt tüketir (hava direnci)"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         slow_speed = RouteConditions(distance_km=100, load_ton=20.0, avg_speed_kmh=60)
 
@@ -338,7 +348,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_edge_case_zero_distance(self, predictor):
         """Sıfır mesafe edge case"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         zero_distance = RouteConditions(distance_km=0, load_ton=20.0, avg_speed_kmh=80)
 
@@ -349,7 +361,9 @@ class TestPhysicsFuelPredictor:
 
     def test_predict_edge_case_zero_load(self, predictor):
         """Boş araç (yük yok) edge case"""
-        from app.core.ml.physics_fuel_predictor import RouteConditions
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+            RouteConditions,
+        )
 
         empty_truck = RouteConditions(distance_km=100, load_ton=0.0, avg_speed_kmh=80)
 
@@ -370,7 +384,7 @@ class TestKalmanEstimator:
 
     @pytest.fixture
     def estimator(self):
-        from app.core.ml.kalman_estimator import KalmanFuelEstimator
+        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
 
         return KalmanFuelEstimator()
 
@@ -445,7 +459,7 @@ class TestEnsemblePredictor:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         return EnsembleFuelPredictor()
 
@@ -577,7 +591,7 @@ class TestEnsemblePredictorSecurity:
 
     @pytest.fixture
     def predictor(self):
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         return EnsembleFuelPredictor()
 
@@ -595,7 +609,9 @@ class TestEnsemblePredictorSecurity:
             predictor.save_model(filepath)
 
             # Yeni instance ile yükle
-            from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+            from v2.modules.prediction_ml.domain.ensemble_core import (
+                EnsembleFuelPredictor,
+            )
 
             new_predictor = EnsembleFuelPredictor()
             new_predictor.load_model(filepath)
@@ -613,7 +629,7 @@ class TestEnsemblePredictorSecurity:
 
         import joblib
 
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         base_path = tmp_path / "model_tamper"
         sklearn_file = tmp_path / "model_tamper_sklearn.joblib"
@@ -796,7 +812,9 @@ class TestWeatherService:
 
     @pytest.fixture
     def weather_service(self):
-        from app.core.services.weather_service import WeatherService
+        from v2.modules.route_simulation.application.weather_service import (
+            WeatherService,
+        )
 
         return WeatherService()
 
@@ -869,68 +887,6 @@ class TestWeatherService:
 # =============================================================================
 
 
-class TestInsightEngine:
-    """Insight (içgörü) motoru testleri (dalga 11 — free function, eski
-    InsightEngine sınıfı kaldırıldı)."""
-
-    @pytest.mark.asyncio
-    async def test_generate_insights_empty_data(self):
-        """Boş veri ile insight üretimi"""
-        from app.database.unit_of_work import UnitOfWork
-        from v2.modules.analytics_executive.application.generate_insights import (
-            generate_vehicle_insights_bulk,
-        )
-
-        with patch(
-            "v2.modules.analytics_executive.application.generate_insights.get_uow"
-        ) as mock_uow_func:
-            mock_uow = MagicMock(spec=UnitOfWork)
-            mock_uow.__aenter__.return_value = mock_uow
-            mock_uow.analiz_repo = AsyncMock()
-            mock_uow.analiz_repo.get_all_vehicles_consumption_stats.return_value = []
-            mock_uow_func.return_value = mock_uow
-
-            insights = await generate_vehicle_insights_bulk()
-
-            assert isinstance(insights, list)
-            assert len(insights) == 0
-
-    @pytest.mark.asyncio
-    async def test_insight_structure(self):
-        """Insight yapısı kontrolü"""
-        from app.database.unit_of_work import UnitOfWork
-        from v2.modules.analytics_executive.application.generate_insights import (
-            generate_vehicle_insights_bulk,
-        )
-
-        with patch(
-            "v2.modules.analytics_executive.application.generate_insights.get_uow"
-        ) as mock_uow_func:
-            mock_uow = MagicMock(spec=UnitOfWork)
-            mock_uow.__aenter__.return_value = mock_uow
-            mock_uow.analiz_repo = AsyncMock()
-            mock_uow.analiz_repo.get_all_vehicles_consumption_stats.return_value = [
-                {
-                    "arac_id": 1,
-                    "plaka": "34 ABC 123",
-                    "hedef_tuketim": 32.0,
-                    "ort_tuketim": 40.0,
-                }
-            ]
-            mock_uow_func.return_value = mock_uow
-
-            insights = await generate_vehicle_insights_bulk()
-
-            if insights:
-                insight = insights[0]
-                assert hasattr(insight, "tip")
-                assert hasattr(insight, "mesaj")
-
-
-# =============================================================================
-# 10. COST ANALYZER TESTS
-# =============================================================================
-
 
 class TestCostAnalyzer:
     """Maliyet analiz use-case testleri (dalga 11 — free function, eski
@@ -984,7 +940,9 @@ class TestTimeSeriesService:
 
     @pytest.fixture
     def ts_service(self):
-        from app.services.time_series_service import get_time_series_service
+        from v2.modules.prediction_ml.application.time_series_service import (
+            get_time_series_service,
+        )
 
         return get_time_series_service()
 
@@ -1096,7 +1054,9 @@ class TestPerformance:
 
     def test_ensemble_predictor_memory_guard(self):
         """Ensemble predictor bellek guard'ı"""
-        from app.core.ml.ensemble_predictor import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         service = EnsemblePredictorService()
 
@@ -1116,7 +1076,7 @@ class TestEdgeCases:
 
     def test_physics_predictor_extreme_values(self):
         """Fizik modeli - aşırı değerler"""
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
             PhysicsBasedFuelPredictor,
             RouteConditions,
             VehicleSpecs,
@@ -1158,7 +1118,7 @@ class TestEdgeCases:
 
     def test_empty_strings_and_none_values(self):
         """Boş string ve None değer handling"""
-        from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 

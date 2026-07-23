@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -36,7 +36,9 @@ def _make_arac(**overrides):
 
 
 def _make_service():
-    from app.core.ml.ensemble_service import EnsemblePredictorService
+    from v2.modules.prediction_ml.application.ensemble_service import (
+        EnsemblePredictorService,
+    )
 
     svc = EnsemblePredictorService()
     # Inject mock repos
@@ -53,31 +55,41 @@ def _make_service():
 
 class TestVehicleClassLogic:
     def test_heavy_class_above_500(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         assert svc._get_vehicle_class({"tank_kapasitesi": 600}) == "heavy"
 
     def test_medium_class_200_to_500(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         assert svc._get_vehicle_class({"tank_kapasitesi": 300}) == "medium"
 
     def test_light_class_below_200(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         assert svc._get_vehicle_class({"tank_kapasitesi": 100}) == "light"
 
     def test_none_tank_defaults_to_light(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         assert svc._get_vehicle_class({"tank_kapasitesi": None}) == "light"
 
     def test_vehicle_class_model_id_heavy(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         mid = svc._get_vehicle_class_model_id({"tank_kapasitesi": 600})
@@ -91,13 +103,15 @@ class TestVehicleClassLogic:
 
 class TestLazyRepoProperties:
     def test_arac_repo_property_lazy_loads(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         mock_repo = MagicMock()
 
         with patch(
-            "v2.modules.fleet.infrastructure.vehicle_repository.get_arac_repo",
+            "v2.modules.fleet.public.get_arac_repo",
             return_value=mock_repo,
         ):
             repo = svc.arac_repo
@@ -105,13 +119,15 @@ class TestLazyRepoProperties:
         assert repo is mock_repo
 
     def test_sefer_repo_property_lazy_loads(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         mock_repo = MagicMock()
 
         with patch(
-            "app.database.repositories.sefer_repo.get_sefer_repo",
+            "v2.modules.trip.public.get_sefer_repo",
             return_value=mock_repo,
         ):
             repo = svc.sefer_repo
@@ -119,13 +135,15 @@ class TestLazyRepoProperties:
         assert repo is mock_repo
 
     def test_dorse_repo_property_lazy_loads(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         mock_repo = MagicMock()
 
         with patch(
-            "v2.modules.fleet.infrastructure.trailer_repository.get_dorse_repo",
+            "v2.modules.fleet.public.get_dorse_repo",
             return_value=mock_repo,
         ):
             repo = svc.dorse_repo
@@ -140,25 +158,33 @@ class TestLazyRepoProperties:
 
 class TestResolveTripDate:
     def test_date_object_returned_as_is(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         d = date(2025, 6, 1)
         assert EnsemblePredictorService._resolve_trip_date(d) == d
 
     def test_iso_string_parsed(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         result = EnsemblePredictorService._resolve_trip_date("2025-03-15")
         assert result == date(2025, 3, 15)
 
     def test_invalid_string_returns_today(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         result = EnsemblePredictorService._resolve_trip_date("not-a-date")
         assert result == date.today()
 
     def test_none_returns_today(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         result = EnsemblePredictorService._resolve_trip_date(None)
         assert result == date.today()
@@ -171,12 +197,16 @@ class TestResolveTripDate:
 
 class TestExtractRouteAnalysis:
     def test_none_if_no_rota_detay(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         assert EnsemblePredictorService._extract_route_analysis({}) is None
 
     def test_none_if_rota_detay_not_dict(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         assert (
             EnsemblePredictorService._extract_route_analysis({"rota_detay": "string"})
@@ -184,14 +214,18 @@ class TestExtractRouteAnalysis:
         )
 
     def test_extracts_nested_route_analysis(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         sefer = {"rota_detay": {"route_analysis": {"terrain": "mountainous"}}}
         result = EnsemblePredictorService._extract_route_analysis(sefer)
         assert result == {"terrain": "mountainous"}
 
     def test_falls_back_to_rota_detay_if_no_route_analysis_key(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         sefer = {"rota_detay": {"some_key": 1}}
         result = EnsemblePredictorService._extract_route_analysis(sefer)
@@ -205,13 +239,17 @@ class TestExtractRouteAnalysis:
 
 class TestCalculateTrainingHash:
     def test_empty_returns_empty_string(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         assert svc._calculate_training_hash([]) == "empty"
 
     def test_hash_is_string(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         seferler = [{"id": i, "mesafe_km": 500, "ton": 20} for i in range(5)]
@@ -220,7 +258,9 @@ class TestCalculateTrainingHash:
         assert len(result) == 16
 
     def test_different_data_gives_different_hash(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         s1 = [{"id": 1, "mesafe_km": 500, "ton": 20}]
@@ -228,7 +268,9 @@ class TestCalculateTrainingHash:
         assert svc._calculate_training_hash(s1) != svc._calculate_training_hash(s2)
 
     def test_same_data_gives_same_hash(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         seferler = [{"id": i, "mesafe_km": 400 + i, "ton": 20} for i in range(10)]
@@ -244,14 +286,18 @@ class TestCalculateTrainingHash:
 
 class TestGetPredictor:
     def test_creates_new_predictor(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         p = svc.get_predictor(42)
         assert p is not None
 
     def test_returns_same_predictor_second_call(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         p1 = svc.get_predictor(42)
@@ -259,7 +305,9 @@ class TestGetPredictor:
         assert p1 is p2
 
     def test_lru_eviction_at_limit(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         svc.MAX_PREDICTORS = 3
@@ -276,7 +324,9 @@ class TestGetPredictor:
         assert 1 not in svc.predictors
 
     def test_lru_moves_to_end_on_access(self):
-        from app.core.ml.ensemble_service import EnsemblePredictorService
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            EnsemblePredictorService,
+        )
 
         svc = EnsemblePredictorService()
         with patch("pathlib.Path.exists", return_value=False):
@@ -330,7 +380,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -369,7 +419,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -417,7 +467,7 @@ class TestPredictConsumption:
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -454,7 +504,7 @@ class TestTrainForVehicle:
 
         with (
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -498,7 +548,7 @@ class TestTrainForVehicle:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -545,15 +595,14 @@ class TestTrainForVehicle:
         mock_predictor._feature_hash = "abc"
         mock_predictor._physics_version = "v1"
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
+        mock_register = AsyncMock()
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -561,11 +610,12 @@ class TestTrainForVehicle:
                 AsyncMock(return_value=[]),
             ),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                mock_register,
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -574,7 +624,7 @@ class TestTrainForVehicle:
             result = await svc.train_for_vehicle(arac_id=1)
 
         assert result["success"] is True
-        mock_manager.save_version.assert_awaited_once()
+        mock_register.assert_awaited_once()
 
 
 # ---------------------------------------------------------------------------
@@ -594,7 +644,7 @@ class TestTrainGeneralModel:
 
         mock_analiz_repo = MagicMock()
         with patch(
-            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+            "v2.modules.analytics_executive.public.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()
@@ -626,19 +676,18 @@ class TestTrainGeneralModel:
         mock_predictor._feature_hash = None
         mock_predictor._physics_version = None
 
-        mock_manager = AsyncMock()
-        mock_manager.save_version = AsyncMock(return_value=1)
         mock_analiz_repo = MagicMock()
         mock_analiz_repo.save_model_params = AsyncMock()
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.ml.model_manager.get_model_manager",
-                return_value=mock_manager,
+                "v2.modules.prediction_ml.application.ensemble_service."
+                "_register_model_version",
+                AsyncMock(),
             ),
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
@@ -654,7 +703,7 @@ class TestTrainGeneralModel:
         )
         mock_analiz_repo = MagicMock()
         with patch(
-            "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+            "v2.modules.analytics_executive.public.get_analiz_repo",
             return_value=mock_analiz_repo,
         ):
             result = await svc.train_general_model()
@@ -698,7 +747,7 @@ class TestPredictBatch:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "app.core.services.weather_service.get_weather_service",
+                "v2.modules.route_simulation.public.get_weather_service",
                 return_value=mock_weather,
             ),
             patch(
@@ -721,7 +770,7 @@ class TestPredictBatch:
 
 class TestSingleton:
     def test_get_ensemble_service_returns_instance(self):
-        from app.core.ml.ensemble_service import (
+        from v2.modules.prediction_ml.application.ensemble_service import (
             EnsemblePredictorService,
             get_ensemble_service,
         )
@@ -730,7 +779,9 @@ class TestSingleton:
         assert isinstance(svc, EnsemblePredictorService)
 
     def test_get_ensemble_service_same_instance(self):
-        from app.core.ml.ensemble_service import get_ensemble_service
+        from v2.modules.prediction_ml.application.ensemble_service import (
+            get_ensemble_service,
+        )
 
         a = get_ensemble_service()
         b = get_ensemble_service()

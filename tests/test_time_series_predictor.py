@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, ".")
 
-from app.core.ml.time_series_predictor import (
+from v2.modules.prediction_ml.domain.time_series_predictor import (
     TORCH_AVAILABLE,
     TimeSeriesPrediction,
     TimeSeriesPredictor,
@@ -240,7 +240,9 @@ class TestIntegration:
     @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not installed")
     def test_full_pipeline(self):
         """Tam pipeline testi"""
-        from app.core.ml.time_series_predictor import TimeSeriesPredictor
+        from v2.modules.prediction_ml.domain.time_series_predictor import (
+            TimeSeriesPredictor,
+        )
 
         predictor = TimeSeriesPredictor()
 

@@ -18,9 +18,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-import app.database.repositories.sefer_repo as sefer_repo_mod
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_repo_mod
 import v2.modules.fuel.infrastructure.repository as yakit_repo_mod
+import v2.modules.trip.infrastructure.repository as sefer_repo_mod
 from v2.modules.analytics_executive.application.analyze_costs import (
     CostBreakdown,
     calculate_period_cost,

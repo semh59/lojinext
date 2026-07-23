@@ -2,8 +2,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.events.event_bus import Event, EventType
 from v2.modules.notification.application import handle_trip_events
+from v2.modules.platform_infra.events.event_bus import Event, EventType
 
 
 @pytest.mark.asyncio

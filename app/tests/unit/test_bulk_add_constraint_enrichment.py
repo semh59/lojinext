@@ -20,11 +20,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.entities.models import SeferCreate
-from app.core.services.sefer_write_service import SeferWriteService
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 from v2.modules.fuel.schemas import YakitCreate
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.application.bulk_add_trips import bulk_add_sefer
+from v2.modules.trip.schemas import SeferCreate
 
 
 class _BaseUoW:
@@ -160,13 +160,9 @@ async def test_bulk_add_sefer_enriches_bos_and_dolu_from_arac_master(
     mock_pred_service = MagicMock()
     mock_pred_service.predict_consumption = AsyncMock(return_value=(30.0, {}))
     monkeypatch.setattr(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         lambda: mock_pred_service,
     )
-
-    service = SeferWriteService(repo=AsyncMock(), event_bus=MagicMock())
-    # _refresh_stats'i no-op'a sahte at — UoW.refresh içermiyor
-    monkeypatch.setattr(service, "_refresh_stats", AsyncMock())
 
     # Excel'den gelen SeferCreate — sadece net_kg dolu, bos/dolu YOK
     payload = [
@@ -184,7 +180,7 @@ async def test_bulk_add_sefer_enriches_bos_and_dolu_from_arac_master(
         )
     ]
 
-    await service.bulk_add_sefer(payload)
+    await bulk_add_sefer(payload)
 
     assert len(captured_items) == 1
     row = captured_items[0][0]
@@ -237,14 +233,11 @@ async def test_bulk_add_sefer_fallback_when_arac_bos_unknown(monkeypatch):
     monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow))
     monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr(
-        "app.services.prediction_service.get_prediction_service",
+        "v2.modules.prediction_ml.public.get_prediction_service",
         lambda: AsyncMock(),
     )
 
-    service = SeferWriteService(repo=AsyncMock(), event_bus=MagicMock())
-    monkeypatch.setattr(service, "_refresh_stats", AsyncMock())
-
-    await service.bulk_add_sefer(
+    await bulk_add_sefer(
         [
             SeferCreate(
                 tarih=date(2026, 5, 1),

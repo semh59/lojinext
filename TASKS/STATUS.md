@@ -18,10 +18,10 @@
 | FAZ | Durum | Not |
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
-| **FAZ1** — Kod sınırları (17 kalem) | 🟡 DEVAM EDİYOR — 12/17 kalem tamam | Dalga 1 (location+route-simulation) main'de yeşil; dalga 2 (notification) main'de yeşil; dalga 3 (fleet) main'de yeşil; dalga 4 (fuel) main'de yeşil; dalga 5 (driver) main'de yeşil; dalga 6 (auth-rbac) main'de yeşil; dalga 8 (anomaly) main'de yeşil; dalga 9 (import-excel) main'de yeşil; dalga 10 (reports) main'de yeşil; dalga 11 (analytics-executive) main'de yeşil (bkz. DALGA 11 bölümü); dalga 12 (ai-assistant) main'de yeşil, 2 turluk dedektif denetim + 4 gerçek bug fix dahil (bkz. DALGA 12 bölümü); sıradaki: dalga 13 (prediction-ml), yeni oturumda |
+| **FAZ1** — Kod sınırları (17 kalem) | 🟢 KOD TARAFI TAMAMLANDI (2026-07-22) — 17/17 kalem branch'te; kalan tek şey "5 ardışık gün main'de yeşil" burn-in penceresi (takvim-zamanı gerektirir, tek oturumda gözlenemez) | Dalga 1-16 main'de/branch'te yeşil (aşağıdaki tablo). Dalga 17 (platform-infra) 2026-07-22'de 10 commit'lik bir alt-dalgayla tamamlandı: cache/events/container/resilience/database/monitoring/security/context/logging/audit/background/middleware/websocket taşındı + `public.py` + kendi `public-surface-only-platform_infra` import-linter kontratı yazıldı + CI'nın blocking gate adımına eklendi (`.github/workflows/ci.yml`, önceden eksikti — bu turda düzeltildi). Ardından "V2 dışında kalan var mı" denetiminde bulunan 4 ek kalem de taşındı/silindi (`app/api/middleware/rate_limiter.py`→platform_infra, `app/api/v1/utils.py`→platform_infra, ölü `app/core/services/ai_service.py` silindi, `app/workers/tasks/{backup_tasks,error_digest}.py`→platform_infra/background). Her adım tam doğrulamayla (ruff/mypy/lint-imports/alembic check/pytest, bilinen baseline 17 failed/6560 passed/28 skipped) ayrı commit+push edildi. |
 | **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
-| **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor | |
+| **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor (ama bkz. not) | **Kısmi erken tamamlama (2026-07-22, kullanıcı onayıyla DURMA NOKTASI dar kapsamda aşıldı):** madde 2'nin ("shim temizliği") 9 kalemi — `app/api/v1/endpoints/{ai,feedback}.py`, `app/core/ai/*` (5 dosya), `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` — sıfır gerçek tüketici doğrulandıktan sonra silindi (gerçek kod zaten `v2/modules/ai_assistant/`'da). `app/api/`, `app/core/`, `app/services/`, `app/schemas/` dizinleri artık yok. FAZ4'ün diğer maddeleri (ignore_imports sıfırlama, xenon, dosya-kalite baseline, retro raporu) hâlâ FAZ3'ü bekliyor. |
 
 ## FAZ1 — Modül Dalga Sırası (bağımlılık az→çok)
 
@@ -29,11 +29,11 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 
 | # | Modül/kalem | Görev dosyası | Durum |
 |---|---|---|---|
-| — | Registry+iskelet+shim deseni (çatı) | `faz1-registry-iskelet-ve-shim.md` | 🔲 |
-| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | 🟡 11/17 modül için baseline donduruldu main'de yeşil (rapor modu, `Contracts: 13 kept, 1 broken[kapsam dışı]`); gate (continue-on-error kaldırma) kalan 6 dalga sonrası ayrı onayla |
-| — | Davranışsal mimari testleri (çatı) | `faz1-davranissal-mimari-testler.md` | 🔲 |
-| — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | 🔲 |
-| — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | 🔲 |
+| — | Registry+iskelet+shim deseni (çatı) | `faz1-registry-iskelet-ve-shim.md` | ⛔ TERK EDİLDİ (kasıtlı) — `app/modules/<x>/`+`ModuleSpec`+registry deseni hiç inşa edilmedi, gerçek yürütülüş doğrudan `v2/modules/<x>/`'e taşımaydı (bkz. `TASKS/modules/platform-infra.md` madde 0 + `TASKS/STATUS.md`'nin 2026-07-12 KARAR bölümü). Shim disiplini ("tek satır, FAZ4'te silinir") AYNEN uygulandı, yalnız registry soyutlaması olmadan. |
+| — | import-linter baseline→gate (çatı) | `faz1-import-linter-baseline-ve-gate.md` | ✅ TAMAMLANDI (2026-07-22) — 18 kontrat (1 independence + 1 layers + 15 iş modülü + platform_infra), hepsi CI'nın blocking gate adımında (`Contracts: 18 kept, 0 broken`, lokal doğrulandı). shared_kernel kasıtlı olarak yok (kendi CLAUDE.md'sinde belgelenmiş muafiyet). "5 ardışık gün main'de yeşil" burn-in'i hâlâ gözlenmedi (takvim-zamanı gerektirir). |
+| — | Davranışsal mimari testleri (çatı) | `faz1-davranissal-mimari-testler.md` | ⛔ HİÇ BAŞLAMADI — `pytest-archon` kurulmamış, `app/tests/architecture/` yok. import-linter'ın statik-AST kontratları (18 kontrat, gerçek blocking gate) fiilen aynı mimari-sınır endişesinin büyük kısmını karşıladığı için bu paralel çaba hiç açılmadı. Kullanıcı onayı olmadan uygulanmaz (DURMA NOKTASI) — ayrı bir karar gerektirir. |
+| — | Dosya kalite + kısalık gate (çatı) | `faz1-dosya-kalite-ve-kisalik-gate.md` | ⛔ HİÇ BAŞLAMADI — `arch/quality_baseline.json`, `scripts/check_new_file_loc.py`, ruff `C901` yok. Kullanıcı onayı olmadan uygulanmaz (DURMA NOKTASI) — ayrı bir karar gerektirir. |
+| — | Modül CLAUDE.md şablonu (çatı) | `faz1-claude-md-per-module-template.md` | ✅ FİİLEN TAMAMLANDI — 17 modülün (15 iş modülü + shared_kernel + platform_infra) hepsinde dolu bir CLAUDE.md var, kök CLAUDE.md'de okuma-tetikleyici talimatı + modül tablosu mevcut. Bu spesifik görev dosyasının checkbox'ları bayat kalmıştı (gerçek teslimat her modülün kendi taşıma göreviyle birlikte oldu, bu ayrı plan dosyası üzerinden değil) — 2026-07-22'de not düşüldü. |
 | 1 | **location + route-simulation** (PİLOT ÇİFTİ — karşılıklı bağımlı 7/1 kenar, birlikte) | `modules/location.md` + `modules/route-simulation.md` | ✅ main'de yeşil (commit `4ebabca`) |
 | 2 | notification | `modules/notification.md` | ✅ main'de yeşil (commit `34e40c8`) |
 | 3 | fleet | `modules/fleet.md` | ✅ main'de yeşil (commit `26967c3`) |
@@ -46,13 +46,13 @@ Her satır bağımsız bir PR/onay/oturum birimidir. Sıradaki modül, bir önce
 | 10 | reports | `modules/reports.md` | ✅ main'de yeşil (commit `1fdc78e`, bkz. DALGA 10 bölümü) |
 | 11 | analytics-executive | `modules/analytics-executive.md` | ✅ main'de yeşil (commit `48e8e21`, bkz. DALGA 11 bölümü) |
 | 12 | ai-assistant | `modules/ai-assistant.md` | ✅ main'de yeşil (commit `928de51`, bkz. DALGA 12 bölümü) |
-| 13 | prediction-ml | `modules/prediction-ml.md` | 🔲 |
-| 14 | trip (en karmaşık split) | `modules/trip.md` | 🔲 |
-| 15 | admin-platform | `modules/admin-platform.md` | 🔲 |
-| 16 | shared-kernel (erime) | `modules/shared-kernel.md` | 🔲 |
-| 17 | platform-infra (registry finali) | `modules/platform-infra.md` | 🔲 |
+| 13 | prediction-ml | `modules/prediction-ml.md` | ✅ main'de yeşil (bkz. DALGA 13 bölümü) |
+| 14 | trip (en karmaşık split) | `modules/trip.md` | ✅ branch'te tamamlandı (bkz. DALGA 14 bölümü) |
+| 15 | admin-platform | `modules/admin-platform.md` | ✅ branch'te tamamlandı (bkz. DALGA 15 bölümü) |
+| 16 | shared-kernel (erime) | `modules/shared-kernel.md` | ✅ branch'te tamamlandı (2026-07-21, bkz. DALGA 16 bölümü) — task #58 (models.py'nin 43 tablosu TAMAMEN dağıtıldı, dosya silindi) + task #59 (kalan 9 dosya: errors/exceptions/utils/schemas/base_repository/unit_of_work taşındı, dosyalar silindi) + public.py/CLAUDE.md yazıldı |
+| 17 | platform-infra (registry finali) | `modules/platform-infra.md` | ✅ branch'te tamamlandı (2026-07-22, 10 commit — bkz. `TASKS/modules/platform-infra.md`) |
 
-**FAZ1 çıkış kriteri:** yukarıdaki 17 kalemin tamamı + import-linter gate main'de 5 ardışık gün yeşil (bkz. `TASKS/README.md`).
+**FAZ1 çıkış kriteri:** yukarıdaki 17 kalemin tamamı (✅ 2026-07-22) + import-linter gate main'de 5 ardışık gün yeşil (bkz. `TASKS/README.md`) — **kalan tek madde bu burn-in penceresi**, kod tarafı tamamen bitti. Davranışsal-mimari-testler ve dosya-kalite-gate alt-planları (yukarıdaki tablo) FAZ1'in orijinal taslağının bir parçasıydı ama hiç başlamadı ve TASKS/README.md'nin FAZ1 çıkış satırı bunları AÇIKÇA şart koşmuyor ("15 modül + shared_kernel erimesi + platform-infra registry finali; gate 5 ardışık gün yeşil") — bu ikisinin FAZ1'i tamamlamak için gerekip gerekmediği ayrı bir kullanıcı kararı gerektirir.
 
 ## KARAR (2026-07-12) — Hedef klasör v2/'ye değişti
 Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **repo kökünde `v2/modules/<x>/`** altında yazılıyor (tek FastAPI process, aynı `app/main.py`'nin import edeceği ayrı bir üst-paket — iki ayrı uygulama değil). Gerekçe: (1) eski dosyalarla iç içe geçmiş shim'ler yerine temiz bir ağaç, (2) "ileri mühendislik" — B.1'in "bir dosya = bir use-case" kuralı bu kez GEVŞETİLMEDEN uygulanıyor (location pilotunda `LokasyonService`'in tek sınıf olarak bırakılması bir istisnaydı; v2'de bu istisna YOK, use-case'ler gerçekten ayrı dosyalara bölünüyor).
@@ -67,8 +67,8 @@ Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **rep
 - `admin_ws.py` dosya-sahipliği vs route-işlev tutarsızlığı — notification (dalga 2) VE admin-platform (dalga 15) dosyalarında işaretli, dalga 2'de karar verilecek.
 - `model_manager.py`'deki 9 kırık raw-SQL sitesi (`model_versions` tablosu yok) — prediction-ml (dalga 13) dalgasında düzeltilecek/temizlenecek, ayrı bug-fix.
 - ✅ **ÇÖZÜLDÜ (2026-07-14)** — Connection-pool leak, sistematik debugging ile 2 kök nedene indirgendi ve düzeltildi: (1) `AuthService`/`MLService`/`AttributionService`'in zaten açık bir `UnitOfWork`'ü ikinci kez `async with self.uow:` ile yeniden açması (`_owns` bayrağını bozup dış `session.close()`'u atlıyordu) — 3 servis dosyası + 1 endpoint düzeltildi, `UnitOfWork.__aenter__`'e re-entrancy guard eklendi (defense-in-depth, artık sessizce bozmak yerine `RuntimeError`). (2) `AuthService.authenticate()`'teki senkron `bcrypt.checkpw()` event loop'u bloke edip eşzamanlı yük altında pool tükenmesini şiddetlendiriyordu — `asyncio.to_thread`'e taşındı. Gerçek 30-kullanıcılı Locust koşumunda leak uyarısı 30-44 → **0**, p99 latency ~70000ms → **500ms**. 2 gerçek regresyon testi eklendi (`app/tests/test_db_hardening.py`, TDD red→green doğrulandı). Detay: `TASKS/bug-connection-pool-leak-under-load.md` (kabul kriterleri işaretli).
-- `v2/modules/route_simulation/infrastructure/openroute_client.py`'deki `OpenRouteClient` sınıfı 3 ilgisiz sorumluluk taşıyor (ORS distance client + location modülünün geocode'unu tekrarlayan `geocode()` + `lokasyonlar` tablosuna location'ı bypass eden ham SQL `update_route_distance()`) — B.1 + tablo-sahipliği ihlali, ama prod route'larından çağrılmıyor (ölü/legacy kod, yalnız script+testler kullanıyor). 2026-07-14 dalga1-5 denetiminde bulundu. Bağımsız görev açıldı: `TASKS/bug-openroute-client-architectural-leak.md`. Herhangi bir oturumda, dalga sırası beklenmeden ele alınabilir.
-- ✅ **ÇÖZÜLDÜ (2026-07-15)** — İki bağımsız `create_admin.py` scripti var: `scripts/create_admin.py` (rol=`admin`, hardcoded `admin@lojinext.com`, granular `yetkiler` dict) ve `app/scripts/create_admin.py` (rol=`super_admin`, `settings.SUPER_ADMIN_USERNAME`, wildcard `{"*": True}`) — `git log --follow` ile doğrulandı, ikisi de `9f8110b` initial commit'ten beri var, dalga 6'nın ürettiği bir duplikasyon DEĞİL. **Karar: ikisi de kalıyor** (hiçbiri gerçek prod bootstrap'ında kullanılmıyor — gerçek admin oluşturma `alembic/versions/0002_seed_and_bootstrap.py`'de doğrudan SQL upsert ile yapılıyor, bu iki script yalnız manuel/dev-amaçlı CLI yardımcıları). `scripts/create_admin.py`'nin `yetkiler` dict'i eksikti — 2026-06-21 planındaki 5 anahtar (`attribution_duzenle`/`bakim_ekle`/`circuit_breaker_reset`/`model_egit`/`notification_rule_goruntule`) o tarihten sonra zaten eklenmiş (plan dosyası stale çıktı), ama 5 GERÇEK eksik anahtar daha bulundu (`import_goruntule`/`import_rollback`/`notification_rule_duzenle`/`notification_rule_sil`/`admin`) — repo genelindeki 53 `require_yetki(...)` çağrı noktasının tamamı tek tek simüle edilip gerçek `SecurityService.has_permission` koduna karşı doğrulandı, düzeltmeden önce 5 endpoint grubu admin rolüne kapalıydı, düzeltmeden sonra 53/53 geçiyor.
+- ✅ **ÇÖZÜLDÜ (2026-07-18, tam-denetim düzeltme turu)** — `v2/modules/route_simulation/infrastructure/openroute_client.py`'deki `OpenRouteClient` sınıfının 3 ilgisiz sorumluluğundan 2'si (`geocode()`/`_call_geocode_api` + `lokasyonlar` tablosuna ham SQL atan `update_route_distance()`) SİLİNDİ; `scripts/enrich_existing_data.py` `location.public.geocode_location`'a geçti. **Kısmen kapsam dışı bırakıldı** (görev dosyasının kendi madde 3 kararı): üçüncü implementasyon `app.core.services.openroute_service.py` (eski `app/`, route_simulation'ın henüz taşınmamış parçası) dokunulmadı — yani "tek geocode implementasyonu" hedefi tam karşılanmadı, hâlâ 2 implementasyon var (location'ınki + eski openroute_service.py); bu, route_simulation'ın ikinci-dilim taşıması bekleniyor. Detay: `TASKS/bug-openroute-client-architectural-leak.md` (kabul kriterleri güncellendi). ✅ **TAMAMEN ÇÖZÜLDÜ (2026-07-22, ikinci-dilim taşıması)** — `app.core.services.openroute_service.py` `v2/modules/location/infrastructure/openroute_geocode_client.py`'ye taşındı (mekanik, davranış değişikliği yok); `app/core/services/` dizini tamamen silindi. Artık tek geocode implementasyonu var (location'ın `geocode_providers.py`'si, kendi HTTP client'ı bu dosyada).
+- ✅ **ÇÖZÜLDÜ (2026-07-15)** — İki bağımsız `create_admin.py` scripti var: `scripts/create_admin.py` (rol=`admin`, hardcoded `admin@lojinext.com`, granular `yetkiler` dict) ve `app/scripts/create_admin.py` (rol=`super_admin`, `settings.SUPER_ADMIN_USERNAME`, wildcard `{"*": True}`) — `git log --follow` ile doğrulandı, ikisi de `9f8110b` initial commit'ten beri var, dalga 6'nın ürettiği bir duplikasyon DEĞİL. **Karar: ikisi de kalıyor** (hiçbiri gerçek prod bootstrap'ında kullanılmıyor — gerçek admin oluşturma `alembic/versions/0002_seed_and_bootstrap.py`'de doğrudan SQL upsert ile yapılıyor, bu iki script yalnız manuel/dev-amaçlı CLI yardımcıları). `scripts/create_admin.py`'nin `yetkiler` dict'i eksikti — 2026-06-21 planındaki 5 anahtar (`attribution_duzenle`/`bakim_ekle`/`circuit_breaker_reset`/`model_egit`/`notification_rule_goruntule`) o tarihten sonra zaten eklenmiş (plan dosyası stale çıktı), ama 5 GERÇEK eksik anahtar daha bulundu (`import_goruntule`/`import_rollback`/`notification_rule_duzenle`/`notification_rule_sil`/`admin`) — repo genelindeki 53 `require_yetki(...)` çağrı noktasının tamamı tek tek simüle edilip gerçek `SecurityService.has_permission` koduna karşı doğrulandı, düzeltmeden önce 5 endpoint grubu admin rolüne kapalıydı, düzeltmeden sonra 53/53 geçiyor. ✅ **Fiziksel konum güncellendi (2026-07-22)** — "ikisi de kalıyor" kararı duplikasyon İÇİN geçerliliğini koruyor (dokunulmadı), ama `app/scripts/create_admin.py`'nin kendisi `v2/modules/auth_rbac/infrastructure/scripts/create_admin.py`'ye taşındı (Kullanici/Rol auth_rbac'a ait); kök `scripts/create_admin.py` (ayrı duplikat) yerinde kalıyor. Aynı turda `app/scripts/backfill_route_pairs.py` da `v2/modules/route_simulation/infrastructure/scripts/backfill_route_pairs.py`'ye taşındı (`TASKS/modules/route-simulation.md` madde 7). `app/scripts/` dizini tamamen silindi.
 - **Dalga 1-6 + 8 detaylı B.1 dedektif denetimi (2026-07-15, kullanıcı talebiyle "ilk 8 dalgayı detaylı kontrol edelim")** — 6 bağımsız sıfır-context ajan (dalga1: location+route_simulation, dalga2: notification, dalga3: fleet, dalga4: fuel, dalga5: driver, dalga6: auth_rbac) her modülün TÜM dosyalarını tek tek B.1 ("her dosya tek görev") kuralına karşı denetledi (dalga 8/anomaly aynı gün ayrıca 3 ajanla denetlenmişti, bkz. DALGA 8 bölümü). Sonuç: **location + driver TAM TEMİZ**; route_simulation'daki tek bulgu zaten bilinen/dokümante `OpenRouteClient` sızıntısı (yukarıda); fuel'de 1 düşük-risk bulgu (`domain/consumption_prediction.py`'de domain katmanına DB erişimi sızmış ama dosya ölü kod, hiçbir prod endpoint çağırmıyor). **3 modülde (notification/fleet/auth_rbac) YENİ bir ortak bulgu deseni**: 5 route handler'ı `application/` katmanını atlayıp doğrudan repo/ORM çağırıyor + auth_rbac'ta bir iş kuralı (privilege-escalation guard) route dosyasında tekrarlanmış. B.1'in "tek dosya = tek sınıf" ilkesi ihlal edilmiyor ama "route → application → repo" katman sözleşmesi 5 yerde tutmuyor. Bağımsız görev açıldı: `TASKS/bug-route-layer-bypasses-application.md`.
 - ✅ **ÇÖZÜLDÜ (2026-07-15, kullanıcı onayı: "8 dalga tam temiz olana kadar durma")** — yukarıdaki `TASKS/bug-route-layer-bypasses-application.md`'nin 5 handler'ı tek tek düzeltildi: notification'da `manage_notification_rules.py`+`manage_push_subscription.py`, fleet'te `get_maintenance_ics_data.py` + `get_vehicle_by_id`/`get_trailer_by_id`'ye `include_inactive` parametresi, auth_rbac'ta `role_service.py`. 🔴 **Bu sırada notification'ın push subscribe/unsubscribe'ında GERÇEK bir bug bulundu**: her ikisi de hiçbir zaman `uow.commit()` çağırmıyordu (ghost-transaction guard ORM identity-map'e bakıyor, Core-tarzı delete/attribute-mutasyon farklı yollarla ama HER İKİSİ de sessiz rollback'e yol açıyordu) — push abone-ol/ol-ma endpoint'leri 200/204 dönüyordu ama veritabanında hiçbir şey kalıcı olmuyordu, taşımadan önce de böyleydi (regresyon değil), tek satır `await uow.commit()` ile düzeltildi. Detay + doğrulama: `TASKS/bug-route-layer-bypasses-application.md` "Çözüm" bölümü. Yerel `ruff`+`py_compile`+gerçek Python import zinciri temiz; CI doğrulaması bekleniyor.
 
@@ -96,10 +96,10 @@ Kullanıcı talebiyle: yeni modül kodu artık `app/modules/<x>/` DEĞİL, **rep
 - Tüm tüketiciler güncellendi: `container.py`, `import_service.py`, `sefer_fuel_estimator.py` (P4-5 canlı tahmin pipeline'ı!), `api.py`, location modülünün 2 dosyası, 3 script (`enrich_existing_data.py`, `calibrate_physics.py`, `validate_tractive_offline.py`).
 - **~25 test dosyası** güncellendi (import path + patch-target düzeltmesi, çoğu mekanik).
 
-**🔲 route_simulation'da KALAN (route_simulation'ın kendi ileriki dilimi, kapsam dışı bırakılmadı):**
-- `weather_service.py`, `route_validator.py`, `openroute_service.py` (geocode wrapper), `route_calibration_service.py`, `app/api/v1/endpoints/{weather,admin_calibration}.py`, `app/core/ml/route_similarity.py` — hâlâ eski `app/` yolunda, v2'nin geçici (dokümante) bağımlılığı.
-- `public.py`/`events.py`/`schemas.py` henüz yok — location modülü şu an `application/`'dan doğrudan import ediyor (mimari borç, `route_simulation/CLAUDE.md`'de dokümante).
-- `scripts/backfill_route_pairs.py` henüz kontrol edilmedi.
+**🔲 route_simulation'da KALAN (route_simulation'ın kendi ileriki dilimi, kapsam dışı bırakılmadı):** — ✅ **TAMAMEN KAPANDI (2026-07-22)**. Bu blok dalga 1'in (bu bölümün ilk yazıldığı an) durumunu yansıtıyordu; her madde ayrı ayrı sonradan çözüldü:
+- ~~`weather_service.py`, `route_validator.py`, `route_calibration_service.py`, `app/api/v1/endpoints/{weather,admin_calibration}.py`~~ — 2026-07-22'de bu modüle taşındı (kök CLAUDE.md'nin "Faz 1 bitince v2'ye taşıma biter" hedefinin son parçası). `openroute_service.py` (geocode wrapper) BU modüle ait değildi (location'ın bağımlılığı) — 2026-07-22'de (aynı gün, ikinci bir turda) `location/infrastructure/openroute_geocode_client.py`'ye taşındı, `app/core/services/` dizini tamamen silindi. `app/core/ml/route_similarity.py` de bu modüle ait değildi zaten (prediction_ml'in parçası, dalga 13'te oraya taşındı — `route_simulation/CLAUDE.md`'de dokümante).
+- ~~`public.py`/`events.py`/`schemas.py` henüz yok~~ — 2026-07-18'de eklendi.
+- `scripts/backfill_route_pairs.py` kontrol edildi (prediction_ml migrasyonu sırasında, `SeferORM` kullanıyor, route_simulation'la ilgisiz).
 
 **✅ Kritik bulgu + fix (detective review sırasında):** `app/tests/conftest.py` iki kez (`lokasyon_repo` VE `route_repo` singleton reset satırları) silinen eski modülleri import ediyordu — bu, conftest yüklenemediği için **TÜM 541 test dosyasının** collect edilememesi anlamına geliyordu (yalnız location/route_simulation değil). Düzeltildi + doğrulandı: `docker compose exec backend python -m pytest app/tests --collect-only` → 6765+ test, 0 hata.
 
@@ -1215,7 +1215,709 @@ sıfır hata bulundu). Ayrı bir bağımsız temizlik görevi açılabilir.
 yeni dosya (`v2/modules/ai_assistant/`) + ~30 test dosyası import-path
 taşıması (mekanik, 3'ü patch-target düzeltmesi de gerektirdi).
 
+## DALGA 13 — ✅ TAMAMLANDI VE MAIN'DE (2026-07-18)
+
+**Kapsam:** prediction_ml modülü — 5-model ensemble (fizik+LightGBM+XGBoost+
+GB+RF), fizik-tabanlı fallback motoru, Kalman online-learning, ARIMA zaman
+serisi tahmini, model eğitim/versiyonlama, admin ML endpoint'leri, XAI
+açıklama. `egitim_kuyrugu`/`model_versiyonlar`/`prediction_results`
+tablolarının tek sahibi. En büyük modül (10.375 LOC, 36 dosya — task
+dosyasının 35-dosya envanteri `app/core/ml/route_similarity.py`'yi
+atlıyordu, gerçek envanter FAZ0'da doğrulandı).
+
+**Envanter/plan düzeltmeleri (dedektif ön-denetiminde bulundu, kullanıcı
+onayıyla uygulandı):**
+1. `app/core/ml/route_similarity.py` task dosyasının 35-dosya listesinde
+   YOK ama gerçekte prediction_ml'e ait (`find_similar_trips`, ai_assistant'ın
+   `plan_trip.py`'si kullanıyor) — taşındı (`domain/route_similarity.py`).
+2. `app/scripts/benchmark.py` task dosyasında listeliydi ama içeriği
+   ML/prediction ile HİÇ ilgili değil (generic DB/fleet/reports perf
+   benchmark script'i) — TAŞINMADI, task dosyasının bu satırı stale.
+3. `app/core/ml/model_manager.py` — FAZ0'da dead code olarak doğrulandı:
+   `save_version()`'ın yazdığı `model_versions` tablosu alembic geçmişinde
+   HİÇ var olmadı (yalnızca bir INDEX adı kısa süre bu ismi taşıyıp
+   `model_versiyonlar`'a yeniden adlandırıldı — `alembic/legacy_versions_
+   archive/ef8abc3ede67_017_ml_versions_queue.py` ile doğrulandı). 3 çağıran
+   sitesi (`ensemble_service.py`) bu hatayı sessizce yutuyordu. Kullanıcı
+   kararı: **tamamen sil** — `model_manager.py` + deprecated rogue script
+   `scripts/init_ml_db.py` (kendi docstring'i "bunu çalıştırma, alembic
+   kullan" diyordu, yine de `model_versions`'ı eksik şemayla manuel
+   oluşturuyordu) + `test_model_manager_coverage.py` SİLİNDİ.
+4. **Gerçek yazım yolu bağlandı**: `MLService.register_model_version()`
+   (`model_versiyonlar`'a doğru ORM INSERT) daha önce SIFIR prod çağıranı
+   vardı (`GET /admin/ml/versions/{arac_id}` hep boş dönüyordu). Kullanıcı
+   kararı: **doğru yere bağla** — yeni `_register_model_version()` free
+   function (kendi `UnitOfWork` + `MLService` + `model_versiyon_repo.
+   get_latest_version()`) eklendi, 3 eski `model_manager` çağıran sitesi
+   buna yönlendirildi. Kendi try/except'i içinde TÜM hataları yutuyor —
+   bu ayrıca `train_general_model`'daki gerçek bir davranış hatasını da
+   düzeltti: eskiden `save_version()` istisnası dış `try`'a düşüp
+   fonksiyonun geri kalanını (legacy kayıt, disk serialize, heavy/medium/
+   light class-model döngüsü) iptal ediyordu; artık izole.
+5. `app/core/ml/predictors/` paketi (`EnsemblePredictor` inference-only
+   wrapper) — grep ile sıfır prod çağıran doğrulandı (yalnız kendi özel
+   test dosyası). Kullanıcı kararı ("ölü kod yasak" tutarlılığı):
+   **sil** — paket + `test_phase4_ml_predictors_training_split.py` silindi.
+6. `analytics_executive`'in 4 ML-parametre metodundan yalnız
+   `get_training_seferler` (sıfır prod çağıran) SİLİNDİ; diğer 3
+   (`save_model_params`/`get_model_params`/`get_daily_summary_for_ml`)
+   kullanıcı kararıyla BİLİNÇLİ OLARAK `analytics_executive`'te bırakıldı
+   (çapraz-modül repo-metod taşıma davranış-değişikliği riski taşıyor,
+   mekanik-taşıma kapsamının dışında).
+
+**Yapı:** `v2/modules/prediction_ml/{api,application,domain,infrastructure,
+schemas.py,events.py,public.py,CLAUDE.md}`. `predict_consumption`
+(eskiden CC=50, 257 satır) ZATEN yardımcı metotlara bölünmüştü (taşımadan
+önce) — task dosyası §5'in 4 kümesi uygulandı ama 2 kümenin YERİ kök
+CLAUDE.md'nin domain-saflık kuralı gereği düzeltildi: `_run_physics_fallback`
+(response_builder'a bağımlı olduğu için domain/'de KALAMAZDI —
+`application/prediction_service.py`'de instance metodu olarak kaldı) ve
+"ensemble kümesi" (`run_ensemble_prediction`/`process_ensemble_result` —
+gerçek DB I/O yaptığı ve response_builder'a bağımlı olduğu için task
+dosyasının önerdiği `domain/ensemble.py` DEĞİL, yeni
+`application/ensemble_orchestration.py`'de). `ensemble_core.py::fit`
+(CC=61) task dosyasının kararı gereği bölünmedi (baseline'da kaldı).
+Prefetch-N+1 koruması (`_arac_obj`/`_sofor_obj`/`_dorse_obj`) birebir
+korundu.
+
+**10 sınıf istisnası** (hepsi gerçek mutable state/DI gerekçeli, detay
+`v2/modules/prediction_ml/CLAUDE.md`): `PredictionService`,
+`EnsemblePredictorService`, `EnsembleFuelPredictor`,
+`PhysicsBasedFuelPredictor`/`HybridFuelPredictor`, `KalmanFuelEstimator`/
+`KalmanEstimatorService`, `LightGBMFuelPredictor`/`LightGBMAnomalyClassifier`,
+`ARIMATimeSeriesPredictor`+legacy LSTM sınıfları, `Trainer`,
+`ModelTrainingHandler`/`PhysicsRecalculationHandler`, `TimeSeriesService`.
+
+**Bağlaşıklık karnesi doğrulandı** (out=27 en dolaşık tüketici) — TÜM
+çapraz-modül erişimler zaten `public.py`/`uow.<repo>` üzerinden gidiyordu,
+bu dalgada YENİ bir bypass-import düzeltmesi GEREKMEDİ (önceki 12 dalganın
+aksine). 9 modülün (fleet, driver, route_simulation, analytics_executive,
+ai_assistant, auth_rbac, fuel, reports, location) `public.py`'leri zaten
+yeterliydi. Geriye kalan işler: 8 tüketen dosyanın import path'i eski
+`app.core.ml.*`/`app.services.prediction_service`'ten
+`v2.modules.prediction_ml.public`'e güncellendi (`location/
+analyze_location_route.py`, `route_simulation/{simulate_route,
+create_route_simulation,get_route_details}.py` + `domain/segment_
+simulator.py`, `ai_assistant/plan_trip.py`, `analytics_executive/
+aggregate_cross_feature.py`, `sefer_fuel_estimator.py`, `sefer_write_
+service.py` [4 site], `driver/driver_stats.py`, `anomaly/detect_anomaly.py`,
+`trips.py`, `container.py`, `scripts/p51_real_world_validation.py`) —
+hepsi bu modüllerin kendi CLAUDE.md'sinde "prediction_ml henüz taşınmadı,
+geçici" olarak zaten dokümante edilmiş bekleyen işlerdi, bu dalgada
+kapatıldı.
+
+**Shim stratejisi:** `app/core/ml/ensemble_predictor.py` (28 satırlık eski
+backward-compat shim, ensemble_core+ensemble_service'ten re-export ediyordu)
+YENİ hedeflere (`v2.modules.prediction_ml.domain.ensemble_core` +
+`.application.ensemble_service`) işaret edecek şekilde güncellendi (19
+kalan çağıranı — script'ler + testler — tek seferde kapsıyor, hepsi tek
+tek düzeltilmedi). Diğer tüm eski `app/` dosyaları (prediction_service.py,
+ensemble_service.py, ml_service.py, vb.) doğrudan taşındı (shim YOK, tüm
+gerçek çağıranlar tek tek güncellendi — az sayıda üretim çağıranı olduğu
+için ai_assistant/driver/fleet gibi modüllerin izlediği "az çağıran →
+doğrudan güncelle" deseni izlendi).
+
+**`.importlinter` güncellemesi:** 13. `public-surface-only-prediction_ml`
+kontratı eklendi; diğer 12 modülün her birinin `forbidden_modules`'üne
+`prediction_ml.{api,application,domain,infrastructure}` eklendi;
+`12 modulun domain/infrastructure...` ve `Modul-ici katman sirasi`
+kontratlarına `prediction_ml` eklendi (ikincisi `infrastructure.** ->
+application.**` ignore'u gerektirdi — Celery task'ları `Trainer`/
+`PredictionBackfillService`'i application'dan import ediyor, diğer
+modüllerde de aynı desen var, örn. `anomaly.infrastructure.** ->
+anomaly.application.**`). Tüm 16 kontrat KEPT (yalnız pre-existing
+report-only `app.services`↔`app.core.services` FAZ0 kontratı BROKEN
+kaldı — bu dalgadan önce de böyleydi, ilgisiz).
+
+**Test taşıması (~35 dosya, mekanik + birkaç patch-target/davranış
+düzeltmesi):**
+- Toplu sed ile import path güncellemesi (`app.core.ml.*` →
+  `v2.modules.prediction_ml.{domain,application}.*`, vb.) — 61 dosya.
+- `test_ensemble_service_coverage.py`/`test_ensemble_service_more.py`/
+  `test_ml_prediction_safety.py`/`test_ml_training_contracts.py` — eski
+  `app.core.ml.model_manager.get_model_manager` patch hedefleri
+  `_register_model_version`'a çevrildi (yeni fonksiyon kendi try/except'i
+  içinde tüm hataları yuttuğu için "manager exception → hâlâ devam eder"
+  testleri artık davranışı doğrudan doğruluyor, ModelManager'ın eski
+  kwarg şeklini simüle etmiyor).
+- `test_prediction_service_coverage.py`/`test_prediction_service_more.py`/
+  `test_prediction_with_health.py`/`test_services/test_prediction_service_
+  contracts.py`/`test_services/test_runtime_config.py` — `PredictionService.
+  _build_explanation_summary` gibi eski staticmethod çağrıları
+  `response_builder.build_explanation_summary` gibi free-function
+  çağrılarına, `patch.object(svc, "_run_physics_model", ...)` gibi eski
+  instance-method patch'leri `patch("...prediction_service.run_physics_
+  model", ...)` module-level patch'lerine çevrildi (fonksiyonlar artık
+  domain/application'a taşınan serbest fonksiyonlar).
+- `test_sefer_write_more.py`/`test_sefer_write_more2.py`/
+  `test_sefer_write_service_coverage.py`/`test_sefer_write_service_
+  prediction_flows.py` — `sefer_write_service.py`'nin inline import'u
+  (`from v2.modules.prediction_ml.public import get_prediction_service`)
+  `public.py` üzerinden geldiği için patch hedefi ilk denemede yanlışlıkla
+  `application.prediction_service.get_prediction_service`'e verilmişti
+  (frozen import nedeniyle etkisizdi) — `v2.modules.prediction_ml.public.
+  get_prediction_service`'e düzeltildi (inline-import gotcha'sı, KAYNAK
+  modül = fiilen import edilen modül, ara-katman değil).
+- `test_ml_audit.py` — 2 hardcoded dosya-yolu kontrolü (`app/core/ml/
+  time_series_predictor.py` var mı, `pickle.load` taraması) yeni
+  `v2/modules/prediction_ml/domain/` konumuna güncellendi (aksi halde
+  boş eski dizini tarayıp testler sessizce anlamsız-yeşil olurdu).
+- `mypy.ini`'deki 3 modül-özel override (`app.core.ml.{lightgbm_predictor,
+  time_series_predictor,advanced_lstm}`) yeni `v2.modules.prediction_ml.
+  domain.*` yollarına taşındı (aksi halde ML kütüphanesi tip-stub eksikliği
+  suppress'leri sessizce devre dışı kalırdı).
+
+**Doğrulama:** `ruff check app v2 scripts tests --select E,F,W,I` temiz;
+`mypy app`/`mypy v2` sıfır hata; `lint-imports` 16 kontrat (15 KEPT + 1
+pre-existing report-only BROKEN); tüm prediction_ml + dokunulan
+sefer_write_service/route_simulation/location/ai_assistant/driver/anomaly
+testleri yeşil (700+ test).
+
+**Değişen dosya sayısı:** 36 dosya taşındı (`app/`→`v2/modules/
+prediction_ml/`), 3 dosya silindi (`model_manager.py`,
+`predictors/{__init__,ensemble_predictor}.py` paketi, `scripts/
+init_ml_db.py`), 1 dosya schemas.py'ye birleşti (`ml_schemas.py` →
+`schemas.py`), ~15 üretim tüketici dosyası import-path güncellendi,
+~35 test dosyası taşındı/güncellendi, `.importlinter` (+90 satır, 1 yeni
+kontrat), `mypy.ini` (3 override yolu güncellendi), kök `CLAUDE.md` +
+6 modülün kendi `CLAUDE.md`'si (location, route_simulation, ai_assistant,
+driver, analytics_executive + prediction_ml'in kendi yeni dosyası).
+
+### DALGA 13 takip-denetimi (2026-07-18, dördüncü oturum) — bağımsız ajan denetimi
+
+Kullanıcı talebi: "Dalga 13 detaylı ve derin incele. Kurallara uygun
+taşındı mı. Hata ve eksik var mı." Taze bağlamlı bağımsız bir ajan ile
+(lint-imports/ruff/mypy/pytest'i GERÇEKTEN çalıştırarak, iddiaları
+doğrulamadan kabul etmeden) tam denetim yapıldı. Bulunan gerçek sorunlar:
+
+1. 🔴 **Kural ihlali — no-shim ilkesi**: ilk taşıma commit'i (`9e47ce8`)
+   `app/core/ml/ensemble_predictor.py`'yi (`EnsembleFuelPredictor`/
+   `EnsemblePredictorService`/vb. re-export eden) geçici bir backward-compat
+   shim olarak bırakmıştı — kök `CLAUDE.md`'nin "migrated modülün eski
+   `app/` dosyaları silinir, shim bırakılmaz, kalan çağıranlar tek tek
+   `v2.modules.<name>`'e güncellenir" kuralına doğrudan aykırıydı. Bu
+   sapma STATUS.md'nin (o zamanki) metninde "pragmatik" bir not olarak
+   vardı ama kural ihlali olduğu açıkça yazılmamıştı. **Düzeltildi**: shim'i
+   kullanan 19 site (`scripts/train_ensemble.py`, `scripts/
+   train_model_with_route_features.py`, 12 test dosyası) gerçek
+   `v2.modules.prediction_ml.{public, domain.ensemble_core,
+   application.ensemble_service}` yollarına güncellendi; shim dosyası +
+   artık boşalan `app/core/ml/` dizini tamamen silindi.
+2. 🟡 **Eksik dokümantasyon — B.1 sınıf istisnası listesi tamamlanmadı**:
+   `MLService` (`application/ml_service.py`, class-level `_locks` mutable
+   state) ve `domain/benchmark.py`'nin `MLBenchmark`/`ABTestFramework`/
+   `EnsembleBenchmark` sınıfları modülün kendi `CLAUDE.md`'sindeki
+   "10 sınıf istisnası" listesinde yoktu. **Düzeltildi**: liste 12 kaleme
+   çıkarıldı, gerekçeleriyle (`MLService`→paylaşılan kilit sözlüğü;
+   benchmark sınıfları→sıfır prod çağıranı olan "taşındı ama wire
+   edilmedi" kategorisi, `lightgbm_predictor`/`kalman_estimator`/
+   `HybridFuelPredictor` ile aynı gotcha'ya eklendi).
+3. 🟢 **Kozmetik — CLAUDE.md kolon adı yanlış**: `model_versiyonlar`
+   tablosunun kolonlarını sayarken `olusturma_zaman` yazıyordu; gerçek ORM
+   kolonu `egitim_tarihi` (`app/database/models.py:1154`, doğrulandı).
+   Düzeltildi.
+
+Denetimde CONFIRMED (doğru/temiz) çıkan maddeler: 36 dosyalık yapısal
+envanter, cross-module bypass taraması (sıfır ihlal), domain saflığı
+(`physics_model.py` application'a bağımlı değil), `lint-imports`
+(15 kept + 1 pre-existing ilgisiz broken), `ruff`/`mypy` sıfır hata,
+483 toplanan test / 479 geçen (denetim anında), `_register_model_version`
+wiring + `train_general_model` davranış-düzeltmesi.
+
+**Doğrulama (bu takip turu)**: shim kaldırma sonrası `ruff check
+v2/modules/prediction_ml app scripts --select E,F,W,I` temiz; `mypy
+v2/modules/prediction_ml` sıfır hata; `lint-imports` değişmedi (15 kept +
+1 pre-existing broken); ilgili 13 test dosyası + `test_ml/` tam paketi
+602 passed/4 skipped; ardından tam `pytest app/tests tests -m "unit or
+not integration"` koşumu ile regresyon kontrolü yapıldı.
+
+## DALGA 14 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-18)
+
+**Kapsam:** trip modülü — en karmaşık split (task dosyası kendi başlığında
+"en karmaşık split" olarak işaretlemişti). Sefer CRUD, durum makinesi
+(Planned/Completed/Cancelled), dönüş seferi otomasyonu, bulk operasyonlar,
+Phase 4-5 `SeferFuelEstimator` (sefer create yolu, kök CLAUDE.md'de
+dokümante), SLA gecikme tespiti, maliyet mutabakatı, onay iş akışı.
+`seferler`/`route_simulations`/`route_segments` tablolarının tek sahibi.
+`sefer_write_service.py`'nin 28 üyesi haritalandı (`domain/trip_validation.py`
++ 11 `application/*.py` dosyasına dissolve edildi, B.1).
+
+**Envanter/plan düzeltmeleri (task dosyası vs gerçek kod, kullanıcı onayıyla
+"plan yeterli değil mi" talimatıyla uygulandı):**
+1. `sla.py` — task dosyası `domain/sla.py` öneriyordu; gerçek kod
+   `uow.sefer_repo`/`uow.lokasyon_repo` DB I/O + `get_outbox_service()`
+   çağrısı yapıyor → `application/sla.py`'ye taşındı (prediction_ml
+   dalgasındaki aynı sınıf sapmayla tutarlı).
+2. Dönüş seferi kümesi (`return_trip.py`) — aynı gerekçeyle
+   `domain/` yerine `application/`'a taşındı.
+3. Task dosyasının "import_excel/analytics_executive/ai_assistant zaten
+   hazır" varsayımı 3 hedeften 2'sinde (import_excel, ai_assistant)
+   doğruydu, analytics_executive'te YANLIŞTI — cost/stats route'ları hiç
+   bağlı değildi, gerçek kod okunarak yeni ince wrapper route dosyası
+   yazıldı (`analytics_executive/api/trip_analytics_routes.py`).
+4. `sefer_status.py`/`trip_status.py` planın önerdiği `domain/` yerine
+   **modül köküne** taşındı — bkz. aşağıdaki import-linter bölümü,
+   bu dalgada ilk kez karşılaşılan yeni bir kontrat inceliği yüzünden.
+
+**Yapı:** `v2/modules/trip/{api,application,domain,infrastructure,
+schemas.py,sefer_status.py,trip_status.py,events.py,public.py,CLAUDE.md}`.
+`SeferReadService`/`SeferWriteService`/`SeferAnalizService` (CQRS
+alt-servisleri) tamamen dissolve edildi; `SeferService` facade olarak
+KALDI (ARCH-006 — hiçbir endpoint alt-fonksiyonları doğrudan import
+etmiyor, doğrulandı). `SeferFuelEstimator` da kendi gerekçesiyle sınıf
+olarak kaldı (constructor-injected client'lar). `SeferRepository`'nin 6
+şofor-özel sorgusu (`get_by_sofor_id` vb.) `v2/modules/driver/
+infrastructure/driver_trip_queries.py`'ye taşındı (task dosyası kararı);
+`get_all`'ın genel arama özelliği artık `driver.public.
+search_driver_ids_by_name`'i çağırıyor.
+
+**Router bölünmesi:** eski `app/api/v1/endpoints/trips.py` (1017 satır,
+22 route) silindi, 8 yeni dosyaya bölündü — 4'ü trip'te kaldı
+(read/write/bulk/approval), 2'si import_excel'e (export/import), 1'i
+analytics_executive'e (cost-analysis/stats), 1'i ai_assistant'a (plan
+wizard) taşındı. Tümü `api.py`'de aynı `prefix="/trips"` altında
+`include_router` ile bağlandı — URL'ler DEĞİŞMEDİ (router objesinin
+fiziksel konumu URL'i etkilemez, prefix belirler).
+
+**`.importlinter` yeni bulgu — domain/infrastructure bağımsızlığı AYNI
+modül içinde de geçerli:** önceki 13 dalgada hiç karşılaşılmamış bir
+kontrat inceliği bulundu — `type=independence` kontratı aynı üst modülün
+`domain`/`infrastructure` alt-paketlerini AYRI item olarak listelediğinde,
+bu ikisi arasında da sıfır import yolu şartı koşuyor (yalnızca modüller
+ARASI değil). `trip.infrastructure`'ın `trip.domain.sefer_status`/
+`trip_status`'ü doğrudan import etmesi bunu ihlal etti — çözüm:
+`sefer_status.py`/`trip_status.py` `domain/`'den modül köküne taşındı
+(`schemas.py` gibi kontratın `modules` listesi dışında), repo genelinde
+10 dosyada import path'i güncellendi. Ayrıca `public-surface-only-trip`
+16. kontrat olarak eklendi; diğer 13 kontratın `forbidden_modules`'üne
+trip'in 4 katmanı eklendi. Nihai durum: **16 kept, 1 broken** (pre-existing,
+ilgisiz FAZ0 kontratı).
+
+**Cross-module tüketici düzeltmeleri:** `analytics_executive/
+executive_read_models.py` (circular-import fix — lazy import),
+`import_excel/sefer_importer.py`+`sefer_upload_importer.py`
+(container→public.py doğrudan çağrı), `internal_service.py` (ölü
+sefer_repo kaldırıldı), `driver/driver_stats.py`+`route_profile.py`+
+`get_route_profile.py` (mypy'nin bulduğu 3 GERÇEK bug — artık var
+olmayan `sefer_repo.<driver_method>` çağrıları, taşınan 6 sorgudan
+kaynaklı), `prediction_ml/route_similarity.py`+`ensemble_service.py`+
+`prediction_backfill_service.py` (import path).
+
+**Test taşıması (~40 dosya):** toplu sed + yapısal olarak kırılan dosyalar
+tek tek yeniden yazıldı (`test_sefer_write_more.py`: 28/28,
+`test_sefer_write_more2.py`: 25/25, `test_sefer_write_service_coverage.py`:
+75/75 — `@pytest.mark.integration`, gerçek DB, `test_sefer_write_service_
+prediction_flows.py`: 5/5, `test_sefer_read_service.py`,
+`test_sefer_status_guards.py`, `test_sefer_prediction_contract.py`).
+Free-function patch-target konvansiyonu diğer 13 modülle tutarlı
+(modül-seviyesi import → tüketen modülün namespace'i, örn.
+`update_trip.check_sla_delay`; inline import → kaynak modül, örn.
+`v2.modules.trip.application.sefer_fuel_estimator.get_sefer_fuel_estimator`).
+`SeferWriteService.VALID_STATUS_TRANSITIONS` alias testi düşürüldü
+(sınıf dissolve olunca alias kavramı da anlamsızlaştı, tek isim
+`ALLOWED_TRANSITIONS` kaldı).
+
+**Doğrulama:** `ruff check app v2 scripts --select E,F,W,I` temiz;
+`lint-imports` 16/17 kontrat kept (1 pre-existing ilgisiz broken);
+`pytest --collect-only app/tests tests` 6674 test / 0 hata; gerçek
+Postgres 16 + Redis'e karşı `app/tests/unit/test_services/
+test_sefer_write_service_coverage.py` (75 passed) +
+`test_sefer_write_service_prediction_flows.py` (5 passed) +
+`test_sefer_write_more.py`/`test_sefer_write_more2.py` (28+25 passed)
+tam yeşil.
+
+**Değişen dosya sayısı:** 4 dosya taşındı (`sefer_fuel_estimator.py`,
+`schemas.py`, `sefer_status.py`, `trip_status.py`), 6 dosya silindi
+(`trips.py` endpoint, `sefer_service.py`, `sefer_read_service.py`,
+`sefer_write_service.py`, `sefer_analiz_service.py`, `sefer_repo.py`),
+~30 yeni dosya oluşturuldu (`v2/modules/trip/` + 4 hedef modülün yeni
+route dosyaları + `driver_trip_queries.py`), ~15 üretim tüketici dosyası
+güncellendi, ~40 test dosyası taşındı/güncellendi, `.importlinter`,
+kök `CLAUDE.md` + `v2/modules/trip/CLAUDE.md` (yeni).
+
+### DALGA 14 push-sonrası düzeltme turu (2026-07-18, aynı oturum) — gerçek Postgres+Redis'e karşı tam suite
+
+İlk commit push'landıktan sonra `app/tests/integration`/`app/tests/api`/
+`app/tests/unit` gerçek DB'ye karşı tam koşuldu (önceki doğrulama yalnız
+hedefli dosyalarla sınırlıydı) — 2 GERÇEK ÜRETİM BUG'I + 6 test-migrasyon
+borcu bulundu, hepsi aynı oturumda düzeltildi:
+
+1. **GERÇEK BUG — route sırası çakışması**: `app.py`'de `trip_read_router`
+   (kendi `GET /{sefer_id}` catch-all'ı, tek segment path param) ilk sırada
+   include edilmişti; `trip_analytics_router`'ın `GET /stats`'ı ve
+   `trip_export_router`'ın `GET /export`'u (ikisi de tek-segment literal,
+   AYNI HTTP metodu) ondan SONRA geliyordu. FastAPI/Starlette route
+   eşleşmesi kayıt sırasına göre olduğu için `/trips/stats` önce
+   `/trips/{sefer_id}`'e düşüp `sefer_id="stats"` int-coercion'ı 422 ile
+   patlıyordu (`test_api_seferler.py::test_trip_contracts_and_bulk_flows`
+   ile bulundu). Düzeltme: `trip_read_router`'ın include sırası EN SONA
+   alındı (yorum eklendi, tekrar olmasın diye).
+2. **GERÇEK BUG — `trip_export_routes.py` yanlış `get_sefer_service`
+   kullanıyordu**: 7 route dosyasının 7'si de `app.api.deps.get_sefer_service`
+   (request-scoped UoW'a bağlı repo) kullanırken, bu dosya yanlışlıkla
+   `v2.modules.trip.public.get_sefer_service` (container-singleton,
+   session'sız repo) import ediyordu — `GET /trips/export` prod'da da
+   "Database session not initialized" ile 500 verirdi (yalnız testte değil).
+   Düzeltme: import `app.api.deps`'e çevrildi (diğer 7 dosyayla tutarlı).
+3. **Test migrasyon borcu (6 dosya)** — mekanik `pytest --collect-only`
+   taraması yakalayamadığı RUNTIME-only kırılmalar (import başarılı,
+   davranış eski sınıf/container mimarisini varsayıyor):
+   - `test_sefer_service_coverage.py` — TAM YENİDEN YAZILDI (eski
+     `SeferService.read_service`/`write_service`/`analiz_service` CQRS
+     alt-servis mimarisini test ediyordu, artık yok — free-function
+     delegation testine çevrildi).
+   - `test_sefer_analiz_service.py` — TAM YENİDEN YAZILDI (silinen
+     `SeferAnalizService` sınıfını test ediyordu — `reconcile_costs`
+     free function'ına çevrildi, 10 test + 1 yeni threshold testi).
+   - `test_sofor_analiz_coverage.py` — `get_recent_trips_batch` artık
+     `uow.sefer_repo`'nun metodu değil, `driver_trip_queries.py`'de
+     free function (inline import) — 4 test + fixture kaynak modülü
+     patch'lemeye çevrildi. Ayrıca ayrı bir bug: `test_repos_falls_back_
+     without_uow` `v2.modules.trip.infrastructure.repository.get_sefer_repo`'yu
+     patch'liyordu ama `driver_stats.py` `v2.modules.trip.public`'ten
+     import ediyor — iki ayrı module-namespace binding'i, patch etkisizdi
+     (yalnız test sırası `public`'i önceden import ETMEMİŞSE tesadüfen
+     geçiyordu — full-suite'te 1195/1196 testten sonra her zaman
+     import edilmiş oluyor, o yüzden yalnız tam koşumda ortaya çıktı).
+   - `test_sefer_fuel_estimator.py` (test_services/) — 3 test hâlâ
+     `app.core.services.sefer_fuel_estimator` import ediyordu (silinen
+     eski yol) — `v2.modules.trip.application.sefer_fuel_estimator`'a
+     düzeltildi.
+   - `test_import_service_coverage.py`, `test_import_service.py`,
+     `test_sefer_upload_importer.py` — `sefer_importer.py`/
+     `sefer_upload_importer.py`'nin `bulk_add_sefer`'i artık container
+     üzerinden değil `v2.modules.trip.public`'ten inline import ediyor
+     (dalga 14 kararı) — 3 dosyanın `svc`/`seeded` fixture'ları container
+     mock'undan kaynak-modül patch'ine çevrildi (aksi halde gerçek
+     `bulk_add_sefer` mock'lanmadan çalışıp dict/`SeferCreate` tip
+     uyuşmazlığına çarpıyordu — bu uyuşmazlığın kendisi ARCH-002'de
+     zaten dokümante pre-existing bir gotcha, YENİ değil, sadece artık
+     mock'un arkasına gizlenemiyor).
+4. `v2/modules/driver/CLAUDE.md`'nin "trip henüz taşınmadı" bölümleri
+   güncellendi (dalga 14 artık geçti, 6 sorgu gerçekten taşındı).
+
+**Doğrulama (bu tur)**: `ruff check` + `mypy app v2` (1022 dosya) temiz;
+`lint-imports` 16/17 kept (aynı); gerçek Postgres 16 + Redis'e karşı
+`app/tests/integration` (283/288, 5 fail = pre-existing api-stub/gerçek-ağ
+ortam farkı, trip'le ilgisiz), `app/tests/api` (1044/1045, 1 fail = aynı
+sınıf), `app/tests/unit` (tam koşum, sıfır fail) — **net-yeni regresyon
+SIFIR** düzeltmeler sonrası. İkinci commit + push aynı oturumda yapıldı.
+
+## DALGA 15 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-21)
+
+**Kapsam:** admin_platform modülü. Sistem konfigürasyonu (`sistem_konfig`
++ Redis cache/pubsub invalidation), runtime-config okuma köprüsü (7 diğer
+modülün env yerine kullandığı tek kanonik yol), yönetici audit logu
+(`admin_audit_log`), dış entegrasyon API anahtarları (`entegrasyon_ayarlari`,
+write-only), AVL sağlayıcı scaffolding (stub), idempotency-key altyapısı
+(trip/fuel yazma uçları kullanır), Telegram bot köprüsü, sistem sağlık
+kontrolü (`HealthService`), error_events admin-yönetim yüzeyi (liste/
+istatistik/resolve/trace-chain), SSE canlı hata akışı, ML eğitim WebSocket'i.
+
+**Envanter/plan düzeltmeleri (görev dosyası okunup gerçek koda karşı
+tek tek doğrulandı, kullanıcı onayı "hepsini uygula" ile uygulandı):**
+1. Route sayısı hataları: `admin_integrations.py` 3 route (görev dosyası
+   2 diyordu), `admin_ws.py` 1 route (görev dosyası 2 diyordu — `/live`
+   zaten dalga 2'de notification'a taşınmıştı).
+2. **Ölü kod silindi**: `app/database/repositories/config_repo.py`
+   (`ConfigRepository`) — sıfır çağıranı grep ile doğrulandı.
+3. **Tablo-sahipliği düzeltmesi (2 dosya, dosya adına değil gerçek
+   davranışa göre)**: `audit_repo.py` (`model = AdminAuditLog` taşıyordu
+   ama TEK metodu `get_sefer_timeline` hiç `admin_audit_log`'a
+   dokunmuyordu, yalnız trip'in `seferler_log`'unu sorguluyordu) →
+   `v2/modules/trip/infrastructure/sefer_timeline_repo.py`'ye taşındı.
+   `setting_repository.py` (`kullanici_ayarlari` yönetir, tek tüketicisi
+   `auth_rbac`) → `v2/modules/auth_rbac/infrastructure/
+   setting_repository.py`'ye taşındı.
+4. **Route-layer-bypass bug'ı düzeltildi**: `system.py`'nin 4 route'u
+   (`get_error_events`, `get_error_stats`, `resolve_error_event`,
+   `get_trace_chain`) route handler İÇİNDE raw SQL çalıştırıyordu
+   (`TASKS/bug-route-layer-bypasses-application.md` bug sınıfı) —
+   `application/error_events.py`'ye çıkarıldı.
+5. **3 sınıf B.1 gereği dissolve edildi**: `KonfigService`,
+   `AdminAuditService`, `InternalService` — üçü de gerçek mutable state
+   taşımıyordu (her metod kendi bağımlılığını taze kuruyor veya kendi
+   `UnitOfWork`'ünü açıyordu). `HealthService` sınıf olarak KALDI (genuine
+   mutable state: `start_time`+`_bg_tasks`).
+6. **`backup_tasks.py`/`error_digest.py` TAŞINMADI** (görev dosyası tek
+   `infrastructure/tasks.py`'ye birleştirmeyi öneriyordu) — ikisi de
+   `error_hourly_stats`/`DatabaseBackupManager` gibi cross-cutting
+   `app/infrastructure/monitoring/` ve `app/infrastructure/database/`
+   altyapısını kullanan Celery beat cron job'ları, hiçbiri admin_platform'un
+   sahip olduğu bir şeye özel değil — `app/workers/tasks/`'te bırakıldı.
+
+**Doğrulama**: `ruff check app v2 tests` temiz, `mypy` temiz (225 dosya,
+hedefli), `lint-imports` **17/18 kept** (yeni `public-surface-only-
+admin_platform` kontratı dahil tüm admin_platform-ilişkili kontratlar
+KEPT; tek broken = pre-existing "report-only FAZ0", migrasyonla ilgisiz).
+`pytest --collect-only` 6658 test/0 hata. Admin_platform'un dokunduğu
+29 test dosyası hedefli koşumda **380 passed, 0 failed**. **OpenAPI şeması
+`frontend/openapi.json`'a karşı path/operationId düzeyinde BİREBİR ÖZDEŞ**
+(202/202 path, 0 operationId farkı — 4 route handler'ın import edilen
+free function'larla isim çakışmasını önlemek için önce yeniden adlandırılıp
+sonra operationId'yi korumak için free-function tarafı alias'landığı bir
+ara adım geçirildi); tek fark kasıtlı bir docstring yol düzeltmesiydi
+(`app/core/integrations/` → `v2/modules/admin_platform/infrastructure/
+integrations/`), `frontend/openapi.json` bu farkı yansıtacak şekilde
+yeniden üretildi (orijinal minified/doğal-sıra formatı korunarak).
+**Tam pytest suite'i taze oluşturulmuş `lojinext_test` DB'sine karşı
+koşuldu: 6607 passed, 23 failed, 28 skipped, 0 error (716s).** (İlk koşum
+bu ortamın önceki oturumlardan kalma bayat `lojinext_test` DB'siyle 91
+failed/74 error göstermişti — `soforler_pkey` unique-violation'ları
+sequence/veri kalıntısına işaret ediyordu; DB `dropdb`+`createdb` ile
+sıfırlanıp yeniden koşulunca bu rakamlar tamamen kayboldu, DB durumuydu,
+kod regresyonu değildi.) **23 fail'in TAMAMI trip/sofor alanında ve
+admin_platform'un dokunmadığı dosyalarda** — `test_trip_endpoint_
+architecture_guards.py` (silinen eski `app/api/v1/endpoints/trips.py`'ye
+atıfta bulunuyor, dalga 14'ten kalma bayat guard testi) ve
+`SeferRepository.get_driver_trips_by_route_type` eksikliği (dalga 14'ten
+kalma pre-existing repo boşluğu) gibi — **admin_platform'un dokunduğu
+hiçbir dosyada sıfır fail**, net-yeni regresyon SIFIR.
+
+## DALGA 16 — ✅ TAMAMLANDI (branch `claude/son-durum-ltxexy`, 2026-07-21)
+
+**Kapsam:** shared_kernel erimesi — 15 iş modülü + admin_platform taşındıktan
+sonra geriye kalan gerçekten paylaşılan kod. İki alt-görev:
+
+**task #58 (`app/database/models.py` bölünmesi, modül modül):** Bu dalganın
+kendi oturumu içinde sırayla taşınan modüller: driver, auth_rbac,
+admin_platform, anomaly, route_simulation, prediction_ml, import_excel,
+notification, fuel, location, reports (fleet+trip önceki dalgalarda zaten
+tamamlanmıştı). Her modülün taşıması ayrı commit, ayrı tam doğrulama
+(ruff/mypy/lint-imports/`import app.main`/`pytest --collect-only`/`alembic
+check`/tam pytest suite).
+
+🔴 **Kullanıcı geri bildirimiyle kapsam genişletildi**: `outbox_events`/
+`error_events`/`error_occurrences` başta dalga 17'ye ertelenmeyi
+planlıyordu (görev dosyasının o zamanki hâli). Kullanıcı bu ertelemeyi
+kesin dille reddetti ("bu 3 tablonun sahibini bulun taşıyın... V2 manası
+ne anlaşılmadı mı"). Gerçek inceleme sonucu erteleme gerekçesiz çıktı —
+`outbox_events`'in tek gerçek sahibi (`app/infrastructure/events/
+outbox_service.py`, 136 satır) küçük+self-contained; `error_events`/
+`error_occurrences`'ı hiçbir prod kod ORM olarak kullanmıyordu (yalnız
+Alembic şema kaydı + 1 test dosyası, asıl yazım `app/infrastructure/
+monitoring/`'de ham SQL). Üçü de `v2/modules/shared_kernel/infrastructure/
+{outbox,error_monitoring_models}.py`'ye taşındı, eski dosya (`outbox_
+service.py`) silindi — monitoring alt sisteminin kendisi (~2300 satır,
+13 dosya) taşınmadı, bu ayrı ve çok daha büyük bir iş (muhtemelen
+`platform_infra`/dalga 17).
+
+Bu taşımaların sonucunda `app/database/models.py`'nin 43 tablosunun
+TAMAMI dağıtıldı — dosya artık **hiç yok**, tamamen silindi (shim
+bırakılmadı). 44 gerçek çağıran dosya `Base`/tablo ORM sınıflarını
+`v2.modules.shared_kernel.infrastructure.base`/ilgili modülün
+`public.py`/`infrastructure.models`'ından import edecek şekilde
+güncellendi.
+
+**task #59 (kalan generic altyapı taşıması):** `app/core/errors.py`,
+`app/core/exceptions.py` (57 çağıran), `app/core/utils/{clock,
+type_helpers}.py`, `app/schemas/{base,validators}.py`,
+`app/database/base_repository.py` (27 çağıran), `app/database/
+unit_of_work.py` (**168 çağıran** — projenin en yoğun import edilen
+tek dosyası, tüm 15+ modül) → `v2/modules/shared_kernel/{errors.py,
+exceptions.py, utils/, schemas/, infrastructure/{base_repository,
+unit_of_work}.py}`. Blanket string-replace stratejisi kullanıldı
+(`app.database.unit_of_work` → `v2.modules.shared_kernel.infrastructure.
+unit_of_work` tüm repo genelinde, 168 dosya) — tek tek import satırı
+enumerasyonu yerine, çünkü modül yolu tamamen ve benzersiz şekilde
+değişiyordu. `core/entities/models.py` (→ `BaseEntity`), `api_responses.py`
+(846→118 satır), `protocols.py`/`interfaces/repositories.py`/`core/
+unit_of_work.py` shim'i/`Ayar` sınıfı, `database/repositories/__init__.py`
+hunisi — bunların hepsi bu turdan ÖNCE, daha erken bir alt-adımda zaten
+tamamlanmıştı (bu turda grep ile yeniden doğrulandı, tekrar iş
+yapılmadı).
+
+**2 döngüsel-import düzeltmesi** (unit_of_work.py'nin tüm modüllerin
+repo'larını import etmesi + o repo'ların bazılarının artık hedef
+modülün AĞIR `public.py`'sini import etmesi çakıştı): `v2/modules/
+analytics_executive/infrastructure/executive_read_models.py` ve
+`v2/modules/trip/infrastructure/repository.py`, sırasıyla `fuel.public`/
+`location.public` yerine doğrudan `fuel.infrastructure.models`/
+`location.infrastructure.models`'tan import eder (reports'un zaten
+dokümante edilmiş `ReportRepos.yakit_repo = fuel.infrastructure.
+repository` deseniyle aynı). `.importlinter`'a 2 yeni `ignore_imports`
+satırı eklendi (3 kontratta: cross-domain-infra-independence,
+internal-layers, public-surface-only-trip).
+
+**Regresyon (bulunup düzeltildi)**: `app/tests/conftest.py`'nin
+`Base.metadata.create_all()`'u `error_events`/`error_occurrences`'ı hiç
+görmüyordu (hiçbir prod kod import etmediği için `container_mod`'un
+transitive import zincirinden ulaşılmıyordu) — ilk tam pytest koşumu
+**1698 hata** verdi (`error_hourly_stats` materialized view'ı
+`error_occurrences` tablosunu bulamadı). Açık bir import eklenerek
+düzeltildi (`import v2.modules.shared_kernel.infrastructure.
+error_monitoring_models` — alembic/env.py'deki aynı zorunluluk).
+
+`v2/modules/shared_kernel/public.py` + `CLAUDE.md` yazıldı. Kök
+`CLAUDE.md`'nin modül tablosu güncellendi (`shared_kernel`: Not
+started → Done; `platform_infra` ayrı satıra ayrıldı, hâlâ Not
+started) + 3 stale path referansı düzeltildi (Unit of Work/Repository
+pattern/Domain exceptions bölümleri).
+
+**Doğrulama**: `ruff check app v2 scripts tests` temiz, `mypy app v2`
+temiz (1046 dosya), `lint-imports` **17 kept, 1 broken** (bilinen
+pre-existing, migrasyonla ilgisiz), `import app.main` temiz,
+`pytest --collect-only` 6621 test/0 hata, `alembic check` boş-diff.
+Her modül taşımasından sonra ayrı tam pytest koşumu (toplam 5+ ayrı tam
+koşum bu dalga boyunca) — hepsi **6576 passed, 17 failed (bilinen
+baseline), 28 skipped, 0 error**'a yakınsadı (bir istisna: yukarıdaki
+1698-hatalı koşum, aynı oturumda düzeltilip yeniden koşuldu).
+
 ## Son güncelleme
+
+2026-07-18 (üçüncü oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME
+TURU'NUN İKİNCİ GEÇİŞİ (kullanıcı talebi: "dalga 13 geçmeden önce bir
+eksik unutulan göz ardı edilen en ufak bir kusur istemiyorum"). İkinci
+geçişte bulunan gerçek sorunlar:
+
+- 🔴 **Kritik: önceki turun ölü-kod silme işleminin 7 dosyası hiç
+  commit'e girmemişti.** Kök neden: `git rm` çoklu-dosya çağrısında bir
+  dosyanın (`test_context_builder_coverage.py`) o an yerel değişikliği
+  vardı — `git rm` bu YÜZDEN TÜM batch'i (9 dosya) sessizce reddetti
+  (`error: local modifications`), ama komut zinciri `&&` değil ayrı
+  satırlar olduğu için sonraki `echo` yine de çalıştı ve "silindi"
+  görüntüsü verdi. Gerçekte diskte kalan 7 dosya: `v2/modules/
+  ai_assistant/application/{recommendation_engine,prompt_tuner,
+  build_context}.py`, `app/core/ai/{recommendation_engine,prompt_tuner}.py`
+  (shim), 3 test dosyası. `public.py`/`orchestrate_ai_response.py` zaten
+  bu dosyaları import etmiyordu (o kısım doğru commit'lenmişti) — yani
+  kod fiilen ölüydü ama fiziksel dosyalar + testleri hâlâ duruyordu,
+  CLAUDE.md/STATUS.md ise "silindi" diyordu (dokümantasyon-gerçek
+  uyuşmazlığı). Bu turda gerçekten silindi, doğrulandı (ruff+mypy+
+  collect-only+ilgili testler yeşil).
+- **CLAUDE.md çapraz-referans taraması**: önceki turun düzeltmeleri
+  kendi modülünde tutarlıydı ama BAŞKA modüllerin CLAUDE.md'lerinde
+  driver/fuel/auth_rbac/notification/reports'a ait artık-geçersiz eski
+  yol/dosya referansları kalmıştı (`analytics_executive` ve `reports`ın
+  driver'ın eski `domain/driver_stats.py` yoluna atıfta bulunması;
+  `analytics_executive`'in silinen `fuel/domain/consumption_prediction.py`
+  ve kendi silinen `generate_insights.py`/`_UnitOfWorkContext`'ine hâlâ
+  "var" gibi atıf yapması — sınıf istisna sayısı "2 adet" kalmıştı, 1'e
+  düzeltildi; `notification`'ın silinen `generate_insights.py`'ye in-edge
+  bağımlılık iddiası; `reports`'un silinen `get_daily_consumption_trend`'i
+  hâlâ Public API imzalarında listelemesi; `analytics_executive`+`reports`
+  CLAUDE.md'lerinin `auth_rbac.domain.permission_checker.require_yetki`
+  gibi ÖNCEDEN (dalga-11/12 öncesi) zaten public'e taşınmış ama hiç
+  düzeltilmemiş bayat yol iddiaları — bunlar benim bu oturumdaki
+  hatam değil, daha eski bir doküman borcuydu, bu geçişte bulunup
+  düzeltildi). Hepsi tek tek düzeltildi.
+- **2 ek script bypass'ı bulundu ve düzeltildi**: `app/scripts/
+  benchmark.py` fleet'i `application/list_vehicles`'tan doğrudan
+  import ediyordu (→ `fleet.public.get_all_vehicles`); `scripts/
+  p51_real_world_validation.py` location'ı `application/create_location`
+  + `schemas`'tan doğrudan import ediyordu (→ `location.public`).
+- **Sentry doc-kayması düzeltildi**: kök CLAUDE.md'nin `_sentry_before_send`
+  notu `app/main.py:64` diyordu (gerçek satır 71), filtrenin `jose.
+  ExpiredSignatureError/JWTError`'ı düşürdüğünü söylüyordu ama kod
+  aslında `PyJWT` (`from jwt import ...`) kullanıyor — düzeltildi,
+  filtrenin gerçek tam listesi + "yalnız 2 call-site Sentry'ye ulaşır"
+  netliği eklendi.
+- `TASKS/bug-openroute-client-architectural-leak.md`'nin kabul
+  kriterleri gerçek duruma göre işaretlendi (madde 3 kısmi kaldı —
+  üçüncü geocode implementasyonu `app.core.services.openroute_service.py`
+  hâlâ ayrı, bilinçli kapsam dışı).
+
+**Doğrulama (2. geçiş, gerçek Postgres+Redis+api-stub):** `ruff check
+app v2 scripts` temiz, `mypy app` temiz (670 dosya, önceki turdan 5 az —
+gerçekten silinen 7 dosyanın 5'i mypy kapsamında), `compileall` temiz,
+`lint-imports` 14/15 kept (aynı, pre-existing broken), `pytest
+--collect-only app/tests tests` 6712 test/0 hata (önceki 6779'dan 67 az
+— gerçekten silinen 3 test dosyasının içerdiği testler). **OpenAPI şeması
+`frontend/openapi.json`'a karşı byte-seviyesinde BYTE-BYTE ÖZDEŞ**
+(202/202 path, 0 operationId farkı, tam JSON diff sıfır) — bu oturumun
+tüm değişiklikleri saf iç mimari, sıfır API kontrat etkisi. **Tam pytest
+suite'i (`app/tests/unit app/tests/api tests`): 6239 passed, 23 failed,
+26 skipped** (önceki 6304/23/26'dan farkı yalnız 65 test azlığı — silinen
+test dosyaları; **FAILED listesinin 23 ismi de bir önceki koşumla BİREBİR
+AYNI** — net-yeni regresyon SIFIR). Commit/push bu turda yapıldı.
+
+
+2026-07-18 (ikinci oturum) — İlk 12 dalganın TAM-DENETİM DÜZELTME TURU
+(kullanıcı talebi: "ilk 12 dalgayı detaylı ve derin incele... eksikleri
+düzelt, arkada borç ve hata kalmasın"). Önceki dedektif denetimlerin
+kaçırdığı yeni bulgular tek oturumda kapatıldı:
+
+- **import-linter gerçek durumu bilinenden kötüydü**: STATUS'un "3 bayat
+  ignore" iddiası yanlıştı — gerçekte 7 bayat girdi vardı (4'ü dalga 12'nin
+  kendi arkasını temizlememesinden, 1'i hiç var olmamış bir dosyaya
+  referanstı). Temizlik sonrası kontratlar ilk kez gerçekten değerlendirildi:
+  **10 kept, 5 broken** çıktı (rapor modunda CI bunu hiç görmüyordu).
+  5 gerçek ihlal (`driver`/`anomaly`→`ai_assistant.infrastructure`
+  doğrudan erişim + `app.services.prediction_service` üzerinden 3 dolaylı
+  zincir) düzeltildi. Sonuç: **14 kept, 1 broken** (kalan tek broken —
+  "report-only FAZ0" kontratı — `app.services`↔`app.core.services` eski
+  dosyalar arası, migrasyonla ilgisiz, `git stash` ile önceden de kırık
+  olduğu doğrulandı, CI'da zaten continue-on-error).
+- **public.py sınır ihlalleri**: v2 içi 28 satır + app-tarafı ~15 dosya
+  hâlâ hedef modülün `public.py`'sini atlayıp `infrastructure`/`application`
+  içinden doğrudan import ediyordu (anomaly/driver→ai_assistant.groq_client,
+  auth_rbac→notification.email_client, fuel→notification.telegram_client,
+  vb.). Hepsi `public.py` üzerinden geçecek şekilde düzeltildi.
+  `route_simulation` modülüne (dalga 1'den beri hiç yoktu) `public.py` +
+  `events.py` eklendi.
+- **Domain-katmanı I/O ihlali**: `driver/domain/{driver_stats,evaluation,
+  route_profile}.py` (UoW/DB erişimi) ve `fleet/domain/vehicle_event_log.py`
+  (DB yazıyor) `application/`'a taşındı; `auth_rbac/domain/token_blacklist.py`
+  (Redis I/O) `infrastructure/`'a taşındı — domain saf/I/O'suz kuralı.
+- **🔴 Kritik keşif (rewire sırasında, gerçek Python import-mekaniği
+  incelemesiyle bulundu)**: bir fonksiyonun eski yolda (`X.infrastructure.Y`)
+  patch'lenen bir test, kod `X.public`'ten lazy-import yapacak şekilde
+  değiştirildiğinde, EĞER `X.public` o test-sürecinde henüz hiç import
+  edilmemişse, patch aktifken `X.public`'in ilk kez import edilmesi
+  `X.public`'in kendi ad-alanını mock ile "zehirliyor" (module-cache tek
+  seferlik) — sonraki testler etkileniyor, sonuç import sırasına göre
+  deterministik ama yanıltıcı geçme/kalma. `ensemble_service.py`/
+  `driver_stats.py`/`kalman_estimator.py`'nin `get_analiz_repo`/
+  `get_arac_repo`/`get_dorse_repo` rewire'ları bu şekilde ~8 testi
+  (`test_ensemble_service_coverage.py` vb.) bozdu — tüm eski-yol patch
+  hedefleri `*.public`'e çevrilerek düzeltildi (aynı desen `route_simulation.
+  application.get_route_details`'in `sys.modules` patch'i için de
+  `test_lokasyon_service_more.py`'de tekrarlandı, aynı şekilde düzeltildi).
+  **Ders**: bir fonksiyonu `X.internal` → `X.public` re-export'una taşırken,
+  o fonksiyonu patch'leyen HER test'in hedefi de `X.public`'e taşınmalı —
+  aksi halde silent-wrong-pass veya cross-test-pollution riski var.
+- **Orphan Celery task testi kaçırılmıştı**: `driver.calculate_performance_score`
+  (hiç worker'a kayıtlı olmayan, dalga 5'ten beri bilinen ölü task) dosyasıyla
+  silinince, AYRI bir test dosyası (`test_worker_tasks.py` — tekil "worker",
+  `test_workers/test_driver_tasks.py`'den farklı) de aynı task'ı test
+  ediyordu — bulunup düzeltildi.
+- **Ölü kod silindi (kullanıcı kararı: "ölü kod yasak")**: `ai_assistant`'ın
+  4 kümesi (`RecommendationEngine`, `PromptTuner`, `build_context.py`'nin 5
+  fonksiyonu, `AIService.predict_trip_fuel`/`detect_anomalies`/
+  `_get_predictor_for_vehicle`, `RAGEngine.index_log`/`index_event`/
+  `bulk_index`/`index_alert`), `analytics_executive.generate_insights.py`
+  (InsightEngine free-function hali) + `driver.get_driver_comparison`,
+  `fuel.domain.{consumption_prediction,local_regression}.py`, orphan driver
+  Celery task'ı — hepsi silinmeden önce grep ile sıfır-prod-çağıran TEKRAR
+  doğrulandı, testleriyle birlikte kaldırıldı.
+- **`OpenRouteClient` cerrahisi** (`TASKS/bug-openroute-client-
+  architectural-leak.md`, önceden açık bekleyen görev): ölü `geocode`/
+  `_call_geocode_api` (location'ın geocode zincirinin DRY-ihlalli kopyası)
+  ve `update_route_distance` (`lokasyonlar` tablosuna ham SQL UPDATE atan,
+  sıfır prod çağıranlı legacy metot) silindi; `scripts/enrich_existing_data.py`
+  artık `location.public.geocode_location` kullanıyor. Sınıf artık yalnız
+  ORS distance+cache sorumluluğu taşıyor. Görev dosyası kapatıldı.
+- **8 modülün CLAUDE.md şablon boşlukları** (İzin/yasak importlar, Domain
+  terimleri, Event'ler, Test stratejisi eksikleri — anomaly en zayıftı, 4
+  başlık eksikti) dolduruldu; kök `CLAUDE.md`'nin modül tablosu 2'den
+  12 modüle güncellendi; driver/import_excel/fuel/route_simulation/
+  auth_rbac'ın bayat satırları (taşınmamış-sanılan ama taşınmış modüller,
+  eski import yolu iddiaları) düzeltildi.
+
+**Doğrulama (bu ortamda gerçek Postgres 16 + Redis + api-stub kurulup):**
+`ruff check app v2 scripts` temiz, `mypy app` temiz (675 dosya),
+`lint-imports` 14/15 kept (1 broken = pre-existing, migrasyonla ilgisiz),
+`compileall` temiz, `pytest --collect-only app/tests tests` 6779 test/0
+hata. **Tam pytest suite'i (`app/tests/unit app/tests/api tests`, gerçek
+DB'ye karşı, 2 tam koşum + ~15 hedefli koşum boyunca bulunan regresyonlar
+düzeltilerek): 6304 passed, 23 failed, 26 skipped.** 23 fail'in TAMAMI
+`git stash` ile pre-session koda karşı birebir doğrulandı — hepsi bu ad-hoc
+ortamın api-stub/gerçek-ağ topoloji farkından (mapbox/openroute/
+route_service/lokasyon_service gerçek ORS/Nominatim/Mapbox host'larına
+düşüyor, ilk full-run'da da AYNI isimlerle zaten kırıktı) — **net-yeni
+regresyon SIFIR**. Commit/push bu turda yapıldı (branch
+`claude/son-durum-ltxexy`).
+
 2026-07-18 — Dalga 12 (ai_assistant) main'de TAM YEŞİL (commit `928de51`,
 `gh run view 29611326223` → `success`). İki turlu dedektif denetim: 1.
 tur (taşıma sırasında) 3 ölü-kod kümesi + RAGSyncService'in canlılığı

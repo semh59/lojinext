@@ -26,7 +26,8 @@ async def test_dashboard_stats_excludes_inactive_fuel(db_session, analiz_repo):
     4. get_dashboard_stats() → toplam_yakit == 50L (pasif/silinmiş hariç)
     """
 
-    from app.database.models import Arac, YakitAlimi
+    from v2.modules.fleet.public import AracORM as Arac
+    from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 
     # Create a vehicle
     arac_result = await db_session.execute(

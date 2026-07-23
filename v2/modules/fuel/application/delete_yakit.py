@@ -2,11 +2,14 @@
 
 from typing import Optional
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.event_bus import EventType, publishes
-from app.infrastructure.events.outbox_service import save_outbox_event
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.service_probe import monitor_errors
+from v2.modules.platform_infra.public import (
+    EventType,
+    get_logger,
+    monitor_errors,
+    publishes,
+)
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 
@@ -15,7 +18,7 @@ logger = get_logger(__name__)
 @publishes(EventType.YAKIT_DELETED)
 async def delete_yakit(yakit_id: int, deleted_by_id: Optional[int] = None) -> bool:
     """Permanently deletes a fuel record (Hard Delete)."""
-    from app.infrastructure.audit.audit_logger import log_audit_event
+    from v2.modules.platform_infra.public import log_audit_event
 
     try:
         async with UnitOfWork() as uow:

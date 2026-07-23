@@ -2,9 +2,9 @@ from datetime import timezone
 
 import pytest
 
-from app.core.unit_of_work import get_uow
-from app.database.models import VehicleEventLog
-from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
+from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
+from v2.modules.fleet.public import VehicleEventLog
+from v2.modules.shared_kernel.infrastructure.unit_of_work import unit_of_work
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_utc_defaults_in_models():
 @pytest.mark.asyncio
 async def test_atomic_logging_in_vehicle_event_log():
     """Verify that vehicle event logs include triggered_by and use UoW."""
-    async with get_uow() as uow:
+    async with unit_of_work() as uow:
         await log_vehicle_event(
             arac_id=1,
             event_type="TEST_EVENT",
@@ -62,7 +62,7 @@ async def test_atomic_logging_in_vehicle_event_log():
 
 def test_audit_masking_logic():
     """Verify the audit_logger masking improvements."""
-    from app.infrastructure.logging.audit_logger import _mask_sensitive_data
+    from v2.modules.platform_infra.audit.audit_logger import _mask_sensitive_data
 
     # Test dictionary masking
     data = {"password": "top_secret", "name": "Visible"}

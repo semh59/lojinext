@@ -15,8 +15,10 @@ from datetime import date, timedelta
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Arac, Sefer, Sofor
-from app.infrastructure.security.pii_encryption import blind_index
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.platform_infra.security.pii_encryption import blind_index
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 
@@ -66,7 +68,9 @@ async def test_prediction_service_returns_tahmini_tuketim(db_session):
     'tahmini_tuketim' as the primary L/100km key (not 'prediction_l_100km').
     Also asserts 'confidence_score' is present (fixed in ensemble_service).
     """
-    from app.services.prediction_service import get_prediction_service
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     arac_id = await _create_arac(db_session)
     svc = get_prediction_service()
@@ -118,7 +122,9 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
     sofor_id = await _create_sofor(db_session)
 
     # First get the real prediction to know what the model returns
-    from app.services.prediction_service import get_prediction_service
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     pred = await get_prediction_service().predict_consumption(
         arac_id=arac_id,
@@ -154,8 +160,10 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
 
 async def test_anomaly_detector_hybrid_reads_tahmini_tuketim_key(db_session):
     """Same contract check for detect_anomaly_hybrid (the ML-assisted path)."""
-    from app.services.prediction_service import get_prediction_service
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
+    from v2.modules.prediction_ml.application.prediction_service import (
+        get_prediction_service,
+    )
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
@@ -199,8 +207,8 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
     If the key bug is present, pred.get("prediction_l_100km", 0) → 0 → expected<=0
     → returns None for every trip → final score is None even with valid data.
     """
-    from app.database.unit_of_work import UnitOfWork
-    from v2.modules.driver.domain.driver_stats import _calc_elite_from_trips
+    from v2.modules.driver.application.driver_stats import _calc_elite_from_trips
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
@@ -242,10 +250,10 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
     Full calculate_elite_performance_score path using real DB data and real
     prediction_service — no mocks anywhere in the call chain.
     """
-    from app.database.unit_of_work import UnitOfWork
-    from v2.modules.driver.domain.driver_stats import (
+    from v2.modules.driver.application.driver_stats import (
         calculate_elite_performance_score,
     )
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)

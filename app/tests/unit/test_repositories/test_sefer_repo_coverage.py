@@ -11,10 +11,13 @@ Covers:
 - get_by_date_range (lines 661-686)
 - set_onay_durumu (lines 688-714)
 - get_by_onay_durumu (lines 716-732)
-- get_by_sofor_id (lines 734-747)
-- get_with_route_analysis (lines 749-777)
-- get_driver_trips_with_route_analysis (lines 779-815)
-- get_driver_trips_by_route_type (lines 817-854)
+
+NOT: `get_by_sofor_id`/`get_with_route_analysis`/`get_driver_trips_with_
+route_analysis`/`get_driver_trips_by_route_type` dalga 14'te bu sınıftan
+`v2/modules/driver/infrastructure/driver_trip_queries.py`'ye (serbest
+fonksiyonlar) taşındı — artık `SeferRepository`'nin bir parçası değiller.
+Gerçek-DB testleri `test_driver_trip_queries.py`'de (2026-07-22'de eklendi,
+bu sınıflar burada silinip oraya taşındı).
 """
 
 from contextlib import asynccontextmanager
@@ -33,7 +36,7 @@ pytestmark = pytest.mark.unit
 
 def _make_repo(session=None):
     """Return a SeferRepository with a mocked async session."""
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     repo = SeferRepository.__new__(SeferRepository)
     mock_session = session if session is not None else AsyncMock()
@@ -75,29 +78,22 @@ def _scalar_result(value):
     return mock_result
 
 
-class _FakeArac:
-    def __init__(self, plaka):
-        self.plaka = plaka
+class _GuzergahRow:
+    """Row-like object for the guzergah batch SELECT (needs .id/.cikis_yeri/.varis_yeri)."""
 
-
-class _FakeSofor:
-    def __init__(self, ad_soyad):
-        self.ad_soyad = ad_soyad
-
-
-class _FakeDorse:
-    def __init__(self, plaka):
-        self.plaka = plaka
-
-
-class _FakeGuzergah:
-    def __init__(self, cikis_yeri, varis_yeri):
+    def __init__(self, id, cikis_yeri, varis_yeri):
+        self.id = id
         self.cikis_yeri = cikis_yeri
         self.varis_yeri = varis_yeri
 
 
 class _FakeSefer:
-    """Minimal fake Sefer ORM row — avoids MagicMock.__dict__ pitfalls."""
+    """Minimal fake Sefer ORM row — avoids MagicMock.__dict__ pitfalls.
+
+    Cross-module relationship() alanları (arac/sofor/dorse/guzergah) dalga
+    16 (task #58) sonrası kaldırıldı — SeferRepository._rows_to_dicts()
+    artık plaka/sofor_adi/dorse_plakasi/guzergah_adi'yi FK id üzerinden
+    batch SELECT ile çözer (bkz. _wire_batch_lookup)."""
 
     def __init__(
         self,
@@ -106,20 +102,20 @@ class _FakeSefer:
         cikis_yeri="Ankara",
         varis_yeri="Konya",
         sefer_no="S-001",
-        plaka="34ABC01",
-        sofor_adi="Ali Veli",
-        dorse_plakasi="34TRL01",
-        has_guzergah=False,
+        arac_id=10,
+        sofor_id=20,
+        dorse_id=30,
+        guzergah_id=None,
     ):
         self.id = id
         self.tarih = tarih
         self.cikis_yeri = cikis_yeri
         self.varis_yeri = varis_yeri
         self.sefer_no = sefer_no
-        self.arac = _FakeArac(plaka)
-        self.sofor = _FakeSofor(sofor_adi)
-        self.dorse = _FakeDorse(dorse_plakasi)
-        self.guzergah = _FakeGuzergah(cikis_yeri, varis_yeri) if has_guzergah else None
+        self.arac_id = arac_id
+        self.sofor_id = sofor_id
+        self.dorse_id = dorse_id
+        self.guzergah_id = guzergah_id
         # _sa_instance_state must be present so the repo's .pop() works
         self._sa_instance_state = object()
 
@@ -127,6 +123,37 @@ class _FakeSefer:
 def _make_sefer_orm(**kwargs):
     """Build a minimal fake Sefer ORM object."""
     return _FakeSefer(**kwargs)
+
+
+def _wire_batch_lookup(
+    repo,
+    main_result,
+    *,
+    arac_rows=(),
+    sofor_rows=(),
+    dorse_rows=None,
+    guzergah_rows=None,
+):
+    """Simulates SeferRepository._rows_to_dicts()'s batch-SELECT sequence:
+    main query -> arac_map -> sofor_map -> [dorse_map] -> [guzergah_map].
+    dorse/guzergah yalnız ilgili sefer(ler) o FK'yi taşıyorsa (dolayısıyla
+    gerçek kod o id-setini boş bulmuyorsa) çağrılır — bu yüzden
+    dorse_rows/guzergah_rows=None -> hiç çağrılmaz, []-> boş sonuçla çağrılır."""
+    calls = [main_result]
+    for rows in (arac_rows, sofor_rows):
+        r = MagicMock()
+        r.all = MagicMock(return_value=list(rows))
+        calls.append(r)
+    for rows in (dorse_rows, guzergah_rows):
+        if rows is not None:
+            r = MagicMock()
+            r.all = MagicMock(return_value=list(rows))
+            calls.append(r)
+
+    async def side_effect(*args, **kwargs):
+        return calls.pop(0)
+
+    repo._session.execute = AsyncMock(side_effect=side_effect)
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +166,7 @@ class TestGetAll:
         repo = _make_repo()
         sefer = _make_sefer_orm()
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, dorse_rows=[])
 
         result = await repo.get_all()
 
@@ -148,18 +175,20 @@ class TestGetAll:
 
     async def test_flattens_arac_plaka(self):
         repo = _make_repo()
-        sefer = _make_sefer_orm(plaka="06TIR99")
+        sefer = _make_sefer_orm(arac_id=10)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, arac_rows=[(10, "06TIR99")], dorse_rows=[])
 
         result = await repo.get_all()
         assert result[0]["plaka"] == "06TIR99"
 
     async def test_flattens_sofor_adi(self):
         repo = _make_repo()
-        sefer = _make_sefer_orm(sofor_adi="Mehmet Yıldız")
+        sefer = _make_sefer_orm(sofor_id=20)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(
+            repo, mock_result, sofor_rows=[(20, "Mehmet Yıldız")], dorse_rows=[]
+        )
 
         result = await repo.get_all()
         assert result[0]["sofor_adi"] == "Mehmet Yıldız"
@@ -167,10 +196,10 @@ class TestGetAll:
     async def test_guzergah_adi_without_guzergah(self):
         repo = _make_repo()
         sefer = _make_sefer_orm(
-            cikis_yeri="Bursa", varis_yeri="İzmir", has_guzergah=False
+            cikis_yeri="Bursa", varis_yeri="İzmir", guzergah_id=None
         )
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, dorse_rows=[])
 
         result = await repo.get_all()
         assert result[0]["guzergah_adi"] == "Bursa - İzmir"
@@ -178,10 +207,15 @@ class TestGetAll:
     async def test_guzergah_adi_with_guzergah(self):
         repo = _make_repo()
         sefer = _make_sefer_orm(
-            cikis_yeri="Bursa", varis_yeri="İzmir", has_guzergah=True
+            cikis_yeri="Bursa", varis_yeri="İzmir", guzergah_id=40
         )
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(
+            repo,
+            mock_result,
+            dorse_rows=[],
+            guzergah_rows=[_GuzergahRow(40, "Bursa", "İzmir")],
+        )
 
         result = await repo.get_all()
         assert "Bursa" in result[0]["guzergah_adi"]
@@ -214,15 +248,12 @@ class TestGetAll:
         await repo.get_all(desc=False)
         repo._session.execute.assert_called_once()
 
-    async def test_search_filter(self):
-        """search executes the driver-name trigram lookup (Tier E madde 26,
-        Sofor.ad_soyad is encrypted at rest) plus the main filtered SELECT."""
-        repo = _make_repo()
-        mock_result = _scalars_result([])
-        repo._session.execute = AsyncMock(return_value=mock_result)
-
-        await repo.get_all(search="Ankara")
-        assert repo._session.execute.call_count == 2
+    # NOT: `search=` gerçek davranışı (driver-name trigram lookup + ana
+    # filtreli SELECT) artık `search_driver_ids_by_name` (ayrı bir DB
+    # session açan serbest fonksiyon, driver modülü) üzerinden çalışıyor
+    # — mock'lu tek-session call_count varsayımı artık geçerli değil.
+    # Gerçek-DB testi `test_sefer_write_service_coverage.py::
+    # test_get_all_search_filter_matches_by_driver_name`'de.
 
     async def test_durum_filter(self):
         repo = _make_repo()
@@ -258,14 +289,9 @@ class TestGetAll:
         repo._session.execute.assert_called_once()
 
     async def test_no_arac_no_sofor_no_dorse(self):
-        """Sefer without relations should produce None values for plaka etc."""
+        """Sefer without related FK ids should produce None values for plaka etc."""
         repo = _make_repo()
-        sefer = _make_sefer_orm()
-        # Override relations to None on the plain object
-        sefer.arac = None
-        sefer.sofor = None
-        sefer.dorse = None
-        sefer.guzergah = None
+        sefer = _make_sefer_orm(arac_id=None, sofor_id=None, dorse_id=None, guzergah_id=None)
 
         mock_result = _scalars_result([sefer])
         repo._session.execute = AsyncMock(return_value=mock_result)
@@ -286,7 +312,7 @@ class TestGetById:
         repo = _make_repo()
         sefer = _make_sefer_orm(id=42)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, dorse_rows=[])
 
         result = await repo.get_by_id(42)
         assert result is not None
@@ -302,18 +328,23 @@ class TestGetById:
 
     async def test_flattens_arac_plaka(self):
         repo = _make_repo()
-        sefer = _make_sefer_orm(plaka="34TEST")
+        sefer = _make_sefer_orm(arac_id=10)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, arac_rows=[(10, "34TEST")], dorse_rows=[])
 
         result = await repo.get_by_id(1)
         assert result["plaka"] == "34TEST"
 
     async def test_guzergah_adi_with_guzergah_relation(self):
         repo = _make_repo()
-        sefer = _make_sefer_orm(cikis_yeri="Ank", varis_yeri="Kon", has_guzergah=True)
+        sefer = _make_sefer_orm(cikis_yeri="Ank", varis_yeri="Kon", guzergah_id=40)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(
+            repo,
+            mock_result,
+            dorse_rows=[],
+            guzergah_rows=[_GuzergahRow(40, "Ank", "Kon")],
+        )
 
         result = await repo.get_by_id(1)
         assert "Ank" in result["guzergah_adi"]
@@ -323,7 +354,7 @@ class TestGetById:
         repo = _make_repo()
         sefer = _make_sefer_orm(id=7)
         mock_result = _scalars_result([sefer])
-        repo._session.execute = AsyncMock(return_value=mock_result)
+        _wire_batch_lookup(repo, mock_result, dorse_rows=[])
 
         result = await repo.get_by_id_with_details(7)
         assert result is not None
@@ -438,7 +469,7 @@ class TestAdd:
         mock_sefer.id = 99
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 tarih=date(2024, 1, 1),
@@ -464,7 +495,7 @@ class TestAdd:
         mock_sefer.id = 11
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 tarih=date(2024, 1, 1),
@@ -495,7 +526,7 @@ class TestAdd:
         mock_sefer.id = None
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             with pytest.raises(ValueError, match="sefer numarası"):
                 await repo.add(
@@ -526,7 +557,7 @@ class TestAdd:
         mock_sefer.id = None
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             with pytest.raises(IntegrityError):
                 await repo.add(
@@ -550,7 +581,7 @@ class TestAdd:
         mock_sefer.id = 55
 
         with patch(
-            "app.database.repositories.sefer_repo.Sefer", return_value=mock_sefer
+            "v2.modules.trip.infrastructure.repository.Sefer", return_value=mock_sefer
         ):
             result = await repo.add(
                 {
@@ -800,7 +831,7 @@ class TestRefreshStatsMv:
         mock_engine = MagicMock()
         mock_engine.execution_options.return_value.connect.return_value = mock_conn
 
-        with patch("app.database.connection.engine", mock_engine):
+        with patch("v2.modules.platform_infra.database.connection.engine", mock_engine):
             await repo.refresh_stats_mv()
 
         mock_conn.execute.assert_called_once()
@@ -978,28 +1009,24 @@ class TestGetByOnayDurumu:
     async def test_returns_list_of_dicts(self):
         repo = _make_repo()
 
-        # AUDIT-034: joinedload + result.unique().scalars().all(); satır s.__dict__
-        # üzerinden plaka/sofor_adi/guzergah ile zenginleştirilir (N+1 re-fetch yok).
-        class _FakeSefer:
-            def __init__(self):
-                self._sa_instance_state = None
-                self.id = 1
-                self.onay_durumu = "Bekliyor"
-                self.cikis_yeri = "Istanbul"
-                self.varis_yeri = "Ankara"
-                self.arac = None
-                self.sofor = None
-                self.dorse = None
-                self.guzergah = None
+        # Dalga 16 (task #58): joinedload kaldırıldı, batch SELECT ile
+        # zenginleştirilir (bkz. _wire_batch_lookup) — arac/sofor/dorse
+        # FK id'leri yok, yalnız guzergah fallback'i (cikis-varis) test edilir.
+        sefer = _make_sefer_orm(
+            id=1, cikis_yeri="Istanbul", varis_yeri="Ankara",
+            arac_id=None, sofor_id=None, dorse_id=None, guzergah_id=None,
+        )
+        sefer.onay_durumu = "Bekliyor"
 
-        sefer = _FakeSefer()
+        main_result = MagicMock()
+        main_result.scalars = MagicMock(
+            return_value=MagicMock(all=MagicMock(return_value=[sefer]))
+        )
 
         @asynccontextmanager
         async def fake_get_session():
             session = AsyncMock()
-            result = MagicMock()
-            result.unique.return_value.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
+            session.execute = AsyncMock(return_value=main_result)
             yield session
 
         repo._get_session = fake_get_session
@@ -1013,260 +1040,20 @@ class TestGetByOnayDurumu:
     async def test_empty_list_when_none_found(self):
         repo = _make_repo()
 
+        main_result = MagicMock()
+        main_result.scalars = MagicMock(
+            return_value=MagicMock(all=MagicMock(return_value=[]))
+        )
+
         @asynccontextmanager
         async def fake_get_session():
             session = AsyncMock()
-            result = MagicMock()
-            result.unique.return_value.scalars.return_value.all.return_value = []
-            session.execute = AsyncMock(return_value=result)
+            session.execute = AsyncMock(return_value=main_result)
             yield session
 
         repo._get_session = fake_get_session
 
         result = await repo.get_by_onay_durumu("Onaylandı")
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_by_sofor_id  (lines 734-747)
-# ---------------------------------------------------------------------------
-
-
-class TestGetBySoforId:
-    async def test_basic(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-        repo._to_dict = MagicMock(return_value={"id": 1})
-
-        result = await repo.get_by_sofor_id(sofor_id=3)
-        assert isinstance(result, list)
-
-    async def test_with_onay_durumu_filter(self):
-        repo = _make_repo()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = []
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_by_sofor_id(sofor_id=3, onay_durumu="Onaylandı")
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_with_route_analysis  (lines 749-777)
-# ---------------------------------------------------------------------------
-
-
-class TestGetWithRouteAnalysis:
-    async def test_returns_list(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 10
-        sefer.mesafe_km = 300.0
-        sefer.rota_detay = {"route_analysis": {"type": "highway"}}
-        sefer.tuketim = 35.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis(days=90)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["id"] == 10
-        assert result[0]["mesafe_km"] == 300.0
-
-    async def test_rota_detay_fallback_to_whole_dict(self):
-        """If rota_detay has no 'route_analysis' key, use the whole dict."""
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 11
-        sefer.mesafe_km = 200.0
-        sefer.rota_detay = {"some_other_key": "value"}
-        sefer.tuketim = 30.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis()
-        assert result[0]["route_analysis"] == {"some_other_key": "value"}
-
-    async def test_none_rota_detay_returns_empty_dict(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 12
-        sefer.mesafe_km = 100.0
-        sefer.rota_detay = None
-        sefer.tuketim = 28.0
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_with_route_analysis()
-        assert result[0]["route_analysis"] == {}
-
-
-# ---------------------------------------------------------------------------
-# get_driver_trips_with_route_analysis  (lines 779-815)
-# ---------------------------------------------------------------------------
-
-
-class TestGetDriverTripsWithRouteAnalysis:
-    async def test_basic(self):
-        repo = _make_repo()
-        sefer = MagicMock()
-        sefer.id = 20
-        sefer.tuketim = 34.0
-        sefer.tahmini_tuketim = 32.0
-        sefer.rota_detay = {}
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = [sefer]
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_driver_trips_with_route_analysis(sofor_id=5)
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["gercek_tuketim"] == 34.0
-        assert result[0]["tahmini_tuketim"] == 32.0
-
-    async def test_empty_result(self):
-        repo = _make_repo()
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars.return_value.all.return_value = []
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        result = await repo.get_driver_trips_with_route_analysis(sofor_id=99)
-        assert result == []
-
-
-# ---------------------------------------------------------------------------
-# get_driver_trips_by_route_type  (lines 817-854)
-# ---------------------------------------------------------------------------
-
-
-class _FakeDriverSefer:
-    """Minimal sefer-like object for driver route tests."""
-
-    def __init__(self, id, tuketim, tahmini_tuketim, rota_detay):
-        self.id = id
-        self.tuketim = tuketim
-        self.tahmini_tuketim = tahmini_tuketim
-        self.rota_detay = rota_detay
-
-
-class TestGetDriverTripsByRouteType:
-    async def test_filters_by_classify_route(self):
-        """Only trips whose rota_detay classifies to matching route_type are returned."""
-        repo = _make_repo()
-
-        sefer_match = _FakeDriverSefer(
-            30, 33.0, 31.0, {"route_analysis": {"primary_type": "highway"}}
-        )
-        sefer_no_match = _FakeDriverSefer(
-            31, 40.0, 38.0, {"route_analysis": {"primary_type": "city"}}
-        )
-
-        rows = [sefer_match, sefer_no_match]
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars = MagicMock(
-                return_value=MagicMock(all=MagicMock(return_value=rows))
-            )
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        with patch(
-            "v2.modules.driver.public.classify_route",
-            side_effect=lambda rd: "highway"
-            if rd.get("primary_type") == "highway"
-            else "city",
-        ):
-            result = await repo.get_driver_trips_by_route_type(
-                sofor_id=5, route_type="highway"
-            )
-
-        assert len(result) == 1
-        assert result[0]["id"] == 30
-
-    async def test_empty_when_no_matching_type(self):
-        repo = _make_repo()
-        sefer = _FakeDriverSefer(32, 33.0, 31.0, {})
-
-        @asynccontextmanager
-        async def fake_get_session():
-            session = AsyncMock()
-            result = MagicMock()
-            result.scalars = MagicMock(
-                return_value=MagicMock(all=MagicMock(return_value=[sefer]))
-            )
-            session.execute = AsyncMock(return_value=result)
-            yield session
-
-        repo._get_session = fake_get_session
-
-        with patch(
-            "v2.modules.driver.public.classify_route",
-            return_value="city",
-        ):
-            result = await repo.get_driver_trips_by_route_type(
-                sofor_id=5, route_type="highway"
-            )
-
         assert result == []
 
 
@@ -1448,13 +1235,19 @@ class TestGetSeferRepoFactory:
     """Cover get_sefer_repo factory (line 859)."""
 
     def test_returns_sefer_repo_instance(self):
-        from app.database.repositories.sefer_repo import SeferRepository, get_sefer_repo
+        from v2.modules.trip.infrastructure.repository import (
+            SeferRepository,
+            get_sefer_repo,
+        )
 
         repo = get_sefer_repo()
         assert isinstance(repo, SeferRepository)
 
     def test_with_session_arg(self):
-        from app.database.repositories.sefer_repo import SeferRepository, get_sefer_repo
+        from v2.modules.trip.infrastructure.repository import (
+            SeferRepository,
+            get_sefer_repo,
+        )
 
         mock_session = AsyncMock()
         repo = get_sefer_repo(session=mock_session)

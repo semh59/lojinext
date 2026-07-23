@@ -150,7 +150,7 @@ jobs:
         run: |
           python - <<'PY'
           import celery
-          from app.infrastructure.background.celery_app import celery_app
+          from v2.modules.platform_infra.background.celery_app import celery_app
 
           print(f"Celery import OK: version={celery.__version__}")
           print(f"Celery app OK: name={celery_app.main}")
@@ -283,13 +283,48 @@ jobs:
         # `# noqa: E501`.
         run: ruff check app/ --select=E,F,W,I
 
-      - name: Import boundary report (non-blocking, FAZ0)
-        # Modular-monolith refactor baseline measurement — see
-        # TASKS/faz0-baseline-olcum-ve-rapor-modu.md and TASKS/faz1-import-linter-baseline-ve-gate.md.
-        # Report-only until FAZ1 promotes this to a blocking gate with a frozen
-        # ignore_imports baseline (181 measured edges).
-        run: lint-imports --config .importlinter || true
-        continue-on-error: true
+      - name: Import boundary gate (modular monolith)
+        # Promoted to a real blocking gate 2026-07-21 (dalga 16 audit) — see
+        # TASKS/faz0-baseline-olcum-ve-rapor-modu.md and
+        # TASKS/faz1-import-linter-baseline-ve-gate.md. Covers the 18 v2/
+        # contracts (1 independence + 1 layers + 15 public-surface-only for
+        # every business module: location, route_simulation, notification,
+        # fleet, fuel, driver, auth_rbac, anomaly, import_excel, reports,
+        # analytics_executive, ai_assistant, prediction_ml, trip,
+        # admin_platform + 1 public-surface-only-platform_infra, added
+        # 2026-07-22 once dalga 17 landed — same pattern as every module
+        # before it). The pre-existing legacy `report-only` contract
+        # (app.core.services vs app.services drift) was REMOVED from
+        # .importlinter 2026-07-22 once `app.core.services` stopped
+        # existing entirely (its last file moved into v2/modules/location/)
+        # — the independence check it tracked became moot, so there is no
+        # longer a separate non-blocking report step below.
+        #
+        # shared_kernel (dalga 16) deliberately has NO public-surface-only
+        # contract of its own (documented exemption — see
+        # v2/modules/shared_kernel/CLAUDE.md — the whole point of that
+        # module is that everyone imports it freely), so it stays out of
+        # this list on purpose, not because it's unfinished.
+        run: |
+          lint-imports --config .importlinter \
+            --contract module-cross-domain-infra-independence \
+            --contract module-internal-layers \
+            --contract public-surface-only-location \
+            --contract public-surface-only-route_simulation \
+            --contract public-surface-only-notification \
+            --contract public-surface-only-fleet \
+            --contract public-surface-only-fuel \
+            --contract public-surface-only-driver \
+            --contract public-surface-only-auth_rbac \
+            --contract public-surface-only-anomaly \
+            --contract public-surface-only-import_excel \
+            --contract public-surface-only-reports \
+            --contract public-surface-only-analytics_executive \
+            --contract public-surface-only-ai_assistant \
+            --contract public-surface-only-prediction_ml \
+            --contract public-surface-only-trip \
+            --contract public-surface-only-admin_platform \
+            --contract public-surface-only-platform_infra
 
       - name: Backend type check (mypy)
         # Soft-baseline gate: fails only if the error count GROWS beyond the
@@ -468,7 +503,7 @@ jobs:
         # 14:13'teki commit) → gerçek unit-lane değeri CI'da %84, lokalde
         # %83.61 ölçüldü; 85 gate'i hiç yeşil olmadı. 83'e çekildi —
         # nihai kalite gate'i değişmeden Combined %92'de kalıyor.
-        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
+        run: pytest -m "unit or not integration" -q --tb=short --ignore=tests/integration --ignore=app/tests/integration --cov=app --cov=v2 --cov-report=term-missing --cov-fail-under=83 --cov-config=pytest.ini
 
       # ---- 0-mock Faz 2: vitest real-backend testleri gerçek backend ister ----
       # (docker-github plan Bölüm 3'ün CI ayağı.) Sıra: taze DB (alembic ile,
@@ -552,25 +587,25 @@ jobs:
           retention-days: 14
 
       - name: Integration — DB schema integrity
-        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — API contracts
-        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — Business lifecycle
-        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_business_lifecycle.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Security — RBAC coverage
-        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/security/test_rbac_coverage.py -x -q --tb=short --timeout=30 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — ML/AI pipeline
-        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest app/tests/integration/test_ml_ai_pipeline.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       - name: Integration — remaining (legacy + other integration tests, includes Tier F madde 37's 46 reclassified files)
-        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
+        run: pytest -m "integration" -q --tb=short --timeout=60 --ignore=app/tests/integration/test_db_schema_integrity.py --ignore=app/tests/integration/test_api_contracts.py --ignore=app/tests/integration/test_business_lifecycle.py --ignore=app/tests/integration/test_ml_ai_pipeline.py --ignore=app/tests/security/test_rbac_coverage.py --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini || { code=$?; [ "$code" = "5" ] && echo "No remaining integration tests collected (OK)" || exit $code; }
 
       - name: Deep audit tests (auth isolation + integrity, excluding stress)
-        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short --cov=app --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+        run: pytest tests/deep_audit/ -m "not stress" -q --tb=short --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
       # Tier F madde 37 (2026-07-03): asıl %92 coverage hedefi burada,
       # yukarıdaki unit adımı + TÜM integration adımlarının aynı .coverage

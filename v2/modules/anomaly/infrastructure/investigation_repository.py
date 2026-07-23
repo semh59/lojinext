@@ -17,8 +17,8 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
-from app.database.models import FuelInvestigation
+from v2.modules.anomaly.infrastructure.models import FuelInvestigation
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 _INVESTIGATION_JOIN_SQL = """
         SELECT
@@ -54,7 +54,7 @@ class InvestigationRepository(BaseRepository[FuelInvestigation]):
 
     async def get_investigation_detail(self, inv_id: int) -> Optional[Dict[str, Any]]:
         """Tek soruşturma kaydı, plaka/şoför JOIN'li (decrypt edilmiş)."""
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         sql = _INVESTIGATION_JOIN_SQL + " AND fi.id = :id LIMIT 1"
         row = (
@@ -72,7 +72,7 @@ class InvestigationRepository(BaseRepository[FuelInvestigation]):
         self, cutoff: datetime, min_count: int, limit: int
     ) -> List[Dict[str, Any]]:
         """Aynı (sofor, arac) için tekrarlayan yüksek şüpheli olay pattern'i."""
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         sql = """
             WITH inv_data AS (
@@ -130,7 +130,7 @@ class InvestigationRepository(BaseRepository[FuelInvestigation]):
         assigned_to_user_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Filtrelenmiş soruşturma listesi, plaka/şoför JOIN'li (decrypt edilmiş)."""
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         sql = _INVESTIGATION_JOIN_SQL
         params: Dict[str, Any] = {"cutoff": cutoff, "limit": limit}
@@ -158,7 +158,7 @@ class InvestigationRepository(BaseRepository[FuelInvestigation]):
         self, anomaly_id: int
     ) -> "tuple[Optional[str], Optional[str]]":
         """Anomaly -> (plaka, sofor_adi) OPS alarm bildirimi için. Yoksa (None, None)."""
-        from app.infrastructure.security.pii_encryption import decrypt_pii_or
+        from v2.modules.platform_infra.security.pii_encryption import decrypt_pii_or
 
         sql = """
             SELECT

@@ -1,5 +1,5 @@
 """
-Coverage tests for app/core/services/weather_service.py
+Coverage tests for v2/modules/route_simulation/application/weather_service.py
 Targets: calculate_weather_fuel_impact branches, get_seasonal_factor,
 get_route_weather_samples paths, get_trip_impact_analysis success,
 condition warnings, recommendation strings.
@@ -14,7 +14,7 @@ pytestmark = pytest.mark.unit
 
 
 def _make_service():
-    from app.core.services.weather_service import WeatherService
+    from v2.modules.route_simulation.application.weather_service import WeatherService
 
     ext = MagicMock()
     ext.get_weather_forecast = AsyncMock(
@@ -375,7 +375,9 @@ class TestRouteWeatherSamples:
 
     async def test_cache_hit_returns_cached_samples(self):
         svc = _make_service()
-        from app.core.services.weather_service import WeatherSample
+        from v2.modules.route_simulation.application.weather_service import (
+            WeatherSample,
+        )
 
         cached_sample = WeatherSample(temperature_2m=15.0, wind_speed_10m=10.0)
         mock_cache = MagicMock()
@@ -383,7 +385,7 @@ class TestRouteWeatherSamples:
         mock_cache.set = MagicMock()
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.public.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -413,7 +415,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.public.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -432,7 +434,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.public.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0), (30.0, 42.0)])
@@ -450,7 +452,7 @@ class TestRouteWeatherSamples:
         )
 
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.public.get_cache_manager",
             return_value=mock_cache,
         ):
             result = await svc.get_route_weather_samples([(29.0, 41.0)])
@@ -481,7 +483,7 @@ class TestRouteWeatherSamples:
 
         # Same coord repeated
         with patch(
-            "app.infrastructure.cache.cache_manager.get_cache_manager",
+            "v2.modules.platform_infra.public.get_cache_manager",
             return_value=mock_cache,
         ):
             await svc.get_route_weather_samples([(29.0, 41.0), (29.0, 41.0)])
@@ -497,7 +499,9 @@ class TestRouteWeatherSamples:
 
 
 def test_get_weather_service_singleton():
-    from app.core.services.weather_service import get_weather_service
+    from v2.modules.route_simulation.application.weather_service import (
+        get_weather_service,
+    )
 
     s1 = get_weather_service()
     s2 = get_weather_service()

@@ -162,3 +162,29 @@ class PageViewStats(BaseModel):
     total_views: int
     top_routes: List[RouteCount]
     bottom_routes: List[RouteCount]
+
+
+# ─── Maliyet analiz response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class CostTrendPoint(BaseModel):
+    month: int
+    year: int
+    label: str
+    fuel_cost: float
+    fuel_liters: float
+    trip_count: int
+    total_distance: float
+    cost_per_km: float
+
+
+class VehicleCostComparisonItem(BaseModel):
+    arac_id: int
+    plaka: Optional[str] = None
+    fuel_cost: Optional[float] = None
+    total_distance: Optional[float] = None
+    cost_per_km: Optional[float] = None
+    avg_consumption: Optional[float] = None
+    unavailable: Optional[bool] = None
+    error_code: Optional[str] = None
+    error_message: Optional[str] = None

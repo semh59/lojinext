@@ -5,17 +5,14 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from app.database.models import (
-    Arac,
-    Dorse,
-    Kullanici,
-    Lokasyon,
-    Rol,
-    Sefer,
-    SistemKonfig,
-    Sofor,
-    YakitAlimi,
-)
+from v2.modules.admin_platform.public import SistemKonfig
+from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.fleet.public import Dorse
+from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
+from v2.modules.location.public import Lokasyon
+from v2.modules.trip.public import SeferORM as Sefer
 
 _seq = {"n": 0}
 

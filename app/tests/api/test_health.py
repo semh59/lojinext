@@ -34,8 +34,11 @@ def _make_unhealthy_payload():
 @pytest.mark.asyncio
 async def test_health_check_all_healthy(async_client):
     """Test health check when all components are healthy → 200."""
-    from app.core.services.health_service import HealthService, get_health_service
     from app.main import app
+    from v2.modules.admin_platform.application.health_service import (
+        HealthService,
+        get_health_service,
+    )
 
     mock_service = AsyncMock(spec=HealthService)
     mock_service.get_full_status = AsyncMock(return_value=_make_healthy_payload())
@@ -56,8 +59,11 @@ async def test_health_check_all_healthy(async_client):
 @pytest.mark.asyncio
 async def test_health_check_database_down(async_client):
     """Test health check when database is down → 503."""
-    from app.core.services.health_service import HealthService, get_health_service
     from app.main import app
+    from v2.modules.admin_platform.application.health_service import (
+        HealthService,
+        get_health_service,
+    )
 
     mock_service = AsyncMock(spec=HealthService)
     mock_service.get_full_status = AsyncMock(return_value=_make_unhealthy_payload())
@@ -80,8 +86,11 @@ async def test_health_check_does_not_leak_internal_details(async_client):
     """The public (unauthenticated) health endpoint must expose only component
     status — never raw error strings (DB/Redis host/credentials) or AI-engine
     internals."""
-    from app.core.services.health_service import HealthService, get_health_service
     from app.main import app
+    from v2.modules.admin_platform.application.health_service import (
+        HealthService,
+        get_health_service,
+    )
 
     payload = {
         "status": "unhealthy",
@@ -125,8 +134,11 @@ async def test_health_check_does_not_leak_internal_details(async_client):
 @pytest.mark.asyncio
 async def test_health_check_cache_down(async_client):
     """Test health check with cache down but database healthy → 200."""
-    from app.core.services.health_service import HealthService, get_health_service
     from app.main import app
+    from v2.modules.admin_platform.application.health_service import (
+        HealthService,
+        get_health_service,
+    )
 
     payload = {
         "status": "healthy",
@@ -157,8 +169,11 @@ async def test_health_check_cache_down(async_client):
 @pytest.mark.asyncio
 async def test_health_check_returns_json(async_client):
     """Test health check response is valid JSON with required fields."""
-    from app.core.services.health_service import HealthService, get_health_service
     from app.main import app
+    from v2.modules.admin_platform.application.health_service import (
+        HealthService,
+        get_health_service,
+    )
 
     payload = {
         "status": "healthy",

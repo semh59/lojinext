@@ -27,7 +27,7 @@ import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 
-from app.database.base_repository import BaseRepository
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 pytestmark = pytest.mark.unit
 
@@ -104,7 +104,7 @@ async def test_get_session_acquires_from_pool_when_none():
     async def _fake_local():
         yield fake_pool_session
 
-    with patch("app.database.connection.AsyncSessionLocal", side_effect=_fake_local):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", side_effect=_fake_local):
         async with repo._get_session() as s:
             assert s is fake_pool_session
 
@@ -196,7 +196,7 @@ async def test_get_all_with_valid_load_relation():
     mock_result.scalars.return_value.all.return_value = []
     session.execute = AsyncMock(return_value=mock_result)
 
-    with patch("app.database.base_repository.select", return_value=sentinel_stmt):
+    with patch("v2.modules.shared_kernel.infrastructure.base_repository.select", return_value=sentinel_stmt):
         with patch("sqlalchemy.orm.joinedload", return_value=sentinel_option):
             result = await repo.get_all(load_relations=["name"])
 

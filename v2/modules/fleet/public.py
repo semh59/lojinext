@@ -16,9 +16,6 @@ here rather than carried forward).
 """
 
 from v2.modules.fleet.application.bulk_add_vehicles import bulk_add_vehicles
-from v2.modules.fleet.application.count_active_vehicles import (
-    count_active_vehicles,
-)
 from v2.modules.fleet.application.create_maintenance_record import (
     create_breakdown,
     create_maintenance_record,
@@ -55,7 +52,6 @@ from v2.modules.fleet.application.get_vehicle_maintenance_history import (
     mark_maintenance_completed,
 )
 from v2.modules.fleet.application.list_trailers import (
-    get_all_trailers,
     get_all_trailers_paged,
     get_trailer_by_id,
 )
@@ -77,8 +73,16 @@ from v2.modules.fleet.application.maintenance_prediction import (
 )
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
 from v2.modules.fleet.application.update_vehicle import update_vehicle
+from v2.modules.fleet.domain.entities import Arac
 from v2.modules.fleet.infrastructure.maintenance_repository import (
     MaintenanceRepository,
+)
+from v2.modules.fleet.infrastructure.models import Arac as AracORM
+from v2.modules.fleet.infrastructure.models import (
+    AracBakim,
+    BakimTipi,
+    Dorse,
+    VehicleEventLog,
 )
 from v2.modules.fleet.infrastructure.trailer_repository import (
     DorseRepository,
@@ -103,7 +107,6 @@ from v2.modules.fleet.schemas import (
 __all__ = [
     # vehicle
     "create_vehicle",
-    "count_active_vehicles",
     "update_vehicle",
     "delete_vehicle",
     "delete_all_vehicles",
@@ -121,7 +124,6 @@ __all__ = [
     "update_trailer",
     "delete_trailer",
     "get_trailer_by_id",
-    "get_all_trailers",
     "get_all_trailers_paged",
     "export_all_trailers",
     "get_trailer_template",
@@ -147,6 +149,18 @@ __all__ = [
     "DorseRepository",
     "get_dorse_repo",
     "MaintenanceRepository",
+    # domain entity (internal DTO, distinct from AracResponse above — carries
+    # yas/yas_faktoru/euro_sinifi computed fields; prediction_ml consumes it
+    # for age-based fuel-consumption adjustment)
+    "Arac",
+    # ORM tabloları (models.py bölünmesi — dalga 16 task #58). `AracORM`
+    # adı bilinçli: `Arac` adı yukarıdaki Pydantic domain entity tarafından
+    # kullanılıyor (trip.public'teki SeferORM ile aynı isimlendirme deseni).
+    "AracORM",
+    "Dorse",
+    "BakimTipi",
+    "AracBakim",
+    "VehicleEventLog",
     # schemas
     "AracBase",
     "AracCreate",

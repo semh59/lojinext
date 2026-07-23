@@ -17,14 +17,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import Anomaly, Kullanici, Rol
-from app.infrastructure.security.pii_encryption import blind_index
 from v2.modules.anomaly.application.detect_anomaly import (
     AnomalyDetector,
     AnomalyResult,
     AnomalyType,
     SeverityEnum,
 )
+from v2.modules.anomaly.public import Anomaly
+from v2.modules.auth_rbac.public import Kullanici, Rol
+from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 pytestmark = pytest.mark.integration
 # ---------------------------------------------------------------------------

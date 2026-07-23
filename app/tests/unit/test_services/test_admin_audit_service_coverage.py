@@ -1,20 +1,24 @@
-"""Coverage tests for app/core/services/admin_audit_service.py
+"""Coverage tests for v2/modules/admin_platform/application/admin_audit_service.py
 
 Targets ~41% → ≥75%
 Covers: log_action (basic, with request, user=None, basarili=False,
         DB exception swallowed), log_login, log_config_change.
 
-0-mock (Dilim 30): patch("app.database.unit_of_work.UnitOfWork") replaced with
+0-mock (Dilim 30): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__) so the class itself
 is never replaced — only its context-manager dunders are stubbed out.
 All assertions are on the returned AdminAuditLog object (built before any DB call).
+
+``AdminAuditService`` was dissolved to free functions (B.1 — no genuine
+mutable state, every method opened its own UnitOfWork already).
 """
 
 from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.admin_platform.application import admin_audit_service
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -62,10 +66,8 @@ def _stub_uow():
 class TestLogAction:
     async def test_log_action_basic_returns_audit_log(self):
         """log_action returns an AdminAuditLog without request."""
-        from app.core.services.admin_audit_service import AdminAuditService
-        from app.database.models import AdminAuditLog
+        from v2.modules.admin_platform.public import AdminAuditLog
 
-        service = AdminAuditService()
         user = _make_user(uid=1)
         uow_inst = _stub_uow()
 
@@ -73,7 +75,7 @@ class TestLogAction:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="DELETE",
                 hedef_tablo="seferler",
@@ -89,9 +91,6 @@ class TestLogAction:
 
     async def test_log_action_with_request_captures_ip(self):
         """log_action extracts ip_adresi, tarayici, istek_id from Request."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         user = _make_user()
         request = _make_request(ip="10.0.0.1", ua="Mozilla/5.0", request_id="rid-999")
         uow_inst = _stub_uow()
@@ -100,7 +99,7 @@ class TestLogAction:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="READ",
                 request=request,
@@ -112,16 +111,13 @@ class TestLogAction:
 
     async def test_log_action_none_user_uses_system_email(self):
         """log_action with user=None sets kullanici_email='system'."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         uow_inst = _stub_uow()
 
         with (
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=None,
                 aksiyon_tipi="SYSTEM_TASK",
             )
@@ -131,9 +127,6 @@ class TestLogAction:
 
     async def test_log_action_basarili_false(self):
         """log_action records basarili=False and hata_mesaji."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         user = _make_user()
         uow_inst = _stub_uow()
 
@@ -141,7 +134,7 @@ class TestLogAction:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="LOGIN",
                 basarili=False,
@@ -153,9 +146,6 @@ class TestLogAction:
 
     async def test_log_action_db_exception_swallowed(self):
         """log_action does not raise when DB commit fails."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         user = _make_user()
 
         with patch.object(
@@ -164,7 +154,7 @@ class TestLogAction:
             AsyncMock(side_effect=Exception("DB connection lost")),
         ):
             # Should NOT raise
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="DELETE",
             )
@@ -175,9 +165,6 @@ class TestLogAction:
 
     async def test_log_action_with_old_and_new_values(self):
         """log_action stores eski_deger and yeni_deger."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         user = _make_user()
         uow_inst = _stub_uow()
 
@@ -185,7 +172,7 @@ class TestLogAction:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="CONFIG_UPDATE",
                 eski_deger={"deger": "old"},
@@ -197,9 +184,6 @@ class TestLogAction:
 
     async def test_log_action_request_no_client(self):
         """log_action handles request.client=None gracefully."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
-        service = AdminAuditService()
         user = _make_user()
 
         request = MagicMock()
@@ -212,7 +196,7 @@ class TestLogAction:
             patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)),
             patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
-            result = await service.log_action(
+            result = await admin_audit_service.log_action(
                 user=user,
                 aksiyon_tipi="LOGIN",
                 request=request,
@@ -222,22 +206,23 @@ class TestLogAction:
 
 
 # ---------------------------------------------------------------------------
-# log_login (classmethod)
+# log_login
 # ---------------------------------------------------------------------------
 
 
 class TestLogLogin:
     async def test_log_login_calls_log_action(self):
         """log_login delegates to log_action with LOGIN type."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
         user = _make_user(uid=10)
         request = _make_request()
 
-        with patch.object(
-            AdminAuditService, "log_action", new_callable=AsyncMock
+        with patch(
+            "v2.modules.admin_platform.application.admin_audit_service.log_action",
+            new_callable=AsyncMock,
         ) as mock_log:
-            await AdminAuditService.log_login(user=user, request=request, basarili=True)
+            await admin_audit_service.log_login(
+                user=user, request=request, basarili=True
+            )
             mock_log.assert_called_once()
             kwargs = mock_log.call_args[1]
             assert kwargs["aksiyon_tipi"] == "LOGIN"
@@ -245,15 +230,14 @@ class TestLogLogin:
 
     async def test_log_login_failed(self):
         """log_login passes basarili=False."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
         user = _make_user()
         request = _make_request()
 
-        with patch.object(
-            AdminAuditService, "log_action", new_callable=AsyncMock
+        with patch(
+            "v2.modules.admin_platform.application.admin_audit_service.log_action",
+            new_callable=AsyncMock,
         ) as mock_log:
-            await AdminAuditService.log_login(
+            await admin_audit_service.log_login(
                 user=user, request=request, basarili=False
             )
             kwargs = mock_log.call_args[1]
@@ -261,22 +245,21 @@ class TestLogLogin:
 
 
 # ---------------------------------------------------------------------------
-# log_config_change (classmethod)
+# log_config_change
 # ---------------------------------------------------------------------------
 
 
 class TestLogConfigChange:
     async def test_log_config_change_delegates_correctly(self):
         """log_config_change passes CONFIG_UPDATE type with old/new values."""
-        from app.core.services.admin_audit_service import AdminAuditService
-
         user = _make_user()
         request = _make_request()
 
-        with patch.object(
-            AdminAuditService, "log_action", new_callable=AsyncMock
+        with patch(
+            "v2.modules.admin_platform.application.admin_audit_service.log_action",
+            new_callable=AsyncMock,
         ) as mock_log:
-            await AdminAuditService.log_config_change(
+            await admin_audit_service.log_config_change(
                 user=user,
                 key="MAX_SPEED",
                 old_val=90,

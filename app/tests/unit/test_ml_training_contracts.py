@@ -4,15 +4,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.core.ml.ensemble_predictor import (
-    EnsemblePredictorService,
-    PredictionResult,
-)
-from app.core.utils.sefer_status import SEFER_STATUS_TAMAMLANDI
-from app.database.repositories.sefer_repo import SeferRepository
 from v2.modules.analytics_executive.infrastructure.executive_read_models import (
     AnalizRepository,
 )
+from v2.modules.prediction_ml.application.ensemble_service import (
+    EnsemblePredictorService,
+)
+from v2.modules.prediction_ml.domain.ensemble_core import PredictionResult
+from v2.modules.trip.infrastructure.repository import SeferRepository
+from v2.modules.trip.sefer_status import SEFER_STATUS_TAMAMLANDI
 
 LEGACY_REAL_FLAG = "is" + "_real"
 
@@ -189,7 +189,7 @@ async def test_train_for_vehicle_uses_each_trip_date_for_seasonal_factor(monkeyp
         return 1.18 if target_date.month == 1 else 0.91
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=get_seasonal_factor),
     )
     monkeypatch.setattr(
@@ -231,7 +231,7 @@ async def test_predict_consumption_uses_dorse_repo_without_uow(monkeypatch):
     service.get_predictor = MagicMock(return_value=predictor)
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.05),
     )
     monkeypatch.setattr(
@@ -281,7 +281,7 @@ async def test_predict_consumption_prefers_vehicle_class_fallback_before_general
     )
 
     monkeypatch.setattr(
-        "app.core.services.weather_service.get_weather_service",
+        "v2.modules.route_simulation.public.get_weather_service",
         lambda: SimpleNamespace(get_seasonal_factor=lambda _: 1.0),
     )
     monkeypatch.setattr(
@@ -341,16 +341,16 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
     saved_versions = []
     legacy_saves = []
 
+    async def _fake_register(*, arac_id, predictor, result, model_path):
+        saved_versions.append({"arac_id": arac_id})
+
     monkeypatch.setattr(
-        "app.core.ml.model_manager.get_model_manager",
-        lambda: SimpleNamespace(
-            save_version=AsyncMock(
-                side_effect=lambda **kwargs: saved_versions.append(kwargs)
-            )
-        ),
+        "v2.modules.prediction_ml.application.ensemble_service."
+        "_register_model_version",
+        _fake_register,
     )
     monkeypatch.setattr(
-        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+        "v2.modules.analytics_executive.public.get_analiz_repo",
         lambda: SimpleNamespace(
             execute_query=AsyncMock(
                 side_effect=AssertionError(

@@ -12,34 +12,33 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from app.api.deps import SessionDep, get_current_active_admin
-from app.api.v1.utils import parse_date_param
-from app.core.exceptions import DomainError
-from app.database.models import Kullanici
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    PDF_RESPONSES,
-    CostTrendPoint,
-    VehicleCostComparisonItem,
-)
-from v2.modules.analytics_executive.application.analyze_costs import (
+from v2.modules.analytics_executive.public import (
     calculate_period_cost,
     calculate_roi,
     calculate_savings_potential,
     get_monthly_trend,
 )
-from v2.modules.analytics_executive.application.analyze_costs import (
+from v2.modules.analytics_executive.public import (
     get_vehicle_cost_comparison as analyze_vehicle_cost_comparison,
 )
+from v2.modules.auth_rbac.public import Kullanici, get_current_active_admin
 from v2.modules.import_excel.public import export_data, get_export_service
+from v2.modules.platform_infra.api_utils import parse_date_param
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import SessionDep
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.generate_vehicle_report import (
     generate_vehicle_report,
 )
 from v2.modules.reports.infrastructure.pdf_export import get_report_generator
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
+from v2.modules.reports.schemas import CostTrendPoint, VehicleCostComparisonItem
+from v2.modules.shared_kernel.exceptions import DomainError
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.schemas.api_responses import (
+    EXCEL_XLSX_RESPONSES,
+    PDF_RESPONSES,
+)
 
 logger = get_logger(__name__)
 

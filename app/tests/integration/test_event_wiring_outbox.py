@@ -15,7 +15,6 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from app.database.models import OutboxEvent
 from app.tests._helpers.seed import seed_arac, seed_lokasyon, seed_sofor
 from v2.modules.driver.application.add_sofor import add_sofor
 from v2.modules.driver.application.delete_sofor import delete_sofor
@@ -32,6 +31,7 @@ from v2.modules.location.application.delete_location import delete_location
 from v2.modules.location.application.update_location import update_location
 from v2.modules.location.infrastructure.repository import LokasyonRepository
 from v2.modules.location.schemas import LokasyonCreate, LokasyonUpdate
+from v2.modules.shared_kernel.infrastructure.outbox import OutboxEvent
 
 pytestmark = pytest.mark.integration
 
@@ -84,7 +84,7 @@ class TestFuelOutboxWiring:
     async def test_add_yakit_writes_yakit_added(self, db_session):
         from datetime import date
 
-        from app.core.entities.models import YakitAlimiCreate
+        from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
         arac = await seed_arac(db_session, plaka="34EVT004")
         await db_session.commit()
@@ -104,8 +104,8 @@ class TestFuelOutboxWiring:
         assert row.payload == {"result": yakit_id, "arac_id": arac.id}
 
     async def test_update_yakit_writes_yakit_updated(self, db_session):
-        from app.core.entities.models import YakitUpdate
         from app.tests._helpers.seed import seed_yakit
+        from v2.modules.fuel.schemas import YakitUpdate
 
         arac = await seed_arac(db_session, plaka="34EVT005")
         yakit = await seed_yakit(db_session, arac_id=arac.id, km_sayac=100, litre=50.0)
@@ -207,11 +207,11 @@ class TestRelayDispatchesRealHandlersWithoutCrashing:
     try/except in EventBus.publish_async), never break the relay."""
 
     async def test_relay_processes_arac_added_with_real_subscribers(self, db_session):
-        from app.infrastructure.cache.cache_invalidation import (
+        from v2.modules.platform_infra.cache.cache_invalidation import (
             setup_cache_invalidation,
         )
-        from app.infrastructure.events.event_bus import get_event_bus
-        from app.infrastructure.events.outbox_service import OutboxService
+        from v2.modules.platform_infra.events.event_bus import get_event_bus
+        from v2.modules.shared_kernel.infrastructure.outbox import OutboxService
 
         bus = get_event_bus()
         bus.reset_all_for_tests()

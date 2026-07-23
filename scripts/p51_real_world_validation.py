@@ -22,13 +22,12 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from app.config import settings
-from app.core.services.sefer_fuel_estimator import (
+from v2.modules.location.public import LokasyonCreate, create_location
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.application.sefer_fuel_estimator import (
     SeferFuelEstimator,
     SeferFuelInput,
 )
-from app.database.unit_of_work import UnitOfWork
-from v2.modules.location.application.create_location import create_location
-from v2.modules.location.schemas import LokasyonCreate
 
 # ---------------------------------------------------------------------------
 # Test verisi
@@ -319,7 +318,7 @@ def neutral_estimate(breakdown) -> float:
     """Faz 7 — koşul-nötr tahmin: çevresel/mevsimsel çarpanlar HARİÇ
     (physics × araç/şoför faktörleri). Literatür bandları koşul-nötr
     olduğundan birincil GREEN/RED kararı bununla verilir (like-for-like)."""
-    from app.core.ml.adjustment_factors import combine_factors
+    from v2.modules.prediction_ml.public import combine_factors
 
     return round(
         breakdown.physics_baseline

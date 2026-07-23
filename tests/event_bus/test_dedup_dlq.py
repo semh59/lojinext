@@ -1,4 +1,4 @@
-from app.infrastructure.events.event_bus import Event, EventBus, EventType
+from v2.modules.platform_infra.events.event_bus import Event, EventBus, EventType
 
 
 def setup_bus():

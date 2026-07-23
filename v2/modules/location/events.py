@@ -12,7 +12,7 @@ SOFOR_*), so these rows are relayed but land nowhere — harmless, and ready
 for a future subscriber without another migration.
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 LOKASYON_ADDED = EventType.LOKASYON_ADDED
 LOKASYON_UPDATED = EventType.LOKASYON_UPDATED

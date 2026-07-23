@@ -17,8 +17,8 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy import insert
 
-from app.database.models import Anomaly
 from v2.modules.anomaly.application.classify_theft import FuelTheftClassifier
+from v2.modules.anomaly.public import Anomaly
 from v2.modules.anomaly.schemas import TheftClassification
 
 pytestmark = pytest.mark.integration

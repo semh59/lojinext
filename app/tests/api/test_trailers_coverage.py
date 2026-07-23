@@ -154,7 +154,7 @@ async def test_fleet_stats_happy_path(async_client, admin_auth_headers):
             pass
 
     with patch(
-        "app.database.connection.get_db", return_value=_async_gen(FakeSession())
+        "v2.modules.platform_infra.database.connection.get_db", return_value=_async_gen(FakeSession())
     ):
         resp = await async_client.get(f"{BASE}/fleet-stats", headers=admin_auth_headers)
 
@@ -180,7 +180,7 @@ async def test_create_trailer_no_auth(async_client):
 
 async def test_create_trailer_happy_path(async_client, admin_auth_headers, db_session):
     """Successful create → 201 (seeds a real Dorse; use-case mock returns its id)."""
-    from app.database.models import Dorse
+    from v2.modules.fleet.public import Dorse
 
     dorse = Dorse(plaka="34TRL001")
     db_session.add(dorse)

@@ -6,8 +6,8 @@ from typing import Dict, List, Optional
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.database.base_repository import BaseRepository
-from app.database.models import Kullanici
+from v2.modules.auth_rbac.infrastructure.models import Kullanici
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 
 class KullaniciRepository(BaseRepository[Kullanici]):
@@ -17,7 +17,7 @@ class KullaniciRepository(BaseRepository[Kullanici]):
 
     async def get_by_email(self, email: str) -> Optional[Kullanici]:
         """Email ile kullanıcı bul (blind-index eşleşmesi). Rol ilişkisi eager yüklenir."""
-        from app.infrastructure.security.pii_encryption import blind_index
+        from v2.modules.platform_infra.security.pii_encryption import blind_index
 
         stmt = (
             select(self.model)

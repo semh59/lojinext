@@ -10,7 +10,7 @@ pytestmark = pytest.mark.unit
 
 def _make_repo_with_session():
     """Return a SeferRepository instance with a mocked async session."""
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     repo = SeferRepository.__new__(SeferRepository)
     repo.session = AsyncMock()
@@ -40,7 +40,7 @@ def _make_stats_row(
 class TestSeferRepoStats:
     def test_service_exists(self):
         """SeferRepository is importable and has get_trip_stats."""
-        from app.database.repositories.sefer_repo import SeferRepository
+        from v2.modules.trip.infrastructure.repository import SeferRepository
 
         assert SeferRepository is not None
         assert hasattr(SeferRepository, "get_trip_stats")

@@ -54,14 +54,16 @@ def _skip_if_no_live() -> str:
 def _build_live_estimator():
     """Test başına yeni MapboxClient + WeatherService inject et — singleton bypass."""
     _skip_if_no_live()
-    from app.core.services.sefer_fuel_estimator import SeferFuelEstimator
-    from app.core.services.weather_service import WeatherService
-    from app.services.external_service import ExternalService
     from v2.modules.route_simulation.application.simulate_route import RouteSimulator
+    from v2.modules.route_simulation.application.weather_service import WeatherService
+    from v2.modules.route_simulation.infrastructure.external_service import (
+        ExternalService,
+    )
     from v2.modules.route_simulation.infrastructure.mapbox_client import MapboxClient
     from v2.modules.route_simulation.infrastructure.open_meteo_client import (
         OpenMeteoElevationClient,
     )
+    from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelEstimator
 
     mapbox = MapboxClient()  # settings'ten fresh key okur
     elev = OpenMeteoElevationClient()
@@ -108,7 +110,7 @@ class _FakeSession:
 
 async def test_live_istanbul_ankara_full_pipeline():
     """İstanbul-Ankara (otoyol, ~440km) → tahmin 20-50 L/100km bandında."""
-    from app.core.services.sefer_fuel_estimator import SeferFuelInput
+    from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelInput
 
     estimator = _build_live_estimator()  # fresh, settings-aware
     inp = SeferFuelInput(
@@ -158,7 +160,7 @@ async def test_live_istanbul_ankara_full_pipeline():
 
 async def test_live_short_city_route():
     """Kısa şehir içi rota (~5km) → daha yüksek L/100km bekleyebiliriz."""
-    from app.core.services.sefer_fuel_estimator import SeferFuelInput
+    from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelInput
 
     estimator = _build_live_estimator()
     inp = SeferFuelInput(
@@ -189,7 +191,7 @@ async def test_live_short_city_route():
 
 async def test_live_invalid_coords_returns_none():
     """Geçersiz koordinat (deniz ortası) → Mapbox routes yok → result None."""
-    from app.core.services.sefer_fuel_estimator import SeferFuelInput
+    from v2.modules.trip.application.sefer_fuel_estimator import SeferFuelInput
 
     estimator = _build_live_estimator()
     inp = SeferFuelInput(

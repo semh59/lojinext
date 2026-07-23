@@ -11,8 +11,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.database.db_session import _session_ctx
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.platform_infra.database.db_session import _session_ctx
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -28,7 +28,7 @@ def _mock_session(*, new=(), dirty=(), deleted=()):
 
 def _patch_session_factory(monkeypatch, session):
     """Force an owning UoW (no ambient contextual session) backed by `session`."""
-    monkeypatch.setattr("app.database.unit_of_work.AsyncSessionLocal", lambda: session)
+    monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", lambda: session)
     token = _session_ctx.set(None)
     return token
 

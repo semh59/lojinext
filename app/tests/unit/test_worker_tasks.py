@@ -17,9 +17,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.return_value = None  # kuyruk boş
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -38,9 +40,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -54,9 +58,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run()
 
@@ -74,9 +80,11 @@ class TestDrainPredictionDlq:
         mock_redis.rpop.side_effect = payloads
 
         with patch(
-            "app.workers.tasks.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
+            "v2.modules.prediction_ml.infrastructure.dlq_tasks.redis.Redis.from_url", return_value=mock_redis
         ):
-            from app.workers.tasks.dlq_tasks import drain_prediction_dlq
+            from v2.modules.prediction_ml.infrastructure.dlq_tasks import (
+                drain_prediction_dlq,
+            )
 
             result = drain_prediction_dlq.run(requeue=True)
 
@@ -93,10 +101,12 @@ class TestRelayOutboxEvents:
         mock_service.relay_pending_events = AsyncMock(return_value=3)
 
         with patch(
-            "app.infrastructure.events.outbox_service.get_outbox_service",
+            "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
-            from app.workers.tasks.outbox_tasks import relay_outbox_events
+            from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+                relay_outbox_events,
+            )
 
             relay_outbox_events.run()  # should complete without exception
 
@@ -106,73 +116,20 @@ class TestRelayOutboxEvents:
         mock_service.relay_pending_events = AsyncMock(return_value=0)
 
         with patch(
-            "app.infrastructure.events.outbox_service.get_outbox_service",
+            "v2.modules.shared_kernel.infrastructure.outbox.get_outbox_service",
             return_value=mock_service,
         ):
-            from app.workers.tasks.outbox_tasks import relay_outbox_events
+            from v2.modules.shared_kernel.infrastructure.outbox_tasks import (
+                relay_outbox_events,
+            )
 
             relay_outbox_events.run()
 
 
-# ── driver_tasks ──────────────────────────────────────────────────────────────
-
-
-class TestCalculatePerformanceScore:
-    def test_with_qualifying_trips(self):
-        """Sürücü verileri varsa hata yok."""
-        from app.database.unit_of_work import UnitOfWork
-
-        mock_row = MagicMock()
-        mock_row.trip_count = 10
-        mock_row.avg_tuketim = 32.5
-
-        mock_result = MagicMock()
-        mock_result.one_or_none.return_value = mock_row
-
-        mock_session = MagicMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        mock_uow = MagicMock()
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-
-        with (
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        ):
-            from v2.modules.driver.infrastructure.driver_tasks import (
-                calculate_performance_score,
-            )
-
-            calculate_performance_score.run(driver_id=1)  # no exception
-
-        mock_uow.commit.assert_awaited_once()
-
-    def test_no_qualifying_trips(self):
-        """Sürücü için trip yoksa da hata olmaz."""
-        from app.database.unit_of_work import UnitOfWork
-
-        mock_result = MagicMock()
-        mock_result.one_or_none.return_value = None
-
-        mock_session = MagicMock()
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        mock_uow = MagicMock()
-        mock_uow.session = mock_session
-        mock_uow.commit = AsyncMock()
-
-        with (
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        ):
-            from v2.modules.driver.infrastructure.driver_tasks import (
-                calculate_performance_score,
-            )
-
-            calculate_performance_score.run(driver_id=99)
-
-        mock_uow.commit.assert_awaited_once()
+# ── driver_tasks: orphan Celery task (v2.modules.driver.infrastructure.
+# driver_tasks) SİLİNDİ 2026-07-18 — hiçbir zaman worker'a kayıtlı olmayan,
+# hiçbir .delay()/.apply_async() çağıranı olmayan dead code'du (bkz.
+# v2/modules/driver/CLAUDE.md). Bu testler dosyasıyla birlikte kaldırıldı.
 
 
 # ── prediction_tasks ──────────────────────────────────────────────────────────
@@ -196,15 +153,17 @@ class TestRunPredictionTask:
 
         with (
             patch(
-                "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
                 return_value=mock_redis,
             ),
             patch(
-                "app.workers.tasks.prediction_tasks.get_llm_client",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client",
                 return_value=mock_llm,
             ),
         ):
-            from app.workers.tasks.prediction_tasks import run_prediction_task
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                run_prediction_task,
+            )
 
             result = run_prediction_task.run("test question")
 
@@ -226,16 +185,18 @@ class TestRunPredictionTask:
 
         with (
             patch(
-                "app.workers.tasks.prediction_tasks.redis.Redis.from_url",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.redis.Redis.from_url",
                 return_value=mock_redis,
             ),
             patch(
-                "app.workers.tasks.prediction_tasks.get_llm_client",
+                "v2.modules.prediction_ml.infrastructure.prediction_tasks.get_llm_client",
                 return_value=mock_llm,
             ),
-            patch("app.workers.tasks.prediction_tasks._persist", new=AsyncMock()),
+            patch("v2.modules.prediction_ml.infrastructure.prediction_tasks._persist", new=AsyncMock()),
         ):
-            from app.workers.tasks.prediction_tasks import run_prediction_task
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                run_prediction_task,
+            )
 
             result = run_prediction_task.run(
                 "Yakıt neden yüksek?", context="TIR takip sistemi"
@@ -256,10 +217,12 @@ class TestRunPredictionTask:
         mock_session.__aexit__ = AsyncMock(return_value=False)
 
         with patch(
-            "app.workers.tasks.prediction_tasks.AsyncSessionLocal",
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.AsyncSessionLocal",
             return_value=mock_session,
         ):
-            from app.workers.tasks.prediction_tasks import _persist
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                _persist,
+            )
 
             loop = asyncio.new_event_loop()
             loop.run_until_complete(
@@ -272,14 +235,16 @@ class TestRunPredictionTask:
     def test_persist_best_effort_db_failure(self):
         """DB yazımı başarısız olursa _persist sessizce geçer."""
         with patch(
-            "app.workers.tasks.prediction_tasks.AsyncSessionLocal"
+            "v2.modules.prediction_ml.infrastructure.prediction_tasks.AsyncSessionLocal"
         ) as mock_session_cls:
             mock_session = MagicMock()
             mock_session.__aenter__ = AsyncMock(side_effect=Exception("DB conn failed"))
             mock_session.__aexit__ = AsyncMock(return_value=False)
             mock_session_cls.return_value = mock_session
 
-            from app.workers.tasks.prediction_tasks import _persist
+            from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
+                _persist,
+            )
 
             # Should not raise. asyncio.run() — get_event_loop() Py3.12+'da çalışan
             # loop yokken RuntimeError verir (üretim kodu zaten asyncio.run kullanır).

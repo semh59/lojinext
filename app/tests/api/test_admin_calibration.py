@@ -12,7 +12,7 @@ async def test_calibrate_route_success(async_client, admin_auth_headers, monkeyp
     mock_service_class = MagicMock(return_value=mock_service_instance)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_calibration.RouteCalibrationService",
+        "v2.modules.route_simulation.api.admin_calibration_routes.RouteCalibrationService",
         mock_service_class,
     )
 
@@ -37,7 +37,7 @@ async def test_calibrate_route_insufficient_data(
     mock_service_class = MagicMock(return_value=mock_service_instance)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_calibration.RouteCalibrationService",
+        "v2.modules.route_simulation.api.admin_calibration_routes.RouteCalibrationService",
         mock_service_class,
     )
 
@@ -72,7 +72,7 @@ async def test_match_trip_to_path_success(
     mock_service_class = MagicMock(return_value=mock_service_instance)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_calibration.RouteCalibrationService",
+        "v2.modules.route_simulation.api.admin_calibration_routes.RouteCalibrationService",
         mock_service_class,
     )
 
@@ -96,7 +96,7 @@ async def test_match_trip_returns_data(async_client, admin_auth_headers, monkeyp
     mock_service_class = MagicMock(return_value=mock_service_instance)
 
     monkeypatch.setattr(
-        "app.api.v1.endpoints.admin_calibration.RouteCalibrationService",
+        "v2.modules.route_simulation.api.admin_calibration_routes.RouteCalibrationService",
         mock_service_class,
     )
 

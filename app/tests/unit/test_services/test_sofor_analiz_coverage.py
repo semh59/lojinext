@@ -1,5 +1,5 @@
 """
-Unit tests for v2.modules.driver.domain.driver_stats — coverage push from 15% to ≥75%.
+Unit tests for v2.modules.driver.application.driver_stats — coverage push from 15% to ≥75%.
 
 All DB calls are mocked; no real DB or Redis required.
 
@@ -12,8 +12,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from v2.modules.driver.domain import driver_stats as driver_stats_mod
-from v2.modules.driver.domain.driver_stats import (
+from v2.modules.driver.application import driver_stats as driver_stats_mod
+from v2.modules.driver.application.driver_stats import (
     _calc_elite_from_trips,
     calculate_elite_performance_score,
     calculate_performance_score,
@@ -25,6 +25,9 @@ from v2.modules.driver.domain.driver_stats import (
 )
 from v2.modules.driver.infrastructure import (
     driver_metrics_queries as driver_metrics_queries_mod,
+)
+from v2.modules.driver.infrastructure import (
+    driver_trip_queries as driver_trip_queries_mod,
 )
 
 pytestmark = pytest.mark.unit
@@ -55,7 +58,7 @@ def _make_stats(**kwargs):
 
 
 @pytest.fixture
-def mock_uow():
+def mock_uow(monkeypatch):
     uow = MagicMock()
     uow.__aenter__ = AsyncMock(return_value=uow)
     uow.__aexit__ = AsyncMock(return_value=None)
@@ -73,7 +76,12 @@ def mock_uow():
     uow.sefer_repo.get_all = AsyncMock(return_value=[])
     # AUDIT-045 refactor: elite skor artık get_recent_trips_batch + _calc_elite_from_trips
     # yolundan hesaplanıyor (eski calculate_elite_performance_score değil).
-    uow.sefer_repo.get_recent_trips_batch = AsyncMock(return_value={})
+    # Dalga 14: get_recent_trips_batch artık uow.sefer_repo'nun bir metodu
+    # değil, driver_trip_queries.py'de bağımsız bir free function (inline
+    # import edilir) — patch hedefi kaynak modül.
+    monkeypatch.setattr(
+        driver_trip_queries_mod, "get_recent_trips_batch", AsyncMock(return_value={})
+    )
 
     return uow
 
@@ -229,8 +237,10 @@ class TestGetDriverStats:
             AsyncMock(return_value=stats),
         )
         mock_uow.analiz_repo.get_filo_ortalama_tuketim = AsyncMock(return_value=33.0)
-        mock_uow.sefer_repo.get_recent_trips_batch = AsyncMock(
-            return_value={1: [{"tuketim": 30.0}]}
+        monkeypatch.setattr(
+            driver_trip_queries_mod,
+            "get_recent_trips_batch",
+            AsyncMock(return_value={1: [{"tuketim": 30.0}]}),
         )
 
         with patch.object(
@@ -457,7 +467,7 @@ class TestCalculateElitePerformanceScore:
     async def test_no_seferler_returns_none(self, mock_uow):
         mock_uow.sefer_repo.get_all = AsyncMock(return_value=[])
 
-        with patch("v2.modules.driver.domain.driver_stats.get_prediction_service"):
+        with patch("v2.modules.driver.application.driver_stats.get_prediction_service"):
             with patch("app.config.settings") as mock_settings:
                 mock_settings.ELITE_SCORE_TRIP_LIMIT = 20
                 result = await calculate_elite_performance_score(
@@ -485,7 +495,7 @@ class TestCalculateElitePerformanceScore:
         )
 
         with patch(
-            "v2.modules.driver.domain.driver_stats.get_prediction_service",
+            "v2.modules.driver.application.driver_stats.get_prediction_service",
             return_value=mock_pred_svc,
         ):
             with patch("app.config.settings") as mock_settings:
@@ -517,7 +527,7 @@ class TestCalculateElitePerformanceScore:
         )
 
         with patch(
-            "v2.modules.driver.domain.driver_stats.get_prediction_service",
+            "v2.modules.driver.application.driver_stats.get_prediction_service",
             return_value=mock_pred_svc,
         ):
             with patch("app.config.settings") as mock_settings:
@@ -544,7 +554,7 @@ class TestCalculateElitePerformanceScore:
         mock_pred_svc = MagicMock()
 
         with patch(
-            "v2.modules.driver.domain.driver_stats.get_prediction_service",
+            "v2.modules.driver.application.driver_stats.get_prediction_service",
             return_value=mock_pred_svc,
         ):
             with patch("app.config.settings") as mock_settings:
@@ -572,7 +582,7 @@ class TestCalculateElitePerformanceScore:
         )
 
         with patch(
-            "v2.modules.driver.domain.driver_stats.get_prediction_service",
+            "v2.modules.driver.application.driver_stats.get_prediction_service",
             return_value=mock_pred_svc,
         ):
             with patch("app.config.settings") as mock_settings:
@@ -601,7 +611,7 @@ class TestCalculateElitePerformanceScore:
         )
 
         with patch(
-            "v2.modules.driver.domain.driver_stats.get_prediction_service",
+            "v2.modules.driver.application.driver_stats.get_prediction_service",
             return_value=mock_pred_svc,
         ):
             with patch("app.config.settings") as mock_settings:
@@ -628,7 +638,7 @@ class TestReposFallback:
     def test_repos_falls_back_without_uow(self):
         with (
             patch(
-                "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+                "v2.modules.analytics_executive.public.get_analiz_repo",
                 return_value=MagicMock(),
             ) as mock_analiz,
             patch(
@@ -636,7 +646,7 @@ class TestReposFallback:
                 return_value=MagicMock(),
             ) as mock_sofor,
             patch(
-                "app.database.repositories.sefer_repo.get_sefer_repo",
+                "v2.modules.trip.public.get_sefer_repo",
                 return_value=MagicMock(),
             ) as mock_sefer,
         ):

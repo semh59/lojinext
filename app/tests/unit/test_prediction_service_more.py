@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.database.unit_of_work import UnitOfWork
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -30,7 +30,9 @@ pytestmark = pytest.mark.unit
 
 
 def _make_service():
-    from app.services.prediction_service import PredictionService
+    from v2.modules.prediction_ml.application.prediction_service import (
+        PredictionService,
+    )
 
     svc = PredictionService.__new__(PredictionService)
     svc.weather_service = MagicMock()
@@ -55,6 +57,10 @@ def _make_physics_result(l_100km: float = 32.0, insight: str = "Normal"):
 
 async def test_run_ensemble_prediction_exception_returns_none():
     """When ensemble_service.predict_consumption raises → returns None."""
+    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+        run_ensemble_prediction,
+    )
+
     svc = _make_service()
 
     mock_uow = AsyncMock()
@@ -80,10 +86,11 @@ async def test_run_ensemble_prediction_exception_returns_none():
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
-        result = await svc._run_ensemble_prediction(
-            arac_id=1,
-            sefer_dict=sefer_dict,
-            target_date=date.today(),
+        result = await run_ensemble_prediction(
+            svc.ensemble_service,
+            1,
+            sefer_dict,
+            date.today(),
         )
 
     assert result is None
@@ -96,7 +103,7 @@ async def test_run_ensemble_prediction_exception_returns_none():
 
 async def test_run_physics_model_granular_nodes_path():
     """When normalized_route has granular_nodes → predict_granular is called."""
-    svc = _make_service()
+    from v2.modules.prediction_ml.domain.physics_model import run_physics_model
 
     granular_nodes = [
         {"lat": 40.0, "lon": 29.0, "elevation_m": 100},
@@ -109,7 +116,7 @@ async def test_run_physics_model_granular_nodes_path():
         "historical_stats": {"mean": 31.0},
     }
 
-    from app.core.ml.physics_fuel_predictor import VehicleSpecs
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
 
     specs = VehicleSpecs()
 
@@ -118,11 +125,12 @@ async def test_run_physics_model_granular_nodes_path():
     mock_granular_result.insight = "P2P granular"
 
     with patch(
-        "app.services.prediction_service.asyncio.to_thread",
+        "v2.modules.prediction_ml.domain.physics_model.asyncio.to_thread",
         new=AsyncMock(return_value=mock_granular_result),
     ):
-        result = await svc._run_physics_model(
+        result = await run_physics_model(
             specs=specs,
+            age=3,
             mesafe_km=500.0,
             ton=20.0,
             ascent_m=100.0,
@@ -134,7 +142,6 @@ async def test_run_physics_model_granular_nodes_path():
             devlet_yolu_ratio=0.3,
             sehir_ici_ratio=0.1,
             normalized_route=normalized_route,
-            age=3,
         )
 
     assert result is mock_granular_result
@@ -178,15 +185,16 @@ async def test_predict_consumption_fetches_arac_from_db_when_not_provided():
     with (
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        patch.object(
-            svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
+        patch(
+            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,
         ),
-        patch("app.services.prediction_service.settings") as mock_settings,
+        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = False
         mock_settings.MAX_AGE_DEGRADATION = 0.15
@@ -243,15 +251,16 @@ async def test_predict_consumption_fetches_sofor_from_db():
     with (
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        patch.object(
-            svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
+        patch(
+            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,
         ),
-        patch("app.services.prediction_service.settings") as mock_settings,
+        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = False
         mock_settings.MAX_AGE_DEGRADATION = 0.15
@@ -296,18 +305,22 @@ async def test_predict_consumption_maintenance_factor_applied():
     mock_h_res.reason = "overdue_maintenance"
 
     with (
-        patch.object(
-            svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
+        patch(
+            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
-        patch.object(svc, "_run_ensemble_prediction", new=AsyncMock(return_value=None)),
-        patch("app.services.prediction_service.settings") as mock_settings,
         patch(
-            "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
+            "v2.modules.prediction_ml.application.prediction_service.run_ensemble_prediction",
+            new=AsyncMock(return_value=None),
+        ),
+        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
+        patch(
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,
         ),
         patch(
-            "app.core.ml.vehicle_health_factor.compute_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.compute_maintenance_factor",
             return_value=mock_h_res,
         ),
     ):
@@ -358,19 +371,20 @@ async def test_predict_consumption_maintenance_factor_fetch_health_input_excepti
     with (
         patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
         patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
-        patch.object(
-            svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
+        patch(
+            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,
         ),
         patch(
-            "app.core.ml.vehicle_health_factor.fetch_health_input",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.fetch_health_input",
             new=AsyncMock(side_effect=RuntimeError("health fetch fail")),
         ),
-        patch("app.services.prediction_service.settings") as mock_settings,
+        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = True
         mock_settings.MAX_AGE_DEGRADATION = 0.15
@@ -404,19 +418,20 @@ async def test_predict_consumption_maintenance_factor_compute_exception():
     physics_result = _make_physics_result(32.0)
 
     with (
-        patch.object(
-            svc, "_run_physics_model", new=AsyncMock(return_value=physics_result)
+        patch(
+            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "app.core.ml.vehicle_health_factor.apply_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
             side_effect=lambda p, f, r: p,
         ),
         patch(
-            "app.core.ml.vehicle_health_factor.compute_maintenance_factor",
+            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.compute_maintenance_factor",
             side_effect=RuntimeError("compute fail"),
         ),
-        patch("app.services.prediction_service.settings") as mock_settings,
+        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = True
         mock_settings.AI_CONFIDENCE_THRESHOLD_RED = 0.40
@@ -445,11 +460,11 @@ async def test_log_prediction_to_ai_get_smart_ai_exception_swallowed():
     svc = _make_service()
 
     with patch(
-        "app.services.prediction_service.asyncio.create_task",
+        "v2.modules.prediction_ml.application.prediction_service.asyncio.create_task",
         side_effect=RuntimeError("task fail"),
     ):
         with patch(
-            "v2.modules.ai_assistant.application.knowledge_base.get_smart_ai",
+            "v2.modules.ai_assistant.public.get_smart_ai",
             side_effect=ImportError("smart_ai not available"),
             create=True,
         ):
@@ -473,11 +488,11 @@ async def test_log_prediction_to_ai_creates_task():
 
     with (
         patch(
-            "app.services.prediction_service.asyncio.create_task",
+            "v2.modules.prediction_ml.application.prediction_service.asyncio.create_task",
             side_effect=capture_task,
         ),
         patch(
-            "v2.modules.ai_assistant.application.knowledge_base.get_smart_ai",
+            "v2.modules.ai_assistant.public.get_smart_ai",
             return_value=mock_smart_ai,
             create=True,
         ),
@@ -513,7 +528,7 @@ async def test_explain_consumption_sofor_id_stats_fetch():
             AsyncMock(return_value=[driver_stat]),
         ) as mock_get_driver_stats,
         patch(
-            "app.services.prediction_service.asyncio.to_thread",
+            "v2.modules.prediction_ml.application.prediction_service.asyncio.to_thread",
             new=AsyncMock(
                 return_value={"top_features": [{"feature": "mesafe_km", "value": 0.5}]}
             ),
@@ -549,7 +564,7 @@ async def test_explain_consumption_untrained_predictor_falls_back_to_general():
     svc.ensemble_service.get_predictor = MagicMock(side_effect=predictor_factory)
 
     with patch(
-        "app.services.prediction_service.asyncio.to_thread",
+        "v2.modules.prediction_ml.application.prediction_service.asyncio.to_thread",
         new=AsyncMock(return_value={"top_features": []}),
     ):
         result = await svc.explain_consumption(
@@ -579,7 +594,7 @@ async def test_explain_consumption_sofor_id_no_stats():
             AsyncMock(return_value=[]),
         ),
         patch(
-            "app.services.prediction_service.asyncio.to_thread",
+            "v2.modules.prediction_ml.application.prediction_service.asyncio.to_thread",
             new=AsyncMock(return_value={"top_features": []}),
         ),
     ):
@@ -607,7 +622,7 @@ async def test_explain_consumption_with_route_analysis():
     }
 
     with patch(
-        "app.services.prediction_service.asyncio.to_thread",
+        "v2.modules.prediction_ml.application.prediction_service.asyncio.to_thread",
         new=AsyncMock(return_value={"top_features": []}),
     ):
         result = await svc.explain_consumption(

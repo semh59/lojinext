@@ -129,7 +129,7 @@ class MaintenancePredictor:
 
     async def predict_all(self) -> List[Prediction]:
         """Tüm aktif araçlar için PERIYODIK bakım tahmini döndürür."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             inputs = await self._gather_inputs(uow)
@@ -137,7 +137,7 @@ class MaintenancePredictor:
 
     async def predict_for_arac(self, arac_id: int) -> Optional[Prediction]:
         """Tek araç için tahmin; araç yoksa None."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             inputs = await self._gather_inputs(uow, arac_id=arac_id)

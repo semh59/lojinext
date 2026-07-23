@@ -15,8 +15,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from sqlalchemy import text
 
-from app.infrastructure.monitoring.event_bus import ErrorEventBus, reset_event_bus
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.event_bus import (
+    ErrorEventBus,
+    reset_event_bus,
+)
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 pytestmark = [pytest.mark.integration]
 
@@ -26,7 +33,7 @@ async def fresh_bus(monkeypatch):
     """Isolated EventBus for each test. Monkeypatches _bus to return this bus."""
     reset_event_bus()
     bus = ErrorEventBus()
-    monkeypatch.setattr("app.infrastructure.monitoring.event_bus._bus", bus)
+    monkeypatch.setattr("v2.modules.platform_infra.monitoring.event_bus._bus", bus)
     yield bus
     await bus.stop()
     reset_event_bus()
@@ -48,7 +55,9 @@ def _make_ev(
 
 async def _insert_error_event(session, ev: ErrorEvent) -> int:
     """Insert an error_event row and return its id. Uses ORM model to avoid asyncpg cast issues."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     db_ev = ErrorEventModel(
         fingerprint=ev.fingerprint,
@@ -72,7 +81,9 @@ async def _insert_error_event(session, ev: ErrorEvent) -> int:
 @pytest.mark.integration
 async def test_direct_orm_write_to_error_events_table(db_session):
     """ORM INSERT into error_events works and can be queried."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     ev = _make_ev(
         category="pg_write_test",
@@ -125,7 +136,9 @@ async def test_error_occurrences_table_exists(db_session):
 @pytest.mark.integration
 async def test_upsert_increments_count_on_duplicate_fingerprint(db_session):
     """Two events with identical fingerprint → count=2 via UPSERT."""
-    from app.database.models import ErrorEvent as ErrorEventModel
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
+    )
 
     ev = _make_ev(category="upsert_test", message="duplicate upsert integration test")
     now = datetime.now(timezone.utc)
@@ -193,7 +206,7 @@ async def test_flush_batch_emits_and_drains_queue(fresh_bus):
         patch.object(fresh_bus, "_write_redis", new_callable=AsyncMock),
         patch.object(fresh_bus, "_write_postgres", new_callable=AsyncMock),
         patch(
-            "app.infrastructure.monitoring.alarm_router.AlarmRouter.route",
+            "v2.modules.platform_infra.monitoring.alarm_router.AlarmRouter.route",
             new_callable=AsyncMock,
         ),
     ):
@@ -212,7 +225,7 @@ async def test_flush_batch_records_success_when_pg_succeeds(fresh_bus):
         patch.object(fresh_bus, "_write_redis", new_callable=AsyncMock),
         patch.object(fresh_bus, "_write_postgres", new_callable=AsyncMock),
         patch(
-            "app.infrastructure.monitoring.alarm_router.AlarmRouter.route",
+            "v2.modules.platform_infra.monitoring.alarm_router.AlarmRouter.route",
             new_callable=AsyncMock,
         ),
     ):
@@ -247,7 +260,7 @@ async def test_critical_event_triggers_telegram_call(fresh_bus):
         patch.object(fresh_bus, "_write_redis", new_callable=AsyncMock),
         patch.object(fresh_bus, "_write_postgres", new_callable=AsyncMock),
         patch(
-            "app.infrastructure.monitoring.alarm_router.AnomalyDetector.check",
+            "v2.modules.platform_infra.monitoring.alarm_router.AnomalyDetector.check",
             new_callable=AsyncMock,
             return_value=False,
         ),
@@ -329,12 +342,14 @@ async def test_resolve_event_end_to_end(async_client, db_session):
 
     from sqlalchemy import select
 
-    from app.database.models import ErrorEvent as ErrorEventModel
-    from app.database.models import Kullanici, Rol
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
+    )
+    from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
+    from v2.modules.shared_kernel.infrastructure.error_monitoring_models import (
+        ErrorEvent as ErrorEventModel,
     )
 
     # Create a real admin role + user so resolved_by FK is satisfied
@@ -457,7 +472,7 @@ async def test_sse_token_endpoint_returns_token(async_client, admin_auth_headers
     mock_mgr.redis = mock_redis
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.get_pubsub_manager",
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         return_value=mock_mgr,
     ):
         response = await async_client.post(

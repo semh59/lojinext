@@ -199,23 +199,23 @@ async def test_lifespan_startup_and_shutdown():
     mock_engine.dispose = AsyncMock()
 
     with (
-        patch("app.infrastructure.resilience.shutdown.register_shutdown_handlers"),
+        patch("v2.modules.platform_infra.resilience.shutdown.register_shutdown_handlers"),
         patch(
-            "app.infrastructure.monitoring.event_bus.get_event_bus",
+            "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
             return_value=mock_bus,
         ),
         patch(
-            "app.infrastructure.background.celery_app.celery_app",
+            "v2.modules.platform_infra.background.celery_app.celery_app",
             mock_celery,
         ),
         patch(
-            "app.infrastructure.monitoring.activate.activate_all_probes",
+            "v2.modules.platform_infra.monitoring.activate.activate_all_probes",
         ),
         patch(
-            "app.core.ml.ensemble_predictor.get_ensemble_service",
+            "v2.modules.prediction_ml.public.get_ensemble_service",
         ),
         patch(
-            "app.core.container.get_container",
+            "v2.modules.platform_infra.container.get_container",
             return_value=mock_container,
         ),
         patch(
@@ -252,7 +252,7 @@ async def test_db_operational_error_handler_sentry_capture(
     mock_sentry.capture_exception = MagicMock()
 
     with patch.dict(sys.modules, {"sentry_sdk": mock_sentry}):
-        with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+        with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
             try:
                 resp = await async_client.get("/test-db-op-error")
                 assert resp.status_code == 503
@@ -283,9 +283,9 @@ async def test_unhandled_exception_handler_sentry_capture(async_client):
 
     with (
         patch.dict(sys.modules, {"sentry_sdk": mock_sentry}),
-        patch("app.infrastructure.monitoring.aemit", new=AsyncMock()),
+        patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()),
         patch(
-            "app.infrastructure.monitoring.__init__.aemit", new=AsyncMock(), create=True
+            "v2.modules.platform_infra.monitoring.__init__.aemit", new=AsyncMock(), create=True
         ),
     ):
         try:
@@ -317,7 +317,7 @@ async def test_http_exception_handler_5xx_emits_monitoring(async_client):
     async def _raise():
         raise StarletteHTTPException(status_code=503, detail="Service down")
 
-    with patch("app.infrastructure.monitoring.aemit", new=AsyncMock()):
+    with patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()):
         try:
             resp = await async_client.get("/test-5xx-emit")
             assert resp.status_code == 503

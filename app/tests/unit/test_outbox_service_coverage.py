@@ -18,13 +18,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy import insert, select
 
-from app.database.models import OutboxEvent
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.outbox_service import OutboxService, get_outbox_service
+from v2.modules.shared_kernel.infrastructure.outbox import (
+    OutboxEvent,
+    OutboxService,
+    get_outbox_service,
+)
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.integration
-_BUS = "app.infrastructure.events.outbox_service.get_event_bus"
-_STOPPING = "app.infrastructure.events.outbox_service.is_stopping"
+_BUS = "v2.modules.shared_kernel.infrastructure.outbox.get_event_bus"
+_STOPPING = "v2.modules.shared_kernel.infrastructure.outbox.is_stopping"
 
 
 async def _seed_outbox(
@@ -93,7 +96,7 @@ async def test_save_event_uses_passed_uow_over_instance_uow(db_session):
 async def test_save_event_uses_correlation_id(db_session):
     """correlation_id from the request context is stored on the real row."""
     with patch(
-        "app.infrastructure.events.outbox_service.get_correlation_id",
+        "v2.modules.shared_kernel.infrastructure.outbox.get_correlation_id",
         return_value="test-correlation-xyz",
     ):
         async with UnitOfWork() as uow:

@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, MagicMock
 import numpy as np
 import pytest
 
-from app.core.ml.ensemble_predictor import (
-    EnsembleFuelPredictor,
+from v2.modules.prediction_ml.application.ensemble_service import (
     EnsemblePredictorService,
 )
-from app.core.ml.physics_fuel_predictor import (
+from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
+from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     FuelPrediction,
     PhysicsBasedFuelPredictor,
     RouteConditions,
@@ -267,21 +267,21 @@ async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
 
     saved_versions = []
 
+    async def _fake_register(*, arac_id, predictor, result, model_path):
+        saved_versions.append({"arac_id": arac_id, "result": result})
+
     monkeypatch.setattr(
-        "app.core.ml.model_manager.get_model_manager",
-        lambda: SimpleNamespace(
-            save_version=AsyncMock(
-                side_effect=lambda **kwargs: saved_versions.append(kwargs)
-            )
-        ),
+        "v2.modules.prediction_ml.application.ensemble_service."
+        "_register_model_version",
+        _fake_register,
     )
     monkeypatch.setattr(
-        "v2.modules.analytics_executive.infrastructure.executive_read_models.get_analiz_repo",
+        "v2.modules.analytics_executive.public.get_analiz_repo",
         lambda: SimpleNamespace(save_model_params=AsyncMock(return_value=None)),
     )
 
     await service.train_general_model()
 
     general_version = next(item for item in saved_versions if item["arac_id"] == 0)
-    assert general_version["metrics"]["mae"] == 1.4
-    assert general_version["metrics"]["r2"] == 0.73
+    assert general_version["result"]["measurements"]["mae"] == 1.4
+    assert general_version["result"]["metrics"]["gb_test_r2"] == 0.73

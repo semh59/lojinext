@@ -6,7 +6,9 @@ sys.path.append(os.getcwd())
 
 from datetime import date
 
-from app.services.prediction_service import get_prediction_service
+from v2.modules.prediction_ml.application.prediction_service import (
+    get_prediction_service,
+)
 
 
 async def test_pred():

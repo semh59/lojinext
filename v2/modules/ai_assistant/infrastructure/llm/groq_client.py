@@ -12,9 +12,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from app.config import settings
-from app.core.exceptions import LLMProviderError
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.security.pii_scrubber import scrub_pii
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.security.pii_scrubber import scrub_pii
+from v2.modules.shared_kernel.exceptions import LLMProviderError
 
 _GROQ_TIMEOUT_S = 30.0
 
@@ -78,7 +78,9 @@ class GroqService:
         """
         if AsyncGroq is None:
             return None
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         api_key = await get_integration_secret("groq", self.api_key)
         if not api_key:

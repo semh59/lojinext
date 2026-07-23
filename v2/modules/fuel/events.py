@@ -17,7 +17,7 @@ app startup (``app/main.py`` lifespan) — previously neither
 ever called anywhere in the repo.
 """
 
-from app.infrastructure.events.event_bus import EventType
+from v2.modules.platform_infra.events.event_bus import EventType
 
 YAKIT_ADDED = EventType.YAKIT_ADDED
 YAKIT_UPDATED = EventType.YAKIT_UPDATED

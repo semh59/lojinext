@@ -3,22 +3,11 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
 from sqlalchemy.exc import IntegrityError
 
-from app.api.deps import (
-    UOWDep,
+from v2.modules.auth_rbac.public import (
+    Kullanici,
     get_current_active_admin,
     get_current_active_user,
 )
-from app.core.exceptions import DomainError
-from app.database.models import Kullanici
-from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
-from app.schemas.api_responses import (
-    EXCEL_XLSX_RESPONSES,
-    DorseImportResult,
-    DorseInspectionAlertsResponse,
-    FleetStatsResponse,
-)
-from app.schemas.base import ResponseMeta, StandardResponse
 from v2.modules.fleet.application.create_trailer import create_trailer
 from v2.modules.fleet.application.export_trailers import (
     export_all_trailers,
@@ -40,7 +29,20 @@ from v2.modules.fleet.application.list_trailers import (
     get_trailer_by_id,
 )
 from v2.modules.fleet.application.update_trailer import delete_trailer, update_trailer
-from v2.modules.fleet.schemas import DorseCreate, DorseResponse, DorseUpdate
+from v2.modules.fleet.schemas import (
+    DorseCreate,
+    DorseImportResult,
+    DorseInspectionAlertsResponse,
+    DorseResponse,
+    DorseUpdate,
+    FleetStatsResponse,
+)
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.public import UOWDep
+from v2.modules.shared_kernel.exceptions import DomainError
+from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
+from v2.modules.shared_kernel.schemas.base import ResponseMeta, StandardResponse
 
 logger = get_logger(__name__)
 

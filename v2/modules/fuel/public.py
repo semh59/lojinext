@@ -13,7 +13,7 @@ opened its own ``UnitOfWork()`` and never read ``self.repo``) — dropped
 here rather than carried forward.
 """
 
-from v2.modules.fuel.application.add_yakit import add_yakit, add_yakit_alimi
+from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.bulk_add_yakit import bulk_add_yakit
 from v2.modules.fuel.application.calculate_period import create_fuel_periods
 from v2.modules.fuel.application.delete_yakit import delete_yakit
@@ -35,22 +35,15 @@ from v2.modules.fuel.application.recalculate_vehicle_periods import (
     recalculate_vehicle_periods,
 )
 from v2.modules.fuel.application.update_yakit import update_yakit
-from v2.modules.fuel.domain.consumption_prediction import (
-    predict as predict_consumption,
-)
-from v2.modules.fuel.domain.consumption_prediction import (
-    retrain_all_models,
-)
-from v2.modules.fuel.domain.consumption_prediction import (
-    train_model as train_consumption_model,
-)
-from v2.modules.fuel.domain.local_regression import LinearRegressionModel
+from v2.modules.fuel.domain.entities import YakitAlimiCreate
 from v2.modules.fuel.domain.period_matcher import PeriyotSeferMatch
 from v2.modules.fuel.infrastructure.integrations.opet_client import (
     FuelCardProvider,
     FuelTransaction,
     OpetFuelProvider,
 )
+from v2.modules.fuel.infrastructure.models import YakitAlimi as YakitAlimiORM
+from v2.modules.fuel.infrastructure.models import YakitFormul, YakitPeriyot
 from v2.modules.fuel.infrastructure.repository import YakitRepository, get_yakit_repo
 from v2.modules.fuel.infrastructure.tasks import CoverageResult, compute_coverage
 from v2.modules.fuel.schemas import (
@@ -66,9 +59,15 @@ from v2.modules.fuel.schemas import (
 )
 
 __all__ = [
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi). YakitAlimi ORM
+    # sınıfı "YakitAlimiORM" olarak export edilir — domain/entities.py'de
+    # zaten aynı isimli Pydantic YakitAlimi(BaseEntity) var (prediction_ml'in
+    # PredictionResult -> PredictionResultORM ile aynı gerekçe).
+    "YakitAlimiORM",
+    "YakitPeriyot",
+    "YakitFormul",
     # fuel transactions
     "add_yakit",
-    "add_yakit_alimi",
     "update_yakit",
     "delete_yakit",
     "bulk_add_yakit",
@@ -88,10 +87,6 @@ __all__ = [
     "recalculate_vehicle_periods",
     "PeriyotSeferMatch",
     # consumption prediction (module-internal, distinct from prediction_ml)
-    "train_consumption_model",
-    "predict_consumption",
-    "retrain_all_models",
-    "LinearRegressionModel",
     # fuel-card integrations
     "FuelCardProvider",
     "FuelTransaction",
@@ -112,4 +107,8 @@ __all__ = [
     "OcrPreviewResponse",
     "FuelDocumentItem",
     "FuelDocumentList",
+    # domain entity (internal DTO, distinct from YakitCreate above — used by
+    # bulk_add_yakit/add_yakit; import_excel constructs these for its bulk
+    # Excel-import path)
+    "YakitAlimiCreate",
 ]

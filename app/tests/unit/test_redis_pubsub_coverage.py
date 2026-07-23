@@ -27,7 +27,7 @@ pytestmark = pytest.mark.unit
 @pytest.fixture(autouse=True)
 def reset_pubsub_singleton():
     """Force a fresh RedisPubSubManager instance for each test."""
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     mod.RedisPubSubManager._instance = None
     yield
@@ -41,7 +41,7 @@ def reset_pubsub_singleton():
 
 def _make_manager_no_redis():
     """Return a manager with _redis=None (memory-only mode)."""
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
         mgr = mod.RedisPubSubManager()
@@ -51,7 +51,7 @@ def _make_manager_no_redis():
 
 def _make_manager_with_redis(fake_redis=None):
     """Return a manager with a mock Redis client injected."""
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     fake = fake_redis or AsyncMock()
 
@@ -69,7 +69,7 @@ def _make_manager_with_redis(fake_redis=None):
 
 class TestSingleton:
     def test_same_instance_returned(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
             a = mod.RedisPubSubManager()
@@ -77,7 +77,7 @@ class TestSingleton:
         assert a is b
 
     def test_get_pubsub_manager_returns_instance(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
             mgr = mod.get_pubsub_manager()
@@ -91,7 +91,7 @@ class TestSingleton:
 
 class TestConnect:
     def test_connect_without_redis_available(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         original = mod.REDIS_AVAILABLE
         mod.REDIS_AVAILABLE = False
@@ -103,7 +103,7 @@ class TestConnect:
             mod.REDIS_AVAILABLE = original
 
     def test_connect_ssl_path(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         fake_redis = MagicMock()
         mock_settings = MagicMock()
@@ -114,18 +114,18 @@ class TestConnect:
         mock_settings.REDIS_SSL = True
 
         with (
-            patch("app.infrastructure.cache.redis_pubsub.REDIS_AVAILABLE", True),
+            patch("v2.modules.platform_infra.cache.redis_pubsub.REDIS_AVAILABLE", True),
             patch(
-                "app.infrastructure.cache.redis_pubsub.aioredis.from_url",
+                "v2.modules.platform_infra.cache.redis_pubsub.aioredis.from_url",
                 return_value=fake_redis,
             ),
             patch(
-                "app.infrastructure.cache.redis_pubsub._s", mock_settings, create=True
+                "v2.modules.platform_infra.cache.redis_pubsub._s", mock_settings, create=True
             ),
         ):
             mod.RedisPubSubManager._instance = None
             with patch(
-                "app.infrastructure.cache.redis_pubsub.RedisPubSubManager._connect"
+                "v2.modules.platform_infra.cache.redis_pubsub.RedisPubSubManager._connect"
             ) as mock_connect:
                 mock_connect.side_effect = lambda self=None: setattr(
                     self or mod.RedisPubSubManager._instance, "_redis", None
@@ -134,7 +134,7 @@ class TestConnect:
                 assert mgr is not None
 
     def test_connect_exception_sets_redis_none(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         mock_settings = MagicMock()
         mock_settings.REDIS_HOST = "localhost"
@@ -144,9 +144,9 @@ class TestConnect:
         mock_settings.REDIS_SSL = False
 
         with (
-            patch("app.infrastructure.cache.redis_pubsub.REDIS_AVAILABLE", True),
+            patch("v2.modules.platform_infra.cache.redis_pubsub.REDIS_AVAILABLE", True),
             patch(
-                "app.infrastructure.cache.redis_pubsub.aioredis.from_url",
+                "v2.modules.platform_infra.cache.redis_pubsub.aioredis.from_url",
                 side_effect=Exception("conn refused"),
             ),
         ):
@@ -340,7 +340,7 @@ class TestRedisProperty:
 
 class TestModuleLevelHelpers:
     async def test_set_redis_val(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
             mod.RedisPubSubManager._instance = None
@@ -354,29 +354,29 @@ class TestModuleLevelHelpers:
 
         mgr = _make_manager_no_redis()
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
+            "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
         ):
             result = await mod.set_redis_val("k", "v", 30)
             assert result is True
 
     async def test_get_redis_val(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         mgr = _make_manager_no_redis()
         mgr._memory_store["test_key"] = json.dumps("hello")
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
+            "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
         ):
             result = await mod.get_redis_val("test_key")
             assert result == "hello"
 
     async def test_delete_redis_val(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         mgr = _make_manager_no_redis()
         mgr._memory_store["del_k"] = "v"
         with patch(
-            "app.infrastructure.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
+            "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager", return_value=mgr
         ):
             result = await mod.delete_redis_val("del_k")
             assert result is True

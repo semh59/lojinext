@@ -1,6 +1,6 @@
 import pytest
 
-from app.schemas.sefer import SeferResponse, SeferUpdate
+from v2.modules.trip.schemas import SeferResponse, SeferUpdate
 
 
 @pytest.mark.asyncio

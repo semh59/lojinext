@@ -2,10 +2,10 @@
 
 from typing import Any, Dict, List, Optional
 
-from app.core.entities.models import Arac as AracEntity
-from app.core.entities.models import VehicleStats
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.fleet.domain.entities import Arac as AracEntity
+from v2.modules.fleet.domain.entities import VehicleStats
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

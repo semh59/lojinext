@@ -26,7 +26,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    from app.infrastructure.security.pii_encryption import (
+    from v2.modules.platform_infra.security.pii_encryption import (
         blind_index,
         decrypt_pii,
         encrypt_pii,
@@ -140,7 +140,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    from app.infrastructure.security.pii_encryption import decrypt_pii
+    from v2.modules.platform_infra.security.pii_encryption import decrypt_pii
 
     bind = op.get_bind()
 

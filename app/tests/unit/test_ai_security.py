@@ -2,23 +2,10 @@ from unittest.mock import patch
 
 import pytest
 
-from v2.modules.ai_assistant.application.prompt_tuner import PromptTuner
 from v2.modules.ai_assistant.infrastructure.rag.rag_engine import (
     RAGEngine,
     SearchResult,
 )
-
-
-@pytest.mark.asyncio
-async def test_prompt_tuner_xml_tagging():
-    """Kullanici sorgusunun XML tagleri ile sarmlandigini dogrula"""
-    tuner = PromptTuner()
-    query = "Yakit tuketimi nedir?"
-
-    prompt = tuner.build_tuned_prompt(query)
-    assert "<user_input>" in prompt
-    assert "</user_input>" in prompt
-    assert query in prompt
 
 
 @pytest.mark.asyncio

@@ -6,12 +6,15 @@ JWT login/refresh/logout + oturum yönetimi, kullanıcı CRUD'u (admin +
 self-service), rol/yetki (RBAC) CRUD'u, granular permission-check (`Permission`
 bitwise enum + string-key `require_yetki`), token blacklist (Redis-backed,
 logout revocation), kullanıcı tercihleri (kayıtlı filtre/sütun ayarları),
-lisans/ticari kısıt motoru (`LicenseEngine` — araç/sefer limit kontrolü),
 WebSocket bağlantı bileti (`ws_ticket`). `kullanicilar`, `roller`,
 `kullanici_oturumlari`, `kullanici_ayarlari` tablolarının tek sahibi.
 
+✅ **SİLİNDİ (2026-07-22, kullanıcı kararı)**: lisans/ticari kısıt motoru
+(`LicenseEngine` — araç/sefer limit kontrolü) tamamen kaldırıldı, bkz.
+aşağıdaki "abandoned subsystem silindi" notu.
+
 NE YAPMAZ: multi-worker güvenlik state'i (`BruteForceDetector`/
-`RBACViolationTracker`, bugün `app/infrastructure/monitoring/security_probe.py`'de
+`RBACViolationTracker`, bugün `v2/modules/platform_infra/monitoring/security_probe.py`'de
 — platform-infra'da cross-cutting infra olarak KALIYOR, bu modüle
 taşınmadı). Redis-backed hale getirilmesi **FAZ2 görevi**
 (`TASKS/faz2-guvenlik-state-redis.md`) — dalga 6'nın kapsamı dışında,
@@ -64,11 +67,14 @@ require_yetki(permission) -> PermissionChecker
 # verify_password/create_access_token) domain/security.py'ye delege eder;
 # create_refresh_token/hash_token/verify_token_hash/decode_token/
 # decode_refresh_token/get_decode_key SADECE jwt_handler.py'de yaşar, security.py'de
-# karşılığı yok (JWT oturum-token yaşam döngüsü onun asıl sorumluluğu). Ayrıca
-# hash_password()/verify_password_core() (security.py'den doğrudan export) ile
-# jwt_handler.get_password_hash()/jwt_handler.verify_password() AYNI capability'ye
-# iki farklı public isimden erişim sağlıyor — davranış hatası değil ama gelecekte
-# drift riski taşıyan gereksiz ikili-yüzey, bilerek dokümante ediliyor.
+# karşılığı yok (JWT oturum-token yaşam döngüsü onun asıl sorumluluğu).
+# ✅ **TEMİZLENDİ (2026-07-22, dead-code denetimi)**: `security.py`'den
+# doğrudan export edilen `verify_password_core`/`create_access_token_core`
+# alias'ları — jwt_handler.get_password_hash()/jwt_handler.verify_password()
+# ile AYNI capability'ye ikinci bir public isimden erişim sağlıyorlardı,
+# gerçek çağıranları hiç olmamıştı (grep ile doğrulandı) — public.py'den
+# silindi (`hash_password`/`jwt_handler.*` kanonik yollar KALDI, davranış
+# değişikliği yok).
 jwt_handler.create_access_token(data, expires_delta=None) -> str
 jwt_handler.create_refresh_token(data, expires_delta=None) -> str
 jwt_handler.decode_token(token, audience=None) -> dict
@@ -78,8 +84,6 @@ jwt_handler.verify_token_hash(token, token_hash) -> bool
 jwt_handler.get_password_hash(password) -> str     # bcrypt, delegates to domain/security.py
 jwt_handler.verify_password(plain, hashed) -> bool
 hash_password(password) -> str                      # domain/security.py kanonik (jwt_handler.get_password_hash bunu sarar)
-verify_password_core(plain, hashed) -> bool
-create_access_token_core(data, expires_delta=None) -> str
 get_jwks() -> dict                                  # RS256 JWKS endpoint desteği
 
 # Token blacklist (Redis-backed, logout revocation)
@@ -87,8 +91,7 @@ TokenBlacklist, blacklist                           # module-level singleton ins
 blacklist.add(token, expires_at) -> None
 blacklist.is_blacklisted(token) -> bool              # fail-secure: Redis down → True
 
-# License (araç/sefer ticari limit kontrolü — sınıf, bkz. istisna notu)
-LicenseEngine, get_license_engine()
+# License — ✅ SİLİNDİ (2026-07-22, bkz. "abandoned subsystem silindi" notu aşağıda)
 
 # Repositories (3 ayrı dosya: infrastructure/kullanici_repository.py,
 # infrastructure/rol_repository.py, infrastructure/session_repository.py —
@@ -120,11 +123,14 @@ doğrudan `UOWDep` alıp `auth_service.authenticate(..., uow=uow)` gibi
 servisler UoW ile açılır — aynen korundu, sadece aradaki sınıf katmanı
 kalktı).
 
-## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar — 4 adet)
+## Sınıf istisnaları (B.1'e rağmen sınıf olarak kalanlar — 3 adet)
 
 **DÜZELTME (2026-07-15, dedektif denetiminde bulundu):** bu liste önceden 3
 sınıf sayıyordu, `PermissionChecker` unutulmuştu — `public.py`'de export
-edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
+edilen gerçek bir sınıf olmasına rağmen. Liste tam hale getirildi (4 oldu).
+**2026-07-22 dead-code denetimi**: `LicenseEngine` (aşağıdaki eski madde 2)
+tamamen silindi (bkz. "Abandoned subsystem silindi" notu) — liste tekrar 3'e
+düştü, numaralandırma buna göre kaydırıldı.
 
 1. **`SecurityService`** (`domain/security_service.py`) — yalnız
    `@classmethod` içerir, hiçbir constructor/instance-state yok.
@@ -132,28 +138,26 @@ edilen gerçek bir sınıf olmasına rağmen. Liste şimdi tam.
    parametresi taşımadı — free function'a bölünmedi çünkü zaten stateless bir
    isim alanı (Permission enum ile birlikte gruplu kullanım), CRUD-benzeri bir
    servis değil.
-2. **`LicenseEngine`** (`application/license_service.py`) — env'den bir kez
-   yüklenen `_LICENSE_HASHES` mutable state'i olan, `app/core/container.py`
-   lazy-property singleton'ı olarak yaşayan bir motor. Driver'ın
-   `DriverPerformanceML`'iyle aynı gerekçe sınıfı (mutable durum, yeniden
-   hesaplaması pahalı/anlamsız).
-3. **`TokenBlacklist`** (`domain/token_blacklist.py`) — `__new__`'de
+2. **`TokenBlacklist`** (`infrastructure/token_blacklist.py` — 2026-07-18'de
+   `domain/`'den taşındı: Redis I/O yapan bir sınıf domain'de duramaz) — `__new__`'de
    thread-safe singleton deseni (`_instance`/`_lock`), Redis-backed. Zaten
    stateless bir wrapper ama sınıf-tabanlı singleton deseni pre-migration'dan
    korundu (davranış değişikliği gerektirmiyor, dokunulmadı).
-4. **`PermissionChecker`** (`domain/permission_checker.py`) — `__init__(self,
+3. **`PermissionChecker`** (`application/permission_checker.py` — 2026-07-22'de
+   `domain/`'den taşındı: Kalem 3 commit 1, bkz. aşağıdaki "app/api/deps.py
+   taşındı" notu) — `__init__(self,
    required_permission)` + `__call__` ile klasik FastAPI
    `Depends(SomeClass(param))` closure/dependency-factory deseni. Yukarıdaki
-   3 resmi gerekçeden hiçbirine harfiyen uymuyor (client-injected pipeline
+   2 resmi gerekçeden hiçbirine harfiyen uymuyor (client-injected pipeline
    değil, mutable/singleton motor değil, classmethod-only namespace de değil
    — gerçek instance-state'i var: `self.required_permission`), ama FastAPI'nin
    parametrik `Depends()` mekanizması saf bir fonksiyonla ifade edilemez
    (bound-parameter taşıyan bir callable gerekir) — bu yüzden meşru, ayrı bir
-   5. gerekçe kategorisi: **(d) FastAPI dependency-factory closure'ı**.
+   gerekçe kategorisi: **(d) FastAPI dependency-factory closure'ı**.
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
-**Diğer taşınan modüllerden FARKLI**: `app/infrastructure/events/event_bus.py::EventType`
+**Diğer taşınan modüllerden FARKLI**: `v2/modules/platform_infra/events/event_bus.py::EventType`
 içinde KULLANICI_ADDED/UPDATED/DELETED veya ROL_* için hiçbir enum değeri
 YOK — bu modül hiçbir zaman event-bus'a bağlanmadı (taşımadan önce de
 böyleydi, regresyon değil, `grep -rn "KULLANICI_\|ROL_ADDED"` ile
@@ -177,10 +181,15 @@ FK kenarına rağmen runtime çağrı sayısı düşük kalır (sadece login/
 permission-check senkron çağrılar, diğer 17 modülün auth_rbac'a `out=1`
 görünmesinin sebebi).
 
+`infrastructure/scripts/create_admin.py` — manuel/dev-only CLI yardımcısı
+(super_admin kullanıcısını senkronize eder), 2026-07-22'de `app/scripts/`'ten
+taşındı. Prod bootstrap'ı DEĞİL (`alembic/versions/0002_seed_and_bootstrap.py`
+gerçek işi yapar); hiçbir docker-compose/CI adımında çağrılmaz.
+
 ## Multi-worker güvenlik state'i — BU MODÜLE TAŞINMADI (FAZ2 TODO)
 
 `BruteForceDetector`/`RBACViolationTracker` bugün
-`app/infrastructure/monitoring/security_probe.py`'de yaşıyor —
+`v2/modules/platform_infra/monitoring/security_probe.py`'de yaşıyor —
 process-local in-memory state (multi-worker/multi-replica deployment'ta her
 worker kendi sayacını tutuyor, brute-force/RBAC-ihlali tespiti worker'lar
 arası paylaşılmıyor). Bu modülün sınırları İÇİNDE mantıksal olarak ait
@@ -205,24 +214,49 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   endpoint (`admin_calibration.py`/`admin_config.py`/`admin_health.py`/
   `admin_integrations.py`/`admin_ml.py`/`error_stream.py`) artık
   `require_yetki`/`Permission`/`SecurityService`'i `auth_rbac.public`
-  üzerinden çekiyor; `get_current_user`/`get_current_active_user` hâlâ
-  `app/api/deps.py` üzerinden (o dosya kendisi composition-root
-  istisnası, aşağıya bkz.).
+  üzerinden çekiyor; `get_current_user`/`get_current_active_user` de
+  2026-07-22'den beri (Kalem 3 commit 1) `auth_rbac.public` üzerinden —
+  `app/api/deps.py`'nin composition-root istisnası artık yalnız
+  `get_sefer_service` (trip'in request-scoped factory'si) için geçerli;
+  `SessionDep`/`UOWDep` de aynı gün (commit 2) `platform_infra.public`'e
+  taşındı, `get_background_job_manager` tamamen silindi (bkz.
+  `v2/modules/platform_infra/CLAUDE.md`'nin "Sonradan bulunan 3. tur" notu).
 - **notification (senkron, zaten taşınmış)**: iki yönlü —
   `auth_rbac→notification`: `auth_routes.py::request_password_reset`
-  `v2.modules.notification.infrastructure.email_client.send_password_reset`
-  çağırır. `notification→auth_rbac`: `notification_routes.py`
+  `v2.modules.notification.public.send_password_reset` çağırır
+  (2026-07-18: public'e çevrildi). `notification→auth_rbac`: `notification_routes.py`
   (`require_yetki`) ve `application/quiet_hours.py` (`get_preferences`)
   artık `auth_rbac.public` üzerinden.
 - **fleet, anomaly, import_excel, analytics_executive, reports** —
   `require_yetki`'yi artık `auth_rbac.public` üzerinden import ediyor.
-- **trip, fuel, driver, route_simulation, prediction_ml** — bu modüller
-  henüz auth_rbac'a doğrudan bir simge import etmiyor (yalnız `app/api/
-  deps.py`'nin genel `get_current_active_user`/`require_permissions`
-  wiring'ini dolaylı kullanıyor).
+- **trip, fuel, driver, route_simulation, prediction_ml** — ❌
+  **DÜZELTİLDİ (2026-07-23, bağımsız dedektif denetiminde bulundu)**: bu
+  satır eskiden bu modüllerin auth_rbac'a "henüz doğrudan bir simge
+  import etmediğini, yalnız `app/api/deps.py`'nin dolaylı wiring'ini
+  kullandığını" söylüyordu — o dosya artık yok, ve gerçekte bu 5 modülün
+  `api/*.py` dosyalarının HEPSİ `get_current_active_user`/
+  `require_permissions`/`require_yetki`'yi doğrudan
+  `v2.modules.auth_rbac.public`'ten import ediyor (diğer taşınan
+  modüllerle aynı desen, istisna değil).
 
 ## Modüle özel iş kuralları & gotcha'lar
 
+- ✅ **ÇÖZÜLDÜ (2026-07-22, kullanıcı kararı — "abandoned" kabul edildi,
+  silindi)** — daha önce burada `LicenseEngine.check_car_limit()`/
+  `check_monthly_trip_limit()`'in tam implemente ama hiçbir gerçek
+  çağıranı olmadığı (fleet'in araç-oluşturma yolu ne de trip'in
+  sefer-ekleme yolu bu kontrolü hiç çağırmıyordu — bugün FREE tier
+  müşteriler sınırsız araç/sefer ekleyebiliyordu) bir 🔴 bulgu olarak
+  duruyordu. Kullanıcıya "fleet/trip'e bağla" vs "sil (abandoned kabul
+  et)" seçeneği sunuldu — **sil** seçildi. `application/license_service.py`
+  (LicenseEngine sınıfı + check_car_limit/check_monthly_trip_limit +
+  get_current_tier + _validate_license_key), `container.py`'nin
+  `license_service` lazy-property'si, `fleet.public.count_active_vehicles()`
+  (bu motorun tek çağıranıydı) ve dedike testler (`test_license_service.py`)
+  tamamen silindi. `LICENSE_PRO_KEY`/`LICENSE_ENTERPRISE_KEY`/
+  `LICENSE_PRO_HASH`/`LICENSE_ENTERPRISE_HASH` env değişkenleri artık
+  hiçbir yerde okunmuyor (bilgi amaçlı — ayrı bir temizlik gerektirmiyor,
+  ortamda tanımlıysa sessizce yok sayılır).
 - ✅ **DÜZELTİLDİ (2026-07-15/16, ilk 9 dalganın tam-yeniden dedektif
   denetiminde bulundu)** — 2 çapraz-modül/katman bulgusu:
   (1) `LicenseEngine.check_car_limit()` (`application/license_service.py`)
@@ -238,11 +272,29 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   handler'ıyla aynı isim çakışması burada da vardı, `as
   create_ws_ticket_usecase` alias'ıyla düzeltildi). Mekanik, davranış
   değişikliği yok.
-- **`app/api/deps.py` taşınmadı** — FastAPI-wiring katmanı (driver/fleet
-  dalgalarındaki kararla aynı), yalnızca import kaynakları
-  `v2.modules.auth_rbac.domain.security_service`/`v2.modules.auth_rbac.domain.token_blacklist`
-  olarak güncellendi. `get_auth_service`/`AuthServiceDep` KALDIRILDI (yukarı
-  bakınız).
+- ✅ **`app/api/deps.py`'nin auth-özgü kısmı TAŞINDI (2026-07-22, Kalem 3
+  commit 1)** — `get_current_user`/`get_current_active_user`/
+  `get_current_active_admin`/`get_current_superadmin`/`require_permissions`/
+  `TokenDep` artık `application/authenticate.py`'de. Kök neden analizi:
+  bunların `app/api/deps.py`'de kalmasının GERÇEK sebebi
+  `domain/permission_checker.py`'nin bu dosyayı import etmesiyle oluşan
+  döngüydü (public.py zaten `PermissionChecker`'ı import ediyordu) — döngü
+  "mantığın auth_rbac'a bağımlı olması"ndan değil, dosyanın fiziksel olarak
+  `v2/modules/` DIŞINDA yaşamasından kaynaklanıyordu. Dosya içeri taşınınca
+  VE `permission_checker.py` da aynı turda `domain/`'den `application/`'a
+  taşınınca (kendisi zaten `Depends()` kullanan FastAPI-farkında kod, saf
+  domain değildi — `module-internal-layers` kontratının "domain
+  infrastructure'ı import edemez" kısıtı da bu taşımayla kendiliğinden
+  çözüldü, `.importlinter`'daki 2 eski `permission_checker -> infrastructure.models`
+  ignore satırı artık gereksiz, silindi), döngü tamamen ortadan kalktı.
+  `SessionDep`/`UOWDep`/`get_background_job_manager`/`get_sefer_service`
+  (jenerik per-request DI alias'ları, auth_rbac'a ait değil) o sırada hâlâ
+  `app/api/deps.py`'deydi — aynı gün (Kalem 3 commit 2) `SessionDep`/`UOWDep`
+  `platform_infra.public`'e taşındı, `get_background_job_manager` tamamen
+  silindi (tüm tüketiciler `platform_infra.public.get_job_manager`'ı
+  doğrudan kullanıyor). Yalnız `get_sefer_service` kaldı, Kalem 3 commit
+  3'ünde `trip` modülüne taşınacak. `get_auth_service`/`AuthServiceDep`
+  KALDIRILDI (yukarı bakınız).
 - **Super-admin break-glass bypass** (`api/auth_routes.py::login`) —
   `SUPER_ADMIN_PASSWORD` env değişkeni + IP-scoped rate-limit bucket
   (`super_admin_login:{ip}`, 5dk'da 3 deneme) — genel `auth_token` bucket'ından
@@ -251,7 +303,7 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   `asyncio.to_thread(jwt_handler.verify_password, ...)` — connection-pool-leak
   bug'ının 2. kök nedeniydi (`TASKS/bug-connection-pool-leak-under-load.md`),
   taşımayla KORUNDU.
-- **Fail-secure token blacklist** (`domain/token_blacklist.py::is_blacklisted`) —
+- **Fail-secure token blacklist** (`infrastructure/token_blacklist.py::is_blacklisted`) —
   Redis erişilemezse token'ı REVOKED say (SEC-004), taşımayla değişmedi.
 - **Privilege-escalation guard'ı** (`application/role_service.py::assert_no_privilege_escalation`)
   — çağıran, kendisinde olmayan bir yetkiyi başka role veremez
@@ -271,7 +323,8 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
 ## Test stratejisi (slice/entegrasyon koşumu)
 
 - `app/tests/unit/test_services/test_auth_service_coverage.py`,
-  `test_license_service.py`, `test_preference_service.py`,
+  `test_preference_service.py` (`test_license_service.py` 2026-07-22'de
+  LicenseEngine ile birlikte silindi),
   `test_security_service.py` — use-case fonksiyon testleri (0-mock: gerçek
   repo + `db_session`), sınıf-mock'tan free-function-mock desenine çevrildi
   (`v2.modules.auth_rbac.api.<x>_routes.<fn>` gibi TÜKETEN modül patch
@@ -290,3 +343,27 @@ ediyordu, `public.py`'yi tamamen atlıyordu. Hepsi düzeltildi.
   `tests/test_admin_ws.py`, `tests/test_auth_brute_force.py`,
   `tests/test_user_admin.py`, `tests/api/test_api_integration.py`,
   `tests/conftest.py` dönüştürüldü.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-auth_rbac` kontratı: `application/`
+diğer modüllerin yalnız `public`/`events`'ini import edebilir (KEPT).
+Diğer modüller bu modüle yalnız `v2.modules.auth_rbac.public` üzerinden
+erişir; istisnalar (kontrat ignore listesinde dokümante):
+`v2/modules/platform_infra/container.py`/`app/database/repositories/__init__.py`
+(proje-geneli DI-wiring istisnası), `app/main.py`/`app/infrastructure/
+websocket/ws_auth.py` (2026-07-18'den beri public üzerinden).
+**2026-07-22 (Kalem 3 commit 1)**: eski `app/api/deps.py` istisnası
+(`PermissionChecker` üzerinden döngü ürettiği için ignore-list'te
+tutuluyordu) tamamen KALKTI — `get_current_user` artık
+`application/authenticate.py`'de yaşıyor, `permission_checker.py`
+(kendisi de `domain/`'den `application/`'a taşındı) onu sibling-import
+ediyor, `app/api/deps.py` dosyası bu sembolleri artık import etmiyor.
+İki `.importlinter` ignore satırı da kaldırıldı.
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`kullanıcı`=user, `rol`=role, `yetki`=permission, `oturum`=session,
+`kara liste`=blacklist, `şifre sıfırlama`=password reset,
+`ayrıcalık yükseltme`=privilege escalation, `lisans`=license,
+`tercih`=preference.

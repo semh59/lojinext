@@ -8,17 +8,15 @@ v2.modules.route_simulation.public'e güncellenecek.
 
 from datetime import datetime, timezone
 
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.location.infrastructure.repository import LokasyonRepository
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 
 
 async def analyze_location_route(repo: LokasyonRepository, lokasyon_id: int) -> dict:
     """Hibrit rota tespit use-case'i kullanarak güzergahı analiz et ve güncelle"""
-    from v2.modules.route_simulation.application.get_route_details import (
-        get_route_details,
-    )
+    from v2.modules.route_simulation.public import get_route_details
 
     loc = await repo.get_by_id(lokasyon_id)
     if not loc or not all(
@@ -74,13 +72,13 @@ async def _apply_baseline_fuel_estimate(
 ) -> None:
     """Baseline yakıt tahmini (standart TIR, 13t yük — güzergah kartında göstermek için).
 
-    NOT: prediction_ml modülüne bağımlı (henüz v2'ye taşınmadı) — eski
-    yoldan, dokümante edilmiş geçici bağımlılık.
+    2026-07-18: prediction_ml taşındı — artık `v2.modules.prediction_ml.public`
+    üzerinden erişiyor (eski `app.core.ml.physics_fuel_predictor` bypass'ı kapandı).
     """
     try:
         import asyncio
 
-        from app.core.ml.physics_fuel_predictor import (
+        from v2.modules.prediction_ml.public import (
             PhysicsBasedFuelPredictor,
             RouteConditions,
         )

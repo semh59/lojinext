@@ -87,21 +87,27 @@ doğrudan çağrılan bir yol).
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
 - **auth_rbac** (senkron, in-edge): `auth_routes.py`'nin
-  `/password-reset-request` endpoint'i `send_password_reset`'i public.py'yi
-  ATLAYIP `v2.modules.notification.infrastructure.email_client`'tan
-  doğrudan import edip çağırır (public.py de aynı fonksiyonu re-export
+  `/password-reset-request` endpoint'i `send_password_reset`'i artık
+  `v2.modules.notification.public`'ten çağırır (2026-07-18 düzeltmesi —
+  eskiden public.py'yi atlayıp infrastructure/email_client'tan doğrudan
+  import ediyordu; public.py aynı fonksiyonu zaten re-export
   eder ama bu çağıran onu kullanmıyor — düzeltildi, 2026-07-17
   dedektif denetimi bulgusu, bkz. `TASKS/bug-11-wave-b1-detective-audit-2026-07-17.md`
   madde 3).
 - **auth_rbac** (senkron, out-edge): `application/quiet_hours.py`'nin
-  `is_user_quiet_now`'ı `v2.modules.auth_rbac.application.preference_service`'i
-  doğrudan import eder (dalga 6'da güncellendi — eski `app.core.services.
-  preference_service.PreferenceService` yolu artık yok).
-- **analytics_executive** (senkron, in-edge): `generate_insights.py`'nin
-  `_notify_serious_alerts` fonksiyonu `send_push_broadcast`'i fonksiyon-içi
-  (inline) import eder.
-- **fuel modülü adayı** (senkron, in-edge): `compliance_tasks.py`
-  (muayene push hatırlatma) `send_push_broadcast`'i top-level import eder.
+  `is_user_quiet_now`'ı `v2.modules.auth_rbac.public.get_preferences`'i
+  (fonksiyon-içi import) çağırır — public.py üzerinden, `application/`
+  katmanına doğrudan erişim YOK. ❌ **DÜZELTİLDİ (2026-07-23, bağımsız
+  dedektif denetiminde bulundu)**: bu satır eskiden yanlışlıkla
+  `auth_rbac.application.preference_service`'i doğrudan import ettiğini
+  söylüyordu (public.py sınırını ihlal eden, gerçekte olmayan daha kötü
+  bir durumu tarif ediyordu) — koddaki gerçek import her zaman
+  `auth_rbac.public` üzerindendi.
+- **analytics_executive** (senkron, in-edge): `compliance_tasks.py`
+  (muayene push hatırlatma) `send_push_broadcast`'i `notification.public`
+  üzerinden import eder (2026-07-18: public'e çevrildi). ~~`generate_insights.py`'nin
+  `_notify_serious_alerts`'i~~ — o dosya 2026-07-18 ölü-kod temizliğinde
+  silindi, bu in-edge artık yok.
 - **Trip modülü** (asenkron, event): `SEFER_UPDATED`/`SLA_DELAY` — bkz. yukarı.
 - **Çeşitli workers/endpoints** (senkron, in-edge, `notify_error`/
   `notify_feedback`): `error_digest.py`, `fuel_coverage_check.py`,
@@ -116,21 +122,23 @@ içeriyordu: `/training` (ML eğitim ilerleme, admin_platform'a ait,
 seçenekleri ("dosya ya tamamen taşınır ya tamamen kalır") bu karışık içeriği
 yansıtmıyordu — dosyanın kendisi bölündü:
 
-- `app/api/v1/endpoints/admin_ws.py` — yalnız `/training` kaldı (admin_platform,
-  henüz eski `app/` yolunda, dalga 15'e kadar).
+- `v2/modules/admin_platform/api/admin_ws_routes.py` (eski adı
+  `app/api/v1/endpoints/admin_ws.py`, dalga 15'te admin_platform'a
+  taşındı) — yalnız `/training` kaldı.
 - `v2/modules/notification/api/live_ws_routes.py` — `/live` buraya taşındı.
 - Paylaşılan `ConnectionManager` sınıfı + WS auth helper'ları
   (`verify_ws_token`, `resolve_ws_identity`, `is_admin_email`) **hiçbir
   modüle ait olmayan gerçekten paylaşılan bir infra** olarak
-  `app/infrastructure/websocket/{connection_manager,ws_auth}.py`'ye
+  `v2/modules/platform_infra/websocket/{connection_manager,ws_auth}.py`'ye
   çıkarıldı (event_bus/audit_logger ile aynı gerekçe — cross-cutting infra,
   business modülü değil). Her iki route de bu paylaşılan sınıfı kullanır,
   birbirine bağımlı değil.
 - URL kontratı KORUNDU: `/admin/ws/live` + `/admin/ws/training` — iki farklı
   router objesi `api.py`'de aynı `/admin/ws` prefix'i altına mount edilir
   (FastAPI bunu destekler, tek bir router olması şart değil).
-- **Katman ihlali düzeltmesi**: eski `notification_service.py`,
-  `app.api.v1.endpoints.admin_ws`'den `notification_ws_manager`'ı import
+- **Katman ihlali düzeltmesi**: eski `notification_service.py`, eski
+  `app.api.v1.endpoints.admin_ws`'den (bugünkü adıyla `v2.modules.
+  admin_platform.api.admin_ws_routes`) `notification_ws_manager`'ı import
   ediyordu (servis → endpoint, ters katman bağımlılığı). Artık
   `handle_trip_events.py`, kendi modülünün `infrastructure/ws_broadcaster.py`'sinden
   import ediyor — endpoint'e hiç bağımlı değil.
@@ -146,10 +154,9 @@ FAZ1'in v2-modülü import-linter gate'i henüz aktif değil (bkz.
 ayrı bir onay gerektiren çatı görevi, location dalgasında da kurulmadı).
 Hedef kontrat: diğer modüller yalnız `v2.modules.notification.public`'i
 import eder; `application/`/`domain/`/`infrastructure/`'a doğrudan erişim
-yasak — bugünkü konsolide-fonksiyon çağrıları (`generate_insights.py`,
-`compliance_tasks.py` vb.) bu kurala aykırı, gate aktive olunca
-`ignore_imports`'a dondurulacak (location'ın kendi CLAUDE.md'sindeki
-notla aynı durum).
+yasak — bu artık gerçekten böyle (2026-07-18'den beri `compliance_tasks.py`
+public üzerinden gidiyor); gate aktive olunca mevcut `public`/`events`
+importları zaten kurala uygun, ek `ignore_imports` gerekmiyor.
 
 ## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
 
@@ -234,6 +241,6 @@ notla aynı durum).
   `mark_as_read` IDOR-guard'ı (gerçek DB, gerçek iki kullanıcı).
 - Free-function `unittest.mock.patch` hedefi HER ZAMAN **tüketen modül**
   namespace'i (örn. `v2.modules.notification.application.send_push_to_user.send_webpush`)
-  — İstisna: fonksiyon-içi (inline) importlar (`generate_insights.py`'deki
-  `send_push_broadcast`, `push_to_user`'ın `is_user_quiet_now`'ı gibi) —
-  bunlar KAYNAK modülden patch'lenir (`v2.modules.notification.application.quiet_hours.is_user_quiet_now`).
+  — İstisna: fonksiyon-içi (inline) importlar (`push_to_user`'ın
+  `is_user_quiet_now`'ı gibi) — bunlar KAYNAK modülden patch'lenir
+  (`v2.modules.notification.application.quiet_hours.is_user_quiet_now`).

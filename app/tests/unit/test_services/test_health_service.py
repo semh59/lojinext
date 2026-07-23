@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from app.core.services.health_service import HealthService
+from v2.modules.admin_platform.application.health_service import HealthService
 
 
 @pytest.fixture
@@ -13,7 +13,7 @@ def health_service():
 @pytest.mark.asyncio
 async def test_check_db_healthy(health_service):
     # Mock engine.connect() context manager
-    with patch("app.core.services.health_service.engine") as mock_engine:
+    with patch("v2.modules.admin_platform.application.health_service.engine") as mock_engine:
         mock_conn = AsyncMock()
         mock_conn.execute.return_value = None
 
@@ -32,7 +32,7 @@ async def test_check_db_healthy(health_service):
 
 @pytest.mark.asyncio
 async def test_check_db_unhealthy(health_service):
-    with patch("app.core.services.health_service.engine") as mock_engine:
+    with patch("v2.modules.admin_platform.application.health_service.engine") as mock_engine:
         mock_ctx = AsyncMock()
         mock_ctx.__aenter__.side_effect = Exception("DB Down")
         mock_engine.connect.return_value = mock_ctx
@@ -46,9 +46,9 @@ async def test_check_db_unhealthy(health_service):
 @pytest.mark.asyncio
 async def test_check_ai_readiness_healthy(health_service):
     # get_rag_engine fonksiyon içinde import edildiği için kaynağından
-    # (v2.modules.ai_assistant.infrastructure.rag.rag_engine) patch edilmeli
+    # (v2.modules.ai_assistant.public) patch edilmeli
     with patch(
-        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine"
+        "v2.modules.ai_assistant.public.get_rag_engine"
     ) as mock_get_rag:
         mock_rag = Mock()
         mock_rag.get_stats.return_value = {"initialized": True, "total_documents": 100}
@@ -65,7 +65,7 @@ async def test_check_ai_readiness_healthy(health_service):
 @pytest.mark.asyncio
 async def test_check_ai_readiness_degraded(health_service):
     with patch(
-        "v2.modules.ai_assistant.infrastructure.rag.rag_engine.get_rag_engine"
+        "v2.modules.ai_assistant.public.get_rag_engine"
     ) as mock_get_rag:
         mock_rag = Mock()
         mock_rag.get_stats.return_value = {"initialized": False}

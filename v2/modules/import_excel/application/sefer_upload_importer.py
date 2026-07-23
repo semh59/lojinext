@@ -12,17 +12,17 @@ B.1: eski ``SeferImportService`` sınıfının constructor'ı ``arac_repo``/
 ``sofor_repo``/``dorse_repo``/``lokasyon_repo`` alıyordu ama hiçbiri
 kullanılmıyordu (metod gövdesi kendi ``UnitOfWork()``'ünü açıyor) — free
 function'a geçişte bu ölü parametreler kaldırıldı, yalnız gerçekten
-kullanılan ``sefer_service`` (trip modülü, henüz taşınmadı — container
-üzerinden geçici erişim) korundu.
+kullanılan ``bulk_add_sefer`` (trip modülü, dalga 14 — artık
+``v2.modules.trip.public`` üzerinden doğrudan) korundu.
 """
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
-from app.schemas.sefer import SeferCreate
 from v2.modules.import_excel.infrastructure.parsers import parse_sefer_excel
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.public import SeferCreate
 
 logger = get_logger(__name__)
 
@@ -207,10 +207,10 @@ async def import_sefer_excel_upload(
 
         # 7. Toplu Ekleme
         if valid_sefers:
-            from app.core.container import get_container
+            from v2.modules.trip.public import bulk_add_sefer
 
             try:
-                count = await get_container().sefer_service.bulk_add_sefer(valid_sefers)
+                count = await bulk_add_sefer(valid_sefers)
             except Exception as e:
                 logger.error(f"bulk_add_sefer hatası: {e}", exc_info=True)
                 errors.append({"row": 0, "reason": f"Toplu ekleme hatası: {str(e)}"})

@@ -32,7 +32,7 @@ pytestmark = pytest.mark.unit
 
 @pytest.fixture(autouse=True)
 def reset_pubsub_singleton():
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     mod.RedisPubSubManager._instance = None
     yield
@@ -45,7 +45,7 @@ def reset_pubsub_singleton():
 
 
 def _make_manager_no_redis():
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
         mgr = mod.RedisPubSubManager()
@@ -54,7 +54,7 @@ def _make_manager_no_redis():
 
 
 def _make_manager_with_redis(fake_redis=None):
-    import app.infrastructure.cache.redis_pubsub as mod
+    import v2.modules.platform_infra.cache.redis_pubsub as mod
 
     fake = fake_redis or AsyncMock()
 
@@ -179,7 +179,7 @@ class TestConnectSslInsecure:
         """REDIS_SSL_INSECURE=true → ssl_ctx.check_hostname=False."""
         import ssl
 
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         mock_settings = MagicMock()
         mock_settings.REDIS_HOST = "redis.example.com"
@@ -195,13 +195,13 @@ class TestConnectSslInsecure:
             return MagicMock()
 
         with (
-            patch("app.infrastructure.cache.redis_pubsub.REDIS_AVAILABLE", True),
+            patch("v2.modules.platform_infra.cache.redis_pubsub.REDIS_AVAILABLE", True),
             patch(
-                "app.infrastructure.cache.redis_pubsub.aioredis.from_url",
+                "v2.modules.platform_infra.cache.redis_pubsub.aioredis.from_url",
                 side_effect=_fake_from_url,
             ),
             patch(
-                "app.infrastructure.cache.redis_pubsub.os.getenv",
+                "v2.modules.platform_infra.cache.redis_pubsub.os.getenv",
                 return_value="true",
             ),
         ):
@@ -236,7 +236,7 @@ class TestConnectWithPassword:
         the real `redis.asyncio.from_url` global must be patched (aliasing
         still resolves to the same function object at call time).
         """
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         mock_settings = MagicMock()
         mock_settings.REDIS_HOST = "localhost"
@@ -253,11 +253,11 @@ class TestConnectWithPassword:
             return MagicMock()
 
         with (
-            patch("app.infrastructure.cache.redis_pubsub.REDIS_AVAILABLE", True),
+            patch("v2.modules.platform_infra.cache.redis_pubsub.REDIS_AVAILABLE", True),
             patch("redis.asyncio.from_url", side_effect=_fake_from_url),
             patch("app.config.settings", mock_settings),
             patch(
-                "app.infrastructure.cache.redis_client_factory.settings",
+                "v2.modules.platform_infra.cache.redis_client_factory.settings",
                 mock_settings,
             ),
         ):
@@ -417,7 +417,7 @@ class TestPublishMultipleSubscribers:
 
 class TestGetPubsubManagerSingleton:
     def test_always_same_instance(self):
-        import app.infrastructure.cache.redis_pubsub as mod
+        import v2.modules.platform_infra.cache.redis_pubsub as mod
 
         with patch.object(mod.RedisPubSubManager, "_connect", lambda self: None):
             a = mod.get_pubsub_manager()

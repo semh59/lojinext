@@ -1,6 +1,6 @@
 """Feature D.2 — Redis cache key'leri ve tahmin cache invalidation."""
 
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 

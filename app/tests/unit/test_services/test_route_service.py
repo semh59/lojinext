@@ -33,7 +33,7 @@ async def test_get_route_details_parses_waycategory_and_returns_analysis(
     monkeypatch.setenv("OPENROUTESERVICE_API_KEY", "test_key")
 
     with patch(
-        "app.services.prediction_service.get_prediction_service"
+        "v2.modules.prediction_ml.application.prediction_service.get_prediction_service"
     ) as mock_get_pred_service:
         mock_pred_service = MagicMock()
         mock_get_pred_service.return_value = mock_pred_service

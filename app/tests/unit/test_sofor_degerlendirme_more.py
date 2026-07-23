@@ -1,5 +1,5 @@
 """
-Additional coverage for v2.modules.driver.domain.evaluation.
+Additional coverage for v2.modules.driver.application.evaluation.
 
 Targets missed lines:
   322-323  — generate_suggestions: filo_karsilastirma < -5 → motor devir tavsiyesi
@@ -13,11 +13,12 @@ function'ları çağırır; repo mock'ları bir ``mock_uow`` fixture'ı üzerind
 ``uow=`` kwarg'ıyla geçirilir.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from v2.modules.driver.domain.evaluation import (
+from v2.modules.driver.application.evaluation import (
     SoforDegerlendirme,
     TrendEnum,
     _add_guzergah_performansi,
@@ -181,11 +182,8 @@ async def test_add_guzergah_performansi_sets_best_and_worst():
 
     d = _make_degerlendirme()
 
-    with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-        return_value=mock_sofor_repo,
-    ):
-        result = await _add_guzergah_performansi(d, sofor_id=1)
+    fake_uow = SimpleNamespace(sofor_repo=mock_sofor_repo)
+    result = await _add_guzergah_performansi(d, sofor_id=1, uow=fake_uow)
 
     assert result.en_iyi_guzergah == "Ankara-Konya"
     assert result.en_kotu_guzergah == "Diyarbakır-Erzurum"
@@ -199,11 +197,8 @@ async def test_add_guzergah_performansi_empty_data_no_change():
 
     d = _make_degerlendirme()
 
-    with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-        return_value=mock_sofor_repo,
-    ):
-        result = await _add_guzergah_performansi(d, sofor_id=1)
+    fake_uow = SimpleNamespace(sofor_repo=mock_sofor_repo)
+    result = await _add_guzergah_performansi(d, sofor_id=1, uow=fake_uow)
 
     assert result.en_iyi_guzergah is None
     assert result.en_kotu_guzergah is None
@@ -219,11 +214,8 @@ async def test_add_guzergah_performansi_exception_swallowed():
 
     d = _make_degerlendirme()
 
-    with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-        return_value=mock_sofor_repo,
-    ):
-        result = await _add_guzergah_performansi(d, sofor_id=1)
+    fake_uow = SimpleNamespace(sofor_repo=mock_sofor_repo)
+    result = await _add_guzergah_performansi(d, sofor_id=1, uow=fake_uow)
 
     # No crash, original degerlendirme returned unchanged
     assert result is d
@@ -248,11 +240,8 @@ async def test_add_guzergah_performansi_truncates_at_10():
 
     d = _make_degerlendirme()
 
-    with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-        return_value=mock_sofor_repo,
-    ):
-        result = await _add_guzergah_performansi(d, sofor_id=1)
+    fake_uow = SimpleNamespace(sofor_repo=mock_sofor_repo)
+    result = await _add_guzergah_performansi(d, sofor_id=1, uow=fake_uow)
 
     assert len(result.guzergah_performansi) == 10
 
@@ -283,17 +272,14 @@ async def test_evaluate_driver_include_routes_true(mock_uow):
     mock_sofor_repo = MagicMock()
     mock_sofor_repo.get_guzergah_performansi = AsyncMock(return_value=[])
 
-    with patch(
-        "v2.modules.driver.infrastructure.repository.get_sofor_repo",
-        return_value=mock_sofor_repo,
-    ):
-        result = await evaluate_driver(
-            sofor_id=3,
-            pre_metrics=pre_metrics,
-            pre_filo_ortalama=32.0,
-            include_routes=True,
-            uow=mock_uow,
-        )
+    mock_uow.sofor_repo = mock_sofor_repo
+    result = await evaluate_driver(
+        sofor_id=3,
+        pre_metrics=pre_metrics,
+        pre_filo_ortalama=32.0,
+        include_routes=True,
+        uow=mock_uow,
+    )
 
     assert result is not None
     mock_sofor_repo.get_guzergah_performansi.assert_awaited_once()

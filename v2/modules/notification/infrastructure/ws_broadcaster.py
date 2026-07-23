@@ -8,6 +8,6 @@ managers are separate instances per channel).
 
 from __future__ import annotations
 
-from app.infrastructure.websocket.connection_manager import ConnectionManager
+from v2.modules.platform_infra.websocket.connection_manager import ConnectionManager
 
 notification_ws_manager = ConnectionManager()

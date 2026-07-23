@@ -19,12 +19,14 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import insert, select
 
-from app.database.models import Arac, Sefer, Sofor
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.anomaly.application.attribute_loss import (
     bulk_override_attribution,
     override_attribution,
 )
+from v2.modules.driver.public import Sofor
+from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from v2.modules.trip.public import SeferORM as Sefer
 
 pytestmark = pytest.mark.integration
 
@@ -127,7 +129,7 @@ class TestOverrideAttribution:
 
         A real UPDATE on an existing row always succeeds, so this otherwise-unreachable
         guard is exercised by forcing the repo method's return value (error-path only)."""
-        from app.database.repositories.sefer_repo import SeferRepository
+        from v2.modules.trip.infrastructure.repository import SeferRepository
 
         a1 = await _seed_arac(db_session, "34 AAA 444")
         s1 = await _seed_sofor(db_session, "Sofor D")

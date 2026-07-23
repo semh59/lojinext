@@ -1,45 +1,30 @@
 """
 LOJINEXT Intelligence Service (AIService)
-Handles ML predictions and data intelligence.
-Globalized to English (v2.1).
+LLM chat orchestration grounded in fleet context.
 
 TYPE: SINGLETON
 SCOPE: Application lifetime
-SINGLETON_REASON: `_predictor_cache` (Dict[int, tuple], TTL-based) tutuyor —
-gerçek mutable state, B.1 sınıf istisnası (RecommendationEngine'in cache'i
-ile aynı gerekçe). `groq` client de constructor'da bağlanıyor.
+SINGLETON_REASON: `groq` client constructor'da bağlanıyor; container
+lazy-property singleton'ı olarak yaşar (her istekte GroqService yeniden
+kurulmaz).
 
-🔴 `predict_trip_fuel`/`detect_anomalies`/`_get_predictor_for_vehicle` ÖLÜ
-KOD: grep ile doğrulandı, hiçbir prod endpoint/servis çağırmıyor — yalnız
-`app/tests/unit/test_services/test_ai_service*.py` ve
-`test_prediction_service_*.py` tarafından egzersiz ediliyor.
-`EnsembleFuelPredictor`'ı prediction_ml'in gerçek tahmin yolundan
-(`v2/modules/route_simulation`+`app/core/services/sefer_fuel_estimator.py`,
-Phase 4-5 SeferFuelEstimator) BAĞIMSIZ ikinci bir kopyası — muhtemelen
-SeferFuelEstimator ile supersede edilmiş eski bir yol. AnalizService/
-DashboardService (dalga 11) gibi SİLİNMEDİ — davranış değişikliği
-gerektirdiği için kullanıcı kararı bekliyor; prediction_ml (dalga 13)
-taşınırken tekrar gündeme gelmeli (iki modül arasında gerçek bir
-sorumluluk çakışması var).
+2026-07-18 ölü-kod temizliği: `predict_trip_fuel`/`detect_anomalies`/
+`_get_predictor_for_vehicle`/`invalidate_predictor_cache` ve
+`_predictor_cache` SİLİNDİ — grep ile doğrulandı, hiçbir prod endpoint/
+servis çağırmıyordu (EnsembleFuelPredictor'ın Phase 4-5
+SeferFuelEstimator tarafından supersede edilmiş ikinci bir kopyasıydı;
+gerçek tahmin yolu `v2/modules/trip/application/sefer_fuel_estimator.py`).
 """
 
-import asyncio
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-import numpy as np
-
-from app.core.entities.models import PredictionResult as PredictionResultModel
-from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
-from app.core.ml.physics_fuel_predictor import VehicleSpecs
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.public import get_logger
 
 logger = get_logger(__name__)
 
 
 class AIService:
-    """AI Service for fuel prediction, anomaly detection, and LLM chat."""
+    """AI Service for LLM chat (fleet-context grounded)."""
 
     # Patterns to redact from user prompts (prompt-injection guards)
     _REDACT_PATTERNS = [
@@ -48,10 +33,7 @@ class AIService:
         r"###",
     ]
 
-    _PREDICTOR_CACHE_TTL = 3600  # 1 saat — yeni sefer verisi sonrası yeniden eğitim
-
     def __init__(self):
-        self._predictor_cache: Dict[int, tuple] = {}  # arac_id → (predictor, cached_at)
         from v2.modules.ai_assistant.infrastructure.llm.groq_client import GroqService
 
         self.groq = GroqService()
@@ -73,7 +55,7 @@ class AIService:
     async def _build_context(self) -> str:
         """Build a fleet-context string for LLM grounding."""
         try:
-            from app.database.unit_of_work import UnitOfWork
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
             async with UnitOfWork() as uow:
                 stats = await uow.analiz_repo.get_dashboard_stats()
@@ -135,149 +117,8 @@ class AIService:
             logger.warning(f"AI progress probe failed: {exc}")
             return {"status": "error", "pending_jobs": 0}
 
-    def invalidate_predictor_cache(self, arac_id: int) -> None:
-        """Force-expire a vehicle's predictor (call after new trips are saved)."""
-        self._predictor_cache.pop(arac_id, None)
-
-    async def _get_predictor_for_vehicle(
-        self, arac_id: int, uow: UnitOfWork
-    ) -> EnsembleFuelPredictor:
-        """Retrieves or initializes a predictor for a specific vehicle."""
-        cached = self._predictor_cache.get(arac_id)
-        if cached and (time.monotonic() - cached[1]) < self._PREDICTOR_CACHE_TTL:
-            return cached[0]
-
-        # Get vehicle specs
-        arac = await uow.arac_repo.get_by_id(arac_id)
-        if not arac:
-            logger.warning(f"Predictor requested for non-existent vehicle: {arac_id}")
-            # Fallback to default specs
-            specs = VehicleSpecs()
-        else:
-            specs = VehicleSpecs(
-                engine_efficiency=float(arac.get("motor_verimliligi") or 0.35),
-                rolling_resistance=float(arac.get("lastik_direnc_katsayisi") or 0.007),
-                frontal_area_m2=float(arac.get("on_kesit_alani_m2") or 9.5),
-                drag_coefficient=float(arac.get("hava_direnc_katsayisi") or 0.65),
-                empty_weight_kg=float(arac.get("bos_agirlik_kg") or 7500.0),
-            )
-
-        predictor = EnsembleFuelPredictor(vehicle_specs=specs)
-
-        # Train with historical data if available
-        history = await uow.sefer_repo.get_for_training(arac_id, limit=200)
-        if len(history) >= 10:
-            history_data = [dict(h) for h in history]
-            y_actual = np.array([float(h.get("tuketim") or 0) for h in history_data])
-            try:
-                await asyncio.to_thread(predictor.fit, history_data, y_actual)
-                logger.info(
-                    f"Predictor trained for Vehicle {arac_id} with {len(history)} trips."
-                )
-            except Exception as e:
-                logger.error(f"Predictor training failed for Vehicle {arac_id}: {e}")
-
-        self._predictor_cache[arac_id] = (predictor, time.monotonic())
-        return predictor
-
-    async def predict_trip_fuel(
-        self,
-        arac_id: int,
-        ton: float,
-        mesafe_km: float,
-        ascent_m: float = 0,
-        descent_m: float = 0,
-        flat_km: float = 0,
-        dorse_id: Optional[int] = None,
-        route_analysis: Optional[Dict] = None,
-    ) -> PredictionResultModel:
-        """Main prediction entry point (English)."""
-        async with UnitOfWork() as uow:
-            predictor = await self._get_predictor_for_vehicle(arac_id, uow)
-
-            # Build prediction context (The "Sync" part)
-            sefer_context = {
-                "ton": ton,
-                "mesafe_km": mesafe_km,
-                "ascent_m": ascent_m,
-                "descent_m": descent_m,
-                "flat_distance_km": flat_km,
-                "rota_detay": {"route_analysis": route_analysis}
-                if route_analysis
-                else {},
-            }
-
-            # Propagate trailer (dorse) specs to ML model if dorse_id is provided
-            if dorse_id:
-                dorse_row = await uow.dorse_repo.get_by_id(
-                    dorse_id, include_inactive=True
-                )
-                if dorse_row:
-                    sefer_context["dorse_bos_agirlik"] = float(
-                        dorse_row.get("bos_agirlik_kg") or 6500
-                    )
-                    sefer_context["dorse_lastik_sayisi"] = int(
-                        dorse_row.get("lastik_sayisi") or 6
-                    )
-                    logger.debug(
-                        f"Trailer features synced: {sefer_context['dorse_bos_agirlik']}kg, {sefer_context['dorse_lastik_sayisi']} tires."  # noqa: E501
-                    )
-
-            # Run ensemble prediction (predict takes one context, returns one result)
-            res = await asyncio.to_thread(predictor.predict, sefer_context)
-
-            return PredictionResultModel(
-                tahmin_l_100km=res.tahmin_l_100km,
-                guven_araligi_alt=res.confidence_low,
-                guven_araligi_ust=res.confidence_high,
-                fizik_basarimi=res.physics_weight,
-                feature_etkisi=res.features_used,
-            )
-
-    async def detect_anomalies(self, arac_id: int) -> List[Dict]:
-        """Anomaly detection for fuel logs."""
-        async with UnitOfWork() as uow:
-            # get_all returns a paginated {"items": [...], "total": N} dict — the
-            # anomaly loop below needs the record list, not the envelope.
-            history = (await uow.yakit_repo.get_all(arac_id=arac_id, limit=50)).get(
-                "items", []
-            )
-            if len(history) < 5:
-                return []
-
-            anomalies = []
-            # Simple Z-Score anomaly detection for demonstration
-            # In production, this would use a more sophisticated isolation forest or similar.
-            litres = [float(h.get("litre") or 0) for h in history]
-            kms = [int(h.get("km_sayac") or 0) for h in history]
-            consumptions = []
-            for i in range(len(litres) - 1):
-                dist = kms[i] - kms[i + 1]
-                if dist > 0:
-                    consumptions.append((litres[i] / dist) * 100)
-
-            if consumptions:
-                avg = np.mean(consumptions)
-                std = np.std(consumptions)
-                if std > 0:
-                    threshold = 2.0
-                    for i, cons in enumerate(consumptions):
-                        z = abs(cons - avg) / std
-                        if z > threshold:
-                            anomalies.append(
-                                {
-                                    "index": i,
-                                    "date": history[i].get("tarih"),
-                                    "value": cons,
-                                    "z_score": z,
-                                    "type": "CONSUMPTION_SPIKE",
-                                }
-                            )
-
-            return anomalies
-
 
 def get_ai_service() -> AIService:
-    from app.core.container import get_container
+    from v2.modules.platform_infra.public import get_container
 
     return get_container().ai_service

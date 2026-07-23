@@ -26,7 +26,7 @@ async def test_admin_health_backup_trigger_uses_service_override(
         }
     )
     monkeypatch.setattr(
-        "app.core.services.health_service.HealthService.trigger_manual_backup",
+        "v2.modules.admin_platform.application.health_service.HealthService.trigger_manual_backup",
         mock_trigger,
     )
 

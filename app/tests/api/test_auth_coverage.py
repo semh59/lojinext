@@ -109,7 +109,7 @@ async def test_login_super_admin_bypass(async_client):
 async def test_login_wrong_super_admin_password_falls_through(async_client):
     """Wrong password for super-admin → falls through to regular auth → non-200."""
     from app.config import settings
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     fake_svc = _make_fake_auth_service(
         authenticate=AsyncMock(side_effect=DomainError("bad credentials"))
@@ -135,7 +135,7 @@ async def test_super_admin_login_rate_limited_after_repeated_attempts(async_clie
     deneme) var; bu bucket hem başarılı hem başarısız denemeleri sayar.
     """
     from app.config import settings
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     username = settings.SUPER_ADMIN_USERNAME
     try:
@@ -193,8 +193,8 @@ async def test_super_admin_rate_limit_is_scoped_per_ip(db_session):
     from httpx import ASGITransport, AsyncClient
 
     from app.config import settings
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
     from app.main import app
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     username = settings.SUPER_ADMIN_USERNAME
     try:
@@ -257,7 +257,7 @@ async def test_super_admin_rate_limit_is_scoped_per_ip(db_session):
 
 async def test_regular_user_login_unaffected_by_super_admin_rate_limit(async_client):
     """Süper-admin'e özel sıkı rate-limit, normal kullanıcı girişini etkilememeli."""
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.pop("super_admin_login", None)
     fake_svc = _make_fake_auth_service()
@@ -293,7 +293,7 @@ async def test_login_regular_user_success(async_client):
 
 async def test_login_regular_user_wrong_credentials(async_client):
     """Auth service raises DomainError → propagated as error response."""
-    from app.core.exceptions import DomainError
+    from v2.modules.shared_kernel.exceptions import DomainError
 
     fake_svc = _make_fake_auth_service(
         authenticate=AsyncMock(side_effect=DomainError("bad credentials"))
@@ -347,13 +347,13 @@ async def test_logout_blacklist_failure_returns_warning(
         raise RuntimeError("Redis down")
 
     monkeypatch.setattr(
-        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.add",
+        "v2.modules.auth_rbac.infrastructure.token_blacklist.blacklist.add",
         _bad_add,
     )
 
     with _override_auth_service(fake_svc):
         # Patch monitoring.aemit so it doesn't crash
-        with patch("app.infrastructure.monitoring.aemit", new_callable=AsyncMock):
+        with patch("v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock):
             resp = await async_client.post(
                 "/api/v1/auth/logout",
                 headers=admin_auth_headers,

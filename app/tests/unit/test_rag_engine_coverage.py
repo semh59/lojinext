@@ -261,22 +261,7 @@ async def test_rag_engine_index_trip_not_initialized():
     assert result is False
 
 
-async def test_rag_engine_index_alert_not_initialized():
-    engine = _make_rag_engine(initialized=False)
-    result = await engine.index_alert({"id": 1})
-    assert result is False
 
-
-async def test_rag_engine_index_log_not_initialized():
-    engine = _make_rag_engine(initialized=False)
-    result = await engine.index_log({"message": "test"})
-    assert result is False
-
-
-async def test_rag_engine_index_event_not_initialized():
-    engine = _make_rag_engine(initialized=False)
-    result = await engine.index_event("some_event", {"key": "val"})
-    assert result is False
 
 
 async def test_rag_engine_search_not_initialized():
@@ -356,38 +341,7 @@ async def test_rag_engine_index_trip_date_string():
     assert result is True
 
 
-async def test_rag_engine_index_alert_success():
-    engine = _make_rag_engine(initialized=True)
-    emb = _make_embedding(8)
-    with patch.object(engine, "_generate_embedding", new=AsyncMock(return_value=emb)):
-        result = await engine.index_alert(
-            {
-                "id": 50,
-                "title": "Yüksek Tüketim",
-                "message": "Araç tüketimi normalin üzerinde.",
-                "severity": "high",
-                "alert_type": "consumption",
-            }
-        )
-    assert result is True
 
-
-async def test_rag_engine_index_log_success():
-    engine = _make_rag_engine(initialized=True)
-    emb = _make_embedding(8)
-    with patch.object(engine, "_generate_embedding", new=AsyncMock(return_value=emb)):
-        result = await engine.index_log(
-            {"level": "ERROR", "message": "DB connection failed", "module": "db"}
-        )
-    assert result is True
-
-
-async def test_rag_engine_index_event_success():
-    engine = _make_rag_engine(initialized=True)
-    emb = _make_embedding(8)
-    with patch.object(engine, "_generate_embedding", new=AsyncMock(return_value=emb)):
-        result = await engine.index_event("SEFER_CREATED", {"sefer_id": 99})
-    assert result is True
 
 
 # ---------------------------------------------------------------------------
@@ -395,26 +349,6 @@ async def test_rag_engine_index_event_success():
 # ---------------------------------------------------------------------------
 
 
-async def test_rag_engine_bulk_index():
-    engine = _make_rag_engine(initialized=True)
-    emb = _make_embedding(8)
-    with patch.object(engine, "_generate_embedding", new=AsyncMock(return_value=emb)):
-        result = await engine.bulk_index(
-            vehicles=[{"id": 1, "plaka": "06AA"}],
-            drivers=[{"id": 2, "ad_soyad": "Ali Can"}],
-            trips=[{"id": 3, "cikis_yeri": "A", "varis_yeri": "B"}],
-            alerts=[{"id": 4, "title": "Test", "message": "msg"}],
-        )
-    assert "total" in result
-    assert result["total"] >= 0
-
-
-async def test_rag_engine_bulk_index_errors_counted():
-    engine = _make_rag_engine(initialized=True)
-    # Make index_vehicle always return False (e.g. empty plaka)
-    with patch.object(engine, "index_vehicle", new=AsyncMock(return_value=False)):
-        result = await engine.bulk_index(vehicles=[{"id": 1, "plaka": "06BB"}])
-    assert result["errors"] == 1
 
 
 # ---------------------------------------------------------------------------

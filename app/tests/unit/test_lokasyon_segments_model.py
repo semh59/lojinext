@@ -5,7 +5,8 @@ DB'siz model smoke testleri.
 
 from __future__ import annotations
 
-from app.database.models import Base, Lokasyon, LokasyonSegment
+from v2.modules.location.public import Lokasyon, LokasyonSegment
+from v2.modules.shared_kernel.infrastructure.base import Base
 
 
 def test_lokasyon_segments_registered():

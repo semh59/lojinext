@@ -1,14 +1,17 @@
 import numpy as np
 import pytest
 
-from app.core.ml.ensemble_predictor import EnsembleFuelPredictor
-from app.core.services.sefer_write_service import SeferWriteService
-from app.database.repositories.audit_repo import AuditRepository
+from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
+from v2.modules.trip.application.trip_prediction_enrichment import (
+    extract_prediction_values,
+)
+from v2.modules.trip.infrastructure.sefer_timeline_repo import (
+    _normalize_event_type,
+)
 
 
 def test_extract_prediction_values_prefers_canonical_field():
-    service = SeferWriteService()
-    value, meta = service._extract_prediction_values(
+    value, meta = extract_prediction_values(
         {
             "tahmini_tuketim": 32.4,
             "prediction_liters": 999.0,
@@ -27,8 +30,7 @@ def test_extract_prediction_values_prefers_canonical_field():
 
 
 def test_extract_prediction_values_rejects_alias_only_payload():
-    service = SeferWriteService()
-    value, meta = service._extract_prediction_values(
+    value, meta = extract_prediction_values(
         {
             "prediction_liters": 41.7,
             "model_used": "physics",
@@ -40,7 +42,7 @@ def test_extract_prediction_values_rejects_alias_only_payload():
 
 
 def test_timeline_event_type_normalization_prediction_refresh():
-    event_type = AuditRepository._normalize_event_type(
+    event_type = _normalize_event_type(
         "UPDATE",
         [{"alan": "tahmini_tuketim", "eski": 30.1, "yeni": 31.0}],
     )
@@ -48,7 +50,7 @@ def test_timeline_event_type_normalization_prediction_refresh():
 
 
 def test_timeline_event_type_normalization_status_change():
-    event_type = AuditRepository._normalize_event_type(
+    event_type = _normalize_event_type(
         "UPDATE",
         [{"alan": "durum", "eski": "Planlandı", "yeni": "Tamamlandı"}],
     )

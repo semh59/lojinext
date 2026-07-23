@@ -1,4 +1,4 @@
-"""Coverage tests for app/infrastructure/monitoring/celery_probe.py"""
+"""Coverage tests for v2/modules/platform_infra/monitoring/celery_probe.py"""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_purge_removes_old_entries():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._task_start_times.clear()
     old_time = time.monotonic() - 700  # older than 600s TTL
@@ -31,7 +31,7 @@ def test_purge_removes_old_entries():
 
 
 def test_purge_empty_dict():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._task_start_times.clear()
     # Should not raise
@@ -40,7 +40,7 @@ def test_purge_empty_dict():
 
 
 def test_purge_all_fresh():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._task_start_times.clear()
     now = time.monotonic()
@@ -58,13 +58,13 @@ def test_purge_all_fresh():
 
 
 def test_heartbeat_key_format():
-    from app.infrastructure.monitoring.celery_probe import _record_heartbeat_key
+    from v2.modules.platform_infra.monitoring.celery_probe import _record_heartbeat_key
 
     assert _record_heartbeat_key("foo.bar") == "beat:last_run:foo.bar"
 
 
 def test_heartbeat_key_all_expected_tasks():
-    from app.infrastructure.monitoring.celery_probe import (
+    from v2.modules.platform_infra.monitoring.celery_probe import (
         BEAT_EXPECTED_TASKS,
         _record_heartbeat_key,
     )
@@ -81,7 +81,7 @@ def test_heartbeat_key_all_expected_tasks():
 
 
 def test_beat_expected_tasks_has_required_tasks():
-    from app.infrastructure.monitoring.celery_probe import BEAT_EXPECTED_TASKS
+    from v2.modules.platform_infra.monitoring.celery_probe import BEAT_EXPECTED_TASKS
 
     assert "infrastructure.relay_outbox_events" in BEAT_EXPECTED_TASKS
     assert "monitoring.error_digest" in BEAT_EXPECTED_TASKS
@@ -90,7 +90,7 @@ def test_beat_expected_tasks_has_required_tasks():
 
 
 def test_beat_expected_tasks_values_are_positive():
-    from app.infrastructure.monitoring.celery_probe import BEAT_EXPECTED_TASKS
+    from v2.modules.platform_infra.monitoring.celery_probe import BEAT_EXPECTED_TASKS
 
     for task, secs in BEAT_EXPECTED_TASKS.items():
         assert secs > 0, f"{task} has non-positive silence window"
@@ -102,7 +102,7 @@ def test_beat_expected_tasks_values_are_positive():
 
 
 def test_write_heartbeat_sync_redis_swallows_error(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     monkeypatch.setattr(
         cp, "_get_sync_redis", MagicMock(side_effect=RuntimeError("redis down"))
@@ -112,7 +112,7 @@ def test_write_heartbeat_sync_redis_swallows_error(monkeypatch):
 
 
 def test_write_heartbeat_sync_calls_set(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     fake_redis = MagicMock()
     monkeypatch.setattr(cp, "_get_sync_redis", lambda: fake_redis)
@@ -124,7 +124,7 @@ def test_write_heartbeat_sync_calls_set(monkeypatch):
 
 
 def test_write_heartbeat_sync_delegates():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     with patch.object(cp, "_write_heartbeat_sync_redis") as mock_fn:
         cp._write_heartbeat_sync("some.task.name")
@@ -137,7 +137,7 @@ def test_write_heartbeat_sync_delegates():
 
 
 def test_get_sync_redis_initialises_once(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._sync_redis = None
     cp._sync_redis_lock = None
@@ -162,7 +162,7 @@ def test_get_sync_redis_initialises_once(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_check_beat_health_emits_for_missing_task(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     # Return None for all tasks → all tasks should trigger aemit
     async def fake_get_redis_val(_key):
@@ -176,9 +176,9 @@ async def test_check_beat_health_emits_for_missing_task(monkeypatch):
     # The functions are imported inside check_beat_health; patch at source
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
-        patch("app.infrastructure.monitoring.aemit", fake_aemit),
+        patch("v2.modules.platform_infra.monitoring.aemit", fake_aemit),
     ):
         await cp.check_beat_health()
 
@@ -190,7 +190,7 @@ async def test_check_beat_health_emits_for_missing_task(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_check_beat_health_no_emit_for_recent_task(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     # Return a very recent timestamp for all tasks
     recent_ts = str(time.time())
@@ -205,9 +205,9 @@ async def test_check_beat_health_no_emit_for_recent_task(monkeypatch):
 
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
-        patch("app.infrastructure.monitoring.aemit", fake_aemit),
+        patch("v2.modules.platform_infra.monitoring.aemit", fake_aemit),
     ):
         await cp.check_beat_health()
 
@@ -217,8 +217,8 @@ async def test_check_beat_health_no_emit_for_recent_task(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_check_beat_health_emits_for_expired_task(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
-    from app.infrastructure.monitoring.celery_probe import BEAT_EXPECTED_TASKS
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring.celery_probe import BEAT_EXPECTED_TASKS
 
     # Return an old timestamp — older than the shortest silence window
     old_ts = str(time.time() - 9999)
@@ -233,9 +233,9 @@ async def test_check_beat_health_emits_for_expired_task(monkeypatch):
 
     with (
         patch(
-            "app.infrastructure.cache.redis_pubsub.get_redis_val", fake_get_redis_val
+            "v2.modules.platform_infra.cache.redis_pubsub.get_redis_val", fake_get_redis_val
         ),
-        patch("app.infrastructure.monitoring.aemit", fake_aemit),
+        patch("v2.modules.platform_infra.monitoring.aemit", fake_aemit),
     ):
         await cp.check_beat_health()
 
@@ -249,7 +249,7 @@ async def test_check_beat_health_emits_for_expired_task(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_write_heartbeat_async_calls_set_redis_val(monkeypatch):
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     calls = []
 
@@ -257,7 +257,7 @@ async def test_write_heartbeat_async_calls_set_redis_val(monkeypatch):
         calls.append((key, val, expire))
 
     with patch(
-        "app.infrastructure.cache.redis_pubsub.set_redis_val", fake_set_redis_val
+        "v2.modules.platform_infra.cache.redis_pubsub.set_redis_val", fake_set_redis_val
     ):
         await cp._write_heartbeat_async("beat:last_run:test.task")
 
@@ -273,7 +273,7 @@ async def test_write_heartbeat_async_calls_set_redis_val(monkeypatch):
 
 
 def test_slow_task_thresholds():
-    from app.infrastructure.monitoring.celery_probe import (
+    from v2.modules.platform_infra.monitoring.celery_probe import (
         _SLOW_TASK_ERROR_MS,
         _SLOW_TASK_WARN_MS,
     )
@@ -284,12 +284,14 @@ def test_slow_task_thresholds():
 
 
 def test_memory_error_threshold():
-    from app.infrastructure.monitoring.celery_probe import _MEMORY_ERROR_MB
+    from v2.modules.platform_infra.monitoring.celery_probe import _MEMORY_ERROR_MB
 
     assert _MEMORY_ERROR_MB == 800
 
 
 def test_task_entry_ttl():
-    from app.infrastructure.monitoring.celery_probe import _TASK_ENTRY_TTL_SECONDS
+    from v2.modules.platform_infra.monitoring.celery_probe import (
+        _TASK_ENTRY_TTL_SECONDS,
+    )
 
     assert _TASK_ENTRY_TTL_SECONDS == 600

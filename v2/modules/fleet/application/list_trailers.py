@@ -19,11 +19,6 @@ async def get_trailer_by_id(
     return await repo.get_by_id(dorse_id, include_inactive=include_inactive)
 
 
-async def get_all_trailers(repo: DorseRepository, **kwargs) -> List[Dict[str, Any]]:
-    """Get all trailers with optional filters."""
-    return await repo.get_all(**kwargs)
-
-
 async def get_all_trailers_paged(
     repo: DorseRepository,
     skip: int = 0,

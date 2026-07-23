@@ -2,8 +2,8 @@
 
 from typing import Any, Dict
 
-from app.database.unit_of_work import UnitOfWork
 from v2.modules.fleet.infrastructure.trailer_repository import DorseRepository
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 async def get_vehicle_fleet_stats() -> Dict[str, Any]:

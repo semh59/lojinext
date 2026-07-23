@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/infrastructure/monitoring/db_probe.py.
+Additional coverage tests for v2/modules/platform_infra/monitoring/db_probe.py.
 
 Targets uncovered lines:
 - setup_db_probe: _before handler sets _query_start
@@ -48,7 +48,7 @@ def _capture_handlers(mock_event, handler_names):  # noqa: ARG001
 
 def test_before_handler_sets_query_start():
     """_before sets _query_start context var to current time."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _query_start,
         setup_db_probe,
     )
@@ -66,7 +66,7 @@ def test_before_handler_sets_query_start():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -83,7 +83,7 @@ def test_before_handler_sets_query_start():
 
 def test_after_handler_fast_query_no_emit():
     """_after does not emit for fast queries (< 500ms)."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _query_start,
         reset_query_counter,
         setup_db_probe,
@@ -102,14 +102,14 @@ def test_after_handler_fast_query_no_emit():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
     reset_query_counter()
     _query_start.set(time.monotonic())  # just set start — will result in ~0ms
 
-    with patch("app.infrastructure.monitoring.emit") as mock_emit:
+    with patch("v2.modules.platform_infra.monitoring.emit") as mock_emit:
         handlers["_after"](None, None, "SELECT 1", None, None, False)
         mock_emit.assert_not_called()
 
@@ -121,12 +121,12 @@ def test_after_handler_fast_query_no_emit():
 
 def test_after_handler_slow_query_emits_warning():
     """_after emits WARNING for queries between 500ms and 2000ms."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _query_start,
         reset_query_counter,
         setup_db_probe,
     )
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     mock_engine = MagicMock()
     mock_engine.sync_engine = MagicMock()
@@ -140,7 +140,7 @@ def test_after_handler_slow_query_emits_warning():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -149,7 +149,7 @@ def test_after_handler_slow_query_emits_warning():
     _query_start.set(time.monotonic() - 0.6)
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_after"](None, None, "SELECT col FROM t", None, None, False)
 
     slow_events = [e for e in emitted if e.category == "slow_query"]
@@ -164,12 +164,12 @@ def test_after_handler_slow_query_emits_warning():
 
 def test_after_handler_very_slow_query_emits_error():
     """_after emits ERROR for queries > 2000ms and attempts auto_explain."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _query_start,
         reset_query_counter,
         setup_db_probe,
     )
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     mock_engine = MagicMock()
     mock_engine.sync_engine = MagicMock()
@@ -183,7 +183,7 @@ def test_after_handler_very_slow_query_emits_error():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -192,7 +192,7 @@ def test_after_handler_very_slow_query_emits_error():
 
     emitted = []
     with (
-        patch("app.infrastructure.monitoring.emit", side_effect=emitted.append),
+        patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append),
         patch("asyncio.get_running_loop", side_effect=RuntimeError("no loop")),
     ):
         handlers["_after"](None, None, "SELECT col FROM t", None, None, False)
@@ -209,7 +209,7 @@ def test_after_handler_very_slow_query_emits_error():
 
 def test_after_handler_n_plus_one_detected_at_threshold():
     """_after emits n_plus_one_suspect when query count hits _N_PLUS_ONE_THRESHOLD."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _N_PLUS_ONE_THRESHOLD,
         _query_start,
         _request_query_count,
@@ -228,7 +228,7 @@ def test_after_handler_n_plus_one_detected_at_threshold():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -238,13 +238,13 @@ def test_after_handler_n_plus_one_detected_at_threshold():
 
     emitted = []
     with (
-        patch("app.infrastructure.monitoring.emit", side_effect=emitted.append),
+        patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append),
         patch(
-            "app.infrastructure.context.request_context.get_correlation_id",
+            "v2.modules.platform_infra.context.request_context.get_correlation_id",
             return_value="corr-1",
         ),
         patch(
-            "app.infrastructure.context.request_context.get_request_path",
+            "v2.modules.platform_infra.context.request_context.get_request_path",
             return_value="/test",
         ),
     ):
@@ -262,10 +262,10 @@ def test_after_handler_n_plus_one_detected_at_threshold():
 
 def test_on_error_critical_pg_code():
     """_on_error emits CRITICAL for critical PG codes."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         setup_db_probe,
     )
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     mock_engine = MagicMock()
     mock_engine.sync_engine = MagicMock()
@@ -279,7 +279,7 @@ def test_on_error_critical_pg_code():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -290,7 +290,7 @@ def test_on_error_critical_pg_code():
     ctx.original_exception = orig_exc
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_on_error"](ctx)
 
     assert len(emitted) == 1
@@ -305,10 +305,10 @@ def test_on_error_critical_pg_code():
 
 def test_on_error_non_critical_pg_code():
     """_on_error emits ERROR (not CRITICAL) for non-critical PG codes."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         setup_db_probe,
     )
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     mock_engine = MagicMock()
     mock_engine.sync_engine = MagicMock()
@@ -322,7 +322,7 @@ def test_on_error_non_critical_pg_code():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -333,7 +333,7 @@ def test_on_error_non_critical_pg_code():
     ctx.original_exception = orig_exc
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_on_error"](ctx)
 
     assert len(emitted) == 1
@@ -348,7 +348,7 @@ def test_on_error_non_critical_pg_code():
 
 def test_on_error_unknown_pg_code():
     """_on_error uses 'db_error' category for unknown PG code."""
-    from app.infrastructure.monitoring.db_probe import setup_db_probe
+    from v2.modules.platform_infra.monitoring.db_probe import setup_db_probe
 
     mock_engine = MagicMock()
     mock_engine.sync_engine = MagicMock()
@@ -362,7 +362,7 @@ def test_on_error_unknown_pg_code():
 
         return decorator
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -373,7 +373,7 @@ def test_on_error_unknown_pg_code():
     ctx.original_exception = orig_exc
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_on_error"](ctx)
 
     assert emitted[0].category == "db_error"
@@ -386,7 +386,7 @@ def test_on_error_unknown_pg_code():
 
 def test_on_checkout_emits_pool_pressure():
     """_on_checkout emits pool_pressure when >85% connections used."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _pool_state,
         setup_db_probe,
     )
@@ -411,7 +411,7 @@ def test_on_checkout_emits_pool_pressure():
     mock_pool.overflow.return_value = 0
     mock_sync_engine.pool = mock_pool
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -419,7 +419,7 @@ def test_on_checkout_emits_pool_pressure():
     _pool_state["last_alert"] = 0.0
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_on_checkout"](None, None, None)
 
     assert len(emitted) == 1
@@ -433,7 +433,7 @@ def test_on_checkout_emits_pool_pressure():
 
 def test_on_checkout_throttle_prevents_duplicate_alerts():
     """_on_checkout does NOT emit if last alert was < 60s ago."""
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _pool_state,
         setup_db_probe,
     )
@@ -457,7 +457,7 @@ def test_on_checkout_throttle_prevents_duplicate_alerts():
     mock_pool.overflow.return_value = 0
     mock_sync_engine.pool = mock_pool
 
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_ev:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_ev:
         mock_ev.listens_for.side_effect = listens_for
         setup_db_probe(mock_engine)
 
@@ -465,7 +465,7 @@ def test_on_checkout_throttle_prevents_duplicate_alerts():
     _pool_state["last_alert"] = time.monotonic() - 30
 
     emitted = []
-    with patch("app.infrastructure.monitoring.emit", side_effect=emitted.append):
+    with patch("v2.modules.platform_infra.monitoring.emit", side_effect=emitted.append):
         handlers["_on_checkout"](None, None, None)
 
     assert len(emitted) == 0
@@ -479,7 +479,7 @@ def test_on_checkout_throttle_prevents_duplicate_alerts():
 @pytest.mark.asyncio
 async def test_auto_explain_evicts_old_fingerprints():
     """_auto_explain evicts stale entries from _explain_last when > 200."""
-    from app.infrastructure.monitoring import db_probe as dp
+    from v2.modules.platform_infra.monitoring import db_probe as dp
 
     dp._explain_last.clear()
     old_time = time.monotonic() - 200  # older than 120s cutoff
@@ -514,8 +514,8 @@ async def test_auto_explain_evicts_old_fingerprints():
     mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
-        patch("app.infrastructure.monitoring.aemit", AsyncMock()),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.monitoring.aemit", AsyncMock()),
     ):
         dp._explain_sem = None  # reset semaphore
         await dp._auto_explain(stmt, None, 3000.0)
@@ -532,7 +532,7 @@ async def test_auto_explain_evicts_old_fingerprints():
 @pytest.mark.asyncio
 async def test_auto_explain_full_path_with_seq_scan():
     """_auto_explain runs EXPLAIN, detects Seq Scan, and emits slow_query_plan."""
-    from app.infrastructure.monitoring import db_probe as dp
+    from v2.modules.platform_infra.monitoring import db_probe as dp
 
     dp._explain_last.clear()
     dp._explain_sem = None
@@ -564,8 +564,8 @@ async def test_auto_explain_full_path_with_seq_scan():
         emitted.append(event)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
-        patch("app.infrastructure.monitoring.aemit", fake_aemit),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.monitoring.aemit", fake_aemit),
     ):
         await dp._auto_explain(stmt, None, 2500.0)
 

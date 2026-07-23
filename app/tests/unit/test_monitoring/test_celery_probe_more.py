@@ -1,5 +1,5 @@
 """
-Additional coverage tests for app/infrastructure/monitoring/celery_probe.py.
+Additional coverage tests for v2/modules/platform_infra/monitoring/celery_probe.py.
 
 Targets uncovered lines:
 - setup_celery_probe: signal handlers (on_prerun, on_postrun, on_failure, on_retry, on_revoked)
@@ -41,7 +41,7 @@ def _make_sender(name="test.task", max_retries=3, retries=0):
 
 def _setup_probe_and_capture():
     """Patch celery.signals so setup_celery_probe captures handler functions."""
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     connected_handlers: dict = {}
 
@@ -75,7 +75,7 @@ def _setup_probe_and_capture():
 
 
 def test_purge_keeps_entries_just_under_ttl():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._task_start_times.clear()
     now = time.monotonic()
@@ -86,7 +86,7 @@ def test_purge_keeps_entries_just_under_ttl():
 
 
 def test_purge_removes_entries_exactly_at_ttl():
-    from app.infrastructure.monitoring import celery_probe as cp
+    from v2.modules.platform_infra.monitoring import celery_probe as cp
 
     cp._task_start_times.clear()
     now = time.monotonic()
@@ -144,7 +144,7 @@ def test_on_postrun_no_emit_for_fast_task():
     # mantığını izole eder. CI runner'da RSS > 800MB iken memory emit tetikleniyordu
     # (Windows'ta resource modülü yok → lokalde gizliydi, CI Linux'ta görünür).
     with (
-        patch("app.infrastructure.monitoring.emit") as mock_emit,
+        patch("v2.modules.platform_infra.monitoring.emit") as mock_emit,
         patch.object(cp, "_write_heartbeat_sync"),
         patch.object(cp, "_RESOURCE_AVAILABLE", False),
     ):
@@ -158,7 +158,7 @@ def test_on_postrun_emits_warning_for_slow_task():
     """on_postrun emits WARNING when task > _SLOW_TASK_WARN_MS but < _SLOW_TASK_ERROR_MS."""
     connected_handlers, cp = _setup_probe_and_capture()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     emitted_events = []
 
@@ -166,7 +166,7 @@ def test_on_postrun_emits_warning_for_slow_task():
         emitted_events.append(event)
 
     with (
-        patch("app.infrastructure.monitoring.emit", fake_emit),
+        patch("v2.modules.platform_infra.monitoring.emit", fake_emit),
         patch.object(cp, "_write_heartbeat_sync"),
     ):
         # 35s ago — above warn (30s) but below error (120s)
@@ -183,7 +183,7 @@ def test_on_postrun_emits_error_for_very_slow_task():
     """on_postrun emits ERROR when task > _SLOW_TASK_ERROR_MS (120s)."""
     connected_handlers, cp = _setup_probe_and_capture()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     emitted_events = []
 
@@ -191,7 +191,7 @@ def test_on_postrun_emits_error_for_very_slow_task():
         emitted_events.append(event)
 
     with (
-        patch("app.infrastructure.monitoring.emit", fake_emit),
+        patch("v2.modules.platform_infra.monitoring.emit", fake_emit),
         patch.object(cp, "_write_heartbeat_sync"),
     ):
         cp._task_start_times["very-slow"] = time.monotonic() - 130
@@ -246,7 +246,7 @@ def test_on_failure_unlimited_retries_not_final():
 
     sender = _make_sender("retry.task", max_retries=None, retries=5)
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         cp._task_start_times.pop("fail-tid", None)
         connected_handlers["on_failure"](
             task_id="fail-tid",
@@ -271,7 +271,7 @@ def test_on_failure_unlimited_retries_final():
 
     sender = _make_sender("retry.task", max_retries=None, retries=10)
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         connected_handlers["on_failure"](
             task_id="fail-final",
             exception=RuntimeError("final"),
@@ -294,7 +294,7 @@ def test_on_failure_finite_retries_non_final():
 
     sender = _make_sender("retry.task", max_retries=3, retries=1)
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         connected_handlers["on_failure"](
             task_id="fail-nonfinal",
             exception=ValueError("mid"),
@@ -316,7 +316,7 @@ def test_on_failure_finite_retries_at_max_is_final():
 
     sender = _make_sender("retry.task", max_retries=3, retries=3)
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         connected_handlers["on_failure"](
             task_id="fail-at-max",
             exception=ValueError("at max"),
@@ -345,7 +345,7 @@ def test_on_retry_emits_event():
     request.task = "infra.relay_outbox"
     request.retries = 2
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         connected_handlers["on_retry"](
             request=request,
             reason="timeout",
@@ -369,7 +369,7 @@ def test_on_revoked_emits_event():
     request = MagicMock()
     request.task = "prediction.drain_dlq"
 
-    with patch("app.infrastructure.monitoring.emit", fake_emit):
+    with patch("v2.modules.platform_infra.monitoring.emit", fake_emit):
         connected_handlers["on_revoked"](
             request=request,
             terminated=True,

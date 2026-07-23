@@ -27,12 +27,12 @@ from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Anomaly
 from v2.modules.anomaly.application.classify_theft import get_fuel_theft_classifier
 from v2.modules.anomaly.infrastructure.anomaly_repository import get_anomaly_repo
 from v2.modules.anomaly.infrastructure.investigation_repository import (
     get_investigation_repo,
 )
+from v2.modules.anomaly.infrastructure.models import Anomaly
 from v2.modules.anomaly.schemas import TheftClassification
 
 _TERMINAL_STATUSES = {"closed"}

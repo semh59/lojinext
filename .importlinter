@@ -3,15 +3,21 @@ root_packages =
     app
     v2
 
-[importlinter:contract:report-only]
-name = Modular monolith boundary (report-only, FAZ0)
-type = independence
-modules =
-    app.core.services
-    app.services
+# 2026-07-23 (bağımsız dedektif denetiminde bulunan sistemik kör nokta
+# düzeltmesi): her 15 `public-surface-only-<module>` kontratının
+# `forbidden_modules` listesi eskiden yalnız `<module>.{api,application,
+# domain,infrastructure}` içeriyordu — modül KÖKÜNDEKİ `schemas.py` (ve
+# trip'in `sefer_status.py`/`trip_status.py`'si) bu listede YOKTU. Bu,
+# `import_excel.application.sefer_importer.py`'nin `v2.modules.trip.schemas`'ı
+# `trip.public`'i atlayıp doğrudan import etmesini `lint-imports`'un
+# "KEPT" göstermesine yol açmıştı (gerçek ihlal, kontrat kör noktasından
+# kaçıyordu). Her 15 kontrata ilgili `<module>.schemas` (+ trip için
+# `.sefer_status`/`.trip_status`) satırları eklendi; ihlal
+# (`import_excel.application.sefer_importer`/`sefer_upload_importer` →
+# `trip.schemas`) ayrıca kaynağında `trip.public` importuna düzeltildi.
 
 [importlinter:contract:module-cross-domain-infra-independence]
-name = 11 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
+name = 15 modulun domain/infrastructure katmanlari birbirinden bagimsiz (yalniz public/events)
 type = independence
 modules =
     v2.modules.location.domain
@@ -38,29 +44,23 @@ modules =
     v2.modules.analytics_executive.infrastructure
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -72,27 +72,42 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.domain.**
     v2.modules.auth_rbac.infrastructure.** -> v2.modules.auth_rbac.domain.**
-    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
-    v2.modules.analytics_executive.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.driver.domain.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.driver.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.fuel.domain.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.fuel.domain.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.fuel.infrastructure.** -> v2.modules.notification.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.driver.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.reports.infrastructure.** -> v2.modules.fuel.infrastructure.**
-    v2.modules.import_excel.infrastructure.** -> v2.modules.reports.infrastructure.**
-    v2.modules.analytics_executive.infrastructure.** -> v2.modules.notification.application.**
+    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
+    v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
+    v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
+    v2.modules.analytics_executive.infrastructure.executive_read_models -> v2.modules.fuel.infrastructure.models
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:module-internal-layers]
@@ -116,29 +131,20 @@ containers =
     v2.modules.reports
     v2.modules.analytics_executive
     v2.modules.ai_assistant
+    v2.modules.prediction_ml
+    v2.modules.trip
+    v2.modules.admin_platform
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -150,12 +156,39 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
     v2.modules.analytics_executive.infrastructure.** -> v2.modules.analytics_executive.application.**
     v2.modules.anomaly.infrastructure.** -> v2.modules.anomaly.application.**
-    v2.modules.driver.domain.** -> v2.modules.driver.infrastructure.**
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
+    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
+    v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
+    v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
+    v2.modules.analytics_executive.infrastructure.executive_read_models -> v2.modules.fuel.infrastructure.models
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-location]
@@ -168,69 +201,85 @@ forbidden_modules =
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -242,9 +291,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.application.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.domain.**
-    v2.modules.location.application.** -> v2.modules.route_simulation.infrastructure.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-route_simulation]
@@ -257,69 +326,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -331,6 +416,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-notification]
@@ -343,69 +451,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -417,7 +541,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.notification.application.** -> v2.modules.auth_rbac.application.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fleet]
@@ -430,69 +576,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -504,6 +666,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-fuel]
@@ -516,69 +701,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -590,6 +791,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-driver]
@@ -602,69 +826,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -676,6 +916,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-auth_rbac]
@@ -688,69 +951,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -762,6 +1041,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-anomaly]
@@ -774,69 +1076,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -848,6 +1166,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-import_excel]
@@ -860,69 +1201,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -934,9 +1291,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.import_excel.application.** -> v2.modules.fleet.application.**
-    v2.modules.import_excel.application.** -> v2.modules.fleet.schemas
-    v2.modules.import_excel.application.** -> v2.modules.fuel.schemas
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-reports]
@@ -949,69 +1326,85 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
     v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
     v2.modules.ai_assistant.api
     v2.modules.ai_assistant.application
     v2.modules.ai_assistant.domain
     v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -1023,11 +1416,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.reports.application.** -> v2.modules.fleet.application.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.analytics_executive.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.driver.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.fleet.infrastructure.**
-    v2.modules.reports.infrastructure.repo_access -> v2.modules.fuel.infrastructure.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-analytics_executive]
@@ -1040,65 +1451,78 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
-    v2.modules.reports.infrastructure
+    v2.modules.reports.infrastructure    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.notification.public -> v2.modules.notification.**
     v2.modules.fleet.public -> v2.modules.fleet.**
@@ -1110,8 +1534,29 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.analytics_executive.application.** -> v2.modules.fleet.application.**
-    v2.modules.analytics_executive.application.** -> v2.modules.notification.application.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
 
 [importlinter:contract:public-surface-only-ai_assistant]
@@ -1124,69 +1569,82 @@ forbidden_modules =
     v2.modules.location.application
     v2.modules.location.domain
     v2.modules.location.infrastructure
+    v2.modules.location.schemas
     v2.modules.route_simulation.api
     v2.modules.route_simulation.application
     v2.modules.route_simulation.domain
     v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
     v2.modules.notification.api
     v2.modules.notification.application
     v2.modules.notification.domain
     v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
     v2.modules.fleet.api
     v2.modules.fleet.application
     v2.modules.fleet.domain
     v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
     v2.modules.fuel.api
     v2.modules.fuel.application
     v2.modules.fuel.domain
     v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
     v2.modules.driver.api
     v2.modules.driver.application
     v2.modules.driver.domain
     v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
     v2.modules.auth_rbac.api
     v2.modules.auth_rbac.application
     v2.modules.auth_rbac.domain
     v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
     v2.modules.anomaly.api
     v2.modules.anomaly.application
     v2.modules.anomaly.domain
     v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
     v2.modules.import_excel.api
     v2.modules.import_excel.application
     v2.modules.import_excel.domain
     v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
     v2.modules.reports.api
     v2.modules.reports.application
     v2.modules.reports.domain
     v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
     v2.modules.analytics_executive.api
     v2.modules.analytics_executive.application
     v2.modules.analytics_executive.domain
-    v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.infrastructure    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
 ignore_imports =
-    app.database.unit_of_work -> app.database.repositories
-    app.core.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
-    app.core.container -> app.core.services.health_service
-    app.core.container -> app.core.services.internal_service
-    app.core.container -> app.core.services.sefer_service
-    app.core.container -> app.core.services.weather_service
-    app.core.container -> app.database.repositories.sefer_repo
-    app.core.container -> app.infrastructure.events.event_bus
-    app.core.container -> app.services.external_service
-    app.core.container -> app.services.prediction_service
-    app.core.container -> v2.modules.ai_assistant.application.knowledge_base
-    app.core.container -> app.services.time_series_service
-    app.core.container -> v2.modules.analytics_executive.infrastructure.executive_read_models
-    app.core.container -> v2.modules.anomaly.application.detect_anomaly
-    app.core.container -> v2.modules.auth_rbac.application.license_service
-    app.core.container -> v2.modules.driver.infrastructure.repository
-    app.core.container -> v2.modules.fleet.infrastructure.trailer_repository
-    app.core.container -> v2.modules.fleet.infrastructure.vehicle_repository
-    app.core.container -> v2.modules.fuel.infrastructure.repository
-    app.core.container -> v2.modules.import_excel.infrastructure.report_export
-    app.core.container -> v2.modules.location.infrastructure.repository
-    app.infrastructure.monitoring.alarm_router -> v2.modules.notification.infrastructure.telegram_client
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.notification.public -> v2.modules.notification.**
@@ -1199,7 +1657,448 @@ ignore_imports =
     v2.modules.reports.public -> v2.modules.reports.**
     v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
     v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
-    v2.modules.ai_assistant.application.** -> v2.modules.fleet.infrastructure.**
-    v2.modules.ai_assistant.application.** -> v2.modules.fuel.infrastructure.**
-    v2.modules.ai_assistant.application.** -> v2.modules.analytics_executive.infrastructure.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-prediction_ml]
+name = prediction_ml application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.prediction_ml.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.location.schemas
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
+    v2.modules.ai_assistant.api
+    v2.modules.ai_assistant.application
+    v2.modules.ai_assistant.domain
+    v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
+ignore_imports =
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-trip]
+name = trip application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.trip.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.location.schemas
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
+    v2.modules.ai_assistant.api
+    v2.modules.ai_assistant.application
+    v2.modules.ai_assistant.domain
+    v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.admin_platform.api
+    v2.modules.admin_platform.application
+    v2.modules.admin_platform.domain
+    v2.modules.admin_platform.infrastructure
+    v2.modules.admin_platform.schemas
+ignore_imports =
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.admin_platform.public -> v2.modules.admin_platform.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+    v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-admin_platform]
+name = admin_platform application katmani yalniz baska modullerin public/events'ini import edebilir
+type = forbidden
+source_modules =
+    v2.modules.admin_platform.application
+forbidden_modules =
+    v2.modules.location.api
+    v2.modules.location.application
+    v2.modules.location.domain
+    v2.modules.location.infrastructure
+    v2.modules.location.schemas
+    v2.modules.route_simulation.api
+    v2.modules.route_simulation.application
+    v2.modules.route_simulation.domain
+    v2.modules.route_simulation.infrastructure
+    v2.modules.route_simulation.schemas
+    v2.modules.notification.api
+    v2.modules.notification.application
+    v2.modules.notification.domain
+    v2.modules.notification.infrastructure
+    v2.modules.notification.schemas
+    v2.modules.fleet.api
+    v2.modules.fleet.application
+    v2.modules.fleet.domain
+    v2.modules.fleet.infrastructure
+    v2.modules.fleet.schemas
+    v2.modules.fuel.api
+    v2.modules.fuel.application
+    v2.modules.fuel.domain
+    v2.modules.fuel.infrastructure
+    v2.modules.fuel.schemas
+    v2.modules.driver.api
+    v2.modules.driver.application
+    v2.modules.driver.domain
+    v2.modules.driver.infrastructure
+    v2.modules.driver.schemas
+    v2.modules.auth_rbac.api
+    v2.modules.auth_rbac.application
+    v2.modules.auth_rbac.domain
+    v2.modules.auth_rbac.infrastructure
+    v2.modules.auth_rbac.schemas
+    v2.modules.anomaly.api
+    v2.modules.anomaly.application
+    v2.modules.anomaly.domain
+    v2.modules.anomaly.infrastructure
+    v2.modules.anomaly.schemas
+    v2.modules.import_excel.api
+    v2.modules.import_excel.application
+    v2.modules.import_excel.domain
+    v2.modules.import_excel.infrastructure
+    v2.modules.import_excel.schemas
+    v2.modules.reports.api
+    v2.modules.reports.application
+    v2.modules.reports.domain
+    v2.modules.reports.infrastructure
+    v2.modules.reports.schemas
+    v2.modules.analytics_executive.api
+    v2.modules.analytics_executive.application
+    v2.modules.analytics_executive.domain
+    v2.modules.analytics_executive.infrastructure
+    v2.modules.analytics_executive.schemas
+    v2.modules.ai_assistant.api
+    v2.modules.ai_assistant.application
+    v2.modules.ai_assistant.domain
+    v2.modules.ai_assistant.infrastructure
+    v2.modules.ai_assistant.schemas
+    v2.modules.prediction_ml.api
+    v2.modules.prediction_ml.application
+    v2.modules.prediction_ml.domain
+    v2.modules.prediction_ml.infrastructure
+    v2.modules.prediction_ml.schemas
+    v2.modules.trip.api
+    v2.modules.trip.application
+    v2.modules.trip.domain
+    v2.modules.trip.infrastructure
+    v2.modules.trip.schemas
+    v2.modules.trip.sefer_status
+    v2.modules.trip.trip_status
+ignore_imports =
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.orchestrate_ai_response
+    v2.modules.platform_infra.container -> v2.modules.trip.application.trip_service
+    v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
+    v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
+    v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
+    v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
+    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
+    v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
+    v2.modules.location.public -> v2.modules.location.**
+    v2.modules.route_simulation.public -> v2.modules.route_simulation.**
+    v2.modules.notification.public -> v2.modules.notification.**
+    v2.modules.fleet.public -> v2.modules.fleet.**
+    v2.modules.fuel.public -> v2.modules.fuel.**
+    v2.modules.driver.public -> v2.modules.driver.**
+    v2.modules.auth_rbac.public -> v2.modules.auth_rbac.**
+    v2.modules.anomaly.public -> v2.modules.anomaly.**
+    v2.modules.import_excel.public -> v2.modules.import_excel.**
+    v2.modules.reports.public -> v2.modules.reports.**
+    v2.modules.analytics_executive.public -> v2.modules.analytics_executive.**
+    v2.modules.ai_assistant.public -> v2.modules.ai_assistant.**
+    v2.modules.prediction_ml.public -> v2.modules.prediction_ml.**
+    v2.modules.trip.public -> v2.modules.trip.**
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.analytics_executive.infrastructure.executive_read_models
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.anomaly_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.anomaly.infrastructure.investigation_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.kullanici_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.rol_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.session_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.auth_rbac.infrastructure.setting_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.driver.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.maintenance_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.trailer_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fleet.infrastructure.vehicle_repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.fuel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
+    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
+unmatched_ignore_imports_alerting = error
+
+[importlinter:contract:public-surface-only-platform_infra]
+name = platform_infra'nin ic detaylari yalniz public.py uzerinden erisilebilir
+type = forbidden
+source_modules =
+    v2.modules.location.application
+    v2.modules.route_simulation.application
+    v2.modules.notification.application
+    v2.modules.fleet.application
+    v2.modules.fuel.application
+    v2.modules.driver.application
+    v2.modules.auth_rbac.application
+    v2.modules.anomaly.application
+    v2.modules.import_excel.application
+    v2.modules.reports.application
+    v2.modules.analytics_executive.application
+    v2.modules.ai_assistant.application
+    v2.modules.prediction_ml.application
+    v2.modules.trip.application
+    v2.modules.admin_platform.application
+forbidden_modules =
+    v2.modules.platform_infra.cache
+    v2.modules.platform_infra.events
+    v2.modules.platform_infra.monitoring
+    v2.modules.platform_infra.resilience
+    v2.modules.platform_infra.middleware
+    v2.modules.platform_infra.database
+    v2.modules.platform_infra.container
+    v2.modules.platform_infra.security
+    v2.modules.platform_infra.context
+    v2.modules.platform_infra.logging
+    v2.modules.platform_infra.audit
+    v2.modules.platform_infra.background
+    v2.modules.platform_infra.websocket
+# grimp'in normal "forbidden" davranışı TÜM transitif zinciri tarar — bu,
+# platform_infra.public'in KENDİSİ (sanctioned gateway) monitoring/events/vb.
+# alt modüllerini import ettiği ve HEMEN HEMEN HER iş modülünün başka bir
+# modülün public.py'sini (kendi api/infrastructure katmanı platform_infra'yı
+# doğrudan kullanan) transitif olarak import ettiği için — 179 gerçek
+# (ve tamamen meşru, api/infrastructure/domain katmanlarının kendisi zaten
+# platform_infra'yı DOĞRUDAN kullanabilir, yalnız application katmanı
+# public.py üzerinden gitmeli) zincirde YANLIŞ-POZİTİF üretti. allow_
+# indirect_imports=true bunu yalnız DOĞRUDAN import kontrolüne indirger
+# (grimp `find_modules_directly_imported_by`) — application dosyalarının
+# artık hiçbiri platform_infra alt modüllerini doğrudan import etmiyor
+# (hepsi public.py'ye yönlendirildi, bkz. bu dalganın commit 10 notu),
+# bu yüzden kontrat şimdi anlamlı bir şekilde geçiyor/kırılıyor.
+allow_indirect_imports = true
 unmatched_ignore_imports_alerting = error

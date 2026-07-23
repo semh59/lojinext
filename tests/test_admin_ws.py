@@ -5,9 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
-from app.api.v1.endpoints.admin_ws import training_ws_manager
 from app.config import settings
 from app.main import app
+from v2.modules.admin_platform.api.admin_ws_routes import training_ws_manager
 from v2.modules.auth_rbac.domain.jwt_handler import create_access_token
 
 client = TestClient(app)

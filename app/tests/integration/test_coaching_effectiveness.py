@@ -14,7 +14,7 @@ class TestCoachingEffectiveness:
     ) -> int:
         from sqlalchemy import update
 
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         suffix = uuid.uuid4().hex[:4].upper()
         resp = await async_client.post(
@@ -42,7 +42,7 @@ class TestCoachingEffectiveness:
         """POST /send başarılı → CoachingDelivery satırı oluşur, delivery_id döner."""
         from sqlalchemy import select
 
-        from app.database.models import CoachingDelivery
+        from v2.modules.driver.public import CoachingDelivery
 
         sid = await self._create_sofor_with_telegram(
             async_client, admin_auth_headers, db_session
@@ -116,7 +116,7 @@ class TestCoachingEffectiveness:
         çağrılınca score_after_2w + score_delta_pct + evaluated_at dolar."""
         from sqlalchemy import select, update
 
-        from app.database.models import CoachingDelivery
+        from v2.modules.driver.public import CoachingDelivery
 
         sid = await self._create_sofor_with_telegram(
             async_client, admin_auth_headers, db_session

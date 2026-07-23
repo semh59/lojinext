@@ -214,7 +214,7 @@ class TestImportHistoryWithData:
     async def test_history_returns_mapped_items(
         self, async_client, admin_auth_headers, db_session
     ):
-        from app.database.models import IceriAktarimGecmisi
+        from v2.modules.import_excel.public import IceriAktarimGecmisi
 
         row = IceriAktarimGecmisi(
             dosya_adi="vehicles.xlsx",

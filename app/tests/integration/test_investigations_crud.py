@@ -8,7 +8,7 @@ import pytest
 async def _seed_anomaly(
     db_session, *, sapma: float = 25.0, severity: str = "medium"
 ) -> int:
-    from app.database.models import Anomaly
+    from v2.modules.anomaly.public import Anomaly
 
     row = Anomaly(
         tarih=date.today(),
@@ -144,8 +144,8 @@ class TestInvestigationsCRUD:
         # FK için gerçek user seed et
         from sqlalchemy import select
 
-        from app.database.models import Kullanici, Rol
         from v2.modules.auth_rbac.domain.security import get_password_hash
+        from v2.modules.auth_rbac.public import Kullanici, Rol
 
         rol = (
             await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -305,7 +305,7 @@ class TestInvestigationsCRUD:
         # Anomaly'nin severity'sini critical yap (DB direct)
         from sqlalchemy import update as _upd
 
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         await db_session.execute(
             _upd(Anomaly)

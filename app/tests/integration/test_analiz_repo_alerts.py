@@ -11,7 +11,7 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from app.database.models import Anomaly
+from v2.modules.anomaly.public import Anomaly
 
 
 def _anomaly(kaynak_id: int, aciklama: str, *, acknowledged: bool = False) -> Anomaly:

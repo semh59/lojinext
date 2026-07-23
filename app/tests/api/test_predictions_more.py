@@ -66,7 +66,7 @@ def _mock_prediction_service(**overrides):
         }
     )
 
-    with patch("app.api.v1.endpoints.predictions.PredictionService", return_value=svc):
+    with patch("v2.modules.prediction_ml.api.predictions.PredictionService", return_value=svc):
         yield svc
 
 
@@ -118,8 +118,8 @@ async def test_predict_sofor_score_exact_maximum(async_client, admin_auth_header
 
 async def test_predict_sofor_id_found_null_score(async_client, admin_auth_headers):
     """sofor_id provided, sofor found but score is None → uses default 1.0."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     fake_sofor = MagicMock()
     fake_sofor.id = 1
@@ -148,8 +148,8 @@ async def test_predict_sofor_id_found_null_score(async_client, admin_auth_header
 
 async def test_predict_sofor_id_found_with_score(async_client, admin_auth_headers):
     """sofor_id provided, sofor found with score=1.5 → uses 1.5."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     fake_sofor = MagicMock()
     fake_sofor.id = 2
@@ -183,8 +183,8 @@ async def test_predict_sofor_id_found_with_score(async_client, admin_auth_header
 
 async def test_comparison_with_trips_all_buckets(async_client, admin_auth_headers):
     """GET /comparison with mock DB rows → exercises good/warning/error buckets."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     # Build fake trip objects covering three accuracy buckets:
     # good (pct <= 5), warning (5 < pct <= 15), error (pct > 15)
@@ -234,8 +234,8 @@ async def test_comparison_with_trips_all_buckets(async_client, admin_auth_header
 
 async def test_comparison_pct_error_predicted_zero(async_client, admin_auth_headers):
     """GET /comparison handles predicted=0 gracefully (pct_err=100 → error bucket)."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     t = MagicMock()
     t.tuketim = 30.0
@@ -277,8 +277,8 @@ async def test_comparison_pct_error_predicted_zero(async_client, admin_auth_head
 
 async def test_comparison_with_arac_id_and_trips(async_client, admin_auth_headers):
     """GET /comparison?arac_id=1 with matching trips → non-zero metrics."""
-    from app.database.connection import get_db
     from app.main import app
+    from v2.modules.platform_infra.database.connection import get_db
 
     t = MagicMock()
     t.tuketim = 32.0
@@ -323,7 +323,7 @@ async def test_stream_terminates_on_failure_state(async_client, admin_auth_heade
     fake_result.result = {"error": "something failed", "finished_at": None}
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/failing-task/stream",
@@ -341,7 +341,7 @@ async def test_stream_terminates_on_revoked_state(async_client, admin_auth_heade
     fake_result.result = {}
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/revoked-task/stream",
@@ -363,7 +363,7 @@ async def test_stream_result_not_dict(async_client, admin_auth_headers):
     fake_result.result = "some_string_result"  # not a dict
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/str-result-task/stream",
@@ -385,7 +385,7 @@ async def test_prediction_status_result_not_dict(async_client, admin_auth_header
     fake_result.result = Exception("something went wrong")  # not a dict
 
     with patch(
-        "app.api.v1.endpoints.predictions.AsyncResult", return_value=fake_result
+        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
     ):
         resp = await async_client.get(
             f"{BASE}/failed-task",
@@ -430,13 +430,13 @@ async def test_ensemble_status_all_available(async_client, admin_auth_headers):
     }
 
     with patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
         return_value=fake_predictor,
     ):
         with (
-            patch("app.core.ml.ensemble_predictor.SKLEARN_AVAILABLE", True),
-            patch("app.core.ml.ensemble_predictor.LIGHTGBM_AVAILABLE", True),
-            patch("app.core.ml.ensemble_predictor.XGBOOST_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", True),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", True),
         ):
             resp = await async_client.get(
                 f"{BASE}/ensemble/status",
@@ -455,13 +455,13 @@ async def test_ensemble_status_none_available(async_client, admin_auth_headers):
     fake_predictor.weights = {"physics": 1.0}
 
     with patch(
-        "app.core.ml.ensemble_predictor.EnsembleFuelPredictor",
+        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
         return_value=fake_predictor,
     ):
         with (
-            patch("app.core.ml.ensemble_predictor.SKLEARN_AVAILABLE", False),
-            patch("app.core.ml.ensemble_predictor.LIGHTGBM_AVAILABLE", False),
-            patch("app.core.ml.ensemble_predictor.XGBOOST_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", False),
+            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", False),
         ):
             resp = await async_client.get(
                 f"{BASE}/ensemble/status",
@@ -503,7 +503,7 @@ async def test_forecast_with_arac_id(async_client, admin_auth_headers):
     )
 
     with patch(
-        "app.services.time_series_service.get_time_series_service",
+        "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
         return_value=fake_ts_service,
     ):
         resp = await async_client.post(

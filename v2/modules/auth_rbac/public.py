@@ -7,7 +7,7 @@ TASKS/modules/auth-rbac.md and .importlinter's forbidden-imports contract).
 — hiçbir gerçek tüketici buradan geçmiyordu. 7 kardeş v2 modülü +
 `app/core/services/sefer_read_service.py` + 5 admin endpoint + 3 script
 artık gerçekten ``public`` üzerinden gidiyor (düzeltildi). ``app/api/
-deps.py``/``app/core/container.py``/``app/database/repositories/
+deps.py``/``v2/modules/platform_infra/container.py``/``app/database/repositories/
 __init__.py``/``app/infrastructure/websocket/ws_auth.py``/``app/main.py``
 hâlâ dokümante edilmiş composition-root/framework-wiring istisnası (bkz.
 aşağı) — bu proje genelinde tutarlı bir karar, auth_rbac'a özgü değil.
@@ -15,23 +15,59 @@ aşağı) — bu proje genelinde tutarlı bir karar, auth_rbac'a özgü değil.
 There is no ``AuthService``/``UserService``/``PreferenceService`` class —
 each use-case is a standalone function (same B.1 pattern as location/
 notification/fleet/fuel/driver). ``SecurityService``/``Permission`` stay a
-classmethod-only namespace (no constructor/state — narrower exception than
-the stateful-singleton class of ``LicenseEngine``, see CLAUDE.md).
-``LicenseEngine``/``TokenBlacklist`` stay classes — see CLAUDE.md for the
-exception rationale (stateful singleton).
+classmethod-only namespace (no constructor/state).
+``TokenBlacklist`` stays a class — see CLAUDE.md for the exception
+rationale (stateful singleton).
 
-NOT: ``get_current_user``/``get_current_active_user``/``get_current_active_admin``/
-``require_permissions``/``UOWDep``/``TokenDep``/``SessionDep`` FastAPI
-dependency wiring'i ``app/api/deps.py``'de KALIYOR (taşınmadı) — deps.py
-FastAPI-wiring katmanı, modül kodu değil (driver/fleet dalgalarında da aynı
-karar: `app/api/deps.py` hiçbir zaman v2/modules/*'e taşınmadı, yalnızca
-import kaynakları güncellendi).
+2026-07-22 dead-code denetimi: ``LicenseEngine`` (araç/sefer ticari limit
+motoru) tamamen silindi — hash-tabanlı tier kontrolü gerçek/test-edilmişti
+ama fleet'in araç-oluşturma/trip'in sefer-ekleme yollarından hiçbir zaman
+çağrılmadı (kullanıcı kararıyla "abandoned" kabul edildi, wire etmek yerine
+silindi). ``v2/modules/platform_infra/container.py``'nin
+``license_service`` lazy-property'si ve ``v2.modules.fleet.public``'in
+yalnız bu motor için var olan ``count_active_vehicles()`` sarmalayıcısı da
+aynı geçişte kaldırıldı.
+
+NOT (2026-07-22 güncellemesi): ``get_current_user``/``get_current_active_user``/
+``get_current_active_admin``/``get_current_superadmin``/``require_permissions``/
+``TokenDep`` artık BURADA (``application/authenticate.py``) — eskiden
+``app/api/deps.py``'de kalmalarının tek sebebi ``permission_checker.py``'nin
+(o zaman ``domain/``'da) bu dosyayı import etmesiyle oluşan döngüydü
+(public.py zaten ``PermissionChecker``'ı import ediyordu). Dosyalar
+v2/modules/ İÇİNE taşınınca (ve ``permission_checker.py`` da aynı turda
+``application/``'a taşınınca, artık sibling import) döngü kendiliğinden
+çözüldü.
+
+**2026-07-22 GÜNCEL (aynı gün, Kalem 3 commit 2-3 — bu docstring önceki
+turda güncellenmemiş kalmıştı, ❌ düzeltildi 2026-07-23 bağımsız dedektif
+denetiminde)**: yukarıdaki paragrafın son cümlesi hâlâ ``SessionDep``/
+``UOWDep``/``get_background_job_manager``/``get_sefer_service``'in
+"``app/api/deps.py``'de" olduğunu söylüyordu — o dosya (ve ``app/api/``
+dizininin tamamı) artık MEVCUT DEĞİL. Gerçek durum: ``SessionDep``/
+``UOWDep`` ``v2/modules/platform_infra/api_deps.py``'ye taşındı
+(``platform_infra.public``'ten export), ``get_background_job_manager``
+tamamen silindi (tüm tüketiciler ``platform_infra.public.get_job_manager``
+kullanıyor), ``get_sefer_service`` (per-request factory) ``v2/modules/
+trip/application/trip_service.py``'ye ``get_sefer_service_for_request``
+adıyla taşındı (``trip.public``'ten export — container-tabanlı,
+argümansız ``get_sefer_service()``'ten KASITLI olarak farklı isim, bkz.
+``trip/CLAUDE.md``). Bunların hiçbiri auth_rbac'a ait değildi zaten
+(jenerik per-request DI alias'ları) — bu modülün kendi kapsamını
+etkilemiyor.
 """
 
 from v2.modules.auth_rbac.application import auth_service, role_service
-from v2.modules.auth_rbac.application.license_service import (
-    LicenseEngine,
-    get_license_engine,
+from v2.modules.auth_rbac.application.authenticate import (
+    TokenDep,
+    get_current_active_admin,
+    get_current_active_user,
+    get_current_superadmin,
+    get_current_user,
+    require_permissions,
+)
+from v2.modules.auth_rbac.application.permission_checker import (
+    PermissionChecker,
+    require_yetki,
 )
 from v2.modules.auth_rbac.application.preference_service import (
     delete_preference,
@@ -48,23 +84,24 @@ from v2.modules.auth_rbac.application.user_service import (
     update_user,
 )
 from v2.modules.auth_rbac.domain import jwt_handler
-from v2.modules.auth_rbac.domain.permission_checker import (
-    PermissionChecker,
-    require_yetki,
-)
-from v2.modules.auth_rbac.domain.security import (
-    create_access_token as create_access_token_core,
-)
+from v2.modules.auth_rbac.domain.jwt_handler import get_decode_key
 from v2.modules.auth_rbac.domain.security import get_jwks
 from v2.modules.auth_rbac.domain.security import get_password_hash as hash_password
-from v2.modules.auth_rbac.domain.security import verify_password as verify_password_core
 from v2.modules.auth_rbac.domain.security_service import Permission, SecurityService
-from v2.modules.auth_rbac.domain.token_blacklist import TokenBlacklist, blacklist
 from v2.modules.auth_rbac.infrastructure.kullanici_repository import (
     KullaniciRepository,
 )
+from v2.modules.auth_rbac.infrastructure.models import (
+    Kullanici,
+    KullaniciAyari,
+    Rol,
+)
 from v2.modules.auth_rbac.infrastructure.rol_repository import RolRepository
 from v2.modules.auth_rbac.infrastructure.session_repository import SessionRepository
+from v2.modules.auth_rbac.infrastructure.token_blacklist import (
+    TokenBlacklist,
+    blacklist,
+)
 from v2.modules.auth_rbac.schemas import (
     KullaniciCreate,
     KullaniciRead,
@@ -98,22 +135,30 @@ __all__ = [
     "SecurityService",
     "PermissionChecker",
     "require_yetki",
+    # FastAPI auth dependency factories (2026-07-22'de app/api/deps.py'den
+    # taşındı — bkz. application/authenticate.py)
+    "get_current_user",
+    "get_current_active_user",
+    "get_current_active_admin",
+    "get_current_superadmin",
+    "require_permissions",
+    "TokenDep",
     # JWT / password hashing
     "jwt_handler",
+    "get_decode_key",
     "hash_password",
-    "verify_password_core",
-    "create_access_token_core",
     "get_jwks",
     # token blacklist
     "TokenBlacklist",
     "blacklist",
-    # license
-    "LicenseEngine",
-    "get_license_engine",
     # repositories
     "KullaniciRepository",
     "RolRepository",
     "SessionRepository",
+    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
+    "Kullanici",
+    "Rol",
+    "KullaniciAyari",
     # schemas
     "KullaniciCreate",
     "KullaniciRead",

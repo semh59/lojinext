@@ -3,8 +3,7 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
-from app.core.container import get_container
-from app.core.entities.models import SeferCreate
+from v2.modules.trip.schemas import SeferCreate
 
 
 class TestDetailedScenarios:
@@ -21,7 +20,7 @@ class TestDetailedScenarios:
         self, db_session, report_repos, sefer_service
     ):
         """SENARYO 1: Pasif şoförlerin raporlarda görünmesi"""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             # 1. Şoför oluştur
@@ -78,7 +77,7 @@ class TestDetailedScenarios:
         )
 
         # 4. Şoförü PASİF yap ve doğrula
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             await uow.sofor_repo.delete(sofor_id)  # Bu soft delete yapar (aktif=0)
@@ -92,16 +91,13 @@ class TestDetailedScenarios:
         # Senaryo gereği 2023 Ocak verilerini istiyoruz.
         # generate_driver_report default 30 gün geriye gider.
         days_diff = (date.today() - date(2023, 1, 1)).days + 1
-        async with UnitOfWork() as uow:
-            # Container'daki tüm repo'lara session enjekte ediyoruz
-            # Bu sayede ReportService içindeki tüm alt servisler (örn. DegerlendirmeService) doğru session'ı kullanır.
-            container = get_container()
-            container.sofor_repo.session = uow.session
-            container.analiz_repo.session = uow.session
-            container.sefer_repo.session = uow.session
-            container.yakit_repo.session = uow.session
-            container.arac_repo.session = uow.session
-
+        async with UnitOfWork():
+            # NOT: burada eskiden container'ın repo'larına session enjekte
+            # ediliyordu — provası yoktu, generate_driver_report zaten
+            # `report_repos` fixture'ının kendi (db_session'a bağlı, container'dan
+            # tamamen bağımsız) repo'larını kullanıyor. Dalga 17 denetiminde
+            # bu satırların no-op olduğu doğrulandı (bkz.
+            # TASKS/modules/platform-infra.md madde 0), kaldırıldı.
             from v2.modules.reports.application.generate_driver_report import (
                 generate_driver_report,
             )
@@ -159,7 +155,7 @@ class TestDetailedScenarios:
     @pytest.mark.asyncio
     async def test_sefer_service_logic(self, sefer_service):
         """SENARYO 3: Sefer Servisi Mantığı (Validasyon & Boş Dönüş)"""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             sofor_model = await uow.sofor_repo.add(
@@ -219,7 +215,7 @@ class TestDetailedScenarios:
     @pytest.mark.asyncio
     async def test_foreign_key_integrity(self, db_session):
         """SENARYO 4: Foreign Key Bütünlüğü — PostgreSQL enforces FK constraints natively."""
-        from app.database.unit_of_work import UnitOfWork
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
         async with UnitOfWork() as uow:
             arac_model = await uow.arac_repo.add(

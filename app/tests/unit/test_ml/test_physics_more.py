@@ -36,7 +36,9 @@ pytestmark = pytest.mark.unit
 
 def test_equilibrium_speed_downhill_returns_nominal():
     """grade_pct <= 0 → returns nominal speed unchanged."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     result = p._equilibrium_speed_ms(
@@ -46,7 +48,9 @@ def test_equilibrium_speed_downhill_returns_nominal():
 
 
 def test_equilibrium_speed_flat_returns_nominal():
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     result = p._equilibrium_speed_ms(
@@ -57,7 +61,7 @@ def test_equilibrium_speed_flat_returns_nominal():
 
 def test_equilibrium_speed_fast_path_when_power_sufficient():
     """Light load on gentle grade: engine power sufficient → nominal speed returned."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         VehicleSpecs,
     )
@@ -73,7 +77,7 @@ def test_equilibrium_speed_fast_path_when_power_sufficient():
 
 def test_equilibrium_speed_binary_search_heavy_load():
     """Heavy load on very steep grade triggers binary search → speed < nominal."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         VehicleSpecs,
     )
@@ -108,7 +112,9 @@ def test_equilibrium_speed_binary_search_heavy_load():
     ],
 )
 def test_gravity_recovery_age_brackets(age, expected):
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     result = PhysicsBasedFuelPredictor._get_gravity_recovery(age)
     assert result == expected
@@ -121,7 +127,7 @@ def test_gravity_recovery_age_brackets(age, expected):
 
 def test_build_segments_road_grade_distributions():
     """When analysis has distributions.road_grade → uses joint path."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -152,7 +158,7 @@ def test_build_segments_road_grade_distributions():
 
 def test_build_segments_road_grade_distributions_empty_pct_skipped():
     """Entries with 0 pct in road_grade are skipped."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -183,7 +189,7 @@ def test_build_segments_road_grade_distributions_empty_pct_skipped():
 
 def test_build_segments_road_category_breakdown():
     """analysis present without distributions → per-category flat/up/down."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -205,7 +211,7 @@ def test_build_segments_road_category_breakdown():
 
 def test_build_segments_road_category_adds_tail_segment():
     """If covered_km < distance_km, a flat tail segment is appended."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -232,7 +238,7 @@ def test_build_segments_road_category_adds_tail_segment():
 
 def test_build_segments_no_analysis_flat_only():
     """No route_analysis, flat_distance_km = distance_km → only flat segment."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -251,7 +257,7 @@ def test_build_segments_no_analysis_flat_only():
 
 def test_build_segments_fallback_3part_when_no_segs():
     """When distance_km = 0 and no analysis → hits 3-part fallback with 0-dist."""
-    from app.core.ml.physics_fuel_predictor import (
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
         PhysicsBasedFuelPredictor,
         RouteConditions,
     )
@@ -275,7 +281,9 @@ def test_build_segments_fallback_3part_when_no_segs():
 
 def test_predict_granular_empty_trip():
     """is_empty_trip=True → effective_load=0, lower consumption."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     segs = [(300_000.0, 20.0, 0.0)]
@@ -287,7 +295,9 @@ def test_predict_granular_empty_trip():
 
 def test_predict_granular_skips_zero_dist_segment():
     """Segments with dist_m=0 are skipped without error."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     segs = [(0.0, 15.0, 0.0), (100_000.0, 20.0, 100.0)]
@@ -297,7 +307,9 @@ def test_predict_granular_skips_zero_dist_segment():
 
 def test_predict_granular_gentle_grade_no_equilibrium():
     """Grade <= 0.5% → no equilibrium speed correction."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # Very slight uphill: 0.3% grade (delta_h/dist_m * 100 = 0.3)
@@ -308,7 +320,9 @@ def test_predict_granular_gentle_grade_no_equilibrium():
 
 def test_predict_granular_silent_outlier_log():
     """silent_outlier_log=True suppresses warning for high l/100km."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # Very short distance with heavy climb → very high l/100km
@@ -320,7 +334,9 @@ def test_predict_granular_silent_outlier_log():
 
 def test_predict_granular_without_silent_outlier_log_still_clamps():
     """Without silent_outlier_log, outlier is still clamped to MAX_REALISTIC."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     segs = [(100.0, 5.0, 500.0)]
@@ -335,7 +351,9 @@ def test_predict_granular_without_silent_outlier_log_still_clamps():
 
 def test_predict_granular_climb_insight():
     """Heavy climb ratio triggers climb insight."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # Many steep uphill segments → high e_climb_total
@@ -349,7 +367,9 @@ def test_predict_granular_climb_insight():
 
 def test_predict_granular_drag_insight():
     """High drag ratio triggers drag insight."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # Flat route at high speed → drag dominates
@@ -366,7 +386,9 @@ def test_predict_granular_drag_insight():
 
 def test_predict_granular_descent_insight():
     """Descent > climb * 0.8 triggers gravity recovery insight."""
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # Lots of downhill
@@ -389,7 +411,9 @@ def test_predict_granular_descent_insight():
 
 
 def test_calibrate_with_historical_insufficient_data():
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     result = p.calibrate_with_historical([100, 200], [105, 195])
@@ -397,7 +421,9 @@ def test_calibrate_with_historical_insufficient_data():
 
 
 def test_calibrate_with_historical_sufficient_data():
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     predictions = [100, 110, 120, 130, 140]
@@ -409,7 +435,9 @@ def test_calibrate_with_historical_sufficient_data():
 
 
 def test_calibrate_with_historical_large_error_recommends_update():
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # ~30% consistent overestimate → calibration_factor != 1.0 by >0.1
@@ -420,7 +448,9 @@ def test_calibrate_with_historical_large_error_recommends_update():
 
 
 def test_calibrate_with_historical_within_threshold_says_kalibre():
-    from app.core.ml.physics_fuel_predictor import PhysicsBasedFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        PhysicsBasedFuelPredictor,
+    )
 
     p = PhysicsBasedFuelPredictor()
     # <10% error → "Model kalibre"
@@ -436,7 +466,10 @@ def test_calibrate_with_historical_within_threshold_says_kalibre():
 
 
 def test_hybrid_predict_applies_correction_factor():
-    from app.core.ml.physics_fuel_predictor import HybridFuelPredictor, RouteConditions
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        HybridFuelPredictor,
+        RouteConditions,
+    )
 
     hybrid = HybridFuelPredictor()
     hybrid.correction_factor = 1.2  # Force 20% higher
@@ -452,7 +485,9 @@ def test_hybrid_predict_applies_correction_factor():
 
 def test_hybrid_learn_from_actual_outlier_rejected():
     """Ratio outside 0.5..1.5 is not added to historical_errors."""
-    from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        HybridFuelPredictor,
+    )
 
     hybrid = HybridFuelPredictor()
     initial_len = len(hybrid.historical_errors)
@@ -464,7 +499,9 @@ def test_hybrid_learn_from_actual_outlier_rejected():
 
 def test_hybrid_learn_from_actual_valid_ratio():
     """Valid ratio is added and correction_factor updated after 5 samples."""
-    from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        HybridFuelPredictor,
+    )
 
     hybrid = HybridFuelPredictor()
     # Add 5 valid ratios: actual = 1.1 * prediction
@@ -477,7 +514,9 @@ def test_hybrid_learn_from_actual_valid_ratio():
 
 def test_hybrid_learn_from_actual_prunes_over_20():
     """historical_errors is pruned to last 20 entries when >20."""
-    from app.core.ml.physics_fuel_predictor import HybridFuelPredictor
+    from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+        HybridFuelPredictor,
+    )
 
     hybrid = HybridFuelPredictor()
     # Add 22 valid ratios

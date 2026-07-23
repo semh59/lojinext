@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.api.v1.endpoints.internal import _looks_like_allowed_image
+from v2.modules.admin_platform.api.internal_routes import _looks_like_allowed_image
 
 pytestmark = pytest.mark.unit
 

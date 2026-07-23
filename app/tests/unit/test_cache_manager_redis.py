@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-import app.infrastructure.cache.cache_manager as cm_mod
+import v2.modules.platform_infra.cache.cache_manager as cm_mod
 
 pytestmark = pytest.mark.unit
 
@@ -22,7 +22,7 @@ def mock_redis():
 def cm(mock_redis):
     with patch("redis.from_url", return_value=mock_redis):
         # Reset singleton so we get a fresh instance
-        import app.infrastructure.cache.cache_manager as cm_mod
+        import v2.modules.platform_infra.cache.cache_manager as cm_mod
 
         cm_mod.CacheManager._instance = None
         manager = cm_mod.CacheManager()

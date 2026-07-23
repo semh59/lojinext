@@ -20,33 +20,24 @@ from fastapi import (
 )
 from pydantic import BaseModel, Field
 
-from app.api.deps import (
-    SessionDep,
-    UOWDep,
-    get_current_active_admin,
-    get_current_active_user,
-    require_permissions,
-)
-from app.api.v1.endpoints.internal import (
+from app.config import settings
+from v2.modules.admin_platform.api.internal_routes import (
     _ALLOWED_MIME_TYPES,
     _looks_like_allowed_image,
 )
-from app.api.v1.utils import parse_date_param
-from app.config import settings
-from app.core.exceptions import DomainError
-from app.core.services.idempotency_service import (
+from v2.modules.admin_platform.public import (
     IdempotencyKeyConflictError,
     IdempotencyKeyInProgressError,
     finalize_response,
     release_reservation,
     reserve_or_get_cached,
 )
-from app.database.models import Kullanici
-from app.infrastructure.audit.audit_logger import log_audit_event
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.external_api_probe import get_monitored_client
-from app.infrastructure.resilience.rate_limiter import RateLimiterDependency
-from app.schemas.api_responses import EXCEL_XLSX_RESPONSES, FuelStatsResponse
+from v2.modules.auth_rbac.public import (
+    Kullanici,
+    get_current_active_admin,
+    get_current_active_user,
+    require_permissions,
+)
 from v2.modules.fuel.application.add_yakit import add_yakit
 from v2.modules.fuel.application.delete_yakit import (
     delete_yakit as delete_yakit_usecase,
@@ -63,6 +54,7 @@ from v2.modules.fuel.application.update_yakit import (
 from v2.modules.fuel.schemas import (
     FuelDocumentItem,
     FuelDocumentList,
+    FuelStatsResponse,
     OcrParsedFields,
     OcrPreviewResponse,
     YakitCreate,
@@ -70,6 +62,14 @@ from v2.modules.fuel.schemas import (
     YakitResponse,
     YakitUpdate,
 )
+from v2.modules.platform_infra.api_utils import parse_date_param
+from v2.modules.platform_infra.audit.audit_logger import log_audit_event
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
+from v2.modules.platform_infra.public import SessionDep, UOWDep
+from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterDependency
+from v2.modules.shared_kernel.exceptions import DomainError
+from v2.modules.shared_kernel.schemas.api_responses import EXCEL_XLSX_RESPONSES
 
 logger = get_logger(__name__)
 
@@ -512,7 +512,7 @@ async def upload_yakit_excel(
         }
 
     if async_mode:
-        from app.infrastructure.background.job_manager import (
+        from v2.modules.platform_infra.background.job_manager import (
             AsyncJobStatus,
             get_job_manager,
         )

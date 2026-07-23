@@ -11,23 +11,23 @@ Pipeline:
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, List, Tuple, cast
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.logging.logger import get_logger
 from v2.modules.import_excel.domain.entity_resolvers import resolve_arac_id
 from v2.modules.import_excel.domain.field_validators import validate_numeric
 from v2.modules.import_excel.infrastructure.monitoring_bridge import (
     report_infra_failure,
 )
 from v2.modules.import_excel.infrastructure.parsers import parse_yakit_excel
+from v2.modules.platform_infra.public import get_logger
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 if TYPE_CHECKING:
-    from app.core.entities.models import YakitAlimiCreate
+    from v2.modules.fuel.public import YakitAlimiCreate
 
 logger = get_logger(__name__)
 
 
 async def process_yakit_import(content: bytes) -> Tuple[int, list]:
-    from v2.modules.fuel.schemas import YakitCreate
+    from v2.modules.fuel.public import YakitCreate
 
     try:
         items = await parse_yakit_excel(content)

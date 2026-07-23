@@ -322,15 +322,6 @@ class TestRAGEngineIndexing:
 
         assert result is True
 
-    async def test_index_alert_success(self):
-        engine = _build_rag_engine_with_mocks()
-        with patch.object(
-            engine, "_generate_embedding", new_callable=AsyncMock
-        ) as mock_emb:
-            mock_emb.return_value = np.zeros(384, dtype=np.float32)
-            result = await engine.index_alert(_make_alert())
-
-        assert result is True
 
 
 class TestRAGEngineSearch:
@@ -378,43 +369,6 @@ class TestRAGEngineSearch:
         result = engine.clear_index()
         engine.vector_store.clear.assert_called_once()
         assert result is True
-
-
-class TestRAGEngineBulkIndex:
-    async def test_bulk_index_counts_successes(self):
-        engine = _build_rag_engine_with_mocks()
-        with (
-            patch.object(
-                engine, "index_vehicle", new_callable=AsyncMock, return_value=True
-            ),
-            patch.object(
-                engine, "index_driver", new_callable=AsyncMock, return_value=True
-            ),
-            patch.object(
-                engine, "index_trip", new_callable=AsyncMock, return_value=True
-            ),
-            patch.object(
-                engine, "index_alert", new_callable=AsyncMock, return_value=False
-            ),
-        ):
-            result = await engine.bulk_index(
-                vehicles=[_make_vehicle()],
-                drivers=[_make_driver()],
-                trips=[_make_trip()],
-                alerts=[_make_alert()],
-            )
-
-        assert result["vehicles"] == 1
-        assert result["drivers"] == 1
-        assert result["trips"] == 1
-        assert result["alerts"] == 0
-        assert result["errors"] == 1
-        assert result["total"] == 3
-
-
-# ---------------------------------------------------------------------------
-# Singleton
-# ---------------------------------------------------------------------------
 
 
 class TestRAGEngineSingleton:

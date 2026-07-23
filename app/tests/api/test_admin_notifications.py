@@ -41,7 +41,7 @@ async def test_notifications_post(async_client, admin_auth_headers, db_session):
     # satisfiable. Previously the test posted a hard-coded rol id 1 that did not exist
     # in the freshly-created test schema, so the insert raised an unhandled
     # ForeignKeyViolationError instead of creating the rule.
-    from app.database.models import Rol
+    from v2.modules.auth_rbac.public import Rol
 
     role = Rol(ad="bildirim_alici", yetkiler={"dashboard:read": True})
     db_session.add(role)
@@ -65,7 +65,7 @@ async def test_notifications_my_endpoint(async_client, admin_auth_headers):
 
 @pytest.mark.asyncio
 async def test_update_rule_toggles_aktif(async_client, admin_auth_headers, db_session):
-    from app.database.models import Rol
+    from v2.modules.auth_rbac.public import Rol
 
     role = Rol(ad="bildirim_alici_update", yetkiler={"dashboard:read": True})
     db_session.add(role)
@@ -114,7 +114,7 @@ async def test_update_rule_requires_auth(async_client):
 
 @pytest.mark.asyncio
 async def test_delete_rule_removes_it(async_client, admin_auth_headers, db_session):
-    from app.database.models import Rol
+    from v2.modules.auth_rbac.public import Rol
 
     role = Rol(ad="bildirim_alici_delete", yetkiler={"dashboard:read": True})
     db_session.add(role)

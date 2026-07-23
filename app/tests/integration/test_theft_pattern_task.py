@@ -24,7 +24,7 @@ async def test_pattern_task_runs_with_empty_table(db_session):
 @pytest.mark.asyncio
 async def test_celery_beat_schedule_includes_pattern_scan():
     """theft.daily_pattern_scan beat'te kayıtlı + 03:00 UTC."""
-    from app.infrastructure.background.celery_app import celery_app
+    from v2.modules.platform_infra.background.celery_app import celery_app
 
     assert "theft.daily_pattern_scan" in celery_app.tasks
     sched = celery_app.conf.beat_schedule

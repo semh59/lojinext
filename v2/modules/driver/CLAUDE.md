@@ -40,7 +40,7 @@ get_route_profile_sofor(sofor_id, min_trips_for_best=5, uow=None) -> dict  # 4 g
 record_coaching_delivery(sofor_id, *, channel, insight_category, message, sent_by_user_id) -> int | None
 get_coaching_effectiveness_stats(days: int) -> dict
 
-# Analytics / ranking (domain/driver_stats.py)
+# Analytics / ranking (application/driver_stats.py — 2026-07-18'de domain/'den taşındı: UoW/DB erişimi var, domain saf olmalı)
 get_driver_stats(sofor_id=None, baslangic=None, bitis=None,
                   include_elite_score=True, uow=None) -> list[DriverStats]
 compare_drivers(sofor_ids=None, uow=None) -> dict
@@ -50,7 +50,7 @@ calculate_elite_performance_score(sofor_id, baslangic=None, bitis=None, uow=None
 calculate_performance_score(ort_tuketim, filo_ort, sefer_sayisi) -> float  # 0-100, fleet-comparison (reports modülü kullanır)
 calculate_trend(values: list[float]) -> str
 
-# Evaluation — kapsamlı 0-100 karne (domain/evaluation.py)
+# Evaluation — kapsamlı 0-100 karne (application/evaluation.py — 2026-07-18'de domain/'den taşındı, aynı gerekçe)
 evaluate_driver(sofor_id, pre_metrics=None, pre_filo_ortalama=None,
                  include_routes=True, uow=None) -> SoforDegerlendirme | None
 get_all_evaluations(include_routes=False, uow=None) -> list[SoforDegerlendirme]
@@ -60,7 +60,7 @@ SoforDegerlendirme, GuzergahPerformans, DereceEnum, TrendEnum
 # ML (domain/performance_ml.py — sınıf, bkz. aşağıdaki istisna notu)
 DriverPerformanceML, DriverScorePrediction, get_driver_performance_ml()
 
-# Route-type classification (domain/route_profile.py — zaten free function'dı)
+# Route-type classification (application/route_profile.py — 2026-07-18'de domain/'den taşındı: get_driver_route_coefficient kendi UnitOfWork'ünü açıyor)
 ROUTE_TYPES, classify_route(route_analysis: dict) -> str
 get_driver_route_coefficient(sofor_id, route_type, min_trips=5) -> float
 
@@ -109,8 +109,9 @@ veya mutable eğitilmiş model durumu — CRUD-benzeri bir servis değiller.
    state'i olan bir model wrapper'ı. Free function'a bölünseydi bu state'i
    modül-global değişkenlere taşımak gerekirdi — daha kötü bir tasarım.
 3. **`SoforSeferPDFService`** (`infrastructure/pdf_export.py`) — `PDFReportGenerator`
-   alt sınıfı (reports modülü, henüz taşınmadı — **geçici bağımlılık**),
-   template-method builder pattern (`olustur()` → `_build_pdf()`).
+   alt sınıfı (`v2.modules.reports.public`'ten import — reports dalga 10'da
+   taşındı, 2026-07-18'de import public'e çevrildi), template-method builder
+   pattern (`olustur()` → `_build_pdf()`).
 
 ## Yayınladığı / dinlediği event'ler (events.py)
 
@@ -147,45 +148,46 @@ path'ini kullanacak şekilde refactor).
 
 ## Senkron konuştuğu modüller (gerekçe + tutarlılık gereksinimi)
 
-- **trip (senkron, henüz taşınmadı)**: `get_route_profile_sofor`
-  `uow.sefer_repo.get_driver_trips_with_route_analysis(...)` çağırır;
-  `get_driver_stats`/`calculate_elite_performance_score`
-  `sefer_repo.get_recent_trips_batch(...)`/`sefer_repo.get_all(...)` çağırır.
-  `sefer_repo.py`'deki 6 driver-özel sorgu (`get_by_sofor_id`,
-  `get_with_route_analysis`, `get_driver_trips_with_route_analysis`,
-  `get_driver_trips_by_route_type`, `get_recent_trips_batch`,
-  `_search_driver_ids_by_name`) **BU DALGADA TAŞINMADI** — trip dalga 14'te
-  taşınacak (`infrastructure/driver_trip_queries.py` olarak driver
-  modülüne gelecek, `TASKS/modules/driver.md` §4'te zaten not düşülmüştü).
-  Ayrıca `sefer_write_service.py` (trip) `uow.sofor_repo.get_by_id`/
-  `get_by_ids`/`get_all` çağırır (aktif şoför kontrolü, N+1 önleme).
-- **prediction_ml (senkron, henüz taşınmadı)**: `domain/driver_stats.py`
+- **trip (taşındı, dalga 14)**: eski `sefer_repo.py`'deki 6 driver-özel sorgu
+  (`get_by_sofor_id`, `get_with_route_analysis`,
+  `get_driver_trips_with_route_analysis`, `get_driver_trips_by_route_type`,
+  `get_recent_trips_batch`, `search_driver_ids_by_name`) trip dalga 14'te bu
+  modüle taşındı — artık `infrastructure/driver_trip_queries.py`'de, kendi
+  `uow: Optional[Any] = None` fallback deseniyle (`_resolve_session()`
+  helper'ı, `uow` verilmezse kendi `UnitOfWork()` açar). `route_profile.py`/
+  `get_route_profile.py::get_route_profile_sofor` ve `driver_stats.py::
+  get_driver_stats`/`calculate_elite_performance_score` artık bu dosyadan
+  inline import ederek çağırıyor (`uow.sefer_repo.*` DEĞİL). `v2.modules.
+  trip.public.search_driver_ids_by_name` de `SeferRepository.get_all`'ın
+  genel arama özelliği tarafından ters yönde çağrılıyor (bkz.
+  `v2/modules/trip/CLAUDE.md`). Ayrıca trip'in `bulk_add_sefer`/
+  `sefer_write_service`'in dissolve edilmiş hali `uow.sofor_repo.get_by_id`/
+  `get_by_ids`/`get_all` çağırır (aktif şoför kontrolü, N+1 önleme) —
+  bu yön değişmedi.
+- **prediction_ml (taşındı, dalga 13)**: `application/driver_stats.py`
   `_calc_elite_from_trips`/`calculate_elite_performance_score`
-  `app.services.prediction_service.get_prediction_service()` çağırır
+  `v2.modules.prediction_ml.public.get_prediction_service()` çağırır
   (ML tahmin ile gerçek tüketim farkına dayalı elite skor).
-- **analytics_executive (taşındı, dalga 11)**: `domain/driver_stats.py` ve
-  `domain/evaluation.py` `v2.modules.analytics_executive.infrastructure.
-  executive_read_models.get_analiz_repo()` çağırır (filo ortalaması —
-  `public.py` üzerinden değil, doğrudan `infrastructure` importu, henüz
-  mimari borç). Bulk driver metrikleri (`get_bulk_driver_metrics`/
-  `get_driver_comparison`) dalga 11'de bu modülün kendi
-  `infrastructure/driver_metrics_queries.py`'sine taşındı (driver
-  dalgasının [5] atladığı bir taşımaydı, dalga 11'de düzeltildi).
-- **ai_assistant (senkron, henüz taşınmadı)**: `DriverCoachingEngine`
-  `app.core.ai.groq_service.get_groq_service()` çağırır (LLM inference).
+- **analytics_executive (taşındı, dalga 11)**: `application/driver_stats.py`
+  ve `application/evaluation.py` `v2.modules.analytics_executive.public.
+  get_analiz_repo()` çağırır (2026-07-18: public'e çevrildi, dosyalar da
+  domain/'den application/'a taşındı). Bulk driver metrikleri (`get_bulk_driver_metrics`) dalga 11'de bu
+  modülün kendi `infrastructure/driver_metrics_queries.py`'sine taşındı;
+  yanındaki ölü `get_driver_comparison` 2026-07-18 temizliğinde silindi.
+- **ai_assistant (taşındı, dalga 12)**: `DriverCoachingEngine`
+  `v2.modules.ai_assistant.public.get_groq_service()` çağırır (LLM
+  inference; 2026-07-18: lazy import — public üst-düzeyde import edilirse
+  ai_assistant→driver.public→bu dosya döngüsü oluşur).
 - **anomaly (taşındı, dalga 8)**: `DriverCoachingEngine`
   `v2.modules.anomaly.public.get_anomaly_detector()` kullanır (public.py
   üzerinden — driver→anomaly bağımlılığı artık modül sınırını doğru geçiyor).
 - **reports (taşındı, dalga 10)**: `SoforSeferPDFService`
-  `v2.modules.reports.infrastructure.pdf_export.PDFReportGenerator`'dan
-  miras alır (public.py üzerinden değil — reports'un kendi `pdf_export.py`
-  dosyasından doğrudan, `RouteSimulator`/`LokasyonHydrator` sınıf-istisnası
-  desenindeki gibi). `reports/application/generate_vehicle_report.py`
+  `v2.modules.reports.public.PDFReportGenerator`'dan miras alır
+  (2026-07-18: public'e çevrildi). `reports/application/generate_vehicle_report.py`
   `calculate_performance_score`'u (bu modülün `domain/report_metrics.py`'si)
   driver raporlarında kullanır.
-- **fuel (senkron, tersine — zaten taşınmış)**: `v2/modules/fuel/domain/consumption_prediction.py`
-  `get_driver_stats`'i (eski `SoforAnalizService.get_driver_stats`) çağırıp
-  şoför-bazlı tüketim düzeltme faktörü hesaplar.
+- ~~fuel (tersine)~~: `fuel/domain/consumption_prediction.py` 2026-07-18
+  ölü-kod temizliğinde silindi — bu ters-yön bağımlılık artık yok.
 
 ## Modüle özel iş kuralları & gotcha'lar
 
@@ -243,46 +245,27 @@ path'ini kullanacak şekilde refactor).
   taşır. `SoftTimeLimitExceeded` yakalanıp partial sonuç (`timeout_partial=True`)
   döner.
 
-## 🔴 Bulgu: `driver.calculate_performance_score` Celery task'ı hiç kayıtlı değildi
+## ✅ ÇÖZÜLDÜ (2026-07-18) — orphan `driver.calculate_performance_score` Celery task'ı SİLİNDİ
 
-`infrastructure/driver_tasks.py` (eski `app/workers/tasks/driver_tasks.py`)
-taşımadan ÖNCE de `app/infrastructure/background/celery_app.py`'nin
-`import app.workers.tasks.*` listesinde YOKTU — Celery, task'ları modül
-import edilince decorator'la kaydeder; hiç import edilmeyen bir modülün
-`@celery_app.task(name="driver.calculate_performance_score")`'u worker'a
-asla kaydolmaz. Sonuç: bu task prod'da **hiç çalıştırılamaz** durumdaydı
-(prod kodda hiçbir `.delay()`/`.apply_async()` çağrısı da yok — tamamen
-orphan). Regresyon değil, dalga 5 taşımasıyla keşfedildi; davranış
-değişikliği gerektirdiği için kapsam dışı bırakıldı (import eklemek =
-önceden hiç çalışmayan bir cron'u aktifleştirmek, ayrı bir karar).
+`infrastructure/driver_tasks.py` hiçbir zaman Celery worker'a kayıtlı
+olmamış, hiçbir `.delay()`/`.apply_async()` çağıranı olmayan orphan bir
+task taşıyordu (dalga 5 bulgusu). Kullanıcının "ölü kod yasak" kararıyla
+dosya + testi (`test_workers/test_driver_tasks.py`) silindi
+(celery_app.py'deki not güncellendi).
 
-## 🔴 Bulgu (dedektif denetim, 2026-07-14): `evaluation.py::_add_guzergah_performansi` — 9206e3f'in aynı sınıf ikizi bug'ı, PRE-EXISTING
+## ✅ ÇÖZÜLDÜ (2026-07-18) — `evaluation.py::_add_guzergah_performansi` session'sız singleton bug'ı
 
-`domain/evaluation.py`'deki `_add_guzergah_performansi` (satır ~279-314)
-`get_sofor_repo()`'yu (modül-seviyeli, session'sız singleton) DOĞRUDAN
-çağırıyor — `evaluate_driver`'ın aldığı `uow` parametresini bu alt-fonksiyona
-geçirmiyor. `get_guzergah_performansi` raw-SQL bir metot, session gerektirir
-→ prod'da `Database session not initialized in SoforRepository` ile patlar,
-geniş bir `except Exception: logger.warning(...)` bunu yutar. Sonuç:
-`guzergah_performansi`/`en_iyi_guzergah`/`en_kotu_guzergah` şoför
-değerlendirme karnesinde **hiçbir zaman doldurulmuyor** (sessiz özellik
-kaybı, hata değil).
-
-`9206e3f`'in düzelttiği score-breakdown/route-profile 500 bug'ıyla TAM
-AYNI kök sebep sınıfı — ama bu FARKLI: eski `app/core/entities/
-sofor_degerlendirme.py` (satır 364-371, `git show f2321a1^:...`) içinde
-BİREBİR AYNI kod zaten vardı (`SoforDegerlendirmeService.__init__`'in
-constructor-injected `self.sofor_repo`'sunu KULLANMIYOR, doğrudan
-`get_sofor_repo()` singleton'ı çağırıyordu). Yani bu **taşımadan önce de
-bozuktu** — dalga 5 regresyonu değil, olduğu gibi taşındı. Aynı nedenle
-`domain/driver_stats.py::get_route_performance` de etkilenmiş olabilir
-(hiçbir endpoint çağırmıyor, yalnız `uow` verilerek unit test'te
-kullanılıyor — prod etkisi doğrulanmadı).
-
-Kapsam dışı bırakıldı (davranış değişikliği + ayrı bug-fix kapsamı
-gerektiriyor, dalga sırasını bozmasın); ilerleyen bir oturumda
-`TASKS/bug-connection-pool-leak-under-load.md` örneğindeki gibi bağımsız
-bir bug görevi açılabilir.
+2026-07-14 denetim bulgusuydu: fonksiyon session'sız modül-singleton
+`get_sofor_repo()`'yu çağırıyordu — `get_guzergah_performansi` raw-SQL
+olduğu için her çağrı "Database session not initialized" ile patlayıp
+geniş `except` tarafından yutuluyordu; karnenin `guzergah_performansi`/
+`en_iyi_guzergah`/`en_kotu_guzergah` alanları hiç dolmuyordu (sessiz
+özellik kaybı, taşımadan önce de bozuktu). Düzeltme (9206e3f'teki
+score-breakdown fix'iyle aynı desen): `evaluate_driver` artık `uow`'u
+alt-fonksiyona geçiriyor; `uow.sofor_repo` varsa onu, yoksa kendi
+`UnitOfWork`'ünü kullanıyor. Testler sahte-`uow` desenine güncellendi
+(`test_sofor_degerlendirme_more.py`). Dosya aynı düzeltme turunda
+`application/evaluation.py`'ye taşındı.
 
 ## Test stratejisi (slice/entegrasyon koşumu)
 
@@ -297,3 +280,22 @@ bir bug görevi açılabilir.
   fallback-path testleri.
 - Kök `tests/` klasörü de tarandı (dalga 1/4 gotcha'sı tekrarı) — driver'a
   değinen dosyalar bulunup dönüştürüldü.
+
+## İzin verilen / yasak import'lar (import-linter özeti)
+
+`.importlinter`'ın `public-surface-only-driver` kontratı: `application/`
+diğer modüllerin yalnız `public`/`events`'ini import edebilir
+(2026-07-18'den beri KEPT — `generate_coaching.py`'nin groq_client
+doğrudan importu `ai_assistant.public`'e çevrildi). Diğer modüller bu
+modüle yalnız `v2.modules.driver.public` üzerinden erişir (container.py/
+repositories/__init__.py composition-root istisnası hariç). Trip'e geçici
+bağımlılık (dalga 14 öncesi `sefer_repo`'ya doğrudan erişim) dalga 14 ile
+çözüldü — artık `v2.modules.trip.public` üzerinden geçiyor, ayrı bir
+kontrat ignore'una gerek kalmadı.
+
+## Domain terimleri TR↔EN sözlüğü (FAZ3 girdisi)
+
+`şoför`=driver, `değerlendirme/karne`=evaluation/report card,
+`derece`=grade, `verimlilik`=efficiency, `tutarlılık`=consistency,
+`deneyim`=experience, `eğilim`=trend, `koçluk`=coaching,
+`güzergah tipi`=route type, `hibrit skor`=hybrid score.

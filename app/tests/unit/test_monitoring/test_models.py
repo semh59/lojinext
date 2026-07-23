@@ -1,4 +1,4 @@
-from app.infrastructure.monitoring.models import (
+from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,
     ErrorLayer,
     ErrorSeverity,
@@ -66,7 +66,7 @@ def test_fingerprint_normalizes_string_with_numbers():
 
 
 def test_emit_noops_gracefully_without_event_bus():
-    from app.infrastructure.monitoring import emit
+    from v2.modules.platform_infra.monitoring import emit
 
     ev = ErrorEvent(
         layer=ErrorLayer.SERVICE,

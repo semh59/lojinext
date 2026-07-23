@@ -40,7 +40,7 @@ pytestmark = pytest.mark.integration
 
 
 def _make_yakit_create(**overrides):
-    from app.core.entities.models import YakitAlimiCreate
+    from v2.modules.fuel.domain.entities import YakitAlimiCreate
 
     defaults = {
         "arac_id": 1,

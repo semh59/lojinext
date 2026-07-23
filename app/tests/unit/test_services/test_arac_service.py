@@ -93,11 +93,11 @@ class TestVehicleStats:
     """Test statistics use-case."""
 
     async def test_get_vehicle_stats(self, db_session):
-        from app.core.entities.models import VehicleStats
         from v2.modules.fleet.application.list_vehicles import (
             get_all_vehicles,
             get_vehicle_stats,
         )
+        from v2.modules.fleet.domain.entities import VehicleStats
 
         vehicles = await get_all_vehicles()
         if vehicles:

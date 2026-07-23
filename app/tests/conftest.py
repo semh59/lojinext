@@ -36,17 +36,43 @@ os.environ["OPENROUTE_API_KEY"] = "dummy_test_key"
 os.environ["CORS_ORIGINS"] = "http://localhost"
 os.environ["MAPBOX_API_KEY"] = ""
 
-import app.core.container as container_mod  # noqa: E402
-import app.database.repositories.admin_config_repo as admin_config_mod  # noqa: E402
-import app.database.repositories.sefer_repo as sefer_mod  # noqa: E402
+import v2.modules.admin_platform.infrastructure.repository as admin_config_mod  # noqa: E402
 import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
+
+# 2026-07-23 düzeltmesi (bağımsız dedektif denetiminde bulundu): bu liste
+# 6 modülün (anomaly/auth_rbac/import_excel/notification/prediction_ml/
+# reports) ORM modellerini hiç import etmiyordu + shared_kernel'in
+# outbox.py'si de eksikti — Base.metadata'ya hiç kaydolmuyorlardı. Tam
+# pytest suite'inde fark edilmiyordu (başka test dosyalarının importu bu
+# modülleri zaten önceden tetikliyordu, aynı process içinde Base.metadata
+# paylaşımlı) ama CI'ın izole `pytest app/tests/integration/
+# test_db_schema_integrity.py` koşumunda (başka hiçbir dosya
+# import edilmeden) `entegrasyon_ayarlari.guncelleyen_id -> kullanicilar`
+# gibi FK'ler çözülemeyip `NoReferencedTableError` ile patlıyordu — 42
+# gerçek tablonun yalnız 28'i kayıtlıydı, doğrulandı (`psql \dt` çıktısıyla
+# birebir karşılaştırıldı, artık tam eşleşiyor).
+import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
+import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
 import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
 import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
 import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
+import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
 import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
+import v2.modules.notification.infrastructure.models  # noqa: E402,F401
+import v2.modules.platform_infra.container as container_mod  # noqa: E402
+import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
+import v2.modules.reports.infrastructure.models  # noqa: E402,F401
 import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
-from app.database.models import Base  # noqa: E402
+
+# error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
+# (v2/modules/platform_infra/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
+# yüzden container_mod importu zincirinden ULAŞILMIYOR, Base.metadata'ya
+# kaydolmaları için açık import şart (alembic/env.py'deki aynı zorunluluk).
+import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
+import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
+from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 
 
 def pytest_collection_modifyitems(config, items):
@@ -126,7 +152,7 @@ def mock_redis_for_cache_manager():
     """
     import redis as _redis_sync
 
-    import app.infrastructure.cache.cache_manager as cm_mod
+    import v2.modules.platform_infra.cache.cache_manager as cm_mod
     from app.config import settings
 
     client = _redis_sync.from_url(settings.REDIS_URL)
@@ -152,7 +178,7 @@ def reset_event_bus_singleton():
     The singleton is lazy — resetting _instance forces re-init on next access,
     which picks up the fresh CacheManager that mock_redis_for_cache_manager sets up.
     """
-    from app.infrastructure.events import event_bus as eb_mod
+    from v2.modules.platform_infra.events import event_bus as eb_mod
 
     eb_mod.EventBus._instance = None
     yield
@@ -165,14 +191,14 @@ def bypass_token_blacklist(monkeypatch):
         return False
 
     monkeypatch.setattr(
-        "v2.modules.auth_rbac.domain.token_blacklist.blacklist.is_blacklisted",
+        "v2.modules.auth_rbac.infrastructure.token_blacklist.blacklist.is_blacklisted",
         _not_blacklisted,
     )
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limiter_registry():
-    from app.infrastructure.resilience.rate_limiter import RateLimiterRegistry
+    from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
     yield
@@ -267,7 +293,7 @@ async def async_db_engine(temp_db_url):
             await conn.execute(text("ROLLBACK TO SAVEPOINT _postgis_probe"))
 
         if not postgis_ok:
-            import app.database.models as _db_models
+            import v2.modules.route_simulation.infrastructure.models as _db_models
 
             _db_models._LINESTRING_TYPE = LargeBinary()
             # Patch column types and remove auto-created GiST indexes so
@@ -391,8 +417,8 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
             return getattr(self._session, name)
 
     wrapper = NonClosingSession(session)
-    monkeypatch.setattr("app.database.connection.AsyncSessionLocal", wrapper)
-    monkeypatch.setattr("app.database.unit_of_work.AsyncSessionLocal", wrapper)
+    monkeypatch.setattr("v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper)
+    monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
 
     # Sync support
     sync_url = temp_db_url.replace("+asyncpg", "")
@@ -401,7 +427,7 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
         bind=sync_engine, autocommit=False, autoflush=False
     )
     monkeypatch.setattr(
-        "app.database.connection.SyncSessionLocal", SyncTestingSessionLocal
+        "v2.modules.platform_infra.database.connection.SyncSessionLocal", SyncTestingSessionLocal
     )
 
     # Clear all user tables before each test so the session-scoped schema
@@ -453,7 +479,7 @@ def arac_repo(db_session):
 
 @pytest.fixture
 def sefer_repo(db_session):
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     return SeferRepository(session=db_session)
 
@@ -493,8 +519,8 @@ def dorse_repo(db_session):
 
 @pytest.fixture
 def sefer_service(db_session, mock_event_bus):
-    from app.core.services.sefer_service import SeferService
-    from app.database.repositories.sefer_repo import SeferRepository
+    from v2.modules.trip.application.trip_service import SeferService
+    from v2.modules.trip.infrastructure.repository import SeferRepository
 
     return SeferService(
         repo=SeferRepository(session=db_session), event_bus=mock_event_bus
@@ -629,12 +655,12 @@ async def normal_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.database.models import Kullanici, Rol
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
+    from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     # Ensure role exists
     role_result = await db_session.execute(select(Rol).where(Rol.ad == "izleyici"))
@@ -677,12 +703,12 @@ async def no_trip_read_auth_headers(db_session):
 
     from sqlalchemy import select
 
-    from app.database.models import Kullanici, Rol
-    from app.infrastructure.security.pii_encryption import blind_index
     from v2.modules.auth_rbac.domain.security import (
         create_access_token,
         get_password_hash,
     )
+    from v2.modules.auth_rbac.public import Kullanici, Rol
+    from v2.modules.platform_infra.security.pii_encryption import blind_index
 
     role_name = "kisitli"
     role_result = await db_session.execute(select(Rol).where(Rol.ad == role_name))

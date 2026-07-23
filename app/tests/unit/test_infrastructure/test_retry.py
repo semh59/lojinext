@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from app.infrastructure.resilience.retry import (
+from v2.modules.route_simulation.infrastructure.retry import (
     DEFAULT_RETRYABLE_EXCEPTIONS,
     with_async_retry,
 )
@@ -106,7 +106,9 @@ class TestRetry:
 
     def test_service_exists(self):
         """with_async_retry is importable from the module."""
-        from app.infrastructure.resilience.retry import with_async_retry  # noqa: F401
+        from v2.modules.route_simulation.infrastructure.retry import (
+            with_async_retry,  # noqa: F401
+        )
 
         assert callable(with_async_retry)
 

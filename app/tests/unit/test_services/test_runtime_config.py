@@ -10,10 +10,10 @@ from datetime import date
 import pytest
 from sqlalchemy import text
 
-from app.core.services.runtime_config import get_runtime_float
-from app.infrastructure.cache.redis_cache import get_redis_cache
-from app.services.prediction_service import PredictionService
+from v2.modules.admin_platform.application.runtime_config import get_runtime_float
 from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
+from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
+from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
 pytestmark = pytest.mark.unit
 
@@ -98,8 +98,8 @@ def test_build_vehicle_specs_uses_resolved_rate_not_settings():
         "motor_verimliligi": 0.40,
         "yil": date.today().year - 10,
     }
-    specs_no_penalty, _ = PredictionService._build_vehicle_specs(arac, None, 0.0)
-    specs_penalized, _ = PredictionService._build_vehicle_specs(arac, None, 0.05)
+    specs_no_penalty, _ = build_vehicle_specs(arac, None, 0.0)
+    specs_penalized, _ = build_vehicle_specs(arac, None, 0.05)
 
     assert specs_no_penalty.engine_efficiency == pytest.approx(0.40)
     assert specs_penalized.engine_efficiency < 0.40

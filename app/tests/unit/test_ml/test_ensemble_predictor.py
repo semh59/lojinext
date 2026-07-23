@@ -66,7 +66,7 @@ def _training_batch(n=15, base_tuketim=32.0):
 class TestEnsemblePredictorInit:
     def test_basic_initialization(self):
         """EnsembleFuelPredictor instantiates with default args."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         assert predictor is not None
@@ -75,7 +75,7 @@ class TestEnsemblePredictorInit:
         assert predictor.weights["physics"] == 0.80
 
     def test_default_weights_sum_to_one(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         total = sum(predictor.DEFAULT_WEIGHTS.values())
@@ -83,7 +83,7 @@ class TestEnsemblePredictorInit:
 
     def test_feature_names_match_prepare_output(self):
         """prepare_features must return exactly len(FEATURE_NAMES) columns."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         seferler = [_make_sefer()]
@@ -94,7 +94,10 @@ class TestEnsemblePredictorInit:
 class TestEnsemblePredictorPhysicsFallback:
     def test_predict_before_training_returns_physics_fallback(self):
         """Before fit(), predict() must still return a valid PredictionResult."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor, PredictionResult
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            EnsembleFuelPredictor,
+            PredictionResult,
+        )
 
         predictor = EnsembleFuelPredictor()
         result = predictor.predict(_make_sefer())
@@ -106,14 +109,14 @@ class TestEnsemblePredictorPhysicsFallback:
 
     def test_predict_zero_mesafe_uses_default_100(self):
         """mesafe_km=0 triggers auto-correction to 100 km."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         result = predictor.predict(_make_sefer(mesafe_km=0))
         assert result.tahmin_l_100km > 0
 
     def test_predict_negative_mesafe_uses_default_100(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         result = predictor.predict(_make_sefer(mesafe_km=-50))
@@ -121,7 +124,7 @@ class TestEnsemblePredictorPhysicsFallback:
 
     def test_predict_empty_trip_reduces_consumption(self):
         """Empty trip (no cargo) should produce lower L/100km than loaded."""
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         loaded = predictor.predict(_make_sefer(ton=25, is_empty_trip=False))
@@ -131,7 +134,7 @@ class TestEnsemblePredictorPhysicsFallback:
 
 class TestEnsemblePredictorFit:
     def test_fit_insufficient_data_returns_error(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         result = predictor.fit([_make_sefer()] * 5)  # less than 10
@@ -139,7 +142,10 @@ class TestEnsemblePredictorFit:
         assert "Yetersiz" in result["error"]
 
     def test_fit_success_sets_is_trained(self):
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not installed")
@@ -151,7 +157,10 @@ class TestEnsemblePredictorFit:
         assert predictor.is_trained is True
 
     def test_fit_result_contains_expected_keys(self):
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not installed")
@@ -165,7 +174,10 @@ class TestEnsemblePredictorFit:
 
     def test_fit_all_zero_tuketim_returns_error(self):
         """All zero consumption labels must trigger label-leak guard → success=False."""
-        from app.core.ml.ensemble_core import SKLEARN_AVAILABLE, EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import (
+            SKLEARN_AVAILABLE,
+            EnsembleFuelPredictor,
+        )
 
         if not SKLEARN_AVAILABLE:
             pytest.skip("sklearn not installed")
@@ -178,7 +190,7 @@ class TestEnsemblePredictorFit:
 
 class TestPredictionResult:
     def test_prediction_result_fields(self):
-        from app.core.ml.ensemble_core import PredictionResult
+        from v2.modules.prediction_ml.domain.ensemble_core import PredictionResult
 
         pr = PredictionResult(
             tahmin_l_100km=32.5,
@@ -193,7 +205,7 @@ class TestPredictionResult:
         assert pr.confidence_high > pr.confidence_low
 
     def test_security_error_is_exception(self):
-        from app.core.ml.ensemble_core import SecurityError
+        from v2.modules.prediction_ml.domain.ensemble_core import SecurityError
 
         with pytest.raises(SecurityError):
             raise SecurityError("test")
@@ -201,7 +213,7 @@ class TestPredictionResult:
 
 class TestPrepareFeatures:
     def test_multiple_seferler(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         batch = [_make_sefer() for _ in range(5)]
@@ -210,14 +222,14 @@ class TestPrepareFeatures:
         assert X.shape[1] == len(predictor.FEATURE_NAMES)
 
     def test_features_no_nan(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         X = predictor.prepare_features([_make_sefer(mesafe_km=1)])
         assert not np.any(np.isnan(X))
 
     def test_feature_names_length(self):
-        from app.core.ml.ensemble_core import EnsembleFuelPredictor
+        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
         assert len(predictor.FEATURE_NAMES) > 0

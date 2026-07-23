@@ -151,17 +151,15 @@ async def test_analyze_location_route_success(db_session):
     mock_physics_module.PhysicsBasedFuelPredictor.return_value = mock_physics_predictor
     mock_physics_module.RouteConditions = MagicMock(return_value=MagicMock())
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "v2.modules.route_simulation.application.get_route_details": (
-                mock_route_service_module
-            ),
-            "app.core.ml.physics_fuel_predictor": mock_physics_module,
-        },
-    ):
-        with patch("asyncio.to_thread", new_callable=AsyncMock, return_value=fuel_pred):
-            result = await analyze_location_route(repo, lokasyon.id)
+    with patch.dict("sys.modules", {"v2.modules.prediction_ml.domain.physics_fuel_predictor": mock_physics_module}):
+        with patch(
+            "v2.modules.route_simulation.public.get_route_details",
+            mock_route_service_module.get_route_details,
+        ):
+            with patch(
+                "asyncio.to_thread", new_callable=AsyncMock, return_value=fuel_pred
+            ):
+                result = await analyze_location_route(repo, lokasyon.id)
 
     assert result["distance_km"] == 450.0
 
@@ -208,16 +206,12 @@ async def test_analyze_location_route_success_no_fuel_predictor(db_session):
     )
     mock_physics_module.RouteConditions = MagicMock()
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "v2.modules.route_simulation.application.get_route_details": (
-                mock_route_service_module
-            ),
-            "app.core.ml.physics_fuel_predictor": mock_physics_module,
-        },
-    ):
-        result = await analyze_location_route(repo, lokasyon.id)
+    with patch.dict("sys.modules", {"v2.modules.prediction_ml.domain.physics_fuel_predictor": mock_physics_module}):
+        with patch(
+            "v2.modules.route_simulation.public.get_route_details",
+            mock_route_service_module.get_route_details,
+        ):
+            result = await analyze_location_route(repo, lokasyon.id)
 
     assert result["distance_km"] == 600.0
 
@@ -243,13 +237,9 @@ async def test_analyze_location_route_error_response_raises_value_error(db_sessi
         return_value={"error": "no route found"}
     )
 
-    with patch.dict(
-        "sys.modules",
-        {
-            "v2.modules.route_simulation.application.get_route_details": (
-                mock_route_service_module
-            )
-        },
+    with patch(
+        "v2.modules.route_simulation.public.get_route_details",
+        mock_route_service_module.get_route_details,
     ):
         with pytest.raises(ValueError, match="Analiz hatası"):
             await analyze_location_route(repo, lokasyon.id)

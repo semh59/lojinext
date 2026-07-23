@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.services.health_service import HealthService
-from app.infrastructure.resilience.circuit_breaker import CircuitBreakerRegistry
+from v2.modules.admin_platform.application.health_service import HealthService
+from v2.modules.platform_infra.resilience.circuit_breaker import CircuitBreakerRegistry
 
 
 def test_env_examples_define_dev_cors_origins():
@@ -71,11 +71,11 @@ async def test_health_service_trigger_manual_backup_returns_dynamic_task_id():
     with (
         patch.object(service, "_get_backup_manager", return_value=manager),
         patch(
-            "app.core.services.health_service.asyncio.to_thread",
+            "v2.modules.admin_platform.application.health_service.asyncio.to_thread",
             new=MagicMock(return_value="thread-job"),
         ) as mock_to_thread,
         patch(
-            "app.core.services.health_service.asyncio.create_task"
+            "v2.modules.admin_platform.application.health_service.asyncio.create_task"
         ) as mock_create_task,
     ):
         result = await service.trigger_manual_backup()

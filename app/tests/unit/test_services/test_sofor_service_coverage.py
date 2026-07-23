@@ -176,7 +176,7 @@ class TestDeleteSofor:
         assert result is False
 
     async def test_returns_false_when_already_deleted(self, db_session):
-        from app.database.models import Sofor as SoforModel
+        from v2.modules.driver.public import Sofor as SoforModel
 
         sofor = SoforModel(
             ad_soyad="Already Deleted Driver", aktif=False, is_deleted=True
@@ -679,7 +679,7 @@ class TestGetPerformanceDetails:
         assert result["trend"] == "increasing"
 
     async def test_trend_decreasing_when_many_anomalies(self, db_session):
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         sofor = await seed_sofor(db_session, ad_soyad="Perf Trend Dec Driver")
         today = date.today()
@@ -731,7 +731,7 @@ class TestGetPerformanceDetails:
         assert result["trend"] == "decreasing"
 
     async def test_trend_stable_mid_range(self, db_session):
-        from app.database.models import Anomaly
+        from v2.modules.anomaly.public import Anomaly
 
         arac = await seed_arac(db_session, plaka="34PERF02")
         sofor = await seed_sofor(db_session, ad_soyad="Perf Trend Stable Driver")

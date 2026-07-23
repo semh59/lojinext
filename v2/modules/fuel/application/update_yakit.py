@@ -1,12 +1,15 @@
 """Use-case: update a fuel record (atomic)."""
 
-from app.core.entities.models import YakitUpdate
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.audit import audit_log
-from app.infrastructure.events.event_bus import EventType, publishes
-from app.infrastructure.events.outbox_service import save_outbox_event
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.service_probe import monitor_errors
+from v2.modules.fuel.schemas import YakitUpdate
+from v2.modules.platform_infra.public import (
+    EventType,
+    audit_log,
+    get_logger,
+    monitor_errors,
+    publishes,
+)
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

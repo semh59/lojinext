@@ -36,7 +36,7 @@ pytestmark = pytest.mark.unit
 
 class TestPIIFilter:
     def _make_filter(self):
-        from app.infrastructure.logging.logger import PIIFilter
+        from v2.modules.platform_infra.logging.logger import PIIFilter
 
         return PIIFilter()
 
@@ -111,7 +111,7 @@ class TestPIIFilter:
         f = self._make_filter()
         record = self._make_record("line1\nline2\r\n")
         with patch(
-            "app.infrastructure.security.pii_scrubber.scrub_pii",
+            "v2.modules.platform_infra.security.pii_scrubber.scrub_pii",
             side_effect=lambda x: x,
         ):
             f.filter(record)
@@ -123,7 +123,7 @@ class TestPIIFilter:
         record = self._make_record("some msg")
 
         with patch(
-            "app.infrastructure.security.pii_scrubber.scrub_pii",
+            "v2.modules.platform_infra.security.pii_scrubber.scrub_pii",
             side_effect=RuntimeError("scrub failed"),
         ):
             result = f.filter(record)
@@ -171,7 +171,7 @@ class TestPIIFilter:
 
 class TestJSONFormatter:
     def _make_formatter(self):
-        from app.infrastructure.logging.logger import JSONFormatter
+        from v2.modules.platform_infra.logging.logger import JSONFormatter
 
         return JSONFormatter(datefmt="%Y-%m-%dT%H:%M:%S")
 
@@ -243,7 +243,7 @@ class TestJSONFormatter:
         record = self._make_record("msg")
 
         with patch(
-            "app.infrastructure.context.request_context.get_correlation_id",
+            "v2.modules.platform_infra.context.request_context.get_correlation_id",
             return_value="test-correlation-id-123",
         ):
             output = formatter.format(record)
@@ -257,7 +257,7 @@ class TestJSONFormatter:
         record = self._make_record("msg")
 
         with patch(
-            "app.infrastructure.context.request_context.get_correlation_id",
+            "v2.modules.platform_infra.context.request_context.get_correlation_id",
             side_effect=Exception("context missing"),
         ):
             output = formatter.format(record)
@@ -273,7 +273,7 @@ class TestJSONFormatter:
         record = self._make_record("msg")
 
         with patch(
-            "app.infrastructure.context.request_context.get_correlation_id",
+            "v2.modules.platform_infra.context.request_context.get_correlation_id",
             return_value="",
         ):
             output = formatter.format(record)
@@ -312,18 +312,18 @@ class TestJSONFormatter:
 class TestSetupLogging:
     def test_setup_logging_returns_logger(self, tmp_path):
         """setup_logging() returns a Logger instance."""
-        from app.infrastructure.logging.logger import setup_logging
+        from v2.modules.platform_infra.logging.logger import setup_logging
 
         # Patch LOG_DIR to use tmp_path to avoid writing to real log dir
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
             result = setup_logging("test_app", level=logging.DEBUG)
 
         assert isinstance(result, logging.Logger)
 
     def test_setup_logging_adds_handlers(self, tmp_path):
         """setup_logging() attaches file + console handlers to root logger."""
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import setup_logging
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import setup_logging
 
             setup_logging("test_app2", level=logging.INFO)
 
@@ -338,8 +338,8 @@ class TestSetupLogging:
         dummy = logging.StreamHandler()
         root.addHandler(dummy)
 
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import setup_logging
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import setup_logging
 
             setup_logging("test_app3", level=logging.INFO)
 
@@ -348,10 +348,10 @@ class TestSetupLogging:
 
     def test_setup_logging_pii_filter_applied(self, tmp_path):
         """Handlers produced by setup_logging have PIIFilter attached."""
-        from app.infrastructure.logging.logger import PIIFilter
+        from v2.modules.platform_infra.logging.logger import PIIFilter
 
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import setup_logging
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import setup_logging
 
             setup_logging("test_app4")
 
@@ -370,8 +370,8 @@ class TestSetupLogging:
 class TestAuditLogger:
     def test_audit_logger_init(self, tmp_path):
         """AuditLogger.__init__ creates logger with handler."""
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import AuditLogger
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import AuditLogger
 
             al = AuditLogger()
 
@@ -380,8 +380,8 @@ class TestAuditLogger:
 
     def test_audit_logger_log_success(self, tmp_path):
         """AuditLogger.log() writes a record without error."""
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import AuditLogger
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import AuditLogger
 
             al = AuditLogger()
 
@@ -414,8 +414,8 @@ class TestAuditLogger:
 
     def test_audit_logger_log_failure_status(self, tmp_path):
         """AuditLogger.log() with status=FAILURE works."""
-        with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
-            from app.infrastructure.logging.logger import AuditLogger
+        with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
+            from v2.modules.platform_infra.logging.logger import AuditLogger
 
             al = AuditLogger()
 
@@ -450,13 +450,13 @@ class TestAuditLogger:
 class TestGetAuditLogger:
     def test_singleton_same_instance(self, tmp_path):
         """get_audit_logger() returns the same instance on every call."""
-        import app.infrastructure.logging.logger as mod
+        import v2.modules.platform_infra.logging.logger as mod
 
         # Reset singleton
         original = mod._audit_logger
         mod._audit_logger = None
         try:
-            with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
+            with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
                 a = mod.get_audit_logger()
                 b = mod.get_audit_logger()
             assert a is b
@@ -465,13 +465,13 @@ class TestGetAuditLogger:
 
     def test_returns_audit_logger_type(self, tmp_path):
         """get_audit_logger() returns an AuditLogger instance."""
-        import app.infrastructure.logging.logger as mod
-        from app.infrastructure.logging.logger import AuditLogger
+        import v2.modules.platform_infra.logging.logger as mod
+        from v2.modules.platform_infra.logging.logger import AuditLogger
 
         original = mod._audit_logger
         mod._audit_logger = None
         try:
-            with patch("app.infrastructure.logging.logger.LOG_DIR", tmp_path):
+            with patch("v2.modules.platform_infra.logging.logger.LOG_DIR", tmp_path):
                 result = mod.get_audit_logger()
             assert isinstance(result, AuditLogger)
         finally:
@@ -485,21 +485,21 @@ class TestGetAuditLogger:
 
 class TestGetLogger:
     def test_returns_logger_instance(self):
-        from app.infrastructure.logging.logger import get_logger
+        from v2.modules.platform_infra.logging.logger import get_logger
 
         log = get_logger("test.module.name")
         assert isinstance(log, logging.Logger)
         assert log.name == "test.module.name"
 
     def test_same_name_same_instance(self):
-        from app.infrastructure.logging.logger import get_logger
+        from v2.modules.platform_infra.logging.logger import get_logger
 
         a = get_logger("same.name")
         b = get_logger("same.name")
         assert a is b
 
     def test_different_names_different_instances(self):
-        from app.infrastructure.logging.logger import get_logger
+        from v2.modules.platform_infra.logging.logger import get_logger
 
         a = get_logger("module.a")
         b = get_logger("module.b")

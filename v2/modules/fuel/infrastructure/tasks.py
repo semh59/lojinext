@@ -30,8 +30,8 @@ from typing import NamedTuple
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.background.celery_app import celery_app
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.platform_infra.background.celery_app import celery_app
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -90,9 +90,9 @@ async def compute_coverage(db: AsyncSession, days: int) -> CoverageResult:
 
 
 async def _run_fuel_coverage_check() -> None:
-    from app.core.services.runtime_config import get_runtime_float
-    from app.database.unit_of_work import UnitOfWork
-    from v2.modules.notification.infrastructure.telegram_client import notify_error
+    from v2.modules.admin_platform.public import get_runtime_float
+    from v2.modules.notification.public import notify_error
+    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
     async with UnitOfWork() as uow:
         result = await compute_coverage(uow.session, _COVERAGE_WINDOW_DAYS)

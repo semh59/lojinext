@@ -13,7 +13,7 @@ Beklenen: Valid satırlar kaydedilmeli, invalid sayısı rapor edilmeli,
 import pytest
 from sqlalchemy import select
 
-from app.database.models import Sefer
+from v2.modules.trip.public import SeferORM as Sefer
 
 # OBSOLETE (test debt): targets the removed /trips/import path with a CSV body.
 # The live endpoint /trips/upload is Excel-only. Needs a rewrite with an xlsx

@@ -471,7 +471,7 @@ class TestSendCoaching:
         self, monkeypatch, async_client, admin_auth_headers, db_session
     ):
         from app.config import settings
-        from app.database.models import Sofor
+        from v2.modules.driver.public import Sofor
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")

@@ -85,7 +85,7 @@ def _make_stats_dict(**kwargs):
 
 def _make_sefer_response_obj():
     """Return a validated SeferResponse Pydantic object."""
-    from app.schemas.sefer import SeferResponse
+    from v2.modules.trip.schemas import SeferResponse
 
     return SeferResponse.model_validate(_make_sefer_response_dict())
 
@@ -97,34 +97,34 @@ def _make_sefer_response_obj():
 
 @contextmanager
 def _override_sefer_service(mock_svc):
-    """Override get_sefer_service FastAPI dependency with a mock."""
-    from app.api.deps import get_sefer_service
+    """Override get_sefer_service_for_request FastAPI dependency with a mock."""
     from app.main import app
+    from v2.modules.trip.public import get_sefer_service_for_request
 
     async def _fake():
         return mock_svc
 
-    app.dependency_overrides[get_sefer_service] = _fake
+    app.dependency_overrides[get_sefer_service_for_request] = _fake
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_sefer_service, None)
+        app.dependency_overrides.pop(get_sefer_service_for_request, None)
 
 
 @contextmanager
 def _override_job_manager(mock_jm):
-    """Override get_background_job_manager dependency."""
-    from app.api.deps import get_background_job_manager
+    """Override get_job_manager dependency."""
     from app.main import app
+    from v2.modules.platform_infra.public import get_job_manager
 
     async def _fake_jm():
         return mock_jm
 
-    app.dependency_overrides[get_background_job_manager] = _fake_jm
+    app.dependency_overrides[get_job_manager] = _fake_jm
     try:
         yield
     finally:
-        app.dependency_overrides.pop(get_background_job_manager, None)
+        app.dependency_overrides.pop(get_job_manager, None)
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ def _override_job_manager(mock_jm):
 @pytest.mark.asyncio
 async def test_read_seferler_success(async_client, admin_auth_headers):
     """GET / with valid auth → 200 list response (lines 73-87)."""
-    from app.schemas.sefer import SeferListResponse
+    from v2.modules.trip.schemas import SeferListResponse
 
     mock_svc = AsyncMock()
     mock_svc.get_all_paged = AsyncMock(
@@ -232,7 +232,7 @@ async def test_export_seferler_success(async_client, admin_auth_headers):
     with (
         _override_sefer_service(mock_svc),
         patch(
-            "app.api.v1.endpoints.trips.export_data",
+            "v2.modules.import_excel.api.trip_export_routes.export_data",
             new_callable=AsyncMock,
             return_value=fake_excel,
         ),
@@ -558,7 +558,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
     """GET /excel/template → 200 with file content (lines 429-439)."""
     fake_bytes = b"PK\x03\x04fake-template"
     with patch(
-        "app.api.v1.endpoints.trips.generate_template",
+        "v2.modules.import_excel.api.trip_export_routes.generate_template",
         new_callable=AsyncMock,
         return_value=fake_bytes,
     ):
@@ -573,7 +573,7 @@ async def test_get_excel_template_success(async_client, admin_auth_headers):
 async def test_get_excel_template_error(async_client, admin_auth_headers):
     """GET /excel/template ExcelService raises → 500 (lines 444-446)."""
     with patch(
-        "app.api.v1.endpoints.trips.generate_template",
+        "v2.modules.import_excel.api.trip_export_routes.generate_template",
         new_callable=AsyncMock,
         side_effect=RuntimeError("template generation failed"),
     ):
@@ -1102,7 +1102,7 @@ async def test_sefer_onayla_success(async_client, admin_auth_headers):
     mock_svc.set_onay_durumu = AsyncMock(return_value=sefer_obj)
     with (
         _override_sefer_service(mock_svc),
-        patch("app.api.v1.endpoints.trips.trip_approval_total") as mock_metric,
+        patch("v2.modules.trip.api.trip_approval_routes.trip_approval_total") as mock_metric,
     ):
         mock_metric.labels.return_value.inc = MagicMock()
         resp = await async_client.post(
@@ -1153,7 +1153,7 @@ async def test_sefer_reddet_success(async_client, admin_auth_headers):
     mock_svc.set_onay_durumu = AsyncMock(return_value=sefer_obj)
     with (
         _override_sefer_service(mock_svc),
-        patch("app.api.v1.endpoints.trips.trip_approval_total") as mock_metric,
+        patch("v2.modules.trip.api.trip_approval_routes.trip_approval_total") as mock_metric,
     ):
         mock_metric.labels.return_value.inc = MagicMock()
         resp = await async_client.post(
@@ -1247,7 +1247,7 @@ async def test_plan_wizard_success(async_client, admin_auth_headers):
                 return_value=mock_engine,
             ),
             patch(
-                "app.infrastructure.audit.audit_logger.log_audit_event",
+                "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
                 new_callable=AsyncMock,
             ),
         ):
@@ -1278,7 +1278,7 @@ async def test_plan_wizard_engine_error(async_client, admin_auth_headers):
 
     try:
         with patch(
-            "v2.modules.ai_assistant.public.TripPlannerEngine",
+            "v2.modules.ai_assistant.api.plan_wizard_routes.TripPlannerEngine",
             return_value=mock_engine,
         ):
             resp = await async_client.post(

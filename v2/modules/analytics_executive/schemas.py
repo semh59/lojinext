@@ -233,3 +233,40 @@ class BusFactorResponse(BaseModel):
         description="v1'de boş; v2'de güzergah bottleneck'i eklenecek",
     )
     risk_level: RiskLevelBus
+
+
+# ─── Yakıt performans analitiği response şemaları (dalga 16 — eski app/schemas/api_responses.py'den taşındı) ───────
+
+
+class FuelPerformanceKpis(BaseModel):
+    mae: float
+    rmse: float
+    total_compared: int
+    high_deviation_ratio: float
+
+
+class FuelPerformanceTrendPoint(BaseModel):
+    week: str
+    avg_consumption: float
+    count: int
+
+
+class FuelPerformanceDistributionBucket(BaseModel):
+    range: str
+    count: int
+
+
+class FuelPerformanceOutlier(BaseModel):
+    sefer_id: int
+    tarih: Optional[str] = None
+    actual: float
+    predicted: float
+    deviation_pct: float
+
+
+class FuelPerformanceAnalyticsResponse(BaseModel):
+    kpis: FuelPerformanceKpis
+    trend: List[FuelPerformanceTrendPoint]
+    distribution: List[FuelPerformanceDistributionBucket]
+    outliers: List[FuelPerformanceOutlier]
+    low_data: bool

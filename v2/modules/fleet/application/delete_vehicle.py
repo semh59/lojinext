@@ -1,11 +1,14 @@
 """Use-case: delete a vehicle (Smart Delete: Active->Passive, Passive->Hard Delete)."""
 
-from app.database.unit_of_work import UnitOfWork
-from app.infrastructure.events.event_bus import EventType, publishes
-from app.infrastructure.events.outbox_service import save_outbox_event
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.service_probe import monitor_errors
-from v2.modules.fleet.domain.vehicle_event_log import log_vehicle_event
+from v2.modules.fleet.application.vehicle_event_log import log_vehicle_event
+from v2.modules.platform_infra.public import (
+    EventType,
+    get_logger,
+    monitor_errors,
+    publishes,
+)
+from v2.modules.shared_kernel.infrastructure.outbox import save_outbox_event
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 

@@ -1,12 +1,15 @@
+from contextlib import ExitStack, contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from v2.modules.admin_platform.application import konfig_service
+
 pytestmark = pytest.mark.unit
 
 
-def _make_service():
-    """Construct KonfigService with all external deps mocked."""
+def _make_mocks():
+    """Build mocked repo/cache/pubsub for konfig_service's free functions."""
     mock_repo = AsyncMock()
     mock_repo.session.commit = AsyncMock()
     mock_cache = MagicMock()
@@ -15,110 +18,103 @@ def _make_service():
     mock_cache.delete = MagicMock()
     mock_pubsub = AsyncMock()
     mock_pubsub.publish = AsyncMock()
+    return mock_repo, mock_cache, mock_pubsub
 
-    with (
-        patch(
-            "app.core.services.konfig_service.get_admin_config_repo",
-            return_value=mock_repo,
-        ),
-        patch(
-            "app.core.services.konfig_service.get_redis_cache", return_value=mock_cache
-        ),
-        patch(
-            "app.core.services.konfig_service.get_pubsub_manager",
-            return_value=mock_pubsub,
-        ),
-    ):
-        from app.core.services.konfig_service import KonfigService
 
-        svc = KonfigService()
-    svc.repo = mock_repo
-    svc._mock_cache = mock_cache
-    svc._mock_pubsub = mock_pubsub
-    return svc
+@contextmanager
+def _patched(mock_repo=None, mock_cache=None, mock_pubsub=None):
+    patches = []
+    if mock_repo is not None:
+        patches.append(
+            patch(
+                "v2.modules.admin_platform.application.konfig_service.get_admin_config_repo",
+                return_value=mock_repo,
+            )
+        )
+    if mock_cache is not None:
+        patches.append(
+            patch(
+                "v2.modules.admin_platform.application.konfig_service.get_redis_cache",
+                return_value=mock_cache,
+            )
+        )
+    if mock_pubsub is not None:
+        patches.append(
+            patch(
+                "v2.modules.admin_platform.application.konfig_service.get_pubsub_manager",
+                return_value=mock_pubsub,
+            )
+        )
+    with ExitStack() as stack:
+        for p in patches:
+            stack.enter_context(p)
+        yield
 
 
 class TestKonfigService:
-    def test_service_exists(self):
-        from app.core.services.konfig_service import KonfigService
-
-        assert KonfigService is not None
-
-    async def test_basic_initialization(self):
-        svc = _make_service()
-        from app.core.services.konfig_service import KonfigService
-
-        assert isinstance(svc, KonfigService)
+    def test_module_exists(self):
+        assert konfig_service is not None
 
     async def test_get_all_by_group_hits_repo_on_cache_miss(self):
-        svc = _make_service()
-        svc._mock_cache.get.return_value = None
-        svc.repo.get_by_group = AsyncMock(
+        mock_repo, mock_cache, _ = _make_mocks()
+        mock_cache.get.return_value = None
+        mock_repo.get_by_group = AsyncMock(
             return_value=[{"anahtar": "k1", "deger": "v1"}]
         )
 
-        with (
-            patch(
-                "app.core.services.konfig_service.get_redis_cache",
-                return_value=svc._mock_cache,
-            ),
-        ):
-            result = await svc.get_all_by_group("physics")
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache):
+            result = await konfig_service.get_all_by_group(None, "physics")
 
-        svc.repo.get_by_group.assert_awaited_once_with("physics")
+        mock_repo.get_by_group.assert_awaited_once_with("physics")
         assert result == [{"anahtar": "k1", "deger": "v1"}]
 
     async def test_get_all_by_group_cache_hit(self):
-        svc = _make_service()
+        mock_repo, mock_cache, _ = _make_mocks()
         cached = [{"anahtar": "k2", "deger": "v2"}]
-        svc._mock_cache.get.return_value = cached
-        svc.repo.get_by_group = AsyncMock()
+        mock_cache.get.return_value = cached
+        mock_repo.get_by_group = AsyncMock()
 
-        with patch(
-            "app.core.services.konfig_service.get_redis_cache",
-            return_value=svc._mock_cache,
-        ):
-            result = await svc.get_all_by_group("physics")
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache):
+            result = await konfig_service.get_all_by_group(None, "physics")
 
-        svc.repo.get_by_group.assert_not_awaited()
+        mock_repo.get_by_group.assert_not_awaited()
         assert result == cached
 
     async def test_get_value_returns_default_when_none(self):
-        svc = _make_service()
-        svc._mock_cache.get.return_value = None
-        svc.repo.get_value = AsyncMock(return_value=None)
+        mock_repo, mock_cache, _ = _make_mocks()
+        mock_cache.get.return_value = None
+        mock_repo.get_value = AsyncMock(return_value=None)
 
-        with patch(
-            "app.core.services.konfig_service.get_redis_cache",
-            return_value=svc._mock_cache,
-        ):
-            result = await svc.get_value("MISSING_KEY", default="fallback")
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache):
+            result = await konfig_service.get_config_value(
+                None, "MISSING_KEY", default="fallback"
+            )
 
         assert result == "fallback"
 
     async def test_get_value_returns_repo_value(self):
-        svc = _make_service()
-        svc._mock_cache.get.return_value = None
-        svc.repo.get_value = AsyncMock(return_value="42")
+        mock_repo, mock_cache, _ = _make_mocks()
+        mock_cache.get.return_value = None
+        mock_repo.get_value = AsyncMock(return_value="42")
 
-        with patch(
-            "app.core.services.konfig_service.get_redis_cache",
-            return_value=svc._mock_cache,
-        ):
-            result = await svc.get_value("SOME_KEY", default=None)
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache):
+            result = await konfig_service.get_config_value(
+                None, "SOME_KEY", default=None
+            )
 
         assert result == "42"
 
     async def test_update_config_raises_for_unknown_key(self):
-        svc = _make_service()
-        svc.repo.get_config = AsyncMock(return_value=None)
+        mock_repo, _, _ = _make_mocks()
+        mock_repo.get_config = AsyncMock(return_value=None)
 
-        with pytest.raises(ValueError, match="Konfigrasyon bulunamadı"):
-            await svc.update_config("UNKNOWN_KEY", "value")
+        with _patched(mock_repo=mock_repo):
+            with pytest.raises(ValueError, match="Konfigrasyon bulunamadı"):
+                await konfig_service.update_config(None, "UNKNOWN_KEY", "value")
 
     async def test_update_config_validates_number_type(self):
-        svc = _make_service()
-        svc.repo.get_config = AsyncMock(
+        mock_repo, mock_cache, mock_pubsub = _make_mocks()
+        mock_repo.get_config = AsyncMock(
             return_value={
                 "tip": "number",
                 "min_deger": None,
@@ -126,26 +122,17 @@ class TestKonfigService:
                 "grup": "g",
             }
         )
-        svc.repo.update_value = AsyncMock(
+        mock_repo.update_value = AsyncMock(
             return_value={"yeniden_baslat": False, "grup": "g"}
         )
 
-        with (
-            patch(
-                "app.core.services.konfig_service.get_redis_cache",
-                return_value=svc._mock_cache,
-            ),
-            patch(
-                "app.core.services.konfig_service.get_pubsub_manager",
-                return_value=svc._mock_pubsub,
-            ),
-        ):
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache, mock_pubsub=mock_pubsub):
             with pytest.raises(ValueError):
-                await svc.update_config("NUM_KEY", "not_a_number")
+                await konfig_service.update_config(None, "NUM_KEY", "not_a_number")
 
     async def test_update_config_number_min_validation(self):
-        svc = _make_service()
-        svc.repo.get_config = AsyncMock(
+        mock_repo, _, _ = _make_mocks()
+        mock_repo.get_config = AsyncMock(
             return_value={
                 "tip": "number",
                 "min_deger": 10.0,
@@ -154,12 +141,13 @@ class TestKonfigService:
             }
         )
 
-        with pytest.raises(ValueError, match="minimum"):
-            await svc.update_config("NUM_KEY", 5)
+        with _patched(mock_repo=mock_repo):
+            with pytest.raises(ValueError, match="minimum"):
+                await konfig_service.update_config(None, "NUM_KEY", 5)
 
     async def test_update_config_success_invalidates_cache(self):
-        svc = _make_service()
-        svc.repo.get_config = AsyncMock(
+        mock_repo, mock_cache, mock_pubsub = _make_mocks()
+        mock_repo.get_config = AsyncMock(
             return_value={
                 "tip": "string",
                 "min_deger": None,
@@ -167,37 +155,33 @@ class TestKonfigService:
                 "grup": "general",
             }
         )
-        svc.repo.update_value = AsyncMock(
+        mock_repo.update_value = AsyncMock(
             return_value={"yeniden_baslat": False, "grup": "general"}
         )
 
-        with (
-            patch(
-                "app.core.services.konfig_service.get_redis_cache",
-                return_value=svc._mock_cache,
-            ),
-            patch(
-                "app.core.services.konfig_service.get_pubsub_manager",
-                return_value=svc._mock_pubsub,
-            ),
-        ):
-            await svc.update_config("STR_KEY", "new_val", user_id=1)
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache, mock_pubsub=mock_pubsub):
+            await konfig_service.update_config(
+                None, "STR_KEY", "new_val", user_id=1
+            )
 
-        assert svc._mock_cache.delete.call_count >= 1
+        assert mock_cache.delete.call_count >= 1
 
     async def test_get_history_delegates_to_repo(self):
-        svc = _make_service()
+        mock_repo, _, _ = _make_mocks()
         history = [{"changed_at": "2024-01-01", "old": "a", "new": "b"}]
-        svc.repo.get_history = AsyncMock(return_value=history)
+        mock_repo.get_history = AsyncMock(return_value=history)
 
-        result = await svc.get_history("SOME_KEY", limit=5)
+        with _patched(mock_repo=mock_repo):
+            result = await konfig_service.get_config_history(
+                None, "SOME_KEY", limit=5
+            )
 
-        svc.repo.get_history.assert_awaited_once_with("SOME_KEY", 5)
+        mock_repo.get_history.assert_awaited_once_with("SOME_KEY", 5)
         assert result == history
 
     async def test_edge_case_boolean_coercion_true(self):
-        svc = _make_service()
-        svc.repo.get_config = AsyncMock(
+        mock_repo, mock_cache, mock_pubsub = _make_mocks()
+        mock_repo.get_config = AsyncMock(
             return_value={
                 "tip": "boolean",
                 "min_deger": None,
@@ -205,29 +189,23 @@ class TestKonfigService:
                 "grup": "g",
             }
         )
-        svc.repo.update_value = AsyncMock(
+        mock_repo.update_value = AsyncMock(
             return_value={"yeniden_baslat": False, "grup": "g"}
         )
 
-        with (
-            patch(
-                "app.core.services.konfig_service.get_redis_cache",
-                return_value=svc._mock_cache,
-            ),
-            patch(
-                "app.core.services.konfig_service.get_pubsub_manager",
-                return_value=svc._mock_pubsub,
-            ),
-        ):
-            await svc.update_config("BOOL_KEY", "true", user_id=1)
+        with _patched(mock_repo=mock_repo, mock_cache=mock_cache, mock_pubsub=mock_pubsub):
+            await konfig_service.update_config(
+                None, "BOOL_KEY", "true", user_id=1
+            )
 
-        call_kwargs = svc.repo.update_value.call_args.kwargs
+        call_kwargs = mock_repo.update_value.call_args.kwargs
         assert call_kwargs["new_value"] is True
 
     async def test_return_type_validation(self):
-        svc = _make_service()
+        mock_repo, _, _ = _make_mocks()
         history = []
-        svc.repo.get_history = AsyncMock(return_value=history)
+        mock_repo.get_history = AsyncMock(return_value=history)
 
-        result = await svc.get_history("KEY")
+        with _patched(mock_repo=mock_repo):
+            result = await konfig_service.get_config_history(None, "KEY")
         assert isinstance(result, list)

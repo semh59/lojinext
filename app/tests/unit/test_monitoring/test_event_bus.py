@@ -5,8 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.monitoring.event_bus import ErrorEventBus
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.event_bus import ErrorEventBus
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 
 def make_event(severity=ErrorSeverity.WARNING, category="test"):
@@ -107,7 +111,7 @@ async def test_flush_batch_half_open_resets_circuit_on_success():
         patch.object(bus, "_write_redis", new_callable=AsyncMock),
         patch.object(bus, "_write_postgres", new_callable=AsyncMock),
         patch(
-            "app.infrastructure.monitoring.alarm_router.get_alarm_router",
+            "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router",
             side_effect=ImportError,
         ),
     ):
@@ -129,7 +133,7 @@ async def test_flush_batch_pg_failure_opens_circuit():
             patch.object(bus, "_write_redis", new_callable=AsyncMock),
             patch.object(bus, "_write_postgres", side_effect=Exception("DB down")),
             patch(
-                "app.infrastructure.monitoring.alarm_router.AlarmRouter",
+                "v2.modules.platform_infra.monitoring.alarm_router.AlarmRouter",
                 return_value=mock_router,
             ),
         ):
@@ -173,7 +177,7 @@ async def test_flush_batch_routing_exception_does_not_skip_postgres():
         patch.object(bus, "_write_redis", new_callable=AsyncMock),
         patch.object(bus, "_write_postgres", new_callable=AsyncMock) as mock_pg,
         patch(
-            "app.infrastructure.monitoring.alarm_router.get_alarm_router",
+            "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router",
             return_value=mock_router,
         ),
     ):

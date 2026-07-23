@@ -10,13 +10,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.infrastructure.monitoring.event_bus import (
+from v2.modules.platform_infra.monitoring.event_bus import (
     ErrorEventBus,
     _emit_sync_fallback,
     get_event_bus,
     reset_event_bus,
 )
-from app.infrastructure.monitoring.models import ErrorEvent, ErrorLayer, ErrorSeverity
+from v2.modules.platform_infra.monitoring.models import (
+    ErrorEvent,
+    ErrorLayer,
+    ErrorSeverity,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -77,7 +81,7 @@ def test_emit_sync_fallback_pushes_to_redis():
     ev = make_event()
     mock_redis = MagicMock()
     with patch(
-        "app.infrastructure.monitoring.event_bus._get_sync_redis",
+        "v2.modules.platform_infra.monitoring.event_bus._get_sync_redis",
         return_value=mock_redis,
     ):
         _emit_sync_fallback(ev)
@@ -92,7 +96,7 @@ def test_emit_sync_fallback_silences_redis_exception():
     """Redis failure in sync fallback does not propagate."""
     ev = make_event()
     with patch(
-        "app.infrastructure.monitoring.event_bus._get_sync_redis",
+        "v2.modules.platform_infra.monitoring.event_bus._get_sync_redis",
         side_effect=Exception("redis down"),
     ):
         _emit_sync_fallback(ev)  # must not raise
@@ -114,7 +118,7 @@ def test_emit_sync_outside_loop_calls_sync_fallback():
         pass
 
     with patch(
-        "app.infrastructure.monitoring.event_bus._emit_sync_fallback"
+        "v2.modules.platform_infra.monitoring.event_bus._emit_sync_fallback"
     ) as mock_fallback:
         bus.emit_sync(ev)
         mock_fallback.assert_called_once_with(ev)
@@ -217,7 +221,7 @@ async def test_flush_to_redis_only_non_critical_not_routed():
 
     with patch.object(bus, "_write_redis", new_callable=AsyncMock) as mock_redis:
         with patch(
-            "app.infrastructure.monitoring.alarm_router.get_alarm_router"
+            "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router"
         ) as mock_router:
             mock_router.return_value.route = AsyncMock()
             await bus._flush_to_redis_only()
@@ -238,7 +242,7 @@ async def test_flush_to_redis_only_critical_routed():
 
     with patch.object(bus, "_write_redis", new_callable=AsyncMock):
         with patch(
-            "app.infrastructure.monitoring.alarm_router.get_alarm_router",
+            "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router",
             return_value=mock_router,
         ):
             await bus._flush_to_redis_only()
@@ -255,7 +259,7 @@ async def test_flush_to_redis_only_router_exception_silenced():
 
     with patch.object(bus, "_write_redis", new_callable=AsyncMock):
         with patch(
-            "app.infrastructure.monitoring.alarm_router.get_alarm_router",
+            "v2.modules.platform_infra.monitoring.alarm_router.get_alarm_router",
             side_effect=Exception("router crash"),
         ):
             await bus._flush_to_redis_only()  # must not raise
@@ -285,7 +289,7 @@ async def test_ensure_current_partition_december():
     fake_dt_module = types.ModuleType("datetime")
     fake_dt_module.date = fake_date
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         with patch.dict("sys.modules", {"datetime": fake_dt_module}):
             await bus._ensure_current_partition()
 
@@ -304,7 +308,7 @@ async def test_ensure_current_partition_exception_logged():
     mock_session.execute = AsyncMock(side_effect=Exception("already exists"))
     mock_session.commit = AsyncMock()
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
         await bus._ensure_current_partition()  # must not raise
 
 
@@ -317,7 +321,7 @@ async def test_write_redis_no_redis_returns_early():
     bus = ErrorEventBus()
     ev = make_event()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = None
         await bus._write_redis([ev])
 
@@ -342,7 +346,7 @@ async def test_write_redis_pipeline_executes():
     mock_redis = MagicMock()
     mock_redis.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = mock_redis
         await bus._write_redis([ev])
 
@@ -369,7 +373,7 @@ async def test_write_redis_exception_logged():
     mock_redis = MagicMock()
     mock_redis.pipeline = MagicMock(return_value=mock_pipe)
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = mock_redis
         await bus._write_redis([ev])  # must not raise
 

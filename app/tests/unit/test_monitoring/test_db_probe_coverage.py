@@ -1,4 +1,4 @@
-"""Coverage tests for app/infrastructure/monitoring/db_probe.py"""
+"""Coverage tests for v2/modules/platform_infra/monitoring/db_probe.py"""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.unit
 
 
 def test_sql_fingerprint_normalises_in_clause():
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     s1 = _sql_fingerprint("SELECT * FROM t WHERE id IN (1, 2, 3)")
     s2 = _sql_fingerprint("SELECT * FROM t WHERE id IN (10, 20, 30, 40)")
@@ -25,7 +25,7 @@ def test_sql_fingerprint_normalises_in_clause():
 
 
 def test_sql_fingerprint_normalises_strings():
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     s1 = _sql_fingerprint("SELECT * FROM t WHERE name = 'alice'")
     s2 = _sql_fingerprint("SELECT * FROM t WHERE name = 'bob'")
@@ -33,7 +33,7 @@ def test_sql_fingerprint_normalises_strings():
 
 
 def test_sql_fingerprint_normalises_numbers():
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     s1 = _sql_fingerprint("SELECT * FROM t WHERE id = 42")
     s2 = _sql_fingerprint("SELECT * FROM t WHERE id = 7")
@@ -41,7 +41,7 @@ def test_sql_fingerprint_normalises_numbers():
 
 
 def test_sql_fingerprint_different_tables():
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     s1 = _sql_fingerprint("SELECT * FROM users WHERE id = 1")
     s2 = _sql_fingerprint("SELECT * FROM orders WHERE id = 1")
@@ -49,7 +49,7 @@ def test_sql_fingerprint_different_tables():
 
 
 def test_sql_fingerprint_returns_hex_string():
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     fp = _sql_fingerprint("SELECT 1")
     assert isinstance(fp, str)
@@ -63,7 +63,7 @@ def test_sql_fingerprint_sqlparse_fallback(monkeypatch):
     fake_sqlparse = MagicMock()
     fake_sqlparse.format.side_effect = RuntimeError("parse error")
     monkeypatch.setitem(sys.modules, "sqlparse", fake_sqlparse)
-    from app.infrastructure.monitoring.db_probe import _sql_fingerprint
+    from v2.modules.platform_infra.monitoring.db_probe import _sql_fingerprint
 
     fp = _sql_fingerprint("select * from t where id = 1")
     assert isinstance(fp, str)
@@ -76,7 +76,7 @@ def test_sql_fingerprint_sqlparse_fallback(monkeypatch):
 
 
 def test_pg_code_map_completeness():
-    from app.infrastructure.monitoring.db_probe import _PG_CODE_MAP
+    from v2.modules.platform_infra.monitoring.db_probe import _PG_CODE_MAP
 
     required = {
         "40001": "deadlock",
@@ -92,14 +92,17 @@ def test_pg_code_map_completeness():
 
 
 def test_critical_pg_codes_subset():
-    from app.infrastructure.monitoring.db_probe import _CRITICAL_PG_CODES, _PG_CODE_MAP
+    from v2.modules.platform_infra.monitoring.db_probe import (
+        _CRITICAL_PG_CODES,
+        _PG_CODE_MAP,
+    )
 
     for code in _CRITICAL_PG_CODES:
         assert code in _PG_CODE_MAP, f"{code} is critical but not in _PG_CODE_MAP"
 
 
 def test_non_critical_code_not_in_critical_set():
-    from app.infrastructure.monitoring.db_probe import _CRITICAL_PG_CODES
+    from v2.modules.platform_infra.monitoring.db_probe import _CRITICAL_PG_CODES
 
     # unique_violation should NOT be critical
     assert "23505" not in _CRITICAL_PG_CODES
@@ -111,7 +114,7 @@ def test_non_critical_code_not_in_critical_set():
 
 
 def test_reset_query_counter():
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _request_query_count,
         reset_query_counter,
     )
@@ -122,7 +125,7 @@ def test_reset_query_counter():
 
 
 def test_get_query_count_default_zero():
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         get_query_count,
         reset_query_counter,
     )
@@ -132,7 +135,7 @@ def test_get_query_count_default_zero():
 
 
 def test_get_query_count_after_set():
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _request_query_count,
         get_query_count,
     )
@@ -142,7 +145,7 @@ def test_get_query_count_after_set():
 
 
 def test_reset_recent_queries():
-    from app.infrastructure.monitoring.db_probe import (
+    from v2.modules.platform_infra.monitoring.db_probe import (
         _recent_queries,
         reset_recent_queries,
     )
@@ -166,7 +169,7 @@ async def test_auto_explain_runs_for_asyncpg_style_params():
     (parameterized) query in production. `$1` + a positional params tuple
     is asyncpg's native calling convention and must now be used directly,
     not skipped."""
-    from app.infrastructure.monitoring import db_probe as dp
+    from v2.modules.platform_infra.monitoring import db_probe as dp
 
     dp._explain_last.clear()
     dp._explain_sem = None
@@ -189,8 +192,8 @@ async def test_auto_explain_runs_for_asyncpg_style_params():
     mock_engine.connect = MagicMock(return_value=mock_conn_ctx)
 
     with (
-        patch("app.database.connection.engine", mock_engine),
-        patch("app.infrastructure.monitoring.aemit", AsyncMock()),
+        patch("v2.modules.platform_infra.database.connection.engine", mock_engine),
+        patch("v2.modules.platform_infra.monitoring.aemit", AsyncMock()),
     ):
         await dp._auto_explain(stmt, (1,), 3000.0)
 
@@ -206,7 +209,7 @@ async def test_auto_explain_runs_for_asyncpg_style_params():
 async def test_auto_explain_skips_executemany():
     """executemany params are a list-of-tuples (one per batch row), not a
     single param set — re-EXPLAINing a batch insert isn't meaningful here."""
-    from app.infrastructure.monitoring.db_probe import _auto_explain
+    from v2.modules.platform_infra.monitoring.db_probe import _auto_explain
 
     await _auto_explain(
         "SELECT * FROM t WHERE id = $1", [(1,), (2,)], 3000.0, executemany=True
@@ -216,7 +219,7 @@ async def test_auto_explain_skips_executemany():
 
 @pytest.mark.asyncio
 async def test_auto_explain_skips_non_select():
-    from app.infrastructure.monitoring.db_probe import _auto_explain
+    from v2.modules.platform_infra.monitoring.db_probe import _auto_explain
 
     await _auto_explain("UPDATE t SET col=1", None, 3000.0)
     # Should return early, no crash
@@ -227,7 +230,7 @@ async def test_auto_explain_skips_unexpected_params_type():
     """Defensive guard: if params is neither None nor a list/tuple (the
     asyncpg dialect should never actually produce this), skip rather than
     guess how to call fetch()."""
-    from app.infrastructure.monitoring.db_probe import _auto_explain
+    from v2.modules.platform_infra.monitoring.db_probe import _auto_explain
 
     await _auto_explain("SELECT * FROM t WHERE id = $1", {"id": 1}, 3000.0)
     # No error means it returned early without touching the DB
@@ -235,7 +238,7 @@ async def test_auto_explain_skips_unexpected_params_type():
 
 @pytest.mark.asyncio
 async def test_auto_explain_rate_limits_same_fingerprint():
-    from app.infrastructure.monitoring import db_probe as dp
+    from v2.modules.platform_infra.monitoring import db_probe as dp
 
     dp._explain_last.clear()
     stmt = "SELECT * FROM things"
@@ -251,7 +254,7 @@ async def test_auto_explain_rate_limits_same_fingerprint():
 @pytest.mark.asyncio
 async def test_auto_explain_semaphore_locked():
     """When semaphore is already locked, _auto_explain bails out early."""
-    from app.infrastructure.monitoring import db_probe as dp
+    from v2.modules.platform_infra.monitoring import db_probe as dp
 
     dp._explain_last.clear()
     dp._explain_sem = asyncio.Semaphore(1)
@@ -283,7 +286,7 @@ async def test_auto_explain_semaphore_locked():
 
 
 def test_pool_state_initial_value():
-    from app.infrastructure.monitoring.db_probe import _pool_state
+    from v2.modules.platform_infra.monitoring.db_probe import _pool_state
 
     assert "last_alert" in _pool_state
     assert isinstance(_pool_state["last_alert"], float)
@@ -295,13 +298,13 @@ def test_pool_state_initial_value():
 
 
 def test_n_plus_one_threshold_value():
-    from app.infrastructure.monitoring.db_probe import _N_PLUS_ONE_THRESHOLD
+    from v2.modules.platform_infra.monitoring.db_probe import _N_PLUS_ONE_THRESHOLD
 
     assert _N_PLUS_ONE_THRESHOLD == 20
 
 
 def test_recent_queries_keep_value():
-    from app.infrastructure.monitoring.db_probe import _RECENT_QUERIES_KEEP
+    from v2.modules.platform_infra.monitoring.db_probe import _RECENT_QUERIES_KEEP
 
     assert _RECENT_QUERIES_KEEP == 8
 
@@ -313,14 +316,14 @@ def test_recent_queries_keep_value():
 
 def test_setup_db_probe_registers_listeners():
     """setup_db_probe attaches event listeners without raising."""
-    from app.infrastructure.monitoring.db_probe import setup_db_probe
+    from v2.modules.platform_infra.monitoring.db_probe import setup_db_probe
 
     mock_engine = MagicMock()
     mock_sync_engine = MagicMock()
     mock_engine.sync_engine = mock_sync_engine
 
     # event.listens_for is called internally; we patch it to avoid real SA setup
-    with patch("app.infrastructure.monitoring.db_probe.event") as mock_event:
+    with patch("v2.modules.platform_infra.monitoring.db_probe.event") as mock_event:
         mock_event.listens_for.return_value = lambda fn: fn  # decorator passthrough
         setup_db_probe(mock_engine)
 

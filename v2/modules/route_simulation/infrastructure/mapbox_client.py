@@ -8,11 +8,14 @@ from typing import Dict, List, Optional, Tuple
 import httpx
 
 from app.config import settings
-from app.infrastructure.cache.cache_manager import CacheManager, get_cache_manager
-from app.infrastructure.logging.logger import get_logger
-from app.infrastructure.monitoring.external_api_probe import get_monitored_client
-from app.infrastructure.resilience.retry import with_async_retry
+from v2.modules.platform_infra.cache.cache_manager import (
+    CacheManager,
+    get_cache_manager,
+)
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.platform_infra.monitoring.external_api_probe import get_monitored_client
 from v2.modules.route_simulation.domain.segment_simulator import SegmentInput
+from v2.modules.route_simulation.infrastructure.retry import with_async_retry
 
 # Phase 2.3: Mapbox Directions response cache TTL.
 # Plan §9 Phase 2: "Directions response cache (1-gün TTL — traffic değişir)".
@@ -48,7 +51,7 @@ class MapboxClient:
         self.base_url = settings.MAPBOX_API_BASE_URL
         # self.api_key above is the .env-sourced fallback; _resolve_api_key()
         # checks the admin-configurable entegrasyon_ayarlari row first (see
-        # app.core.services.integration_secrets) so a key entered via the
+        # v2.modules.admin_platform.public) so a key entered via the
         # admin UI takes effect immediately, without a restart.
         # Phase 2.3: Redis-backed cache. None geçilirse singleton CacheManager.
         # Sync API (get/set) async handler içinden de güvenli — Redis çağrıları
@@ -56,7 +59,9 @@ class MapboxClient:
         self._cache = cache if cache is not None else get_cache_manager()
 
     async def _resolve_api_key(self) -> Optional[str]:
-        from app.core.services.integration_secrets import get_integration_secret
+        from v2.modules.admin_platform.public import (
+            get_integration_secret,
+        )
 
         return await get_integration_secret("mapbox", self.api_key)
 
@@ -157,7 +162,9 @@ class MapboxClient:
         except httpx.RequestError as exc:
             # Do NOT log exc directly — httpx.RequestError includes the full request
             # URL in its message, which contains the access_token query param.
-            from app.infrastructure.monitoring.external_api_probe import _sanitize_url
+            from v2.modules.platform_infra.monitoring.external_api_probe import (
+                _sanitize_url,
+            )
 
             # httpx'te exc.request property'si request set EDİLMEMİŞSE RuntimeError
             # fırlatır (None dönmez) → güvenli erişim için _request attribute'u kullan,

@@ -9,9 +9,9 @@ from typing import Any, Dict, List, Optional, cast
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.base_repository import BaseRepository
-from app.database.models import Arac
-from app.infrastructure.logging.logger import get_logger
+from v2.modules.fleet.infrastructure.models import Arac
+from v2.modules.platform_infra.logging.logger import get_logger
+from v2.modules.shared_kernel.infrastructure.base_repository import BaseRepository
 
 logger = get_logger(__name__)
 

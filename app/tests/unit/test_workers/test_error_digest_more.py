@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.workers.tasks.error_digest import (
+from v2.modules.platform_infra.background.error_digest import (
     _check_queue_depth,
     _create_partition,
     _db_health_check,
@@ -28,9 +28,9 @@ async def test_check_queue_depth_no_reserved():
     mock_app = MagicMock()
     mock_app.control.inspect.return_value = mock_inspect
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
             await _check_queue_depth()
             mock_aemit.assert_not_called()
@@ -44,9 +44,9 @@ async def test_check_queue_depth_low_queue():
     mock_app = MagicMock()
     mock_app.control.inspect.return_value = mock_inspect
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
         with patch(
-            "app.infrastructure.monitoring.aemit", new_callable=AsyncMock
+            "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
         ) as mock_aemit:
             await _check_queue_depth()
             mock_aemit.assert_not_called()
@@ -65,12 +65,12 @@ async def test_check_queue_depth_warning_level():
     async def capture_emit(ev):
         captured.append(ev)
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture_emit):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
     assert len(captured) == 1
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert captured[0].severity == ErrorSeverity.WARNING
     assert "150" in captured[0].message
@@ -89,12 +89,12 @@ async def test_check_queue_depth_error_level():
     async def capture_emit(ev):
         captured.append(ev)
 
-    with patch("app.infrastructure.background.celery_app.celery_app", mock_app):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture_emit):
+    with patch("v2.modules.platform_infra.background.celery_app.celery_app", mock_app):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture_emit):
             await _check_queue_depth()
 
     assert len(captured) == 1
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert captured[0].severity == ErrorSeverity.ERROR
 
@@ -103,7 +103,7 @@ async def test_check_queue_depth_error_level():
 async def test_check_queue_depth_exception_silenced():
     """Any exception in _check_queue_depth is silently logged (debug level)."""
     with patch(
-        "app.infrastructure.background.celery_app.celery_app",
+        "v2.modules.platform_infra.background.celery_app.celery_app",
         side_effect=Exception("celery unavailable"),
     ):
         # Must not raise
@@ -135,7 +135,7 @@ async def test_create_partition_december_wraps_year():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -164,7 +164,7 @@ async def test_create_partition_mid_year():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -194,7 +194,7 @@ async def test_create_partition_execute_exception_continues():
 
     with patch.dict("sys.modules", {"datetime": fake_dt_module}):
         with patch(
-            "app.database.connection.AsyncSessionLocal",
+            "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
             return_value=mock_session,
         ):
             await _create_partition()
@@ -218,7 +218,7 @@ def test_db_health_check_celery_task_name():
 def test_db_health_check_greenlet_runtime_error_suppressed():
     """RuntimeError with 'greenlet' substring is caught and logged, not re-raised."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("greenlet_spawn not called"),
     ):
         # Should not raise
@@ -228,7 +228,7 @@ def test_db_health_check_greenlet_runtime_error_suppressed():
 def test_db_health_check_different_loop_runtime_error_suppressed():
     """RuntimeError with 'different loop' is caught."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("attached to a different loop"),
     ):
         db_health_check()
@@ -237,7 +237,7 @@ def test_db_health_check_different_loop_runtime_error_suppressed():
 def test_db_health_check_other_runtime_error_reraises():
     """RuntimeError without greenlet/loop fingerprint is re-raised."""
     with patch(
-        "app.workers.tasks.error_digest._db_health_check",
+        "v2.modules.platform_infra.background.error_digest._db_health_check",
         side_effect=RuntimeError("some other error"),
     ):
         with pytest.raises(RuntimeError, match="some other error"):
@@ -300,8 +300,8 @@ async def test_db_health_check_long_running_tx_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -329,11 +329,11 @@ async def test_db_health_check_critical_tx_severity():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert emitted[0].severity == ErrorSeverity.CRITICAL
 
@@ -359,8 +359,8 @@ async def test_db_health_check_lock_wait_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -388,11 +388,11 @@ async def test_db_health_check_lock_wait_critical_above_15s():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
-    from app.infrastructure.monitoring.models import ErrorSeverity
+    from v2.modules.platform_infra.monitoring.models import ErrorSeverity
 
     assert emitted[0].severity == ErrorSeverity.CRITICAL
 
@@ -418,8 +418,8 @@ async def test_db_health_check_table_bloat_emits():
     async def capture(ev):
         emitted.append(ev)
 
-    with patch("app.database.connection.AsyncSessionLocal", return_value=mock_session):
-        with patch("app.infrastructure.monitoring.aemit", side_effect=capture):
+    with patch("v2.modules.platform_infra.database.connection.AsyncSessionLocal", return_value=mock_session):
+        with patch("v2.modules.platform_infra.monitoring.aemit", side_effect=capture):
             await _db_health_check()
 
     assert len(emitted) == 1
@@ -447,23 +447,23 @@ async def test_run_digest_triggers_check_beat_and_queue_depth():
     mock_sess.execute = AsyncMock()
     mock_sess.commit = AsyncMock()
 
-    with patch("app.infrastructure.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
+    with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value.redis = redis_mock
-        with patch("app.workers.tasks.error_digest._drain_sync_fallback"):
+        with patch("v2.modules.platform_infra.background.error_digest._drain_sync_fallback"):
             with patch(
-                "v2.modules.notification.infrastructure.telegram_client.notify_error",
+                "v2.modules.notification.public.notify_error",
                 new_callable=AsyncMock,
             ):
                 with patch(
-                    "app.database.connection.AsyncSessionLocal",
+                    "v2.modules.platform_infra.database.connection.AsyncSessionLocal",
                     return_value=mock_sess,
                 ):
                     with patch(
-                        "app.infrastructure.monitoring.celery_probe.check_beat_health",
+                        "v2.modules.platform_infra.monitoring.celery_probe.check_beat_health",
                         new_callable=AsyncMock,
                     ) as mock_beat:
                         with patch(
-                            "app.workers.tasks.error_digest._check_queue_depth",
+                            "v2.modules.platform_infra.background.error_digest._check_queue_depth",
                             new_callable=AsyncMock,
                         ) as mock_depth:
                             await _run_digest()

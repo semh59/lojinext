@@ -54,6 +54,26 @@ import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: 
 import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
 from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 
+# 2026-07-23 düzeltmesi (bağımsız dedektif denetiminde bulundu): bu liste
+# 6 modülün (anomaly/auth_rbac/import_excel/notification/prediction_ml/
+# reports) ORM modellerini hiç import etmiyordu + shared_kernel'in
+# outbox.py'si de eksikti — Base.metadata'ya hiç kaydolmuyorlardı. Tam
+# pytest suite'inde fark edilmiyordu (başka test dosyalarının importu bu
+# modülleri zaten önceden tetikliyordu, aynı process içinde Base.metadata
+# paylaşımlı) ama CI'ın izole `pytest app/tests/integration/
+# test_db_schema_integrity.py` koşumunda (başka hiçbir dosya
+# import edilmeden) `entegrasyon_ayarlari.guncelleyen_id -> kullanicilar`
+# gibi FK'ler çözülemeyip `NoReferencedTableError` ile patlıyordu — 42
+# gerçek tablonun yalnız 28'i kayıtlıydı, doğrulandı (`psql \dt` çıktısıyla
+# birebir karşılaştırıldı, artık tam eşleşiyor).
+import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
+import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
+import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.notification.infrastructure.models  # noqa: E402,F401
+import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
+import v2.modules.reports.infrastructure.models  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
+
 
 def pytest_collection_modifyitems(config, items):
     """Skip all @pytest.mark.integration tests if PostgreSQL is not reachable.

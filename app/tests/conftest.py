@@ -38,21 +38,6 @@ os.environ["MAPBOX_API_KEY"] = ""
 
 import v2.modules.admin_platform.infrastructure.repository as admin_config_mod  # noqa: E402
 import v2.modules.analytics_executive.infrastructure.executive_read_models as analiz_mod  # noqa: E402
-import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
-import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
-import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
-import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
-import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
-import v2.modules.platform_infra.container as container_mod  # noqa: E402
-import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
-
-# error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
-# (v2/modules/platform_infra/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
-# yüzden container_mod importu zincirinden ULAŞILMIYOR, Base.metadata'ya
-# kaydolmaları için açık import şart (alembic/env.py'deki aynı zorunluluk).
-import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
-import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
-from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 
 # 2026-07-23 düzeltmesi (bağımsız dedektif denetiminde bulundu): bu liste
 # 6 modülün (anomaly/auth_rbac/import_excel/notification/prediction_ml/
@@ -68,11 +53,26 @@ from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 # birebir karşılaştırıldı, artık tam eşleşiyor).
 import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
 import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
+import v2.modules.driver.infrastructure.repository as sofor_mod  # noqa: E402
+import v2.modules.fleet.infrastructure.trailer_repository as dorse_mod  # noqa: E402
+import v2.modules.fleet.infrastructure.vehicle_repository as arac_mod  # noqa: E402
+import v2.modules.fuel.infrastructure.repository as yakit_mod  # noqa: E402
 import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.location.infrastructure.repository as lokasyon_mod  # noqa: E402
 import v2.modules.notification.infrastructure.models  # noqa: E402,F401
+import v2.modules.platform_infra.container as container_mod  # noqa: E402
 import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
 import v2.modules.reports.infrastructure.models  # noqa: E402,F401
+import v2.modules.route_simulation.infrastructure.repository as route_mod  # noqa: E402
+
+# error_events/error_occurrences ORM sınıflarının hiçbir prod çağıranı yok
+# (v2/modules/platform_infra/monitoring/ tablolara yalnız ham SQL ile yazıyor) — bu
+# yüzden container_mod importu zincirinden ULAŞILMIYOR, Base.metadata'ya
+# kaydolmaları için açık import şart (alembic/env.py'deki aynı zorunluluk).
+import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
 import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
+import v2.modules.trip.infrastructure.repository as sefer_mod  # noqa: E402
+from v2.modules.shared_kernel.infrastructure.base import Base  # noqa: E402
 
 
 def pytest_collection_modifyitems(config, items):

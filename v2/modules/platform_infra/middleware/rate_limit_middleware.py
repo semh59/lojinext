@@ -1,5 +1,5 @@
 """
-Rate limiting middleware — Redis-backed (distributed) with in-memory fallback.
+Rate limiting middleware — Redis-backed (distributed), fail-closed.
 
 `app/infrastructure/middleware/rate_limit_middleware.py`'den dalga 17
 (platform_infra) denetiminde taşındı — main.py'nin ASGI middleware zinciri
@@ -7,14 +7,15 @@ Rate limiting middleware — Redis-backed (distributed) with in-memory fallback.
 cross-cutting.
 
 Redis path: INCR + EXPIRE per bucket. Atomic and works across multiple workers.
-Fallback:   sliding fixed-window counter in process memory (single-worker only).
+Redis erişilemezse: istek 503 ile reddedilir + CRITICAL log (bkz.
+`TASKS/faz2-guvenlik-state-redis.md`) — eskiden burada sessizce tek-worker
+in-memory sayaca düşülüyordu (MEMORY §4.1'in tam da şikayet ettiği "çalışıyor
+gibi görünüp seyrelmiş" davranış); o fallback kasıtlı olarak kaldırıldı.
 """
 
 import ipaddress
 import os
-import time
-from collections import defaultdict
-from typing import Dict, List, Tuple
+from typing import List
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -74,18 +75,12 @@ def get_real_client_ip(request: "Request") -> str:
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Per-IP+user+path rate limiter. Prefers Redis; falls back to in-memory."""
-
-    _CLEANUP_EVERY = 500
+    """Per-IP+user+path rate limiter. Redis-backed, fail-closed on Redis outage."""
 
     def __init__(self, app, requests_per_minute: int = 60):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute
         self.window_size = 60
-        self._mem_counts: Dict[str, Tuple[int, float]] = defaultdict(
-            lambda: (0, time.time())
-        )
-        self._dispatch_count = 0
 
     async def dispatch(self, request: Request, call_next):
         import sys
@@ -111,9 +106,45 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             _AUTH_LIMIT if request.url.path in _AUTH_PATHS else self.requests_per_minute
         )
 
-        count = await self._increment_redis(bucket)
-        if count == 0:
-            count = self._increment_memory(bucket)
+        from v2.modules.platform_infra.context.request_context import (
+            get_correlation_id,
+        )
+
+        try:
+            count = await self._increment_redis(bucket)
+        except Exception as exc:
+            logger.critical(
+                "Rate limiter unavailable (Redis unreachable): %s — failing closed "
+                "for bucket=%s",
+                exc,
+                bucket,
+            )
+            from v2.modules.platform_infra.monitoring import (
+                ErrorEvent,
+                ErrorLayer,
+                ErrorSeverity,
+                aemit,
+            )
+
+            await aemit(
+                ErrorEvent(
+                    layer=ErrorLayer.SECURITY,
+                    category="rate_limiter_degraded",
+                    severity=ErrorSeverity.CRITICAL,
+                    message="RateLimitMiddleware failing closed — Redis unreachable",
+                    metadata={"bucket": bucket, "reason": str(exc)},
+                )
+            )
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "code": "RATE_LIMITER_UNAVAILABLE",
+                        "message": "Service temporarily unavailable. Please try again shortly.",
+                        "trace_id": get_correlation_id() or "",
+                    }
+                },
+            )
 
         if count > limit:
             logger.warning("Rate limit exceeded bucket=%s count=%d", bucket, count)
@@ -122,10 +153,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # ({"error": {"code","message","trace_id"}}, bkz. main.py
             # http_exception_handler) bypass ediyordu, frontend'in genel
             # hata-zarfı ayrıştırıcısı bunu tanımıyordu.
-            from v2.modules.platform_infra.context.request_context import (
-                get_correlation_id,
-            )
-
             return JSONResponse(
                 status_code=429,
                 content={
@@ -138,44 +165,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 headers={"Retry-After": str(self.window_size)},
             )
 
-        self._dispatch_count += 1
-        if self._dispatch_count % self._CLEANUP_EVERY == 0:
-            self._evict_expired(time.time())
-
         return await call_next(request)
 
     async def _increment_redis(self, bucket: str) -> int:
-        """Returns the new count in Redis, or 0 if Redis is unavailable."""
-        try:
-            from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
+        """Returns the new count in Redis. Raises if Redis is unavailable —
+        callers must fail closed (no silent in-memory fallback, see module
+        docstring)."""
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
-            mgr = get_pubsub_manager()
-            if mgr._redis is None:
-                return 0
-            key = f"rl:{bucket}"
-            count = await mgr._redis.incr(key)
-            if count == 1:
-                await mgr._redis.expire(key, self.window_size)
-            return count
-        except Exception:
-            return 0
-
-    def _increment_memory(self, bucket: str) -> int:
-        now = time.time()
-        count, window_start = self._mem_counts[bucket]
-        if now - window_start >= self.window_size:
-            self._mem_counts[bucket] = (1, now)
-            return 1
-        count += 1
-        self._mem_counts[bucket] = (count, window_start)
+        mgr = get_pubsub_manager()
+        if mgr._redis is None:
+            raise RuntimeError("no redis client configured")
+        key = f"rl:{bucket}"
+        count = await mgr._redis.incr(key)
+        if count == 1:
+            await mgr._redis.expire(key, self.window_size)
         return count
-
-    def _evict_expired(self, now: float) -> None:
-        expired = [
-            k for k, (_, ws) in self._mem_counts.items() if now - ws >= self.window_size
-        ]
-        for k in expired:
-            del self._mem_counts[k]
 
     def _get_client_ip(self, request: Request) -> str:
         return get_real_client_ip(request)

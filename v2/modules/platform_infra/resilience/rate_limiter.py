@@ -1,14 +1,20 @@
 """
 Rate Limiter - Async API Request Throttling
-External API'lere yapılan istekleri sınırlar.
+Redis-backed (INCR+EXPIRE fixed-window), shared across all uvicorn workers.
+
+Redis erişilemezse fail-closed: `HTTPException(503)` — sessiz in-memory
+fallback yok (bkz. `TASKS/faz2-guvenlik-state-redis.md`). Önceki sürekli-
+refill token-bucket algoritması tek-process içindi; bu artık sabit-pencere
+sayaca döndü (aynı kanıtlı desen: `rate_limit_middleware.py`'nin
+`_increment_redis`'i) — davranış değişikliği kasıtlı, paylaşımlı/doğru
+sayım için "smooth" refill feda edildi.
 """
 
-import asyncio
 import hashlib
 from functools import wraps
 from typing import Dict, Optional
 
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 
 from app.config import settings
 from v2.modules.platform_infra.logging.logger import get_logger
@@ -16,66 +22,90 @@ from v2.modules.platform_infra.logging.logger import get_logger
 logger = get_logger(__name__)
 
 
-class AsyncRateLimiter:
-    """
-    Token Bucket algoritması ile async rate limiter.
-    Harici kütüphane bağımlılığı olmadan çalışır.
-    """
+def _get_redis():
+    """Shared async Redis client, or None if unavailable (same access point
+    as `rate_limit_middleware.py`/`security_probe.py` — one connection)."""
+    from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
 
-    def __init__(self, rate: float, period: float = 1.0):
+    mgr = get_pubsub_manager()
+    return mgr._redis
+
+
+class AsyncRateLimiter:
+    """Named, Redis-backed fixed-window rate limiter."""
+
+    def __init__(self, rate: float, period: float = 1.0, name: str = "default"):
         """
         Args:
             rate: period içinde izin verilen maksimum istek sayısı
             period: süre (saniye)
+            name: Redis key'ini oluşturan mantıksal isim — aynı isimdeki tüm
+                worker'lar AYNI Redis key'ini paylaşır (bu, çok-worker
+                doğruluğunun kaynağı).
         """
         self.rate = rate
         self.period = period
-        self.tokens = rate
-        self._last_update: Optional[float] = None  # Lazy initialization
-        self._lock = asyncio.Lock()
+        self.name = name
 
-    def _get_time(self) -> float:
-        """Async-safe zaman alma (lazy init desteği)"""
-        try:
-            loop = asyncio.get_running_loop()
-            return loop.time()
-        except RuntimeError:
-            # Event loop yoksa fallback
-            import time
-
-            return time.monotonic()
-
-    async def acquire(self):
-        """Bir token al, yoksa 429 fırlat"""
+    async def acquire(self) -> None:
+        """Bir slot al; kapasite doluysa 429, Redis erişilemezse 503 fırlat."""
         # Master switch — kapasite yük testinde rate-limit'i tamamen atla.
         if not getattr(settings, "RATE_LIMIT_ENABLED", True):
             return
-        async with self._lock:
-            now = self._get_time()
 
-            # Lazy initialization
-            if self._last_update is None:
-                self._last_update = now
+        redis = _get_redis()
+        if redis is None:
+            await self._fail_closed(RuntimeError("no redis client configured"))
+            return
 
-            elapsed = now - self._last_update
-            self.tokens = min(
-                self.rate, self.tokens + elapsed * (self.rate / self.period)
-            )
-            self._last_update = now
-
-            if self.tokens < 1:
-                # API Audit Requirement: Reject immediately with 429
-                wait_time = (1 - self.tokens) * (self.period / self.rate)
-                logger.warning(f"Rate limit exceeded. Try again in {wait_time:.2f}s")
-                from fastapi import HTTPException, status
-
+        try:
+            key = f"ratelimit:{self.name}"
+            window_sec = max(int(self.period), 1)
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, window_sec)
+            if count > self.rate:
+                ttl = await redis.ttl(key)
+                wait_time = ttl if ttl and ttl > 0 else window_sec
+                logger.warning(
+                    "Rate limit exceeded for '%s'. Try again in %ss", self.name, wait_time
+                )
                 raise HTTPException(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     detail="Rate limit exceeded. Please try again later.",
                     headers={"Retry-After": str(int(wait_time) + 1)},
                 )
-            else:
-                self.tokens -= 1
+        except HTTPException:
+            raise
+        except Exception as exc:
+            await self._fail_closed(exc)
+
+    async def _fail_closed(self, reason: Exception) -> None:
+        from v2.modules.platform_infra.monitoring import (
+            ErrorEvent,
+            ErrorLayer,
+            ErrorSeverity,
+            aemit,
+        )
+
+        logger.critical(
+            "Rate limiter '%s' unavailable: Redis unreachable (%s) — failing closed",
+            self.name,
+            reason,
+        )
+        await aemit(
+            ErrorEvent(
+                layer=ErrorLayer.SECURITY,
+                category="rate_limiter_degraded",
+                severity=ErrorSeverity.CRITICAL,
+                message=f"Rate limiter '{self.name}' failing closed — Redis unreachable",
+                metadata={"limiter": self.name, "reason": str(reason)},
+            )
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Rate limiter unavailable. Please try again shortly.",
+        )
 
     async def __aenter__(self):
         await self.acquire()
@@ -92,7 +122,6 @@ class RateLimiterRegistry:
     """
 
     _limiters: Dict[str, AsyncRateLimiter] = {}
-    _lock = asyncio.Lock()
 
     @classmethod
     async def get(
@@ -105,15 +134,15 @@ class RateLimiterRegistry:
         Named rate limiter al veya oluştur.
 
         Args:
-            name: Limiter adı (örn: "openroute", "weather")
+            name: Limiter adı (örn: "openroute", "weather") — aynı zamanda
+                Redis key'i (bkz. `AsyncRateLimiter.name`)
             rate: Saniyede izin verilen istek sayısı
             period: Süre (saniye)
         """
-        async with cls._lock:
-            if name not in cls._limiters:
-                cls._limiters[name] = AsyncRateLimiter(rate, period)
-                logger.info(f"Created rate limiter '{name}': {rate} req/{period}s")
-            return cls._limiters[name]
+        if name not in cls._limiters:
+            cls._limiters[name] = AsyncRateLimiter(rate, period, name=name)
+            logger.info(f"Created rate limiter '{name}': {rate} req/{period}s")
+        return cls._limiters[name]
 
     @classmethod
     def get_sync(
@@ -124,7 +153,7 @@ class RateLimiterRegistry:
     ) -> AsyncRateLimiter:
         """Senkron ortamda limiter oluştur (startup için)"""
         if name not in cls._limiters:
-            cls._limiters[name] = AsyncRateLimiter(rate, period)
+            cls._limiters[name] = AsyncRateLimiter(rate, period, name=name)
         return cls._limiters[name]
 
 
@@ -193,10 +222,7 @@ def rate_limited(
         @wraps(func)
         async def wrapper(*args, **kwargs):
             limiter = await RateLimiterRegistry.get(limiter_name, rate, period)
-            async with limiter:
-                # acquire method called by __aenter__
-                # But our acquire logic was updated to raise exception.
-                pass
+            await limiter.acquire()
             return await func(*args, **kwargs)
 
         return wrapper

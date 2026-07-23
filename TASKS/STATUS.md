@@ -19,7 +19,7 @@
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
 | **FAZ1** — Kod sınırları (17 kalem) | 🟢 KOD TARAFI TAMAMLANDI (2026-07-22) — 17/17 kalem branch'te; kalan tek şey "5 ardışık gün main'de yeşil" burn-in penceresi (takvim-zamanı gerektirir, tek oturumda gözlenemez) | Dalga 1-16 main'de/branch'te yeşil (aşağıdaki tablo). Dalga 17 (platform-infra) 2026-07-22'de 10 commit'lik bir alt-dalgayla tamamlandı: cache/events/container/resilience/database/monitoring/security/context/logging/audit/background/middleware/websocket taşındı + `public.py` + kendi `public-surface-only-platform_infra` import-linter kontratı yazıldı + CI'nın blocking gate adımına eklendi (`.github/workflows/ci.yml`, önceden eksikti — bu turda düzeltildi). Ardından "V2 dışında kalan var mı" denetiminde bulunan 4 ek kalem de taşındı/silindi (`app/api/middleware/rate_limiter.py`→platform_infra, `app/api/v1/utils.py`→platform_infra, ölü `app/core/services/ai_service.py` silindi, `app/workers/tasks/{backup_tasks,error_digest}.py`→platform_infra/background). Her adım tam doğrulamayla (ruff/mypy/lint-imports/alembic check/pytest, bilinen baseline 17 failed/6560 passed/28 skipped) ayrı commit+push edildi. |
-| **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
+| **FAZ2** — Veri sınırları | 🟡 BAŞLADI (2026-07-23) | 3 alt-görevden 1'i (`faz2-guvenlik-state-redis.md`) tamamlandı; diğer 2'si (`faz2-schema-per-module-postgres.md`, `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md`) ayrı onay bekliyor — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor (ama bkz. not) | **Kısmi erken tamamlama (2026-07-22, kullanıcı onayıyla DURMA NOKTASI dar kapsamda aşıldı):** madde 2'nin ("shim temizliği") 9 kalemi — `app/api/v1/endpoints/{ai,feedback}.py`, `app/core/ai/*` (5 dosya), `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` — sıfır gerçek tüketici doğrulandıktan sonra silindi (gerçek kod zaten `v2/modules/ai_assistant/`'da). `app/api/`, `app/core/`, `app/services/`, `app/schemas/` dizinleri artık yok. FAZ4'ün diğer maddeleri (ignore_imports sıfırlama, xenon, dosya-kalite baseline, retro raporu) hâlâ FAZ3'ü bekliyor. |
 
@@ -1945,3 +1945,59 @@ main'de yeşil (5 bağımsız ajanla dedektif denetimi + CI-fix turu dahil, bkz.
 DALGA 11 bölümü, commit `48e8e21`, `gh run view 29531899079`). Depo şu an
 **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince
 tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+
+## FAZ2 — Veri sınırları (başladı 2026-07-23)
+
+**Giriş durumu:** FAZ1 kod tarafı 2026-07-23'te main'e merge oldu (PR #1).
+FAZ1'in resmi "5 ardışık gün yeşil" burn-in'i henüz gözlenmedi (bugün tek
+gün) — GitHub'da doğrulandı: gerçek `hard-gates` job'ı bugünkü iki commit'te
+de (`b761c7a8`, `38dfceb5`) tam yeşil, workflow'un görünen "failure"ı yalnız
+sonraki "Build & Push to GHCR" işinin GHCR-login adımından (registry
+secret'ı yok, koddan bağımsız pre-existing altyapı sorunu). Kullanıcı bu
+bilinçli farkla FAZ2'ye başlamayı onayladı.
+
+### faz2-guvenlik-state-redis.md — ✅ TAMAMLANDI (2026-07-23)
+
+3 alt-görevden ilk uygulanan (bağımsız, DB şeması değişmiyor, düşük blast-
+radius). Detaylı özet + doğrulama kanıtı `TASKS/faz2-guvenlik-state-redis.md`
+"Uygulama notları" bölümünde. Özet: `BruteForceDetector`/
+`RBACViolationTracker` (`security_probe.py`) + `AsyncRateLimiter`
+(`resilience/rate_limiter.py`) Redis-backed oldu; `rate_limit_middleware.py`
++ `slowapi_limiter.py`'nin sessiz in-memory fallback'leri kaldırılıp
+fail-closed yapıldı (kullanıcı kararı — görev dosyasının "fail-closed VEYA
+uyarı" ikileminde fail-closed seçildi). `ruff`/`mypy` temiz, izole venv'de
+82/82 pytest yeşil (4-worker simülasyon testleri dahil). Gerçek Docker+Redis
+smoke testi bu oturumun sandbox'ında YAPILAMADI (Docker daemon yok) — CI'nin
+gerçek koşusuyla tamamlanacak.
+
+### faz2-schema-per-module-postgres.md — 🔲 henüz başlamadı, bu oturumda EK BULGULAR
+
+Bu görev dosyası incelenirken, dosyanın kendisinde belirtilmeyen 3 ek zorunlu
+değişiklik bulundu — bir sonraki oturum bunları sıfırdan keşfetmesin diye
+buraya not düşülüyor:
+
+1. **ORM model `schema=` eksik:** `grep -rn '"schema":' v2/modules/*/
+   infrastructure/models.py` sıfır sonuç veriyor — hiçbir tablo sınıfı
+   `__table_args__ = {"schema": "..."}` bildirmiyor. Yalnız `ALTER TABLE ...
+   SET SCHEMA` migration'ı yapıp ORM'u güncellemezsek, SQLAlchemy sorguları
+   eski (unqualified/`public`) adı aramaya devam eder.
+2. **`app/tests/conftest.py`'nin reset'i yalnız `public` şemasını hedefliyor:**
+   bugünkü `DROP SCHEMA public CASCADE` + `CREATE SCHEMA public` + `Base.
+   metadata.create_all` deseni, tablolar modül şemalarına taşındıktan sonra
+   o tabloları hiç görmez — ilk tablo taşındığı anda test suite'i (conftest
+   fixture'ı DB'yi doğru resetlemediği için) sessizce bozulur. Reset mantığı
+   TÜM 14 modül şemasını kapsayacak şekilde genişletilmeli.
+3. **32 raw-SQL sitesi bare tablo adı kullanıyor** (`analiz_repo.py` en
+   ağırı, MEMORY §2.2) — `search_path` genişletilmeden veya sorgular şema-
+   nitelikli hale getirilmeden, tablo taşındıktan sonra bu siteler
+   "relation does not exist" ile patlar.
+
+Öneri (bir sonraki oturum için): FAZ1'in modül-dalgaları gibi en küçük
+şemadan (örn. `import_excel` — tek tablo, `iceri_aktarim_gecmisi`) pilot
+olarak başlanması, yukarıdaki 3 maddenin pilot PR'ında birlikte çözülmesi.
+Kullanıcı onayı olmadan başlanmayacak (DURMA NOKTASI).
+
+### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🔲 bekliyor
+
+Giriş kriteri (`faz2-schema-per-module-postgres.md` tamamlanması) henüz
+karşılanmadı.

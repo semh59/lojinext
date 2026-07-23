@@ -95,11 +95,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             )
 
             client_ip = get_real_client_ip(request)
-            get_brute_force_detector().record(client_ip, response.status_code)
+            await get_brute_force_detector().record(client_ip, response.status_code)
             if response.status_code == 403:
                 user_id = getattr(request.state, "user_id", None)
                 if user_id:
-                    get_rbac_tracker().record(user_id, request.url.path)
+                    await get_rbac_tracker().record(user_id, request.url.path)
 
             # 4. Yanıt Logu (Success)
             process_time = (time.time() - start_time) * 1000  # ms

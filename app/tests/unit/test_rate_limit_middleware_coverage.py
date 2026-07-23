@@ -1,16 +1,18 @@
 """Coverage tests for v2/modules/platform_infra/middleware/rate_limit_middleware.py.
 
+FAZ2 (`TASKS/faz2-guvenlik-state-redis.md`): the silent in-memory fallback
+(`_increment_memory`/`_mem_counts`/`_evict_expired`) was removed — Redis
+unavailability now fails closed (503 + CRITICAL log), it no longer falls
+through to a per-process counter.
+
 Tests cover:
 - _get_client_ip (X-Forwarded-For, direct client, unknown)
-- _increment_memory (first hit, within window, window expiry)
-- _evict_expired
-- _increment_redis (success, redis=None, exception)
-- dispatch (skip paths, dev env, pytest env, rate limited, cleanup trigger)
+- _increment_redis (success, redis=None raises, exception propagates)
+- dispatch (skip paths, dev env, pytest env, rate limited, Redis-down 503)
 - RateLimitMiddleware initialisation
 """
 
 import json
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -79,81 +81,18 @@ def test_get_client_ip_no_client():
     assert mw._get_client_ip(req) == "unknown"
 
 
-# ─── _increment_memory ────────────────────────────────────────────────────────
-
-
-def test_increment_memory_first_hit():
-    mw = _make_middleware()
-    count = mw._increment_memory("bucket1")
-    assert count == 1
-
-
-def test_increment_memory_increments_within_window():
-    mw = _make_middleware()
-    mw._increment_memory("b")
-    mw._increment_memory("b")
-    count = mw._increment_memory("b")
-    assert count == 3
-
-
-def test_increment_memory_resets_after_window():
-    mw = _make_middleware()
-    # Manually set an old window start
-    mw._mem_counts["b"] = (50, time.time() - 61)
-    count = mw._increment_memory("b")
-    assert count == 1  # fresh window
-
-
-def test_increment_memory_independent_buckets():
-    mw = _make_middleware()
-    for _ in range(5):
-        mw._increment_memory("alpha")
-    count = mw._increment_memory("beta")
-    assert count == 1
-
-
-# ─── _evict_expired ───────────────────────────────────────────────────────────
-
-
-def test_evict_expired_removes_stale_buckets():
-    mw = _make_middleware()
-    now = time.time()
-    mw._mem_counts["old"] = (5, now - 100)  # expired
-    mw._mem_counts["new"] = (3, now - 10)  # fresh
-
-    mw._evict_expired(now)
-
-    assert "old" not in mw._mem_counts
-    assert "new" in mw._mem_counts
-
-
-def test_evict_expired_empty_dict():
-    mw = _make_middleware()
-    mw._evict_expired(time.time())  # must not raise
-
-
-def test_evict_expired_boundary_not_removed():
-    mw = _make_middleware()
-    now = time.time()
-    # window_size=60; exactly 59 seconds old → NOT expired
-    mw._mem_counts["borderline"] = (1, now - 59)
-    mw._evict_expired(now)
-    assert "borderline" in mw._mem_counts
-
-
 # ─── _increment_redis ─────────────────────────────────────────────────────────
 
 
 @pytest.mark.asyncio
-async def test_increment_redis_no_redis():
-    """mgr._redis is None → returns 0."""
+async def test_increment_redis_no_redis_raises():
+    """mgr._redis is None → raises (caller must fail closed, no silent 0)."""
     mw = _make_middleware()
 
     with patch("v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager") as mock_mgr:
         mock_mgr.return_value._redis = None
-        result = await mw._increment_redis("bucket")
-
-    assert result == 0
+        with pytest.raises(RuntimeError):
+            await mw._increment_redis("bucket")
 
 
 @pytest.mark.asyncio
@@ -191,17 +130,16 @@ async def test_increment_redis_subsequent_calls_no_expire():
 
 
 @pytest.mark.asyncio
-async def test_increment_redis_exception_returns_zero():
-    """Redis exception → returns 0 (fallback to memory)."""
+async def test_increment_redis_exception_propagates():
+    """Redis exception → propagates (dispatch() is the one that fails closed)."""
     mw = _make_middleware()
 
     with patch(
         "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
         side_effect=Exception("Redis unreachable"),
     ):
-        result = await mw._increment_redis("b3")
-
-    assert result == 0
+        with pytest.raises(Exception, match="Redis unreachable"):
+            await mw._increment_redis("b3")
 
 
 # ─── dispatch ─────────────────────────────────────────────────────────────────
@@ -278,8 +216,9 @@ async def test_dispatch_rate_limits_when_over_limit():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_memory_fallback_when_redis_zero():
-    """Redis returns 0 → uses memory counter. Below limit → 200."""
+async def test_dispatch_fails_closed_when_redis_unavailable():
+    """FAZ2: Redis outage → 503 with the standard error envelope, not a
+    silent pass-through to an in-memory counter."""
     import sys
 
     async def noop_app(scope, receive, send):
@@ -301,57 +240,22 @@ async def test_dispatch_memory_fallback_when_redis_zero():
             ms.ENVIRONMENT = "production"
 
             with patch.object(
-                mw, "_increment_redis", new_callable=AsyncMock, return_value=0
-            ):
-                with patch.object(mw, "_increment_memory", return_value=1):
-                    response = await mw.dispatch(req, call_next)
+                mw,
+                "_increment_redis",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("no redis client configured"),
+            ), patch(
+                "v2.modules.platform_infra.monitoring.aemit", new_callable=AsyncMock
+            ) as mock_aemit:
+                response = await mw.dispatch(req, call_next)
 
-        assert response.status_code == 200
+        assert response.status_code == 503
+        body = json.loads(bytes(response.body).decode("utf-8"))
+        assert body["error"]["code"] == "RATE_LIMITER_UNAVAILABLE"
+        mock_aemit.assert_called_once()
     finally:
         if original_pytest is not None:
             sys.modules["pytest"] = original_pytest
-
-
-@pytest.mark.asyncio
-async def test_dispatch_evict_triggered_every_500():
-    """After 500 dispatches, _evict_expired is called."""
-    import sys
-
-    async def noop_app(scope, receive, send):
-        pass
-
-    mw = RateLimitMiddleware(noop_app, requests_per_minute=100)
-    mw._dispatch_count = 499
-
-    original_pytest = sys.modules.get("pytest")
-    evict_called = []
-    original_evict = mw._evict_expired
-
-    try:
-        del sys.modules["pytest"]
-
-        async def call_next(r):
-            resp = MagicMock()
-            resp.status_code = 200
-            return resp
-
-        mw._evict_expired = lambda now: evict_called.append(now)
-
-        with patch("app.config.settings") as ms:
-            ms.ENVIRONMENT = "production"
-
-            with patch.object(
-                mw, "_increment_redis", new_callable=AsyncMock, return_value=1
-            ):
-                req = _make_request(path="/api/v1/something")
-                await mw.dispatch(req, call_next)
-
-    finally:
-        mw._evict_expired = original_evict
-        if original_pytest is not None:
-            sys.modules["pytest"] = original_pytest
-
-    assert len(evict_called) == 1
 
 
 # ─── Initialization ───────────────────────────────────────────────────────────

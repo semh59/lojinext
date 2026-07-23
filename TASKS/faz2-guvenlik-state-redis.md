@@ -1,5 +1,10 @@
 # FAZ2 — Multi-Worker Güvenlik State'i → Redis
 
+> ✅ **TAMAMLANDI (2026-07-23)** — kullanıcı onayıyla uygulandı (bkz. aşağıdaki
+> "Uygulama notları" bölümü). FAZ2'nin 3 alt-görevinden ilk uygulanan buydu
+> (bağımsız, DB şeması değişmiyor); `faz2-schema-per-module-postgres.md` ve
+> `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md` hâlâ ayrı onay bekliyor.
+
 > **DURMA NOKTASI:** Kullanıcı onayı olmadan uygulanmaz.
 
 **Amaç:** MEMORY/PROGRESS.md §4.1'de tespit edilen in-memory per-process güvenlik sayaçlarını Redis-backed hale getirmek. Sert Kısıt 7 — bu sorun modülerleşmeyle KENDİLİĞİNDEN çözülmez, çünkü `security_probe.py` zaten platform-infra'da tek dosya; sorun modül sınırı değil, `UVICORN_WORKERS=4`'ün süreç-yerel state'i paylaşmaması.
@@ -35,8 +40,52 @@ Bugün `rate_limit_middleware.py` Redis düşünce in-memory'e SESSİZCE düşü
 20-slot LRU model cache × 4 worker RAM çarpanı BU GÖREVİN KAPSAMI DIŞINDA — güvenlik state'i değil, kaynak-yönetimi. `TASKS/modules/prediction-ml.md` madde 4'te ayrı performans işi olarak işaretli, burada tekrar edilmez.
 
 ## Kabul Kriterleri
-- [ ] BruteForceDetector + RBACViolationTracker Redis-backed, `rate_limit_middleware.py` deseniyle tutarlı
-- [ ] AsyncRateLimiter Redis-backed
-- [ ] slowapi `storage_uri` Redis'e işaret ediyor
-- [ ] Redis kesintisinde fail-closed (sessiz fallback yok), log'a yansıyor
-- [ ] 4-worker simülasyon testi: aynı IP'den 4 worker'a dağıtılan istekler TEK eşiğe tabi (önceden ~4× seyrelen davranış düzeldi)
+- [x] BruteForceDetector + RBACViolationTracker Redis-backed, `rate_limit_middleware.py` deseniyle tutarlı
+- [x] AsyncRateLimiter Redis-backed
+- [x] slowapi `storage_uri` Redis'e işaret ediyor
+- [x] Redis kesintisinde fail-closed (sessiz fallback yok), log'a yansıyor
+- [x] 4-worker simülasyon testi: aynı IP'den 4 worker'a dağıtılan istekler TEK eşiğe tabi (önceden ~4× seyrelen davranış düzeldi)
+
+## Uygulama notları (2026-07-23)
+
+**Kullanıcı kararı — Redis-down davranışı:** görev dosyasının "fail-closed VEYA
+metriğe yansıyan uyarı" ikileminde kullanıcı **fail-closed**'ı seçti. İki
+bileşen kategorisi farklı uygulandı:
+- **Pre-request gate'ler** (`AsyncRateLimiter.acquire()`,
+  `RateLimitMiddleware._increment_redis`, slowapi `Limiter`): Redis
+  erişilemezse istek gerçekten reddedilir (429/503).
+- **Post-response detector'lar** (`BruteForceDetector`/`RBACViolationTracker`):
+  bunların bloklayacağı bir istek yok (yanıt zaten üretildi) — literal
+  "reddet" uygulanamaz. Sadık karşılık: sayaç sessizce in-memory'e DÜŞMEZ,
+  CRITICAL `ErrorEvent` yayınlanır (fail-loud) + bu detector'ların asıl
+  koruduğu yüzey (`/api/v1/auth/token`) zaten `RateLimitMiddleware`'in
+  `_AUTH_PATHS` sıkı-limit yoluyla ayrıca fail-closed oluyor.
+
+**Değiştirilen dosyalar:** `monitoring/security_probe.py` (record() artık
+async, Redis INCR+EXPIRE + SET NX alert-dedup + LPUSH/LTRIM endpoint-sample),
+`middleware/logging_middleware.py` (await eklendi),
+`resilience/rate_limiter.py` (AsyncRateLimiter sürekli-refill token-bucket'tan
+Redis-backed sabit-pencere sayaca geçti — dokümante edilen kasıtlı davranış
+değişikliği; `RateLimiterRegistry`/`RateLimiterDependency`/`rate_limited` API
+yüzeyi değişmedi), `middleware/rate_limit_middleware.py` (sessiz
+`_increment_memory` fallback'i + `_evict_expired` silindi, Redis hatası artık
+503 döndürüyor), `middleware/slowapi_limiter.py` (`storage_uri=REDIS_URL`),
+`app/main.py` (`redis_unavailable_handler` — `redis.exceptions.ConnectionError`
+→ 503, slowapi'nin Redis storage hatalarını yakalar).
+
+**Doğrulama (bu oturumda gerçekten koşuldu):**
+- `ruff check --select E,F,W,I` → tüm değiştirilen dosyalar temiz.
+- `mypy --ignore-missing-imports --no-strict-optional` → değiştirilen
+  dosyalarda 0 yeni hata (4 pre-existing hata `trip/infrastructure/
+  repository.py`'de, bu göreve dokunulmadı).
+- `pytest` (izole venv, gerçek paket kurulumu — `app/tests/unit/
+  test_monitoring/test_security_probe.py` +`test_security_probe_coverage.py`
+  + `test_infrastructure/test_rate_limiter.py` +
+  `test_rate_limit_middleware_coverage.py` + `test_rate_limit_master_switch.py`):
+  **82/82 passed**, 4-worker simülasyon testleri dahil.
+- **Yapılamadı (ortam kısıtı, dürüstçe not düşülüyor):** bu oturumun sandbox
+  ortamında Docker daemon çalışmıyor — gerçek `docker compose stop redis` ile
+  fail-closed davranışını canlı doğrulamak ve CI'nin gerçek combined-coverage
+  koşusunu (`--cov-fail-under=92`) çalıştırmak mümkün olmadı. Push sonrası
+  gerçek CI ("hard-gates" job'ı, bu oturumda main'de yeşil olduğu doğrulandı)
+  bu doğrulamayı tamamlayacak — CI kırmızı çıkarsa düzeltme bu PR'a eklenir.

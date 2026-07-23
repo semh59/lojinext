@@ -535,18 +535,17 @@ class TestAnalyzeLocationRoute:
 
         repo = LokasyonRepository(session=db_session)
 
-        mock_route_service_module = MagicMock()
-        mock_route_service_module.get_route_details = AsyncMock(
-            return_value={"error": "timeout"}
-        )
-
-        with patch.dict(
-            "sys.modules",
-            {
-                "v2.modules.route_simulation.application.get_route_details": (
-                    mock_route_service_module
-                )
-            },
+        # analyze_location_route'un inline import'u (`from v2.modules.
+        # route_simulation.public import get_route_details`) her çağrıda
+        # KAYNAK modülden (public.py) taze okunur — bkz. location/CLAUDE.md
+        # "Test stratejisi" bölümündeki inline-import istisnası. Patch hedefi
+        # bu yüzden `route_simulation.public.get_route_details` olmalı, ALT
+        # `application.get_route_details` modülü DEĞİL (public.py o modülü
+        # kendi import-zamanında zaten çözüp isim bağlamış olur, sys.modules'ı
+        # sonradan değiştirmenin bu bağlamaya etkisi olmaz).
+        with patch(
+            "v2.modules.route_simulation.public.get_route_details",
+            new=AsyncMock(return_value={"error": "timeout"}),
         ):
             with pytest.raises(ValueError, match="Analiz hatası"):
                 await analyze_location_route(repo, lokasyon.id)

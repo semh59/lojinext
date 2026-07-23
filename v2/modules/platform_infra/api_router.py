@@ -3,14 +3,16 @@ business logic) — moved from app/api/v1/api.py 2026-07-22 (Kalem 3 commit 3),
 same "pure composition-root" category as container.py. Mechanical move,
 router-ordering + include_router calls preserved byte-for-byte (see the
 trip_read_router ordering note below — never reorder without re-reading it).
+
+2026-07-22 (post-Kalem-3 shim sweep): ``ai``/``feedback`` routers imported
+directly from ``v2.modules.ai_assistant`` instead of through the
+``app/api/v1/endpoints/{ai,feedback}.py`` wildcard shims — those shims had
+zero other consumers left, so pointing this file at their real source
+made them fully dead and safe to delete (``app/api/`` no longer exists).
 """
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import (
-    ai,
-    feedback,
-)
 from v2.modules.admin_platform.api.admin_config_routes import (
     router as admin_config_router,
 )
@@ -29,6 +31,8 @@ from v2.modules.admin_platform.api.error_stream_routes import (
 from v2.modules.admin_platform.api.health_routes import router as health_router
 from v2.modules.admin_platform.api.internal_routes import router as internal_router
 from v2.modules.admin_platform.api.system_routes import router as system_router
+from v2.modules.ai_assistant.api.ai_routes import router as ai_router
+from v2.modules.ai_assistant.api.feedback_routes import router as feedback_router
 from v2.modules.ai_assistant.api.plan_wizard_routes import (
     router as plan_wizard_router,
 )
@@ -150,7 +154,7 @@ api_router.include_router(
     predictions_router, prefix="/predictions", tags=["predictions"]
 )
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
-api_router.include_router(feedback.router, prefix="/feedback", tags=["feedback"])
+api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(
     executive_router, prefix="/reports/executive", tags=["executive"]
 )
@@ -165,7 +169,7 @@ api_router.include_router(
     advanced_reports_router, prefix="/advanced-reports", tags=["advanced-reports"]
 )
 api_router.include_router(health_router, prefix="/health", tags=["health"])
-api_router.include_router(ai.router, prefix="/ai", tags=["AI"])
+api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
 api_router.include_router(ws_ticket_router, prefix="/ws", tags=["websocket"])
 api_router.include_router(admin_ws_router, prefix="/admin/ws", tags=["admin-ws"])
 api_router.include_router(

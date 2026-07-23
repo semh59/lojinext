@@ -229,14 +229,26 @@ commit'te `app/api/v1/api.py`'nin ~50 `include_router()` çağrısı da
 kategorisi) yeni `api_router.py`'ye taşındı — router-sıralama-hassas
 kritik yorum (`trip_read_router`'ın catch-all'ının en son eklenmesi)
 birebir korundu, `app/main.py`'nin tek satırlık import'u güncellendi.
-`app/api/deps.py` + `app/api/v1/api.py` TAMAMEN SİLİNDİ — `app/api/`
-altında yalnız bilinen FAZ4 shim'leri (`v1/endpoints/{ai,feedback}.py`)
-kaldı. Doğrulama: tam pytest suite + gerçek `TestClient` ile en az 5
-endpoint'in manuel smoke-testi (`/trips/stats`, `/trips/export`,
-`/trips/{id}`, `/auth/token`, `/openapi.json`) — router sıralamasının
-245 route'ta da bozulmadığı hem `app.routes` listesi hem gerçek
-request/response ile doğrulandı (bkz. `trip/CLAUDE.md`'nin router
-bölünmesi notu).
+`app/api/deps.py` + `app/api/v1/api.py` TAMAMEN SİLİNDİ. Doğrulama: tam
+pytest suite + gerçek `TestClient` ile en az 5 endpoint'in manuel
+smoke-testi (`/trips/stats`, `/trips/export`, `/trips/{id}`,
+`/auth/token`, `/openapi.json`) — router sıralamasının 245 route'ta da
+bozulmadığı hem `app.routes` listesi hem gerçek request/response ile
+doğrulandı (bkz. `trip/CLAUDE.md`'nin router bölünmesi notu).
+
+**Aynı gün, ayrı bir onayla (kullanıcı, "app/'de taşınabilir hiçbir şey
+kalmadığından emin ol" talebi üzerine derin denetim + FAZ4'ün "DURMA
+NOKTASI" kapısını bu dar kapsam için bilinçli aşma kararı)**: geriye
+kalan `app/api/v1/endpoints/{ai,feedback}.py` (bu dosyada tek gerçek
+tüketicisi olan `api_router.py`'nin kendisi — artık doğrudan
+`v2.modules.ai_assistant.api.{ai_routes,feedback_routes}`'i import ediyor)
++ `app/core/ai/*` (5 dosya) + `app/services/smart_ai_service.py` +
+`app/schemas/trip_planner.py` — toplam 9 tek-satırlık "FAZ4'te silinir"
+wildcard shim — de SİLİNDİ (her birinin gerçek tüketici sayısı grep ile
+sıfıra indiği doğrulandıktan sonra; yalnız 1 coverage-boost test satırı
+vardı, o da kaldırıldı). `app/api/`, `app/core/`, `app/services/`,
+`app/schemas/` dizinlerinin hepsi artık mevcut değil — `app/` altında
+yalnız `main.py`, `config.py`, `__init__.py`, `data/`, `models/` kaldı.
 
 ## Test stratejisi
 

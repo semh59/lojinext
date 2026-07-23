@@ -13,7 +13,7 @@ def test_event_type_uses_single_canonical_source():
 @pytest.mark.parametrize(
     "relative_path",
     [
-        "app/services/smart_ai_service.py",
+        "v2/modules/ai_assistant/application/knowledge_base.py",
     ],
 )
 def test_phase11_target_files_are_mojibake_free(relative_path):

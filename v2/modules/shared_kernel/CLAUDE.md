@@ -179,9 +179,14 @@ injection.
 - `v2/modules/platform_infra/container.py` (dalga 17'de `app/core/
   container.py`'den taşındı) — DI composition root, bootstrap-seviyesi,
   ayrı bir konsept.
-- `app/core/ai/*` (5 dosya) — gerçek kod zaten `v2/modules/ai_assistant/`'a
-  taşındı, bunlar geriye kalan 1-satırlık "FAZ4'te silinir" wildcard shim'ler
-  (kendi CLAUDE.md'sinde dokümante, bu modülün kapsamı dışı).
+- ~~`app/core/ai/*` (5 dosya)~~ — gerçek kod zaten `v2/modules/ai_assistant/`'a
+  taşınmıştı, bunlar geriye kalan 1-satırlık "FAZ4'te silinir" wildcard
+  shim'lerdi. 2026-07-22'de (kullanıcı, FAZ4'ün "DURMA NOKTASI" kapısını bu
+  dar kapsam için bilinçli aşarak onayladı — sıfır gerçek tüketicisi kaldığı
+  doğrulandıktan sonra) `app/api/v1/endpoints/{ai,feedback}.py`,
+  `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` ile
+  birlikte tamamen SİLİNDİ; `app/core/`, `app/services/`, `app/schemas/`,
+  `app/api/` dizinleri artık mevcut değil. Bu listede artık yok.
 - ~~`app/core/services/openroute_service.py`~~ — 2026-07-22'de
   `location/infrastructure/openroute_geocode_client.py`'ye taşındı,
   `app/core/services/` dizini tamamen silindi; bu listede artık yok.
@@ -192,9 +197,6 @@ injection.
   orijinal 22 dosyalık envanterde hiç yoktu, kapsam dışı.
 - `app/schemas/telegram.py` — iş-alanına özgü Telegram bot şemaları
   (trip/driver/admin_platform'un konusu), generic değil.
-- `app/schemas/trip_planner.py` — zaten `v2.modules.ai_assistant.schemas`'a
-  yönlendiren, kendi docstring'inde "FAZ4'te silinir" diye dokümante
-  edilmiş bilinçli bir shim; bu dalganın kapsamı dışı.
 
 ## Test stratejisi
 

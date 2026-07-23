@@ -878,11 +878,6 @@ class TestInterfacesImport:
 
         assert hasattr(openroute_geocode_client, "__name__")
 
-    def test_rag_sync_service_importable(self):
-        from app.core.ai import rag_sync_service  # noqa: F401
-
-        assert hasattr(rag_sync_service, "__name__")
-
 
 # ---------------------------------------------------------------------------
 # System endpoint (error-report)

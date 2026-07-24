@@ -195,9 +195,9 @@ def db_session_factory(db_engine, monkeypatch):
     """Session scoped session maker that also patches the globally used SessionLocals."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
+    import v2.modules.admin_platform.application.error_events  # noqa: E402
     import v2.modules.platform_infra.database.connection  # noqa: E402
     import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
-    import v2.modules.admin_platform.application.error_events  # noqa: E402
 
     monkeypatch.setattr(v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory)
     monkeypatch.setattr(v2.modules.shared_kernel.infrastructure.unit_of_work, "AsyncSessionLocal", factory)
@@ -243,6 +243,16 @@ async def setup_test_db(db_engine, db_session_factory):
             ):
                 await conn.execute(text(stmt))
             await conn.run_sync(Base.metadata.create_all)
+
+            # FAZ2 Wave 1 (DB rol izolasyonu): bkz. app/tests/conftest.py'nin
+            # aynı satırı — roller/grant'lar Alembic'ten bağımsız, idempotent
+            # olarak burada da kurulur.
+            from v2.modules.platform_infra.database.role_grants import (
+                apply_role_grants_async,
+            )
+
+            await apply_role_grants_async(conn)
+
             # Test parity with app/tests/conftest.py: the stats endpoint
             # expects the PostgreSQL materialized view. Without it, any test
             # under tests/ that creates a sefer spams the DB log with

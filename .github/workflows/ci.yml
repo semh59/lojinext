@@ -589,6 +589,9 @@ jobs:
       - name: Integration — DB schema integrity
         run: pytest app/tests/integration/test_db_schema_integrity.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 
+      - name: Integration — FAZ2 DB role isolation (Wave 1: fk_registry + grants)
+        run: pytest app/tests/integration/test_fk_registry_matches_live_schema.py app/tests/integration/test_role_grants_bootstrap.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
+
       - name: Integration — API contracts
         run: pytest app/tests/integration/test_api_contracts.py -m integration -x -q --tb=short --timeout=60 --cov=app --cov=v2 --cov-append --cov-fail-under=0 --cov-config=pytest.ini
 

@@ -68,11 +68,17 @@ v2/modules/platform_infra/
 │   └── slowapi_limiter.py         # slowapi Limiter adaptori — main.py'nin app.state.limiter +
 │                                   # 5 modulun @limiter.limit(...) decorator'lari (TAMAMEN AYRI
 │                                   # bir mekanizma, rate_limit_middleware.py ile karistirilmasin)
-├── database/                      # DB engine/session bootstrap (4 dosya)
+├── database/                      # DB engine/session bootstrap (5 dosya)
 │   ├── connection.py              # engine, AsyncSessionLocal, get_db, session_scope
 │   ├── db_session.py              # _session_ctx, get_async_session_context
 │   ├── init_db.py                 # init_primary_data (elle-calistirilan dev-bootstrap script'i)
-│   └── backup_manager.py          # DatabaseBackupManager (pg_dump wrapper)
+│   ├── backup_manager.py          # DatabaseBackupManager (pg_dump wrapper)
+│   └── role_grants.py             # FAZ2 Wave 1 (DB rol izolasyonu): 17 PG rolu + grant matrisi
+│                                   # DDL uretici (tek dogruluk kaynagi) — apply_role_grants_sync
+│                                   # (alembic/versions/0061_faz2_role_grants.py) + apply_role_grants_async
+│                                   # (app/tests/conftest.py, tests/conftest.py — sema drop/recreate
+│                                   # sonrasi). SET ROLE hic cagirmaz (Wave 2'nin isi) — bkz.
+│                                   # TASKS/faz2-db-rol-izolasyonu-ve-read-model-grantlari.md
 ├── security/                      # PII sifreleme (2 dosya)
 │   ├── pii_encryption.py          # encrypt_pii, decrypt_pii, blind_index, trigram_blind_indexes
 │   └── pii_scrubber.py            # scrub_pii (log/serialize oncesi PII maskeleme)

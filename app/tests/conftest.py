@@ -383,6 +383,19 @@ async def async_db_engine(temp_db_url):
             )
         )
         await conn.run_sync(Base.metadata.create_all)
+
+        # FAZ2 Wave 1 (DB rol izolasyonu): roller/grant'lar bu conftest'in
+        # Alembic'i hiç çalıştırmayan şema drop/recreate döngüsünden bağımsız
+        # olarak da kurulmalı — apply_role_grants_async idempotent (CREATE
+        # ROLE bir existence-check DO-block'u içinde), ve create_all()'ın az
+        # önce yarattığı brand-new tablolara GRANT'ı ALTER DEFAULT PRIVILEGES
+        # sayesinde de uygular (bkz. role_grants.py docstring'i).
+        from v2.modules.platform_infra.database.role_grants import (
+            apply_role_grants_async,
+        )
+
+        await apply_role_grants_async(conn)
+
         # Test parity: the stats endpoint expects the PostgreSQL materialized view.
         await conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS sefer_istatistik_mv"))
         await conn.execute(

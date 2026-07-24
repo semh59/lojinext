@@ -28,6 +28,11 @@ mypy>=1.10
 # PyJWT ships its own type hints (py.typed); python-jose stubs removed with the
 # jose -> PyJWT migration (MINOR-009).
 types-passlib
+# arch/fk_registry.yml (FAZ2 DB rol izolasyonu Wave 1) parsing —
+# app/tests/integration/test_fk_registry_matches_live_schema.py +
+# scripts/faz2_generate_fk_registry_seed.py
+PyYAML>=6.0
+types-PyYAML
 
 # ── Security scanning ─────────────────────────────────────────
 pip-audit>=2.7       # CVE scanner for installed packages

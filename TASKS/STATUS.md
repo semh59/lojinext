@@ -19,7 +19,7 @@
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
 | **FAZ1** — Kod sınırları (17 kalem) | 🟢 KOD TARAFI TAMAMLANDI (2026-07-22) — 17/17 kalem branch'te; kalan tek şey "5 ardışık gün main'de yeşil" burn-in penceresi (takvim-zamanı gerektirir, tek oturumda gözlenemez) | Dalga 1-16 main'de/branch'te yeşil (aşağıdaki tablo). Dalga 17 (platform-infra) 2026-07-22'de 10 commit'lik bir alt-dalgayla tamamlandı: cache/events/container/resilience/database/monitoring/security/context/logging/audit/background/middleware/websocket taşındı + `public.py` + kendi `public-surface-only-platform_infra` import-linter kontratı yazıldı + CI'nın blocking gate adımına eklendi (`.github/workflows/ci.yml`, önceden eksikti — bu turda düzeltildi). Ardından "V2 dışında kalan var mı" denetiminde bulunan 4 ek kalem de taşındı/silindi (`app/api/middleware/rate_limiter.py`→platform_infra, `app/api/v1/utils.py`→platform_infra, ölü `app/core/services/ai_service.py` silindi, `app/workers/tasks/{backup_tasks,error_digest}.py`→platform_infra/background). Her adım tam doğrulamayla (ruff/mypy/lint-imports/alembic check/pytest, bilinen baseline 17 failed/6560 passed/28 skipped) ayrı commit+push edildi. |
-| **FAZ2** — Veri sınırları | 🟡 DEVAM EDİYOR (2026-07-23) | 3 alt-görevden 2'si tamamlandı (`faz2-guvenlik-state-redis.md`, `faz2-schema-per-module-postgres.md` — 14 şema/43 tablonun hepsi taşındı); `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md` şimdi giriş kriterini karşılıyor, henüz başlamadı — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
+| **FAZ2** — Veri sınırları | 🟡 DEVAM EDİYOR (2026-07-24) | 3 alt-görevden 2'si tamamlandı (`faz2-guvenlik-state-redis.md`, `faz2-schema-per-module-postgres.md` — 14 şema/43 tablonun hepsi taşındı); `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md`'nin Wave 1'i (17 rol + grant matrisi + fk_registry.yml, sıfır davranış değişikliği) TAMAMLANDI, Wave 2 (gerçek enforcement) ayrı DURMA NOKTASI olarak bekliyor — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor (ama bkz. not) | **Kısmi erken tamamlama (2026-07-22, kullanıcı onayıyla DURMA NOKTASI dar kapsamda aşıldı):** madde 2'nin ("shim temizliği") 9 kalemi — `app/api/v1/endpoints/{ai,feedback}.py`, `app/core/ai/*` (5 dosya), `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` — sıfır gerçek tüketici doğrulandıktan sonra silindi (gerçek kod zaten `v2/modules/ai_assistant/`'da). `app/api/`, `app/core/`, `app/services/`, `app/schemas/` dizinleri artık yok. FAZ4'ün diğer maddeleri (ignore_imports sıfırlama, xenon, dosya-kalite baseline, retro raporu) hâlâ FAZ3'ü bekliyor. |
 
@@ -2171,9 +2171,42 @@ yalnız özet:
   tablosu yok, yeni bir "yalnız bu MV için" şema açmak mı doğru karar net
   değil, kullanıcı onayı bekliyor).
 
-### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🔲 bekliyor (giriş kriteri artık karşılanıyor)
+### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🟡 Wave 1 TAMAMLANDI, Wave 2 bekliyor (DURMA NOKTASI)
 
-Giriş kriteri (`faz2-schema-per-module-postgres.md` tamamlanması) artık
-karşılanıyor — 14 şema/43 tablonun hepsi taşındı, gerçek Postgres'te
-doğrulandı. Bu görev henüz başlamadı, `m_ops` rolü ve read-model grant
-matrisi bu görevin kapsamında — kullanıcı onayı (DURMA NOKTASI) gerektirir.
+Görev iki dalgaya bölündü (kullanıcı onayıyla, "hepsi tek onayda"
+yerine düşük-riskli/geri-alınabilir adım + ayrı-onaylı riskli adım
+disiplini):
+
+**Wave 1 (✅ TAMAMLANDI, 2026-07-24)**: 17 PostgreSQL rolü (14 modül +
+platform + `m_analytics_executive`/`m_ai_assistant` read-model + `m_ops`)
++ grant matrisi gerçekten kuruldu (`v2/modules/platform_infra/database/
+role_grants.py` tek doğruluk kaynağı, `alembic/versions/
+0061_faz2_role_grants.py` migration'ı + her iki test conftest'inin şema
+drop/recreate döngüsünden sonra çağırdığı idempotent bootstrap). **Sıfır
+davranış değişikliği** — hiçbir yerde `SET ROLE` çağrılmıyor, uygulama
+hâlâ tek login role ile çalışıyor. 3 Explore ajanı + 1 Plan ajanının
+derin araştırması, görev dosyasının orijinal reader/grant-matrisi
+taslağını YANLIŞ/eksik bulup düzeltti (detaylar `faz2-db-rol-
+izolasyonu-ve-read-model-grantlari.md`'de) — 4 taslak-okuyucudan 3'ünün
+şema listesi hatalıydı, 6 ek okuyucu/yazıcı (`fleet`→trip, `fuel`→
+fleet+trip, `driver`→trip, `prediction_ml`→fleet, `route_simulation`→
+location, `import_excel`'in toplu yazma istisnası) taslakta hiç yoktu.
+`arch/fk_registry.yml` (42 kenar, `MEMORY/PROGRESS.md` §2.2'nin iddiası
+bu kez BAĞIMSIZ GREP İLE DOĞRU ÇIKTI — projenin daha önce bulunan bayat
+32-site/56-çağrı rakamının aksine) + CI-blocking diff testi eklendi.
+`m_ops` rolü gerçekten oluşturuldu (önceden yalnız planlanmıştı).
+Doğrulama: `alembic upgrade head`/`check`/`downgrade`+`upgrade` round-trip
+temiz; Alembic'in HİÇ çalışmadığı sıfırdan bir Postgres'te (`lojinext_
+test_fresh`) roller/grant'lar conftest'in kendi çağrısıyla doğru kuruldu;
+49+1 parametrized grant-doğrulama testi yeşil; **tam pytest suite Wave 1
+öncesiyle BİREBİR AYNI sonucu verdi (5202 passed, 0 failed, 0 error, 17
+skipped)** — sıfır davranış değişikliği iddiasının nihai kanıtı.
+
+**Wave 2 (🔲 bekliyor, ayrı DURMA NOKTASI)**: `SET LOCAL ROLE`
+enforcement'ının gerçekten bağlanması (`UnitOfWork`/`connection.py`'a
+enforcement noktası, `api_router.py`'nin ~50 `include_router()` çağrısına
+modül-bazlı dependency, Celery signal, 16 m_ops script'i). Bu, gerçek
+davranış değişikliği taşıyan, "permission denied" regresyonlarının
+triyaj edilmesini gerektiren riskli kısım — kullanıcı onayı olmadan
+başlamayacak. Detaylı yol haritası `faz2-db-rol-izolasyonu-ve-read-
+model-grantlari.md`'nin "Wave 2" bölümünde.

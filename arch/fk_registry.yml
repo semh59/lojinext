@@ -1,0 +1,105 @@
+# FAZ2 Wave 1 — cross-schema foreign key registry.
+#
+# Every foreign key here crosses a PostgreSQL schema boundary (the child
+# table's schema differs from the parent table's schema). Each edge is a
+# deliberate, reviewed cross-module dependency — adding a new cross-schema
+# FK means adding a line here, which a PR reviewer sees. Same-schema
+# (intra-module) FKs are NOT tracked here; there are 18 of those alongside
+# these 42.
+#
+# Verified against a fully-migrated database (alembic upgrade head, 0001
+# through 0061) via `python -m scripts.faz2_generate_fk_registry_seed` —
+# see that script's docstring for the pg_constraint/pg_class/pg_namespace
+# query. Diffed continuously by
+# app/tests/integration/test_fk_registry_matches_live_schema.py (CI-blocking,
+# symmetric — both an undocumented new edge and a stale registry entry fail).
+#
+# Two of these (platform.error_events.user_id/.resolved_by) live in
+# v2/modules/shared_kernel/infrastructure/error_monitoring_models.py, not in
+# any v2/modules/*/infrastructure/models.py file — easy to miss with a naive
+# glob when auditing this list by hand.
+edges:
+  - from: admin_platform.admin_audit_log.kullanici_id
+    to: auth_rbac.kullanicilar.id
+  - from: admin_platform.entegrasyon_ayarlari.guncelleyen_id
+    to: auth_rbac.kullanicilar.id
+  - from: anomaly.anomalies.acknowledged_by
+    to: auth_rbac.kullanicilar.id
+  - from: anomaly.anomalies.resolved_by
+    to: auth_rbac.kullanicilar.id
+  - from: anomaly.fuel_investigations.assigned_to_user_id
+    to: auth_rbac.kullanicilar.id
+  - from: anomaly.fuel_investigations.created_by_user_id
+    to: auth_rbac.kullanicilar.id
+  - from: auth_rbac.kullanicilar.sofor_id
+    to: driver.soforler.id
+  - from: driver.coaching_deliveries.sent_by_user_id
+    to: auth_rbac.kullanicilar.id
+  - from: fleet.araclar.olusturan_id
+    to: auth_rbac.kullanicilar.id
+  - from: fleet.vehicle_spec_timeline.degistiren_id
+    to: auth_rbac.kullanicilar.id
+  - from: fuel.yakit_alimlari.arac_id
+    to: fleet.araclar.id
+  - from: fuel.yakit_formul.arac_id
+    to: fleet.araclar.id
+  - from: fuel.yakit_periyotlari.arac_id
+    to: fleet.araclar.id
+  - from: import_excel.iceri_aktarim_gecmisi.yukleyen_id
+    to: auth_rbac.kullanicilar.id
+  - from: notification.bildirim_gecmisi.kullanici_id
+    to: auth_rbac.kullanicilar.id
+  - from: notification.bildirim_kurallari.alici_rol_id
+    to: auth_rbac.roller.id
+  - from: notification.push_subscriptions.user_id
+    to: auth_rbac.kullanicilar.id
+  - from: platform.error_events.resolved_by
+    to: auth_rbac.kullanicilar.id
+  - from: platform.error_events.user_id
+    to: auth_rbac.kullanicilar.id
+  - from: platform.konfig_gecmis.guncelleyen_id
+    to: auth_rbac.kullanicilar.id
+  - from: platform.sistem_konfig.guncelleyen_id
+    to: auth_rbac.kullanicilar.id
+  - from: prediction_ml.egitim_kuyrugu.arac_id
+    to: fleet.araclar.id
+  - from: prediction_ml.egitim_kuyrugu.tetikleyen_kullanici_id
+    to: auth_rbac.kullanicilar.id
+  - from: prediction_ml.model_versiyonlar.arac_id
+    to: fleet.araclar.id
+  - from: prediction_ml.model_versiyonlar.egiten_kullanici_id
+    to: auth_rbac.kullanicilar.id
+  - from: prediction_ml.prediction_results.user_id
+    to: auth_rbac.kullanicilar.id
+  - from: reports.page_views.user_id
+    to: auth_rbac.kullanicilar.id
+  - from: route_simulation.guzergah_kalibrasyonlari.lokasyon_id
+    to: location.lokasyonlar.id
+  - from: route_simulation.route_simulations.arac_id
+    to: fleet.araclar.id
+  - from: route_simulation.route_simulations.kullanici_id
+    to: auth_rbac.kullanicilar.id
+  - from: route_simulation.route_simulations.lokasyon_id
+    to: location.lokasyonlar.id
+  - from: trip.sefer_belgeler.sofor_id
+    to: driver.soforler.id
+  - from: trip.seferler.arac_id
+    to: fleet.araclar.id
+  - from: trip.seferler.created_by_id
+    to: auth_rbac.kullanicilar.id
+  - from: trip.seferler.dorse_id
+    to: fleet.dorseler.id
+  - from: trip.seferler.guzergah_id
+    to: location.lokasyonlar.id
+  - from: trip.seferler.onaylayan_id
+    to: auth_rbac.kullanicilar.id
+  - from: trip.seferler.periyot_id
+    to: fuel.yakit_periyotlari.id
+  - from: trip.seferler.route_simulation_id
+    to: route_simulation.route_simulations.id
+  - from: trip.seferler.sofor_id
+    to: driver.soforler.id
+  - from: trip.seferler.updated_by_id
+    to: auth_rbac.kullanicilar.id
+  - from: trip.seferler_log.degistiren_id
+    to: auth_rbac.kullanicilar.id

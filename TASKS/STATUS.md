@@ -2080,10 +2080,29 @@ yalnız özet:
   kullanıyor, taze bir `lojinext_user` bağlantısının `SHOW search_path`'i
   ile doğrulandı — ALTER ROLE'ün genişlettiği search_path'i otomatik miras
   alıyorlar, kod değişikliği gerekmedi. Geniş bir pytest kesiti (`-m "unit
-  or not integration"`, 6554 test collect edildi — 2 eksik pip paketi
+  or not integration"`, 6554 test collect edildi — 3 eksik pip paketi
   (`email-validator`, `respx`, `requests`) izole venv'e kuruldu, gerçek
-  kod eksikliği değildi) gerçek DB'ye karşı koşuldu; sonucu bu bölümün
-  bir sonraki güncellemesinde eklenecek (uzun sürdüğü için ayrı turda).
+  kod eksikliği değildi) gerçek DB'ye karşı koşuldu: **ilk deneme yanıltıcı
+  1706 failed/183 error verdi, kök neden bu şema taşımasıyla ilgisizdi**
+  (doğrulama venv'inde Redis çalışmıyordu — `faz2-guvenlik-state-redis.md`'nin
+  fail-closed rate limiter'ı Redis'siz birçok yazma endpoint'ini 503'e
+  düşürüyordu). Redis başlatılınca hedefli bir alt küme (`test_trips_
+  coverage.py`/`test_vehicles_coverage.py`/`test_system_coverage.py`)
+  133 passed verdi — kalan ~50 "error" zaten bilinen pytest-asyncio
+  teardown/event-loop gürültüsüydü. **Bu triyaj GERÇEK bir ikinci bug'ı da
+  ortaya çıkardı**: `app/tests/conftest.py`/kök `tests/conftest.py`'nin
+  şema-reset fixture'ı yalnız `public`'i `DROP...CASCADE` ediyordu, diğer 13
+  modül şemasını `CREATE SCHEMA IF NOT EXISTS` ile "varsa dokunma"
+  bırakıyordu — `create_all()`'un `checkfirst=True`'su var olan tabloyu
+  atladığı için aynı fiziksel test DB'sinde ardışık kod-sürümlü oturumlar
+  arasında STALE tablo kalabiliyordu (CI'da ephemeral DB kullanıldığı için
+  hiç tetiklenmezdi, yalnız bu oturumun aynı Postgres'e karşı tekrarlı
+  ad-hoc koşumunda ortaya çıktı). Düzeltme: her iki fixture artık TÜM modül
+  şemalarını (yalnız `public`'i değil) her oturum başında tam `DROP+CREATE`
+  ediyor. Düzeltmeden sonra temiz bir DB ile hedefli alt küme 0 gerçek
+  failure verdi; tam ~6500 testlik suite'in bu düzeltmeyle son koşumu ayrı
+  bir arka-plan görev olarak devam ediyor, sonucu commit mesajında/bir
+  sonraki güncellemede netleşecek.
 - **Bilinçli olarak YAPILMAYANLAR**: `m_ops` rolü (ayrı, kullanıcı onayı
   gerektiren DB-rol tasarım kararı — `faz2-db-rol-izolasyonu` görevinin
   kapsamı); gerçek docker-compose + `e2e_pilot_smoke.py`/

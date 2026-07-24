@@ -237,7 +237,31 @@ DIŞINDA.
 alındı) → `alembic upgrade head` tekrar → `alembic check` (temiz) —
 tam round-trip doğrulandı. `ruff check --select E,F,W,I` temiz. `mypy`
 temiz (mevcut 4 hata `trip/infrastructure/repository.py`'de pre-existing,
-bu dalganın dokunmadığı bir dosyada). Geniş bir pytest kesiti (`-m "unit or
-not integration"`, ~6500+ test) gerçek DB'ye karşı koşuldu — sonuç bu
-dosyanın bir sonraki güncellemesinde eklenecek (koşum uzun sürdüğü için
-ayrı bir turda tamamlandı, bkz. STATUS.md).
+bu dalganın dokunmadığı bir dosyada).
+
+**Pytest regresyon koşumu — ilk denemede yanıltıcı 1706 failed/183 error,
+kök neden ortam eksikliği (bu şema taşımasıyla ilgisiz):** bu doğrulama
+venv'inde Redis çalışmıyordu (`faz2-guvenlik-state-redis.md`'nin fail-closed
+rate limiter'ı Redis yoksa yazma endpoint'lerini 503'e düşürüyor) — Redis
+başlatılınca (`service redis-server start`) sayı 133 passed/50 error'a
+düştü, kalan 50'si de zaten bilinen pytest-asyncio teardown/event-loop
+gürültüsüydü (gerçek assertion'lar hepsi geçti). **Ayrıca bu triyaj sırasında
+GERÇEK bir bug bulunup düzeltildi**: `app/tests/conftest.py`/kök
+`tests/conftest.py`'nin şema-reset fixture'ı yalnız `public` şemasını
+`DROP...CASCADE`+`CREATE` yapıyordu, diğer 13 modül şemasını yalnız `CREATE
+SCHEMA IF NOT EXISTS` ile "varsa dokunma" mantığıyla bırakıyordu —
+`Base.metadata.create_all()`'un `checkfirst=True` varsayılanı zaten var olan
+bir tabloyu ATLADIĞI için, aynı fiziksel test DB'sinde art arda farklı kod
+sürümleriyle koşulan oturumlar arasında STALE (eski yapılı) tablolar
+sessizce kalıcı oluyordu (gerçek örnek: `platform.error_occurrences`'ın
+önceki bir iterasyondan kalma hâli `error_hourly_stats` MV'sinin
+`CREATE`'ini "column layer does not exist" ile patlatıyordu). Düzeltme: her
+iki fixture artık TÜM modül şemalarını (yalnız `public`'i değil) her oturum
+başında `DROP SCHEMA ... CASCADE` + `CREATE SCHEMA` ile tam sıfırlıyor —
+CI'da zaten ephemeral DB kullanıldığı için bu asla tetiklenmiyordu, yalnız
+bu oturumun aynı Postgres'e karşı tekrar tekrar koşulan ad-hoc doğrulama
+akışında ortaya çıktı. Temiz bir test DB ile (`lojinext_test`'i tamamen
+DROP+CREATE ettikten sonra) hedefli alt küme (`test_trips_coverage.py`,
+`test_vehicles_coverage.py`, `test_system_coverage.py`) **133 passed, 0 gerçek
+failure** verdi. Tam suite'in (~6500+ test) bu düzeltmeyle son koşumu
+STATUS.md'de güncellenecek.

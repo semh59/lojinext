@@ -292,11 +292,17 @@ async def async_db_engine(temp_db_url):
         # Drop the schema completely to avoid any corrupt data from SQL_ASCII encoding
         await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
-        # Module schemas (FAZ2): create every schema the ORM models declare
-        # (derived above into _extra_schemas) before create_all runs, else
-        # it fails with "schema does not exist" for any moved table.
+        # Module schemas (FAZ2): DROP + recreate each one the ORM models declare
+        # (derived above into _extra_schemas), not just CREATE IF NOT EXISTS —
+        # otherwise a schema left over from a previous session/model version
+        # persists untouched (create_all's checkfirst=True skips any table
+        # that already exists), silently reusing a stale structure instead of
+        # the current one. Found the hard way: a long-lived local Postgres
+        # instance kept an old `platform.error_occurrences` around across
+        # runs, causing "column does not exist" in unrelated tests.
         for _schema_name in _extra_schemas:
-            await conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{_schema_name}"'))
+            await conn.execute(text(f'DROP SCHEMA IF EXISTS "{_schema_name}" CASCADE'))
+            await conn.execute(text(f'CREATE SCHEMA "{_schema_name}"'))
 
         # Attempt to activate PostGIS via SAVEPOINT so a failure does NOT abort
         # the current transaction block.  Falls back to LargeBinary for the one

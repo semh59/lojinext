@@ -299,3 +299,10 @@ FastAPI/Starlette sürüm farkı `_IncludedRouter.path` AttributeError'ı,
 rate-limiter/Redis contention 503'ü, `error_events` sayısının test-sırası
 pollution'ı) — CI'da (doğru pinned bağımlılıklar + ephemeral DB + gerçek
 `api-stub`) bunların hiçbiri beklenmez.
+
+**Kesin son koşum (tüm düzeltmeler commit'lendikten sonra, temiz
+`lojinext_test` + hem Postgres hem Redis ayakta, tek kesintisiz koşum):**
+`5108 passed, 21 failed, 90 skipped` (489s). 21 failure'ın tamamı yukarıdaki
+aynı sandbox-ortamı kategorilerine düşüyor (birebir aynı test isimleri) —
+sıfır yeni/beklenmeyen failure. Bu, 13-şema taşımasının gerçek bir
+regresyon üretmediğinin nihai kanıtı.

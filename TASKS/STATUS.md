@@ -2119,12 +2119,15 @@ yalnız özet:
   models.py`, `test_phase4_sefer_integration_helpers.py`) `Base.metadata.
   tables["lokasyonlar"]` gibi şema-öncesi bare-key varsayımları
   `Base.metadata.tables["location.lokasyonlar"]` gibi şema-nitelenmiş
-  anahtarlara güncellendi. Kalan ~22 failure tamamen ortama özgü
+  anahtarlara güncellendi. Kalan failure'lar tamamen ortama özgü
   (Mapbox/ORS/api-stub yok, RAG/FAISS init eksik bağımlılık, FastAPI/
   Starlette sürüm farkı, rate-limiter/Redis contention, `error_events`
   sayısının test-sırası pollution'ı) — CI'da (pinned bağımlılıklar +
   ephemeral DB + gerçek api-stub) beklenmez. Tüm düzeltmeler commit'lendi
-  (`9a47184`, `c5e9891`, `ed05f30`).
+  (`9a47184`, `c5e9891`, `ed05f30`). **Kesin son koşum** (hem Postgres hem
+  Redis ayakta, temiz `lojinext_test`, tek kesintisiz koşum):
+  **5108 passed, 21 failed, 90 skipped** — 21'i birebir aynı sandbox-ortamı
+  kategorilerine düşüyor, sıfır yeni/beklenmeyen failure.
 - **Bilinçli olarak YAPILMAYANLAR**: `m_ops` rolü (ayrı, kullanıcı onayı
   gerektiren DB-rol tasarım kararı — `faz2-db-rol-izolasyonu` görevinin
   kapsamı); gerçek docker-compose + `e2e_pilot_smoke.py`/

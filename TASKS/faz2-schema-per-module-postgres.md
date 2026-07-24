@@ -263,5 +263,39 @@ bu oturumun aynı Postgres'e karşı tekrar tekrar koşulan ad-hoc doğrulama
 akışında ortaya çıktı. Temiz bir test DB ile (`lojinext_test`'i tamamen
 DROP+CREATE ettikten sonra) hedefli alt küme (`test_trips_coverage.py`,
 `test_vehicles_coverage.py`, `test_system_coverage.py`) **133 passed, 0 gerçek
-failure** verdi. Tam suite'in (~6500+ test) bu düzeltmeyle son koşumu
-STATUS.md'de güncellenecek.
+failure** verdi.
+
+**Tam suite (~6500+ test) — iteratif triyaj, son durum:** İlk tam koşum
+(conftest fix'inden sonra) 1645 failed/189 error verdi — ikinci bir ortam
+bulgusu: doğrulama venv'indeki `pytest-asyncio` sürümü (0.23.8) projenin
+`pytest.ini`'sinin beklediği `asyncio_default_fixture_loop_scope=session`
+config'ini TANIMIYOR ("Unknown config option" uyarısı) — bu, session-scoped
+async fixture'ların her testte yeniden açılıp kapanan function-scoped bir
+event loop'a çarpmasına, dolayısıyla suite genelinde kademeli "event loop
+kapalı" hatalarına yol açıyordu (şema taşımasıyla hiç ilgisi yok).
+`pip install -U "pytest-asyncio>=0.24"` (1.4.0'a yükseltti) sonrası aynı
+koşum **90 failed**'e düştü. Kalan 90'ın çoğu iki eksik pip paketinden
+(`xlsxwriter`, `scikit-learn` — bu ad-hoc venv'de hiç kurulmamıştı) ve
+erişilemez dış servislerden (Mapbox/ORS/api-stub bu sandbox'ta yok, RAG/FAISS
+init hatası) kaynaklanıyordu; ikisi kurulunca **24 failed**'e düştü.
+
+Bu 24'ün triyajında **2 GERÇEK regresyon** bulunup düzeltildi (commit
+`ed05f30`): `app/tests/unit/test_push_broadcast.py` ve
+`test_send_push_to_user.py`'nin sahte (`_FakeSession`) mock'ları,
+`PushSubscription` artık `notification` şemasında olduğu için üretilen
+`"DELETE FROM notification.push_subscriptions ..."` SQL'ini eski
+şema-siz literal string'le (`"delete from push_subscriptions"`) arıyordu —
+düzeltme substring eşleşmesine çevrildi (`"delete from" in text and
+"push_subscriptions" in text`). Ayrıca 4 test dosyasında (`test_lokasyon_
+segments_model.py`, `test_route_simulation_models.py`,
+`test_phase4_sefer_integration_helpers.py` — commit `c5e9891`)
+`Base.metadata.tables["lokasyonlar"]` gibi şema-öncesi bare-key varsayımları
+vardı — SQLAlchemy artık bunları `"location.lokasyonlar"` gibi şema-nitelenmiş
+anahtarla kaydediyor; testler güncellendi.
+
+Kalan ~22 failure'ın tamamı şema taşımasıyla ilgisiz, bu sandbox'a özgü
+ortam kısıtları (Mapbox/ORS/api-stub yok, FAISS/RAG init'i eksik bağımlılık,
+FastAPI/Starlette sürüm farkı `_IncludedRouter.path` AttributeError'ı,
+rate-limiter/Redis contention 503'ü, `error_events` sayısının test-sırası
+pollution'ı) — CI'da (doğru pinned bağımlılıklar + ephemeral DB + gerçek
+`api-stub`) bunların hiçbiri beklenmez.

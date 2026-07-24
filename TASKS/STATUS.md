@@ -2100,9 +2100,31 @@ yalnız özet:
   ad-hoc koşumunda ortaya çıktı). Düzeltme: her iki fixture artık TÜM modül
   şemalarını (yalnız `public`'i değil) her oturum başında tam `DROP+CREATE`
   ediyor. Düzeltmeden sonra temiz bir DB ile hedefli alt küme 0 gerçek
-  failure verdi; tam ~6500 testlik suite'in bu düzeltmeyle son koşumu ayrı
-  bir arka-plan görev olarak devam ediyor, sonucu commit mesajında/bir
-  sonraki güncellemede netleşecek.
+  failure verdi.
+- **Tam ~6500 testlik suite — iteratif triyaj, üçüncü bir ortam bulgusu daha**:
+  conftest düzeltmesinden sonra tam koşum 1645 failed/189 error verdi —
+  sebep bu kez doğrulama venv'indeki `pytest-asyncio==0.23.8`'in projenin
+  `pytest.ini`'sindeki `asyncio_default_fixture_loop_scope=session`
+  config'ini tanımamasıydı ("Unknown config option" uyarısı; session-scoped
+  fixture'lar function-scoped bir event loop'a çarpıp kademeli "event loop
+  kapalı" hatalarına yol açıyordu). `pip install -U "pytest-asyncio>=0.24"`
+  (1.4.0) sonrası **90 failed**'e düştü; kalanın çoğu 2 eksik pip paketiydi
+  (`xlsxwriter`, `scikit-learn`) — kurulunca **24 failed**'e düştü.
+  Bu 24'ün triyajında **2 GERÇEK regresyon** bulunup düzeltildi
+  (`app/tests/unit/{test_push_broadcast,test_send_push_to_user}.py`'nin
+  `_FakeSession` mock'ları, `PushSubscription`'ın artık ürettiği
+  `"DELETE FROM notification.push_subscriptions ..."` SQL'ini eski şema-siz
+  literal string'le arıyordu — substring eşleşmesine çevrildi) ve 4 test
+  dosyasında (`test_lokasyon_segments_model.py`, `test_route_simulation_
+  models.py`, `test_phase4_sefer_integration_helpers.py`) `Base.metadata.
+  tables["lokasyonlar"]` gibi şema-öncesi bare-key varsayımları
+  `Base.metadata.tables["location.lokasyonlar"]` gibi şema-nitelenmiş
+  anahtarlara güncellendi. Kalan ~22 failure tamamen ortama özgü
+  (Mapbox/ORS/api-stub yok, RAG/FAISS init eksik bağımlılık, FastAPI/
+  Starlette sürüm farkı, rate-limiter/Redis contention, `error_events`
+  sayısının test-sırası pollution'ı) — CI'da (pinned bağımlılıklar +
+  ephemeral DB + gerçek api-stub) beklenmez. Tüm düzeltmeler commit'lendi
+  (`9a47184`, `c5e9891`, `ed05f30`).
 - **Bilinçli olarak YAPILMAYANLAR**: `m_ops` rolü (ayrı, kullanıcı onayı
   gerektiren DB-rol tasarım kararı — `faz2-db-rol-izolasyonu` görevinin
   kapsamı); gerçek docker-compose + `e2e_pilot_smoke.py`/
@@ -2114,5 +2136,7 @@ yalnız özet:
 
 ### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🔲 bekliyor (giriş kriteri artık karşılanıyor)
 
-Giriş kriteri (`faz2-schema-per-module-postgres.md` tamamlanması) henüz
-karşılanmadı.
+Giriş kriteri (`faz2-schema-per-module-postgres.md` tamamlanması) artık
+karşılanıyor — 14 şema/43 tablonun hepsi taşındı, gerçek Postgres'te
+doğrulandı. Bu görev henüz başlamadı, `m_ops` rolü ve read-model grant
+matrisi bu görevin kapsamında — kullanıcı onayı (DURMA NOKTASI) gerektirir.

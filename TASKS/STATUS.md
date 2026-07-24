@@ -2128,6 +2128,40 @@ yalnız özet:
   Redis ayakta, temiz `lojinext_test`, tek kesintisiz koşum):
   **5108 passed, 21 failed, 90 skipped** — 21'i birebir aynı sandbox-ortamı
   kategorilerine düşüyor, sıfır yeni/beklenmeyen failure.
+- **Takip turu ("21 failed 90 skipped düzelt hepsi geçicek")**: kalan 21
+  failure + 90 skip'in tamamı triyaj edildi. Hepsi ortam eksikliğiydi —
+  şema taşımasıyla ilgisiz: `fastapi==0.139.2` kurulu (proje `0.136.0`'a
+  pinli) → pin'e dönüldü; `torch`/`lightgbm`/`faiss-cpu`/
+  `sentence-transformers`/`shapely` bu doğrulama venv'inde hiç kurulu
+  değildi (hepsi `app/requirements.txt`'te zaten pinli) → kuruldu;
+  `uvicorn` yoktu → kuruldu, `api_stub/main.py` Docker'sız ayağa
+  kaldırıldı (testler zaten `http://localhost:9000`'e kendi
+  monkeypatch'lerini yapıyor). **2 GERÇEK test-izolasyonu bug'ı** bulunup
+  düzeltildi (commit `488c282`): (1) `reset_rate_limiter_registry`
+  fixture'ı (her iki conftest.py) yalnız in-process
+  `RateLimiterRegistry._limiters` dict'ini temizliyordu — asıl sayaç
+  Redis'te (`ratelimit:*` key'leri) yaşıyor, tam suite'te ortak bucket'a
+  çarpan testler birbirini 429/503'e düşürüyordu; artık Redis-seviyeli
+  `SCAN`+`DEL` de ekli. (2) `v2/modules/admin_platform/application/
+  error_events.py` modül-seviyesinde `from platform_infra.public import
+  AsyncSessionLocal` yapıyor — bu, `db_session` fixture'ının
+  `monkeypatch.setattr(".../connection.AsyncSessionLocal", ...)`
+  çağrısıyla YAKALANMIYOR (klasik Python import-binding tuzağı: isim
+  zaten modülün kendi namespace'ine import anında bağlanmış, sonradan
+  kaynak modülün attribute'unu patchlemek bunu etkilemiyor) — endpoint
+  gerçek `DATABASE_URL` DB'sini okuyordu, test DB'sini değil. Fix: her
+  iki conftest.py'de `error_events.AsyncSessionLocal`'ı da doğrudan
+  patchle. **Kesin, temiz, eşzamanlı hiçbir başka süreç olmadan tek
+  koşum**: **5202 passed, 0 failed, 0 error, 17 skipped**. Kalan 17
+  skip'in hepsi meşru/dokümante: 4'ü "no-FAISS path" guard testi (FAISS
+  kuruluyken kasıtlı skip), 4'ü "PyTorch present" guard testi (torch
+  kuruluyken kasıtlı skip — ikisi de ilgili paket YOKKEN çalışan bir kod
+  yolunu test ediyor), 8'i gerçek Mapbox response örnek JSON dosyası
+  eksikliği ("Phase 0 probe çalıştırılmamış" — kaydedilmiş sample
+  gerektiriyor, kod bug'ı değil), 1'i `tests/security/test_boundaries.py`
+  — gerçek bir canlı sunucu (`http://127.0.0.1:8000`) gerektiren, test
+  client değil gerçek network isteği atan bir güvenlik testi (kasıtlı
+  olarak ayrık). Hiçbiri paket kurulumuyla çözülecek bir eksik değil.
 - **Bilinçli olarak YAPILMAYANLAR**: `m_ops` rolü (ayrı, kullanıcı onayı
   gerektiren DB-rol tasarım kararı — `faz2-db-rol-izolasyonu` görevinin
   kapsamı); gerçek docker-compose + `e2e_pilot_smoke.py`/

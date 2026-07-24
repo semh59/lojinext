@@ -306,3 +306,20 @@ pollution'ı) — CI'da (doğru pinned bağımlılıklar + ephemeral DB + gerçe
 aynı sandbox-ortamı kategorilerine düşüyor (birebir aynı test isimleri) —
 sıfır yeni/beklenmeyen failure. Bu, 13-şema taşımasının gerçek bir
 regresyon üretmediğinin nihai kanıtı.
+
+**Takip turu**: kullanıcı kalan 21 failure + 90 skip'in de sıfıra
+indirilmesini istedi. Eksik pip paketleri kuruldu (torch/lightgbm/
+faiss-cpu/sentence-transformers/shapely/uvicorn), fastapi pin'e
+(`0.136.0`) dönüldü, `api_stub` Docker'sız `uvicorn` ile ayağa kaldırıldı.
+Triyajda 2 gerçek test-izolasyonu bug'ı bulunup düzeltildi (commit
+`488c282` — detaylar `TASKS/STATUS.md`'de): rate-limiter'ın Redis
+sayaçlarını flush etmeyen fixture, ve `error_events.py`'nin modül-
+seviyesinde import ettiği `AsyncSessionLocal`'ın `db_session`
+fixture'ının monkeypatch'i tarafından hiç yakalanmaması (endpoint gerçek
+DB'yi okuyordu). Bunlar şema taşımasının kendisiyle ilgili değil, ama
+tam-suite pytest koşumlarını etkiliyorlardı. **Kesin, tamamen temiz
+(eşzamanlı başka pytest süreci olmadan) son koşum: `5202 passed, 0
+failed, 0 error, 17 skipped`.** Kalan 17 skip meşru/dokümante (FAISS/
+PyTorch "guard testi kasıtlı skip" — paket kuruluyken o path zaten
+test edilmiyor —, kayıtlı Mapbox sample JSON eksikliği, ve gerçek canlı
+sunucu gerektiren 1 güvenlik testi) — hiçbiri kod bug'ı değil.

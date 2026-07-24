@@ -10,11 +10,13 @@ from v2.modules.shared_kernel.infrastructure.base import Base
 
 
 def test_lokasyon_segments_registered():
-    assert "lokasyon_segments" in Base.metadata.tables
+    # FAZ2 (schema-per-module): a table with __table_args__ = {"schema": ...}
+    # is keyed in Base.metadata.tables as "<schema>.<table>", not the bare name.
+    assert "location.lokasyon_segments" in Base.metadata.tables
 
 
 def test_lokasyonlar_has_new_phase3_columns():
-    cols = {c.name for c in Base.metadata.tables["lokasyonlar"].columns}
+    cols = {c.name for c in Base.metadata.tables["location.lokasyonlar"].columns}
     assert "ad" in cols
     assert "hydrated_at" in cols
     assert "raw_segment_count" in cols
@@ -23,14 +25,14 @@ def test_lokasyonlar_has_new_phase3_columns():
 
 
 def test_lokasyon_segments_fk_cascade_on_delete():
-    t = Base.metadata.tables["lokasyon_segments"]
+    t = Base.metadata.tables["location.lokasyon_segments"]
     fk = list(t.foreign_keys)[0]
     assert fk.column.table.name == "lokasyonlar"
     assert fk.ondelete == "CASCADE"
 
 
 def test_unique_lokasyon_seq():
-    t = Base.metadata.tables["lokasyon_segments"]
+    t = Base.metadata.tables["location.lokasyon_segments"]
     uniques = [c for c in t.constraints if c.__class__.__name__ == "UniqueConstraint"]
     cols = {col.name for c in uniques for col in c.columns}
     assert {"lokasyon_id", "seq"} <= cols

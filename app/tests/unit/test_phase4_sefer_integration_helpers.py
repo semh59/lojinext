@@ -80,7 +80,9 @@ def test_bulk_fuel_estimate_strategy_default_skip():
 
 def test_sefer_has_route_simulation_id_fk():
     """ORM model Phase 4.4 FK doğru."""
-    sefer_table = Base.metadata.tables["seferler"]
+    # FAZ2 (schema-per-module): a table with __table_args__ = {"schema": ...}
+    # is keyed in Base.metadata.tables as "<schema>.<table>", not the bare name.
+    sefer_table = Base.metadata.tables["trip.seferler"]
     cols = {c.name for c in sefer_table.columns}
     assert "route_simulation_id" in cols
 

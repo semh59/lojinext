@@ -11,25 +11,27 @@ from v2.modules.shared_kernel.infrastructure.base import Base
 
 
 def test_models_registered_in_metadata():
-    assert "route_simulations" in Base.metadata.tables
-    assert "route_segments" in Base.metadata.tables
+    # FAZ2 (schema-per-module): a table with __table_args__ = {"schema": ...}
+    # is keyed in Base.metadata.tables as "<schema>.<table>", not the bare name.
+    assert "route_simulation.route_simulations" in Base.metadata.tables
+    assert "route_simulation.route_segments" in Base.metadata.tables
 
 
 def test_route_segments_fk_targets_route_simulations():
-    seg_table = Base.metadata.tables["route_segments"]
+    seg_table = Base.metadata.tables["route_simulation.route_segments"]
     fks = list(seg_table.foreign_keys)
     assert len(fks) == 1
     assert fks[0].column.table.name == "route_simulations"
 
 
 def test_route_segments_cascade_on_delete():
-    seg_table = Base.metadata.tables["route_segments"]
+    seg_table = Base.metadata.tables["route_simulation.route_segments"]
     fk = list(seg_table.foreign_keys)[0]
     assert fk.ondelete == "CASCADE"
 
 
 def test_unique_constraint_simulation_id_seq():
-    seg_table = Base.metadata.tables["route_segments"]
+    seg_table = Base.metadata.tables["route_simulation.route_segments"]
     uniques = [
         c for c in seg_table.constraints if c.__class__.__name__ == "UniqueConstraint"
     ]
@@ -40,7 +42,7 @@ def test_unique_constraint_simulation_id_seq():
 
 def test_route_simulations_has_lokasyon_id_fk():
     """Phase 3.3 — route_simulations.lokasyon_id FK SET NULL."""
-    t = Base.metadata.tables["route_simulations"]
+    t = Base.metadata.tables["route_simulation.route_simulations"]
     cols = {c.name for c in t.columns}
     assert "lokasyon_id" in cols
     # FK target

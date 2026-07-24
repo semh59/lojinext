@@ -197,12 +197,36 @@ def bypass_token_blacklist(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def reset_rate_limiter_registry():
+async def reset_rate_limiter_registry():
     from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
     yield
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
+
+
+async def _flush_rate_limiter_redis_keys() -> None:
+    """Clears the fixed-window Redis counters (`ratelimit:*`) that back
+    `AsyncRateLimiter` (v2/modules/platform_infra/resilience/rate_limiter.py).
+    Clearing only `RateLimiterRegistry._limiters` (the in-process dict)
+    leaves these counters untouched, so across a full-suite run many tests
+    hitting the same bucket (e.g. "create_trip") share and exhaust one
+    Redis-side counter, tripping 429/503 on unrelated later tests. Best
+    effort: if Redis is unreachable the test suite has bigger problems
+    elsewhere, so failures here are swallowed rather than masking those.
+    """
+    try:
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
+
+        redis = get_pubsub_manager()._redis
+        if redis is None:
+            return
+        async for key in redis.scan_iter(match="ratelimit:*"):
+            await redis.delete(key)
+    except Exception:
+        pass
 
 
 def resolve_test_db_url(url: str | None) -> str:
@@ -444,6 +468,11 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
     wrapper = NonClosingSession(session)
     monkeypatch.setattr("v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper)
     monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
+    # error_events.py does `from platform_infra.public import AsyncSessionLocal`
+    # at module scope, binding its own name at import time — patching the
+    # connection module's attribute above doesn't reach that already-bound
+    # name, so it must be patched directly here too.
+    monkeypatch.setattr("v2.modules.admin_platform.application.error_events.AsyncSessionLocal", wrapper)
 
     # Sync support
     sync_url = temp_db_url.replace("+asyncpg", "")

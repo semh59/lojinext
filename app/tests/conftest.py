@@ -197,12 +197,36 @@ def bypass_token_blacklist(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def reset_rate_limiter_registry():
+async def reset_rate_limiter_registry():
     from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
     yield
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
+
+
+async def _flush_rate_limiter_redis_keys() -> None:
+    """Clears the fixed-window Redis counters (`ratelimit:*`) that back
+    `AsyncRateLimiter` (v2/modules/platform_infra/resilience/rate_limiter.py).
+    Clearing only `RateLimiterRegistry._limiters` (the in-process dict)
+    leaves these counters untouched, so across a full-suite run many tests
+    hitting the same bucket (e.g. "create_trip") share and exhaust one
+    Redis-side counter, tripping 429/503 on unrelated later tests. Best
+    effort: if Redis is unreachable the test suite has bigger problems
+    elsewhere, so failures here are swallowed rather than masking those.
+    """
+    try:
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
+
+        redis = get_pubsub_manager()._redis
+        if redis is None:
+            return
+        async for key in redis.scan_iter(match="ratelimit:*"):
+            await redis.delete(key)
+    except Exception:
+        pass
 
 
 def resolve_test_db_url(url: str | None) -> str:
@@ -249,11 +273,25 @@ async def async_db_engine(temp_db_url):
     # fresh backend connection. It also eliminates the "garbage collector is
     # trying to clean up non-checked-in connection" / "Event loop is closed"
     # teardown noise from pooled async connections outliving the event loop.
+    #
+    # FAZ2 (schema-per-module): tables move out of `public` one module-schema
+    # at a time (`__table_args__ = {"schema": "..."}` on the ORM model). Prod
+    # picks this up via each migration's `ALTER ROLE CURRENT_USER SET
+    # search_path = ...` (see `alembic/versions/0047_import_excel_schema_move.py`),
+    # but this fixture bypasses Alembic entirely (schema reset via
+    # `create_all`, not migrations) — so it must set the same search_path
+    # itself, derived from whatever schemas the ORM models actually declare,
+    # so this never needs another manual edit as later waves add schemas.
+    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         temp_db_url,
         echo=False,
         poolclass=NullPool,
-        connect_args={"command_timeout": 10},
+        connect_args={
+            "command_timeout": 10,
+            "server_settings": {"search_path": _search_path},
+        },
     )
 
     # Initialize the schema through ORM metadata.
@@ -278,6 +316,17 @@ async def async_db_engine(temp_db_url):
         # Drop the schema completely to avoid any corrupt data from SQL_ASCII encoding
         await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
         await conn.execute(text("CREATE SCHEMA public"))
+        # Module schemas (FAZ2): DROP + recreate each one the ORM models declare
+        # (derived above into _extra_schemas), not just CREATE IF NOT EXISTS —
+        # otherwise a schema left over from a previous session/model version
+        # persists untouched (create_all's checkfirst=True skips any table
+        # that already exists), silently reusing a stale structure instead of
+        # the current one. Found the hard way: a long-lived local Postgres
+        # instance kept an old `platform.error_occurrences` around across
+        # runs, causing "column does not exist" in unrelated tests.
+        for _schema_name in _extra_schemas:
+            await conn.execute(text(f'DROP SCHEMA IF EXISTS "{_schema_name}" CASCADE'))
+            await conn.execute(text(f'CREATE SCHEMA "{_schema_name}"'))
 
         # Attempt to activate PostGIS via SAVEPOINT so a failure does NOT abort
         # the current transaction block.  Falls back to LargeBinary for the one
@@ -334,6 +383,19 @@ async def async_db_engine(temp_db_url):
             )
         )
         await conn.run_sync(Base.metadata.create_all)
+
+        # FAZ2 Wave 1 (DB rol izolasyonu): roller/grant'lar bu conftest'in
+        # Alembic'i hiç çalıştırmayan şema drop/recreate döngüsünden bağımsız
+        # olarak da kurulmalı — apply_role_grants_async idempotent (CREATE
+        # ROLE bir existence-check DO-block'u içinde), ve create_all()'ın az
+        # önce yarattığı brand-new tablolara GRANT'ı ALTER DEFAULT PRIVILEGES
+        # sayesinde de uygular (bkz. role_grants.py docstring'i).
+        from v2.modules.platform_infra.database.role_grants import (
+            apply_role_grants_async,
+        )
+
+        await apply_role_grants_async(conn)
+
         # Test parity: the stats endpoint expects the PostgreSQL materialized view.
         await conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS sefer_istatistik_mv"))
         await conn.execute(
@@ -419,6 +481,11 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
     wrapper = NonClosingSession(session)
     monkeypatch.setattr("v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper)
     monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
+    # error_events.py does `from platform_infra.public import AsyncSessionLocal`
+    # at module scope, binding its own name at import time — patching the
+    # connection module's attribute above doesn't reach that already-bound
+    # name, so it must be patched directly here too.
+    monkeypatch.setattr("v2.modules.admin_platform.application.error_events.AsyncSessionLocal", wrapper)
 
     # Sync support
     sync_url = temp_db_url.replace("+asyncpg", "")
@@ -450,11 +517,15 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
     if user_tables:
         for table_name in reversed(user_tables):
             await session.execute(text(f'DELETE FROM "{table_name}"'))
-        # Reset all sequences in the public schema so IDs stay deterministic.
+        # Reset all sequences in every schema on this session's search_path
+        # (not just `public`) so IDs stay deterministic — FAZ2: tables move
+        # to module schemas over time, `current_schemas(false)` tracks
+        # whatever this connection's search_path actually is (set in
+        # `async_db_engine` above), no hardcoded schema list to maintain here.
         await session.execute(
             text(
                 "SELECT setval(quote_ident(schemaname) || '.' || quote_ident(sequencename), 1, false) "
-                "FROM pg_sequences WHERE schemaname = 'public'"
+                "FROM pg_sequences WHERE schemaname = ANY(current_schemas(false))"
             )
         )
         await session.commit()

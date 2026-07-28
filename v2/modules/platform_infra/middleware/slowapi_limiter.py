@@ -10,6 +10,15 @@ slowapi'nin senkron decorator-tabanlı rate limiting'i.
 
 If `slowapi` is not installed, expose a no-op limiter so module imports do not
 break in lightweight test/dev environments.
+
+`storage_uri=settings.REDIS_URL`: slowapi's underlying `limits` library talks
+to the SAME Redis instance as the rest of the app (`redis` package, already a
+hard dependency — no new one added) instead of its own default in-memory
+storage. This closes the last per-process counter in MEMORY §4.1's list
+(bkz. `TASKS/faz2-guvenlik-state-redis.md`). If Redis is unreachable, `limits`
+raises `redis.exceptions.ConnectionError` from inside the `@limiter.limit(...)`
+check — main.py's `redis_unavailable_handler` turns that into a 503
+(fail-closed, no silent per-worker fallback).
 """
 
 import logging
@@ -39,7 +48,9 @@ class _NoopLimiter:
         return _decorator
 
 
-def _build_limiter(environment: str, *, rate_limit_enabled: bool = True) -> Any:
+def _build_limiter(
+    environment: str, *, rate_limit_enabled: bool = True, redis_url: str = ""
+) -> Any:
     """Resolve the rate limiter instance.
 
     2026-07-01 prod-grade denetimi P1: slowapi eksikse önceki davranış
@@ -52,7 +63,11 @@ def _build_limiter(environment: str, *, rate_limit_enabled: bool = True) -> Any:
     reload etmeden unit test edilebilsin.
     """
     if Limiter:
-        return Limiter(key_func=get_remote_address, enabled=rate_limit_enabled)
+        return Limiter(
+            key_func=get_remote_address,
+            enabled=rate_limit_enabled,
+            storage_uri=redis_url or None,
+        )
 
     if environment == "prod":
         raise RuntimeError(
@@ -92,6 +107,17 @@ def _resolve_rate_limit_enabled() -> bool:
         return True
 
 
+def _resolve_redis_url() -> str:
+    try:
+        from app.config import settings as _settings
+
+        return getattr(_settings, "REDIS_URL", "")
+    except ImportError:
+        return ""
+
+
 limiter: Any = _build_limiter(
-    _resolve_environment(), rate_limit_enabled=_resolve_rate_limit_enabled()
+    _resolve_environment(),
+    rate_limit_enabled=_resolve_rate_limit_enabled(),
+    redis_url=_resolve_redis_url(),
 )

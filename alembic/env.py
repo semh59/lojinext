@@ -9,7 +9,7 @@ if sys.stdout.encoding is None or sys.stdout.encoding.lower() == "ascii":
 
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 from alembic import context
 
@@ -127,6 +127,8 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=_compare_type,
         include_object=_include_object,
+        include_schemas=True,
+        version_table_schema="platform",
     )
 
     with context.begin_transaction():
@@ -142,11 +144,69 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # FAZ2 (schema-per-module): the app's DB role has its persistent
+        # search_path extended per schema-move migration (`ALTER ROLE
+        # CURRENT_USER SET search_path = public, <schema>, ...`, see e.g.
+        # `0047_import_excel_schema_move.py`) so its OWN raw-SQL call sites
+        # keep resolving bare table names. But Postgres's `schema=None`
+        # ("default schema") table enumeration is search_path-driven too —
+        # so alembic's autogenerate/`check` comparison (which does one pass
+        # for `schema=None` and one pass per named schema) would see moved
+        # tables show up in BOTH the default-schema pass and their own
+        # named-schema pass, a phantom duplicate that autogenerate reports
+        # as a spurious drop (confirmed with a real Postgres instance).
+        # Migrations here are already explicitly schema-qualified (`CREATE
+        # SCHEMA`/`ALTER TABLE ... SET SCHEMA`/`ALTER INDEX <schema>.<name>`)
+        # so they never rely on the expanded search_path — pin this
+        # session to `public` only, for the reflection/comparison alembic
+        # itself does.
+        # Committed in its own mini-transaction — SQLAlchemy 2.0 Connections
+        # auto-begin a transaction on first execute(), and leaving it open
+        # (uncommitted) here would get silently ROLLED BACK when this `with`
+        # block exits, taking every subsequent migration in this same run
+        # down with it (found the hard way: a full `upgrade head` run
+        # appeared to succeed — no error — but left an EMPTY database,
+        # because `context.begin_transaction()` joined this already-open
+        # transaction instead of owning a fresh one). Committing this one
+        # statement immediately keeps it fully isolated from whatever
+        # transaction alembic itself manages next.
+        connection.execute(text("SET search_path TO public"))
+        connection.commit()
+        # `version_table_schema="platform"` below means alembic writes its
+        # OWN bookkeeping table as `platform.alembic_version`. On a brand
+        # new database that schema doesn't exist yet — alembic does not
+        # auto-create it, so bootstrapping revision 0001 from empty would
+        # fail before anything else runs. Pre-create it unconditionally
+        # (idempotent, harmless once 0060_platform_schema_move's own
+        # `CREATE SCHEMA IF NOT EXISTS platform` also runs later in the
+        # chain). This only covers fresh databases; an existing database
+        # that already has data up to a pre-0060 revision needs the
+        # documented two-phase cutover instead — see
+        # `scripts/faz2_move_alembic_version_to_platform.py`.
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS platform"))
+        connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             compare_type=_compare_type,
             include_object=_include_object,
+            include_schemas=True,
+            # FAZ2 (schema-per-module), platform-schema dalgası (0060):
+            # alembic_version taşındı (bkz. scripts/faz2_move_alembic_
+            # version_to_platform.py) — bu satır alembic'in kendi versiyon
+            # takibini "platform"a şema-nitelenmiş olarak yapmasını
+            # sağlıyor. Yukarıdaki "SET search_path TO public" pinini
+            # "platform" da içerecek şekilde GENİŞLETMEYE gerek yok:
+            # version_table_schema verildiğinde alembic kendi Table
+            # objesini HER ZAMAN "platform.alembic_version" olarak
+            # şema-nitelenmiş üretir (search_path'e güvenmez) — pini
+            # genişletmek yalnızca platform şemasındaki tabloların
+            # `schema=None` enumeration geçişinde hayalet-duplicate
+            # üretmesine yol açardı (yukarıdaki yorumun asıl kaçındığı
+            # sorun). Bu değişiklik, "platform" şeması + alembic_version
+            # taşındıktan SONRA canlıya alınmalı — bkz. cutover script'inin
+            # kendi docstring'i.
+            version_table_schema="platform",
         )
 
         with context.begin_transaction():

@@ -48,12 +48,13 @@ class YakitAlimi(Base):
             name="check_yakit_durum_enum",
         ),
         Index("idx_yakit_aktif", "aktif"),
+        {"schema": "fuel"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     tarih: Mapped[date] = mapped_column(Date, index=True)
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="RESTRICT"), index=True
+        ForeignKey("fleet.araclar.id", ondelete="RESTRICT"), index=True
     )
     istasyon: Mapped[Optional[str]] = mapped_column(String(100))
     fiyat_tl: Mapped[Decimal] = mapped_column(Numeric(10, 2))
@@ -85,15 +86,18 @@ class YakitPeriyot(Base):
     __tablename__ = "yakit_periyotlari"
     __table_args__ = (
         UniqueConstraint("arac_id", "alim1_id", "alim2_id", name="uq_yakit_periyodu"),
+        {"schema": "fuel"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    arac_id: Mapped[int] = mapped_column(ForeignKey("araclar.id", ondelete="RESTRICT"))
+    arac_id: Mapped[int] = mapped_column(
+        ForeignKey("fleet.araclar.id", ondelete="RESTRICT")
+    )
     alim1_id: Mapped[int] = mapped_column(
-        ForeignKey("yakit_alimlari.id", ondelete="CASCADE")
+        ForeignKey("fuel.yakit_alimlari.id", ondelete="CASCADE")
     )
     alim2_id: Mapped[int] = mapped_column(
-        ForeignKey("yakit_alimlari.id", ondelete="CASCADE")
+        ForeignKey("fuel.yakit_alimlari.id", ondelete="CASCADE")
     )
 
     alim1_tarih: Mapped[Optional[date]] = mapped_column(Date)
@@ -112,10 +116,11 @@ class YakitPeriyot(Base):
 
 class YakitFormul(Base):
     __tablename__ = "yakit_formul"
+    __table_args__ = {"schema": "fuel"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     arac_id: Mapped[int] = mapped_column(
-        ForeignKey("araclar.id", ondelete="RESTRICT"), unique=True
+        ForeignKey("fleet.araclar.id", ondelete="RESTRICT"), unique=True
     )
     katsayilar: Mapped[dict] = mapped_column(JSONB)  # JSONB type for katsayilar
     r2_score: Mapped[Optional[float]] = mapped_column(Float)

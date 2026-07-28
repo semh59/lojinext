@@ -19,7 +19,7 @@
 |---|---|---|
 | **FAZ0** — Baseline & rapor modu | ✅ TAMAMLANDI (2026-07-12) | main yeşil, import-linter rapor adımı CI'da; commit `3840de3`,`72a5fe3`,`3e905a8` |
 | **FAZ1** — Kod sınırları (17 kalem) | 🟢 KOD TARAFI TAMAMLANDI (2026-07-22) — 17/17 kalem branch'te; kalan tek şey "5 ardışık gün main'de yeşil" burn-in penceresi (takvim-zamanı gerektirir, tek oturumda gözlenemez) | Dalga 1-16 main'de/branch'te yeşil (aşağıdaki tablo). Dalga 17 (platform-infra) 2026-07-22'de 10 commit'lik bir alt-dalgayla tamamlandı: cache/events/container/resilience/database/monitoring/security/context/logging/audit/background/middleware/websocket taşındı + `public.py` + kendi `public-surface-only-platform_infra` import-linter kontratı yazıldı + CI'nın blocking gate adımına eklendi (`.github/workflows/ci.yml`, önceden eksikti — bu turda düzeltildi). Ardından "V2 dışında kalan var mı" denetiminde bulunan 4 ek kalem de taşındı/silindi (`app/api/middleware/rate_limiter.py`→platform_infra, `app/api/v1/utils.py`→platform_infra, ölü `app/core/services/ai_service.py` silindi, `app/workers/tasks/{backup_tasks,error_digest}.py`→platform_infra/background). Her adım tam doğrulamayla (ruff/mypy/lint-imports/alembic check/pytest, bilinen baseline 17 failed/6560 passed/28 skipped) ayrı commit+push edildi. |
-| **FAZ2** — Veri sınırları | 🔲 FAZ1'i bekliyor | |
+| **FAZ2** — Veri sınırları | 🟡 DEVAM EDİYOR (2026-07-24) | 3 alt-görevden 2'si tamamlandı (`faz2-guvenlik-state-redis.md`, `faz2-schema-per-module-postgres.md` — 14 şema/43 tablonun hepsi taşındı); `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md`'nin Wave 1'i (17 rol + grant matrisi + fk_registry.yml, sıfır davranış değişikliği) TAMAMLANDI, Wave 2 (gerçek enforcement) ayrı DURMA NOKTASI olarak bekliyor — bkz. aşağıdaki FAZ2 bölümü. **Not:** FAZ1'in "5 ardışık gün main'de yeşil" burn-in penceresi hâlâ gözlenmedi (main'de yalnız bugünkü tek gün var) — kullanıcı, gerçek `hard-gates` job'ının (lint/mypy/test/coverage/E2E) bugünkü iki commit'te de tam yeşil olduğunu (workflow'un görünen tek "failure"ı ilgisiz bir GHCR-login altyapı sorunu) doğruladıktan sonra bu bilinçli farkla FAZ2'ye başlamayı onayladı. |
 | **FAZ3** — Dil geçişi | 🔲 FAZ2'yi bekliyor | Bağımsız FAZ, sınır-enforcement ile aynı PR'da olmaz |
 | **FAZ4** — Sıkılaştırma & kapanış | 🔲 FAZ3'ü bekliyor (ama bkz. not) | **Kısmi erken tamamlama (2026-07-22, kullanıcı onayıyla DURMA NOKTASI dar kapsamda aşıldı):** madde 2'nin ("shim temizliği") 9 kalemi — `app/api/v1/endpoints/{ai,feedback}.py`, `app/core/ai/*` (5 dosya), `app/services/smart_ai_service.py`, `app/schemas/trip_planner.py` — sıfır gerçek tüketici doğrulandıktan sonra silindi (gerçek kod zaten `v2/modules/ai_assistant/`'da). `app/api/`, `app/core/`, `app/services/`, `app/schemas/` dizinleri artık yok. FAZ4'ün diğer maddeleri (ignore_imports sıfırlama, xenon, dosya-kalite baseline, retro raporu) hâlâ FAZ3'ü bekliyor. |
 
@@ -1945,3 +1945,268 @@ main'de yeşil (5 bağımsız ajanla dedektif denetimi + CI-fix turu dahil, bkz.
 DALGA 11 bölümü, commit `48e8e21`, `gh run view 29531899079`). Depo şu an
 **PUBLIC** (kullanıcı kararı, GHCR faturalama sorunu için geçici; iş bitince
 tekrar private yapılması gerekiyor — bkz. görev dışı hatırlatma).
+
+## FAZ2 — Veri sınırları (başladı 2026-07-23)
+
+**Giriş durumu:** FAZ1 kod tarafı 2026-07-23'te main'e merge oldu (PR #1).
+FAZ1'in resmi "5 ardışık gün yeşil" burn-in'i henüz gözlenmedi (bugün tek
+gün) — GitHub'da doğrulandı: gerçek `hard-gates` job'ı bugünkü iki commit'te
+de (`b761c7a8`, `38dfceb5`) tam yeşil, workflow'un görünen "failure"ı yalnız
+sonraki "Build & Push to GHCR" işinin GHCR-login adımından (registry
+secret'ı yok, koddan bağımsız pre-existing altyapı sorunu). Kullanıcı bu
+bilinçli farkla FAZ2'ye başlamayı onayladı.
+
+### faz2-guvenlik-state-redis.md — ✅ TAMAMLANDI (2026-07-23)
+
+3 alt-görevden ilk uygulanan (bağımsız, DB şeması değişmiyor, düşük blast-
+radius). Detaylı özet + doğrulama kanıtı `TASKS/faz2-guvenlik-state-redis.md`
+"Uygulama notları" bölümünde. Özet: `BruteForceDetector`/
+`RBACViolationTracker` (`security_probe.py`) + `AsyncRateLimiter`
+(`resilience/rate_limiter.py`) Redis-backed oldu; `rate_limit_middleware.py`
++ `slowapi_limiter.py`'nin sessiz in-memory fallback'leri kaldırılıp
+fail-closed yapıldı (kullanıcı kararı — görev dosyasının "fail-closed VEYA
+uyarı" ikileminde fail-closed seçildi). `ruff`/`mypy` temiz, izole venv'de
+82/82 pytest yeşil (4-worker simülasyon testleri dahil). Gerçek Docker+Redis
+smoke testi bu oturumun sandbox'ında YAPILAMADI (Docker daemon yok) — CI'nin
+gerçek koşusuyla tamamlanacak.
+
+### faz2-schema-per-module-postgres.md — ✅ TAMAMLANDI (2026-07-23)
+
+`import_excel`/`iceri_aktarim_gecmisi` ilk dalga olarak taşındı — en küçük
+şema (1 tablo), FAZ0'da zaten sahiplik kararı verilmişti. Detay + kabul
+kriterleri `TASKS/faz2-schema-per-module-postgres.md`'nin kendi "Pilot
+sonrası bulgular" bölümünde. Özet:
+
+- **Model:** `IceriAktarimGecmisi`'ye `__table_args__ = {"schema":
+  "import_excel"}` eklendi (repository %100 ORM olduğu için başka kod
+  değişikliği gerekmedi).
+- **Yeni migration** (`alembic/versions/0047_import_excel_schema_move.py`):
+  `CREATE SCHEMA` + `ALTER TABLE SET SCHEMA` + 3 index'in yeniden
+  adlandırılması (aşağıda) + `ALTER ROLE CURRENT_USER SET search_path`.
+- **Tasarım kararı (kullanıcı onayıyla): `search_path`, rewrite değil.**
+  MEMORY/PROGRESS.md'nin "32 raw-SQL sitesi" rakamı BAYAT çıktı — gerçek
+  tarama ~75 dosyada ~200 site buldu (`BaseRepository.execute_query()`
+  helper'ı yayıldıkça doküman güncellenmemiş). ~200 siteyi tek tek şema-
+  nitelemek yerine, taşınan her şema migration içinde rolün search_path'ine
+  eklenir — bare sorgular hiç değiştirilmeden çalışır, ileriki rol-izolasyonu
+  fazını zayıflatmaz (search_path yalnız ad-çözümleme, yetki değil).
+- **2 gerçek gotcha, GERÇEK bir Postgres 16 kurulumuna karşı bulundu ve
+  düzeltildi** (bu oturumda `service postgresql start` ile kuruldu, sandbox'ta
+  zaten mevcut çıktı):
+  1. Naming convention (`"ix": "ix_%(column_0_label)s"`) şema eklenince
+     index adlarını şema-önekli üretmeye başlıyor — DB'deki eski-isimli
+     index'ler `ALTER INDEX RENAME` ile güncellenmezse `alembic check` drift
+     raporluyor (PK/FK etkilenmiyor, yalnız index'ler).
+  2. Rolün search_path'i genişleyince Postgres'in `schema=None` tablo
+     numaralandırması TÜM search_path şemalarını tarıyor — alembic'in kendi
+     autogenerate/check'i taşınan tabloyu iki geçişte de bulup hayalet bir
+     "kaldır" farkı üretiyordu. `alembic/env.py`'nin migration bağlantısı
+     artık kendi search_path'ini `public`'e sabitliyor (yalnız alembic'in
+     reflection'ı için, uygulamanın rol-seviyesi ayarını etkilemeden).
+  3. (Süreç notu, kendi kendine bulunup düzeltildi) `SET search_path`'i
+     `connection.commit()` etmeden bırakmak SQLAlchemy 2.0'da örtük bir
+     transaction'ı açık bırakıyor — `with` bloğu çıkışında sessizce rollback
+     olup TÜM migration'ı (hatasız görünerek) geri alıyordu.
+- **`app/tests/conftest.py` + kök `tests/conftest.py`:** ikisi de artık
+  `Base.metadata.tables`'tan dinamik şema kümesi türetiyor (CREATE SCHEMA +
+  search_path/connect_args + `current_schemas(false)` tabanlı sequence-reset)
+  — gelecek dalgalar bu dosyalara BİR DAHA dokunmuyor, yalnız modele
+  `schema=` eklemek yeterli.
+- **Frontend:** `VeriYonetimPage.test.tsx`'in raw `psql` seed/cleanup'ı
+  (`postgres` superuser rolüyle bağlanıyor, migration'ın `ALTER ROLE`'ünü
+  miras almaz) `import_excel.iceri_aktarim_gecmisi` olarak açıkça nitelendi.
+- **Doğrulama (gerçek, bu oturumda koşuldu — Docker yok ama Postgres 16 +
+  Redis sandbox'ta zaten kuruluydu, `service postgresql start` ile
+  ayağa kaldırıldı):** `alembic upgrade head` → `alembic check` (temiz) →
+  `alembic downgrade -1` (tablo public'e geri döndü, search_path resetlendi)
+  → `alembic upgrade head` tekrar → `alembic check` (temiz) — tam döngü
+  doğrulandı. Gerçek `app/tests/` suite'inden import_excel'e özgü 53+ test
+  (execute_import/rollback_import dahil, gerçek raw-SQL INSERT/rollback
+  yolu) izole bir venv'de gerçek DB'ye karşı PASSED (birkaç ek "error"
+  yalnız pytest-asyncio'nun fixture-teardown'ında event-loop kapanışı
+  gürültüsüydü — testlerin kendisi ayrı ayrı koşulunca "1 passed" veriyordu,
+  gerçek regresyon değil). `ruff`/`mypy` temiz (mypy'nin 4 hatası
+  `trip/infrastructure/repository.py`'de pre-existing baseline, dokunulmadı).
+  **Yapılamayan:** gerçek docker-compose + `e2e_pilot_smoke.py`/
+  `p51_real_world_validation.py` (görev dosyasının kendi çıkış kriteri) —
+  CI'da doğrulanmalı.
+**Kalan 13 şema — aynı gün, kullanıcının "13 şemayı derin planla ve bitir"
+kararıyla, session-hijyen istisnası bilinçli aşılarak tamamlandı:**
+
+`auth_rbac`, `fleet`, `driver`, `fuel`, `location`, `route_simulation`,
+`anomaly`, `prediction_ml`, `trip`, `reports`, `notification`,
+`admin_platform`, `platform` (`alembic/versions/0048_auth_rbac_schema_move.py`
+… `0060_platform_schema_move.py`). Tam bulgu listesi (2 gerçek model-
+transkripsiyon hatası, partition/MV/trigger özel durumları, alembic_version
+taşıma sınırı, loose-end `sefer_istatistik_mv`) `TASKS/faz2-schema-per-
+module-postgres.md`'nin "13 şema dalgası bulguları" bölümünde — burada
+yalnız özet:
+
+- **42 tablonun hepsinde `__table_args__` schema= + 58 ForeignKey() string'i
+  şema-nitelendi** (kritik bulgu, pilotla tutarlı: hedef şema alınca
+  self-reference dahil TÜM referanslar nitelenmeli).
+- **`platform` şeması iki kaynaktan devraldı**: `admin_platform`'un
+  `sistem_konfig`/`konfig_gecmis`/`idempotency_keys`'i + `shared_kernel`'in
+  `outbox_events`/`error_events`/`error_occurrences`'ı (`error_events`'in
+  `kullanicilar.id` FK'si de `auth_rbac.kullanicilar.id`'ye nitelendi).
+- **RANGE partition + MV + trigger, gerçek Postgres'te ampirik doğrulandı**:
+  parent'ın `SET SCHEMA`'sı partition çocuklarını taşımıyor (izole scratch
+  DB'de test edildi) — migration `pg_inherits`'ten çocukları dinamik bulup
+  taşıyor; trigger'lar OID-bağlı olduğu için tablo taşınınca otomatik
+  taşınıyor (ayrı ALTER gerekmiyor); MV `ALTER MATERIALIZED VIEW ... SET
+  SCHEMA` ile taşınıyor.
+- **`alembic_version` → `platform`**: Alembic'in kendi mimari sınırı
+  (`version_table_schema` süreç başında sabitleniyor, migration'ın
+  KENDİSİ İÇİNDE taşınamaz) nedeniyle iki parçalı çözüm — taze DB'ler için
+  `env.py`'nin `run_migrations_online()`'ı artık proaktif `CREATE SCHEMA IF
+  NOT EXISTS platform` çalıştırıyor (bu sayede `version_table_schema=
+  "platform"` migration `0001`'den itibaren sorunsuz); mevcut/kısmen migrate
+  DB'ler için `scripts/faz2_move_alembic_version_to_platform.py` (idempotent,
+  migration zincirinin DIŞINDA, tek-seferlik cutover).
+- **2 gerçek model-transkripsiyon hatası, yalnız gerçek `alembic upgrade
+  head` + `alembic check` koşumuyla yakalandı** (statik grep/model-okuma
+  DEĞİL): `reports.PageView.user_id`'nin `index=True` sanılması (yanlış —
+  rename listesinden çıkarıldı) ve `fleet.Dorse.is_deleted`'in `index=True`
+  olduğunun gözden kaçması (`alembic check` drift'i yakaladı, rename
+  listesine eklendi).
+- **Doğrulama (gerçek Postgres 16, bu oturumda koşuldu)**: `alembic upgrade
+  head` (0001→0060, taze DB) → `alembic check` (temiz) → `alembic downgrade
+  0047_import_excel_schema_move` (13 migration geri alındı) → `alembic
+  upgrade head` tekrar → `alembic check` (temiz) — tam round-trip. `ruff`
+  temiz. `mypy` temiz (4 pre-existing hata `trip/infrastructure/
+  repository.py`'de, bu dalganın dokunmadığı bir dosyada — baseline'ın
+  içinde). `reset_business_data.py`/`seed_demo_data.py` spot-check edildi:
+  ikisi de bare tablo adı + paylaşılan `engine`/`AsyncSessionLocal`
+  kullanıyor, taze bir `lojinext_user` bağlantısının `SHOW search_path`'i
+  ile doğrulandı — ALTER ROLE'ün genişlettiği search_path'i otomatik miras
+  alıyorlar, kod değişikliği gerekmedi. Geniş bir pytest kesiti (`-m "unit
+  or not integration"`, 6554 test collect edildi — 3 eksik pip paketi
+  (`email-validator`, `respx`, `requests`) izole venv'e kuruldu, gerçek
+  kod eksikliği değildi) gerçek DB'ye karşı koşuldu: **ilk deneme yanıltıcı
+  1706 failed/183 error verdi, kök neden bu şema taşımasıyla ilgisizdi**
+  (doğrulama venv'inde Redis çalışmıyordu — `faz2-guvenlik-state-redis.md`'nin
+  fail-closed rate limiter'ı Redis'siz birçok yazma endpoint'ini 503'e
+  düşürüyordu). Redis başlatılınca hedefli bir alt küme (`test_trips_
+  coverage.py`/`test_vehicles_coverage.py`/`test_system_coverage.py`)
+  133 passed verdi — kalan ~50 "error" zaten bilinen pytest-asyncio
+  teardown/event-loop gürültüsüydü. **Bu triyaj GERÇEK bir ikinci bug'ı da
+  ortaya çıkardı**: `app/tests/conftest.py`/kök `tests/conftest.py`'nin
+  şema-reset fixture'ı yalnız `public`'i `DROP...CASCADE` ediyordu, diğer 13
+  modül şemasını `CREATE SCHEMA IF NOT EXISTS` ile "varsa dokunma"
+  bırakıyordu — `create_all()`'un `checkfirst=True`'su var olan tabloyu
+  atladığı için aynı fiziksel test DB'sinde ardışık kod-sürümlü oturumlar
+  arasında STALE tablo kalabiliyordu (CI'da ephemeral DB kullanıldığı için
+  hiç tetiklenmezdi, yalnız bu oturumun aynı Postgres'e karşı tekrarlı
+  ad-hoc koşumunda ortaya çıktı). Düzeltme: her iki fixture artık TÜM modül
+  şemalarını (yalnız `public`'i değil) her oturum başında tam `DROP+CREATE`
+  ediyor. Düzeltmeden sonra temiz bir DB ile hedefli alt küme 0 gerçek
+  failure verdi.
+- **Tam ~6500 testlik suite — iteratif triyaj, üçüncü bir ortam bulgusu daha**:
+  conftest düzeltmesinden sonra tam koşum 1645 failed/189 error verdi —
+  sebep bu kez doğrulama venv'indeki `pytest-asyncio==0.23.8`'in projenin
+  `pytest.ini`'sindeki `asyncio_default_fixture_loop_scope=session`
+  config'ini tanımamasıydı ("Unknown config option" uyarısı; session-scoped
+  fixture'lar function-scoped bir event loop'a çarpıp kademeli "event loop
+  kapalı" hatalarına yol açıyordu). `pip install -U "pytest-asyncio>=0.24"`
+  (1.4.0) sonrası **90 failed**'e düştü; kalanın çoğu 2 eksik pip paketiydi
+  (`xlsxwriter`, `scikit-learn`) — kurulunca **24 failed**'e düştü.
+  Bu 24'ün triyajında **2 GERÇEK regresyon** bulunup düzeltildi
+  (`app/tests/unit/{test_push_broadcast,test_send_push_to_user}.py`'nin
+  `_FakeSession` mock'ları, `PushSubscription`'ın artık ürettiği
+  `"DELETE FROM notification.push_subscriptions ..."` SQL'ini eski şema-siz
+  literal string'le arıyordu — substring eşleşmesine çevrildi) ve 4 test
+  dosyasında (`test_lokasyon_segments_model.py`, `test_route_simulation_
+  models.py`, `test_phase4_sefer_integration_helpers.py`) `Base.metadata.
+  tables["lokasyonlar"]` gibi şema-öncesi bare-key varsayımları
+  `Base.metadata.tables["location.lokasyonlar"]` gibi şema-nitelenmiş
+  anahtarlara güncellendi. Kalan failure'lar tamamen ortama özgü
+  (Mapbox/ORS/api-stub yok, RAG/FAISS init eksik bağımlılık, FastAPI/
+  Starlette sürüm farkı, rate-limiter/Redis contention, `error_events`
+  sayısının test-sırası pollution'ı) — CI'da (pinned bağımlılıklar +
+  ephemeral DB + gerçek api-stub) beklenmez. Tüm düzeltmeler commit'lendi
+  (`9a47184`, `c5e9891`, `ed05f30`). **Kesin son koşum** (hem Postgres hem
+  Redis ayakta, temiz `lojinext_test`, tek kesintisiz koşum):
+  **5108 passed, 21 failed, 90 skipped** — 21'i birebir aynı sandbox-ortamı
+  kategorilerine düşüyor, sıfır yeni/beklenmeyen failure.
+- **Takip turu ("21 failed 90 skipped düzelt hepsi geçicek")**: kalan 21
+  failure + 90 skip'in tamamı triyaj edildi. Hepsi ortam eksikliğiydi —
+  şema taşımasıyla ilgisiz: `fastapi==0.139.2` kurulu (proje `0.136.0`'a
+  pinli) → pin'e dönüldü; `torch`/`lightgbm`/`faiss-cpu`/
+  `sentence-transformers`/`shapely` bu doğrulama venv'inde hiç kurulu
+  değildi (hepsi `app/requirements.txt`'te zaten pinli) → kuruldu;
+  `uvicorn` yoktu → kuruldu, `api_stub/main.py` Docker'sız ayağa
+  kaldırıldı (testler zaten `http://localhost:9000`'e kendi
+  monkeypatch'lerini yapıyor). **2 GERÇEK test-izolasyonu bug'ı** bulunup
+  düzeltildi (commit `488c282`): (1) `reset_rate_limiter_registry`
+  fixture'ı (her iki conftest.py) yalnız in-process
+  `RateLimiterRegistry._limiters` dict'ini temizliyordu — asıl sayaç
+  Redis'te (`ratelimit:*` key'leri) yaşıyor, tam suite'te ortak bucket'a
+  çarpan testler birbirini 429/503'e düşürüyordu; artık Redis-seviyeli
+  `SCAN`+`DEL` de ekli. (2) `v2/modules/admin_platform/application/
+  error_events.py` modül-seviyesinde `from platform_infra.public import
+  AsyncSessionLocal` yapıyor — bu, `db_session` fixture'ının
+  `monkeypatch.setattr(".../connection.AsyncSessionLocal", ...)`
+  çağrısıyla YAKALANMIYOR (klasik Python import-binding tuzağı: isim
+  zaten modülün kendi namespace'ine import anında bağlanmış, sonradan
+  kaynak modülün attribute'unu patchlemek bunu etkilemiyor) — endpoint
+  gerçek `DATABASE_URL` DB'sini okuyordu, test DB'sini değil. Fix: her
+  iki conftest.py'de `error_events.AsyncSessionLocal`'ı da doğrudan
+  patchle. **Kesin, temiz, eşzamanlı hiçbir başka süreç olmadan tek
+  koşum**: **5202 passed, 0 failed, 0 error, 17 skipped**. Kalan 17
+  skip'in hepsi meşru/dokümante: 4'ü "no-FAISS path" guard testi (FAISS
+  kuruluyken kasıtlı skip), 4'ü "PyTorch present" guard testi (torch
+  kuruluyken kasıtlı skip — ikisi de ilgili paket YOKKEN çalışan bir kod
+  yolunu test ediyor), 8'i gerçek Mapbox response örnek JSON dosyası
+  eksikliği ("Phase 0 probe çalıştırılmamış" — kaydedilmiş sample
+  gerektiriyor, kod bug'ı değil), 1'i `tests/security/test_boundaries.py`
+  — gerçek bir canlı sunucu (`http://127.0.0.1:8000`) gerektiren, test
+  client değil gerçek network isteği atan bir güvenlik testi (kasıtlı
+  olarak ayrık). Hiçbiri paket kurulumuyla çözülecek bir eksik değil.
+- **Bilinçli olarak YAPILMAYANLAR**: `m_ops` rolü (ayrı, kullanıcı onayı
+  gerektiren DB-rol tasarım kararı — `faz2-db-rol-izolasyonu` görevinin
+  kapsamı); gerçek docker-compose + `e2e_pilot_smoke.py`/
+  `p51_real_world_validation.py` (sandbox'ta Docker yok, CI'da
+  doğrulanmalı); `sefer_istatistik_mv` → `analytics_executive` şeması
+  (loose end, bkz. görev dosyasının kendi notu — o modülün hiç ORM
+  tablosu yok, yeni bir "yalnız bu MV için" şema açmak mı doğru karar net
+  değil, kullanıcı onayı bekliyor).
+
+### faz2-db-rol-izolasyonu-ve-read-model-grantlari.md — 🟡 Wave 1 TAMAMLANDI, Wave 2 bekliyor (DURMA NOKTASI)
+
+Görev iki dalgaya bölündü (kullanıcı onayıyla, "hepsi tek onayda"
+yerine düşük-riskli/geri-alınabilir adım + ayrı-onaylı riskli adım
+disiplini):
+
+**Wave 1 (✅ TAMAMLANDI, 2026-07-24)**: 17 PostgreSQL rolü (14 modül +
+platform + `m_analytics_executive`/`m_ai_assistant` read-model + `m_ops`)
++ grant matrisi gerçekten kuruldu (`v2/modules/platform_infra/database/
+role_grants.py` tek doğruluk kaynağı, `alembic/versions/
+0061_faz2_role_grants.py` migration'ı + her iki test conftest'inin şema
+drop/recreate döngüsünden sonra çağırdığı idempotent bootstrap). **Sıfır
+davranış değişikliği** — hiçbir yerde `SET ROLE` çağrılmıyor, uygulama
+hâlâ tek login role ile çalışıyor. 3 Explore ajanı + 1 Plan ajanının
+derin araştırması, görev dosyasının orijinal reader/grant-matrisi
+taslağını YANLIŞ/eksik bulup düzeltti (detaylar `faz2-db-rol-
+izolasyonu-ve-read-model-grantlari.md`'de) — 4 taslak-okuyucudan 3'ünün
+şema listesi hatalıydı, 6 ek okuyucu/yazıcı (`fleet`→trip, `fuel`→
+fleet+trip, `driver`→trip, `prediction_ml`→fleet, `route_simulation`→
+location, `import_excel`'in toplu yazma istisnası) taslakta hiç yoktu.
+`arch/fk_registry.yml` (42 kenar, `MEMORY/PROGRESS.md` §2.2'nin iddiası
+bu kez BAĞIMSIZ GREP İLE DOĞRU ÇIKTI — projenin daha önce bulunan bayat
+32-site/56-çağrı rakamının aksine) + CI-blocking diff testi eklendi.
+`m_ops` rolü gerçekten oluşturuldu (önceden yalnız planlanmıştı).
+Doğrulama: `alembic upgrade head`/`check`/`downgrade`+`upgrade` round-trip
+temiz; Alembic'in HİÇ çalışmadığı sıfırdan bir Postgres'te (`lojinext_
+test_fresh`) roller/grant'lar conftest'in kendi çağrısıyla doğru kuruldu;
+49+1 parametrized grant-doğrulama testi yeşil; **tam pytest suite Wave 1
+öncesiyle BİREBİR AYNI sonucu verdi (5202 passed, 0 failed, 0 error, 17
+skipped)** — sıfır davranış değişikliği iddiasının nihai kanıtı.
+
+**Wave 2 (🔲 bekliyor, ayrı DURMA NOKTASI)**: `SET LOCAL ROLE`
+enforcement'ının gerçekten bağlanması (`UnitOfWork`/`connection.py`'a
+enforcement noktası, `api_router.py`'nin ~50 `include_router()` çağrısına
+modül-bazlı dependency, Celery signal, 16 m_ops script'i). Bu, gerçek
+davranış değişikliği taşıyan, "permission denied" regresyonlarının
+triyaj edilmesini gerektiren riskli kısım — kullanıcı onayı olmadan
+başlamayacak. Detaylı yol haritası `faz2-db-rol-izolasyonu-ve-read-
+model-grantlari.md`'nin "Wave 2" bölümünde.

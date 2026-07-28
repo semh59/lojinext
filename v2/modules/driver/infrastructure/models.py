@@ -45,6 +45,7 @@ class Sofor(Base):
             "manual_score >= 0.1 AND manual_score <= 2.0",
             name="chk_sofor_manual_score_range",
         ),
+        {"schema": "driver"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -118,21 +119,23 @@ class SoforAdSoyadTrigram(Base):
     __table_args__ = (
         UniqueConstraint("sofor_id", "trigram_hash", name="uq_sofor_trigram"),
         Index("ix_sofor_trigram_hash", "trigram_hash"),
+        {"schema": "driver"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("driver.soforler.id", ondelete="CASCADE"), nullable=False
     )
     trigram_hash: Mapped[str] = mapped_column(CHAR(64), nullable=False)
 
 
 class SoforAdaptasyon(Base):
     __tablename__ = "sofor_adaptasyon"
+    __table_args__ = {"schema": "driver"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     surucu_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="CASCADE"), unique=True, index=True
+        ForeignKey("driver.soforler.id", ondelete="CASCADE"), unique=True, index=True
     )
     guvenlik_skoru: Mapped[float] = mapped_column(Float, default=100.0)
     verimlilik_skoru: Mapped[float] = mapped_column(Float, default=100.0)
@@ -169,11 +172,12 @@ class CoachingDelivery(Base):
             "sent_at",
         ),
         Index("ix_coaching_deliveries_evaluated_at", "evaluated_at"),
+        {"schema": "driver"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sofor_id: Mapped[int] = mapped_column(
-        ForeignKey("soforler.id", ondelete="CASCADE"), index=True
+        ForeignKey("driver.soforler.id", ondelete="CASCADE"), index=True
     )
     score_before: Mapped[float] = mapped_column(Float)
     score_after_2w: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -188,5 +192,5 @@ class CoachingDelivery(Base):
     insight_category: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     message_excerpt: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     sent_by_user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )

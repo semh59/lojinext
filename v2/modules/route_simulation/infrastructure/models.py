@@ -52,6 +52,7 @@ class RoutePath(Base):
         UniqueConstraint(
             "origin_lat", "origin_lon", "dest_lat", "dest_lon", name="uq_route_coords"
         ),
+        {"schema": "route_simulation"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -88,10 +89,11 @@ class RoutePath(Base):
 
 class GuzergahKalibrasyon(Base):
     __tablename__ = "guzergah_kalibrasyonlari"
+    __table_args__ = {"schema": "route_simulation"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     lokasyon_id: Mapped[int] = mapped_column(
-        ForeignKey("lokasyonlar.id", ondelete="CASCADE"), index=True
+        ForeignKey("location.lokasyonlar.id", ondelete="CASCADE"), index=True
     )
 
     # Calibration details — stores the "golden path" WKB geometry for spatial matching
@@ -124,25 +126,28 @@ class RouteSimulation(Base):
             "kullanici_id",
             "created_at",
         ),
+        {"schema": "route_simulation"},
     )
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
     kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True, nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
     )
     # Phase 3.3: hangi kayıtlı güzergaha bağlı (varsa). Lokasyon silinince
     # simülasyon kaydı sürer ama bağ kaybedilir (SET NULL).
     lokasyon_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("lokasyonlar.id", ondelete="SET NULL"),
+        ForeignKey("location.lokasyonlar.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     # 0034: hangi araç seçildi (varsa). VehicleSpecs araç teknik değerlerinden
     # türetildi; araç silinince simülasyon kaydı korunur bağ düşer (SET NULL).
     arac_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("araclar.id", ondelete="SET NULL"),
+        ForeignKey("fleet.araclar.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -206,6 +211,7 @@ class RouteSegment(Base):
             "simulation_id", "seq", name="uq_route_segments_simulation_seq"
         ),
         Index("ix_route_segments_simulation_id", "simulation_id"),
+        {"schema": "route_simulation"},
     )
 
     id: Mapped[int] = mapped_column(
@@ -213,7 +219,7 @@ class RouteSegment(Base):
     )
     simulation_id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"),
-        ForeignKey("route_simulations.id", ondelete="CASCADE"),
+        ForeignKey("route_simulation.route_simulations.id", ondelete="CASCADE"),
         nullable=False,
     )
     seq: Mapped[int] = mapped_column(Integer, nullable=False)

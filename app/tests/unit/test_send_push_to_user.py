@@ -41,11 +41,14 @@ class _FakeSession:
         self.added: list[Any] = []
 
     async def execute(self, query: Any):
+        # FAZ2 (schema-per-module): PushSubscription now compiles to
+        # "DELETE FROM notification.push_subscriptions ..." — match the
+        # bare table name suffix, not a schema-qualified literal.
         text = str(query).lower()
-        if "delete from push_subscriptions" in text:
+        if "delete from" in text and "push_subscriptions" in text:
             self.deleted.append(query)
             return _FakeResult([])
-        if "update push_subscriptions" in text:
+        if "update" in text and "push_subscriptions" in text:
             self.updated.append({"q": str(query)})
             return _FakeResult([])
         # SELECT

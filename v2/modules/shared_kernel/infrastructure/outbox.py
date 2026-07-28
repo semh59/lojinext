@@ -50,6 +50,7 @@ class OutboxEvent(Base):
     __table_args__ = (
         Index("idx_outbox_processed", "processed"),
         Index("idx_outbox_created", "created_at"),
+        {"schema": "platform"},
     )
 
     id: Mapped[int] = mapped_column(

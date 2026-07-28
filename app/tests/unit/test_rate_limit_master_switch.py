@@ -11,13 +11,41 @@ from v2.modules.platform_infra.resilience.rate_limiter import AsyncRateLimiter
 pytestmark = pytest.mark.unit
 
 
+class _FakeAsyncRedis:
+    """FAZ2: AsyncRateLimiter is now Redis-backed (INCR+EXPIRE) — this fake
+    keeps these tests deterministic without depending on a live Redis."""
+
+    def __init__(self):
+        self._counters: dict = {}
+
+    async def incr(self, key):
+        self._counters[key] = self._counters.get(key, 0) + 1
+        return self._counters[key]
+
+    async def expire(self, key, seconds):  # noqa: ARG002
+        return True
+
+    async def ttl(self, key):  # noqa: ARG002
+        return 5
+
+
+@pytest.fixture(autouse=True)
+def fake_redis(monkeypatch):
+    fake = _FakeAsyncRedis()
+    monkeypatch.setattr(
+        "v2.modules.platform_infra.cache.redis_pubsub.get_pubsub_manager",
+        lambda: type("Mgr", (), {"_redis": fake})(),
+    )
+    return fake
+
+
 async def test_acquire_raises_429_when_enabled(monkeypatch):
-    """RATE_LIMIT_ENABLED=True iken token bitince 429 fırlatır."""
+    """RATE_LIMIT_ENABLED=True iken slot bitince 429 fırlatır."""
     from fastapi import HTTPException
 
     monkeypatch.setattr("app.config.settings.RATE_LIMIT_ENABLED", True)
-    rl = AsyncRateLimiter(rate=1.0, period=100.0)  # 1 token / 100s → 2. çağrı patlar
-    await rl.acquire()  # ilk token tamam
+    rl = AsyncRateLimiter(rate=1.0, period=100.0, name="switch_enabled")
+    await rl.acquire()  # ilk slot tamam
     with pytest.raises(HTTPException) as exc:
         await rl.acquire()
     assert exc.value.status_code == 429
@@ -26,8 +54,8 @@ async def test_acquire_raises_429_when_enabled(monkeypatch):
 async def test_acquire_bypassed_when_disabled(monkeypatch):
     """RATE_LIMIT_ENABLED=False iken hiç 429 fırlatmaz (kapasite testi)."""
     monkeypatch.setattr("app.config.settings.RATE_LIMIT_ENABLED", False)
-    rl = AsyncRateLimiter(rate=1.0, period=100.0)
-    # Token sayısından bağımsız: defalarca acquire() sorunsuz dönmeli.
+    rl = AsyncRateLimiter(rate=1.0, period=100.0, name="switch_disabled")
+    # Slot sayısından bağımsız: defalarca acquire() sorunsuz dönmeli.
     for _ in range(50):
         await rl.acquire()
 

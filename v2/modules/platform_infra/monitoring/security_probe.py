@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import threading
-import time
-from collections import OrderedDict, deque
-
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.monitoring.models import (
     ErrorEvent,
@@ -17,9 +13,6 @@ _BRUTE_FORCE_THRESHOLD = 10
 _BRUTE_FORCE_WINDOW_SEC = 60
 _RBAC_AGGREGATION_WINDOW_SEC = 300
 _RBAC_VIOLATION_THRESHOLD = 20
-
-_MAX_TRACKED_IPS = 10_000
-_MAX_TRACKED_USERS = 5_000
 
 # Loopback + Docker bridge — testlerden gelen 401'ler brute force değil.
 # Production'da gerçek client'lar dış IP'lerden gelir; bu prefix'ler
@@ -40,47 +33,79 @@ def _is_trusted_local_ip(ip: str) -> bool:
     return any(ip.startswith(p) for p in _TRUSTED_BRUTE_FORCE_PREFIXES)
 
 
-class BruteForceDetector:
-    def __init__(self) -> None:
-        self._windows: OrderedDict[str, deque] = OrderedDict()
-        self._alerted: dict[str, float] = {}
-        self._lock = threading.Lock()
+def _get_redis():
+    """Return the shared async Redis client, or None if unavailable.
 
-    def record(self, ip: str, status_code: int) -> None:
+    Same access point `rate_limit_middleware.py` uses (`get_pubsub_manager()`)
+    — one shared connection, no separate pool for this module.
+    """
+    from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
+
+    mgr = get_pubsub_manager()
+    return mgr._redis
+
+
+async def _emit_degraded(detector: str, reason: Exception) -> None:
+    """Redis unavailable — the counter this call was supposed to update is
+    dropped (fail-loud, not fail-closed: there is no request left to reject
+    at this point in the pipeline, see `security_probe.py`'s post-response
+    call site in `logging_middleware.py`). Login itself fails closed via
+    `RateLimitMiddleware`'s `_AUTH_PATHS` tight limit — that IS a pre-request
+    gate and already fails closed on Redis outage.
+    """
+    from v2.modules.platform_infra.monitoring import aemit
+
+    logger.critical(
+        "%s degraded: Redis unavailable (%s) — this attempt was NOT counted",
+        detector,
+        reason,
+    )
+    await aemit(
+        ErrorEvent(
+            layer=ErrorLayer.SECURITY,
+            category="detector_degraded",
+            severity=ErrorSeverity.CRITICAL,
+            message=f"{detector} degraded: Redis unavailable — attempts are not being counted",
+            metadata={"detector": detector, "reason": str(reason)},
+        )
+    )
+
+
+class BruteForceDetector:
+    """Redis-backed: INCR+EXPIRE per-IP sliding window, shared across workers."""
+
+    async def record(self, ip: str, status_code: int) -> None:
         if status_code != 401:
             return
         # Loopback + Docker bridge IP'leri brute force tetiklemez.
         if _is_trusted_local_ip(ip):
             return
-        now = time.monotonic()
-        with self._lock:
-            if ip not in self._windows:
-                if len(self._windows) >= _MAX_TRACKED_IPS:
-                    self._windows.popitem(last=False)  # evict LRU
-            else:
-                self._windows.move_to_end(ip)  # mark as recently used
-            if ip not in self._windows:
-                self._windows[ip] = deque()
-            q = self._windows[ip]
-            q.append(now)
-            while q and now - q[0] > _BRUTE_FORCE_WINDOW_SEC:
-                q.popleft()
-            if len(q) >= _BRUTE_FORCE_THRESHOLD:
-                last_alert = self._alerted.get(ip, 0.0)
-                if now - last_alert > _BRUTE_FORCE_WINDOW_SEC:
-                    # Prune stale alerted entries (avoid unbounded growth)
-                    if len(self._alerted) > 100:
-                        cutoff = now - 2 * _BRUTE_FORCE_WINDOW_SEC
-                        self._alerted = {
-                            k: v for k, v in self._alerted.items() if v > cutoff
-                        }
-                    self._alerted[ip] = now
-                    self._emit_brute_force(ip, len(q))
+        redis = _get_redis()
+        if redis is None:
+            await _emit_degraded(
+                "BruteForceDetector", RuntimeError("no redis client configured")
+            )
+            return
+        try:
+            key = f"secprobe:bf:{ip}"
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, _BRUTE_FORCE_WINDOW_SEC)
+            if count >= _BRUTE_FORCE_THRESHOLD:
+                alert_key = f"secprobe:bf:alerted:{ip}"
+                # NX: only the first crosser in the window fires the alert.
+                alerted = await redis.set(
+                    alert_key, "1", nx=True, ex=_BRUTE_FORCE_WINDOW_SEC
+                )
+                if alerted:
+                    await self._emit_brute_force(ip, count)
+        except Exception as exc:
+            await _emit_degraded("BruteForceDetector", exc)
 
-    def _emit_brute_force(self, ip: str, attempts: int) -> None:
-        from v2.modules.platform_infra.monitoring import emit
+    async def _emit_brute_force(self, ip: str, attempts: int) -> None:
+        from v2.modules.platform_infra.monitoring import aemit
 
-        emit(
+        await aemit(
             ErrorEvent(
                 layer=ErrorLayer.SECURITY,
                 category="brute_force",
@@ -99,54 +124,60 @@ class BruteForceDetector:
 
 
 class RBACViolationTracker:
-    def __init__(self) -> None:
-        self._windows: OrderedDict[int, deque] = OrderedDict()
-        self._alerted: dict[int, float] = {}
-        self._lock = threading.Lock()
+    """Redis-backed: INCR+EXPIRE per-user counter + capped endpoint sample list."""
 
-    def record(self, user_id: int, endpoint: str) -> None:
-        now = time.monotonic()
-        with self._lock:
-            if user_id not in self._windows:
-                if len(self._windows) >= _MAX_TRACKED_USERS:
-                    self._windows.popitem(last=False)  # evict LRU
-            else:
-                self._windows.move_to_end(user_id)  # mark as recently used
-            if user_id not in self._windows:
-                self._windows[user_id] = deque()
-            q = self._windows[user_id]
-            q.append((now, endpoint))
-            while q and now - q[0][0] > _RBAC_AGGREGATION_WINDOW_SEC:
-                q.popleft()
-            if len(q) >= _RBAC_VIOLATION_THRESHOLD:
-                last_alert = self._alerted.get(user_id, 0.0)
-                if now - last_alert > _RBAC_AGGREGATION_WINDOW_SEC:
-                    # Prune stale alerted entries (avoid unbounded growth)
-                    if len(self._alerted) > 100:
-                        cutoff = now - 2 * _RBAC_AGGREGATION_WINDOW_SEC
-                        self._alerted = {
-                            k: v for k, v in self._alerted.items() if v > cutoff
-                        }
-                    self._alerted[user_id] = now
-                    endpoints = list({ep for _, ep in q})[:10]
-                    from v2.modules.platform_infra.monitoring import emit
+    async def record(self, user_id: int, endpoint: str) -> None:
+        redis = _get_redis()
+        if redis is None:
+            await _emit_degraded(
+                "RBACViolationTracker", RuntimeError("no redis client configured")
+            )
+            return
+        try:
+            count_key = f"secprobe:rbac:{user_id}"
+            endpoints_key = f"secprobe:rbac:endpoints:{user_id}"
+            count = await redis.incr(count_key)
+            if count == 1:
+                await redis.expire(count_key, _RBAC_AGGREGATION_WINDOW_SEC)
+            await redis.lpush(endpoints_key, endpoint)
+            await redis.ltrim(endpoints_key, 0, 9)
+            await redis.expire(endpoints_key, _RBAC_AGGREGATION_WINDOW_SEC)
+            if count >= _RBAC_VIOLATION_THRESHOLD:
+                alert_key = f"secprobe:rbac:alerted:{user_id}"
+                alerted = await redis.set(
+                    alert_key, "1", nx=True, ex=_RBAC_AGGREGATION_WINDOW_SEC
+                )
+                if alerted:
+                    endpoints_raw = await redis.lrange(endpoints_key, 0, 9)
+                    endpoints = [
+                        e.decode() if isinstance(e, bytes) else e
+                        for e in endpoints_raw
+                    ]
+                    await self._emit_rbac_scraping(user_id, count, endpoints)
+        except Exception as exc:
+            await _emit_degraded("RBACViolationTracker", exc)
 
-                    emit(
-                        ErrorEvent(
-                            layer=ErrorLayer.SECURITY,
-                            category="rbac_scraping",
-                            severity=ErrorSeverity.ERROR,
-                            message=(
-                                f"User {user_id}: {len(q)} 403s"
-                                f" in {_RBAC_AGGREGATION_WINDOW_SEC}s"
-                            ),
-                            metadata={
-                                "user_id": user_id,
-                                "attempt_count": len(q),
-                                "endpoints_sample": endpoints,
-                            },
-                        )
-                    )
+    async def _emit_rbac_scraping(
+        self, user_id: int, count: int, endpoints: list
+    ) -> None:
+        from v2.modules.platform_infra.monitoring import aemit
+
+        await aemit(
+            ErrorEvent(
+                layer=ErrorLayer.SECURITY,
+                category="rbac_scraping",
+                severity=ErrorSeverity.ERROR,
+                message=(
+                    f"User {user_id}: {count} 403s"
+                    f" in {_RBAC_AGGREGATION_WINDOW_SEC}s"
+                ),
+                metadata={
+                    "user_id": user_id,
+                    "attempt_count": count,
+                    "endpoints_sample": endpoints,
+                },
+            )
+        )
 
 
 def emit_jwt_anomaly(exc_type: str, path: str, ip: str) -> None:

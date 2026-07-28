@@ -42,6 +42,7 @@ from v2.modules.shared_kernel.infrastructure.base import (
 
 class Rol(Base):
     __tablename__ = "roller"
+    __table_args__ = {"schema": "auth_rbac"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ad: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
@@ -55,6 +56,7 @@ class Rol(Base):
 
 class Kullanici(Base):
     __tablename__ = "kullanicilar"
+    __table_args__ = {"schema": "auth_rbac"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # PII encryption-at-rest (Tier E madde 26): email is encrypted at rest;
@@ -67,7 +69,9 @@ class Kullanici(Base):
     )
     ad_soyad: Mapped[str] = mapped_column(EncryptedPII, nullable=False)
     sifre_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    rol_id: Mapped[int] = mapped_column(ForeignKey("roller.id"), nullable=False)
+    rol_id: Mapped[int] = mapped_column(
+        ForeignKey("auth_rbac.roller.id"), nullable=False
+    )
     aktif: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Oturum ve Güvenlik
@@ -87,7 +91,7 @@ class Kullanici(Base):
 
     # Existing linkage
     sofor_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("soforler.id", ondelete="SET NULL"), index=True
+        ForeignKey("driver.soforler.id", ondelete="SET NULL"), index=True
     )
 
     # Zaman damgaları
@@ -101,7 +105,7 @@ class Kullanici(Base):
         nullable=False,
     )
     olusturan_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL")
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
     )
 
     # Relationships (intra-module only — Rol/KullaniciOturumu/KullaniciAyari
@@ -125,12 +129,13 @@ class Kullanici(Base):
 
 class KullaniciOturumu(Base):
     __tablename__ = "kullanici_oturumlari"
+    __table_args__ = {"schema": "auth_rbac"}
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
     kullanici_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"),
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="CASCADE"),
         index=True,
         nullable=False,
     )
@@ -164,10 +169,11 @@ class KullaniciAyari(Base):
     """
 
     __tablename__ = "kullanici_ayarlari"
+    __table_args__ = {"schema": "auth_rbac"}
 
     id: Mapped[int] = mapped_column(primary_key=True)
     kullanici_id: Mapped[int] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="CASCADE"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="CASCADE"), index=True
     )
     modul: Mapped[str] = mapped_column(
         String(50), index=True

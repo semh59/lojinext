@@ -59,13 +59,13 @@ class Anomaly(Base):
         DateTime(timezone=True), nullable=True, index=True
     )
     acknowledged_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
     resolved_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
     resolved_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -78,6 +78,7 @@ class Anomaly(Base):
             "severity IN ('low', 'medium', 'high', 'critical')",
             name="check_anomaly_severity_enum",
         ),
+        {"schema": "anomaly"},
     )
 
 
@@ -101,11 +102,12 @@ class FuelInvestigation(Base):
             "status IN ('open','assigned','investigating','resolved','closed')",
             name="chk_fuel_inv_status",
         ),
+        {"schema": "anomaly"},
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     anomaly_id: Mapped[int] = mapped_column(
-        ForeignKey("anomalies.id", ondelete="CASCADE"),
+        ForeignKey("anomaly.anomalies.id", ondelete="CASCADE"),
         unique=True,
         nullable=False,
     )
@@ -113,7 +115,7 @@ class FuelInvestigation(Base):
     suspicion_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     suspicion_level: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     assigned_to_user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     resolution_type: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
@@ -137,5 +139,5 @@ class FuelInvestigation(Base):
         DateTime(timezone=True), nullable=True
     )
     created_by_user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), nullable=True
     )

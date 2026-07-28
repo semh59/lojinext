@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy.exc import OperationalError as SAOperationalError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -403,6 +404,41 @@ try:
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 except ImportError:
     pass
+
+
+@app.exception_handler(RedisConnectionError)
+async def redis_unavailable_handler(request: Request, exc: RedisConnectionError):
+    """slowapi's Redis storage backend (`storage_uri=REDIS_URL`, bkz.
+    `slowapi_limiter.py`) raises this raw when Redis is unreachable — fail
+    closed (503) rather than falling through to the generic 500 handler
+    (bkz. `TASKS/faz2-guvenlik-state-redis.md`: sessiz fallback yok)."""
+    logger.critical("Redis unavailable during request: %s", exc)
+    from v2.modules.platform_infra.monitoring import (
+        ErrorEvent,
+        ErrorLayer,
+        ErrorSeverity,
+        aemit,
+    )
+
+    await aemit(
+        ErrorEvent(
+            layer=ErrorLayer.SECURITY,
+            category="rate_limiter_degraded",
+            severity=ErrorSeverity.CRITICAL,
+            message="Request failing closed — Redis unreachable",
+            metadata={"path": request.url.path, "reason": str(exc)},
+        )
+    )
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": {
+                "code": "RATE_LIMITER_UNAVAILABLE",
+                "message": "Service temporarily unavailable. Please try again shortly.",
+                "trace_id": get_correlation_id() or "",
+            }
+        },
+    )
 
 app.add_middleware(
     CORSMiddleware,

@@ -22,6 +22,7 @@ class IceriAktarimGecmisi(Base):
     """
 
     __tablename__ = "iceri_aktarim_gecmisi"
+    __table_args__ = {"schema": "import_excel"}
 
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
@@ -46,7 +47,7 @@ class IceriAktarimGecmisi(Base):
     hatalar: Mapped[Optional[dict]] = mapped_column(JSONB)  # Detailed errors per row
 
     yukleyen_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("kullanicilar.id", ondelete="SET NULL"), index=True
+        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"), index=True
     )
 
     baslama_zamani: Mapped[datetime] = mapped_column(

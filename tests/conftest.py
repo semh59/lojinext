@@ -106,6 +106,16 @@ async def _reset_public_schema(conn) -> None:
     user = os.getenv("POSTGRES_USER", "lojinext_user")
     await conn.execute(text(f"GRANT ALL ON SCHEMA public TO {user}"))
     await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
+    # FAZ2 (schema-per-module): DROP + recreate every schema the ORM models
+    # declare (see app/tests/conftest.py's async_db_engine fixture for the
+    # full rationale — a stale schema left over from a previous session/model
+    # version otherwise persists untouched, since create_all's checkfirst=True
+    # skips any table that already exists).
+    from v2.modules.shared_kernel.infrastructure.base import Base
+
+    for schema_name in sorted({t.schema for t in Base.metadata.tables.values() if t.schema}):
+        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'))
+        await conn.execute(text(f'CREATE SCHEMA "{schema_name}"'))
 
 
 @pytest.fixture(autouse=True)
@@ -120,12 +130,36 @@ def bypass_token_blacklist(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
-def reset_rate_limiter_registry():
+async def reset_rate_limiter_registry():
     from v2.modules.platform_infra.resilience.rate_limiter import RateLimiterRegistry
 
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
     yield
     RateLimiterRegistry._limiters.clear()
+    await _flush_rate_limiter_redis_keys()
+
+
+async def _flush_rate_limiter_redis_keys() -> None:
+    """Clears the fixed-window Redis counters (`ratelimit:*`) that back
+    `AsyncRateLimiter` (v2/modules/platform_infra/resilience/rate_limiter.py).
+    Clearing only `RateLimiterRegistry._limiters` (the in-process dict)
+    leaves these counters untouched, so across a full-suite run many tests
+    hitting the same bucket (e.g. "create_trip") share and exhaust one
+    Redis-side counter, tripping 429/503 on unrelated later tests. Best
+    effort: if Redis is unreachable the test suite has bigger problems
+    elsewhere, so failures here are swallowed rather than masking those.
+    """
+    try:
+        from v2.modules.platform_infra.cache.redis_pubsub import get_pubsub_manager
+
+        redis = get_pubsub_manager()._redis
+        if redis is None:
+            return
+        async for key in redis.scan_iter(match="ratelimit:*"):
+            await redis.delete(key)
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -137,10 +171,15 @@ async def db_engine():
             f"Resolved value: {TEST_DATABASE_URL}"
         )
 
+    from v2.modules.shared_kernel.infrastructure.base import Base
+
+    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
         poolclass=NullPool,
+        connect_args={"server_settings": {"search_path": _search_path}},
     )
     if engine.dialect.name != "postgresql":
         await engine.dispose()
@@ -156,11 +195,16 @@ def db_session_factory(db_engine, monkeypatch):
     """Session scoped session maker that also patches the globally used SessionLocals."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
+    import v2.modules.admin_platform.application.error_events  # noqa: E402
     import v2.modules.platform_infra.database.connection  # noqa: E402
     import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
 
     monkeypatch.setattr(v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory)
     monkeypatch.setattr(v2.modules.shared_kernel.infrastructure.unit_of_work, "AsyncSessionLocal", factory)
+    # error_events.py binds AsyncSessionLocal into its own module namespace at
+    # import time (`from platform_infra.public import AsyncSessionLocal`), so
+    # patching the connection module's attribute above doesn't reach it.
+    monkeypatch.setattr(v2.modules.admin_platform.application.error_events, "AsyncSessionLocal", factory)
 
     return factory
 
@@ -199,6 +243,16 @@ async def setup_test_db(db_engine, db_session_factory):
             ):
                 await conn.execute(text(stmt))
             await conn.run_sync(Base.metadata.create_all)
+
+            # FAZ2 Wave 1 (DB rol izolasyonu): bkz. app/tests/conftest.py'nin
+            # aynı satırı — roller/grant'lar Alembic'ten bağımsız, idempotent
+            # olarak burada da kurulur.
+            from v2.modules.platform_infra.database.role_grants import (
+                apply_role_grants_async,
+            )
+
+            await apply_role_grants_async(conn)
+
             # Test parity with app/tests/conftest.py: the stats endpoint
             # expects the PostgreSQL materialized view. Without it, any test
             # under tests/ that creates a sefer spams the DB log with

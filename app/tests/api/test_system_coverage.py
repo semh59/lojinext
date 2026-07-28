@@ -220,6 +220,25 @@ async def test_get_error_events_empty_result(
     async_client, admin_auth_headers, db_session
 ):
     """DB has no events → returns empty list with total=0."""
+    # error_events is written by the monitoring subsystem's ErrorEventBus,
+    # which batches errors emitted by earlier tests in an in-memory queue and
+    # flushes them to the DB on its own background timer (every
+    # _FLUSH_INTERVAL_SECONDS, independent of test boundaries) — so a) rows
+    # from an earlier test's real error can already be sitting in the table,
+    # and b) more can still be queued in-memory and land moments later. Clear
+    # both: drain the bus's queue so nothing flushes into the table during
+    # this test, then delete any rows the flusher already wrote.
+    from sqlalchemy import text
+
+    from v2.modules.platform_infra.monitoring.event_bus import get_event_bus
+
+    bus = get_event_bus()
+    while not bus._queue.empty():
+        bus._queue.get_nowait()
+
+    await db_session.execute(text("DELETE FROM error_events"))
+    await db_session.commit()
+
     resp = await async_client.get(
         "/api/v1/system/error-events",
         headers=admin_auth_headers,

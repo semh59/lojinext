@@ -24,8 +24,8 @@
 | FAZ | İçerik | GİRİŞ | ÇIKIŞ |
 |---|---|---|---|
 | **0** Ölçüm & emniyet | baseline JSON, import-linter rapor modu, açık soru doğrulamaları | Bu planın onayı | baseline repo'da; main YEŞİL |
-| **1** Kod sınırları | modül iskeleti, taşıma dalgaları, import-linter gate, davranışsal testler | FAZ0 çıkışı | 15 modül + shared_kernel erimesi + platform-infra son dalgası (registry deseni DEĞİL — terk edildi, bkz. yukarıdaki uyarı); gate 5 ardışık gün yeşil |
-| **2** Veri sınırları | 14 şema, PG rolleri, fk_registry, güvenlik state→Redis | FAZ1 çıkışı (5 gün yeşil) | 43 tablo modül şemalarında; rol ihlali runtime'da permission-denied |
+| **1** Kod sınırları | modül iskeleti, taşıma dalgaları, import-linter gate, davranışsal testler | FAZ0 çıkışı | ✅ 15 modül + shared_kernel erimesi + platform-infra son dalgası (registry deseni DEĞİL — terk edildi, bkz. yukarıdaki uyarı) main'de (PR #1, `b761c7a`); "gate 5 ardışık gün yeşil" burn-in'i **kullanıcı kararıyla bilinçli olarak atlandı** (2026-07-23: "5 gün bekleyemem, yeni branch'te FAZ2'ye başlarım") — main'de 2 gerçek ardışık CI koşumu (`b761c7a`, `38dfceb`) yeşil, takvim-günü sayısı beklenmedi |
+| **2** Veri sınırları | 14 şema, PG rolleri, fk_registry, güvenlik state→Redis | FAZ1 çıkışı | 🟡 BAŞLADI (branch `faz2-veri-sinirlari`, henüz hiçbir alt-görev dosyası uygulanmadı — DURMA NOKTASI gereği her biri ayrı onay bekliyor); çıkış kriteri hâlâ: 43 tablo modül şemalarında, rol ihlali runtime'da permission-denied |
 | **3** Dil geçişi (BAĞIMSIZ) | kod/DB/API → İngilizce; UI i18n TR/EN kalır | FAZ2 çıkışı + prod satır ölçümü | eski anahtar okuması 0 (≥14 gün); contract/drop |
 | **4** Sıkılaştırma | baseline sıfırlama, shim temizliği, retro | FAZ3 çıkışı | kontratlar strict, retro raporu |
 

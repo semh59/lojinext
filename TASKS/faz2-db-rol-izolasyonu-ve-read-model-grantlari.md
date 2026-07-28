@@ -204,8 +204,48 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 ### Kabul Kriterleri (Wave 2)
 - [x] `module_role.py` (`ContextVar`, `module_role_scope`, `require_module_role`, `open_role_scoped_session`) — 2026-07-28, `v2/modules/platform_infra/database/module_role.py`
 - [x] Enforcement noktası seçildi (spike sonucuna göre) ve bağlandı — `connection.py`'ye `after_begin` event listener eklendi (`_apply_module_role`); rol set edilmediği sürece no-op, henüz sıfır davranış değişikliği
-- [ ] `api_router.py`'nin ~50 `include_router()` çağrısı modül-bazlı `dependencies=` alıyor
+- [ ] `api_router.py`'nin ~50 `include_router()` çağrısı modül-bazlı `dependencies=` alıyor — **PİLOT DENENDİ, GERİ ALINDI** (bkz. aşağıdaki "Pilot bulgusu")
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
-- [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 3 test, gerçek Postgres 16'ya karşı doğrulandı (`test_wrong_module_write_is_denied`, `test_own_module_write_is_allowed`, `test_role_resets_after_transaction`)
-- [ ] Tam regresyon + triyaj turu (yeni `permission denied` hataları teker teker: eksik grant mi, gerçek sınır ihlali mi) — henüz gerekmiyor, çünkü hiçbir gerçek endpoint/task/script rol enforcement'ına henüz BAĞLANMADI (yukarıdaki 3 madde tamamlanınca gerekli)
+- [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 5 test, gerçek Postgres 16'ya karşı doğrulandı
+- [ ] Tam regresyon + triyaj turu (yeni `permission denied` hataları teker teker: eksik grant mi, gerçek sınır ihlali mi) — **kısmen başladı** (bkz. aşağıdaki "Pilot bulgusu" — 3 gerçek Wave 1 grant açığı bulunup düzeltildi), ama asıl wiring henüz güvenli değil
+
+### Pilot bulgusu (2026-07-28) — trip'in api_router.py wiring'i GERİ ALINDI
+
+`trip`'in 4 router'ına (`trip_write_router`/`trip_bulk_router`/
+`trip_approval_router`/`trip_read_router`) `dependencies=[Depends(
+require_module_role("trip"))]` eklenip gerçek bir backend + Postgres 16 +
+gerçek HTTP isteğiyle (`POST /trips/`) uçtan uca test edildi. 3 gerçek,
+önceden var olan Wave 1 grant-matrisi açığı bulunup düzeltildi (main'de,
+commit `573c83c`):
+
+1. `m_trip`, `READER_SELECT_GRANTS`'te hiç yoktu — `add_trip.py`/
+   `bulk_add_trips.py`/`reconcile_costs.py`/`sla.py`/
+   `trip_prediction_enrichment.py` `fleet`/`driver`/`location`/`fuel`'i
+   `uow.<repo>` ile okuyor, hepsi eklendi.
+2. `platform.outbox_events` INSERT'i (her modülün event yayınlarken
+   çağırdığı paylaşılan altyapı) hiçbir modül rolüne WriteException
+   olarak tanımlı değildi — 14 modülün hepsine birden eklendi (tek tek
+   yeniden keşfedilmesin diye).
+3. `_write_exception_stmt`'in DDL üretiminde 2 gerçek bug bulundu:
+   `GRANT USAGE ON SCHEMA` eksikti (tablo grant'ı tek başına yetersiz) ve
+   `INSERT` ayrıcalıklarında sequence `USAGE`'ı hiç verilmiyordu (serial/
+   identity PK'nin `nextval()`'ı için şart) — ikisi de düzeltildi.
+
+**Ama asıl wiring main'e ALINMADI** — bu 3 düzeltmeden SONRA bile
+`POST /trips/` isteği hâlâ `permission denied for table outbox_events`
+ile 500 dönüyordu. Teşhis: tek bir HTTP isteği içinde BİRDEN FAZLA ayrı
+`Session`/transaction açılıyor (`after_begin` aynı istek içinde birkaç
+kez, her seferinde role=`m_trip` doğru raporlanarak ateşleniyor) — ama
+outbox INSERT'inin çalıştığı transaction'da grant'lar teyit edilmiş
+olmasına rağmen reddediliyor. Aynı mekanizma (`module_role_scope` +
+`AsyncSessionLocal()`) UnitOfWork/FastAPI dependency zinciri DIŞINDA,
+doğrudan çağrıldığında SORUNSUZ çalışıyor — yani hata mekanizmada değil,
+gerçek isteğin `UnitOfWork`/`get_uow()`'ün nested-session-join
+mantığında (`_session_ctx` ContextVar) bir yerde. Kök neden
+BULUNAMADI — bu, odaklı bir session/connection-identity teşhisi
+gerektiriyor (ör. her `DEBUGROLE` ateşlenmesinde session/connection
+`id()`'sini karşılaştırmak), ad-hoc pilot testiyle değil. `api_router.py`
+değişikliği bu yüzden commit edilmeden geri alındı — pilot yaklaşımının
+tam da bunun için doğru karar olduğunu kanıtlıyor (15 modülü aynı anda
+bağlamak bu sınıf bir hatayı çok daha zor teşhis edilir hale getirirdi).

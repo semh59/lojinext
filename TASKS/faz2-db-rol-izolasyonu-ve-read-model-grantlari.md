@@ -202,10 +202,10 @@ dalı + 17 bare çağrı dosyasının hepsi) otomatik kapsıyor, hiçbir
 dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 
 ### Kabul Kriterleri (Wave 2)
-- [ ] `module_role.py` (`ContextVar`, `module_role_scope`, `require_module_role`, `open_role_scoped_session`)
-- [ ] Enforcement noktası seçildi (spike sonucuna göre) ve bağlandı
+- [x] `module_role.py` (`ContextVar`, `module_role_scope`, `require_module_role`, `open_role_scoped_session`) — 2026-07-28, `v2/modules/platform_infra/database/module_role.py`
+- [x] Enforcement noktası seçildi (spike sonucuna göre) ve bağlandı — `connection.py`'ye `after_begin` event listener eklendi (`_apply_module_role`); rol set edilmediği sürece no-op, henüz sıfır davranış değişikliği
 - [ ] `api_router.py`'nin ~50 `include_router()` çağrısı modül-bazlı `dependencies=` alıyor
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
-- [ ] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`)
-- [ ] Tam regresyon + triyaj turu (yeni `permission denied` hataları teker teker: eksik grant mi, gerçek sınır ihlali mi)
+- [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 3 test, gerçek Postgres 16'ya karşı doğrulandı (`test_wrong_module_write_is_denied`, `test_own_module_write_is_allowed`, `test_role_resets_after_transaction`)
+- [ ] Tam regresyon + triyaj turu (yeni `permission denied` hataları teker teker: eksik grant mi, gerçek sınır ihlali mi) — henüz gerekmiyor, çünkü hiçbir gerçek endpoint/task/script rol enforcement'ına henüz BAĞLANMADI (yukarıdaki 3 madde tamamlanınca gerekli)

@@ -15,11 +15,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, contextmanager
 from typing import Iterator
 
+from sqlalchemy import event, text
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
+from v2.modules.platform_infra.database.module_role import get_module_role
+from v2.modules.platform_infra.database.role_grants import ALL_ROLES
 from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
@@ -110,6 +113,35 @@ AsyncSessionLocal = async_sessionmaker(
     expire_on_commit=False,
     autoflush=False,
 )
+
+
+# FAZ2 Wave 2 (DB role isolation, enforcement): single hook covering EVERY
+# transaction begin on ANY Session/AsyncSession created anywhere in the
+# process — including the ~17 files that call AsyncSessionLocal() directly,
+# not just UnitOfWork's owning branch. `after_begin` fires for AsyncSession
+# too because AsyncSession wraps a sync Session bridged through greenlet;
+# validated against real Postgres 16 in the spike (see
+# TASKS/faz2-db-rol-izolasyonu-ve-read-model-grantlari.md). No-op (module_role
+# ContextVar unset) everywhere this isn't wired yet, so this listener alone
+# introduces zero behavior change until `require_module_role`/
+# `module_role_scope`/`open_role_scoped_session` are actually used.
+# `SET ROLE <name>`/`SET LOCAL ROLE <name>` don't accept a bind-parameter
+# placeholder for the role identifier — but the equivalent built-in
+# `set_config('role', <value>, true)` function does, since `<value>` is an
+# ordinary function argument, not part of the SQL syntax. This is the real
+# fix (no dynamic SQL text is ever built from `role`), not a suppression of
+# the avoid-sqlalchemy-text finding.
+_SET_LOCAL_ROLE = text("SELECT set_config('role', :role, true)")
+
+
+@event.listens_for(Session, "after_begin")
+def _apply_module_role(session, transaction, connection) -> None:
+    role = get_module_role()
+    if not role:
+        return
+    if role not in ALL_ROLES:
+        raise ValueError(f"Refusing to SET LOCAL ROLE to unknown role: {role!r}")
+    connection.execute(_SET_LOCAL_ROLE, {"role": role})
 
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────

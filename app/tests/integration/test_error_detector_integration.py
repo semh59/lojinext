@@ -126,7 +126,7 @@ async def test_error_occurrences_table_exists(db_session):
     row = await db_session.execute(
         text(
             "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_schema = 'public' AND table_name = 'error_occurrences'"
+            "WHERE table_schema = 'platform' AND table_name = 'error_occurrences'"
         )
     )
     count = row.scalar_one()

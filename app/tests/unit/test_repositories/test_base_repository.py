@@ -146,7 +146,7 @@ async def test_sql_injection_safe(test_repo, db_session):
     assert result["plaka"] == malicious_name
 
     # Check table still exists
-    res = await db_session.execute(text("SELECT to_regclass('public.araclar')"))
+    res = await db_session.execute(text("SELECT to_regclass('fleet.araclar')"))
     table_ref = res.scalar()
     assert table_ref is not None
     assert "araclar" in str(table_ref)

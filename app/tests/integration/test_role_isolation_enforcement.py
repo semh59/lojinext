@@ -19,7 +19,11 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from v2.modules.platform_infra.database.module_role import module_role_scope
+from v2.modules.platform_infra.database.module_role import (
+    _module_role,
+    module_role_scope,
+    open_role_scoped_session,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -85,3 +89,34 @@ async def test_role_resets_after_transaction(fresh_session_factory):
         async with session.begin():
             role = (await session.execute(text("SELECT current_user"))).scalar_one()
             assert role != "m_trip"
+
+
+async def test_open_role_scoped_session_returns_scoped_session(temp_db_url, db_session):
+    """`open_role_scoped_session` (the m_ops-script entry point) returns a
+    session already running as the given role — end to end, no manual
+    `module_role_scope` needed by the caller."""
+    async with open_role_scoped_session("m_ops") as session:
+        async with session.begin():
+            role = (await session.execute(text("SELECT current_user"))).scalar_one()
+            assert role == "m_ops"
+
+
+async def test_apply_module_role_listener_rejects_bypassed_unknown_role(
+    fresh_session_factory,
+):
+    """Defense-in-depth check in `connection.py`'s `after_begin` listener:
+    even if something sets the private ContextVar directly (bypassing
+    `module_role_scope`'s own validation), the listener still refuses an
+    unknown role instead of sending it to Postgres."""
+    token = _module_role.set("m_totally_made_up")
+    try:
+        async with fresh_session_factory() as session:
+            # `after_begin` only fires once a real connection is acquired for
+            # the FIRST actual statement — entering `session.begin()` alone
+            # (with no query) doesn't touch the database yet, so this needs
+            # a real `execute()` to trigger the listener.
+            with pytest.raises(ValueError, match="Refusing to SET LOCAL ROLE"):
+                async with session.begin():
+                    await session.execute(text("SELECT 1"))
+    finally:
+        _module_role.reset(token)

@@ -71,11 +71,25 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     "m_reports": ["trip", "fleet", "driver", "fuel", "anomaly"],
     "m_anomaly": ["trip", "driver", "fleet"],
     "m_ai_assistant": ["fleet", "trip", "driver", "location"],
-    "m_fleet": ["trip"],  # fleet/CLAUDE.md'de zaten dokümante
-    "m_fuel": ["fleet", "trip"],  # önceden hiçbir yerde dokümante değildi
-    "m_driver": ["trip"],  # driver/CLAUDE.md'de zaten dokümante
+    "m_fleet": ["trip"],  # already documented in fleet/CLAUDE.md
+    "m_fuel": ["fleet", "trip"],  # was undocumented anywhere before
+    "m_driver": ["trip"],  # already documented in driver/CLAUDE.md
     "m_prediction_ml": ["fleet"],  # scheduler_task.py
-    "m_route_simulation": ["location"],  # openroute_client.py SELECT yolu
+    "m_route_simulation": ["location"],  # openroute_client.py SELECT path
+    # FAZ2 Wave 2 pilot (2026-07-28): m_trip was missing entirely from this
+    # matrix, found live — creating a trip failed with
+    # "permission denied for schema fleet" the moment role enforcement was
+    # actually turned on for trip's routes (add_trip.py's own arac_repo/
+    # sofor_repo FK-validation reads). fleet/driver/location/fuel confirmed
+    # via direct `uow.<repo>` grep in trip/application/*.py
+    # (add_trip.py -> arac_repo/sofor_repo, bulk_add_trips.py ->
+    # lokasyon_repo/arac_repo/sofor_repo, reconcile_costs.py -> yakit_repo,
+    # sla.py/trip_prediction_enrichment.py -> lokasyon_repo). NOTE: this
+    # does NOT yet cover the SeferFuelEstimator path (prediction_ml /
+    # route_simulation tables) — that only runs when
+    # USE_SEFER_FUEL_ESTIMATOR=true (prod default) and needs its own,
+    # separate verification pass before Wave 2 rolls out to production.
+    "m_trip": ["fleet", "driver", "location", "fuel"],
 }
 
 
@@ -101,7 +115,9 @@ class WriteException:
 # çağrılan bir yazma yolu (bkz. plan dosyası).
 WRITE_EXCEPTIONS: list[WriteException] = [
     # analytics_executive.AnalizRepository.save_model_params() — prediction_ml'den çağrılır.
-    WriteException("m_analytics_executive", "fuel", "yakit_formul", ("INSERT", "DELETE")),
+    WriteException(
+        "m_analytics_executive", "fuel", "yakit_formul", ("INSERT", "DELETE")
+    ),
     # anomaly.attribute_loss.override_attribution() — attribution_routes.py'den çağrılır.
     WriteException(
         "m_anomaly",
@@ -116,7 +132,13 @@ WRITE_EXCEPTIONS: list[WriteException] = [
         "location",
         "lokasyonlar",
         ("UPDATE",),
-        columns=("api_mesafe_km", "api_sure_saat", "ascent_m", "descent_m", "last_api_call"),
+        columns=(
+            "api_mesafe_km",
+            "api_sure_saat",
+            "ascent_m",
+            "descent_m",
+            "last_api_call",
+        ),
     ),
     # import_excel — toplu Excel import, repository'leri bilerek bypass eder
     # (driver/CLAUDE.md'de zaten kabul edilmiş bir istisna olarak dokümante).
@@ -125,6 +147,19 @@ WRITE_EXCEPTIONS: list[WriteException] = [
     WriteException("m_import_excel", "driver", "sofor_ad_soyad_trigram", ("INSERT",)),
     WriteException("m_import_excel", "trip", "seferler", ("INSERT", "DELETE")),
     WriteException("m_import_excel", "fuel", "yakit_alimlari", ("INSERT", "DELETE")),
+    # FAZ2 Wave 2 pilot (2026-07-28): found live — trip's add_trip.py calls
+    # shared_kernel's save_outbox_event() (INSERT INTO platform.outbox_events)
+    # to publish SEFER_ADDED, and every one of the 14 module-schema roles
+    # does the exact same thing — outbox_events is shared infrastructure
+    # every business module writes its own domain events to (see
+    # shared_kernel/CLAUDE.md's outbox.py entry). Granting this to only
+    # m_trip would just move the same discovery to each of the other 14
+    # modules' own pilot — granted to all of them up front instead.
+    *[
+        WriteException(role, "platform", "outbox_events", ("INSERT",))
+        for role in MODULE_SCHEMA_ROLES.values()
+        if role != "m_platform"  # m_platform already owns this table (ALL)
+    ],
 ]
 
 # m_ops'un ALL+CREATE grant aldığı 14 iş-modülü şeması (platform dahil, ama
@@ -152,7 +187,7 @@ def _self_grant_membership_stmt(role: str) -> str:
         f"    EXECUTE format('GRANT {role} TO %I', current_user);\n"
         "  EXCEPTION WHEN insufficient_privilege THEN\n"
         f"    RAISE NOTICE '{role}: could not self-grant to %; ops must run "
-        f"\"GRANT {role} TO <app_login_role>;\" manually', current_user;\n"
+        f'"GRANT {role} TO <app_login_role>;" manually\', current_user;\n'
         "  END;\n"
         "END $$;"
     )
@@ -176,12 +211,33 @@ def _reader_select_grant_stmts(role: str, schema: str) -> list[str]:
     ]
 
 
-def _write_exception_stmt(exc: WriteException) -> str:
+def _write_exception_stmts(exc: WriteException) -> list[str]:
+    # A role with zero other access to `exc.schema` (e.g. m_trip writing to
+    # `platform.outbox_events`, which isn't in its own READER_SELECT_GRANTS
+    # entry) needs SCHEMA-level USAGE too — a table-level GRANT alone is a
+    # no-op without it (Postgres can't even resolve the table without schema
+    # USAGE). Idempotent/harmless to re-issue for roles that already have it
+    # via READER_SELECT_GRANTS.
+    stmts = [f"GRANT USAGE ON SCHEMA {exc.schema} TO {exc.role}"]
     privileges = ", ".join(exc.privileges)
     if exc.columns is not None:
         columns = ", ".join(exc.columns)
-        return f"GRANT {privileges} ({columns}) ON {exc.schema}.{exc.table} TO {exc.role}"
-    return f"GRANT {privileges} ON {exc.schema}.{exc.table} TO {exc.role}"
+        stmts.append(
+            f"GRANT {privileges} ({columns}) ON {exc.schema}.{exc.table} TO {exc.role}"
+        )
+    else:
+        stmts.append(f"GRANT {privileges} ON {exc.schema}.{exc.table} TO {exc.role}")
+    if "INSERT" in exc.privileges:
+        # A serial/identity PK's underlying sequence needs its own USAGE
+        # grant for `nextval()` — an INSERT-only table grant isn't enough
+        # (found live: m_trip writing to platform.outbox_events, whose `id`
+        # is `nextval('outbox_events_id_seq')`). Schema-wide, not per-table,
+        # since WriteException doesn't track individual sequence names —
+        # harmless (sequences are just ID generators, not data).
+        stmts.append(
+            f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA {exc.schema} TO {exc.role}"
+        )
+    return stmts
 
 
 def _ops_role_stmts() -> list[str]:
@@ -226,9 +282,9 @@ def generate_role_grant_ddl() -> list[str]:
         for schema in schemas:
             stmts.extend(_reader_select_grant_stmts(role, schema))
 
-    # 4) Dar yazma istisnaları (tablo/kolon-scope)
+    # 4) Narrow write exceptions (table/column-scoped)
     for exc in WRITE_EXCEPTIONS:
-        stmts.append(_write_exception_stmt(exc))
+        stmts.extend(_write_exception_stmts(exc))
 
     # 5) m_ops — geniş bakım rolü
     stmts.extend(_ops_role_stmts())
@@ -263,7 +319,9 @@ def generate_role_revoke_ddl() -> list[str]:
     stmts: list[str] = []
 
     for schema, role in MODULE_SCHEMA_ROLES.items():
-        stmts.append(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} REVOKE ALL ON TABLES FROM {role}")
+        stmts.append(
+            f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} REVOKE ALL ON TABLES FROM {role}"
+        )
         stmts.append(
             f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} REVOKE ALL ON SEQUENCES FROM {role}"
         )

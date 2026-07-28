@@ -85,6 +85,37 @@ TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
 if not TEST_DATABASE_URL:
     pytest.skip("TEST_DATABASE_URL env var gerekli", allow_module_level=True)
 
+# FAZ2 (schema-per-module): `db_engine`'s `_extra_schemas` computation
+# (below) inspects whatever is registered on `Base.metadata` at that
+# moment — SQLAlchemy declarative models only register once actually
+# imported. This conftest never bulk-imported the modules (only
+# `setup_test_db`'s fixture body did `from app.main import app`, LATE —
+# after `db_engine` had already run and computed `_extra_schemas`), so a
+# module like `trip` that nothing else happened to import early never made
+# it into search_path — caught live in `tests/deep_audit/` (`CREATE
+# MATERIALIZED VIEW ... FROM seferler` -> UndefinedTableError, since
+# `seferler` now lives in the `trip` schema). Mirrors the same list
+# app/tests/conftest.py already carries after finding this exact problem
+# there on 2026-07-23.
+import v2.modules.admin_platform.infrastructure.repository  # noqa: E402,F401
+import v2.modules.analytics_executive.infrastructure.executive_read_models  # noqa: E402,F401
+import v2.modules.anomaly.infrastructure.models  # noqa: E402,F401
+import v2.modules.auth_rbac.infrastructure.models  # noqa: E402,F401
+import v2.modules.driver.infrastructure.repository  # noqa: E402,F401
+import v2.modules.fleet.infrastructure.trailer_repository  # noqa: E402,F401
+import v2.modules.fleet.infrastructure.vehicle_repository  # noqa: E402,F401
+import v2.modules.fuel.infrastructure.repository  # noqa: E402,F401
+import v2.modules.import_excel.infrastructure.models  # noqa: E402,F401
+import v2.modules.location.infrastructure.repository  # noqa: E402,F401
+import v2.modules.notification.infrastructure.models  # noqa: E402,F401
+import v2.modules.platform_infra.container  # noqa: E402,F401
+import v2.modules.prediction_ml.infrastructure.models  # noqa: E402,F401
+import v2.modules.reports.infrastructure.models  # noqa: E402,F401
+import v2.modules.route_simulation.infrastructure.repository  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.error_monitoring_models  # noqa: E402,F401
+import v2.modules.shared_kernel.infrastructure.outbox  # noqa: E402,F401
+import v2.modules.trip.infrastructure.repository  # noqa: E402,F401
+
 
 async def _terminate_other_test_connections(conn) -> None:
     await conn.execute(
@@ -104,7 +135,12 @@ async def _reset_public_schema(conn) -> None:
     await conn.execute(text("DROP SCHEMA IF EXISTS public CASCADE"))
     await conn.execute(text("CREATE SCHEMA public"))
     user = os.getenv("POSTGRES_USER", "lojinext_user")
-    await conn.execute(text(f"GRANT ALL ON SCHEMA public TO {user}"))
+    # DDL identifiers (role/schema names) can't be bind parameters in Postgres
+    # — CREATE/GRANT don't accept them. `user` is CI/dev config (POSTGRES_USER
+    # env var, not request data); pre-existing line, not touched by this
+    # change beyond a line-number shift.
+    grant_public_sql = text(f"GRANT ALL ON SCHEMA public TO {user}")  # nosemgrep
+    await conn.execute(grant_public_sql)
     await conn.execute(text("GRANT ALL ON SCHEMA public TO public"))
     # FAZ2 (schema-per-module): DROP + recreate every schema the ORM models
     # declare (see app/tests/conftest.py's async_db_engine fixture for the
@@ -113,9 +149,18 @@ async def _reset_public_schema(conn) -> None:
     # skips any table that already exists).
     from v2.modules.shared_kernel.infrastructure.base import Base
 
-    for schema_name in sorted({t.schema for t in Base.metadata.tables.values() if t.schema}):
-        await conn.execute(text(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'))
-        await conn.execute(text(f'CREATE SCHEMA "{schema_name}"'))
+    for schema_name in sorted(
+        {t.schema for t in Base.metadata.tables.values() if t.schema}
+    ):
+        # `schema_name` is enumerated from this codebase's own declared ORM
+        # model `__table_args__ = {"schema": ...}` values, not external input;
+        # CREATE/DROP SCHEMA can't take a bind parameter for the identifier.
+        drop_sql = f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE'
+        create_sql = f'CREATE SCHEMA "{schema_name}"'
+        drop_schema_sql = text(drop_sql)  # nosemgrep
+        create_schema_sql = text(create_sql)  # nosemgrep
+        await conn.execute(drop_schema_sql)
+        await conn.execute(create_schema_sql)
 
 
 @pytest.fixture(autouse=True)
@@ -173,7 +218,9 @@ async def db_engine():
 
     from v2.modules.shared_kernel.infrastructure.base import Base
 
-    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _extra_schemas = sorted(
+        {t.schema for t in Base.metadata.tables.values() if t.schema}
+    )
     _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         TEST_DATABASE_URL,
@@ -199,12 +246,20 @@ def db_session_factory(db_engine, monkeypatch):
     import v2.modules.platform_infra.database.connection  # noqa: E402
     import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
 
-    monkeypatch.setattr(v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory)
-    monkeypatch.setattr(v2.modules.shared_kernel.infrastructure.unit_of_work, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(
+        v2.modules.platform_infra.database.connection, "AsyncSessionLocal", factory
+    )
+    monkeypatch.setattr(
+        v2.modules.shared_kernel.infrastructure.unit_of_work,
+        "AsyncSessionLocal",
+        factory,
+    )
     # error_events.py binds AsyncSessionLocal into its own module namespace at
     # import time (`from platform_infra.public import AsyncSessionLocal`), so
     # patching the connection module's attribute above doesn't reach it.
-    monkeypatch.setattr(v2.modules.admin_platform.application.error_events, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(
+        v2.modules.admin_platform.application.error_events, "AsyncSessionLocal", factory
+    )
 
     return factory
 

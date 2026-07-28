@@ -164,15 +164,42 @@ require_module_role(...))`, `celery_app.py`'nin `task_prerun`/
 scoped_session()` yolu) — `UnitOfWork.__aenter__`'ın yalnız session'ı
 YARATAN ("owning") dalı bu context'i okuyup `SET LOCAL ROLE` çağırır.
 
-### Açık karar noktası (Wave 2 başlamadan önce spike gerekiyor)
-`SET LOCAL ROLE`'ün gerçek tetikleyici noktası: SQLAlchemy ORM
-`after_begin` event listener'ı (tek nokta, ~15 bare `AsyncSessionLocal()`
-dosyası dahil TÜM session yaratma yollarını kapsar, ama async+greenlet
-etkileşimi bu projede daha önce sürpriz çıkarmıştı) mı, yoksa
-`UnitOfWork`/`get_db()`/`session_scope()`'ta 3 açık çağrı noktası mı
-(daha basit/öngörülebilir, ama o ~15 dosyanın ayrıca `session_scope()`'a
-taşınmasını gerektirir) — gerçek Postgres'e karşı küçük bir spike ile
-karar verilecek.
+### Açık karar noktası — ÇÖZÜLDÜ (2026-07-28, spike)
+
+**Karar: SQLAlchemy ORM `after_begin` event listener.**
+
+Gerçek Postgres 16'ya karşı izole bir throwaway DB'de (`docker run
+postgres:16-alpine` + `alembic upgrade head`, migration 0061'in 17
+rolü/grant matrisi dahil) 6 senaryolu bir spike koşuldu
+(`event.listens_for(Session, "after_begin")` + `ContextVar[str|None]` +
+`connection.execute(text("SET LOCAL ROLE <rol>"))`):
+
+1. `after_begin` hem explicit `async with session.begin()` hem SQLAlchemy
+   2.0 autobegin (ilk `execute()` begin'i örtük tetikler) yolunda güvenilir
+   ateşleniyor.
+2. Greenlet-bridge içinde SENKRON `connection.execute()` çağrısı
+   sorunsuz çalıştı — bu projede daha önce sürpriz çıkaran async+greenlet
+   etkileşimi bu SQLAlchemy/asyncpg/Postgres16 kombinasyonunda
+   gözlenmedi.
+3. `ContextVar` ardışık iki farklı-rollü session arasında sızıntı
+   yapmadı (`m_trip` → `m_fuel` sıralı çağrıda ikisi de doğru rol
+   aldı).
+4. `SET LOCAL ROLE` Postgres'in `LOCAL` semantiğine uygun şekilde
+   rollback/commit sonrası otomatik sıfırlanıyor (yeni transaction
+   `lojinext_user`'a dönüyor) — session/connection-pool arası rol
+   sızıntısı riski yok.
+5. **Gerçek enforcement canlı doğrulandı**: `m_trip` rolüyle
+   `fleet.araclar`'a `INSERT` denemesi
+   `asyncpg.exceptions.InsufficientPrivilegeError: permission denied
+   for schema fleet` ile reddedildi — Wave 1'in grant matrisi hem
+   yeterince kısıtlayıcı hem `SET ROLE` üzerinden fiilen etkin.
+
+Sonuç: **3-açık-çağrı-noktası** alternatifi (UnitOfWork/get_db()/
+session_scope(), ~15 bare `AsyncSessionLocal()` dosyasının
+`session_scope()`'a taşınmasını gerektirirdi) elendi — `after_begin`
+tek nokta olarak TÜM session yaratma yollarını (UnitOfWork'ün owning
+dalı + 17 bare çağrı dosyasının hepsi) otomatik kapsıyor, hiçbir
+dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 
 ### Kabul Kriterleri (Wave 2)
 - [ ] `module_role.py` (`ContextVar`, `module_role_scope`, `require_module_role`, `open_role_scoped_session`)

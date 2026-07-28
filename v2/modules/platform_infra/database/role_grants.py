@@ -192,6 +192,26 @@ WRITE_EXCEPTIONS: list[WriteException] = [
         for role in ALL_ROLES
         if role not in ("m_platform", OPS_ROLE)
     ],
+    # FAZ2 Wave 2 pilot (2026-07-28): found live, fleet pilot — same
+    # "universal, not per-module" story again. `admin_platform.
+    # admin_audit_log` is written by `platform_infra.audit.audit_logger`'s
+    # `@audit_log`/`log_audit_event` on EVERY module's write endpoints, not
+    # just admin_platform's own. Without a schema-USAGE grant, a role
+    # scoped to some other module can't even resolve the unqualified
+    # `admin_audit_log` name via search_path — Postgres reports this as
+    # "relation does not exist" (not "permission denied": a role with no
+    # USAGE on a schema can't see it exists at all), which the audit
+    # persist's own shared/test-session `begin_nested()` SAVEPOINT
+    # guard only covers when the session's own `in_transaction()` check
+    # takes that branch — the OTHER branch (no active transaction yet,
+    # e.g. after an inline `uow.commit()` already ran earlier in the
+    # SAME request, as in fleet's smart-delete flow) has no such guard and
+    # genuinely poisons the shared session for the rest of the test.
+    *[
+        WriteException(role, "admin_platform", "admin_audit_log", ("INSERT",))
+        for role in ALL_ROLES
+        if role not in ("m_admin_platform", OPS_ROLE)
+    ],
 ]
 
 # m_ops'un ALL+CREATE grant aldığı 14 iş-modülü şeması (platform dahil, ama

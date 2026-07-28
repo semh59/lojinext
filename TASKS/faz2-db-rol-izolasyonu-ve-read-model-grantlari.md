@@ -205,7 +205,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `module_role.py` (`ContextVar`, `module_role_scope`, `require_module_role`, `open_role_scoped_session`) — 2026-07-28, `v2/modules/platform_infra/database/module_role.py`
 - [x] Enforcement noktası seçildi (spike sonucuna göre) ve bağlandı — `connection.py`'ye `after_begin` event listener eklendi (`_apply_module_role`); rol set edilmediği sürece no-op, henüz sıfır davranış değişikliği
 - [x] `trip` modülünün 4 router'ı (`trip_write_router`/`trip_bulk_router`/`trip_approval_router`/`trip_read_router`) `dependencies=[Depends(require_module_role("trip"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "Pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /trips/` → 201, iki farklı sefer)
-- [ ] Diğer 13 modülün routerları — kalan 13 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `fleet` modülünün 4 router'ı (`vehicle_router`/`maintenance_router`/`admin_maintenance_router`/`trailer_router`) `dependencies=[Depends(require_module_role("fleet"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fleet pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /vehicles/` → 201, `DELETE /vehicles/{id}` → 200, `admin_audit_log`'a her iki işlem de yazıldı)
+- [ ] Diğer 12 modülün routerları — kalan 12 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -252,3 +253,56 @@ sonraki commit):
 `0063_faz2_returning_fix` (madde 4-6). Bu pilot, "önce 1 modülle dene"
 kararının doğruluğunu kanıtladı — 15 modülü aynı anda bağlamak bu 6
 bulguyu çok daha zor teşhis edilir hale getirirdi.
+
+### Fleet pilot bulgusu (2026-07-28) — fleet'in api_router.py wiring'i TAMAMLANDI
+
+`fleet`'in 4 router'ına `dependencies=[Depends(require_module_role("fleet"))]`
+eklenip gerçek bir backend + Postgres 16 + gerçek HTTP isteğiyle
+(`POST /vehicles/`, `DELETE /vehicles/{id}`) uçtan uca test edildi.
+**1 gerçek, önceden var olan Wave 1 grant-matrisi açığı** bulunup
+düzeltildi:
+
+1. **Kök neden**: `platform_infra.audit.audit_logger`'ın `@audit_log`/
+   `log_audit_event`'i EVERY modülün write endpoint'inde `admin_platform.
+   admin_audit_log`'a unqualified bir `INSERT` yapıyor (yalnız
+   admin_platform'un kendi endpoint'lerinde değil). `m_fleet`'in bu şemaya
+   USAGE grant'ı yoktu — Postgres bunu "relation does not exist" olarak
+   raporluyor (USAGE'sız bir rol şemanın var olduğunu bile göremez,
+   "permission denied" değil). Bu tek başına audit_logger'ın kendi
+   try/except'i tarafından yutulup loglanıyordu, AMA audit-persist
+   kodunun `session.begin_nested()` SAVEPOINT koruması yalnızca
+   `session.in_transaction()` zaten true olduğunda devreye giriyor —
+   fleet'in soft-delete akışı (`delete_vehicle.py`) kendi `uow.commit()`'ini
+   audit decorator'ın post-processing'inden ÖNCE inline çağırdığı için, o
+   noktada korunacak aktif bir transaction yok; gerçek UndefinedTableError
+   session'ı kalıcı zehirliyor, kurtarma yolu olmadan. Fix: `admin_platform.
+   admin_audit_log`'a TÜM modül rollerine (m_admin_platform + m_ops hariç)
+   evrensel `INSERT` WriteException'ı eklendi — trip pilotundaki
+   `outbox_events`/`idempotency_keys` ile aynı "tek modüle özel değil, her
+   modül aynı duvara çarpacaktı" sınıfından.
+
+2. **Ayrı, kod-hatası OLMAYAN bulgu — stale Docker image gotcha'sı**:
+   fix'i doğrularken `docker compose run --no-deps backend ...` ve manuel
+   pilot container'lar tekrar tekrar "permission denied for schema fleet/
+   auth_rbac" verdi, migration'ın 0046'da donduğu ve `role_grants.py`'nin
+   Wave 2 fix'lerinin (0062-0064 dahil) hiç uygulanmadığı görüldü — kök
+   neden kod DEĞİL, kök CLAUDE.md'nin zaten belgelediği gotcha
+   ("Backend source code is baked into the image — there is no volume
+   mount"): `docker compose run`/`docker run` ile başlatılan container'lar
+   image'a build-zamanında donmuş ESKİ kaynak kodu kullanıyordu (11 gün
+   önceki image), benim lokal düzenlemelerim (yeni migration'lar +
+   `role_grants.py`/`api_router.py` edit'leri) hiç görünmüyordu. Fix:
+   `docker compose build backend` ile gerçek rebuild, ardından sıfırdan
+   bir Postgres 16 + `alembic upgrade head` (0064'e ulaştığı doğrulandı) +
+   yeni bir pilot backend container'ı ile tekrar test edildi — bu sefer
+   `has_schema_privilege('m_fleet','fleet','USAGE')=true` ve gerçek
+   `POST /vehicles/`→201 + `DELETE /vehicles/{id}`→200 + `admin_audit_log`'a
+   her iki aksiyonun da yazıldığı doğrulandı.
+
+**Migration**: `0064_faz2_audit_log_universal`. Ders: birden fazla
+`docker compose run`/manuel `docker run` ile hızlı ardışık pilot testi
+yaparken, her testten önce **image'ın gerçekten güncel olduğunu**
+(`docker images <ad> --format "{{.CreatedSince}}"`) doğrulamadan "kod
+hatası" sonucuna varmak yanlış teşhise yol açar — çok sayıda kod
+düzenlemesi olan bir dilimde `docker cp` tek-dosya patch'i yerine tam
+rebuild tercih edilmeli.

@@ -111,12 +111,16 @@ from v2.modules.trip.api.trip_read_routes import router as trip_read_router
 from v2.modules.trip.api.trip_write_routes import router as trip_write_router
 
 _trip_role_dep = [Depends(require_module_role("trip"))]
+_fleet_role_dep = [Depends(require_module_role("fleet"))]
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
 api_router.include_router(location_router, prefix="/locations", tags=["locations"])
 api_router.include_router(
-    maintenance_router, prefix="/maintenance", tags=["maintenance"]
+    maintenance_router,
+    prefix="/maintenance",
+    tags=["maintenance"],
+    dependencies=_fleet_role_dep,
 )
 api_router.include_router(weather_router, prefix="/weather", tags=["weather"])
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -134,7 +138,9 @@ api_router.include_router(
 api_router.include_router(
     admin_users_router, prefix="/admin/users", tags=["admin-users"]
 )
-api_router.include_router(vehicle_router, prefix="/vehicles", tags=["vehicles"])
+api_router.include_router(
+    vehicle_router, prefix="/vehicles", tags=["vehicles"], dependencies=_fleet_role_dep
+)
 api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
 # NOT: trip_read_router EN SON eklenir — kendi ``GET /{sefer_id}`` catch-all
 # route'u tek-segment bir path param'ı (FastAPI/Starlette route eşleşmesi
@@ -208,7 +214,10 @@ api_router.include_router(
     page_view_admin_router, prefix="/admin", tags=["admin-analytics"]
 )
 api_router.include_router(
-    admin_maintenance_router, prefix="/admin/maintenance", tags=["admin-maintenance"]
+    admin_maintenance_router,
+    prefix="/admin/maintenance",
+    tags=["admin-maintenance"],
+    dependencies=_fleet_role_dep,
 )
 api_router.include_router(
     notification_router,
@@ -218,7 +227,9 @@ api_router.include_router(
 api_router.include_router(
     admin_health_router, prefix="/admin/health", tags=["admin-health"]
 )
-api_router.include_router(trailer_router, prefix="/trailers", tags=["trailers"])
+api_router.include_router(
+    trailer_router, prefix="/trailers", tags=["trailers"], dependencies=_fleet_role_dep
+)
 api_router.include_router(
     preferences_router, prefix="/preferences", tags=["preferences"]
 )

@@ -2202,11 +2202,34 @@ test_fresh`) roller/grant'lar conftest'in kendi çağrısıyla doğru kuruldu;
 öncesiyle BİREBİR AYNI sonucu verdi (5202 passed, 0 failed, 0 error, 17
 skipped)** — sıfır davranış değişikliği iddiasının nihai kanıtı.
 
-**Wave 2 (🔲 bekliyor, ayrı DURMA NOKTASI)**: `SET LOCAL ROLE`
-enforcement'ının gerçekten bağlanması (`UnitOfWork`/`connection.py`'a
-enforcement noktası, `api_router.py`'nin ~50 `include_router()` çağrısına
-modül-bazlı dependency, Celery signal, 16 m_ops script'i). Bu, gerçek
-davranış değişikliği taşıyan, "permission denied" regresyonlarının
-triyaj edilmesini gerektiren riskli kısım — kullanıcı onayı olmadan
-başlamayacak. Detaylı yol haritası `faz2-db-rol-izolasyonu-ve-read-
-model-grantlari.md`'nin "Wave 2" bölümünde.
+**Wave 2 (🟡 DEVAM EDİYOR, 2026-07-28)**: Spike TAMAMLANDI (`after_begin`
+event listener kararı, gerçek Postgres 16'ya karşı doğrulandı). Enforcement
+noktası bağlandı: `v2/modules/platform_infra/database/module_role.py`
+(`ContextVar`, `module_role_scope`, `require_module_role`,
+`open_role_scoped_session`) + `connection.py`'nin `after_begin` listener'ı
+— henüz hiçbir gerçek endpoint/task/script'e BAĞLANMADI, sıfır davranış
+değişikliği. `test_role_isolation_enforcement.py` (5 test) gerçek
+Postgres 16'da: yanlış-modül yazısı `permission denied`, kendi modülü
+yazısı başarılı, rol transaction sonrası sıfırlanıyor, bypass edilmiş
+bilinmeyen rol reddediliyor. Kalan (gerçek davranış değişikliği taşıyan,
+"permission denied" regresyonlarının triyaj edilmesini gerektiren riskli
+kısım):
+- [ ] `api_router.py`'nin ~50 `include_router()` çağrısına modül-bazlı dependency
+- [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali
+- [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanacak
+- [ ] Tam regresyon + triyaj turu
+
+Detaylı yol haritası `faz2-db-rol-izolasyonu-ve-read-model-grantlari.md`'nin
+"Wave 2" bölümünde.
+
+**BİLİNEN BORÇ (2026-07-28): main'in Combined coverage gate'i %91, hedef
+%92.** Kaynağı Wave 2'nin bu turdaki eklentisi DEĞİL — FAZ2 branch'inin
+(dalga 16-19, ~77 commit) main'e taşıdığı birikimli, birçok dosyaya yayılmış
+bir kapsama açığı (en büyükleri: `v2/modules/prediction_ml/domain/
+advanced_lstm.py` %65, `time_series_predictor.py` %75,
+`analytics_executive/api/executive_routes.py` %69, `platform_infra/
+database/backup_manager.py` %51, `platform_infra/database/role_grants.py`
+%69). Kullanıcı kararı (2026-07-28): ayrı bir görev/oturumda sistematik
+olarak kapatılacak, Wave 2'yi bloklamıyor — main'in `hard-gates` job'ı
+şu an bu gate yüzünden kırmızı kalmaya devam ediyor, bu bilinçli bir
+tercih (Wave 2 devam ederken not düşüldü).

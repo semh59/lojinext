@@ -101,6 +101,32 @@ async def test_open_role_scoped_session_returns_scoped_session(temp_db_url, db_s
             assert role == "m_ops"
 
 
+async def test_write_exception_insert_with_returning_succeeds(fresh_session_factory):
+    """Real regression found in the trip-module pilot (2026-07-28):
+    `m_trip` scoped to `platform.outbox_events` (a WriteException, not its
+    own schema) could INSERT but the ORM-style `RETURNING id` clause failed
+    with `permission denied` even though `current_user` was confirmed
+    `m_trip` and the plain INSERT grant was confirmed present — Postgres
+    requires SELECT on a RETURNING column in addition to INSERT.
+    `_write_exception_stmts` now grants both; this proves it end to end."""
+    with module_role_scope("m_trip"):
+        async with fresh_session_factory() as session:
+            async with session.begin():
+                row = (
+                    await session.execute(
+                        text(
+                            "INSERT INTO platform.outbox_events "
+                            "(event_type, payload, correlation_id, created_at, "
+                            "updated_at, processed, retry_count) "
+                            "VALUES ('sefer_added', '{}', 'returning-test', "
+                            "now(), now(), false, 0) "
+                            "RETURNING id"
+                        )
+                    )
+                ).scalar_one()
+                assert row is not None
+
+
 async def test_apply_module_role_listener_rejects_bypassed_unknown_role(
     fresh_session_factory,
 ):

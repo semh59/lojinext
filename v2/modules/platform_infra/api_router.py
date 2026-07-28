@@ -11,7 +11,7 @@ zero other consumers left, so pointing this file at their real source
 made them fully dead and safe to delete (``app/api/`` no longer exists).
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from v2.modules.admin_platform.api.admin_config_routes import (
     router as admin_config_router,
@@ -80,6 +80,7 @@ from v2.modules.notification.api.notification_routes import (
     router as notification_router,
 )
 from v2.modules.notification.api.push_routes import router as push_router
+from v2.modules.platform_infra.database.module_role import require_module_role
 from v2.modules.prediction_ml.api.admin_ml import router as admin_ml_router
 from v2.modules.prediction_ml.api.admin_pilot import router as admin_pilot_router
 from v2.modules.prediction_ml.api.admin_predictions import (
@@ -108,6 +109,8 @@ from v2.modules.trip.api.trip_approval_routes import router as trip_approval_rou
 from v2.modules.trip.api.trip_bulk_routes import router as trip_bulk_router
 from v2.modules.trip.api.trip_read_routes import router as trip_read_router
 from v2.modules.trip.api.trip_write_routes import router as trip_write_router
+
+_trip_role_dep = [Depends(require_module_role("trip"))]
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
@@ -141,14 +144,22 @@ api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
 # `/{sefer_id}` bunları önce yakalar ve sefer_id=<literal> int-coercion'ı
 # 422 ile patlar (bu regresyon `test_trip_contracts_and_bulk_flows`'ta
 # bulundu ve düzeltildi — dalga 14).
-api_router.include_router(trip_write_router, prefix="/trips", tags=["trips"])
-api_router.include_router(trip_bulk_router, prefix="/trips", tags=["trips"])
-api_router.include_router(trip_approval_router, prefix="/trips", tags=["trips"])
+api_router.include_router(
+    trip_write_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
+)
+api_router.include_router(
+    trip_bulk_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
+)
+api_router.include_router(
+    trip_approval_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
+)
 api_router.include_router(trip_export_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_import_router, prefix="/trips", tags=["trips"])
 api_router.include_router(trip_analytics_router, prefix="/trips", tags=["trips"])
 api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
-api_router.include_router(trip_read_router, prefix="/trips", tags=["trips"])
+api_router.include_router(
+    trip_read_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
+)
 api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
 api_router.include_router(
     predictions_router, prefix="/predictions", tags=["predictions"]

@@ -92,6 +92,24 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     "m_trip": ["fleet", "driver", "location", "fuel"],
 }
 
+# FAZ2 Wave 2 pilot (2026-07-28): found live, AFTER fixing the m_trip entry
+# above — every protected endpoint's `get_current_user` dependency reads
+# `auth_rbac.kullanicilar` (to resolve the JWT's user id) on whatever role
+# is active for that request. This isn't module-specific at all: EVERY
+# module role needs it, the exact same "universal, not per-module" pattern
+# as the `outbox_events` WriteException below. Masked in initial pilot
+# testing because the super-admin auth path has its own break-glass
+# fallback (virtual id=0) that doesn't hard-fail on `permission denied` —
+# only surfaced once testing hit a real, normal (non-super-admin) user via
+# the RBAC/idempotency/API-contract test suites. `m_auth_rbac` already owns
+# its own schema; `m_ops` already gets ALL via `_ops_role_stmts`.
+for _role in ALL_ROLES:
+    if _role in ("m_auth_rbac", OPS_ROLE):
+        continue
+    READER_SELECT_GRANTS.setdefault(_role, [])
+    if "auth_rbac" not in READER_SELECT_GRANTS[_role]:
+        READER_SELECT_GRANTS[_role].append("auth_rbac")
+
 
 @dataclass(frozen=True)
 class WriteException:
@@ -159,6 +177,20 @@ WRITE_EXCEPTIONS: list[WriteException] = [
         WriteException(role, "platform", "outbox_events", ("INSERT",))
         for role in MODULE_SCHEMA_ROLES.values()
         if role != "m_platform"  # m_platform already owns this table (ALL)
+    ],
+    # FAZ2 Wave 2 pilot (2026-07-28): found live, same "universal, not
+    # per-module" story as outbox_events above — `admin_platform`'s
+    # idempotency_service.py (reserve_or_get_cached/finalize_response,
+    # SELECT+INSERT+UPDATE on platform.idempotency_keys) backs the
+    # `Idempotency-Key` header support that trip_write_routes.py AND
+    # fuel_routes.py both call into, so this needs to be pre-granted to
+    # every module role rather than rediscovered per module.
+    *[
+        WriteException(
+            role, "platform", "idempotency_keys", ("SELECT", "INSERT", "UPDATE")
+        )
+        for role in ALL_ROLES
+        if role not in ("m_platform", OPS_ROLE)
     ],
 ]
 
@@ -237,6 +269,19 @@ def _write_exception_stmts(exc: WriteException) -> list[str]:
         stmts.append(
             f"GRANT USAGE ON ALL SEQUENCES IN SCHEMA {exc.schema} TO {exc.role}"
         )
+        # `INSERT ... RETURNING <pk>` — which is exactly what SQLAlchemy's
+        # ORM does on every flush() to read back an autoincrement PK — needs
+        # SELECT on the returned column(s) too. Postgres genuinely enforces
+        # this: RETURNING reads the row back, so INSERT privilege alone
+        # isn't enough (found live, root cause of a real permission-denied
+        # on platform.outbox_events even with current_user confirmed as
+        # m_trip and the INSERT grant confirmed present — verified with a
+        # raw asyncpg repro isolating RETURNING as the actual trigger).
+        # Table-wide, not just the PK column: every one of this file's
+        # existing (never-yet-enforced) WriteExceptions inserts into a
+        # table with an autoincrement PK, so they'd hit the exact same
+        # wall the moment their own module gets wired.
+        stmts.append(f"GRANT SELECT ON {exc.schema}.{exc.table} TO {exc.role}")
     return stmts
 
 

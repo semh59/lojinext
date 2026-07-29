@@ -113,6 +113,7 @@ from v2.modules.trip.api.trip_write_routes import router as trip_write_router
 _trip_role_dep = [Depends(require_module_role("trip"))]
 _fleet_role_dep = [Depends(require_module_role("fleet"))]
 _driver_role_dep = [Depends(require_module_role("driver"))]
+_fuel_role_dep = [Depends(require_module_role("fuel"))]
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
@@ -169,7 +170,9 @@ api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
 api_router.include_router(
     trip_read_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
 )
-api_router.include_router(fuel_router, prefix="/fuel", tags=["fuel"])
+api_router.include_router(
+    fuel_router, prefix="/fuel", tags=["fuel"], dependencies=_fuel_role_dep
+)
 api_router.include_router(
     predictions_router, prefix="/predictions", tags=["predictions"]
 )
@@ -211,7 +214,10 @@ api_router.include_router(
     admin_calibration_router, prefix="/admin/calibration", tags=["admin-calibration"]
 )
 api_router.include_router(
-    admin_fuel_accuracy, prefix="/admin", tags=["admin-fuel-accuracy"]
+    admin_fuel_accuracy,
+    prefix="/admin",
+    tags=["admin-fuel-accuracy"],
+    dependencies=_fuel_role_dep,
 )
 api_router.include_router(admin_pilot_router, prefix="/admin", tags=["admin-pilot"])
 api_router.include_router(

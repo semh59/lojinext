@@ -207,7 +207,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `trip` modülünün 4 router'ı (`trip_write_router`/`trip_bulk_router`/`trip_approval_router`/`trip_read_router`) `dependencies=[Depends(require_module_role("trip"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "Pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /trips/` → 201, iki farklı sefer)
 - [x] `fleet` modülünün 4 router'ı (`vehicle_router`/`maintenance_router`/`admin_maintenance_router`/`trailer_router`) `dependencies=[Depends(require_module_role("fleet"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fleet pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /vehicles/` → 201, `DELETE /vehicles/{id}` → 200, `admin_audit_log`'a her iki işlem de yazıldı)
 - [x] `driver` modülünün 2 router'ı (`driver_router`/`coaching_router`) `dependencies=[Depends(require_module_role("driver"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "driver pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /drivers/` → 201, `GET /drivers/{id}/score-breakdown` → 200, `GET /coaching/{id}/insights` → 200, `DELETE /drivers/{id}` → 200)
-- [ ] Diğer 11 modülün routerları — kalan 11 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `fuel` modülünün 2 router'ı (`fuel_router`/`admin_fuel_accuracy`) `dependencies=[Depends(require_module_role("fuel"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fuel pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /fuel/` → 201, `GET /fuel/stats` → 200, `GET /admin/fuel-accuracy` → 200, `DELETE /fuel/{id}` → 200) — **sıfır yeni grant açığı bulundu**, mevcut `m_fuel: ["fleet","trip"]` zaten yeterliydi (trip/fleet pilotlarında önceden düzeltilmişti)
+- [ ] Diğer 10 modülün routerları — kalan 10 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -347,3 +348,18 @@ yalnızca `["trip"]` idi — `fleet` ve `anomaly` hiç yoktu. Fix:
 **Migration**: `0065_faz2_driver_role_grants_fix` — `docker cp` +
 `docker restart` ile doğrulandı (yukarıdaki nota bkz.), tam rebuild
 GEREKMEDİ.
+
+### Fuel pilot bulgusu (2026-07-29) — fuel'in api_router.py wiring'i TAMAMLANDI, sıfır yeni bug
+
+`fuel`'in 2 router'ına (`fuel_router`/`admin_fuel_accuracy`)
+`dependencies=[Depends(require_module_role("fuel"))]` eklenip gerçek bir
+backend + Postgres 16 + gerçek HTTP isteğiyle (`POST /fuel/`, `GET
+/fuel/stats`, `GET /admin/fuel-accuracy`, `DELETE /fuel/{id}`) uçtan uca
+test edildi. **Sıfır yeni grant açığı** — `role_grants.py`'de `m_fuel:
+["fleet", "trip"]` zaten fleet/driver pilotlarından önce doğru şekilde
+tanımlıydı (fuel'in `uow.arac_repo` aktif-araç kontrolü + `seferler`
+raw-SQL sorguları için), migration eklemeye gerek kalmadı. Bu, ilk 3
+pilotun (trip/fleet/driver) READER_SELECT_GRANTS matrisindeki gerçek
+açıkları önceden temizlediğinin bir kanıtı — kalan modüller için
+beklenen model artık "her pilotta mutlaka yeni bug bulunur" değil, "bazı
+modüller zaten temiz çıkabilir".

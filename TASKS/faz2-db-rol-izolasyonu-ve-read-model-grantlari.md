@@ -206,7 +206,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] Enforcement noktası seçildi (spike sonucuna göre) ve bağlandı — `connection.py`'ye `after_begin` event listener eklendi (`_apply_module_role`); rol set edilmediği sürece no-op, henüz sıfır davranış değişikliği
 - [x] `trip` modülünün 4 router'ı (`trip_write_router`/`trip_bulk_router`/`trip_approval_router`/`trip_read_router`) `dependencies=[Depends(require_module_role("trip"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "Pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /trips/` → 201, iki farklı sefer)
 - [x] `fleet` modülünün 4 router'ı (`vehicle_router`/`maintenance_router`/`admin_maintenance_router`/`trailer_router`) `dependencies=[Depends(require_module_role("fleet"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fleet pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /vehicles/` → 201, `DELETE /vehicles/{id}` → 200, `admin_audit_log`'a her iki işlem de yazıldı)
-- [ ] Diğer 12 modülün routerları — kalan 12 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `driver` modülünün 2 router'ı (`driver_router`/`coaching_router`) `dependencies=[Depends(require_module_role("driver"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "driver pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /drivers/` → 201, `GET /drivers/{id}/score-breakdown` → 200, `GET /coaching/{id}/insights` → 200, `DELETE /drivers/{id}` → 200)
+- [ ] Diğer 11 modülün routerları — kalan 11 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -306,3 +307,43 @@ yaparken, her testten önce **image'ın gerçekten güncel olduğunu**
 hatası" sonucuna varmak yanlış teşhise yol açar — çok sayıda kod
 düzenlemesi olan bir dilimde `docker cp` tek-dosya patch'i yerine tam
 rebuild tercih edilmeli.
+
+**Not (driver pilotunda düzeltildi)**: yukarıdaki tavsiye ("tam rebuild
+tercih edilmeli") çok genişti. Yeni bağımlılık eklenmeyen, saf Python
+değişikliklerinde (yeni migration dosyası dahil) `docker cp <dosya>
+<container>:/app/<yol> && docker restart <container>` çok daha hızlı ve
+güvenilir — entrypoint her restart'ta `alembic upgrade head`'i zaten
+otomatik çalıştırıyor, yeni migration dosyası container'a kopyalanmışsa
+gerçekten uygulanıyor (driver pilotunda 0065 bu yolla doğrulandı). Tam
+`docker compose build` YALNIZCA `requirements.txt` değiştiğinde veya
+`docker cp` ile en son değişikliklerin gerçekten göründüğünden şüphe
+duyulduğunda gerekli — driver pilotunda bir rebuild denemesi `chown -R
+appuser:appgroup /app` adımında >1 saat asılı kalıp (WSL2 vhdx disk
+baskısı, bkz. `docker_disk_full_gotcha` hafıza kaydı) sonunda kendiliğinden
+bitti; bu riskten kaçınmak için kalan modül pilotlarında varsayılan yöntem
+`docker cp` olacak.
+
+### Driver pilot bulgusu (2026-07-29) — driver'ın api_router.py wiring'i TAMAMLANDI
+
+`driver`'ın 2 router'ına (`driver_router`/`coaching_router`)
+`dependencies=[Depends(require_module_role("driver"))]` eklenip gerçek bir
+backend + Postgres 16 + gerçek HTTP isteğiyle (`POST /drivers/`, `GET
+/drivers/{id}/score-breakdown`, `GET /drivers/{id}/route-profile`, `GET
+/coaching/{id}/insights`, `DELETE /drivers/{id}`) uçtan uca test edildi.
+**1 gerçek Wave 1 grant-matrisi açığı** bulunup düzeltildi:
+
+`GET /coaching/{id}/insights` (driver'ın `DriverCoachingEngine` →
+`get_anomaly_detector().get_recent_anomalies(...)` çağrısı üzerinden)
+`UndefinedTableError: relation "anomalies" does not exist` ile 500
+döndü. Kök neden: `anomaly/infrastructure/anomaly_repository.py::
+get_anomalies()` tek bir ham SQL sorgusunda 4 unqualified tablo adını
+birlikte JOIN'liyor — `anomalies` (anomaly şeması), `seferler` (trip
+şeması, zaten grantlıydı), `soforler` (driver'ın kendi şeması), `araclar`
+(fleet şeması, grantlı DEĞİLDİ). `m_driver`'ın `READER_SELECT_GRANTS`'i
+yalnızca `["trip"]` idi — `fleet` ve `anomaly` hiç yoktu. Fix:
+`READER_SELECT_GRANTS["m_driver"]` → `["trip", "fleet", "anomaly"]`
+(migration `0065_faz2_driver_role_grants_fix`).
+
+**Migration**: `0065_faz2_driver_role_grants_fix` — `docker cp` +
+`docker restart` ile doğrulandı (yukarıdaki nota bkz.), tam rebuild
+GEREKMEDİ.

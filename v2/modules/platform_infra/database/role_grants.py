@@ -73,7 +73,12 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     "m_ai_assistant": ["fleet", "trip", "driver", "location"],
     "m_fleet": ["trip"],  # already documented in fleet/CLAUDE.md
     "m_fuel": ["fleet", "trip"],  # was undocumented anywhere before
-    "m_driver": ["trip"],  # already documented in driver/CLAUDE.md
+    "m_driver": ["trip", "fleet", "anomaly"],  # trip already documented in
+    # driver/CLAUDE.md; fleet+anomaly found live (FAZ2 Wave 2 driver pilot,
+    # 2026-07-29) — anomaly_repository.py's get_anomalies() query (used by
+    # DriverCoachingEngine via get_anomaly_detector().get_recent_anomalies)
+    # joins unqualified anomalies/araclar/seferler/soforler in one raw SQL
+    # statement
     "m_prediction_ml": ["fleet"],  # scheduler_task.py
     "m_route_simulation": ["location"],  # openroute_client.py SELECT path
     # FAZ2 Wave 2 pilot (2026-07-28): m_trip was missing entirely from this

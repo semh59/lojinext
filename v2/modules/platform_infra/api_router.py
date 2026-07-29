@@ -112,6 +112,7 @@ from v2.modules.trip.api.trip_write_routes import router as trip_write_router
 
 _trip_role_dep = [Depends(require_module_role("trip"))]
 _fleet_role_dep = [Depends(require_module_role("fleet"))]
+_driver_role_dep = [Depends(require_module_role("driver"))]
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
@@ -141,7 +142,9 @@ api_router.include_router(
 api_router.include_router(
     vehicle_router, prefix="/vehicles", tags=["vehicles"], dependencies=_fleet_role_dep
 )
-api_router.include_router(driver_router, prefix="/drivers", tags=["drivers"])
+api_router.include_router(
+    driver_router, prefix="/drivers", tags=["drivers"], dependencies=_driver_role_dep
+)
 # NOT: trip_read_router EN SON eklenir — kendi ``GET /{sefer_id}`` catch-all
 # route'u tek-segment bir path param'ı (FastAPI/Starlette route eşleşmesi
 # kayıt SIRASINA göredir, otomatik specificity yok). Diğer router'ların
@@ -176,7 +179,12 @@ api_router.include_router(
     executive_router, prefix="/reports/executive", tags=["executive"]
 )
 api_router.include_router(anomalies_router, prefix="/anomalies", tags=["anomalies"])
-api_router.include_router(coaching_router, prefix="/coaching", tags=["coaching"])
+api_router.include_router(
+    coaching_router,
+    prefix="/coaching",
+    tags=["coaching"],
+    dependencies=_driver_role_dep,
+)
 api_router.include_router(
     investigations_router,
     prefix="/admin/investigations",

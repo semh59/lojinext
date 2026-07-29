@@ -24,6 +24,7 @@ from v2.modules.auth_rbac.public import (
 )
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.platform_infra.middleware.slowapi_limiter import limiter
+from v2.modules.platform_infra.public import UOWDep
 
 logger = get_logger(__name__)
 
@@ -182,6 +183,7 @@ async def receive_frontend_error_batch(
 
 @router.get("/error-events", response_model=ErrorEventsResponse)
 async def get_error_events(
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
     layer: Optional[str] = QueryParam(None),
     severity: Optional[str] = QueryParam(None),
@@ -192,6 +194,7 @@ async def get_error_events(
     """List error events (paginated, filtered). Admin only."""
     try:
         items, total = await list_error_events(
+            uow.session,
             layer=layer,
             severity=severity,
             resolved=resolved,
@@ -214,10 +217,11 @@ async def get_error_events(
 
 @router.get("/error-stats", response_model=ErrorStatsResponse)
 async def get_error_stats(
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Return hourly aggregated error stats from materialized view. Admin only."""
-    stats = await _get_error_stats()
+    stats = await _get_error_stats(uow.session)
     return ErrorStatsResponse(stats=[ErrorStatsRow(**row) for row in stats])
 
 
@@ -247,11 +251,12 @@ async def get_silent_fallbacks(
 @router.post("/error-events/{event_id}/resolve", status_code=204)
 async def resolve_error_event(
     event_id: int,
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Mark an error event as resolved. Admin only."""
     user_id = current_user.id if current_user.id and current_user.id > 0 else None
-    resolved = await _resolve_error_event(event_id, user_id)
+    resolved = await _resolve_error_event(uow.session, event_id, user_id)
     if not resolved:
         raise HTTPException(
             status_code=404,
@@ -268,6 +273,7 @@ async def resolve_error_event(
 @router.get("/debug/trace/{trace_id}", response_model=TraceChainResponse)
 async def get_trace_chain(
     trace_id: str,
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """trace_id'ye ait tüm event zincirini döner (debugging için).
@@ -280,4 +286,4 @@ async def get_trace_chain(
     Frontend bunu admin paneline koyunca, yakalanan trace_id'yi tek
     tıkla detay gösterir → hata kovalama dakikalardan saniyelere iner.
     """
-    return await _get_trace_chain(trace_id)
+    return await _get_trace_chain(uow.session, trace_id)

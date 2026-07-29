@@ -12,6 +12,7 @@ from sqlalchemy import LargeBinary, create_engine, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
+from sqlalchemy.schema import CreateSchema, DropSchema
 
 # Suppress deprecation warnings during test bootstrap.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -282,7 +283,9 @@ async def async_db_engine(temp_db_url):
     # `create_all`, not migrations) — so it must set the same search_path
     # itself, derived from whatever schemas the ORM models actually declare,
     # so this never needs another manual edit as later waves add schemas.
-    _extra_schemas = sorted({t.schema for t in Base.metadata.tables.values() if t.schema})
+    _extra_schemas = sorted(
+        {t.schema for t in Base.metadata.tables.values() if t.schema}
+    )
     _search_path = ", ".join(["public", *_extra_schemas])
     engine = create_async_engine(
         temp_db_url,
@@ -325,8 +328,8 @@ async def async_db_engine(temp_db_url):
         # instance kept an old `platform.error_occurrences` around across
         # runs, causing "column does not exist" in unrelated tests.
         for _schema_name in _extra_schemas:
-            await conn.execute(text(f'DROP SCHEMA IF EXISTS "{_schema_name}" CASCADE'))
-            await conn.execute(text(f'CREATE SCHEMA "{_schema_name}"'))
+            await conn.execute(DropSchema(_schema_name, cascade=True, if_exists=True))
+            await conn.execute(CreateSchema(_schema_name))
 
         # Attempt to activate PostGIS via SAVEPOINT so a failure does NOT abort
         # the current transaction block.  Falls back to LargeBinary for the one
@@ -423,16 +426,25 @@ async def async_db_engine(temp_db_url):
             )
         )
         # Test parity: error stats endpoint expects this materialized view.
-        await conn.execute(text("DROP MATERIALIZED VIEW IF EXISTS error_hourly_stats"))
+        # Schema-qualified to "platform" -- matches where 0060_platform_schema_move
+        # actually puts it in real migrations. An earlier unqualified version of
+        # this DDL landed it in "public" instead (the test session's search_path's
+        # first entry), invisible to any role without "public" USAGE -- found live
+        # via a real HTTP GET /system/error-stats request once a role without
+        # "public" access (m_admin_platform) queried it (FAZ2 Wave 2 admin_platform
+        # pilot, 2026-07-29).
+        await conn.execute(
+            text("DROP MATERIALIZED VIEW IF EXISTS platform.error_hourly_stats")
+        )
         await conn.execute(
             text("""
-            CREATE MATERIALIZED VIEW error_hourly_stats AS
+            CREATE MATERIALIZED VIEW platform.error_hourly_stats AS
             SELECT
                 date_trunc('hour', occurred_at) AS hour,
                 layer,
                 severity,
                 COUNT(*) AS event_count
-            FROM error_occurrences
+            FROM platform.error_occurrences
             WHERE occurred_at > now() - INTERVAL '24 hours'
             GROUP BY 1, 2, 3
         """)
@@ -440,7 +452,7 @@ async def async_db_engine(temp_db_url):
         await conn.execute(
             text(
                 "CREATE UNIQUE INDEX idx_error_hourly_stats "
-                "ON error_hourly_stats(hour, layer, severity)"
+                "ON platform.error_hourly_stats(hour, layer, severity)"
             )
         )
 
@@ -479,13 +491,18 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
             return getattr(self._session, name)
 
     wrapper = NonClosingSession(session)
-    monkeypatch.setattr("v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper)
-    monkeypatch.setattr("v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal", wrapper)
-    # error_events.py does `from platform_infra.public import AsyncSessionLocal`
-    # at module scope, binding its own name at import time — patching the
-    # connection module's attribute above doesn't reach that already-bound
-    # name, so it must be patched directly here too.
-    monkeypatch.setattr("v2.modules.admin_platform.application.error_events.AsyncSessionLocal", wrapper)
+    monkeypatch.setattr(
+        "v2.modules.platform_infra.database.connection.AsyncSessionLocal", wrapper
+    )
+    monkeypatch.setattr(
+        "v2.modules.shared_kernel.infrastructure.unit_of_work.AsyncSessionLocal",
+        wrapper,
+    )
+    # error_events.py no longer imports AsyncSessionLocal at module scope --
+    # FAZ2 Wave 2 admin_platform pilot (2026-07-29) converted it to take the
+    # caller's UOWDep-scoped session instead of opening its own (same
+    # role-leak bug class fixed in reports/api/dashboard_routes.py), so
+    # there is nothing left here to monkeypatch for that module.
 
     # Sync support
     sync_url = temp_db_url.replace("+asyncpg", "")
@@ -494,7 +511,8 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
         bind=sync_engine, autocommit=False, autoflush=False
     )
     monkeypatch.setattr(
-        "v2.modules.platform_infra.database.connection.SyncSessionLocal", SyncTestingSessionLocal
+        "v2.modules.platform_infra.database.connection.SyncSessionLocal",
+        SyncTestingSessionLocal,
     )
 
     # Clear all user tables before each test so the session-scoped schema
@@ -510,13 +528,13 @@ async def db_session(async_db_engine, temp_db_url, monkeypatch):
     # Delete in reverse-topological order to satisfy FK constraints.
     # Sequences are reset separately so IDs stay predictable.
     user_tables = [
-        t.name
+        t
         for t in Base.metadata.sorted_tables
         if not t.name.startswith("spatial_ref_sys")
     ]
     if user_tables:
-        for table_name in reversed(user_tables):
-            await session.execute(text(f'DELETE FROM "{table_name}"'))
+        for table in reversed(user_tables):
+            await session.execute(table.delete())
         # Reset all sequences in every schema on this session's search_path
         # (not just `public`) so IDs stay deterministic — FAZ2: tables move
         # to module schemas over time, `current_schemas(false)` tracks

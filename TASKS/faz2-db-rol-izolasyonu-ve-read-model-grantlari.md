@@ -729,3 +729,81 @@ kendisi zaten test akışının başında dolaylı doğrulandı — token alma h
 zaman başarılı oldu). `test_business_lifecycle.py` gerçek Postgres 16'ya
 karşı tekrar koşuldu (1 passed). auth_rbac-özel unit/api testleri
 (27 passed). Migration: yok.
+
+### Admin_platform pilot bulgusu (2026-07-29) — 5 grant açığı + 2 gerçek pre-existing bug
+
+`admin_platform`'un 8 router'ına (`admin_config`/`admin_health`/
+`admin_integrations`/`admin_ws`/`error_stream`/`health`/`internal`/
+`system`) wiring eklenmeden ÖNCE kapsamlı `public.py` cross-module denetimi
+yapıldı — `telegram_bridge.py`'nin (Telegram bot köprüsü,
+`api/internal_routes.py`) `driver.public.get_sofor_repo`/
+`get_by_telegram_id`, `driver.public.get_by_sofor_id` (driver'ın KENDİ
+fonksiyonu ama `trip.seferler`'i doğrudan sorguluyor —
+`driver_trip_queries.py`, önceki pilotlardaki gömülü-repository-metodu
+sınıfıyla aynı desen), `driver.public.SoforSeferPDFService` (trip+driver
+okur), `driver.public.get_driver_coaching_engine` (anomaly okur), ve
+`_arac_plaka()`'nın `uow.arac_repo.get_by_id`'si (fleet) bulundu.
+
+**Grant sonucu**: `role_grants.py`'ye `m_admin_platform: ["driver", "trip",
+"fleet", "anomaly", "platform"]` (`platform`, `error_events`/
+`error_hourly_stats` — sahibi `platform_infra.monitoring`, `0060_platform_
+schema_move`'da "platform" şemasına taşınmış — admin_platform yalnız
+admin-facing okuma yüzeyini sağlıyor) + 3 WriteException eklendi:
+`trip.sefer_belgeler` INSERT (`kaydet_belge`), `fleet.arac_bakimlari`
+INSERT (`report_driver_breakdown` → `create_breakdown`), `platform.
+error_events` UPDATE yalnız `resolved_at`/`resolved_by` kolonları
+(`resolve_error_event`). Migration: `0072_faz2_admin_platform_grants`.
+
+**Gerçek pre-existing bug #1 (aynı sınıf, TAMAMEN düzeltildi)**:
+`application/error_events.py`'nin `list_error_events`/`get_error_stats`/
+`get_trace_chain`/`resolve_error_event`'i HER BİRİ kendi bare
+`AsyncSessionLocal()`'ını açıyordu (`UOWDep`/request session'ı ALMIYOR-
+du) — reports pilotundaki `dashboard_routes.py` bug'ıyla BİREBİR AYNI
+sınıf: üretimde zararsız (gerçek per-call session kendi `async with`
+çıkışında düzgün kapanır) ama test suite'inin paylaşılan-session
+fixture'ında (`app/tests/conftest.py::db_session`'ın
+`NonClosingSession`'ı) hiç explicit commit/close çağrılmayan salt-okunur
+transaction'lar açık kalıp `SET LOCAL ROLE`'ü paylaşılan test session'ının
+bir SONRAKİ HTTP çağrısına sızdırabilirdi. Düzeltme: 4 fonksiyon da artık
+çağıranın `UOWDep`-kapsamlı session'ını (`session: AsyncSession`
+parametresi) alıyor; `system_routes.py`'nin 4 handler'ı kendi `uow.session`'ını
+geçiriyor. `conftest.py`'nin artık gereksiz olan
+`error_events.AsyncSessionLocal` monkeypatch satırı kaldırıldı (fonksiyonlar
+artık o ismi hiç import etmiyor).
+
+**Gerçek pre-existing bug #2 (test-fixture şema sapması, TAMAMEN
+düzeltildi)**: `app/tests/conftest.py`'nin `error_hourly_stats`
+materialized view'i ham `CREATE MATERIALIZED VIEW error_hourly_stats`
+(şema belirtmeden) ile oluşturuyordu — bu, test session'ının search_path'inin
+İLK şeması olan `public`'e düşüyordu. Gerçek `0060_platform_schema_move`
+migration'ı bu view'i `platform` şemasına taşımıştı — test fixture'ı ile
+gerçek migration zinciri arasında bir SAPMA. `m_admin_platform` (hiçbir
+rol `public` şemasında USAGE'a sahip değil — FAZ2'nin şema-per-modül
+tasarımında `public` artık hiçbir modülün mülkiyetinde değil) bu view'i
+sorgulamaya çalışınca `UndefinedTableError` aldı — CI'da değil ama gerçek
+Docker+`lojinext_test` DB'sinde koşulan `test_system_stats`/
+`test_get_error_stats_returns_empty` testlerinde yakalandı. Bu sapma
+`admin_platform`'un rolü wire edilene kadar hiçbir testte görünmüyordu
+çünkü o zamana kadar bu view'i sorgulayan HİÇBİR test herhangi bir
+kısıtlı role altında çalışmıyordu. Düzeltme: `CREATE`/`DROP MATERIALIZED
+VIEW`/`CREATE UNIQUE INDEX` ifadeleri `platform.error_hourly_stats`'a
+şema-nitelendirildi (gerçek migration'la eşleşecek şekilde). Not:
+`sefer_istatistik_mv` AYNI sapmayı GÖSTERMİYOR — o view gerçek migration
+zincirinde de hiçbir zaman `public`'ten taşınmadı (0056_trip_schema_move
+dahil hiçbir migration ona dokunmuyor), yani test fixture'ı ile prod
+arasında fark yok — ayrı, kapsamı dışı bir bulgu (trip modülünün kendi
+FAZ2 borcu, bu pilotun konusu değil).
+
+**Doğrulama (gerçek HTTP, admin token + `X-Internal-Token`, tüm 8
+router)**: `GET /admin/config/`, `GET /admin/integrations/`, `GET
+/admin/health/`, `GET /system/error-events`, `GET /system/error-stats`,
+`GET /system/debug/trace/{id}` — hepsi 200. Internal bridge: `GET
+/internal/sofor-by-telegram/{id}`, `GET /internal/sofor-coaching/{id}`
+(anomaly okur), `GET /internal/sofor-seferler/{id}` (trip okur), `POST
+/internal/sefer-belge` (gerçek dosya upload, `trip.sefer_belgeler` INSERT
+— 200), `POST /internal/driver-breakdown` (`fleet.arac_bakimlari` INSERT
+— 201) — hepsi permission-denied'sız. `test_business_lifecycle.py` gerçek
+Postgres 16'ya karşı tekrar koşuldu (1 passed). admin_platform-özel
+unit/api testleri (141 passed / 3 fail → fix sonrası 144 passed — 3.
+fail'in biri `test_check_redis_unhealthy`, redis-sentinel'e özgü, bu
+pilotla ilgisiz pre-existing bir flake, dokunulmadı).

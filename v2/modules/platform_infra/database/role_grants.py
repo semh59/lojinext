@@ -182,6 +182,21 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # USE_SEFER_FUEL_ESTIMATOR=true (prod default) and needs its own,
     # separate verification pass before Wave 2 rolls out to production.
     "m_trip": ["fleet", "driver", "location", "fuel"],
+    # FAZ2 Wave 2 admin_platform pilot (2026-07-29): found live via public.py
+    # cross-module audit before wiring -- telegram_bridge.py (Telegram bot
+    # bridge, api/internal_routes.py) calls driver.public.get_sofor_repo/
+    # get_by_telegram_id (driver), driver.public.get_by_sofor_id (a driver
+    # function that itself queries trip.seferler directly --
+    # infrastructure/driver_trip_queries.py), driver.public.
+    # SoforSeferPDFService (reads driver.soforler + trip.seferler for PDF
+    # generation), driver.public.get_driver_coaching_engine (reads
+    # anomaly.anomalies via get_anomaly_detector().get_recent_anomalies),
+    # and _arac_plaka()'s uow.arac_repo.get_by_id (fleet). "platform" is for
+    # application/error_events.py's admin-facing read surface over
+    # error_events/error_hourly_stats (owned by platform_infra.monitoring,
+    # moved to the "platform" schema in 0060_platform_schema_move) --
+    # admin_audit_log itself is admin_platform's OWN table, no grant needed.
+    "m_admin_platform": ["driver", "trip", "fleet", "anomaly", "platform"],
 }
 
 # FAZ2 Wave 2 pilot (2026-07-28): found live, AFTER fixing the m_trip entry
@@ -350,6 +365,22 @@ WRITE_EXCEPTIONS: list[WriteException] = [
     # READER_SELECT_GRANTS alone covers cache HITS; this WriteException
     # covers cache MISSES.
     WriteException("m_location", "route_simulation", "route_paths", ("INSERT",)),
+    # FAZ2 Wave 2 admin_platform pilot (2026-07-29): found live --
+    # telegram_bridge.py::kaydet_belge() INSERTs a SeferBelge row (photo
+    # upload + OCR-pending marker) into trip.sefer_belgeler.
+    WriteException("m_admin_platform", "trip", "sefer_belgeler", ("INSERT",)),
+    # telegram_bridge.py::report_driver_breakdown() -> fleet.public.
+    # create_breakdown() INSERTs an AracBakim row into fleet.arac_bakimlari.
+    WriteException("m_admin_platform", "fleet", "arac_bakimlari", ("INSERT",)),
+    # application/error_events.py::resolve_error_event() UPDATEs
+    # platform.error_events (READER_SELECT_GRANTS above only covers SELECT).
+    WriteException(
+        "m_admin_platform",
+        "platform",
+        "error_events",
+        ("UPDATE",),
+        columns=("resolved_at", "resolved_by"),
+    ),
 ]
 
 # m_ops'un ALL+CREATE grant aldığı 14 iş-modülü şeması (platform dahil, ama

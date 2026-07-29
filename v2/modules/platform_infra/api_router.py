@@ -121,6 +121,7 @@ _reports_role_dep = [Depends(require_module_role("reports"))]
 _prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
 _notification_role_dep = [Depends(require_module_role("notification"))]
 _auth_rbac_role_dep = [Depends(require_module_role("auth_rbac"))]
+_admin_platform_role_dep = [Depends(require_module_role("admin_platform"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -151,12 +152,16 @@ api_router.include_router(
     dependencies=_auth_rbac_role_dep,
 )
 api_router.include_router(
-    admin_config_router, prefix="/admin/config", tags=["admin-config"]
+    admin_config_router,
+    prefix="/admin/config",
+    tags=["admin-config"],
+    dependencies=_admin_platform_role_dep,
 )
 api_router.include_router(
     admin_integrations_router,
     prefix="/admin/integrations",
     tags=["admin-integrations"],
+    dependencies=_admin_platform_role_dep,
 )
 api_router.include_router(
     admin_roles_router,
@@ -243,7 +248,12 @@ api_router.include_router(
     tags=["advanced-reports"],
     dependencies=_reports_role_dep,
 )
-api_router.include_router(health_router, prefix="/health", tags=["health"])
+api_router.include_router(
+    health_router,
+    prefix="/health",
+    tags=["health"],
+    dependencies=_admin_platform_role_dep,
+)
 api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
 api_router.include_router(
     ws_ticket_router,
@@ -251,7 +261,12 @@ api_router.include_router(
     tags=["websocket"],
     dependencies=_auth_rbac_role_dep,
 )
-api_router.include_router(admin_ws_router, prefix="/admin/ws", tags=["admin-ws"])
+api_router.include_router(
+    admin_ws_router,
+    prefix="/admin/ws",
+    tags=["admin-ws"],
+    dependencies=_admin_platform_role_dep,
+)
 api_router.include_router(
     notification_live_ws_router,
     prefix="/admin/ws",
@@ -322,7 +337,10 @@ api_router.include_router(
     dependencies=_notification_role_dep,
 )
 api_router.include_router(
-    admin_health_router, prefix="/admin/health", tags=["admin-health"]
+    admin_health_router,
+    prefix="/admin/health",
+    tags=["admin-health"],
+    dependencies=_admin_platform_role_dep,
 )
 api_router.include_router(
     trailer_router, prefix="/trailers", tags=["trailers"], dependencies=_fleet_role_dep
@@ -339,7 +357,12 @@ api_router.include_router(
     tags=["users"],
     dependencies=_auth_rbac_role_dep,
 )
-api_router.include_router(system_router, prefix="/system", tags=["system"])
+api_router.include_router(
+    system_router,
+    prefix="/system",
+    tags=["system"],
+    dependencies=_admin_platform_role_dep,
+)
 api_router.include_router(
     today_triage_router,
     prefix="/reports/today",
@@ -364,5 +387,15 @@ api_router.include_router(
     tags=["push"],
     dependencies=_notification_role_dep,
 )
-api_router.include_router(error_stream_router, prefix="/system", tags=["monitoring"])
-api_router.include_router(internal_router, prefix="/internal", tags=["internal"])
+api_router.include_router(
+    error_stream_router,
+    prefix="/system",
+    tags=["monitoring"],
+    dependencies=_admin_platform_role_dep,
+)
+api_router.include_router(
+    internal_router,
+    prefix="/internal",
+    tags=["internal"],
+    dependencies=_admin_platform_role_dep,
+)

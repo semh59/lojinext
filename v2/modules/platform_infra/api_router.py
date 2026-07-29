@@ -124,6 +124,7 @@ _auth_rbac_role_dep = [Depends(require_module_role("auth_rbac"))]
 _admin_platform_role_dep = [Depends(require_module_role("admin_platform"))]
 _import_excel_role_dep = [Depends(require_module_role("import_excel"))]
 _analytics_executive_role_dep = [Depends(require_module_role("analytics_executive"))]
+_ai_assistant_role_dep = [Depends(require_module_role("ai_assistant"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -218,7 +219,12 @@ api_router.include_router(
     tags=["trips"],
     dependencies=_analytics_executive_role_dep,
 )
-api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
+api_router.include_router(
+    plan_wizard_router,
+    prefix="/trips",
+    tags=["trips"],
+    dependencies=_ai_assistant_role_dep,
+)
 api_router.include_router(
     trip_read_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
 )
@@ -237,7 +243,12 @@ api_router.include_router(
     tags=["reports"],
     dependencies=_reports_role_dep,
 )
-api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
+api_router.include_router(
+    feedback_router,
+    prefix="/feedback",
+    tags=["feedback"],
+    dependencies=_ai_assistant_role_dep,
+)
 api_router.include_router(
     executive_router,
     prefix="/reports/executive",
@@ -274,7 +285,9 @@ api_router.include_router(
     tags=["health"],
     dependencies=_admin_platform_role_dep,
 )
-api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
+api_router.include_router(
+    ai_router, prefix="/ai", tags=["AI"], dependencies=_ai_assistant_role_dep
+)
 api_router.include_router(
     ws_ticket_router,
     prefix="/ws",

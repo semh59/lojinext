@@ -945,3 +945,68 @@ dosya, `test_executive_coverage/more.py`, `test_bus_factor.py`,
 `test_fleet_efficiency_index.py`, `test_what_if_engine.py`,
 `test_analiz_repo_coverage.py`) + `test_business_lifecycle.py` gerçek
 Postgres 16'ya karşı 228 passed. Pre-existing bug bulunmadı.
+
+### ai_assistant pilot bulgusu (2026-07-30) — 3 grant açığı, SON kalan modül
+
+`ai_assistant` hiçbir DB tablosuna sahip değil (FAISS dosya-tabanlı 2
+bağımsız store), ama chat/plan-wizard yolu çapraz-modül okuma yapıyor.
+Önceki grant (Wave 1) `["fleet", "trip", "driver", "location"]` idi;
+public.py + kaynak-kodu denetimi 3 eksik şema buldu:
+
+- `fuel`: `AIService._build_context` (`orchestrate_ai_response.py`)
+  `uow.analiz_repo.get_dashboard_stats()` çağırıyor — zaten granted
+  trip/fleet/driver tablolarının yanında `fuel.yakit_alimlari`
+  (SUM(litre)) da okuyor. `ai_routes.py`'nin `_fuel_trend_chart`'ı da
+  aynı tabloyu `fuel.public.get_monthly_cost_trend()` üzerinden okuyor
+  (`/ai/query` `category=fuel_trend`).
+- `anomaly`: aynı `_build_context` çağrısı `uow.analiz_repo.
+  get_recent_unread_alerts()` ile `anomaly.anomalies`'i doğrudan okuyor.
+- `admin_platform`: `groq_client.py`/`raw_client.py` (2 bağımsız LLM HTTP
+  istemcisi) `admin_platform.public.get_integration_secret()`'i çağırıp
+  `admin_platform.entegrasyon_ayarlari`'nı okuyor (DB-tabanlı Groq API key
+  override) — m_location/m_route_simulation/m_anomaly/m_prediction_ml'de
+  zaten aynı desenle grant edilmiş sistem_konfig-okuma paterni.
+  `get_integration_secret()` asla raise etmiyor (DB hatasında env
+  fallback'e düşer), yani bu grant eksik olsa `/ai/chat` ÇÖKMEZDİ — yalnız
+  DB-tabanlı key override'ı sessizce hep inert bırakırdı; tutarlılık için
+  yine de eklendi.
+
+3 router wiring: `ai_router` (`/ai/*`), `feedback_router` (`/feedback`),
+`plan_wizard_router` (`/trips/plan-wizard` — `trip_read_router`'ın
+catch-all'ından ÖNCE konumu korunarak). Migration: `0075_faz2_ai_
+assistant_grants`.
+
+**Doğrulama**: gerçek Postgres 16 + gerçek HTTP — `/ai/chat` (fuel+anomaly
+grant'i olmadan 500 verecekken artık 200, gerçek yanıt: "Filonuzda 2 araç
+vardır"), `/ai/status` 200, `/ai/progress` 200, `/feedback` 202,
+`/trips/plan-wizard` 200 (gerçek araç/şoför önerisi), `/ai/query`
+`category=fuel_trend` 200 (fuel.yakit_alimlari okuma yolu gerçek HTTP ile
+egzersiz edildi, LLM yanıtı gerçek filo verisine atıfta bulunuyor).
+ai_assistant-özel test takımları (22 dosya: `test_ai_query.py`,
+`test_feedback_endpoint.py`, `test_plan_wizard_endpoint.py`,
+`test_maintenance_factor_integration.py`, `test_rag_and_ai_service.py`,
+`test_ai_deep_remediation.py`, `test_ai_privacy.py`, `test_ai_security.py`
+×3, `test_groq_service_coverage.py`, `test_llm_client.py`,
+`test_rag_engine_coverage/more.py`, `test_rag_sync_service_coverage.py`,
+`test_ai_service*.py`, `test_smart_ai_service_coverage.py`,
+`test_trip_planner_*.py` ×4) + `test_business_lifecycle.py` gerçek
+Postgres 16'ya karşı 266 passed / 4 skipped. Pre-existing bug bulunmadı.
+
+## FAZ2 Wave 2 — TÜM MODÜLLER TAMAMLANDI (2026-07-30)
+
+Rota: `notification` → `auth_rbac` → `admin_platform` (2 gerçek bug +
+düzeltme) → `import_excel` → `analytics_executive` → `ai_assistant`.
+6/6 modül `require_module_role(...)` ile router-seviyesinde bağlandı,
+her biri gerçek Postgres 16 + gerçek HTTP ile doğrulandı. Toplam yeni
+migration: `0061`(Wave 1 taban) + `0070`-`0075` (6 migration, Wave 2
+grant düzeltmeleri). Ayrıca yol boyunca ilgisiz-ama-CI'ı kıran 2 regresyon
+bulunup düzeltildi (kök `tests/conftest.py`'deki ikinci stale monkeypatch;
+`frontend/openapi.json` drift — iki ayrı kez, ikincisinde kök neden
+Python'un `ensure_ascii=True` ile Node'un literal-UTF8 serileştirmesi
+arasındaki byte farkıydı).
+
+Kalan/ertelenmiş (ayrı görev, bu dalganın kapsamı dışı):
+Celery `task_prerun`/`task_postrun` sinyalinden modül-rolü türetme (şu an
+Celery task'ları module_role=None ile, yani rol kısıtlamasız çalışıyor);
+16 `m_ops` script'inin `open_role_scoped_session("m_ops")` kullanımına
+geçirilmesi.

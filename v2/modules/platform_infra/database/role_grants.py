@@ -106,7 +106,34 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # invisible from a public.py import grep since they're buried inside
     # another module's repository method, not anomaly's own code — a new
     # class of transitive dependency beyond the direct public.py audit
-    "m_ai_assistant": ["fleet", "trip", "driver", "location"],
+    "m_ai_assistant": [
+        "fleet",
+        "trip",
+        "driver",
+        "location",
+        "fuel",
+        "anomaly",
+        "admin_platform",
+    ],
+    # fuel + anomaly found live (FAZ2 Wave 2 ai_assistant pilot, 2026-07-30,
+    # public.py + source-code audit before wiring): `AIService._build_
+    # context` (orchestrate_ai_response.py) calls `uow.analiz_repo.
+    # get_dashboard_stats()` -- reads fuel.yakit_alimlari (SUM(litre)) on
+    # top of the already-granted trip/fleet/driver tables -- and `uow.
+    # analiz_repo.get_recent_unread_alerts()` -- reads anomaly.anomalies
+    # directly. `ai_routes.py`'s `_fuel_trend_chart` also calls fuel.
+    # public.get_monthly_cost_trend() (fuel.yakit_alimlari, monthly
+    # aggregate). admin_platform: `groq_client.py`/`raw_client.py` both
+    # call admin_platform.public.get_integration_secret() (reads
+    # admin_platform.entegrasyon_ayarlari for a DB-stored Groq API key
+    # override) -- same sistem_konfig/entegrasyon_ayarlari-read pattern
+    # already granted for m_location/m_route_simulation/m_anomaly/
+    # m_prediction_ml. Unlike those, get_integration_secret never raises
+    # (falls back to the env var on any DB error) so a missing grant here
+    # would NOT crash /ai/chat -- but it would silently make the DB-based
+    # key override permanently inert for this module, so the grant is
+    # added anyway for consistency with every other module hitting this
+    # exact table.
     "m_fleet": ["trip"],  # already documented in fleet/CLAUDE.md
     "m_fuel": ["fleet", "trip"],  # was undocumented anywhere before
     "m_driver": ["trip", "fleet", "anomaly"],  # trip already documented in

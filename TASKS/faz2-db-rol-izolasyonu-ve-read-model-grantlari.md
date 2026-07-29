@@ -210,7 +210,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `fuel` modülünün 2 router'ı (`fuel_router`/`admin_fuel_accuracy`) `dependencies=[Depends(require_module_role("fuel"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fuel pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /fuel/` → 201, `GET /fuel/stats` → 200, `GET /admin/fuel-accuracy` → 200, `DELETE /fuel/{id}` → 200) — **sıfır yeni grant açığı bulundu**, mevcut `m_fuel: ["fleet","trip"]` zaten yeterliydi (trip/fleet pilotlarında önceden düzeltilmişti)
 - [x] `location` modülünün router'ı `dependencies=[Depends(require_module_role("location"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "location pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /locations/` → 201, `GET /locations/stats` → 200, `GET /locations/geocode` → 200 gerçek Nominatim çağrısıyla, `DELETE /locations/{id}` → 200) — **sıfır yeni grant açığı bulundu** (location'ın kendi tablosu dışında raw-SQL cross-schema erişimi yok, route_simulation/prediction_ml/admin_platform bağımlılıkları hep `public.py` fonksiyon çağrısı üzerinden)
 - [x] `route_simulation` modülünün 3 router'ı (`route_router`/`weather_router`/`admin_calibration_router`) `dependencies=[Depends(require_module_role("route_simulation"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "route_simulation pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /routes/simulate`, `GET /weather/dashboard-summary` → 200, `GET /locations/route-info` regresyon tekrar-testi de dahil)
-- [ ] Diğer 8 modülün routerları — kalan 8 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `anomaly` modülünün 3 router'ı (`anomalies_router`/`investigations_router`/`admin_attribution_router`) `dependencies=[Depends(require_module_role("anomaly"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "anomaly pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı; **6 gerçek grant açığı bulundu** (tek migration `0070`)
+- [ ] Diğer 7 modülün routerları — kalan 7 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -455,3 +456,56 @@ Mapbox/ORS anahtarı eksik, manuel test ortamında normal). `GET
 **Sonuç**: "önce kapsamlı tara, sonra wiring ekle" yaklaşımı location'ın
 3 CI-turluk keşif döngüsünü route_simulation'da SIFIRA indirdi — kalan 8
 modül için de standart prosedür bu olacak.
+
+### Anomaly pilot bulgusu (2026-07-29) — 6 grant açığı, 2 YENİ keşif sınıfı
+
+`anomaly`'nin 3 router'ına (`anomalies_router`/`investigations_router`/
+`admin_attribution_router`) wiring eklenmeden ÖNCE `grep "from
+v2.modules.*.public import"` ile kapsamlı tarama yapıldı. Bu tarama 1
+açık buldu (`admin_platform` — `get_runtime_float`), AMA gerçek HTTP
+testinde **2 YENİ keşif sınıfı** ortaya çıktı — statik `public.py`
+taraması bunları kaçırıyor:
+
+**Sınıf A — "gömülü repository metodu"**: `GET /anomalies/fleet/insights`
+`uow.sefer_repo.get_cost_leakage_stats()`'i çağırıyor (trip'in KENDİ
+repository'si), ama bu metodun içindeki ham SQL location'ın
+`lokasyonlar`'ını (JOIN) ve fuel'in `yakit_alimlari`'nı (ayrı sorgu)
+unqualified olarak okuyor. anomaly'nin kendi kodunda `location`/`fuel`
+import'u YOK — yalnız `trip`'in repository implementasyonunu okuyunca
+görülebilir. Fix: `READER_SELECT_GRANTS["m_anomaly"]` → `location`+`fuel`
+eklendi.
+
+**Sınıf B — "senkron event-bus subscriber zinciri"**: `attribute_loss.
+override_attribution()` `SEFER_UPDATED`'i **senkron/in-process**
+`get_event_bus().publish_async(...)` ile yayınlıyor (outbox relay
+DEĞİL). Bu event'in İKİ abonesi de aynı async task içinde INLINE
+çalışıyor ve `m_anomaly`'nin `SET LOCAL ROLE`'ünü miras alıyor:
+- `notification` modülünün handler'ı `notification.bildirim_kurallari`'ı
+  okuyor → `READER_SELECT_GRANTS["m_anomaly"]`'e `notification` eklendi.
+- `prediction_ml`'in `PhysicsRecalculationHandler`'ı `trip.seferler.
+  tahmini_tuketim`'i geri yazıyor → mevcut `WriteException`'ın kolon
+  listesine `tahmini_tuketim` eklendi.
+
+Ayrıca (Wave 1'den kalan, bu pilotun ürettiği bir regresyon DEĞİL): aynı
+`WriteException`'ın kolon listesinde `updated_at` hiç yoktu (Sefer
+modelinin Python-side `onupdate=get_utc_now`'ı SQLAlchemy'nin her
+UPDATE'e bunu otomatik eklemesine neden oluyor) — gerçek HTTP isteğiyle
+"permission denied for table seferler" olarak yakalanıp düzeltildi.
+
+**Genel ders (yeni)**: statik `public.py` grep'i yalnız DOĞRUDAN
+cross-module çağrılarını yakalar. İki görünmez sınıf daha var: (1) başka
+bir modülün KENDİ repository metodunun içine gömülü çapraz-şema
+sorguları (yalnız o metodun kaynak kodunu okuyunca görülür), (2)
+senkron/in-process event-bus publish'lerinin TÜM subscriber'larının
+sorguları (event'i yayınlayan endpoint'in rolü altında çalışırlar).
+Kalan modüller için pilot metodolojisi üçe çıktı: (1) `public.py` grep
+taraması, (2) çağrılan diğer modüllerin repository metotlarının kaynak
+kodunu okuma, (3) modülün yayınladığı event'lerin TÜM abonelerini
+(`events.py`'de "dinler" listesi) bulup her birinin write/read
+yollarını kontrol etme — ardından gerçek HTTP testiyle doğrulama.
+
+**Migration**: `0070_faz2_anomaly_admin_key` — 6 açığın tümü tek
+migration'da, `docker cp` + doğrudan `apply_role_grants_async` çağrısıyla
+(pilot container zaten 0070'i alembic ile uygulamıştı, sonraki
+düzeltmeler için alembic yerine doğrudan fonksiyon çağrısı kullanıldı —
+son hâli migration dosyasının docstring'ine yansıtıldı).

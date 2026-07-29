@@ -69,7 +69,43 @@ ALL_ROLES: list[str] = [*MODULE_SCHEMA_ROLES.values(), *NO_SCHEMA_ROLES, OPS_ROL
 READER_SELECT_GRANTS: dict[str, list[str]] = {
     "m_analytics_executive": ["trip", "fleet", "driver", "fuel", "anomaly", "location"],
     "m_reports": ["trip", "fleet", "driver", "fuel", "anomaly"],
-    "m_anomaly": ["trip", "driver", "fleet"],
+    "m_anomaly": [
+        "trip",
+        "driver",
+        "fleet",
+        "admin_platform",
+        "location",
+        "fuel",
+        "notification",
+    ],
+    # notification: found live in the SAME pilot's manual HTTP test --
+    # attribute_loss.override_attribution() publishes SEFER_UPDATED via
+    # get_event_bus().publish_async(...) SYNCHRONOUSLY (in-process, not
+    # via the outbox relay) -- notification's subscriber handler for that
+    # event runs INLINE in the same async task/request, so it inherits
+    # m_anomaly's SET LOCAL ROLE and needs to read
+    # notification.bildirim_kurallari to decide whether to alert. A new
+    # class of transitive dependency: in-process (non-outbox) event
+    # publishing propagates the publisher's role into every synchronous
+    # subscriber's queries, on top of the direct public.py-call and
+    # buried-repository-method classes already found in this pilot.
+    # trip/driver/fleet already correct in Wave 1 (get_anomaly_alarm_
+    # context's unqualified anomalies/seferler/soforler/araclar JOIN +
+    # get_fleet_insights.py's uow.sefer_repo/arac_repo). admin_platform
+    # found live (FAZ2 Wave 2 anomaly pilot, 2026-07-29, comprehensive
+    # public.py audit before wiring) — detect_anomaly.py's
+    # detect_consumption_anomalies() calls admin_platform.public.
+    # get_runtime_float("ANOMALY_Z_THRESHOLD", ...) (sistem_konfig table,
+    # same schema-wide grant that already fixed entegrasyon_ayarlari for
+    # m_location/m_route_simulation). location + fuel: found live in the
+    # SAME pilot's manual HTTP test — `GET /anomalies/fleet/insights` ->
+    # get_fleet_insights.py's uow.sefer_repo.get_cost_leakage_stats()
+    # runs 3 raw SQL queries INSIDE TRIP'S OWN REPOSITORY that
+    # unqualified-touch seferler (trip, already granted), location's
+    # lokasyonlar (JOIN), and fuel's yakit_alimlari (separate query) —
+    # invisible from a public.py import grep since they're buried inside
+    # another module's repository method, not anomaly's own code — a new
+    # class of transitive dependency beyond the direct public.py audit
     "m_ai_assistant": ["fleet", "trip", "driver", "location"],
     "m_fleet": ["trip"],  # already documented in fleet/CLAUDE.md
     "m_fuel": ["fleet", "trip"],  # was undocumented anywhere before
@@ -167,13 +203,33 @@ WRITE_EXCEPTIONS: list[WriteException] = [
     WriteException(
         "m_analytics_executive", "fuel", "yakit_formul", ("INSERT", "DELETE")
     ),
-    # anomaly.attribute_loss.override_attribution() — attribution_routes.py'den çağrılır.
+    # anomaly.attribute_loss.override_attribution() -- called from attribution_routes.py.
+    # FAZ2 Wave 2 anomaly pilot (2026-07-29): added "updated_at" -- this was
+    # a pre-existing Wave 1 gap (not a newly introduced regression). The
+    # Sefer ORM model's updated_at column carries a Python-side
+    # onupdate=get_utc_now, so SQLAlchemy auto-appends it to EVERY UPDATE --
+    # the original column list missed this, surfacing as "permission denied
+    # for table seferler" (confirmed via a real HTTP request). Also added
+    # "tahmini_tuketim" -- override_attribution publishes SEFER_UPDATED
+    # synchronously (in-process publish_async, not the outbox relay), and
+    # prediction_ml's PhysicsRecalculationHandler subscribes to that event
+    # and writes tahmini_tuketim back to the same row -- this handler runs
+    # INLINE in the same async task, inheriting m_anomaly's SET LOCAL ROLE
+    # the same way notification's subscriber does (see the m_anomaly
+    # READER_SELECT_GRANTS comment above for the general pattern).
     WriteException(
         "m_anomaly",
         "trip",
         "seferler",
         ("UPDATE",),
-        columns=("arac_id", "sofor_id", "is_corrected", "correction_reason"),
+        columns=(
+            "arac_id",
+            "sofor_id",
+            "is_corrected",
+            "correction_reason",
+            "updated_at",
+            "tahmini_tuketim",
+        ),
     ),
     # route_simulation.openroute_client.OpenRouteClient._save_to_cache()
     WriteException(

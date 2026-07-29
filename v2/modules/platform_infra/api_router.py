@@ -116,6 +116,7 @@ _driver_role_dep = [Depends(require_module_role("driver"))]
 _fuel_role_dep = [Depends(require_module_role("fuel"))]
 _location_role_dep = [Depends(require_module_role("location"))]
 _route_sim_role_dep = [Depends(require_module_role("route_simulation"))]
+_anomaly_role_dep = [Depends(require_module_role("anomaly"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -195,7 +196,12 @@ api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"]
 api_router.include_router(
     executive_router, prefix="/reports/executive", tags=["executive"]
 )
-api_router.include_router(anomalies_router, prefix="/anomalies", tags=["anomalies"])
+api_router.include_router(
+    anomalies_router,
+    prefix="/anomalies",
+    tags=["anomalies"],
+    dependencies=_anomaly_role_dep,
+)
 api_router.include_router(
     coaching_router,
     prefix="/coaching",
@@ -206,6 +212,7 @@ api_router.include_router(
     investigations_router,
     prefix="/admin/investigations",
     tags=["investigations"],
+    dependencies=_anomaly_role_dep,
 )
 api_router.include_router(
     advanced_reports_router, prefix="/advanced-reports", tags=["advanced-reports"]
@@ -222,7 +229,10 @@ api_router.include_router(
 )
 api_router.include_router(admin_ml_router, prefix="/admin/ml", tags=["admin-ml"])
 api_router.include_router(
-    admin_attribution_router, prefix="/admin/attribution", tags=["admin-attribution"]
+    admin_attribution_router,
+    prefix="/admin/attribution",
+    tags=["admin-attribution"],
+    dependencies=_anomaly_role_dep,
 )
 api_router.include_router(
     admin_calibration_router,

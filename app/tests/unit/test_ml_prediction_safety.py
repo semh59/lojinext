@@ -13,6 +13,7 @@ from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
 )
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 def _sample_trip(**overrides):
@@ -232,13 +233,20 @@ def test_physics_predict_uses_route_analysis_segments_when_available():
 @pytest.mark.asyncio
 async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
     service = EnsemblePredictorService()
-    service._sefer_repo = SimpleNamespace(
+    # train_general_model reads through its own UnitOfWork (not the
+    # session-less service._sefer_repo singleton).
+    mock_uow = AsyncMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=None)
+    mock_uow.sefer_repo = SimpleNamespace(
         get_all_for_training=AsyncMock(
             return_value=[
                 _sample_trip(arac_id=10, tank_kapasitesi=650) for _ in range(20)
             ]
         )
     )
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     general_predictor = _TrainingPredictorStub(
         {
@@ -271,8 +279,7 @@ async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
         saved_versions.append({"arac_id": arac_id, "result": result})
 
     monkeypatch.setattr(
-        "v2.modules.prediction_ml.application.ensemble_service."
-        "_register_model_version",
+        "v2.modules.prediction_ml.application.ensemble_service._register_model_version",
         _fake_register,
     )
     monkeypatch.setattr(

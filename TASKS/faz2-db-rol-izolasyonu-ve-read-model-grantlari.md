@@ -365,14 +365,37 @@ açıkları önceden temizlediğinin bir kanıtı — kalan modüller için
 beklenen model artık "her pilotta mutlaka yeni bug bulunur" değil, "bazı
 modüller zaten temiz çıkabilir".
 
-### Location pilot bulgusu (2026-07-29) — location'ın api_router.py wiring'i TAMAMLANDI, sıfır yeni bug
+### Location pilot bulgusu (2026-07-29) — location'ın api_router.py wiring'i TAMAMLANDI
 
 `location`'ın tek router'ına `dependencies=[Depends(require_module_role
 ("location"))]` eklenip gerçek bir backend + Postgres 16 + gerçek HTTP
 isteğiyle (`POST /locations/`, `GET /locations/stats`, `GET /locations/
 geocode` — gerçek Nominatim çağrısı dahil, `DELETE /locations/{id}`) uçtan
-uca test edildi. **Sıfır yeni grant açığı** — location'ın kendi
-`lokasyonlar` şeması dışında hiçbir raw-SQL cross-schema erişimi yok
-(route_simulation/prediction_ml/admin_platform bağımlılıkları hep
-`public.py` fonksiyon çağrısı üzerinden, kendi transaction/session'larını
-açıyorlar). Migration gerekmedi.
+uca test edildi. İlk turda bunlar sıfır yeni grant açığıyla geçti —
+**AMA `GET /locations/route-info` endpoint'i test edilmemişti**, ve bu
+endpoint main'e push edildikten sonra GitHub CI'ın frontend real-backend
+suite'inde (`LocationFormModal.test.tsx`, `location-service.test.ts::
+getRouteInfo`) 2 test'i ART ARDA (rerun sonrası da) aynı şekilde
+kırdı — flaky değil, gerçek bir regresyondu.
+
+**Kök neden**: `GET /locations/route-info` `route_simulation.public.
+get_route_details()` üzerinden `route_simulation.route_paths` tablosunu
+(bbox cache lookup) okuyor. Bu nested çağrı kendi session'ını açıyor,
+AMA `require_module_role("location")`'ın set ettiği `module_role`
+`ContextVar`'ı **task-local** (session-local DEĞİL) — aynı async request
+içinde AÇILAN HER `AsyncSessionLocal()` bu context'i miras alıyor, nested
+route_simulation session'ı dahil. Yani `m_route_simulation` değil,
+`m_location`'ın KENDİSİ route_simulation şemasına SELECT yetkisine
+ihtiyaç duyuyor. Fix: `READER_SELECT_GRANTS["m_location"] →
+["route_simulation"]` (migration `0066_faz2_location_route_sim_fix`).
+
+**Genel ders (kalan tüm modüller için geçerli)**: bir modülün role-scope
+enforcement'ı yalnızca KENDİ raw-SQL sorgularını değil, `public.py`
+üzerinden çağırdığı DİĞER modüllerin nested session'larını da etkiler —
+ContextVar task-local olduğu için. Pilot testinde artık yalnız "bu modülün
+KENDİ tabloları" değil, "bu modülün `public.py` ile çağırdığı TÜM
+cross-module fonksiyonlar" da test edilmeli (fleet/driver/fuel
+pilotlarında bu sınıf bulunamamıştı çünkü onların cross-module
+çağrıları ya hiç yoktu ya da test edilen endpoint'ler o çağrı yollarını
+tetiklemiyordu — location'ın `route-info`'su İLK KEZ bu deseni açığa
+çıkardı).

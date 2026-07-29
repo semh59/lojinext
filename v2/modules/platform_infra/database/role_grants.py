@@ -81,6 +81,13 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # statement
     "m_prediction_ml": ["fleet"],  # scheduler_task.py
     "m_route_simulation": ["location"],  # openroute_client.py SELECT path
+    "m_location": ["route_simulation"],  # found live (FAZ2 Wave 2 location
+    # pilot, 2026-07-29) — GET /locations/route-info reads
+    # route_simulation.route_paths (bbox cache lookup) via
+    # route_simulation.public.get_route_details(); the ContextVar-scoped
+    # role from the location request context propagates into this nested
+    # call's session because module_role is task-local (not session-local),
+    # so m_location itself needs SELECT on route_simulation's tables
     # FAZ2 Wave 2 pilot (2026-07-28): m_trip was missing entirely from this
     # matrix, found live — creating a trip failed with
     # "permission denied for schema fleet" the moment role enforcement was

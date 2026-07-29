@@ -209,7 +209,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `driver` modülünün 2 router'ı (`driver_router`/`coaching_router`) `dependencies=[Depends(require_module_role("driver"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "driver pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /drivers/` → 201, `GET /drivers/{id}/score-breakdown` → 200, `GET /coaching/{id}/insights` → 200, `DELETE /drivers/{id}` → 200)
 - [x] `fuel` modülünün 2 router'ı (`fuel_router`/`admin_fuel_accuracy`) `dependencies=[Depends(require_module_role("fuel"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fuel pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /fuel/` → 201, `GET /fuel/stats` → 200, `GET /admin/fuel-accuracy` → 200, `DELETE /fuel/{id}` → 200) — **sıfır yeni grant açığı bulundu**, mevcut `m_fuel: ["fleet","trip"]` zaten yeterliydi (trip/fleet pilotlarında önceden düzeltilmişti)
 - [x] `location` modülünün router'ı `dependencies=[Depends(require_module_role("location"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "location pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /locations/` → 201, `GET /locations/stats` → 200, `GET /locations/geocode` → 200 gerçek Nominatim çağrısıyla, `DELETE /locations/{id}` → 200) — **sıfır yeni grant açığı bulundu** (location'ın kendi tablosu dışında raw-SQL cross-schema erişimi yok, route_simulation/prediction_ml/admin_platform bağımlılıkları hep `public.py` fonksiyon çağrısı üzerinden)
-- [ ] Diğer 9 modülün routerları — kalan 9 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `route_simulation` modülünün 3 router'ı (`route_router`/`weather_router`/`admin_calibration_router`) `dependencies=[Depends(require_module_role("route_simulation"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "route_simulation pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /routes/simulate`, `GET /weather/dashboard-summary` → 200, `GET /locations/route-info` regresyon tekrar-testi de dahil)
+- [ ] Diğer 8 modülün routerları — kalan 8 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -424,3 +425,33 @@ grant açığı buldu**, hepsi aynı kök mekanizmadan (`public.py` cross-module
 BU SEFER route_simulation'ın kendi `public.py` cross-module çağrılarını da
 (varsa) baştan kapsamlı tarayarak başlanacak — aynı ard-arda-bulma
 döngüsünü tekrarlamamak için.
+
+### Route_simulation pilot bulgusu (2026-07-29) — TEK TURDA tamamlandı
+
+Location'ın 3 turluk deneyiminden ders alınarak, wiring eklenmeden ÖNCE
+`grep "from v2.modules.*.public import" v2/modules/route_simulation/ -r`
+ile TÜM cross-module çağrıları taranıp CLAUDE.md ile çapraz kontrol
+edildi. Bu, 3 gerçek grant açığını TEK migration'da (`0069_faz2_route_sim_
+grants`) yakaladı — CI'a hiç gitmeden:
+
+1. **`fleet`**: `create_route_simulation.py`'nin `POST /routes/simulate`
+   handler'ı `db.get(Arac, arac_id)` ile aracı doğrudan okuyor.
+2. **`trip`**: `weather_routes.py`'nin `GET /weather/dashboard-summary`'si
+   `SeferService.get_all_paged(...)` (trip'in request-scoped factory'si)
+   ile planlanan seferleri listeliyor.
+3. **`admin_platform`**: hem `openroute_client.py` hem `mapbox_client.py`
+   `admin_platform.public.get_integration_secret`'i çağırıyor (DB-configured
+   API anahtarları — location pilotunun 0068'de bulduğu AYNI
+   `entegrasyon_ayarlari` tablosu).
+
+`route_router`/`weather_router`/`admin_calibration_router` wiring'i
+eklenip gerçek backend + Postgres 16 + gerçek HTTP isteğiyle (`POST
+/routes/simulate`, `GET /weather/dashboard-summary`) doğrulandı — hiçbir
+"permission denied" hatası çıkmadı (yalnız beklenen dış-servis hataları:
+Mapbox/ORS anahtarı eksik, manuel test ortamında normal). `GET
+/locations/route-info` regresyon tekrar-testi de bu turda tekrar
+çalıştırıldı — location'ın önceki fix'i bozulmadı.
+
+**Sonuç**: "önce kapsamlı tara, sonra wiring ekle" yaklaşımı location'ın
+3 CI-turluk keşif döngüsünü route_simulation'da SIFIRA indirdi — kalan 8
+modül için de standart prosedür bu olacak.

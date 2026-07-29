@@ -115,9 +115,12 @@ _fleet_role_dep = [Depends(require_module_role("fleet"))]
 _driver_role_dep = [Depends(require_module_role("driver"))]
 _fuel_role_dep = [Depends(require_module_role("fuel"))]
 _location_role_dep = [Depends(require_module_role("location"))]
+_route_sim_role_dep = [Depends(require_module_role("route_simulation"))]
 
 api_router = APIRouter()
-api_router.include_router(route_router, prefix="/routes", tags=["routes"])
+api_router.include_router(
+    route_router, prefix="/routes", tags=["routes"], dependencies=_route_sim_role_dep
+)
 api_router.include_router(
     location_router,
     prefix="/locations",
@@ -130,7 +133,12 @@ api_router.include_router(
     tags=["maintenance"],
     dependencies=_fleet_role_dep,
 )
-api_router.include_router(weather_router, prefix="/weather", tags=["weather"])
+api_router.include_router(
+    weather_router,
+    prefix="/weather",
+    tags=["weather"],
+    dependencies=_route_sim_role_dep,
+)
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(
     admin_config_router, prefix="/admin/config", tags=["admin-config"]
@@ -217,7 +225,10 @@ api_router.include_router(
     admin_attribution_router, prefix="/admin/attribution", tags=["admin-attribution"]
 )
 api_router.include_router(
-    admin_calibration_router, prefix="/admin/calibration", tags=["admin-calibration"]
+    admin_calibration_router,
+    prefix="/admin/calibration",
+    tags=["admin-calibration"],
+    dependencies=_route_sim_role_dep,
 )
 api_router.include_router(
     admin_fuel_accuracy,

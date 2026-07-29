@@ -80,7 +80,19 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # joins unqualified anomalies/araclar/seferler/soforler in one raw SQL
     # statement
     "m_prediction_ml": ["fleet"],  # scheduler_task.py
-    "m_route_simulation": ["location"],  # openroute_client.py SELECT path
+    "m_route_simulation": ["location", "fleet", "trip", "admin_platform"],
+    # openroute_client.py SELECT path (location, original). Found live
+    # (FAZ2 Wave 2 route_simulation pilot, 2026-07-29) via comprehensive
+    # public.py cross-module audit (a lesson from the location pilot's
+    # 3-round trip — audited up front this time instead of discovering
+    # one CI failure at a time): fleet — create_route_simulation.py's
+    # `POST /simulate` handler does `db.get(Arac, arac_id)` directly;
+    # trip — weather_routes.py's `GET /weather/dashboard-summary` calls
+    # `SeferService.get_all_paged(...)` (trip.public, request-scoped
+    # factory) to list planned trips; admin_platform — openroute_client.py
+    # AND mapbox_client.py both call `admin_platform.public.
+    # get_integration_secret` for DB-configured API keys (same
+    # entegrasyon_ayarlari table location's pilot found)
     "m_location": ["route_simulation", "admin_platform"],  # found live
     # (FAZ2 Wave 2 location pilot, 2026-07-29) — GET /locations/route-info
     # reads route_simulation.route_paths (bbox cache lookup) via

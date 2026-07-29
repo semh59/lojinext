@@ -242,7 +242,6 @@ def db_session_factory(db_engine, monkeypatch):
     """Session scoped session maker that also patches the globally used SessionLocals."""
     factory = async_sessionmaker(db_engine, class_=AsyncSession, expire_on_commit=False)
 
-    import v2.modules.admin_platform.application.error_events  # noqa: E402
     import v2.modules.platform_infra.database.connection  # noqa: E402
     import v2.modules.shared_kernel.infrastructure.unit_of_work  # noqa: E402
 
@@ -254,12 +253,10 @@ def db_session_factory(db_engine, monkeypatch):
         "AsyncSessionLocal",
         factory,
     )
-    # error_events.py binds AsyncSessionLocal into its own module namespace at
-    # import time (`from platform_infra.public import AsyncSessionLocal`), so
-    # patching the connection module's attribute above doesn't reach it.
-    monkeypatch.setattr(
-        v2.modules.admin_platform.application.error_events, "AsyncSessionLocal", factory
-    )
+    # error_events.py no longer imports AsyncSessionLocal at module scope --
+    # FAZ2 Wave 2 admin_platform pilot (2026-07-29) converted it to take the
+    # caller's UOWDep-scoped session instead of opening its own, so there is
+    # nothing left here to monkeypatch for that module.
 
     return factory
 

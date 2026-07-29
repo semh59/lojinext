@@ -905,3 +905,43 @@ commit'in) drift'ini taşıyordu — o commit `openapi.json`'ı yeniden
 üretmemişti. Path/schema-seviyeli diff ile doğrulandı: eklenen/kaldırılan
 path veya schema yok, TEK fark bu bir açıklama string'i. Gerçek backend'den
 (`docker exec ... curl .../openapi.json`) yeniden üretilip commit edildi.
+
+### Analytics_executive pilot bulgusu (2026-07-30) — grant açığı YOK, sıfır regresyon
+
+`analytics_executive` saf read-model bir modül (`AnalizRepository` 7
+modülün tablosuna raw-SQL SELECT yapan tek dosya). `m_analytics_executive`
+rolü Wave 1'de zaten `["trip", "fleet", "driver", "fuel", "anomaly",
+"location"]` şemalarına SELECT + `fuel.yakit_formul` INSERT/DELETE grantı
+almıştı (`save_model_params`/`get_model_params`, prediction_ml'in ensemble
+servisinden çağrılıyor). Bu pilotun public.py + kaynak-kodu denetimi
+(`aggregate_cross_feature.py`'nin prediction_ml.public.
+fetch_health_input_batch çağrısı → fleet.arac_bakimlari; `project_cashflow.py`'nin
+fleet.public.MaintenancePredictor çağrısı → fleet.arac_bakimlari/
+araclar + trip.seferler; `executive_read_models.py`'nin ham SQL'i →
+seferler/lokasyonlar/yakit_alimlari/araclar/soforler/anomalies) hiçbir YENİ
+şema/tablo bulmadı — hepsi zaten Wave 1'in 6 şemasının içinde. `bulk_create_alerts`
+(anomaly.anomalies'e insight-alert yazma yolu, CLAUDE.md'de dokümante) tek
+çağıranı olan `generate_insights.py` 2026-07-18'de silindiği için artık
+ölü kod — WriteException gerekmiyor.
+
+2 router wiring: `executive_router` (`/reports/executive/*`) +
+`trip_analytics_router` (`/trips/stats`, `/trips/analytics/fuel-performance`,
+`/trips/{sefer_id}/cost-analysis` — trip_read_router'ın catch-all'ından ÖNCE
+konumu korunarak). **Yeni migration YOK** — Wave 1 grantları yeterliydi.
+
+**Doğrulama**: gerçek Postgres 16 + gerçek HTTP, tüm 9 endpoint (kpi,
+carbon, compliance, cashflow, cross-feature, bus-factor, pdf, what-if POST,
+trips/stats, trips/analytics/fuel-performance) 200; `/trips/{id}/cost-analysis`
+202 → `BackgroundJobManager`'ın ayrı asyncio task'ına submit edilen
+`reconcile_costs` (trip.seferler + fuel.yakit_alimlari dokunur) SUCCESS ile
+tamamlandı — ContextVar-task-local `module_role`'ün spawned background
+job task'ına da düzgün miras kaldığını canlı doğruladı (module_role.py'nin
+kendi docstring'i bunu zaten belgeliyordu, ama ilk kez gerçek HTTP + gerçek
+async job ile test edildi). analytics_executive-özel test takımları (13
+dosya, `test_executive_coverage/more.py`, `test_bus_factor.py`,
+`test_carbon_footprint.py`, `test_cashflow_projector*.py`,
+`test_compliance_scanner.py`, `test_cost_analyzer.py`,
+`test_cross_feature_aggregator.py`, `test_executive_pdf.py`,
+`test_fleet_efficiency_index.py`, `test_what_if_engine.py`,
+`test_analiz_repo_coverage.py`) + `test_business_lifecycle.py` gerçek
+Postgres 16'ya karşı 228 passed. Pre-existing bug bulunmadı.

@@ -123,6 +123,7 @@ _notification_role_dep = [Depends(require_module_role("notification"))]
 _auth_rbac_role_dep = [Depends(require_module_role("auth_rbac"))]
 _admin_platform_role_dep = [Depends(require_module_role("admin_platform"))]
 _import_excel_role_dep = [Depends(require_module_role("import_excel"))]
+_analytics_executive_role_dep = [Depends(require_module_role("analytics_executive"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -211,7 +212,12 @@ api_router.include_router(
     tags=["trips"],
     dependencies=_import_excel_role_dep,
 )
-api_router.include_router(trip_analytics_router, prefix="/trips", tags=["trips"])
+api_router.include_router(
+    trip_analytics_router,
+    prefix="/trips",
+    tags=["trips"],
+    dependencies=_analytics_executive_role_dep,
+)
 api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
 api_router.include_router(
     trip_read_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
@@ -233,7 +239,10 @@ api_router.include_router(
 )
 api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(
-    executive_router, prefix="/reports/executive", tags=["executive"]
+    executive_router,
+    prefix="/reports/executive",
+    tags=["executive"],
+    dependencies=_analytics_executive_role_dep,
 )
 api_router.include_router(
     anomalies_router,

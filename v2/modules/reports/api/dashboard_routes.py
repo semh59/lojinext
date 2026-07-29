@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from v2.modules.auth_rbac.public import Kullanici, get_current_active_user
 from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.platform_infra.public import SessionDep
+from v2.modules.platform_infra.public import UOWDep
 from v2.modules.reports.application.generate_fleet_summary import generate_fleet_summary
 from v2.modules.reports.application.get_consumption_trend import (
     get_consumption_trend as get_consumption_trend_usecase,
@@ -16,7 +16,6 @@ from v2.modules.reports.application.get_dashboard_counters import (
 )
 from v2.modules.reports.infrastructure.repo_access import resolve_repos
 from v2.modules.shared_kernel.exceptions import DomainError
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 logger = get_logger(__name__)
 
@@ -61,7 +60,7 @@ class ConsumptionTrendItem(BaseModel):
 
 @router.get("/dashboard", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
-    db: SessionDep,
+    uow: UOWDep,
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """
@@ -70,14 +69,12 @@ async def get_dashboard_stats(
     today_utc = datetime.now(timezone.utc).date()
 
     try:
-        async with UnitOfWork(session=db) as uow:
-            repos = resolve_repos(uow)
-            # Tek bir DB session paylaşıldığı için sıralı await; aksi halde
-            # SQLAlchemy "concurrent operations" hatası verir.
-            data = await generate_fleet_summary(
-                repos, start_date=today_utc.replace(day=1)
-            )
-            counters = await get_dashboard_counters(uow, today_utc)
+        repos = resolve_repos(uow)
+        # Sequential await -- a single shared DB session is used here, and
+        # SQLAlchemy raises a "concurrent operations" error if two awaits
+        # on the same session run at once (e.g. via asyncio.gather).
+        data = await generate_fleet_summary(repos, start_date=today_utc.replace(day=1))
+        counters = await get_dashboard_counters(uow, today_utc)
         return DashboardStatsResponse(
             toplam_sefer=data.get("total_trips", 0),
             toplam_km=data.get("total_distance", 0.0),
@@ -103,9 +100,9 @@ async def get_dashboard_stats(
 
 @router.get("/consumption-trend", response_model=List[ConsumptionTrendItem])
 async def get_consumption_trend(
-    db: SessionDep, current_user: Annotated[Kullanici, Depends(get_current_active_user)]
+    uow: UOWDep, current_user: Annotated[Kullanici, Depends(get_current_active_user)]
 ):
     """
-    Son 6 ayın aylık toplam yakıt tüketim trendi (kronolojik sırada).
+    Last 6 months' monthly total fuel consumption trend (chronological order).
     """
-    return await get_consumption_trend_usecase(db)
+    return await get_consumption_trend_usecase(uow.session)

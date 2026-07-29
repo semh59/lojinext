@@ -15,5 +15,5 @@ async def test_dashboard_silent_failure_is_gone():
         new=AsyncMock(side_effect=RuntimeError("test hatası")),
     ):
         with pytest.raises(fastapi.HTTPException) as exc_info:
-            await reports_mod.get_dashboard_stats(db=AsyncMock(), current_user=None)
+            await reports_mod.get_dashboard_stats(uow=AsyncMock(), current_user=None)
         assert exc_info.value.status_code == 503

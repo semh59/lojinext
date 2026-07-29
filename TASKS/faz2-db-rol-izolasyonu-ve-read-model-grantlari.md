@@ -619,3 +619,58 @@ restart edilince (`ALTER ROLE lojinext_user SET search_path=...` yeni
 fiziksel bağlantılarda doğru uygulandı) her iki endpoint de 200'e döndü —
 kodda bir hata yoktu, tamamen benim manuel DB reset prosedürümün yan
 etkisiydi. Migration: yok (grant değişikliği olmadığı için gerekmedi).
+
+**Ayrı bulgu — GERÇEK pre-existing bug, CI'da yakalandı ve TAMAMEN
+düzeltildi (2026-07-29)**: reports'un router'ları push edildikten sonra
+CI'ın "Integration — Business lifecycle" step'i `permission denied for
+table seferler` ile kırmızıya döndü (`test_full_tir_lifecycle`'ın
+Step 8'i — trip soft-delete). Kök neden `docker exec` ile gerçek bir
+Postgres 16 + gerçek pytest koşumuyla (test dosyaları + dev bağımlılıkları
+container'a `docker cp`'lenerek) yeniden üretildi ve `after_begin`
+listener'ına geçici bir debug print eklenerek doğrulandı:
+
+`v2/modules/reports/api/dashboard_routes.py`'nin `get_dashboard_stats`
+handler'ı TEK BAŞINA tüm codebase'te `SessionDep` (`Depends(get_db)`) +
+elle `async with UnitOfWork(session=db) as uow:` (`_owns=False`, borrowed
+session) kombinasyonunu kullanıyordu — her DİĞER endpoint `UOWDep`
+(`Depends(get_uow)`, `_owns=True`) kullanıyor. `_owns=False` olduğu için
+`UnitOfWork.__aexit__` `session.close()`'u ATLIYOR (doğru davranış —
+borrowed session'ın sahibi `get_db()`). Ama `get_db()`'nin kendi
+`async with AsyncSessionLocal() as session:` bloğunun çıkışı, test
+fixture'ının (`app/tests/conftest.py::db_session`) TÜM HTTP istekleri
+arasında paylaşılan `NonClosingSession` wrapper'ı sayesinde bilinçli
+olarak no-op — bu yüzden dashboard'un (salt-okunur, hiç commit çağırmayan)
+transaction'ı KAPANMADAN aynı shared session'da AÇIK kalıyordu. FAZ2 Wave
+2'nin `after_begin` listener'ı yalnız YENİ bir transaction başladığında
+ateşleniyor (`SET LOCAL ROLE`); dashboard'un transaction'ı açık kaldığı
+için hemen ardından gelen `DELETE /trips/{id}` isteği YENİ bir transaction
+başlatamadı, dashboard'un `m_reports` rolünü miras aldı — `m_reports`
+trip şemasında yalnız SELECT'e sahip, UPDATE reddedildi.
+
+Bu, reports'un router wiring'inden ÖNCE de vardı (dashboard hep bu
+pattern'i kullanıyordu) ama HARMLESS'tı: dashboard'un hiç rol bağımlılığı
+yokken `after_begin` no-op'tu (`get_module_role() is None`), açık kalan
+transaction hiçbir SET LOCAL ROLE taşımıyordu. Reports'un kendi rolü wire
+edilince aynı ön-var-olan tasarım kusuru İLK KEZ görünür/kırıcı hale
+geldi — sıradaki her Wave2 pilotu da (notification/auth_rbac/admin_platform/
+import_excel/analytics_executive/ai_assistant) kendi `SessionDep`
+kullanan bir endpoint'i varsa aynı sınıftan bir regresyona yol açabilirdi.
+
+**Düzeltme**: `dashboard_routes.py`'nin `get_dashboard_stats` VE
+`get_consumption_trend` handler'ları `SessionDep`+elle-`UnitOfWork`
+yerine standart `UOWDep` (`Depends(get_uow)`) pattern'ine çevrildi — artık
+codebase'teki HER endpoint aynı DI konvansiyonunu kullanıyor, hiçbir özel
+istisna kalmadı. (İlk denemede conftest.py'nin `NonClosingSession.
+__aexit__`'ine bir rollback eklemek denendi — bu, farklı bir gerçek
+regresyon yarattı: `POST /trips/`'in kendi `add_sefer`→`get_sefer_by_id`
+read-after-write akışını bozdu, çünkü aynı shared session'ı KULLANAN ama
+FARKLI bir iç semantiğe sahip diğer nested çağrılar da etkileniyordu —
+bu yaklaşım terk edildi, üretim-kodu seviyesindeki asıl kök neden
+düzeltildi.) `app/tests/unit/test_reports_silent_failure.py`'nin
+`get_dashboard_stats(db=...)` çağrısı `get_dashboard_stats(uow=...)`'a
+güncellendi. Doğrulama: gerçek Postgres 16 + gerçek pytest
+(`test_business_lifecycle.py::test_full_tir_lifecycle` — 1 passed),
+tüm `app/tests/integration/` suite'i (415 passed / 5 skipped-env / 5 fail
+— 5 fail tamamen ortamsal, bu container'da `MAPBOX_API_BASE_URL`/
+`OPENROUTE_API_BASE_URL` api-stub'a yönlendirilmediği için, reports/rol
+işiyle ilgisiz), reports-özel unit testleri (39 passed).

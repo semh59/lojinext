@@ -674,3 +674,29 @@ tüm `app/tests/integration/` suite'i (415 passed / 5 skipped-env / 5 fail
 — 5 fail tamamen ortamsal, bu container'da `MAPBOX_API_BASE_URL`/
 `OPENROUTE_API_BASE_URL` api-stub'a yönlendirilmediği için, reports/rol
 işiyle ilgisiz), reports-özel unit testleri (39 passed).
+
+### Notification pilot bulgusu (2026-07-29) — grant açığı SIFIR, tek turda tamamlandı
+
+`notification`'ın 3 router'ına (`notification_live_ws_router`/
+`notification_router`/`push_router`) wiring eklenmeden ÖNCE 3-adım denetim
+yapıldı: `public.py` import grep'i (`notification_routes.py`/
+`push_routes.py` yalnız `auth_rbac.public`'i, `quiet_hours.py` fonksiyon-içi
+`auth_rbac.public.get_preferences`'i, `handle_trip_events.py` yalnız
+`platform_infra.public`'i çağırıyor — hiçbiri auth_rbac dışında çapraz-şema
+dokunmuyor), `events.py` kontrol edildi (notification kendi event'ini
+YAYINLAMIYOR, yalnız trip'in `SEFER_UPDATED`/`SLA_DELAY`'ini dinliyor —
+yayıncı tarafın (trip) kendi rolüne notification şeması gerekip
+gerekmediği AYRI bir konu, bu pilotun kapsamı dışı).
+
+**Sonuç: `role_grants.py`'de YENİ bir grant/migration gerekmedi.** Mevcut
+`m_notification: ["auth_rbac"]` (otomatik eklenen) girdisi yeterliydi —
+`bildirim_kurallari`/`bildirim_gecmisi`/`push_subscriptions` tablolarının
+hepsi zaten notification'ın KENDİ şemasında.
+
+**Doğrulama (gerçek HTTP, admin token)**: `GET /admin/notifications/rules`,
+`GET /admin/notifications/my`, `GET /push/vapid-public-key` — hepsi 200,
+sıfır permission-denied. Ayrıca `test_business_lifecycle.py` +
+`test_notification_ownership_integration.py` gerçek Postgres 16'ya karşı
+tekrar koşuldu (5 passed) — reports pilotunun role-leak fix'inin
+notification'ı da etkilemediği doğrulandı. notification-özel unit/api
+testleri (50 passed). Migration: yok.

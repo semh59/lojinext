@@ -119,6 +119,7 @@ _route_sim_role_dep = [Depends(require_module_role("route_simulation"))]
 _anomaly_role_dep = [Depends(require_module_role("anomaly"))]
 _reports_role_dep = [Depends(require_module_role("reports"))]
 _prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
+_notification_role_dep = [Depends(require_module_role("notification"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -235,7 +236,10 @@ api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
 api_router.include_router(ws_ticket_router, prefix="/ws", tags=["websocket"])
 api_router.include_router(admin_ws_router, prefix="/admin/ws", tags=["admin-ws"])
 api_router.include_router(
-    notification_live_ws_router, prefix="/admin/ws", tags=["notifications"]
+    notification_live_ws_router,
+    prefix="/admin/ws",
+    tags=["notifications"],
+    dependencies=_notification_role_dep,
 )
 api_router.include_router(
     import_router, prefix="/admin/imports", tags=["admin-imports"]
@@ -298,6 +302,7 @@ api_router.include_router(
     notification_router,
     prefix="/admin/notifications",
     tags=["admin-notifications"],
+    dependencies=_notification_role_dep,
 )
 api_router.include_router(
     admin_health_router, prefix="/admin/health", tags=["admin-health"]
@@ -328,6 +333,11 @@ api_router.include_router(
     tags=["reports-v2"],
     dependencies=_reports_role_dep,
 )
-api_router.include_router(push_router, prefix="/push", tags=["push"])
+api_router.include_router(
+    push_router,
+    prefix="/push",
+    tags=["push"],
+    dependencies=_notification_role_dep,
+)
 api_router.include_router(error_stream_router, prefix="/system", tags=["monitoring"])
 api_router.include_router(internal_router, prefix="/internal", tags=["internal"])

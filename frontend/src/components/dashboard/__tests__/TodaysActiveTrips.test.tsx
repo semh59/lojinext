@@ -180,11 +180,17 @@ describe.skipIf(!backendUp)("TodaysActiveTrips (real backend)", () => {
     );
     expect(screen.getByText(new RegExp(seferNoCompleted))).toBeInTheDocument();
 
-    // Eski Türkçe-anahtarlı sözlük bu değerlerle hiç eşleşmiyordu — ham
-    // backend string'i ("Planned"/"Completed") ekranda çevrilmeden
-    // görünüyordu. Fix sonrası doğru Türkçe etiketler basılır.
-    expect(screen.getByText("Planlandı")).toBeInTheDocument();
-    expect(screen.getByText("Tamamlandı")).toBeInTheDocument();
+    // The old Turkish-keyed dictionary never matched these values -- the
+    // raw backend string ("Planned"/"Completed") used to render untranslated.
+    // After the fix, the correct Turkish labels render.
+    //
+    // getAllByText (not getByText): this test runs against the real backend
+    // (shared CI state) -- badges left by another test in the same run may
+    // also read "Planlandı"/"Tamamlandı", so we only assert AT LEAST ONE
+    // correct label renders (see root CLAUDE.md's getByText/multiple-match
+    // gotcha).
+    expect(screen.getAllByText("Planlandı").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Tamamlandı").length).toBeGreaterThan(0);
 
     // Ham backend string'lerinin ekranda kalmadığını da doğrula
     // (regresyon guard'ı — eski bug tam olarak buydu).

@@ -211,7 +211,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `location` modülünün router'ı `dependencies=[Depends(require_module_role("location"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "location pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /locations/` → 201, `GET /locations/stats` → 200, `GET /locations/geocode` → 200 gerçek Nominatim çağrısıyla, `DELETE /locations/{id}` → 200) — **sıfır yeni grant açığı bulundu** (location'ın kendi tablosu dışında raw-SQL cross-schema erişimi yok, route_simulation/prediction_ml/admin_platform bağımlılıkları hep `public.py` fonksiyon çağrısı üzerinden)
 - [x] `route_simulation` modülünün 3 router'ı (`route_router`/`weather_router`/`admin_calibration_router`) `dependencies=[Depends(require_module_role("route_simulation"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "route_simulation pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /routes/simulate`, `GET /weather/dashboard-summary` → 200, `GET /locations/route-info` regresyon tekrar-testi de dahil)
 - [x] `anomaly` modülünün 3 router'ı (`anomalies_router`/`investigations_router`/`admin_attribution_router`) `dependencies=[Depends(require_module_role("anomaly"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "anomaly pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı; **6 gerçek grant açığı bulundu** (tek migration `0070`)
-- [ ] Diğer 7 modülün routerları — kalan 7 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `prediction_ml` modülünün 4 router'ı (`predictions_router`/`admin_ml_router`/`admin_pilot_router`/`admin_predictions_router`) `dependencies=[Depends(require_module_role("prediction_ml"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "prediction_ml pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı; **6 grant açığı + 1 pre-existing (Wave2'den bağımsız) session bug'ı** bulunup düzeltildi (tek migration `0071`)
+- [ ] Diğer 6 modülün routerları — kalan 6 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -509,3 +510,43 @@ migration'da, `docker cp` + doğrudan `apply_role_grants_async` çağrısıyla
 (pilot container zaten 0070'i alembic ile uygulamıştı, sonraki
 düzeltmeler için alembic yerine doğrudan fonksiyon çağrısı kullanıldı —
 son hâli migration dosyasının docstring'ine yansıtıldı).
+
+### Prediction_ml pilot bulgusu (2026-07-29) — 6 grant açığı + 1 pre-existing bug
+
+`prediction_ml`'in 4 router'ına (`predictions`/`admin_ml`/`admin_pilot`/
+`admin_predictions`) wiring eklenmeden ÖNCE kapsamlı `public.py` taraması
+yapıldı — 3 açık buldu (`trip`, `driver`, `admin_platform`). Gerçek HTTP
+testinde 3 açık DAHA çıktı (Sınıf A — gömülü repository metodu, anomaly
+pilotundaki aynı desen):
+
+1-3. **trip/driver/admin_platform** (statik tarama): `predictions.py`'nin
+   `db.get(Sofor,...)`/ORM `select(Sefer)`'i, `ensemble_service.py`'nin
+   `get_sefer_repo`/`get_driver_stats`'i, `prediction_service.py`'nin
+   `get_runtime_float("VEHICLE_AGE_DEGRADATION_RATE")`'i.
+
+4. **location** (gerçek HTTP testinde bulundu): `POST /predictions/
+   train/{id}` → trip'in KENDİ `sefer_repo.get_for_training()` metodu
+   `seferler`'i location'ın `lokasyonlar`'ıyla unqualified LEFT JOIN
+   yapıyor (anomaly pilotundaki `get_cost_leakage_stats` ile aynı sınıf).
+
+5-6. **fuel + anomaly** (gerçek HTTP testinde bulundu): `GET /admin/
+   pilot-status` `admin_pilot.py` içinde doğrudan ham
+   `COUNT(*) FROM yakit_alimlari` + `COUNT(*) FROM anomalies` çalıştırıyor.
+
+**Ayrıca — Wave2'den TAMAMEN bağımsız, gerçek pre-existing bir bug
+bulunup düzeltildi**: `ensemble_service.py::train_for_vehicle`
+`self.arac_repo`/`self.sefer_repo`'yu (process-ömürlü, session'sız
+singleton'lar) `UnitOfWork` açmadan kullanıyordu — HER çağrıda
+(rol kısıtlaması olsun olmasın, `lojinext_user` gibi tam yetkili bir
+rolle bile) "Database session not initialized" ile çöküyordu. Kardeş
+metod `predict_consumption` zaten doğru `uow.arac_repo`/`uow.dorse_repo`
+desenini kullanıyordu (root CLAUDE.md'nin "Singleton repos need UoW"
+gotcha'sı). Fix: `train_for_vehicle` artık kendi `UnitOfWork`'ünü açıyor.
+
+**Doğrulama**: `predict`/`train`/`comparison`/`ensemble/status`/
+`pilot-status`/`versions`/`backfill` — hepsi gerçek HTTP isteğiyle 500/
+permission-denied hatasız test edildi (backfill'in arka plan job'ı da
+dahil — `BackgroundJobManager`'ın asyncio task'ı `module_role`
+ContextVar'ını miras aldığı doğrulandı, ayrı bir wiring gerekmedi).
+
+**Migration**: `0071_faz2_prediction_ml_grants`.

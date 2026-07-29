@@ -117,6 +117,7 @@ _fuel_role_dep = [Depends(require_module_role("fuel"))]
 _location_role_dep = [Depends(require_module_role("location"))]
 _route_sim_role_dep = [Depends(require_module_role("route_simulation"))]
 _anomaly_role_dep = [Depends(require_module_role("anomaly"))]
+_prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -189,7 +190,10 @@ api_router.include_router(
     fuel_router, prefix="/fuel", tags=["fuel"], dependencies=_fuel_role_dep
 )
 api_router.include_router(
-    predictions_router, prefix="/predictions", tags=["predictions"]
+    predictions_router,
+    prefix="/predictions",
+    tags=["predictions"],
+    dependencies=_prediction_ml_role_dep,
 )
 api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
 api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
@@ -227,7 +231,12 @@ api_router.include_router(
 api_router.include_router(
     import_router, prefix="/admin/imports", tags=["admin-imports"]
 )
-api_router.include_router(admin_ml_router, prefix="/admin/ml", tags=["admin-ml"])
+api_router.include_router(
+    admin_ml_router,
+    prefix="/admin/ml",
+    tags=["admin-ml"],
+    dependencies=_prediction_ml_role_dep,
+)
 api_router.include_router(
     admin_attribution_router,
     prefix="/admin/attribution",
@@ -246,9 +255,17 @@ api_router.include_router(
     tags=["admin-fuel-accuracy"],
     dependencies=_fuel_role_dep,
 )
-api_router.include_router(admin_pilot_router, prefix="/admin", tags=["admin-pilot"])
 api_router.include_router(
-    admin_predictions_router, prefix="/admin", tags=["admin-predictions"]
+    admin_pilot_router,
+    prefix="/admin",
+    tags=["admin-pilot"],
+    dependencies=_prediction_ml_role_dep,
+)
+api_router.include_router(
+    admin_predictions_router,
+    prefix="/admin",
+    tags=["admin-predictions"],
+    dependencies=_prediction_ml_role_dep,
 )
 api_router.include_router(page_view_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(

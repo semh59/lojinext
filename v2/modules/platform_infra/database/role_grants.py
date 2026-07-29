@@ -115,7 +115,32 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # DriverCoachingEngine via get_anomaly_detector().get_recent_anomalies)
     # joins unqualified anomalies/araclar/seferler/soforler in one raw SQL
     # statement
-    "m_prediction_ml": ["fleet"],  # scheduler_task.py
+    "m_prediction_ml": [
+        "fleet",
+        "trip",
+        "driver",
+        "admin_platform",
+        "location",
+        "fuel",
+        "anomaly",
+    ],
+    # fleet: scheduler_task.py. trip/driver/admin_platform found live
+    # (FAZ2 Wave 2 prediction_ml pilot, 2026-07-29, public.py audit before
+    # wiring) -- predictions.py's GET endpoints directly ORM-query
+    # trip.public.SeferORM (Sefer) and db.get(driver.public.Sofor, ...);
+    # ensemble_service.py's train_for_vehicle/predict_consumption use
+    # trip.public.get_sefer_repo and driver.public.get_driver_stats;
+    # prediction_service.py calls admin_platform.public.get_runtime_float
+    # ("VEHICLE_AGE_DEGRADATION_RATE") -- same sistem_konfig-read pattern
+    # already fixed for m_location/m_route_simulation/m_anomaly. location:
+    # found live via real HTTP testing -- trip's own sefer_repo.
+    # get_for_training() (a buried-repository-method case, same class as
+    # the m_anomaly pilot's get_cost_leakage_stats finding) unqualified-
+    # LEFT JOINs seferler with location's lokasyonlar (route difficulty
+    # enrichment for training data). fuel + anomaly: admin_pilot.py's
+    # GET /admin/pilot-status runs raw COUNT(*) queries against
+    # yakit_alimlari (fuel) and anomalies (anomaly), unqualified, directly
+    # in the route handler.
     "m_route_simulation": ["location", "fleet", "trip", "admin_platform"],
     # openroute_client.py SELECT path (location, original). Found live
     # (FAZ2 Wave 2 route_simulation pilot, 2026-07-29) via comprehensive
@@ -230,6 +255,19 @@ WRITE_EXCEPTIONS: list[WriteException] = [
             "updated_at",
             "tahmini_tuketim",
         ),
+    ),
+    # prediction_ml's ensemble_service.py calls analytics_executive.public.
+    # get_analiz_repo().save_model_params()/get_model_params() (found live,
+    # FAZ2 Wave 2 prediction_ml pilot, 2026-07-29) -- analytics_executive
+    # is schema-less (NO_SCHEMA_ROLES) but its AnalizRepository queries
+    # OTHER modules' schemas directly; save_model_params does an upsert
+    # (DELETE + INSERT) on fuel.yakit_formul, get_model_params SELECTs it.
+    # Same table m_analytics_executive itself already has INSERT/DELETE on
+    # (see the entry above) -- this is m_prediction_ml's own grant for the
+    # same table, needed because SET LOCAL ROLE m_prediction_ml is active
+    # when prediction_ml's own endpoints trigger this call chain.
+    WriteException(
+        "m_prediction_ml", "fuel", "yakit_formul", ("SELECT", "INSERT", "DELETE")
     ),
     # route_simulation.openroute_client.OpenRouteClient._save_to_cache()
     WriteException(

@@ -283,7 +283,7 @@ class EnsemblePredictorService:
             "count": len(seferler),
             "mean_dist": round(np.mean(distances), 1) if distances else 0,
             "mean_load": round(np.mean(loads), 1) if loads else 0,
-            "ids_hash": hashlib.md5(",".join(sample_ids).encode()).hexdigest()[:8],
+            "ids_hash": hashlib.sha256(",".join(sample_ids).encode()).hexdigest()[:8],
         }
 
         return hashlib.sha256(
@@ -297,13 +297,19 @@ class EnsemblePredictorService:
         """
         from v2.modules.driver.public import get_driver_stats
         from v2.modules.route_simulation.public import get_weather_service
+        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
-        # Araç bilgisini al
-        arac = await self.arac_repo.get_by_id(arac_id)
-        if not arac:
-            return {"success": False, "error": "Araç bulunamadı"}
+        # self.arac_repo/self.sefer_repo are process-lifetime singletons
+        # with no bound session -- fetch through a UnitOfWork instead (see
+        # shared_kernel's "Singleton repos need UoW for raw-SQL methods"
+        # gotcha; predict_consumption already follows this pattern below).
+        async with UnitOfWork() as uow:
+            arac = await uow.arac_repo.get_by_id(arac_id)
+            if not arac:
+                return {"success": False, "error": "Araç bulunamadı"}
+            seferler = await uow.sefer_repo.get_for_training(arac_id, limit=500)
 
-        # Araç yaşı ve faktörü hesapla
+        # Compute vehicle age and its degradation factor
         from v2.modules.fleet.public import Arac
 
         try:
@@ -319,8 +325,6 @@ class EnsemblePredictorService:
             arac_yasi = 0
             yas_faktoru = 1.0
 
-        # Eğitim verilerini al
-        seferler = await self.sefer_repo.get_for_training(arac_id, limit=500)
         if len(seferler) < 10:
             return {"success": False, "error": f"Yetersiz veri: {len(seferler)} sefer"}
 

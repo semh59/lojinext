@@ -89,7 +89,9 @@ class SeferRepository(BaseRepository[Sefer]):
 
         arac_map: Dict[int, str] = {}
         if arac_ids:
-            res = await sess.execute(select(Arac.id, Arac.plaka).where(Arac.id.in_(arac_ids)))
+            res = await sess.execute(
+                select(Arac.id, Arac.plaka).where(Arac.id.in_(arac_ids))
+            )
             arac_map = dict(res.all())
 
         sofor_map: Dict[int, str] = {}
@@ -266,6 +268,51 @@ class SeferRepository(BaseRepository[Sefer]):
             query,
             {
                 "arac_id": arac_id,
+                "limit": limit,
+                "completed_status": SEFER_STATUS_TAMAMLANDI,
+            },
+        )
+
+    async def get_all_for_training(self, limit: int = 2000) -> List[Dict]:
+        """
+        Returns enriched trip data across ALL vehicles for the general
+        (fallback) ML model. Same enrichment as get_for_training, minus the
+        arac_id filter, plus araclar.tank_kapasitesi -- callers use it for
+        vehicle-class bucketing (heavy/medium/light) before per-class
+        fallback training.
+        """
+        query = """
+            SELECT
+                s.mesafe_km,
+                s.net_kg / 1000.0 AS ton,
+                s.tuketim,
+                s.sofor_id,
+                s.tarih,
+                s.arac_id,
+                COALESCE(s.ascent_m, l.ascent_m, 0.0) AS ascent_m,
+                COALESCE(s.descent_m, l.descent_m, 0.0) AS descent_m,
+                COALESCE(s.flat_distance_km, l.flat_distance_km, 0.0) AS flat_distance_km,
+                COALESCE(l.zorluk, 'Normal') AS zorluk,
+                COALESCE(s.rota_detay, l.route_analysis) AS rota_detay,
+                COALESCE(s.otoban_mesafe_km, l.otoban_mesafe_km, 0.0) AS otoban_mesafe_km,
+                COALESCE(s.sehir_ici_mesafe_km, l.sehir_ici_mesafe_km, 0.0) AS sehir_ici_mesafe_km,
+                COALESCE(d.bos_agirlik_kg, 6500.0) AS dorse_bos_agirlik,
+                COALESCE(d.lastik_sayisi, 6) AS dorse_lastik_sayisi,
+                a.tank_kapasitesi
+            FROM seferler s
+            LEFT JOIN lokasyonlar l ON s.guzergah_id = l.id
+            LEFT JOIN dorseler d ON s.dorse_id = d.id
+            LEFT JOIN araclar a ON s.arac_id = a.id
+            WHERE s.is_deleted = False
+              AND s.tuketim IS NOT NULL
+              AND s.tuketim > 0
+              AND s.durum = :completed_status
+            ORDER BY s.tarih DESC
+            LIMIT :limit
+        """
+        return await self.execute_query(
+            query,
+            {
                 "limit": limit,
                 "completed_status": SEFER_STATUS_TAMAMLANDI,
             },

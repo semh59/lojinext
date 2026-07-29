@@ -485,26 +485,31 @@ class TestPredictConsumption:
 # ---------------------------------------------------------------------------
 
 
+def _mock_uow(arac=None, seferler=None, all_seferler=None):
+    """train_for_vehicle/train_general_model now read through their own
+    UnitOfWork (see shared_kernel's "Singleton repos need UoW" gotcha)
+    instead of the session-less svc._arac_repo/svc._sefer_repo
+    singletons -- mock the UoW's repos directly, same pattern as
+    predict_batch's test below."""
+    mock_uow = AsyncMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=None)
+    mock_uow.arac_repo = MagicMock()
+    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
+    mock_uow.sefer_repo.get_all_for_training = AsyncMock(
+        return_value=all_seferler or []
+    )
+    return mock_uow
+
+
 class TestTrainForVehicle:
     @pytest.fixture
     def svc(self):
         return _make_service()
 
-    @staticmethod
-    def _mock_uow(arac=None, seferler=None):
-        """train_for_vehicle now reads through its own UnitOfWork (see
-        shared_kernel's "Singleton repos need UoW" gotcha) instead of the
-        session-less svc._arac_repo/svc._sefer_repo singletons -- mock
-        the UoW's repos directly, same pattern as predict_batch's test
-        below."""
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.arac_repo = MagicMock()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-        mock_uow.sefer_repo = MagicMock()
-        mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
-        return mock_uow
+    _mock_uow = staticmethod(_mock_uow)
 
     async def test_returns_error_when_arac_not_found(self, svc):
         mock_uow = self._mock_uow(arac=None)
@@ -658,15 +663,19 @@ class TestTrainGeneralModel:
     def svc(self):
         return _make_service()
 
+    _mock_uow = staticmethod(_mock_uow)
+
     async def test_returns_error_on_insufficient_data(self, svc):
-        svc._sefer_repo.get_all_for_training = AsyncMock(
-            return_value=[{"tuketim": 30}] * 5
-        )
+        mock_uow = self._mock_uow(all_seferler=[{"tuketim": 30}] * 5)
 
         mock_analiz_repo = MagicMock()
-        with patch(
-            "v2.modules.analytics_executive.public.get_analiz_repo",
-            return_value=mock_analiz_repo,
+        with (
+            patch(
+                "v2.modules.analytics_executive.public.get_analiz_repo",
+                return_value=mock_analiz_repo,
+            ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_general_model()
 
@@ -684,7 +693,7 @@ class TestTrainGeneralModel:
             }
             for i in range(25)
         ]
-        svc._sefer_repo.get_all_for_training = AsyncMock(return_value=trips)
+        mock_uow = self._mock_uow(all_seferler=trips)
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -713,19 +722,25 @@ class TestTrainGeneralModel:
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(mock_predictor, "save_model"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_general_model()
 
         assert result["success"] is True
 
     async def test_exception_in_train_returns_error(self, svc):
-        svc._sefer_repo.get_all_for_training = AsyncMock(
-            side_effect=RuntimeError("DB down")
-        )
         mock_analiz_repo = MagicMock()
-        with patch(
-            "v2.modules.analytics_executive.public.get_analiz_repo",
-            return_value=mock_analiz_repo,
+        with (
+            patch(
+                "v2.modules.analytics_executive.public.get_analiz_repo",
+                return_value=mock_analiz_repo,
+            ),
+            patch.object(
+                UnitOfWork,
+                "__aenter__",
+                AsyncMock(side_effect=RuntimeError("DB down")),
+            ),
         ):
             result = await svc.train_general_model()
         assert result["success"] is False

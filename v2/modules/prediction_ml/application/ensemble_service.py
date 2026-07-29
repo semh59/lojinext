@@ -414,10 +414,17 @@ class EnsemblePredictorService:
         logger.info("Training General Fallback Model (Vehicle ID: 0).")
         try:
             from v2.modules.analytics_executive.public import get_analiz_repo
+            from v2.modules.shared_kernel.infrastructure.unit_of_work import (
+                UnitOfWork,
+            )
 
             analiz_repo = get_analiz_repo()
 
-            seferler = await self.sefer_repo.get_all_for_training(limit=2000)
+            # self.sefer_repo is a process-lifetime singleton with no bound
+            # session -- fetch through a UnitOfWork instead (same fix as
+            # train_for_vehicle above).
+            async with UnitOfWork() as uow:
+                seferler = await uow.sefer_repo.get_all_for_training(limit=2000)
 
             if len(seferler) < 20:
                 return {

@@ -24,10 +24,10 @@ from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 pytestmark = pytest.mark.unit
 
 
-def _make_uow(arac=None, seferler=None):
-    """train_for_vehicle reads through its own UnitOfWork (not the
-    session-less svc._arac_repo/svc._sefer_repo singletons) -- mock the
-    UoW's repos directly."""
+def _make_uow(arac=None, seferler=None, all_seferler=None):
+    """train_for_vehicle/train_general_model read through their own
+    UnitOfWork (not the session-less svc._arac_repo/svc._sefer_repo
+    singletons) -- mock the UoW's repos directly."""
     mock_uow = AsyncMock()
     mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
     mock_uow.__aexit__ = AsyncMock(return_value=None)
@@ -35,6 +35,9 @@ def _make_uow(arac=None, seferler=None):
     mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
     mock_uow.sefer_repo = MagicMock()
     mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
+    mock_uow.sefer_repo.get_all_for_training = AsyncMock(
+        return_value=all_seferler or []
+    )
     return mock_uow
 
 
@@ -667,7 +670,7 @@ class TestTrainGeneralModelClassModels:
             }
             for i in range(25)
         ]
-        svc._sefer_repo.get_all_for_training = AsyncMock(return_value=trips)
+        mock_uow = _make_uow(all_seferler=trips)
 
         # General model succeeds, class models fail
         general_predictor = MagicMock()
@@ -708,6 +711,8 @@ class TestTrainGeneralModelClassModels:
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(general_predictor, "save_model"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_general_model()
 
@@ -728,7 +733,7 @@ class TestTrainGeneralModelClassModels:
             }
             for i in range(25)
         ]
-        svc._sefer_repo.get_all_for_training = AsyncMock(return_value=trips)
+        mock_uow = _make_uow(all_seferler=trips)
 
         general_predictor = MagicMock()
         general_predictor.fit.return_value = {
@@ -774,6 +779,8 @@ class TestTrainGeneralModelClassModels:
             patch("pathlib.Path.mkdir"),
             patch.object(general_predictor, "save_model"),
             patch.object(class_predictor, "save_model"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_general_model()
 

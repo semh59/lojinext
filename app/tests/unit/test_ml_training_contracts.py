@@ -133,6 +133,35 @@ async def test_sefer_repo_get_for_training_uses_fk_join_and_rich_route_columns()
 
 
 @pytest.mark.asyncio
+async def test_sefer_repo_get_all_for_training_joins_araclar_for_tank_kapasitesi():
+    """train_general_model's vehicle-class bucketing needs
+    araclar.tank_kapasitesi on every row -- unlike get_for_training
+    (single vehicle, arac_id already known), get_all_for_training spans
+    all vehicles and must join araclar itself."""
+    repo = SeferRepository()
+    captured = {}
+
+    async def fake_execute(query: str, params: dict):
+        captured["query"] = query
+        captured["params"] = params
+        return []
+
+    repo.execute_query = fake_execute
+
+    await repo.get_all_for_training(limit=500)
+
+    query = captured["query"]
+    assert "LEFT JOIN lokasyonlar l ON s.guzergah_id = l.id" in query
+    assert "LEFT JOIN araclar a ON s.arac_id = a.id" in query
+    assert "a.tank_kapasitesi" in query
+    assert "s.arac_id = :arac_id" not in query
+    assert captured["params"] == {
+        "limit": 500,
+        "completed_status": SEFER_STATUS_TAMAMLANDI,
+    }
+
+
+@pytest.mark.asyncio
 async def test_analiz_repo_training_query_keeps_fk_join_without_synthetic_filters():
     repo = AnalizRepository()
     captured = {}
@@ -330,9 +359,16 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
         )
         for idx in range(10)
     ]
-    service._sefer_repo = SimpleNamespace(
+    # train_general_model reads through its own UnitOfWork (not the
+    # session-less service._sefer_repo singleton).
+    mock_uow = AsyncMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=None)
+    mock_uow.sefer_repo = SimpleNamespace(
         get_all_for_training=AsyncMock(return_value=heavy_trips + light_trips)
     )
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     general_predictor = _PredictorStub(is_trained=True)
     heavy_predictor = _PredictorStub(is_trained=True)

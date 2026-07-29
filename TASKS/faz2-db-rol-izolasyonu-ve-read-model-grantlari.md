@@ -399,3 +399,28 @@ pilotlarında bu sınıf bulunamamıştı çünkü onların cross-module
 çağrıları ya hiç yoktu ya da test edilen endpoint'ler o çağrı yollarını
 tetiklemiyordu — location'ın `route-info`'su İLK KEZ bu deseni açığa
 çıkardı).
+
+**Devam — 0066 tek başına yetmedi, 2 ek katman daha bulundu (0067, 0068)**:
+0066 push edildikten sonra GitHub CI'da AYNI 2 test yine ard arda fail
+etti — ama artık farklı bir hatayla ("permission denied for TABLE
+route_paths" — bir SELECT değil, bir **INSERT**). Kök neden: cache-miss
+senaryosunda `get_route_details()` yeni hesaplanan rotayı `route_paths`
+tablosuna geri yazıyor (`BaseRepository.create`), bu da m_location'ın
+rolüyle çalışıyor. Fix: `WriteException("m_location", "route_simulation",
+"route_paths", ("INSERT",))` (migration `0067`). Bu ikinci bulgudan sonra
+location'ın TÜM `public.py` cross-module çağrılarını kapsamlı taradım
+(`grep "from v2.modules.*.public import"`) — 3. bir açık daha bulundu:
+`openroute_geocode_client.py::_resolve_api_key()` `admin_platform.
+entegrasyon_ayarlari`'ı okuyor (DB-configured ORS anahtarı), ama bu
+sessizce yutulup `.env` fallback'ine düşüyordu (WARNING, crash değil) —
+CI'ın gerçek hata olarak yakalamadığı ama production'da DB-configured
+anahtarın sessizce görmezden gelinmesi anlamına gelen gerçek bir
+fonksiyonel regresyon. Fix: `READER_SELECT_GRANTS["m_location"]` →
+`["route_simulation", "admin_platform"]` (migration `0068`).
+
+**Sonuç — location pilotu toplam 3 migration'da (0066/0067/0068) 3 gerçek
+grant açığı buldu**, hepsi aynı kök mekanizmadan (`public.py` cross-module
+çağrısı + task-local ContextVar). route_simulation pilotuna geçmeden önce
+BU SEFER route_simulation'ın kendi `public.py` cross-module çağrılarını da
+(varsa) baştan kapsamlı tarayarak başlanacak — aynı ard-arda-bulma
+döngüsünü tekrarlamamak için.

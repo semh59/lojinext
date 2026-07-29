@@ -81,13 +81,20 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # statement
     "m_prediction_ml": ["fleet"],  # scheduler_task.py
     "m_route_simulation": ["location"],  # openroute_client.py SELECT path
-    "m_location": ["route_simulation"],  # found live (FAZ2 Wave 2 location
-    # pilot, 2026-07-29) — GET /locations/route-info reads
-    # route_simulation.route_paths (bbox cache lookup) via
+    "m_location": ["route_simulation", "admin_platform"],  # found live
+    # (FAZ2 Wave 2 location pilot, 2026-07-29) — GET /locations/route-info
+    # reads route_simulation.route_paths (bbox cache lookup) via
     # route_simulation.public.get_route_details(); the ContextVar-scoped
     # role from the location request context propagates into this nested
     # call's session because module_role is task-local (not session-local),
-    # so m_location itself needs SELECT on route_simulation's tables
+    # so m_location itself needs SELECT on route_simulation's tables.
+    # admin_platform: openroute_geocode_client.py's _resolve_api_key()
+    # reads admin_platform.entegrasyon_ayarlari (DB-configured ORS key,
+    # takes priority over .env) via admin_platform.public.
+    # get_integration_secret — without this grant the read silently fails
+    # (caught + logged as a warning, falls through to .env) instead of
+    # actually finding the configured key, a real prod functional
+    # regression masked by the graceful fallback
     # FAZ2 Wave 2 pilot (2026-07-28): m_trip was missing entirely from this
     # matrix, found live — creating a trip failed with
     # "permission denied for schema fleet" the moment role enforcement was
@@ -224,6 +231,19 @@ WRITE_EXCEPTIONS: list[WriteException] = [
         for role in ALL_ROLES
         if role not in ("m_admin_platform", OPS_ROLE)
     ],
+    # FAZ2 Wave 2 pilot (2026-07-29): found live, location pilot — same
+    # ContextVar-task-local mechanism as the READER_SELECT_GRANTS
+    # "m_location": ["route_simulation"] entry above, one layer deeper.
+    # `GET /locations/route-info` -> `route_simulation.public.
+    # get_route_details()` doesn't just SELECT a cached route
+    # (`route_simulation.route_paths`) — on a cache miss it computes a
+    # fresh route and INSERTs the result back into that same table
+    # (`BaseRepository.create` via route_simulation's own repository,
+    # still running under m_location's SET LOCAL ROLE because the nested
+    # session inherits the same task-local module_role ContextVar).
+    # READER_SELECT_GRANTS alone covers cache HITS; this WriteException
+    # covers cache MISSES.
+    WriteException("m_location", "route_simulation", "route_paths", ("INSERT",)),
 ]
 
 # m_ops'un ALL+CREATE grant aldığı 14 iş-modülü şeması (platform dahil, ama

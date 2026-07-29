@@ -19,7 +19,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+
 pytestmark = pytest.mark.unit
+
+
+def _make_uow(arac=None, seferler=None):
+    """train_for_vehicle reads through its own UnitOfWork (not the
+    session-less svc._arac_repo/svc._sefer_repo singletons) -- mock the
+    UoW's repos directly."""
+    mock_uow = AsyncMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=None)
+    mock_uow.arac_repo = MagicMock()
+    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
+    mock_uow.sefer_repo = MagicMock()
+    mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
+    return mock_uow
 
 
 # ---------------------------------------------------------------------------
@@ -351,7 +367,6 @@ class TestTrainForVehicleAracEntityFail:
     async def test_arac_entity_mapping_failure_uses_defaults(self):
         """When Arac(**arac) raises, arac_yasi=0 and yas_faktoru=1.0 used."""
         svc = _make_service()
-        svc._arac_repo.get_by_id = AsyncMock(return_value={"id": 1, "bad_field": "X"})
 
         trips = [
             {
@@ -364,7 +379,7 @@ class TestTrainForVehicleAracEntityFail:
             }
             for i in range(15)
         ]
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=trips)
+        mock_uow = _make_uow(arac={"id": 1, "bad_field": "X"}, seferler=trips)
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -388,6 +403,8 @@ class TestTrainForVehicleAracEntityFail:
             patch(
                 "v2.modules.fleet.public.Arac", side_effect=ValueError("bad mapping")
             ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -405,7 +422,6 @@ class TestTrainForVehicleSoforKatsayi:
     async def test_sofor_katsayi_computed_from_driver_stats(self):
         """sofor_id present + driver_map has stats → katsayi computed (not 1.0)."""
         svc = _make_service()
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
 
         driver_stat = MagicMock()
         driver_stat.sofor_id = 5
@@ -422,7 +438,7 @@ class TestTrainForVehicleSoforKatsayi:
             }
             for i in range(15)
         ]
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=trips)
+        mock_uow = _make_uow(arac=_make_arac(), seferler=trips)
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -449,6 +465,8 @@ class TestTrainForVehicleSoforKatsayi:
                 "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[driver_stat]),
             ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             await svc.train_for_vehicle(arac_id=1)
 
@@ -479,8 +497,7 @@ class TestTrainForVehicleSaveExceptions:
     async def test_model_manager_exception_still_returns_success(self):
         """manager.save_version exception → logged but result is still returned."""
         svc = _make_service()
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=self._make_trips())
+        mock_uow = _make_uow(arac=_make_arac(), seferler=self._make_trips())
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -519,6 +536,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -529,8 +548,7 @@ class TestTrainForVehicleSaveExceptions:
     async def test_analiz_repo_exception_does_not_prevent_return(self):
         """analiz_repo.save_model_params exception → logged, result returned."""
         svc = _make_service()
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=self._make_trips())
+        mock_uow = _make_uow(arac=_make_arac(), seferler=self._make_trips())
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -571,6 +589,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -579,8 +599,7 @@ class TestTrainForVehicleSaveExceptions:
     async def test_serialize_exception_does_not_prevent_return(self):
         """predictor.save_model raises → logged, result returned."""
         svc = _make_service()
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=self._make_trips())
+        mock_uow = _make_uow(arac=_make_arac(), seferler=self._make_trips())
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -620,6 +639,8 @@ class TestTrainForVehicleSaveExceptions:
                 return_value=mock_analiz_repo,
             ),
             patch("pathlib.Path.mkdir"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 

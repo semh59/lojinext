@@ -490,14 +490,33 @@ class TestTrainForVehicle:
     def svc(self):
         return _make_service()
 
+    @staticmethod
+    def _mock_uow(arac=None, seferler=None):
+        """train_for_vehicle now reads through its own UnitOfWork (see
+        shared_kernel's "Singleton repos need UoW" gotcha) instead of the
+        session-less svc._arac_repo/svc._sefer_repo singletons -- mock
+        the UoW's repos directly, same pattern as predict_batch's test
+        below."""
+        mock_uow = AsyncMock()
+        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+        mock_uow.__aexit__ = AsyncMock(return_value=None)
+        mock_uow.arac_repo = MagicMock()
+        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
+        mock_uow.sefer_repo = MagicMock()
+        mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
+        return mock_uow
+
     async def test_returns_error_when_arac_not_found(self, svc):
-        svc._arac_repo.get_by_id = AsyncMock(return_value=None)
-        result = await svc.train_for_vehicle(arac_id=999)
+        mock_uow = self._mock_uow(arac=None)
+        with (
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        ):
+            result = await svc.train_for_vehicle(arac_id=999)
         assert result["success"] is False
 
     async def test_returns_error_on_insufficient_trips(self, svc):
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=[{"tuketim": 30}] * 5)
+        mock_uow = self._mock_uow(arac=_make_arac(), seferler=[{"tuketim": 30}] * 5)
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -511,6 +530,8 @@ class TestTrainForVehicle:
                 "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -519,8 +540,6 @@ class TestTrainForVehicle:
 
     async def test_enrichment_and_fit_called_with_sufficient_data(self, svc):
         """Test the enrichment loop + model.fit call path."""
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-
         trips = [
             {
                 "id": i,
@@ -532,7 +551,7 @@ class TestTrainForVehicle:
             }
             for i in range(15)
         ]
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=trips)
+        mock_uow = self._mock_uow(arac=_make_arac(), seferler=trips)
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.05
@@ -555,6 +574,8 @@ class TestTrainForVehicle:
                 "v2.modules.driver.public.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -565,8 +586,6 @@ class TestTrainForVehicle:
 
     async def test_train_success_saves_model(self, svc):
         """Test the post-training save path when fit() succeeds."""
-        svc._arac_repo.get_by_id = AsyncMock(return_value=_make_arac())
-
         trips = [
             {
                 "id": i,
@@ -578,7 +597,7 @@ class TestTrainForVehicle:
             }
             for i in range(15)
         ]
-        svc._sefer_repo.get_for_training = AsyncMock(return_value=trips)
+        mock_uow = self._mock_uow(arac=_make_arac(), seferler=trips)
 
         mock_weather = MagicMock()
         mock_weather.get_seasonal_factor.return_value = 1.0
@@ -620,6 +639,8 @@ class TestTrainForVehicle:
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(mock_predictor, "save_model"),
+            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
+            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 

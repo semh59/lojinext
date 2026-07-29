@@ -11,6 +11,7 @@ from v2.modules.prediction_ml.application.ensemble_service import (
     EnsemblePredictorService,
 )
 from v2.modules.prediction_ml.domain.ensemble_core import PredictionResult
+from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.infrastructure.repository import SeferRepository
 from v2.modules.trip.sefer_status import SEFER_STATUS_TAMAMLANDI
 
@@ -161,9 +162,6 @@ async def test_analiz_repo_training_query_keeps_fk_join_without_synthetic_filter
 @pytest.mark.asyncio
 async def test_train_for_vehicle_uses_each_trip_date_for_seasonal_factor(monkeypatch):
     service = EnsemblePredictorService()
-    service._arac_repo = SimpleNamespace(
-        get_by_id=AsyncMock(return_value=_build_vehicle(12, yil=2019))
-    )
 
     trips = []
     for idx in range(10):
@@ -175,9 +173,19 @@ async def test_train_for_vehicle_uses_each_trip_date_for_seasonal_factor(monkeyp
                 sofor_id=1 if idx % 2 == 0 else 2,
             )
         )
-    service._sefer_repo = SimpleNamespace(
+    # train_for_vehicle reads through its own UnitOfWork (not the
+    # session-less service._arac_repo/service._sefer_repo singletons).
+    mock_uow = AsyncMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=None)
+    mock_uow.arac_repo = SimpleNamespace(
+        get_by_id=AsyncMock(return_value=_build_vehicle(12, yil=2019))
+    )
+    mock_uow.sefer_repo = SimpleNamespace(
         get_for_training=AsyncMock(return_value=trips)
     )
+    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
+    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     predictor = _PredictorStub(fit_success=False)
     service.get_predictor = MagicMock(return_value=predictor)
@@ -345,8 +353,7 @@ async def test_train_general_model_trains_class_specific_fallback_models(monkeyp
         saved_versions.append({"arac_id": arac_id})
 
     monkeypatch.setattr(
-        "v2.modules.prediction_ml.application.ensemble_service."
-        "_register_model_version",
+        "v2.modules.prediction_ml.application.ensemble_service._register_model_version",
         _fake_register,
     )
     monkeypatch.setattr(

@@ -893,3 +893,15 @@ takımları (`test_admin_config.py`, `test_admin_config_repo_concurrency.py`,
 `test_admin_health_and_roles.py`, `test_error_stream_coverage.py`,
 `test_error_stream_more.py`) gerçek Postgres 16'ya karşı 61 passed.
 `test_business_lifecycle.py` tekrar 1 passed.
+
+**Üçüncü CI regresyonu — FAZ2 ile ilgisiz, ayrıca düzeltildi (2026-07-30)**:
+sistem_konfig fix'i push edilince "Frontend — Unit tests with coverage"
+geçti ama pipeline artık bir sonraki adıma ("OpenAPI schema drift check"
+hard gate — bu adım daha önce hep önceki adım fail ettiği için `skipped`
+kalmıştı, ilk kez fiilen çalıştı) ulaştı ve orada patladı: committed
+`frontend/openapi.json`, `GET /reports/consumption-trend`'in
+docstring'inin Türkçeden İngilizceye çevrildiği (ilgisiz, önceki bir
+commit'in) drift'ini taşıyordu — o commit `openapi.json`'ı yeniden
+üretmemişti. Path/schema-seviyeli diff ile doğrulandı: eklenen/kaldırılan
+path veya schema yok, TEK fark bu bir açıklama string'i. Gerçek backend'den
+(`docker exec ... curl .../openapi.json`) yeniden üretilip commit edildi.

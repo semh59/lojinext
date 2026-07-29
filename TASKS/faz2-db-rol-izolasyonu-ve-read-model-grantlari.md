@@ -807,3 +807,89 @@ Postgres 16'ya karşı tekrar koşuldu (1 passed). admin_platform-özel
 unit/api testleri (141 passed / 3 fail → fix sonrası 144 passed — 3.
 fail'in biri `test_check_redis_unhealthy`, redis-sentinel'e özgü, bu
 pilotla ilgisiz pre-existing bir flake, dokunulmadı).
+
+### Import_excel pilot bulgusu (2026-07-29) — 3 grant açığı, tek turda tamamlandı
+
+`import_excel`'in 3 router'ına (`import`/`trip_export`/`trip_import`)
+wiring eklendi. Bu modülün 5 WriteException'ı ZATEN vardı (`execute_import.py`'nin
+bilinçli raw-SQL repository-bypass'ı — fleet.araclar, driver.soforler,
+driver.sofor_ad_soyad_trigram, trip.seferler INSERT/DELETE,
+fuel.yakit_alimlari — driver/CLAUDE.md'de zaten dokümante), ama `public.py`
+cross-module denetimi 2 DAHA çağrı yolu buldu:
+
+- `route_importer.py::import_routes()` → `location.public.create_location
+  (uow.lokasyon_repo, ...)` — yeni `lokasyonlar` satırı INSERT ediyor VEYA
+  "pasif güzergah yeniden eklendi" dalında keyfi alanlarda tam-tablo UPDATE
+  yapıyor.
+- `yakit_importer.py` → `fuel.public.recalculate_vehicle_periods()`:
+  `uow.yakit_repo.save_fuel_periods(..., clear_existing=True)` `fuel.
+  yakit_periyotlari`'na DELETE+INSERT (yakit_alimlari'ndan AYRI bir tablo);
+  `uow.sefer_repo.update_trips_fuel_data(...)` `trip.seferler`'e yalnız 3
+  kolonda (`dagitilan_yakit`/`tuketim`/`periyot_id`) bulk ORM UPDATE —
+  mevcut INSERT/DELETE WriteException'ından AYRI (o, execute_import'un
+  raw-SQL toplu sefer import'unu kapsıyor, bu UPDATE yolunu değil).
+
+**3 yeni WriteException**: `location.lokasyonlar` INSERT+UPDATE (tam
+tablo), `fuel.yakit_periyotlari` INSERT+DELETE, `trip.seferler` UPDATE
+(yalnız 3 kolon). Migration: `0073_faz2_import_excel_grants`.
+
+**Doğrulama**: gerçek HTTP — `GET /trips/export` (200), `GET /admin/
+imports/history` (200). Yazma yolları doğrudan Python script ile
+`module_role_scope("m_import_excel")` altında test edildi (gerçek Postgres
+16'ya karşı, `docker exec`): `create_location` başarıyla INSERT etti,
+`recalculate_vehicle_periods` istisnasız tamamlandı (hem yakit_periyotlari
+hem seferler yazımı). import_excel-özel unit testleri + `test_business_
+lifecycle.py` (148 passed). Bu pilotta pre-existing bug bulunmadı.
+
+**Ayrı bulgu — CI regresyonu, TAMAMEN düzeltildi (2026-07-29)**: admin_platform
+pilotunun `error_events.py`'yi `AsyncSessionLocal`'ı kendi başına açmaktan
+`session` parametresi almaya çeviren fix'i push edildikten sonra CI'ın
+"Backend unit tests" step'i `AttributeError: <module '...error_events'>
+has no attribute 'AsyncSessionLocal'` ile TÜM API testlerinde patladı
+(23+ test). Kök neden: `app/tests/conftest.py`'deki monkeypatch satırını
+kaldırırken KÖK dizindeki İKİNCİ bir conftest'in (`tests/conftest.py` —
+kök CLAUDE.md'nin "Kök tests/ klasörü" gotcha'sı, dalga 1/3/4/8'de de aynı
+şekilde unutulmuş) `db_session_factory` fixture'ında AYNI monkeypatch
+satırının bir KOPYASI olduğu gözden kaçmıştı — `grep -rn
+"error_events.*AsyncSessionLocal"` ile İKİNCİ dosya bulunup aynı şekilde
+düzeltildi (monkeypatch satırı + artık gereksiz `import
+v2.modules.admin_platform.application.error_events` kaldırıldı).
+Doğrulama: `tests/api/test_api_integration.py` (23 passed, önceden bu
+dosyanın TÜM testleri fixture-setup'ta patlıyordu).
+
+**İkinci CI regresyonu — TAMAMEN düzeltildi (2026-07-29→30)**: bir sonraki
+push'ta bu sefer "Frontend — Unit tests with coverage" step'i gerçek
+backend'e karşı çalışan `KonfigurasyonPage.test.tsx`'te patladı: `PUT
+/admin/config/{key}` 500 döndü (`permission denied for table
+sistem_konfig`, gerçek backend log traceback'i ile doğrulandı). Kök
+neden: `sistem_konfig`/`konfig_gecmis` admin_platform'un KENDİ birincil
+özelliği (sistem konfigürasyonu CRUD'u, `konfig_service.py`) ama —
+`error_events` gibi — fiziksel olarak "platform" şemasında yaşıyor;
+`0059_admin_platform_schema_move` migration'ının kendi docstring'i bunu
+doğruluyor (o migration `entegrasyon_ayarlari`/`admin_audit_log`'u
+admin_platform şemasına taşırken `sistem_konfig`/`konfig_gecmis`/
+`idempotency_keys`'i platform şemasına yönlendiriyor) — bu pilotun ilk
+denetimi modülün CLAUDE.md'sindeki tablo-sahipliği özetine harfiyen
+güvenip gerçek migration'ı kontrol etmediği için bu ayrıntıyı kaçırmıştı.
+`AdminConfigRepository.update_value()` `sistem_konfig` üzerinde `SELECT
+... FOR UPDATE` çalıştırıyor — Postgres bir FOR UPDATE satır kilidi almak
+için SELECT'in ötesinde UPDATE yetkisi de istiyor; mevcut
+`READER_SELECT_GRANTS`'ın "platform" girdisi (0072'de eklenmişti) yalnız
+düz SELECT'i kapsıyordu.
+
+**2 yeni WriteException**: `platform.sistem_konfig` UPDATE
+(kolonlar=`deger`/`guncelleyen_id`/`son_guncelleme` — sonuncusu modelin
+kendi `onupdate=func.now()` kolonu, her UPDATE'te otomatik dahil olur),
+`platform.konfig_gecmis` INSERT (aynı çağrı bir denetim-geçmişi satırı da
+ekliyor). Migration: `0074_faz2_admin_platform_grants2`.
+
+**Doğrulama**: gerçek Postgres 16 + gerçek HTTP — `docker exec ... alembic
+upgrade head` ile migration uygulandı, backend restart edildi, container
+içinden gerçek admin login + `PUT /admin/config/ANOMALY_Z_THRESHOLD`
+isteği tekrarlandı → 500 yerine 200 (`{"anahtar":"ANOMALY_Z_THRESHOLD",
+"deger":2.5,...}`). admin_platform'un config/error-events'e özel test
+takımları (`test_admin_config.py`, `test_admin_config_repo_concurrency.py`,
+`test_admin_config_repo_coverage.py`, `test_konfig_service.py`,
+`test_admin_health_and_roles.py`, `test_error_stream_coverage.py`,
+`test_error_stream_more.py`) gerçek Postgres 16'ya karşı 61 passed.
+`test_business_lifecycle.py` tekrar 1 passed.

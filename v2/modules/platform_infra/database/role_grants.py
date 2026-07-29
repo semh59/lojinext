@@ -305,6 +305,32 @@ WRITE_EXCEPTIONS: list[WriteException] = [
     WriteException("m_import_excel", "driver", "sofor_ad_soyad_trigram", ("INSERT",)),
     WriteException("m_import_excel", "trip", "seferler", ("INSERT", "DELETE")),
     WriteException("m_import_excel", "fuel", "yakit_alimlari", ("INSERT", "DELETE")),
+    # FAZ2 Wave 2 import_excel pilot (2026-07-29): found live via public.py
+    # cross-module audit -- route_importer.py's import_routes() calls
+    # location.public.create_location(uow.lokasyon_repo, ...), which INSERTs
+    # a new lokasyonlar row or, on the "passive route re-added" path,
+    # UPDATEs an existing one at arbitrary caller-supplied fields
+    # (`**data.model_dump(exclude_unset=True)`) -- full-table UPDATE, not
+    # column-scoped like the narrower WriteExceptions above.
+    WriteException("m_import_excel", "location", "lokasyonlar", ("INSERT", "UPDATE")),
+    # yakit_importer.py -> fuel.public.recalculate_vehicle_periods() ->
+    # uow.yakit_repo.save_fuel_periods(periods, clear_existing=True) does a
+    # DELETE + bulk INSERT into fuel.yakit_periyotlari (a table distinct
+    # from yakit_alimlari, needs its own grant).
+    WriteException("m_import_excel", "fuel", "yakit_periyotlari", ("INSERT", "DELETE")),
+    # Same recalculate_vehicle_periods() call also does
+    # uow.sefer_repo.update_trips_fuel_data(...) -- a bulk ORM UPDATE on
+    # trip.seferler limited to 3 columns (distribution results), separate
+    # from the existing INSERT/DELETE WriteException on the same table
+    # above (which covers execute_import's raw-SQL bulk sefer import, not
+    # this UPDATE path).
+    WriteException(
+        "m_import_excel",
+        "trip",
+        "seferler",
+        ("UPDATE",),
+        columns=("dagitilan_yakit", "tuketim", "periyot_id"),
+    ),
     # FAZ2 Wave 2 pilot (2026-07-28): found live — trip's add_trip.py calls
     # shared_kernel's save_outbox_event() (INSERT INTO platform.outbox_events)
     # to publish SEFER_ADDED, and every one of the 14 module-schema roles
@@ -381,6 +407,33 @@ WRITE_EXCEPTIONS: list[WriteException] = [
         ("UPDATE",),
         columns=("resolved_at", "resolved_by"),
     ),
+    # FAZ2 Wave 2 admin_platform pilot fix #2 (2026-07-29, caught live by a
+    # real frontend CI test hitting the real backend): sistem_konfig/
+    # konfig_gecmis are admin_platform's own primary feature (system
+    # config CRUD, konfig_service.py) but -- like error_events above --
+    # physically live in the "platform" schema. Migration
+    # 0059_admin_platform_schema_move moves entegrasyon_ayarlari/
+    # admin_audit_log into the admin_platform schema, but that same
+    # migration's own docstring routes sistem_konfig/konfig_gecmis/
+    # idempotency_keys to the platform schema instead -- a nuance this
+    # pilot's initial audit missed by trusting the module's CLAUDE.md
+    # table-ownership summary at face value instead of the migration.
+    # AdminConfigRepository.update_value() runs SELECT ... FOR UPDATE on
+    # sistem_konfig -- Postgres requires UPDATE privilege (not just
+    # SELECT) to take a FOR UPDATE row lock, which is where this was
+    # actually caught: PUT /admin/config/{key} 500'd with "permission
+    # denied for table sistem_konfig" in CI's real-backend frontend test
+    # (KonfigurasyonPage.test.tsx) -- the READER_SELECT_GRANTS "platform"
+    # entry above only covers plain SELECT.
+    WriteException(
+        "m_admin_platform",
+        "platform",
+        "sistem_konfig",
+        ("UPDATE",),
+        columns=("deger", "guncelleyen_id", "son_guncelleme"),
+    ),
+    # Same update_value() call also INSERTs a KonfigGecmis audit-history row.
+    WriteException("m_admin_platform", "platform", "konfig_gecmis", ("INSERT",)),
 ]
 
 # m_ops'un ALL+CREATE grant aldığı 14 iş-modülü şeması (platform dahil, ama

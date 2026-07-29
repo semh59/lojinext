@@ -122,6 +122,7 @@ _prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
 _notification_role_dep = [Depends(require_module_role("notification"))]
 _auth_rbac_role_dep = [Depends(require_module_role("auth_rbac"))]
 _admin_platform_role_dep = [Depends(require_module_role("admin_platform"))]
+_import_excel_role_dep = [Depends(require_module_role("import_excel"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -198,8 +199,18 @@ api_router.include_router(
 api_router.include_router(
     trip_approval_router, prefix="/trips", tags=["trips"], dependencies=_trip_role_dep
 )
-api_router.include_router(trip_export_router, prefix="/trips", tags=["trips"])
-api_router.include_router(trip_import_router, prefix="/trips", tags=["trips"])
+api_router.include_router(
+    trip_export_router,
+    prefix="/trips",
+    tags=["trips"],
+    dependencies=_import_excel_role_dep,
+)
+api_router.include_router(
+    trip_import_router,
+    prefix="/trips",
+    tags=["trips"],
+    dependencies=_import_excel_role_dep,
+)
 api_router.include_router(trip_analytics_router, prefix="/trips", tags=["trips"])
 api_router.include_router(plan_wizard_router, prefix="/trips", tags=["trips"])
 api_router.include_router(
@@ -274,7 +285,10 @@ api_router.include_router(
     dependencies=_notification_role_dep,
 )
 api_router.include_router(
-    import_router, prefix="/admin/imports", tags=["admin-imports"]
+    import_router,
+    prefix="/admin/imports",
+    tags=["admin-imports"],
+    dependencies=_import_excel_role_dep,
 )
 api_router.include_router(
     admin_ml_router,

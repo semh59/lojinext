@@ -550,3 +550,22 @@ dahil — `BackgroundJobManager`'ın asyncio task'ı `module_role`
 ContextVar'ını miras aldığı doğrulandı, ayrı bir wiring gerekmedi).
 
 **Migration**: `0071_faz2_prediction_ml_grants`.
+
+**Ayrı bulgu — CI regresyonu ve düzeltmesi (2026-07-29)**: `train_for_
+vehicle`'ın UoW fix'i push edildikten sonra CI'ın "Backend unit tests"
+step'i anormal uzun sürdü — kök neden, 9 mevcut unit testinin
+`svc._arac_repo`/`svc._sefer_repo`'yu (artık kullanılmayan session'siz
+singleton) doğrudan mock'laması, gerçek `UnitOfWork()`'ün DB'ye
+bağlanmaya çalışmasıydı. 9 test `UnitOfWork.__aenter__`/`__aexit__`
+patch'lenecek şekilde güncellendi (commit `784e30d`), lokal olarak 476
+test/4 skip/0 fail doğrulandı.
+
+**Ayrı bulgu — kapsam dışı bırakılan gerçek bug**: aynı dosyada
+`train_general_model` de `self.sefer_repo.get_all_for_training(...)`
+çağırıyor (AYNI session'sız-singleton sınıfı) AMA bu metot
+`SeferRepository`'de **hiç tanımlı değil** — `get_all_for_training`
+kod tabanında sıfır tanım, sıfır başka çağıran. Bu fonksiyon hiçbir HTTP
+endpoint'inden tetiklenmiyor (yalnız muhtemelen bir Celery scheduled
+task'tan — doğrulanmadı), bu yüzden Wave2 pilotunun CI'ını etkilemiyor.
+Kapsamlı bir düzeltme (repository'ye yeni metot eklemek) bu pilotun
+kapsamı dışında bırakıldı — ayrı bir bug-fix görevi olarak açık.

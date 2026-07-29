@@ -560,12 +560,17 @@ bağlanmaya çalışmasıydı. 9 test `UnitOfWork.__aenter__`/`__aexit__`
 patch'lenecek şekilde güncellendi (commit `784e30d`), lokal olarak 476
 test/4 skip/0 fail doğrulandı.
 
-**Ayrı bulgu — kapsam dışı bırakılan gerçek bug**: aynı dosyada
-`train_general_model` de `self.sefer_repo.get_all_for_training(...)`
-çağırıyor (AYNI session'sız-singleton sınıfı) AMA bu metot
-`SeferRepository`'de **hiç tanımlı değil** — `get_all_for_training`
-kod tabanında sıfır tanım, sıfır başka çağıran. Bu fonksiyon hiçbir HTTP
-endpoint'inden tetiklenmiyor (yalnız muhtemelen bir Celery scheduled
-task'tan — doğrulanmadı), bu yüzden Wave2 pilotunun CI'ını etkilemiyor.
-Kapsamlı bir düzeltme (repository'ye yeni metot eklemek) bu pilotun
-kapsamı dışında bırakıldı — ayrı bir bug-fix görevi olarak açık.
+**Ayrı bulgu — SONRADAN DÜZELTİLDİ (kullanıcı "2 bug niye düzeltilmedi"
+diye sorunca, 2026-07-29)**: aynı dosyada `train_general_model` de
+`self.sefer_repo.get_all_for_training(...)` çağırıyordu (AYNI
+session'sız-singleton sınıfı) AMA bu metot `SeferRepository`'de **hiç
+tanımlı değildi** — `get_all_for_training` kod tabanında sıfır tanım,
+sıfır başka çağıran. İlk turda "hiçbir HTTP endpoint'ten tetiklenmiyor,
+Wave2 kapsamı dışı" gerekçesiyle atlanmıştı — bu gerekçe kullanıcının
+"önce hatayı düzelt" kuralına göre YETERSİZDİ, geri bildirim üzerine tam
+düzeltildi (commit `eb99d66`): `SeferRepository.get_all_for_training()`
+gerçekten eklendi (`get_for_training` ile aynı JOIN deseni, arac_id
+filtresi olmadan + `araclar.tank_kapasitesi` JOIN'i — vehicle-class
+bucketing için gerekli), `train_general_model` de `train_for_vehicle`
+gibi kendi `UnitOfWork`'ünü açacak şekilde düzeltildi, 3 ek unit testi
+güncellendi + yeni repository metodu için 1 kontrol testi eklendi.

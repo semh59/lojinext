@@ -700,3 +700,32 @@ sıfır permission-denied. Ayrıca `test_business_lifecycle.py` +
 tekrar koşuldu (5 passed) — reports pilotunun role-leak fix'inin
 notification'ı da etkilemediği doğrulandı. notification-özel unit/api
 testleri (50 passed). Migration: yok.
+
+### Auth_rbac pilot bulgusu (2026-07-29) — grant açığı SIFIR, tek turda tamamlandı
+
+`auth_rbac`'ın 6 router'ına (`auth`/`admin_roles`/`admin_users`/
+`preferences`/`users`/`ws_ticket`) wiring eklendi. Bu modül FAZ2'nin
+matrisinde ÖZEL bir konumda: `kullanicilar` sistemin en büyük FK
+mıknatısı (~28 inbound çapraz-şema kenar — audit-actor kolonları) ama bu
+YÖN TERSİ (diğer modüller auth_rbac'ı okuyor, auth_rbac onları değil) —
+`role_grants.py`'nin evrensel-ekleme döngüsü zaten `m_auth_rbac`'ı hariç
+tutuyor (kendi şemasına zaten `ALL` sahip, `auth_rbac`'a kendi kendini
+eklemesine gerek yok).
+
+3-adım denetim: `public.py` import grep'i auth_rbac'ın TEK bir dış çağrısı
+olduğunu gösterdi — `auth_routes.py::request_password_reset` →
+`notification.public.send_password_reset`; kaynağı okundu
+(`infrastructure/email_client.py`), SAF SMTP gönderimi, hiç DB dokunuşu
+yok. `events.py` boş (`__all__ = []`, auth_rbac hiçbir event yayınlamıyor/
+dinlemiyor — taşımadan önce de böyleydi).
+
+**Sonuç: `role_grants.py`'de YENİ bir grant/migration gerekmedi** — auth_rbac
+zaten kendi şemasına `ALL` sahip, tek dış çağrısı DB'siz.
+
+**Doğrulama (gerçek HTTP, admin token, tüm 6 router)**: `GET /admin/roles/`,
+`GET /admin/users/`, `GET /users/me`, `GET /preferences/dashboard`,
+`POST /ws/ticket` — hepsi 200, sıfır permission-denied (login endpoint'inin
+kendisi zaten test akışının başında dolaylı doğrulandı — token alma her
+zaman başarılı oldu). `test_business_lifecycle.py` gerçek Postgres 16'ya
+karşı tekrar koşuldu (1 passed). auth_rbac-özel unit/api testleri
+(27 passed). Migration: yok.

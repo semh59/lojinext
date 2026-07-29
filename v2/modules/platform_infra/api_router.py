@@ -120,6 +120,7 @@ _anomaly_role_dep = [Depends(require_module_role("anomaly"))]
 _reports_role_dep = [Depends(require_module_role("reports"))]
 _prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
 _notification_role_dep = [Depends(require_module_role("notification"))]
+_auth_rbac_role_dep = [Depends(require_module_role("auth_rbac"))]
 
 api_router = APIRouter()
 api_router.include_router(
@@ -143,7 +144,12 @@ api_router.include_router(
     tags=["weather"],
     dependencies=_route_sim_role_dep,
 )
-api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(
+    auth_router,
+    prefix="/auth",
+    tags=["auth"],
+    dependencies=_auth_rbac_role_dep,
+)
 api_router.include_router(
     admin_config_router, prefix="/admin/config", tags=["admin-config"]
 )
@@ -153,10 +159,16 @@ api_router.include_router(
     tags=["admin-integrations"],
 )
 api_router.include_router(
-    admin_roles_router, prefix="/admin/roles", tags=["admin-roles"]
+    admin_roles_router,
+    prefix="/admin/roles",
+    tags=["admin-roles"],
+    dependencies=_auth_rbac_role_dep,
 )
 api_router.include_router(
-    admin_users_router, prefix="/admin/users", tags=["admin-users"]
+    admin_users_router,
+    prefix="/admin/users",
+    tags=["admin-users"],
+    dependencies=_auth_rbac_role_dep,
 )
 api_router.include_router(
     vehicle_router, prefix="/vehicles", tags=["vehicles"], dependencies=_fleet_role_dep
@@ -233,7 +245,12 @@ api_router.include_router(
 )
 api_router.include_router(health_router, prefix="/health", tags=["health"])
 api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
-api_router.include_router(ws_ticket_router, prefix="/ws", tags=["websocket"])
+api_router.include_router(
+    ws_ticket_router,
+    prefix="/ws",
+    tags=["websocket"],
+    dependencies=_auth_rbac_role_dep,
+)
 api_router.include_router(admin_ws_router, prefix="/admin/ws", tags=["admin-ws"])
 api_router.include_router(
     notification_live_ws_router,
@@ -311,9 +328,17 @@ api_router.include_router(
     trailer_router, prefix="/trailers", tags=["trailers"], dependencies=_fleet_role_dep
 )
 api_router.include_router(
-    preferences_router, prefix="/preferences", tags=["preferences"]
+    preferences_router,
+    prefix="/preferences",
+    tags=["preferences"],
+    dependencies=_auth_rbac_role_dep,
 )
-api_router.include_router(users_router, prefix="/users", tags=["users"])
+api_router.include_router(
+    users_router,
+    prefix="/users",
+    tags=["users"],
+    dependencies=_auth_rbac_role_dep,
+)
 api_router.include_router(system_router, prefix="/system", tags=["system"])
 api_router.include_router(
     today_triage_router,

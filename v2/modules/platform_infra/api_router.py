@@ -114,10 +114,16 @@ _trip_role_dep = [Depends(require_module_role("trip"))]
 _fleet_role_dep = [Depends(require_module_role("fleet"))]
 _driver_role_dep = [Depends(require_module_role("driver"))]
 _fuel_role_dep = [Depends(require_module_role("fuel"))]
+_location_role_dep = [Depends(require_module_role("location"))]
 
 api_router = APIRouter()
 api_router.include_router(route_router, prefix="/routes", tags=["routes"])
-api_router.include_router(location_router, prefix="/locations", tags=["locations"])
+api_router.include_router(
+    location_router,
+    prefix="/locations",
+    tags=["locations"],
+    dependencies=_location_role_dep,
+)
 api_router.include_router(
     maintenance_router,
     prefix="/maintenance",

@@ -208,7 +208,8 @@ dosyanın session-oluşturma şeklini değiştirmeye gerek yok.
 - [x] `fleet` modülünün 4 router'ı (`vehicle_router`/`maintenance_router`/`admin_maintenance_router`/`trailer_router`) `dependencies=[Depends(require_module_role("fleet"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fleet pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /vehicles/` → 201, `DELETE /vehicles/{id}` → 200, `admin_audit_log`'a her iki işlem de yazıldı)
 - [x] `driver` modülünün 2 router'ı (`driver_router`/`coaching_router`) `dependencies=[Depends(require_module_role("driver"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "driver pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /drivers/` → 201, `GET /drivers/{id}/score-breakdown` → 200, `GET /coaching/{id}/insights` → 200, `DELETE /drivers/{id}` → 200)
 - [x] `fuel` modülünün 2 router'ı (`fuel_router`/`admin_fuel_accuracy`) `dependencies=[Depends(require_module_role("fuel"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "fuel pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /fuel/` → 201, `GET /fuel/stats` → 200, `GET /admin/fuel-accuracy` → 200, `DELETE /fuel/{id}` → 200) — **sıfır yeni grant açığı bulundu**, mevcut `m_fuel: ["fleet","trip"]` zaten yeterliydi (trip/fleet pilotlarında önceden düzeltilmişti)
-- [ ] Diğer 10 modülün routerları — kalan 10 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
+- [x] `location` modülünün router'ı `dependencies=[Depends(require_module_role("location"))]` alıyor — **PİLOT TAMAMLANDI VE MAIN'E ALINDI** (bkz. aşağıdaki "location pilot bulgusu"), gerçek backend + Postgres 16 + gerçek HTTP isteğiyle uçtan uca doğrulandı (`POST /locations/` → 201, `GET /locations/stats` → 200, `GET /locations/geocode` → 200 gerçek Nominatim çağrısıyla, `DELETE /locations/{id}` → 200) — **sıfır yeni grant açığı bulundu** (location'ın kendi tablosu dışında raw-SQL cross-schema erişimi yok, route_simulation/prediction_ml/admin_platform bağımlılıkları hep `public.py` fonksiyon çağrısı üzerinden)
+- [ ] Diğer 9 modülün routerları — kalan 9 modül aynı desenle (`dependencies=[Depends(require_module_role("<modül>"))]`) tek tek bağlanacak, her biri kendi pilot doğrulamasından geçmeli
 - [ ] `celery_app.py`'nin `task_prerun`/`task_postrun` sinyali görev adından modül rolü çıkarıyor
 - [ ] 16 m_ops script'i `open_role_scoped_session("m_ops")` kullanıyor
 - [x] Bilinçli rol ihlali testi (yanlış modülden yazma denemesi) `permission denied` üretiyor (`test_role_isolation_enforcement.py`) — 6 test, gerçek Postgres 16'ya karşı doğrulandı
@@ -363,3 +364,15 @@ pilotun (trip/fleet/driver) READER_SELECT_GRANTS matrisindeki gerçek
 açıkları önceden temizlediğinin bir kanıtı — kalan modüller için
 beklenen model artık "her pilotta mutlaka yeni bug bulunur" değil, "bazı
 modüller zaten temiz çıkabilir".
+
+### Location pilot bulgusu (2026-07-29) — location'ın api_router.py wiring'i TAMAMLANDI, sıfır yeni bug
+
+`location`'ın tek router'ına `dependencies=[Depends(require_module_role
+("location"))]` eklenip gerçek bir backend + Postgres 16 + gerçek HTTP
+isteğiyle (`POST /locations/`, `GET /locations/stats`, `GET /locations/
+geocode` — gerçek Nominatim çağrısı dahil, `DELETE /locations/{id}`) uçtan
+uca test edildi. **Sıfır yeni grant açığı** — location'ın kendi
+`lokasyonlar` şeması dışında hiçbir raw-SQL cross-schema erişimi yok
+(route_simulation/prediction_ml/admin_platform bağımlılıkları hep
+`public.py` fonksiyon çağrısı üzerinden, kendi transaction/session'larını
+açıyorlar). Migration gerekmedi.

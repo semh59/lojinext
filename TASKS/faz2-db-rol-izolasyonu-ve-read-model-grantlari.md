@@ -574,3 +574,48 @@ filtresi olmadan + `araclar.tank_kapasitesi` JOIN'i — vehicle-class
 bucketing için gerekli), `train_general_model` de `train_for_vehicle`
 gibi kendi `UnitOfWork`'ünü açacak şekilde düzeltildi, 3 ek unit testi
 güncellendi + yeni repository metodu için 1 kontrol testi eklendi.
+
+### Reports pilot bulgusu (2026-07-29) — grant açığı SIFIR, tek turda tamamlandı
+
+`reports`'un 7 router'ına (`reports`/`advanced_reports`/`page_view`/
+`page_view_admin`/`today_triage`/`fleet_insights`/`reports_studio`) wiring
+eklenmeden ÖNCE kapsamlı 3-adım denetim yapıldı: `public.py` import grep'i,
+çağrılan `AnalizRepository`/`analyze_costs.py`/trip-repo metotlarının
+kaynak kodu satır satır okundu, `events.py` kontrol edildi (read-only,
+event yayınlamıyor).
+
+**Sonuç: `role_grants.py`'de YENİ bir grant/migration gerekmedi.** Mevcut
+`m_reports: ["trip", "fleet", "driver", "fuel", "anomaly"]` girdisi
+(+otomatik eklenen `auth_rbac`), reports'un dokunduğu TÜM çapraz-şema
+erişimini zaten kapsıyordu:
+
+- `aggregate_today_triage`: `anomalies`+`fuel_investigations` (anomaly),
+  `seferler`+`araclar` (trip/fleet, `MaintenancePredictor` üzerinden).
+- `compute_fleet_comparison`: `seferler` (trip), `anomalies` (anomaly).
+- `get_dashboard_counters`: `araclar` (fleet), `soforler` (driver),
+  `seferler` (trip), `analiz_repo.get_month_over_month_trends` (trip-only).
+- `get_consumption_trend`: `yakit_alimlari` (fuel).
+- `analyze_costs.py` (`calculate_period_cost`/`get_monthly_trend`/vb.,
+  reports'un kendi `UnitOfWork()`'ü üzerinden — rol task-local olduğu için
+  bu yeni UoW da `m_reports` altında çalışıyor): `yakit_alimlari` (fuel),
+  `seferler` (trip), `araclar` (fleet).
+- `AnalizRepository`'nin `location` şemasına dokunan TEK metodu
+  (`get_training_seferler`) reports tarafından hiç çağrılmıyor — bu yüzden
+  `m_analytics_executive`'in aksine `m_reports`'a `location` eklenmedi.
+
+**Doğrulama (gerçek HTTP, admin token, tüm 7 router)**:
+`GET /reports/dashboard`, `GET /reports/consumption-trend`,
+`GET /reports/today/triage`, `GET /reports/insights/fleet/comparison`,
+`GET /reports/studio/templates`, `GET /admin/analytics/page-views`,
+`GET /advanced-reports/cost/period`, `POST /analytics/page-view` —
+hepsi 200/204, sıfır permission-denied.
+
+**Yan not — pre-existing bug DEĞİL, operasyonel gotcha**: reset sırasında
+`/reports/dashboard` (503) ve `/admin/analytics/page-views` (500)
+`UndefinedTableError: relation "seferler"/"page_views" does not exist`
+ile patladı — kök neden PgBouncer'ın, DB şema resetinden ÖNCE açılmış
+fiziksel bağlantılarının eski (kısa) `search_path`'i taşıması. PgBouncer
+restart edilince (`ALTER ROLE lojinext_user SET search_path=...` yeni
+fiziksel bağlantılarda doğru uygulandı) her iki endpoint de 200'e döndü —
+kodda bir hata yoktu, tamamen benim manuel DB reset prosedürümün yan
+etkisiydi. Migration: yok (grant değişikliği olmadığı için gerekmedi).

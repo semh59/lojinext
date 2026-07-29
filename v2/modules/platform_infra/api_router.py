@@ -117,6 +117,7 @@ _fuel_role_dep = [Depends(require_module_role("fuel"))]
 _location_role_dep = [Depends(require_module_role("location"))]
 _route_sim_role_dep = [Depends(require_module_role("route_simulation"))]
 _anomaly_role_dep = [Depends(require_module_role("anomaly"))]
+_reports_role_dep = [Depends(require_module_role("reports"))]
 _prediction_ml_role_dep = [Depends(require_module_role("prediction_ml"))]
 
 api_router = APIRouter()
@@ -195,7 +196,12 @@ api_router.include_router(
     tags=["predictions"],
     dependencies=_prediction_ml_role_dep,
 )
-api_router.include_router(reports_router, prefix="/reports", tags=["reports"])
+api_router.include_router(
+    reports_router,
+    prefix="/reports",
+    tags=["reports"],
+    dependencies=_reports_role_dep,
+)
 api_router.include_router(feedback_router, prefix="/feedback", tags=["feedback"])
 api_router.include_router(
     executive_router, prefix="/reports/executive", tags=["executive"]
@@ -219,7 +225,10 @@ api_router.include_router(
     dependencies=_anomaly_role_dep,
 )
 api_router.include_router(
-    advanced_reports_router, prefix="/advanced-reports", tags=["advanced-reports"]
+    advanced_reports_router,
+    prefix="/advanced-reports",
+    tags=["advanced-reports"],
+    dependencies=_reports_role_dep,
 )
 api_router.include_router(health_router, prefix="/health", tags=["health"])
 api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
@@ -267,9 +276,17 @@ api_router.include_router(
     tags=["admin-predictions"],
     dependencies=_prediction_ml_role_dep,
 )
-api_router.include_router(page_view_router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(
-    page_view_admin_router, prefix="/admin", tags=["admin-analytics"]
+    page_view_router,
+    prefix="/analytics",
+    tags=["analytics"],
+    dependencies=_reports_role_dep,
+)
+api_router.include_router(
+    page_view_admin_router,
+    prefix="/admin",
+    tags=["admin-analytics"],
+    dependencies=_reports_role_dep,
 )
 api_router.include_router(
     admin_maintenance_router,
@@ -294,17 +311,22 @@ api_router.include_router(
 api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(system_router, prefix="/system", tags=["system"])
 api_router.include_router(
-    today_triage_router, prefix="/reports/today", tags=["reports-v2"]
+    today_triage_router,
+    prefix="/reports/today",
+    tags=["reports-v2"],
+    dependencies=_reports_role_dep,
 )
 api_router.include_router(
     fleet_insights_router,
     prefix="/reports/insights/fleet",
     tags=["reports-v2"],
+    dependencies=_reports_role_dep,
 )
 api_router.include_router(
     reports_studio_router,
     prefix="/reports/studio",
     tags=["reports-v2"],
+    dependencies=_reports_role_dep,
 )
 api_router.include_router(push_router, prefix="/push", tags=["push"])
 api_router.include_router(error_stream_router, prefix="/system", tags=["monitoring"])

@@ -81,6 +81,7 @@ ignore_imports =
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
+    v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.application.**
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
@@ -164,6 +165,7 @@ ignore_imports =
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
+    v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.application.**
     v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**

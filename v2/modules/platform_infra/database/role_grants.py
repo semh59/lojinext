@@ -135,7 +135,26 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # added anyway for consistency with every other module hitting this
     # exact table.
     "m_fleet": ["trip"],  # already documented in fleet/CLAUDE.md
-    "m_fuel": ["fleet", "trip"],  # was undocumented anywhere before
+    # platform: found live (2026-07-30, real CI hard-gates failure on the
+    # FAZ2 Celery/m_ops wiring push) -- infrastructure/tasks.py's
+    # monitoring.fuel_coverage_check beat task (now correctly role-scoped
+    # to m_fuel by the Celery task_prerun/task_postrun wiring) calls
+    # admin_platform.public.get_runtime_float("FUEL_COVERAGE_ALERT_
+    # THRESHOLD_PCT", ...), which reads SistemKonfig -- despite living in
+    # admin_platform/infrastructure/models.py, `SistemKonfig.__table_args__
+    # = {"schema": "platform"}` puts the actual table in the "platform"
+    # schema (distinct from the "admin_platform" schema that
+    # entegrasyon_ayarlari lives in -- a different table, granted
+    # separately for m_location/m_route_simulation/m_anomaly/
+    # m_prediction_ml/m_ai_assistant). get_runtime_float falls back to the
+    # hardcoded 50% default on any DB error, so the task never crashed --
+    # but it silently ignored the admin-configured threshold, and a
+    # repeated "permission denied for table sistem_konfig" error was
+    # logged on every single run (found via the CI Postgres log, not a
+    # test failure; first attempt at this fix wrongly granted
+    # "admin_platform" instead of "platform" -- caught by re-verifying
+    # live against the dev DB before committing).
+    "m_fuel": ["fleet", "trip", "platform"],  # was undocumented anywhere before
     "m_driver": ["trip", "fleet", "anomaly"],  # trip already documented in
     # driver/CLAUDE.md; fleet+anomaly found live (FAZ2 Wave 2 driver pilot,
     # 2026-07-29) — anomaly_repository.py's get_anomalies() query (used by
@@ -242,6 +261,23 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # combined coverage dropped 92%->91% from the unreached success-path
     # branches.
     "m_import_excel": ["fleet", "driver", "trip", "location", "fuel"],
+    # Real CI hard-gates failure (2026-07-30), same push as m_fuel's
+    # admin_platform fix above -- m_notification previously had ZERO reader
+    # grants at all (only the universal auth_rbac addition every role
+    # gets). notifications.weekly_digest (Celery beat task, correctly
+    # role-scoped to m_notification by the Celery wiring) calls
+    # reports.public.aggregate_today_triage(), which raw-SQLs anomaly.
+    # anomalies (LEFT JOIN'd with trip.seferler + fleet.araclar to resolve
+    # a plaka), fuel.fuel_investigations (same join pattern), and a
+    # trip.seferler counter query, PLUS calls fleet.public.
+    # MaintenancePredictor().predict_all() (fleet.araclar + fleet.
+    # arac_bakimlari). Every one of those try/except-wrapped sub-fetches
+    # inside aggregate_today_triage silently logged a warning and
+    # continued (by design, so one broken data source doesn't blank the
+    # whole digest) -- so weekly_digest never raised, but permission
+    # denied on araclar/anomalies/seferler/fuel_investigations fired on
+    # every single run (found via the CI Postgres log).
+    "m_notification": ["fleet", "trip", "anomaly", "fuel"],
 }
 
 # FAZ2 Wave 2 pilot (2026-07-28): found live, AFTER fixing the m_trip entry

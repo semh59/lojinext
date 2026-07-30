@@ -4,12 +4,23 @@ high-priority + telegram_id + COACHING_ENABLED path.
 
 0-mock (Dilim 33): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
+
+2026-07-30: _send_high_priority_to_telegram's success/failure-path tests
+converted to real HTTP against api_stub (`settings.TELEGRAM_API_BASE_URL`
+-> Real Telegram Bot API, already stubbed at `/bot{token}/sendMessage` --
+found live while triaging the 0-mock epic's remaining backend mock files).
+The 2 content-inspection tests (does the escaped/omitted text end up in
+the outbound payload) stay mocked -- the function only returns a bool, so
+asserting on exact outbound text needs request interception either way;
+api_stub's stateless echo response can't be read back through this
+function's own return value.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.config import settings
 from v2.modules.driver.infrastructure.coaching_tasks import (
     _run_digest,
     _run_evaluate_pending,
@@ -32,68 +43,34 @@ def _uow_ctx(mock_uow):
 
 
 @pytest.mark.asyncio
-async def test_send_telegram_no_token():
+async def test_send_telegram_no_token(monkeypatch):
     """No bot token → returns False immediately."""
-    with patch(
-        "v2.modules.driver.infrastructure.coaching_tasks.settings"
-    ) as mock_settings:
-        mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = ""
-        result = await _send_high_priority_to_telegram("123", "headline", "suggestion")
+    monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "")
+    result = await _send_high_priority_to_telegram("123", "headline", "suggestion")
     assert result is False
 
 
 @pytest.mark.asyncio
-async def test_send_telegram_success():
-    """Successful HTTP call → returns True."""
+async def test_send_telegram_success(monkeypatch):
+    """Successful HTTP call (real request against api_stub) → returns True."""
+    monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+    monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
-    with patch(
-        "v2.modules.driver.infrastructure.coaching_tasks.settings"
-    ) as mock_settings:
-        mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
-
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status = MagicMock()
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(return_value=mock_resp)
-
-        with patch(
-            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
-            return_value=mock_client,
-        ):
-            result = await _send_high_priority_to_telegram(
-                "987654", "Test headline", "Use cruise control"
-            )
+    result = await _send_high_priority_to_telegram(
+        "987654", "Test headline", "Use cruise control"
+    )
 
     assert result is True
-    mock_client.post.assert_called_once()
-    call_kwargs = mock_client.post.call_args[1]["json"]
-    assert call_kwargs["chat_id"] == "987654"
-    assert "HTML" == call_kwargs["parse_mode"]
 
 
 @pytest.mark.asyncio
-async def test_send_telegram_http_error_returns_false():
-    """HTTP error → returns False, does not raise."""
-    import httpx
+async def test_send_telegram_http_error_returns_false(monkeypatch):
+    """Provider error (api_stub's SIMULATE_ERROR token sentinel, real 500
+    response) → returns False, does not raise."""
+    monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "SIMULATE_ERROR")
+    monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
-    with patch(
-        "v2.modules.driver.infrastructure.coaching_tasks.settings"
-    ) as mock_settings:
-        mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "fake-token"
-
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock(return_value=False)
-        mock_client.post = AsyncMock(side_effect=httpx.HTTPError("connection refused"))
-
-        with patch(
-            "v2.modules.driver.infrastructure.coaching_tasks.httpx.AsyncClient",
-            return_value=mock_client,
-        ):
-            result = await _send_high_priority_to_telegram("123", "Headline", None)
+    result = await _send_high_priority_to_telegram("123", "Headline", None)
 
     assert result is False
 

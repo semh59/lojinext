@@ -328,10 +328,16 @@ class TestMaybeBroadcastAlarm:
             await _maybe_broadcast_alarm(1, clf, anomaly, db)
         # No exception raised
 
-    async def test_telegram_http_error_logs_and_audits(self):
-        """When Telegram HTTP fails, error is logged and audit attempted."""
-        import httpx
+    async def test_telegram_http_error_logs_and_audits(self, monkeypatch):
+        """When Telegram HTTP fails, error is logged and audit attempted.
 
+        0-mock (2026-07-30): real HTTP against api_stub instead of mocking
+        httpx.AsyncClient -- api_stub's SIMULATE_ERROR token sentinel
+        (api_stub/main.py's telegram_send_message) gives a real 500
+        response, same technique used in test_coaching_tasks_more.py/
+        test_coaching_coverage.py.
+        """
+        from app.config import settings
         from v2.modules.anomaly.api.investigation_routes import _maybe_broadcast_alarm
         from v2.modules.anomaly.schemas import TheftClassification
 
@@ -355,34 +361,18 @@ class TestMaybeBroadcastAlarm:
         result.mappings.return_value = mapping
         db.execute = AsyncMock(return_value=result)
 
-        mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-            "400 Bad Request",
-            request=MagicMock(),
-            response=MagicMock(),
-        )
+        monkeypatch.setattr(settings, "THEFT_ALARM_ENABLED", True)
+        monkeypatch.setattr(settings, "THEFT_INVESTIGATION_ENABLED", True)
+        monkeypatch.setattr(settings, "TELEGRAM_OPS_BOT_TOKEN", "SIMULATE_ERROR")
+        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "SIMULATE_ERROR")
+        monkeypatch.setattr(settings, "TELEGRAM_OPS_CHAT_ID", "-100123456")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         with patch(
-            "v2.modules.anomaly.api.investigation_routes.settings"
-        ) as mock_settings:
-            mock_settings.THEFT_ALARM_ENABLED = True
-            mock_settings.THEFT_INVESTIGATION_ENABLED = True
-            mock_settings.TELEGRAM_OPS_BOT_TOKEN = "bot:token"
-            mock_settings.TELEGRAM_DRIVER_BOT_TOKEN = "bot:token"
-            mock_settings.TELEGRAM_OPS_CHAT_ID = "-100123456"
-
-            with patch("httpx.AsyncClient") as mock_client_cls:
-                mock_client = AsyncMock()
-                mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-                mock_client.__aexit__ = AsyncMock(return_value=False)
-                mock_client.post = AsyncMock(return_value=mock_response)
-                mock_client_cls.return_value = mock_client
-
-                with patch(
-                    "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
-                    new=AsyncMock(),
-                ):
-                    await _maybe_broadcast_alarm(1, clf, anomaly, db)
+            "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
+            new=AsyncMock(),
+        ):
+            await _maybe_broadcast_alarm(1, clf, anomaly, db)
         # Should not raise
 
 

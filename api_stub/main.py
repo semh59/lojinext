@@ -443,13 +443,20 @@ async def open_meteo_forecast(request: Request):
 
 # ---------------------------------------------------------------------------
 # Telegram Bot API — TELEGRAM_API_BASE_URL = "{host}"; client appends
-# "/bot{token}/sendMessage".
+# "/bot{token}/sendMessage". Sentinel: token="SIMULATE_ERROR" -> provider
+# error (the caller builds this URL by string-concatenating the token onto
+# TELEGRAM_API_BASE_URL, so a query-string simulate= param can't be
+# injected via settings alone the way it can for endpoints the client GETs
+# base_url directly for -- same sentinel technique as the forecast
+# latitude=999 case above, applied to the token instead of a coordinate).
 # ---------------------------------------------------------------------------
 @app.post("/bot{token}/sendMessage")
 async def telegram_send_message(token: str, request: Request):
     sim = await _maybe_simulate(request)
     if sim is not None:
         return sim
+    if token == "SIMULATE_ERROR":
+        return JSONResponse(status_code=500, content={"ok": False, "error_code": 500})
 
     body = await request.json()
     return JSONResponse(

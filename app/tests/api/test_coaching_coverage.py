@@ -429,7 +429,10 @@ class TestSendCoaching:
             assert exc.value.status_code == 503
 
     async def test_returns_502_on_telegram_http_error(self, monkeypatch):
-        import httpx
+        """0-mock (2026-07-30): real HTTP against api_stub instead of
+        mocking httpx.AsyncClient -- api_stub's SIMULATE_ERROR token
+        sentinel (see api_stub/main.py's telegram_send_message) gives a
+        real 500 response, same technique used in test_coaching_tasks_more.py."""
         from fastapi import HTTPException
 
         from app.config import settings
@@ -437,71 +440,49 @@ class TestSendCoaching:
         from v2.modules.driver.schemas import SendCoachingRequest
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
-        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "SIMULATE_ERROR")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
         mock_sofor = _make_sofor_dict(sofor_id=2, telegram_id="987654321")
         payload = SendCoachingRequest(message="Bu mesaj yeterince uzun olmalı!")
         admin = _make_admin(admin_id=1)
 
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
-                "Bad", request=MagicMock(), response=MagicMock()
-            )
-        )
-
         with (
             patch(f"{ROUTES}.get_by_id", AsyncMock(return_value=mock_sofor)),
-            patch("httpx.AsyncClient") as mock_client_cls,
+            patch(f"{ROUTES}.log_audit_event", new=AsyncMock()),
         ):
-            mock_client_ctx = AsyncMock()
-            mock_client_cls.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_ctx
-            )
-            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-            mock_client_ctx.post = AsyncMock(return_value=mock_response)
-
-            with patch(f"{ROUTES}.log_audit_event", new=AsyncMock()):
-                with pytest.raises(HTTPException) as exc:
-                    await send_coaching(
-                        sofor_id=2, payload=payload, current_admin=admin
-                    )
+            with pytest.raises(HTTPException) as exc:
+                await send_coaching(sofor_id=2, payload=payload, current_admin=admin)
         assert exc.value.status_code == 502
 
     async def test_send_success_returns_response(
         self, monkeypatch, async_client, admin_auth_headers, db_session
     ):
+        """0-mock (2026-07-30): real HTTP against api_stub's /bot{token}/
+        sendMessage stub instead of mocking httpx.AsyncClient."""
         from app.config import settings
         from v2.modules.driver.public import Sofor
 
         monkeypatch.setattr(settings, "COACHING_ENABLED", True)
         monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         sofor = Sofor(ad_soyad="Koç Test Şoförü Slice14", telegram_id="999111222")
         db_session.add(sofor)
         await db_session.flush()
 
-        mock_response = MagicMock()
-        mock_response.raise_for_status = MagicMock()
-
-        with patch("httpx.AsyncClient") as mock_client_cls:
-            mock_client_ctx = AsyncMock()
-            mock_client_cls.return_value.__aenter__ = AsyncMock(
-                return_value=mock_client_ctx
+        with (
+            patch(f"{ROUTES}.log_audit_event", new=AsyncMock()),
+            patch(
+                "v2.modules.driver.application.record_coaching_delivery"
+                ".get_score_breakdown_sofor",
+                new=AsyncMock(return_value={"total": 75.0}),
+            ),
+        ):
+            resp = await async_client.post(
+                f"/api/v1/coaching/{sofor.id}/send",
+                json={"message": "Bu mesaj yeterince uzun olmalı!"},
+                headers=admin_auth_headers,
             )
-            mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
-            mock_client_ctx.post = AsyncMock(return_value=mock_response)
-
-            with patch(f"{ROUTES}.log_audit_event", new=AsyncMock()):
-                with patch(
-                    "v2.modules.driver.application.record_coaching_delivery"
-                    ".get_score_breakdown_sofor",
-                    new=AsyncMock(return_value={"total": 75.0}),
-                ):
-                    resp = await async_client.post(
-                        f"/api/v1/coaching/{sofor.id}/send",
-                        json={"message": "Bu mesaj yeterince uzun olmalı!"},
-                        headers=admin_auth_headers,
-                    )
 
         assert resp.status_code == 200
         data = resp.json()

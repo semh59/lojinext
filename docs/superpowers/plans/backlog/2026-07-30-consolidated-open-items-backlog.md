@@ -24,24 +24,97 @@ alındı, bazıları bilinçli olarak ertelenmiş durumda bırakıldı.
 
 ## Backlog'a alınanlar
 
-### 1. Segment-tractive fizik modeli — flag flip kararı bekliyor
+### 1. Segment-tractive fizik modeli — canlı p51 koşuldu, flip YAPILMADI, kalibrasyon işi ayrıldı (2026-07-30)
 
-`app/config.py:247` — `USE_SEGMENT_TRACTIVE_MODEL: bool = False`
-(doğrulandı, 2026-07-30 itibarıyla hem dev hem prod compose dosyalarında
-hiç set edilmemiş, hâlâ kapalı). Son gerçek dokunuş `2026-06-14`
-(offline validasyon, Open-Meteo kotasından bağımsız depolanmış geometri
-ile koşul-nötr **9/10 GREEN**). O tarihten beri:
-- **Canlı p51 validasyonu** (`scripts/p51_real_world_validation.py`,
-  gerçek Mapbox+Open-Meteo çağrılarıyla) flag AÇIKKEN hiç tekrar
-  koşulmadı.
-- **ML ensemble retrain** flag'in etkilediği fizik-tabanlı feature'lar
-  için hiç yapılmadı.
+`app/config.py:247` — `USE_SEGMENT_TRACTIVE_MODEL: bool = False` (hâlâ
+kapalı, bilinçli karar). `scripts/p51_real_world_validation.py`'a env
+okuma desteği eklendi (`USE_SEGMENT_TRACTIVE_MODEL=true` ile canlı koşum
+artık mümkün, önceden script flag'e hiç dokunmuyordu).
 
-**Sıradaki adım**: flag'i `true` yapmadan önce (a) Open-Meteo günlük
-kotası müsaitken `P51_PACE_SECONDS=90` ile canlı p51'i flag=true ile
-koş, ≥8/10 GREEN'i doğrula; (b) sonucu kullanıcıya raporla, flip kararını
-onaylat; (c) onaylanırsa `docker-compose.prod.yml`'a env ekle + ML
-retrain'in gerekip gerekmediğine karar ver.
+**Canlı p51 koşuldu (2026-07-30, gerçek Mapbox+Open-Meteo, flag=true)**:
+✅ 7/10 GREEN, ⚠️ 3 YELLOW, ❌ 0 RED (Sanity 10/10 geçti). Karşılaştırma:
+
+| Koşum | GREEN | YELLOW | RED |
+|---|---|---|---|
+| 2026-06-14 offline (flag=true, depolanmış geometri) | 9/10 | 1 | 0 |
+| 2026-06-23 canlı (flag=false, mevcut varsayılan) | 8/10 | 1 | 1 |
+| 2026-07-30 canlı (flag=true) | 7/10 | 3 | 0 |
+
+**Karar (kullanıcı, 2026-07-30): flip YOK** — sonuç net bir iyileşme
+göstermiyor (RED sıfıra indi ama GREEN sayısı hem offline hem mevcut
+canlı-varsayılana göre düştü).
+
+**İlk kök-neden teorim YANLIŞTI, düzeltildi**: önce "eski toplu modelin
+iniş enerjisine %60-90 'gravity recovery' kredisi verip yeni segment-
+tractive modelin bunu kaldırdığı, kalibrasyonun eski modele göre kaldığı"
+teorisini yazmıştım (`predict_granular` vs `predict_segment_tractive`
+kod farkına bakarak). Bu, `scripts/calibrate_physics.py`'yi kontrol
+etmeden yapılmış hatalı bir çıkarımdı — o script'in kendi docstring'i
+mevcut `PHYSICS_DRAG_CDA_M2=6.80`/`PHYSICS_PARASITIC_KW=4.0` sabitlerinin
+ZATEN segment-tractive modelin kendisine göre (10 gerçek rotaya, gravity-
+recovery'siz) fit edildiğini ve 9/10 GREEN verdiğini gösteriyor —
+gravity-recovery farkı zaten hesaba katılmıştı.
+
+**Gerçek kök neden (doğrulandı)**: bu kalibrasyon `route_segments`
+tablosundaki DEPOLANMIŞ geometriye (2026-06-14 offline validasyonuyla
+aynı kaynak) göre yapılmıştı. Canlı p51 koşusu HER SEFERİNDE taze
+Mapbox+Open-Meteo çağrısıyla YENİ geometri üretip `route_simulations`/
+`route_segments`'e yazıyor (bugünün trafiği/hava durumu farklı rota
+karakteristikleri veriyor) — aynı fiziksel sabitler artık optimal
+düşmüyor. Bunu KANITLAMAK için `scripts/calibrate_physics.py`'yi
+(hiçbir ek API çağrısı gerektirmeden, sadece az önceki canlı koşumun
+DB'ye yazdığı taze geometriyle) yeniden çalıştırdım: yeni en-iyi-fit
+`Cd·A=5.3 m², parazit=11.5 kW` → **9/10 GREEN** (yalnız KON-AKS RED
+kaldı, -%11.3). Bu, "kalibrasyon zamanla drift ediyor, periyodik
+yeniden-fit gerekiyor" demek — modelin kendisinde bir kusur değil.
+
+**⚠️ Dikkat**: `Cd·A=5.3`, script'in kendi fiziksel bandının
+(`CDA_BAND=(5.3, 7.5)`) tam ALT SINIRINDA — tek bir günün trafik/hava
+anlık görüntüsüne aşırı-uyum (overfit) riski taşıyor, script'in kendi
+"OVERFIT GUARD" yorumunun işaret ettiği tam senaryo. Üretime almadan
+önce canlı p51'i bu yeni sabitlerle uçtan uca doğrulamadan (bkz.
+aşağıdaki durum) `config.py`'ye YAZILMADI.
+
+**Tek-günlük yeniden-kalibrasyon uçtan-uca doğrulandı (2026-07-30) — NET
+KAZANÇ DEĞİL, `config.py` DEĞİŞTİRİLMEDİ**: yeni sabitlerle (`Cd·A=5.3`,
+`parazit=11.5kW`) canlı p51'i tekrar koştum:
+
+| Koşum | GREEN | YELLOW | RED | Sanity |
+|---|---|---|---|---|
+| 2026-06-14 offline (flag=true, eski sabitler) | 9/10 | 1 | 0 | — |
+| 2026-06-23 canlı (flag=false, mevcut varsayılan) | 8/10 | 1 | 1 | — |
+| 2026-07-30 canlı (flag=true, eski sabitler) | 7/10 | 3 | 0 | 10/10 |
+| 2026-07-30 canlı (flag=true, yeni sabitler) | 8/10 | 1 | 1 | **8/10** |
+
+GREEN sayısı mevcut flag=false varsayılanıyla aynı (8/10) ama artık 2
+rotada "Tam" çıktı sanity sınırını (band×1.12) aşıyor (öncekinde hiç
+yoktu) ve VAL-KON-AKS YELLOW'dan RED'e geriledi. Bu, `Cd·A=5.3`'ün
+fiziksel bandın tam sınırında oturmasından kaynaklanan aşırı-uyum
+riskini doğruluyor — **kullanıcı kararıyla `config.py` değiştirilmedi**,
+flag=false + eski sabitler production'da kalıyor.
+
+**Ayrı iş olarak planlandı (kullanıcı kararı, 2026-07-30)**: tek-günlük
+fit'e güvenmeden **birden fazla günün** canlı geometri verisiyle
+(farklı trafik/hava koşulları) kalibrasyonu tekrarlamak ve ortalamasını
+almak — periyodik (haftalık?) bir "recalibration job" olarak
+otomatikleştirmek de düşünülebilir. Bu iş birden fazla günün Open-Meteo
+kotasını gerektirdiği için ayrı, kendi başına bir görev — bu backlog
+dalgasının kapsamı dışında bırakıldı.
+
+**Yan bulgu — 2 gerçek pre-existing bug** (`scripts/p51_real_world_
+validation.py`, canlı koşumlar sırasında bulunup düzeltildi):
+1. `get_or_create_driver` — `soforler.ad_soyad` PII-encrypted (`EncryptedPII`),
+   ham SQL `WHERE ad_soyad = :name` düz metni şifreli değerle
+   karşılaştırıyordu, hiç eşleşmiyordu → ikinci koşumda gerçek bir
+   `ValueError` ile patladı. `SoforRepository.get_by_name()` (doğru
+   blind-index karşılaştırması) kullanılacak şekilde düzeltildi.
+2. `get_or_create_location` — Python'un `str.title()`'ı Türkçe-duyarsız
+   ("Istanbul" → "Istanbul", noktasız I), ama `create_location()` gerçekte
+   `normalize_turkish_title()` ile saklıyor ("İstanbul", noktalı İ) — ham
+   SQL karşılaştırması hiç eşleşmiyordu, ikinci koşumda `create_location`'ın
+   kendi (doğru) tekrar-kontrolü gerçek bir `ValueError` fırlattı.
+   `LokasyonRepository.get_by_route()` (nokta/noktasız-i nötrleştirmesi
+   zaten yapıyor) kullanılacak şekilde düzeltildi.
 
 ### 2. 0-mock epiği — durumu belirsizdi, ölçüldü (2026-07-30)
 

@@ -249,18 +249,18 @@ async def get_or_create_vehicle(uow: UnitOfWork) -> int:
 
 
 async def get_or_create_driver(uow: UnitOfWork) -> int:
-    # repo'da get_by_ad_soyad yoksa raw SQL
-    from sqlalchemy import text
-
-    row = (
-        await uow.session.execute(
-            text("SELECT id FROM soforler WHERE ad_soyad = :name LIMIT 1"),
-            {"name": REFERENCE_DRIVER["ad_soyad"]},
-        )
-    ).first()
-    if row:
-        print(f"[setup] Driver exists id={row[0]}")
-        return int(row[0])
+    # ad_soyad is PII-encrypted at rest (EncryptedPII) -- a raw SQL exact
+    # match against the plaintext column would compare plaintext to
+    # ciphertext and never hit, always falling through to the INSERT path
+    # (found live, 2026-07-30: a second script run crashed on the repo's
+    # own duplicate-name ValueError, since add() correctly detects the
+    # existing row via the trigram/bidx index but this lookup never did).
+    # SoforRepository.get_by_name() already does the correct blind-index
+    # (ad_soyad_bidx) comparison -- use that instead.
+    existing = await uow.sofor_repo.get_by_name(REFERENCE_DRIVER["ad_soyad"])
+    if existing:
+        print(f"[setup] Driver exists id={existing['id']}")
+        return int(existing["id"])
 
     sofor_id = await uow.sofor_repo.add(
         ad_soyad=REFERENCE_DRIVER["ad_soyad"],
@@ -274,25 +274,26 @@ async def get_or_create_driver(uow: UnitOfWork) -> int:
 
 
 async def get_or_create_location(uow: UnitOfWork, route: Dict[str, Any]) -> int:
-    from sqlalchemy import text
-
-    # Title-case cikis/varis for duplicate check
-    cikis_norm = route["cikis_yeri"].strip().title()
-    varis_norm = route["varis_yeri"].strip().title()
-
-    row = (
-        await uow.session.execute(
-            text(
-                "SELECT id FROM lokasyonlar "
-                "WHERE cikis_yeri = :cikis AND varis_yeri = :varis "
-                "AND is_deleted = FALSE LIMIT 1"
-            ),
-            {"cikis": cikis_norm, "varis": varis_norm},
+    # create_location() normalizes cikis/varis through normalize_turkish_
+    # title() (proper Turkish-locale casing, e.g. "Istanbul" -> "İstanbul")
+    # before storing -- Python's plain str.title() (the previous version
+    # of this check) is locale-unaware and produces a byte-different
+    # ASCII "I" instead of the stored dotted "İ", so the raw-SQL exact
+    # match here always missed and fell through to create_location(),
+    # which correctly rejected the duplicate on a second script run
+    # (found live, 2026-07-30). LokasyonRepository.get_by_route() already
+    # does the same dotted/dotless-i-neutralizing comparison create_location
+    # relies on for its own duplicate check -- use that instead of
+    # reimplementing normalization here.
+    existing = await uow.lokasyon_repo.get_by_route(
+        route["cikis_yeri"], route["varis_yeri"]
+    )
+    if existing and existing.get("aktif"):
+        print(
+            f"[setup] Location exists id={existing['id']} "
+            f"{route['cikis_yeri']} -> {route['varis_yeri']}"
         )
-    ).first()
-    if row:
-        print(f"[setup] Location exists id={row[0]} {cikis_norm} -> {varis_norm}")
-        return int(row[0])
+        return int(existing["id"])
 
     payload = LokasyonCreate(
         ad=route["ad"],
@@ -306,7 +307,10 @@ async def get_or_create_location(uow: UnitOfWork, route: Dict[str, Any]) -> int:
         notlar=route["literature_note"],
     )
     lokasyon_id = await create_location(uow.lokasyon_repo, payload)
-    print(f"[setup] Location CREATED id={lokasyon_id} {cikis_norm} -> {varis_norm}")
+    print(
+        f"[setup] Location CREATED id={lokasyon_id} "
+        f"{route['cikis_yeri']} -> {route['varis_yeri']}"
+    )
     return lokasyon_id
 
 
@@ -442,6 +446,7 @@ def render_summary(results: List[Dict[str, Any]]) -> str:
     lines.append("# P5.1 Real-World Validation Results")
     lines.append(f"\nTarih: {datetime.now(timezone.utc).isoformat()}")
     lines.append(f"USE_SEFER_FUEL_ESTIMATOR={settings.USE_SEFER_FUEL_ESTIMATOR}")
+    lines.append(f"USE_SEGMENT_TRACTIVE_MODEL={settings.USE_SEGMENT_TRACTIVE_MODEL}")
     lines.append(
         "Yöntem: SeferFuelEstimator.predict() doğrudan çağrı (sefer create timeout bypass)"
     )
@@ -544,9 +549,23 @@ def render_summary(results: List[Dict[str, Any]]) -> str:
 
 
 async def main():
+    import os as _os
+
+    # Env-configurable flip of the segment-tractive physics model, mirroring
+    # validate_tractive_offline.py's `cfg.settings.USE_SEGMENT_TRACTIVE_MODEL
+    # = True` override -- that script hardcodes it on; this one needs both
+    # flag=false (existing/default behavior) and flag=true runs without
+    # editing code, to compare against the offline 9/10 GREEN result.
+    if _os.environ.get("USE_SEGMENT_TRACTIVE_MODEL", "").strip().lower() in (
+        "1",
+        "true",
+    ):
+        settings.USE_SEGMENT_TRACTIVE_MODEL = True
+
     print("=" * 70)
     print("P5.1 Real-World Validation")
     print(f"USE_SEFER_FUEL_ESTIMATOR={settings.USE_SEFER_FUEL_ESTIMATOR}")
+    print(f"USE_SEGMENT_TRACTIVE_MODEL={settings.USE_SEGMENT_TRACTIVE_MODEL}")
     print("=" * 70)
 
     if not settings.USE_SEFER_FUEL_ESTIMATOR:
@@ -574,8 +593,6 @@ async def main():
     # elevation+weather çağrılarını kaldırır ama 5 rota arka arkaya saturate
     # edip 429 → eksik veri → physics underestimate yapar (CLAUDE.md gotcha).
     # PACE_SECONDS ile her rota taze dakikalık bütçe alır (env ile ayarlanır).
-    import os as _os
-
     pace = int(_os.environ.get("P51_PACE_SECONDS", "65"))
     results = []
     for idx, (route, lokasyon_id) in enumerate(lokasyon_ids, 1):

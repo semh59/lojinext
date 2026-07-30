@@ -116,18 +116,41 @@ vb. — ücretsiz katmanlar yeterli) `/health/liveness` endpoint'ini
 izlemeye alsın; bu tamamen dış-servis/hesap işi, kod değişikliği
 gerektirmiyor.
 
-### 8. OCR + Telegram servisleri — Python 3.11'de kalmış, 3.12'ye taşınmadı
+### 8. OCR + Telegram servisleri — Python 3.11'de kalmış, 3.12'ye taşınmadı ✅ TAMAMLANDI (2026-07-30)
 
 Doğrulandı (2026-07-30): ana backend `Dockerfile` → `python:3.12-slim`,
 ama `ocr_service/Dockerfile` ve `telegram_bot/Dockerfile` ikisi de hâlâ
 `python:3.11-slim` (digest-pinned, 2026-06-17 tarihli). Bu, 2026-06-18
 "tertemiz kurulum" oturumunda bilinçli bırakılmıştı: EasyOCR/torch
 wheel'lerinin 3.12 uyumluluğu doğrulanmadığı için risk alınmadı
-([[docker_clean_rebuild_2026]]). Backlog: bu iki servisi 3.12'ye
-taşımadan önce EasyOCR + torch'un 3.12 wheel'lerinin gerçekten var
-olup olmadığı araştırılmalı (PyPI'da uyumlu wheel yoksa taşıma
-riskli/imkânsız olabilir); varsa izole bir dalda deneme build'i +
-gerçek OCR/Telegram smoke testi ile doğrulanmalı.
+([[docker_clean_rebuild_2026]]).
+
+**Tamamlandı:**
+- `telegram_bot/Dockerfile` → 3.12-slim (sıfıra yakın riskti, doğrulandı).
+  Aynı dalgada kullanıcı isteğiyle bot kodunda 8 gerçek bug bulunup
+  düzeltildi (`/yeniden_baslat` hiç çalışmıyordu, blocking I/O, sessiz
+  except, sıfır test, yanlış `:ro` mount güvenlik varsayımı, ~40 gereksiz
+  `type: ignore`, test-isolation sızıntısı).
+- `telegram_bot/` + `ocr_service/` → `v2/services/telegram_bot/` +
+  `v2/services/ocr_service/` altına taşındı (kullanıcı isteği, repo kökü
+  düzeni), her ikisine modül-tarzı `CLAUDE.md` eklendi.
+- `ocr_service/Dockerfile` → 3.12-slim: izole bir dalda (`test/ocr-
+  python312`) gerçek `docker build` denendi — `easyocr==1.7.1`'in
+  transitive bağımlılıkları (torch/torchvision/opencv-python-headless/
+  numpy, hiçbiri pin'li değil) sorunsuz cp312 wheel'leri çözdü. Gerçek
+  görsel testi: sentetik bir "YAKIT FİŞİ / LİTRE: 45.20 / TUTAR: 850.00
+  TL" görseli hem 3.12 test container'ına hem çalışan 3.11 container'ına
+  POST edildi — çıktı birebir aynı (`ham_metin` + `yapilandirilmis`
+  dict). Gerçek servis yeniden inşa edilip doğrulandı (Python 3.12.13,
+  `/health` → `model_loaded: true`).
+- Ayrıca bu dalgada Item A'nın (FAZ2 Celery rol wiring) kendi CI'ında
+  bulunan 4 gerçek bug da düzeltildi: Celery sinyal bağlantıları
+  `weak=True` varsayılanıyla dead-weakref'e dönüşüyordu (rol kısıtlaması
+  hiç uygulanmıyordu), + `m_import_excel`/`m_fuel`/`m_notification`/
+  `m_anomaly`/`m_prediction_ml` grant açıkları (biri haftalardır var olan
+  bir şema yanlış-etiketlemesiydi — `sistem_konfig` "admin_platform" değil
+  "platform" şemasında).
+- CI hard-gates main'de yeşil (coverage ≥92%, sıfır test hatası).
 
 ## Önceki konuşmada "sonraya bırakalım" denen konu — BULUNAMADI
 

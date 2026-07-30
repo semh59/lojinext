@@ -398,6 +398,50 @@ async def open_meteo_elevation(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# Open-Meteo Forecast — OPEN_METEO_FORECAST_API_BASE_URL = "{host}/v1/forecast";
+# client GETs the base_url directly (no suffix). Real Open-Meteo response
+# shape: single-coord requests return flat "current"/"daily" dicts;
+# multi-coord (comma-separated latitude/longitude) requests return a list,
+# one object per coordinate. Sentinel: latitude=999 -> provider-error payload
+# for that single coordinate (same sentinel-coordinate technique as the
+# other endpoints, e.g. the openroute geojson ascent-anomaly sentinel above)
+# -- lets a test simulate "one endpoint's weather is missing" without
+# needing per-request state.
+# ---------------------------------------------------------------------------
+@app.get("/v1/forecast")
+async def open_meteo_forecast(request: Request):
+    sim = await _maybe_simulate(request)
+    if sim is not None:
+        return sim
+
+    lats = request.query_params.get("latitude", "")
+    if lats.strip() in ("999", "999.0"):
+        return JSONResponse(status_code=500, content={"error": "simulated_error"})
+
+    coord_count = len([p for p in lats.split(",") if p]) if lats else 1
+
+    def _one(i: int) -> dict:
+        return {
+            "current": {
+                "temperature_2m": 18.0 + i,
+                "wind_speed_10m": 12.0,
+                "wind_direction_10m": 270,
+                "precipitation": 0.0,
+                "snowfall": 0.0,
+            },
+            "daily": {
+                "temperature_2m_max": [20.0 + i, 21.0 + i, 19.0 + i],
+                "precipitation_sum": [0.0, 0.0, 1.2],
+                "wind_speed_10m_max": [15.0, 18.0, 14.0],
+            },
+        }
+
+    if coord_count <= 1:
+        return JSONResponse(_one(0))
+    return JSONResponse([_one(i) for i in range(coord_count)])
+
+
+# ---------------------------------------------------------------------------
 # Telegram Bot API — TELEGRAM_API_BASE_URL = "{host}"; client appends
 # "/bot{token}/sendMessage".
 # ---------------------------------------------------------------------------

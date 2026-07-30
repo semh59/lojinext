@@ -145,6 +145,7 @@ class Settings(BaseSettings):
     )
     OPENROUTE_API_BASE_URL: str = "https://api.openrouteservice.org/v2"
     OPEN_METEO_API_BASE_URL: str = "https://api.open-meteo.com/v1/elevation"
+    OPEN_METEO_FORECAST_API_BASE_URL: str = "https://api.open-meteo.com/v1/forecast"
     TELEGRAM_API_BASE_URL: str = "https://api.telegram.org"
 
     # AI / LLM

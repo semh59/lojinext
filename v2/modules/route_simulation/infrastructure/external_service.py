@@ -30,12 +30,20 @@ class ExternalService:
     weather data.
     """
 
-    OPENMETEO_URL = "https://api.open-meteo.com/v1/forecast"
     OPENMETEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
     CB_FAILURE_THRESHOLD = 5
     CB_RECOVERY_TIMEOUT = 60
 
     def __init__(self):
+        # Instance attribute (not a class constant) so tests/CI can point it
+        # at api_stub via OPEN_METEO_FORECAST_API_BASE_URL -- previously
+        # hardcoded to the real Open-Meteo host, which meant this class
+        # could never be exercised through api_stub like open_meteo_client.py
+        # already is (found live, 2026-07-30, while triaging the 0-mock
+        # epic's remaining WeatherService test mocks).
+        from app.config import settings
+
+        self.OPENMETEO_URL = settings.OPEN_METEO_FORECAST_API_BASE_URL
         self._client: Optional[httpx.AsyncClient] = None
         self._cb_failure_count = 0
         self._cb_last_failure_time: Optional[datetime] = None

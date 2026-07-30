@@ -74,6 +74,7 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
         "driver",
         "fleet",
         "admin_platform",
+        "platform",
         "location",
         "fuel",
         "notification",
@@ -95,9 +96,16 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # found live (FAZ2 Wave 2 anomaly pilot, 2026-07-29, comprehensive
     # public.py audit before wiring) — detect_anomaly.py's
     # detect_consumption_anomalies() calls admin_platform.public.
-    # get_runtime_float("ANOMALY_Z_THRESHOLD", ...) (sistem_konfig table,
-    # same schema-wide grant that already fixed entegrasyon_ayarlari for
-    # m_location/m_route_simulation). location + fuel: found live in the
+    # get_runtime_float("ANOMALY_Z_THRESHOLD", ...) -- reads entegrasyon_
+    # ayarlari-ADJACENT but NOT-the-same table SistemKonfig, which despite
+    # living in admin_platform/infrastructure/models.py actually has
+    # `__table_args__ = {"schema": "platform"}` -- a genuinely different
+    # schema from entegrasyon_ayarlari's "admin_platform". This comment
+    # originally (wrongly) claimed the "admin_platform" grant above already
+    # covered it; it didn't -- caught 2026-07-30 via a real CI hard-gates
+    # failure (same root cause as the m_fuel/m_notification fix in this
+    # file), fixed by adding "platform" below, separately from
+    # "admin_platform". location + fuel: found live in the
     # SAME pilot's manual HTTP test — `GET /anomalies/fleet/insights` ->
     # get_fleet_insights.py's uow.sefer_repo.get_cost_leakage_stats()
     # runs 3 raw SQL queries INSIDE TRIP'S OWN REPOSITORY that
@@ -166,6 +174,7 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
         "trip",
         "driver",
         "admin_platform",
+        "platform",
         "location",
         "fuel",
         "anomaly",
@@ -177,8 +186,13 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # ensemble_service.py's train_for_vehicle/predict_consumption use
     # trip.public.get_sefer_repo and driver.public.get_driver_stats;
     # prediction_service.py calls admin_platform.public.get_runtime_float
-    # ("VEHICLE_AGE_DEGRADATION_RATE") -- same sistem_konfig-read pattern
-    # already fixed for m_location/m_route_simulation/m_anomaly. location:
+    # ("VEHICLE_AGE_DEGRADATION_RATE") -- reads SistemKonfig, which is in
+    # the "platform" schema (`__table_args__ = {"schema": "platform"}`),
+    # NOT "admin_platform" despite living in that module's models.py file
+    # and despite this comment previously (wrongly) claiming the
+    # "admin_platform" grant above already covered it -- caught 2026-07-30
+    # via a real CI hard-gates failure, fixed by adding "platform" below.
+    # location:
     # found live via real HTTP testing -- trip's own sefer_repo.
     # get_for_training() (a buried-repository-method case, same class as
     # the m_anomaly pilot's get_cost_leakage_stats finding) unqualified-

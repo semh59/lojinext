@@ -1,5 +1,4 @@
-# Kept on Python 3.11 (EasyOCR/torch wheels) — digest-pinned, resolved 2026-06-17.
-FROM python:3.11-slim@sha256:ae52c5bef62a6bdd42cd1e8dffef86b9cd284bde9427da79839de7a4b983e7ca
+FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \

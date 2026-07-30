@@ -135,12 +135,35 @@ Gerçek dosya sayımı (`grep -rl` ile):
 - Frontend (`vi.mock(...)` kullanan dosya): **136** (2026-07-02 baseline:
   127 — KÖTÜLEŞMİŞ, yeni testler mock'suz yazılmamış).
 
-Epik fiilen durmuş durumda; `route_location_zero_mock_2026_07` planının
-(Route/Location domain'i tam bitirme + `api_stub/` altyapısı) o oturumdan
-sonra ne kadar ilerlediği bu backlog yazılırken doğrulanmadı — bir
-sonraki oturumda o planın gerçek dosyalarına (`api_stub/`, dönüştürülen
-test dosyaları) bakıp güncel % ilerleme ölçülmeli, sonra kapsam/öncelik
-kararı kullanıcıya sorulmalı.
+✅ **TAMAMLANDI (2026-07-30) — 98 dosya tek tek triyaj edildi, dosya-sayım
+metriği yanıltıcıymış.** Ham `grep -rl` sayısı (266 backend/136 frontend)
+"kaç dosya mock kullanıyor" sorusuna cevap veriyordu ama epiğin kendi
+kapsamı (kök CLAUDE.md: "0-mock epiği — **dış-API** stub") yalnız
+Mapbox/OpenRoute/Open-Meteo/Telegram/Groq gibi GERÇEK üçüncü-taraf HTTP
+sınırlarını hedefliyor — dahili DB-session/use-case-fonksiyon/circuit-
+breaker mock'ları hiç kapsamda değildi. Kümeler tek tek açılıp
+sınıflandırıldı:
+
+- **Location/route (12 dosya)**: 11'i zaten dönüştürülmüş/meşru kapsam
+  dışı (`route_location_zero_mock_2026_07`'nin "tamamlandı" iddiası
+  büyük ölçüde doğruymuş); 1 gerçek bug bulundu — `external_service.py`'nin
+  `OPENMETEO_URL`'i hardcoded'du, `api_stub`'ı hiç kapsamıyordu. Yeni
+  `/v1/forecast` stub endpoint'i eklendi, 2 test gerçek HTTP'ye çevrildi.
+- **test_services (46), test_monitoring (17), test_repositories (13),
+  test_ml (10)**: tek tek tarandı, **sıfır** ek gerçek dış-API mock'u
+  bulundu. Hepsi ya dahili instrumentation/probe mantığını (circuit
+  breaker, DB-session, event-bus, ML model wrapper'ları) test ediyor ya
+  da (Telegram notifier gibi) kendi iç servislerimize (telegram-ops-bot
+  container'ı) konuşuyor, `api.telegram.org`'a değil. `test_ai_service_
+  coverage.py`'nin GroqService mock'u da kendi docstring'inde zaten
+  "so no real LLM call" diye bilinçli olarak dokümante edilmiş (önceki
+  bir de-mock turundan, Dilim 28) — prompt-sanitizasyon mantığını test
+  ediyor, LLM çağrısı gerektirmiyor.
+
+**Sonuç**: epiğin gerçek kalan yüzeyi (dış-API mock'ları) dosya-sayım
+metriğinin ima ettiğinden ÇOK daha küçüktü — 98 dosyadan sadece 1 gerçek
+dönüştürme adayı çıktı, o da düzeltildi. Frontend tarafı (`vi.mock`, 136
+dosya) bu oturumda taranmadı — ayrı bir gelecek iş olarak bırakıldı.
 
 ### 3. FAZ2 Wave 2 kalanları (bkz. [[faz2_wave2_completed]] hafıza kaydı)
 

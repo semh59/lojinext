@@ -77,8 +77,18 @@ describe.skipIf(!backendUp)("ProfilePage (real backend)", () => {
   // Every test that calls renderReady() needs a matching explicit timeout.
   async function renderReady() {
     render(<ProfilePage />);
+    // Wait for BOTH the identity-hero text (bound directly to `user`) AND
+    // the ad_soyad form input's resynced value (set one render tick later,
+    // inside ProfilePage's own useEffect that calls resetProfile() once
+    // `user` loads -- see ProfilePage.tsx). Waiting on the hero text alone
+    // let this resolve between those two ticks under CI load, intermittently
+    // failing getByDisplayValue() assertions in a real render that hadn't
+    // finished settling yet.
     await waitFor(
-      () => expect(screen.getByText("Sistem Yonetici")).toBeInTheDocument(),
+      () => {
+        expect(screen.getByText("Sistem Yonetici")).toBeInTheDocument();
+        expect(screen.getByDisplayValue("Sistem Yonetici")).toBeInTheDocument();
+      },
       { timeout: 15000 },
     );
   }

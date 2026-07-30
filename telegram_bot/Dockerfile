@@ -1,5 +1,9 @@
-# Digest-pinned python:3.11-slim — resolved 2026-06-17.
-FROM python:3.11-slim@sha256:ae52c5bef62a6bdd42cd1e8dffef86b9cd284bde9427da79839de7a4b983e7ca
+# Digest-pinned python:3.12-slim — same digest as the main backend Dockerfile
+# (resolved 2026-06-17). Bumped from 3.11 on 2026-07-30: this service has no
+# heavy ML deps (just python-telegram-bot/httpx/fastapi/uvicorn), so it
+# carried none of the EasyOCR/torch wheel-compatibility risk that kept
+# ocr_service on 3.11.
+FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*

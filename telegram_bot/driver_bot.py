@@ -46,7 +46,12 @@ async def _get_sofor(telegram_id: str) -> dict | None:
                 headers=_internal_headers(),
             )
         return r.json() if r.status_code == 200 else None
-    except Exception:
+    except Exception as exc:
+        logger.warning(
+            "sofor-by-telegram lookup failed for telegram_id=%s: %s",
+            telegram_id,
+            exc,
+        )
         return None
 
 
@@ -54,15 +59,17 @@ async def _get_sofor(telegram_id: str) -> dict | None:
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    telegram_id = str(update.effective_user.id)
     sofor = await _get_sofor(telegram_id)
     if not sofor:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Telegram ID'niz sisteme kayıtlı değil. Yöneticinizle iletişime geçin."
         )
         return
 
-    caption = (update.message.caption or "").lower()  # type: ignore[union-attr]
+    caption = (update.message.caption or "").lower()
     if "yakıt" in caption or "yakit" in caption:
         belge_tipi = "yakit_fisi"
     elif "sefer" in caption:
@@ -70,7 +77,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         belge_tipi = "tir_ekran"
 
-    photo = update.message.photo[-1]  # type: ignore[union-attr]
+    photo = update.message.photo[-1]
     file_obj = await context.bot.get_file(photo.file_id)
     file_bytes = bytes(await file_obj.download_as_bytearray())
 
@@ -83,7 +90,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 data={
                     "telegram_id": telegram_id,
                     "belge_tipi": belge_tipi,
-                    "telegram_mesaj_id": str(update.message.message_id),  # type: ignore[union-attr]
+                    "telegram_mesaj_id": str(update.message.message_id),
                 },
             )
         if r.status_code == 200:
@@ -92,26 +99,29 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 "sefer_fisi": "Sefer Fişi",
                 "tir_ekran": "TIR Ekran",
             }
-            await update.message.reply_text(  # type: ignore[union-attr]
+            await update.message.reply_text(
                 f"✅ {tipler.get(belge_tipi, belge_tipi)} alındı, OCR işleniyor...\n"
                 "Tip belirtmek için fotoğrafa 'yakıt', 'sefer' veya 'ekran' yazabilirsiniz."
             )
         else:
-            await update.message.reply_text("❌ Belge kaydedilemedi, tekrar deneyin.")  # type: ignore[union-attr]
+            await update.message.reply_text("❌ Belge kaydedilemedi, tekrar deneyin.")
     except Exception as exc:
         logger.error("Belge gönderim hatası: %s", exc)
-        await update.message.reply_text("❌ Sunucuya bağlanılamadı, tekrar deneyin.")  # type: ignore[union-attr]
+        await update.message.reply_text("❌ Sunucuya bağlanılamadı, tekrar deneyin.")
 
 
 # ── Komutlar ─────────────────────────────────────────────────────────────────
 
 
 async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    assert update.effective_chat is not None
+    telegram_id = str(update.effective_user.id)
     if len(context.args or []) != 2:
         await update.message.reply_text(
             "Kullanım: /pdf YYYY-AA-GG YYYY-AA-GG\nÖrnek: /pdf 2025-01-01 2025-01-31"
-        )  # type: ignore[union-attr]
+        )
         return
     try:
         async with httpx.AsyncClient(timeout=60) as client:
@@ -125,7 +135,7 @@ async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
         if r.status_code == 200:
             await context.bot.send_document(
-                chat_id=update.effective_chat.id,  # type: ignore[union-attr]
+                chat_id=update.effective_chat.id,
                 document=r.content,
                 filename=f"seferler_{context.args[0]}_{context.args[1]}.pdf",
                 caption="Onaylanmış seferleriniz",
@@ -133,16 +143,18 @@ async def cmd_pdf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         elif r.status_code == 404:
             await update.message.reply_text(
                 "❌ Belirtilen tarih aralığında onaylanmış sefer bulunamadı."
-            )  # type: ignore[union-attr]
+            )
         else:
-            await update.message.reply_text("❌ PDF oluşturulamadı.")  # type: ignore[union-attr]
+            await update.message.reply_text("❌ PDF oluşturulamadı.")
     except Exception as exc:
         logger.error("PDF isteği hatası: %s", exc)
-        await update.message.reply_text("❌ Sunucuya bağlanılamadı.")  # type: ignore[union-attr]
+        await update.message.reply_text("❌ Sunucuya bağlanılamadı.")
 
 
 async def cmd_seferlerim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    telegram_id = str(update.effective_user.id)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(
@@ -151,23 +163,24 @@ async def cmd_seferlerim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 params={"limit": 10},
             )
         if r.status_code != 200:
-            await update.message.reply_text("❌ Bilgi alınamadı.")  # type: ignore[union-attr]
+            await update.message.reply_text("❌ Bilgi alınamadı.")
             return
         seferler = r.json()
         if not seferler:
-            await update.message.reply_text("Onaylanmış sefer bulunamadı.")  # type: ignore[union-attr]
+            await update.message.reply_text("Onaylanmış sefer bulunamadı.")
             return
         lines = [
             f"{'✅' if s.get('onay_durumu') == 'onaylandi' else '⏳'} {s.get('tarih', '')} — {s.get('cikis_yeri', '?')}→{s.get('varis_yeri', '?')}"
             for s in seferler
         ]
-        await update.message.reply_text("\n".join(lines))  # type: ignore[union-attr]
+        await update.message.reply_text("\n".join(lines))
     except Exception as exc:
         logger.error("Sefer listesi hatası: %s", exc)
-        await update.message.reply_text("❌ Sunucuya bağlanılamadı.")  # type: ignore[union-attr]
+        await update.message.reply_text("❌ Sunucuya bağlanılamadı.")
 
 
 async def cmd_yardim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    assert update.message is not None
     metin = (
         "🚛 LojiNext Şoför Botu\n\n"
         "📷 Fotoğraf gönderin:\n"
@@ -182,7 +195,7 @@ async def cmd_yardim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         "  /ariza <açıklama> — Aracında arıza bildir (acil için başına 'acil')\n"
         "  /yardim — Bu mesaj"
     )
-    await update.message.reply_text(metin)  # type: ignore[union-attr]
+    await update.message.reply_text(metin)
 
 
 async def cmd_ariza(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -192,7 +205,9 @@ async def cmd_ariza(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
               /ariza acil lastik patladı → ACIL
     Araç sürücünün en son seferinden otomatik çözülür (plaka girilmez).
     """
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    telegram_id = str(update.effective_user.id)
     detaylar = " ".join(context.args).strip() if context.args else ""
     acil = detaylar.lower().startswith("acil")
 
@@ -205,7 +220,7 @@ async def cmd_ariza(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
     except Exception as exc:
         logger.warning("Arıza bildirimi gönderilemedi: %s", exc)
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Arıza bildirimi şu an gönderilemedi, lütfen tekrar deneyin."
         )
         return
@@ -214,17 +229,17 @@ async def cmd_ariza(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         data = r.json()
         plaka = data.get("arac_plakasi") or f"#{data.get('arac_id')}"
         tip = "ACİL" if data.get("bakim_tipi") == "ACIL" else "Arıza"
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             f"✅ {tip} kaydı açıldı: {html.escape(str(plaka))}\n"
             "Operasyon ekibi bilgilendirildi."
         )
     elif r.status_code == 404:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Aracınız çözülemedi. Telegram ID'niz kayıtlı değilse veya hiç "
             "seferiniz yoksa yöneticinizle iletişime geçin."
         )
     else:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Arıza bildirimi alınamadı, lütfen tekrar deneyin."
         )
 
@@ -249,10 +264,12 @@ _PRIORITY_LABELS = {"low": "Düşük", "medium": "Orta", "high": "Yüksek"}
 
 
 async def cmd_score(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    telegram_id = str(update.effective_user.id)
     data = await _fetch_coaching_snapshot(telegram_id)
     if data is None:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Skorunuza şu an ulaşılamıyor. Telegram ID'niz kayıtlı değilse "
             "yöneticinizle iletişime geçin.",
         )
@@ -276,16 +293,16 @@ async def cmd_score(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         lines.append("")
         lines.append(f"ℹ️ Tüm öneriler için /oneriler yazın ({insights_count} adet)")
 
-    await update.message.reply_text(  # type: ignore[union-attr]
-        "\n".join(lines), parse_mode="HTML"
-    )
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML")
 
 
 async def cmd_oneriler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    telegram_id = str(update.effective_user.id)  # type: ignore[union-attr]
+    assert update.message is not None
+    assert update.effective_user is not None
+    telegram_id = str(update.effective_user.id)
     data = await _fetch_coaching_snapshot(telegram_id)
     if data is None:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ Önerilere şu an ulaşılamıyor.",
         )
         return
@@ -297,7 +314,7 @@ async def cmd_oneriler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     insights_count = int(data.get("insights_count") or 0)
 
     if insights_count == 0:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "✅ Şu an için aktif koçluk önerisi yok.\nÖzet: " + headline
         )
         return
@@ -316,9 +333,7 @@ async def cmd_oneriler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "ℹ️ Detaylı liste için yöneticinizden /coaching panelini açmasını isteyin."
         )
 
-    await update.message.reply_text(  # type: ignore[union-attr]
-        "\n".join(body), parse_mode="HTML"
-    )
+    await update.message.reply_text("\n".join(body), parse_mode="HTML")
 
 
 # ── Başlatıcı ────────────────────────────────────────────────────────────────

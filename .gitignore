@@ -141,6 +141,7 @@ _archive/
 tmp/
 *.txt
 !requirements.txt
+!requirements-dev.txt
 !app/requirements*.txt
 *.json
 !package.json

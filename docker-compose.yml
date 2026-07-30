@@ -24,6 +24,43 @@ services:
     networks:
       - lojinext_network
 
+  # ops-bot's /yeniden_baslat command needs one narrow write operation
+  # (restart a whitelisted container) — a SEPARATE proxy instance from the
+  # read-only one above, since mixing a write-capable config into Traefik's
+  # proxy would widen ITS blast radius too. 2026-07-30 finding: telegram-
+  # ops-bot previously mounted the raw /var/run/docker.sock directly with a
+  # `:ro` flag and a comment claiming this "prevents container escape via
+  # write ops" -- empirically FALSE (verified live: a raw POST /containers/
+  # .../restart over that `:ro`-mounted socket reached the daemon and was
+  # processed normally; `:ro` only stops the container from replacing the
+  # socket special file itself, not from sending write requests over an
+  # already-open connection to it). A compromised bot process therefore had
+  # the SAME full Docker API access as an unrestricted socket mount would
+  # give -- create privileged containers, exec into anything, mount the
+  # host root, etc. -- not just "restart these 5 services".
+  # This config only allows what /yeniden_baslat actually needs, verified
+  # against haproxy.cfg inside the image: the first line denies all non-GET
+  # methods unless POST=1; ALLOW_RESTARTS=1 then allows ONLY POST
+  # /containers/{id}/(stop|restart|kill) specifically. CONTAINERS is
+  # deliberately left unset (0) -- enabling it would ALSO allow POST
+  # /containers/{id}/exec (exec-instance *creation* lives under the
+  # /containers prefix, gated by CONTAINERS, not by the separate EXEC var,
+  # which only covers the already-created-exec-instance's /exec/{id}/*
+  # endpoints) -- so CONTAINERS=1 would silently reopen exec access this
+  # proxy exists to close off. No GET listing is needed either: the restart
+  # command targets a container by its known compose-generated name
+  # directly, it never lists containers first.
+  docker-socket-proxy-ops:
+    image: ghcr.io/tecnativa/docker-socket-proxy@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476
+    environment:
+      POST: 1
+      ALLOW_RESTARTS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
   # Tier E madde 32: reverse proxy / LB. Replaces nginx's proxy_pass to a
   # single `backend:8000` — that upstream was resolved once at nginx startup
   # and never discovered new replicas, so `docker compose up --scale
@@ -701,8 +738,7 @@ services:
       - INTERNAL_API_SECRET=${INTERNAL_API_SECRET}
       - OPS_WEBHOOK_SECRET=${OPS_WEBHOOK_SECRET:?OPS_WEBHOOK_SECRET must be set (see .env.example)}
       - OPS_ADMIN_TELEGRAM_IDS=${OPS_ADMIN_TELEGRAM_IDS:-}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # read-only — prevents container escape via Docker API write ops
+      - DOCKER_RESTART_PROXY_URL=http://docker-socket-proxy-ops:2375
     ports:
       - "8080:8080"
     healthcheck:
@@ -713,6 +749,7 @@ services:
       start_period: 15s
     depends_on:
       - prometheus
+      - docker-socket-proxy-ops
     networks:
       - lojinext_network
     restart: unless-stopped

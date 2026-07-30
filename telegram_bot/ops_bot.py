@@ -1,6 +1,5 @@
 import logging
 import os
-import subprocess
 import threading
 import time
 
@@ -15,6 +14,16 @@ logger = logging.getLogger(__name__)
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://backend:8000")
 PROMETHEUS_URL = os.environ.get("PROMETHEUS_URL", "http://prometheus:9090")
+# A dedicated, minimal-privilege docker-socket-proxy instance (POST=1 +
+# ALLOW_RESTARTS=1 only, no CONTAINERS/EXEC/etc.) -- see docker-compose.yml's
+# docker-socket-proxy-ops comment for why this replaced a raw
+# /var/run/docker.sock mount + `docker` CLI subprocess call (the CLI binary
+# was never even installed in this image, so /yeniden_baslat could not have
+# worked; the raw socket mount's `:ro` flag also didn't limit write access
+# to it the way the old comment here claimed).
+DOCKER_RESTART_PROXY_URL = os.environ.get(
+    "DOCKER_RESTART_PROXY_URL", "http://docker-socket-proxy-ops:2375"
+)
 _INTERNAL_SECRET = os.environ.get("INTERNAL_API_SECRET", "")
 OPS_BOT_TOKEN = resolve_bot_token(
     "telegram_ops_bot",
@@ -90,12 +99,18 @@ async def cmd_durum(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     try:
-        r = httpx.get(f"{BACKEND_URL}/api/v1/health/", timeout=5)
+        # async client -- a sync httpx.get() here used to block this bot's
+        # entire event loop (no other chat's messages could be processed)
+        # for up to the 5s timeout on every /durum call.
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{BACKEND_URL}/api/v1/health/")
         durum = "✅ Çevrimiçi" if r.status_code == 200 else f"❌ HTTP {r.status_code}"
         metin = f"Backend: {durum}"
     except Exception as exc:
+        logger.warning("Backend health check failed: %s", exc)
         metin = f"❌ Backend'e ulaşılamadı: {exc}"
-    await update.message.reply_text(metin)  # type: ignore[union-attr]
+    assert update.message is not None
+    await update.message.reply_text(metin)
 
 
 async def cmd_uyarilar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -105,62 +120,80 @@ async def cmd_uyarilar(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             update.effective_chat.id if update.effective_chat else None,
         )
         return
+    assert update.message is not None
     try:
-        r = httpx.get(f"{PROMETHEUS_URL}/api/v1/alerts", timeout=5)
+        async with httpx.AsyncClient(timeout=5) as client:
+            r = await client.get(f"{PROMETHEUS_URL}/api/v1/alerts")
         alerts = r.json().get("data", {}).get("alerts", [])
         firing = [a for a in alerts if a["state"] == "firing"]
         if not firing:
-            await update.message.reply_text("✅ Aktif uyarı yok")  # type: ignore[union-attr]
+            await update.message.reply_text("✅ Aktif uyarı yok")
             return
         lines = [
             f"🚨 {a['labels']['alertname']} [{a['labels'].get('severity', '?')}]"
             for a in firing
         ]
-        await update.message.reply_text("\n".join(lines))  # type: ignore[union-attr]
+        await update.message.reply_text("\n".join(lines))
     except Exception as exc:
-        await update.message.reply_text(f"❌ Prometheus'a ulaşılamadı: {exc}")  # type: ignore[union-attr]
+        logger.warning("Prometheus alerts fetch failed: %s", exc)
+        await update.message.reply_text(f"❌ Prometheus'a ulaşılamadı: {exc}")
 
 
 async def cmd_yeniden_baslat(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
+    assert update.message is not None
     caller_id = update.effective_user.id if update.effective_user else None
     if not OPS_ADMIN_IDS:
-        await update.message.reply_text(  # type: ignore[union-attr]
+        await update.message.reply_text(
             "❌ /yeniden_baslat devre dışı (OPS_ADMIN_TELEGRAM_IDS ayarlanmamış)."
         )
         return
     if caller_id not in OPS_ADMIN_IDS:
         logger.warning("Yetkisiz /yeniden_baslat girişimi: user_id=%s", caller_id)
-        await update.message.reply_text(  # type: ignore[union-attr]
-            "❌ Bu komutu çalıştırma yetkiniz yok."
-        )
+        await update.message.reply_text("❌ Bu komutu çalıştırma yetkiniz yok.")
         return
     if not context.args:
-        await update.message.reply_text("Kullanım: /yeniden_baslat <servis_adı>")  # type: ignore[union-attr]
+        await update.message.reply_text("Kullanım: /yeniden_baslat <servis_adı>")
         return
     servis = context.args[0]
     IZIN_VERILEN = {"backend", "worker", "redis", "celery-exporter", "ocr-service"}
     if servis not in IZIN_VERILEN:
         await update.message.reply_text(
             f"❌ İzin verilmeyen servis: {servis}\nİzin verilenler: {', '.join(IZIN_VERILEN)}"
-        )  # type: ignore[union-attr]
-        return
-    # Docker socket mount edilmiş olmalı: -v /var/run/docker.sock:/var/run/docker.sock
-    # Container adı docker compose projesi + servis adından oluşur
-    for container_pattern in [f"lojinext-{servis}-1", f"lojinext_{servis}_1"]:
-        result = subprocess.run(
-            ["docker", "restart", container_pattern],
-            capture_output=True,
-            text=True,
-            timeout=30,
         )
-        if result.returncode == 0:
-            await update.message.reply_text(f"✅ {servis} yeniden başlatıldı")  # type: ignore[union-attr]
-            return
+        return
+    # Talks to docker-socket-proxy-ops (POST + ALLOW_RESTARTS only, see
+    # docker-compose.yml) over plain async HTTP instead of shelling out to
+    # the `docker` CLI -- that binary was never installed in this image, so
+    # this command could not have worked before. Container name = compose
+    # project + service name; try both the current (dash) and legacy
+    # (underscore) compose naming schemes.
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            for container_pattern in [f"lojinext-{servis}-1", f"lojinext_{servis}_1"]:
+                resp = await client.post(
+                    f"{DOCKER_RESTART_PROXY_URL}/containers/{container_pattern}/restart"
+                )
+                if resp.status_code == 204:
+                    await update.message.reply_text(f"✅ {servis} yeniden başlatıldı")
+                    return
+                if resp.status_code != 404:
+                    logger.error(
+                        "Docker restart proxy unexpected status for %s: %s %s",
+                        container_pattern,
+                        resp.status_code,
+                        resp.text[:200],
+                    )
+    except Exception as exc:
+        logger.error("Docker restart proxy request failed: %s", exc)
+        await update.message.reply_text(
+            f"❌ {servis} yeniden başlatılamadı: proxy'ye ulaşılamadı ({exc})"
+        )
+        return
     await update.message.reply_text(
         f"❌ {servis} yeniden başlatılamadı: container bulunamadı"
-    )  # type: ignore[union-attr]
+    )
 
 
 # ── Alertmanager webhook ─────────────────────────────────────────────────────

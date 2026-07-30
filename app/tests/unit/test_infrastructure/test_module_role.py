@@ -40,16 +40,36 @@ class _FakeCeleryTask:
         self.name = name
 
 
-def test_celery_signal_wiring_scopes_role_for_mapped_task():
+@pytest.fixture
+def celery_role_signals():
     """setup_celery_module_role_signals() only ever runs for real at real
     Celery worker startup (@worker_process_init.connect) -- pytest never
     spawns one, so its body was 100% uncovered, tanking the combined
     coverage gate below 92% (found via a real CI failure, 2026-07-30).
     Exercise it directly by sending the real celery signals it connects
-    to, instead of needing an actual worker process."""
+    to, instead of needing an actual worker process.
+
+    weak=False (required so the receivers aren't garbage-collected --
+    see module_role.py's own comment) means they'd otherwise stay
+    connected for the rest of the pytest session once set up here,
+    silently intercepting any unrelated test's real Celery task run for
+    the remainder of the suite (found live: a first version of this test
+    without the disconnect below leaked into test_runtime_config.py,
+    causing `permission denied for table seferler_log` failures in a
+    completely unrelated test file). dispatch_uid lets the module's own
+    connect calls be disconnected here without needing a reference to the
+    closures themselves.
+    """
     from celery.signals import task_postrun, task_prerun
 
     setup_celery_module_role_signals()
+    yield task_prerun, task_postrun
+    task_prerun.disconnect(dispatch_uid="module_role_task_prerun")
+    task_postrun.disconnect(dispatch_uid="module_role_task_postrun")
+
+
+def test_celery_signal_wiring_scopes_role_for_mapped_task(celery_role_signals):
+    task_prerun, task_postrun = celery_role_signals
 
     task_name = next(iter(TASK_NAME_TO_MODULE))
     expected_role = MODULE_ROLE_MAP[TASK_NAME_TO_MODULE[task_name]]
@@ -62,10 +82,8 @@ def test_celery_signal_wiring_scopes_role_for_mapped_task():
     assert get_module_role() is None
 
 
-def test_celery_signal_wiring_ignores_unmapped_task():
-    from celery.signals import task_postrun, task_prerun
-
-    setup_celery_module_role_signals()
+def test_celery_signal_wiring_ignores_unmapped_task(celery_role_signals):
+    task_prerun, task_postrun = celery_role_signals
 
     task = _FakeCeleryTask(
         "infrastructure.relay_outbox_events"

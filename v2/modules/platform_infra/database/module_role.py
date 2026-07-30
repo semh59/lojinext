@@ -145,7 +145,13 @@ def setup_celery_module_role_signals() -> None:
     # directly proved the connected receiver was already a dead weakref by
     # the time the signal fired, meaning Celery-task role-scoping likely
     # never actually applied in production since this wiring was added).
-    @task_prerun.connect(weak=False)
+    # dispatch_uid makes repeated calls to this function idempotent (a
+    # second .connect() with the same dispatch_uid replaces rather than
+    # duplicates the receiver) and lets tests `.disconnect(dispatch_uid=
+    # ...)` this exact receiver afterward without needing a reference to
+    # the closure -- required now that weak=False keeps it alive for the
+    # rest of the process otherwise.
+    @task_prerun.connect(weak=False, dispatch_uid="module_role_task_prerun")
     def _on_prerun(task_id: str, task, **_):
         module_name = TASK_NAME_TO_MODULE.get(task.name)
         if module_name is None:
@@ -153,7 +159,7 @@ def setup_celery_module_role_signals() -> None:
         role = MODULE_ROLE_MAP[module_name]
         _role_tokens[task_id] = _module_role.set(role)
 
-    @task_postrun.connect(weak=False)
+    @task_postrun.connect(weak=False, dispatch_uid="module_role_task_postrun")
     def _on_postrun(task_id: str, task, **_):
         token = _role_tokens.pop(task_id, None)
         if token is not None:

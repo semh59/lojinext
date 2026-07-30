@@ -147,6 +147,13 @@ def get_celery_app() -> Celery:
                 "task": "infrastructure.db_backup_verify",
                 "schedule": crontab(hour=1, minute=0),
             },
+            # Item C follow-up (2026-07-30) -- weekly segment-tractive
+            # physics recalibration snapshot, see physics_recalibration_
+            # tasks.py's own docstring for why.
+            "physics-weekly-recalibration-snapshot": {
+                "task": "physics.weekly_recalibration_snapshot",
+                "schedule": crontab(day_of_week="sun", hour=2, minute=30),
+            },
         },
         worker_hostname="lojinext-worker@%h",
         task_always_eager=settings.CELERY_EAGER,
@@ -178,6 +185,9 @@ import v2.modules.prediction_ml.infrastructure.prediction_tasks  # noqa: E402,F4
 # Phase 4.0 — ML weekly retrain Celery task
 import v2.modules.prediction_ml.infrastructure.scheduler_task  # noqa: E402,F401
 import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
+
+# Item C follow-up — weekly physics recalibration snapshot
+import v2.modules.route_simulation.infrastructure.physics_recalibration_tasks  # noqa: E402,F401
 import v2.modules.shared_kernel.infrastructure.outbox_tasks  # noqa: E402,F401
 
 # NOT: driver.calculate_performance_score orphan Celery task'ı (hiç kayıtlı

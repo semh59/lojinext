@@ -12,8 +12,16 @@ verip hızlı rotaları şişiriyordu; gerçek-rota fit Cd·A=6.80, parazit=4.0 
 (VECTO non-aero + gerçekçi aksesuar) → 9/10 GREEN.
 
 Bantlar koşul-nötr (physics-only); route_segments'teki gerçek geometri
-(Mapbox+Open-Meteo, %100 elevation) kullanılır → Open-Meteo quota-bağımsız.
+(Mapbox+Open-Meteo, %100 elevation) kullanılır → Open-Meteo quota-bağımsız
+(mevcut/depolanmış geometriyi okur, yeni API çağrısı yapmaz).
 Fiziksel bant (overfit guard): Cd·A ∈ [5.3, 7.5], parazit ∈ [3, 12].
+
+2026-07-30: fit mantığı (yükleme/skor/grid-search) `v2/modules/
+route_simulation/application/physics_calibration.py`'ye çıkarıldı — aynı
+mantığı haftalık otomatik `infrastructure/physics_recalibration_tasks.py`
+Celery task'ı da paylaşıyor (Item C: tek-günlük fit'in aşırı-uyum riski
+taşıdığı bulundu, çoklu-gün otomatik snapshot bu script'in manuel
+tekrarını gereksiz kılıyor).
 
 Çalıştır (backend container, lojinext-db): python -m scripts.calibrate_physics
 """
@@ -22,130 +30,59 @@ from __future__ import annotations
 
 import asyncio
 
-from sqlalchemy import text
-
 import app.config as cfg
 from v2.modules.platform_infra.database.module_role import open_role_scoped_session
-from v2.modules.route_simulation.public import (
-    SegmentInput,
-    simulate_route,
+from v2.modules.route_simulation.application.physics_calibration import (
+    grid_search_best_fit,
+    load_reference_route_segments,
+    score_routes,
 )
-
-# lokasyon_id → (ad, yük_t, band_low, band_high). Bandlar DAF/ICCT.
-ROUTES = {
-    3: ("IST-ANK", 20, 30.0, 35.0),
-    4: ("IST-IZM", 18, 29.0, 33.0),
-    5: ("BUR-IST", 12, 28.0, 32.0),
-    6: ("ANK-KON", 25, 31.0, 36.0),
-    7: ("IST-BOL", 22, 34.0, 40.0),
-    8: ("IZM-AYD", 14, 28.0, 33.0),
-    9: ("ANK-ESK", 19, 30.0, 35.0),
-    10: ("IST-TEK", 16, 29.0, 34.0),
-    11: ("KON-AKS", 23, 32.0, 37.0),
-    12: ("BUR-BAL", 17, 30.0, 35.0),
-}
-CDA_BAND = (5.3, 7.5)
-PAR_BAND = (3.0, 12.0)
-
-
-async def _load_routes(s):
-    out = []
-    for lid, (ad, ton, lo, hi) in ROUTES.items():
-        r = (
-            await s.execute(
-                text(
-                    "SELECT id, arac_yasi FROM route_simulations WHERE lokasyon_id=:l "
-                    "ORDER BY elevation_coverage_pct DESC, id DESC LIMIT 1"
-                ),
-                {"l": lid},
-            )
-        ).first()
-        if not r:
-            continue
-        rows = await s.execute(
-            text(
-                "SELECT length_km, grade_pct, road_class, maxspeed_kmh, "
-                "traffic_speed_kmh, congestion FROM route_segments "
-                "WHERE simulation_id=:s ORDER BY seq"
-            ),
-            {"s": r[0]},
-        )
-        segs = [
-            SegmentInput(
-                length_km=float(a or 0),
-                grade_pct=float(b or 0),
-                road_class=c or "",
-                maxspeed_kmh=float(d) if d else None,
-                traffic_speed_kmh=float(e) if e else None,
-                congestion=f or "low",
-            )
-            for a, b, c, d, e, f in rows
-        ]
-        out.append((ad, ton, lo, hi, int(r[1] or 5), segs))
-    return out
-
-
-def _score(routes):
-    sse = 0.0
-    green = 0
-    for _ad, ton, lo, hi, yas, segs in routes:
-        n = simulate_route(segs, ton=float(ton), arac_yasi=yas).avg_l_per_100km
-        mid = (lo + hi) / 2.0
-        sse += (n - mid) ** 2
-        if lo <= n <= hi:
-            green += 1
-    return green, sse
+from v2.modules.route_simulation.public import simulate_route
 
 
 async def main():
     cfg.settings.USE_SEGMENT_TRACTIVE_MODEL = True
     async with open_role_scoped_session("m_ops") as s:
-        routes = await _load_routes(s)
+        routes = await load_reference_route_segments(s)
     if not routes:
         raise SystemExit(
             "route_simulations boş — önce p51 koşulmalı (referans geometri)."
         )
 
-    best = None
-    cda = CDA_BAND[0]
-    while cda <= CDA_BAND[1] + 1e-9:
-        par = PAR_BAND[0]
-        while par <= PAR_BAND[1] + 1e-9:
-            cfg.settings.PHYSICS_DRAG_CDA_M2 = cda
-            cfg.settings.PHYSICS_PARASITIC_KW = par
-            green, sse = _score(routes)
-            cand = (green, -sse, round(cda, 2), round(par, 1))
-            if best is None or cand[:2] > best[:2]:
-                best = cand
-            par += 0.5
-        cda += 0.1
-
-    assert best is not None
-    green, neg_sse, cda_fit, par_fit = best
+    fit = grid_search_best_fit(routes)
     print("=== Segment-tractive 10-rota kalibrasyonu ===")
     print(
-        f"En iyi: Cd·A={cda_fit} m², parazit={par_fit} kW "
-        f"(GREEN={green}/{len(routes)}, SSE={-neg_sse:.2f})"
+        f"En iyi: Cd·A={fit.cda} m², parazit={fit.parasitic_kw} kW "
+        f"(GREEN={fit.green}/{len(routes)}, SSE={fit.sse:.2f})"
     )
-    in_band = (
-        CDA_BAND[0] <= cda_fit <= CDA_BAND[1] and PAR_BAND[0] <= par_fit <= PAR_BAND[1]
-    )
-    print(f"Fiziksel bant içinde: {in_band}")
-    if not in_band:
+    print(f"Fiziksel bant içinde: {fit.in_physical_band}")
+    if not fit.in_physical_band:
         raise SystemExit("OVERFIT GUARD: fit fiziksel bant dışı — kök neden ara.")
 
-    cfg.settings.PHYSICS_DRAG_CDA_M2 = cda_fit
-    cfg.settings.PHYSICS_PARASITIC_KW = par_fit
+    cfg.settings.PHYSICS_DRAG_CDA_M2 = fit.cda
+    cfg.settings.PHYSICS_PARASITIC_KW = fit.parasitic_kw
+    green_final, _sse_final = score_routes(routes)
     print(f"\n{'rota':10}{'yük':>5}{'nötr':>8}{'band':>10}{'sapma%':>8}  sonuç")
-    for ad, ton, lo, hi, yas, segs in routes:
-        n = simulate_route(segs, ton=float(ton), arac_yasi=yas).avg_l_per_100km
-        mid = (lo + hi) / 2.0
+    for r in routes:
+        summary = simulate_route(
+            r.segments, ton=float(r.load_tons), arac_yasi=r.arac_yasi
+        )
+        n = summary.avg_l_per_100km
+        mid = (r.band_low + r.band_high) / 2.0
         sap = (n - mid) / mid * 100.0
-        v = "GREEN" if lo <= n <= hi else ("YELLOW" if abs(sap) <= 10 else "RED")
-        print(f"{ad:10}{ton:5}{n:8.2f}{f'{lo:.0f}-{hi:.0f}':>10}{sap:8.1f}  {v}")
+        v = (
+            "GREEN"
+            if r.band_low <= n <= r.band_high
+            else ("YELLOW" if abs(sap) <= 10 else "RED")
+        )
+        print(
+            f"{r.name:10}{r.load_tons:5}{n:8.2f}"
+            f"{f'{r.band_low:.0f}-{r.band_high:.0f}':>10}{sap:8.1f}  {v}"
+        )
     print("\nconfig.py default önerisi:")
-    print(f"  PHYSICS_DRAG_CDA_M2 = {cda_fit}")
-    print(f"  PHYSICS_PARASITIC_KW = {par_fit}")
+    print(f"  PHYSICS_DRAG_CDA_M2 = {fit.cda}")
+    print(f"  PHYSICS_PARASITIC_KW = {fit.parasitic_kw}")
+    assert green_final == fit.green  # sanity: re-score matches grid-search winner
 
 
 if __name__ == "__main__":

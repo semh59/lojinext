@@ -56,6 +56,7 @@ TASK_NAME_TO_MODULE: dict[str, str] = {
     "anomaly.cluster_scan": "anomaly",
     "ocr.process_belge": "import_excel",
     "prediction.generate": "prediction_ml",
+    "physics.weekly_recalibration_snapshot": "route_simulation",
 }
 # Deliberately unmapped -- platform-wide tasks with no single owning business
 # module (outbox relay reads every module's outbox rows; the two monitoring

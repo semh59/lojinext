@@ -1,7 +1,8 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.config import settings
 from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 
@@ -26,34 +27,22 @@ class TestOpenRouteClient:
         assert client._validate_coordinates(origin, destination) is False
 
     @pytest.mark.asyncio
-    async def test_call_api_success(self, client):
-        """Başarılı API çağrısı (_call_api async, httpx.AsyncClient kullanır)"""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "routes": [
-                {
-                    "summary": {
-                        "distance": 452300,
-                        "duration": 19800,
-                        "ascent": 1250,
-                        "descent": 1180,
-                    }
-                }
-            ]
-        }
+    async def test_call_api_success(self, client, monkeypatch):
+        """Başarılı API çağrısı — real HTTP against api_stub (0-mock,
+        2026-07-30, was mocking httpx.AsyncClient.post before). api_stub's
+        default (non-sentinel) /v2/directions/{profile}/json response is a
+        deterministic 450km/5.5h route."""
+        monkeypatch.setattr(
+            settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2"
+        )
+        client.base_url = settings.OPENROUTE_API_BASE_URL
 
-        with patch(
-            "httpx.AsyncClient.post",
-            new_callable=AsyncMock,
-            return_value=mock_response,
-        ):
-            result = await client._call_api(
-                origin=(40.7669, 29.4319), destination=(39.9334, 32.8597)
-            )
+        result = await client._call_api(
+            origin=(40.7669, 29.4319), destination=(39.9334, 32.8597)
+        )
 
         assert result is not None
-        assert result["distance_km"] == 452.3
+        assert result["distance_km"] == 450.0
         assert result["duration_hours"] == 5.5
 
     @pytest.mark.asyncio

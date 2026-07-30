@@ -187,17 +187,28 @@ async def test_chat_no_client_returns_error_message():
 # ---------------------------------------------------------------------------
 
 
-async def test_chat_success():
-    svc = _make_service_with_client()
+async def test_chat_success(monkeypatch):
+    """Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
+    client.chat.completions.create before). GroqService._get_client()
+    builds a real AsyncGroq SDK client, which genuinely round-trips
+    through api_stub's deterministic /openai/v1/chat/completions stub —
+    proving the SDK's request/response parsing works against a real
+    server, not just a MagicMock shaped like one."""
+    from groq import AsyncGroq
 
-    mock_completion = MagicMock()
-    mock_completion.choices[0].message.content = "Yakıt tüketimi normaldir."
-    svc.client.chat = MagicMock()
-    svc.client.chat.completions = MagicMock()
-    svc.client.chat.completions.create = AsyncMock(return_value=mock_completion)
+    from app.config import settings
+
+    monkeypatch.setattr(
+        settings, "GROQ_API_BASE_URL", "http://localhost:9000/openai/v1"
+    )
+
+    svc = _make_service_no_key()
+    svc.api_key = "test-key"  # pragma: allowlist secret
+    svc.client = AsyncGroq(api_key=svc.api_key, base_url="http://localhost:9000")
+    svc._get_client = AsyncMock(return_value=svc.client)
 
     result = await svc.chat("Tüketim nedir?")
-    assert result == "Yakıt tüketimi normaldir."
+    assert result == "Bu bir test yanıtıdır."
 
 
 async def test_chat_with_history():

@@ -136,7 +136,16 @@ def setup_celery_module_role_signals() -> None:
     """
     from celery.signals import task_postrun, task_prerun
 
-    @task_prerun.connect
+    # weak=False is required: `.connect()` defaults to a WEAK reference to
+    # the receiver, and `_on_prerun`/`_on_postrun` are local closures with
+    # no other strong reference once this function returns -- without
+    # weak=False they get garbage-collected almost immediately, silently
+    # turning every subsequent real task_prerun/task_postrun signal into a
+    # no-op (found live, 2026-07-30: a new unit test sending these signals
+    # directly proved the connected receiver was already a dead weakref by
+    # the time the signal fired, meaning Celery-task role-scoping likely
+    # never actually applied in production since this wiring was added).
+    @task_prerun.connect(weak=False)
     def _on_prerun(task_id: str, task, **_):
         module_name = TASK_NAME_TO_MODULE.get(task.name)
         if module_name is None:
@@ -144,7 +153,7 @@ def setup_celery_module_role_signals() -> None:
         role = MODULE_ROLE_MAP[module_name]
         _role_tokens[task_id] = _module_role.set(role)
 
-    @task_postrun.connect
+    @task_postrun.connect(weak=False)
     def _on_postrun(task_id: str, task, **_):
         token = _role_tokens.pop(task_id, None)
         if token is not None:

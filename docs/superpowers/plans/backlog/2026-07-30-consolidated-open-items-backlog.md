@@ -93,13 +93,24 @@ fiziksel bandın tam sınırında oturmasından kaynaklanan aşırı-uyum
 riskini doğruluyor — **kullanıcı kararıyla `config.py` değiştirilmedi**,
 flag=false + eski sabitler production'da kalıyor.
 
-**Ayrı iş olarak planlandı (kullanıcı kararı, 2026-07-30)**: tek-günlük
-fit'e güvenmeden **birden fazla günün** canlı geometri verisiyle
-(farklı trafik/hava koşulları) kalibrasyonu tekrarlamak ve ortalamasını
-almak — periyodik (haftalık?) bir "recalibration job" olarak
-otomatikleştirmek de düşünülebilir. Bu iş birden fazla günün Open-Meteo
-kotasını gerektirdiği için ayrı, kendi başına bir görev — bu backlog
-dalgasının kapsamı dışında bırakıldı.
+**✅ TAMAMLANDI (2026-07-30) — otomatik haftalık snapshot mekanizması
+kuruldu**: tek-günlük fit'e güvenmek yerine, `physics.weekly_
+recalibration_snapshot` adında yeni bir Celery beat task'ı (Pazar 02:30
+UTC) her hafta otomatik olarak: (a) 10 referans rotanın canlı geometrisini
+tazeler (gerçek Mapbox+Open-Meteo), (b) aynı grid-search fit'i çalıştırır,
+(c) tarihli bir satırı `data/calibration/physics_recalibration_log.jsonl`'a
+ekler. `config.py`'yi OTOMATİK GÜNCELLEMEZ — birkaç haftalık veri
+biriktikten sonra insan gözden geçirip flip kararını verecek. Fit
+mantığı (`load_reference_route_segments`/`score_routes`/
+`grid_search_best_fit`) `v2/modules/route_simulation/application/
+physics_calibration.py`'ye çıkarıldı, referans rota verisi (`REFERENCE_
+ROUTES`) `domain/physics_reference_routes.py`'ye taşındı — hem
+`scripts/calibrate_physics.py` hem yeni task aynı kodu paylaşıyor.
+Gerçek Postgres/Docker'a karşı doğrulandı: 1 rotanın canlı yenilemesi
+(gerçek Mapbox+Open-Meteo round-trip) + fit + snapshot yazımı uçtan uca
+test edildi (9/10 GREEN, dosyaya yazıldı) — kalan 9 rotanın da AYNI,
+zaten kanıtlanmış kod yolundan geçtiği için (kota tasarrufu amacıyla)
+tam 10-rotalı bir kuru koşu tekrar yapılmadı.
 
 **Yan bulgu — 2 gerçek pre-existing bug** (`scripts/p51_real_world_
 validation.py`, canlı koşumlar sırasında bulunup düzeltildi):

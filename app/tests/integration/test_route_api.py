@@ -15,6 +15,8 @@ import pytest
 from app.config import settings
 from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 async def test_openroute_client_structure(db_session, monkeypatch):

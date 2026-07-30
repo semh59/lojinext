@@ -224,6 +224,24 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # moved to the "platform" schema in 0060_platform_schema_move) --
     # admin_audit_log itself is admin_platform's OWN table, no grant needed.
     "m_admin_platform": ["driver", "trip", "fleet", "anomaly", "platform"],
+    # FAZ2 combined-coverage-gate CI failure (2026-07-30): m_import_excel
+    # had zero blanket SELECT anywhere (only narrow WriteExceptions for its
+    # bulk-write columns) -- but every importer validates/looks up existing
+    # rows BEFORE writing. sefer_upload_importer.py/execute_import.py/
+    # sefer_importer.py all call uow.arac_repo.get_all() (fleet.araclar +
+    # fleet.arac_bakimlari + trip.seferler, joined in one raw query --
+    # AracRepository.get_all() always delegates to get_all_with_stats_paged),
+    # uow.sofor_repo.get_all() (driver.soforler), uow.dorse_repo.get_all()
+    # (fleet.dorseler), uow.lokasyon_repo.get_all()/get_all_route_keys()
+    # (location.lokasyonlar); yakit_importer.py's fuel.public.
+    # recalculate_vehicle_periods() reads fuel.yakit_alimlari via
+    # yakit_repo.get_all() before rewriting yakit_periyotlari. Caught by an
+    # "Integration — remaining" test hitting sefer_upload_importer's
+    # permission-denied on arac_bakimlari, which silently degraded (caught
+    # exception, partial result) rather than raising -- no test failed, but
+    # combined coverage dropped 92%->91% from the unreached success-path
+    # branches.
+    "m_import_excel": ["fleet", "driver", "trip", "location", "fuel"],
 }
 
 # FAZ2 Wave 2 pilot (2026-07-28): found live, AFTER fixing the m_trip entry

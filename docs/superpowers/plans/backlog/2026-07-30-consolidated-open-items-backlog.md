@@ -172,14 +172,21 @@ dış-API mock'u tespit edilenler `api_stub`'a çevrildi:
 - `test_workers/test_coaching_tasks_more.py`, `api/test_coaching_coverage.py`,
   `api/test_investigations_more.py` — Telegram sendMessage success/error
   path'leri (`SIMULATE_ERROR` token sentinel'i).
-- `test_routing.py` — `TestOpenRouteClient.test_call_api_success`.
-- `unit/test_groq_service_coverage.py::test_chat_success` — gerçek
-  `AsyncGroq` SDK client'ı `api_stub`'ın `/openai/v1/chat/completions`
-  stub'ına karşı; history/context/system_prompt varyantları ve
-  chat_stream/exception/timeout testleri bilinçli mock'lu kaldı (api_stub
-  SSE desteklemiyor, sabit yanıt döndüğü için farklı-girdi varyantları
-  aynı string'i tekrar doğrulamaktan öteye geçmiyor — gerekçe dosya
-  içinde docstring olarak var).
+- `test_routing.py` (moved to `integration/test_route_api.py::test_call_api_success`,
+  `pytest.mark.integration`) — gerçek HTTP api_stub'a.
+- `unit/test_groq_service_coverage.py::test_chat_success` — **DENENDİ, GERİ ALINDI**.
+  Gerçek `AsyncGroq` SDK client'ı `api_stub`'a karşı önce izole ve ~200
+  testlik lokal bir alt kümede yeşil doğrulandı, ama CI'nın gerçek
+  `-m integration` oturumunda (~1470 test, run 30577084026, job
+  90987928815) "TypeError: object MagicMock can't be used in 'await'
+  expression" ile patladı — o büyük oturumdaki BAŞKA bir testle global
+  state çakışması (hangisi olduğu, tükenmez bisection gerektirdiği için
+  bulunamadı; hiçbir daha küçük lokal alt kümede tekrar üretilemedi).
+  Bilinçli karar: bu TEK dönüşüm geri alındı (mock'lu haline döndü,
+  gerekçe dosya içinde docstring), diğer tüm Telegram/OpenRoute
+  dönüşümleri (api_stub'ın gerçek HTTP + hata-enjeksiyonu yolu) sağlam
+  kaldığı için epiğin genel kapsamı etkilenmedi — yalnız Groq'un SDK-
+  seviyeli round-trip'i mock'lu kalıyor.
 - `integration/test_coaching_endpoints.py::test_send_success_with_mocked_telegram` —
   gerçek HTTP + api_stub'ın echo-back `chat_id`/`text`'i ile doğrulama;
   aynı dosyadaki `test_send_html_escapes_user_message` bilinçli mock'lu

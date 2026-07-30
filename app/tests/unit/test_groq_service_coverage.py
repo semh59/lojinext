@@ -187,12 +187,32 @@ async def test_chat_no_client_returns_error_message():
 # ---------------------------------------------------------------------------
 
 
-# test_chat_success moved 2026-07-30 to
-# app/tests/integration/test_groq_client.py::test_chat_success -- its
-# 0-mock conversion to real HTTP against api_stub needs api_stub already
-# running, which this file's `unit` marker lane (CI's "Backend unit
-# tests" step) starts *before*; app/tests/integration/ runs after
-# api_stub is up.
+async def test_chat_success():
+    """Reverted 2026-07-30: a real-HTTP-against-api_stub conversion of this
+    test (via a real AsyncGroq SDK client) was tried and initially verified
+    passing in isolation and in a ~200-test local subset of the
+    `integration`-marked suite, but failed with
+    "TypeError: object MagicMock can't be used in 'await' expression" only
+    when run inside CI's full ~1470-test `-m integration` session (job
+    90987928815, run 30577084026) -- a global test-pollution interaction
+    with some other test in that large session that could not be
+    identified without exhaustive bisection across the full CI-only
+    collection (not reproducible in any smaller local subset tried).
+    Reverted to a mocked _get_client() to keep this test deterministic;
+    the real-HTTP round-trip through api_stub's /openai/v1/chat/completions
+    stub IS still exercised for OpenRoute/Telegram conversions in this same
+    0-mock batch, so the api_stub error-injection/success path itself
+    remains covered elsewhere -- only Groq's SDK-level round-trip is not."""
+    svc = _make_service_with_client()
+
+    mock_completion = MagicMock()
+    mock_completion.choices[0].message.content = "Yakıt tüketimi normaldir."
+    svc.client.chat = MagicMock()
+    svc.client.chat.completions = MagicMock()
+    svc.client.chat.completions.create = AsyncMock(return_value=mock_completion)
+
+    result = await svc.chat("Tüketim nedir?")
+    assert result == "Yakıt tüketimi normaldir."
 
 
 async def test_chat_with_history():

@@ -242,11 +242,11 @@ Heavy list views use `@tanstack/react-virtual` for virtualised rendering (`TripT
 
 ### Separate microservices
 
-Two standalone services run alongside the main backend, each with its own `Dockerfile` and `requirements.txt`:
-- `telegram_bot/` — Telegram bot interface (`driver_bot.py` for drivers, `ops_bot.py` for operations)
-- `ocr_service/` — document OCR processor (`ocr_processor.py`)
+Two standalone services run alongside the main backend, each with its own `Dockerfile` and `requirements.txt`, living under `v2/services/` (moved from the repo root 2026-07-30 — a plain directory move, not a `v2/modules/` migration; these are NOT FastAPI business modules and have no `public.py`/`CLAUDE.md`/DI wiring):
+- `v2/services/telegram_bot/` — Telegram bot interface (`driver_bot.py` for drivers, `ops_bot.py` for operations)
+- `v2/services/ocr_service/` — document OCR processor (`ocr_processor.py`)
 
-These are included in `docker-compose.yml` but are not part of the FastAPI app module.
+These are included in `docker-compose.yml` (build `context:` points at their new path) but are not part of the FastAPI app module.
 
 ### Auth / RBAC
 

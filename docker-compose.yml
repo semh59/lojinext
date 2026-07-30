@@ -638,7 +638,7 @@ services:
 
   ocr-service:
     build:
-      context: ./ocr_service
+      context: ./v2/services/ocr_service
       dockerfile: Dockerfile
     ports:
       - "8001:8001"
@@ -727,7 +727,7 @@ services:
 
   telegram-ops-bot:
     build:
-      context: ./telegram_bot
+      context: ./v2/services/telegram_bot
       dockerfile: Dockerfile
     environment:
       - BOT_TYPE=ops
@@ -756,7 +756,7 @@ services:
 
   telegram-driver-bot:
     build:
-      context: ./telegram_bot
+      context: ./v2/services/telegram_bot
       dockerfile: Dockerfile
     environment:
       - BOT_TYPE=driver

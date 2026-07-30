@@ -170,7 +170,8 @@ async def cmd_seferlerim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             await update.message.reply_text("Onaylanmış sefer bulunamadı.")
             return
         lines = [
-            f"{'✅' if s.get('onay_durumu') == 'onaylandi' else '⏳'} {s.get('tarih', '')} — {s.get('cikis_yeri', '?')}→{s.get('varis_yeri', '?')}"
+            f"{'✅' if s.get('onay_durumu') == 'onaylandi' else '⏳'} "
+            f"{s.get('tarih', '')} — {s.get('cikis_yeri', '?')}→{s.get('varis_yeri', '?')}"
             for s in seferler
         ]
         await update.message.reply_text("\n".join(lines))

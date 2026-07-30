@@ -9,8 +9,8 @@ from sqlalchemy import select
 sys.path.append(os.getcwd())
 
 from app.config import settings
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 
 # COORDINATE MAPPING
 CITY_COORDS = {
@@ -40,7 +40,7 @@ async def enrich_locations():
         print("❌ Error: OPENROUTESERVICE_API_KEY is missing.")
         return
 
-    async with AsyncSessionLocal() as db:
+    async with open_role_scoped_session("m_ops") as db:
         stmt = select(Lokasyon)
         result = await db.execute(stmt)
         locations = result.scalars().all()

@@ -15,12 +15,14 @@ from contextlib import asynccontextmanager  # noqa: E402
 
 from sqlalchemy import select, update  # noqa: E402
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal  # noqa: E402
-from v2.modules.platform_infra.logging.logger import get_logger  # noqa: E402
 from v2.modules.location.public import (
     Lokasyon,  # noqa: E402
     geocode_location,  # noqa: E402
 )
+from v2.modules.platform_infra.database.module_role import (  # noqa: E402
+    open_role_scoped_session,
+)
+from v2.modules.platform_infra.logging.logger import get_logger  # noqa: E402
 from v2.modules.route_simulation.public import OpenRouteClient  # noqa: E402
 from v2.modules.trip.public import SeferORM as Sefer  # noqa: E402
 
@@ -38,12 +40,13 @@ async def _geocode(q: str):
         return (results[0]["lat"], results[0]["lon"])
     return None
 
+
 logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def get_session():
-    async with AsyncSessionLocal() as session:
+    async with open_role_scoped_session("m_ops") as session:
         try:
             yield session
         except Exception:

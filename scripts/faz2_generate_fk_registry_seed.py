@@ -40,9 +40,17 @@ ORDER BY 1, 2, 3;
 
 
 async def _fetch_edges(database_url: str) -> list[dict]:
+    # This script builds its own engine from a caller-supplied DATABASE_URL
+    # (not necessarily the app's configured DB) using a raw Core Connection,
+    # not an ORM Session -- connection.py's after_begin listener (which reads
+    # module_role.get_module_role()) is Session-scoped and never fires here.
+    # Scope to m_ops directly with the same set_config() call connection.py
+    # uses, so this read-only introspection is consistent with every other
+    # maintenance script even though it bypasses the shared engine.
     engine = create_async_engine(database_url)
     try:
         async with engine.connect() as conn:
+            await conn.execute(text("SELECT set_config('role', 'm_ops', true)"))
             result = await conn.execute(text(_QUERY))
             edges = []
             for row in result:

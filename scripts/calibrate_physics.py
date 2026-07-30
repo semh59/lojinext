@@ -25,7 +25,7 @@ import asyncio
 from sqlalchemy import text
 
 import app.config as cfg
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.route_simulation.public import (
     SegmentInput,
     simulate_route,
@@ -99,7 +99,7 @@ def _score(routes):
 
 async def main():
     cfg.settings.USE_SEGMENT_TRACTIVE_MODEL = True
-    async with AsyncSessionLocal() as s:
+    async with open_role_scoped_session("m_ops") as s:
         routes = await _load_routes(s)
     if not routes:
         raise SystemExit(

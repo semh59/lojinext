@@ -7,8 +7,8 @@ from sqlalchemy import select
 # Add project root to path
 sys.path.append(os.getcwd())
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 
 
 def tr_title(text: str) -> str:
@@ -23,7 +23,7 @@ def tr_title(text: str) -> str:
 
 
 async def cleanup_locations():
-    async with AsyncSessionLocal() as db:
+    async with open_role_scoped_session("m_ops") as db:
         stmt = select(Lokasyon)
         result = await db.execute(stmt)
         locations = result.scalars().all()

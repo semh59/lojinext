@@ -4,8 +4,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy import select
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.location.public import Lokasyon
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.trip.public import SeferORM as Sefer
 
 load_dotenv()
@@ -13,7 +13,7 @@ load_dotenv()
 
 async def prepare_data():
     print("📊 Preparing training data with route analysis...")
-    async with AsyncSessionLocal() as session:
+    async with open_role_scoped_session("m_ops") as session:
         # Fetch trips and locations
         stmt = select(Sefer, Lokasyon).join(Lokasyon, Sefer.guzergah_id == Lokasyon.id)
         result = await session.execute(stmt)

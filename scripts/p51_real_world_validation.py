@@ -23,6 +23,7 @@ from typing import Any, Dict, List
 
 from app.config import settings
 from v2.modules.location.public import LokasyonCreate, create_location
+from v2.modules.platform_infra.database.module_role import module_role_scope
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 from v2.modules.trip.application.sefer_fuel_estimator import (
     SeferFuelEstimator,
@@ -609,5 +610,10 @@ async def main():
     print(f"[output] {md_path}")
 
 
+async def _main_with_role() -> None:
+    with module_role_scope("m_ops"):
+        await main()
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_main_with_role())

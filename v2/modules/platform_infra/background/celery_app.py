@@ -17,6 +17,9 @@ from v2.modules.platform_infra.cache.redis_client_factory import (
     get_celery_broker_url,
     get_celery_result_backend_url,
 )
+from v2.modules.platform_infra.logging.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def get_celery_app() -> Celery:
@@ -155,7 +158,7 @@ def get_celery_app() -> Celery:
 celery_app = get_celery_app()
 
 # Ensure tasks are registered
-from celery.signals import worker_process_init  # noqa: E402
+from celery.signals import task_postrun, worker_process_init  # noqa: E402
 
 import v2.modules.analytics_executive.infrastructure.compliance_tasks  # noqa: E402,F401
 import v2.modules.anomaly.infrastructure.cluster_tasks  # noqa: E402,F401
@@ -185,17 +188,66 @@ from v2.modules.platform_infra.resilience.shutdown import (  # noqa: E402
 )
 
 
-@worker_process_init.connect
-def init_worker(*args, **kwargs):
-    register_shutdown_handlers()
-    # After fork, the parent's asyncpg connections are bound to the parent's
-    # event loop which is dead in the child process.  close=False abandons the
-    # inherited handles without trying to close them (which would crash with
-    # MissingGreenlet).  The child then opens fresh connections on its own
-    # event loop when the first task runs.
+def _drop_pooled_connections() -> None:
+    """Discard every pooled asyncpg connection without trying to close it.
+
+    `close=False` abandons the handles instead of gracefully closing them —
+    a graceful close needs a running event loop for the same asyncpg
+    connection, which is exactly what's unavailable when this is called
+    from a synchronous Celery signal handler between two tasks' separate
+    `asyncio.run()` lifetimes. The next `engine.connect()` opens a
+    genuinely fresh connection on whatever event loop is current then.
+    """
     try:
         from v2.modules.platform_infra.database.connection import engine
 
-        engine.sync_engine.pool.dispose(close=False)
-    except Exception:
-        pass
+        # `close=False` is an Engine.dispose() kwarg, not Pool.dispose()'s
+        # (SQLAlchemy 2.0's Pool.dispose() takes no arguments at all --
+        # calling it with close=False raises TypeError, silently swallowed
+        # by the bare except this pre-existing code used to have, meaning
+        # this abandon-without-closing step had never actually run).
+        # Engine.dispose(close=False) replaces the pool and abandons the
+        # old one's checked-in connections without calling .close() on
+        # them -- exactly what's needed here, since closing an asyncpg
+        # connection whose event loop is already dead crashes with
+        # MissingGreenlet.
+        engine.sync_engine.dispose(close=False)
+    except Exception as exc:
+        logger.warning(
+            "Pool dispose failed (engine may not be initialized yet): %s", exc
+        )
+
+
+@worker_process_init.connect
+def init_worker(*args, **kwargs):
+    register_shutdown_handlers()
+
+    from v2.modules.platform_infra.database.module_role import (
+        setup_celery_module_role_signals,
+    )
+
+    setup_celery_module_role_signals()
+    # After fork, the parent's asyncpg connections are bound to the parent's
+    # event loop, which is dead in the child process — drop them so the
+    # child opens fresh connections on its own event loop when the first
+    # task runs.
+    _drop_pooled_connections()
+
+
+@task_postrun.connect
+def _dispose_pool_after_task(*args, **kwargs):
+    """Each Celery task body runs its own `asyncio.run(...)`, which creates
+    and then closes a fresh event loop per task. SQLAlchemy's async engine
+    pool doesn't know that — it hands the next task a connection opened on
+    a now-closed event loop, and `pool_pre_ping`'s own liveness check needs
+    that same dead event loop to run its ping, so instead of gracefully
+    detecting a stale connection it raises `RuntimeError: Event loop is
+    closed` (reproduced live: roughly 30-50% of second+ same-child-process
+    task runs crashed this way, non-deterministically, depending on which
+    pooled connection got handed out). Dropping the pool after every task
+    forces the next task's `asyncio.run()` to open connections fresh on its
+    own loop — no cross-task connection reuse within a worker child
+    process, but task volume here (beat-scheduled jobs, not a hot request
+    path) makes that the right trade-off over a more invasive NullPool/
+    engine-per-task redesign."""
+    _drop_pooled_connections()

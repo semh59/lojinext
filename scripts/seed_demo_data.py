@@ -19,13 +19,12 @@ from datetime import date, timedelta
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from v2.modules.platform_infra.database.connection import engine
 from v2.modules.driver.public import Sofor
 from v2.modules.fleet.public import AracORM as Arac
 from v2.modules.fuel.public import YakitAlimiORM as YakitAlimi
 from v2.modules.location.public import Lokasyon
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.trip.public import SeferORM as Sefer
 
 random.seed(42)
@@ -180,11 +179,7 @@ ISTASYONLAR = [
 
 
 async def seed():
-    async_session = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-
-    async with async_session() as session:
+    async with open_role_scoped_session("m_ops") as session:
         # Check if already seeded
         result = await session.execute(select(Arac).limit(1))
         if result.scalar_one_or_none() is not None:

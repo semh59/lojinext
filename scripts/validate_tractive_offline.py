@@ -17,7 +17,7 @@ import asyncio
 from sqlalchemy import text
 
 import app.config as cfg
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.route_simulation.public import (
     SegmentInput,
     simulate_route,
@@ -77,7 +77,7 @@ async def main():
     print(
         f"{'rota':10}{'yük':>5}{'elev%':>7}{'nötr':>8}{'band':>13}{'sapma%':>8}  sonuç"
     )
-    async with AsyncSessionLocal() as s:
+    async with open_role_scoped_session("m_ops") as s:
         for lid, (ad, ton, lo, hi) in ROUTES.items():
             sim = await best_sim_for(s, lid)
             if not sim:

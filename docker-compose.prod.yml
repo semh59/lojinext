@@ -77,7 +77,7 @@ services:
           "CMD",
           "celery",
           "-A",
-          "app.infrastructure.background.celery_app",
+          "v2.modules.platform_infra.background.celery_app",
           "inspect",
           "ping",
           "--timeout",

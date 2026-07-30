@@ -6,9 +6,9 @@ import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sqlalchemy import select
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
-from v2.modules.platform_infra.logging.logger import setup_logging
 from v2.modules.fleet.public import AracORM as Arac
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
+from v2.modules.platform_infra.logging.logger import setup_logging
 from v2.modules.prediction_ml.public import get_ensemble_service
 
 # Project root
@@ -44,7 +44,7 @@ async def train_fleet() -> None:
     # Shared service instance
     service = get_ensemble_service()
 
-    async with AsyncSessionLocal() as session:
+    async with open_role_scoped_session("m_ops") as session:
         # Load all active vehicles
         vehicles_result = await session.execute(select(Arac).where(Arac.aktif))
         vehicles = vehicles_result.scalars().all()

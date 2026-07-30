@@ -18,6 +18,7 @@ from sqlalchemy import select
 
 from v2.modules.location.public import Lokasyon
 from v2.modules.platform_infra.database.db_session import get_async_session_context
+from v2.modules.platform_infra.database.module_role import module_role_scope
 from v2.modules.trip.public import SeferORM as Sefer
 
 
@@ -28,30 +29,44 @@ async def backfill_route_pairs():
     """
     print("[BACKFILL] Starting route_pair_id backfill...")
 
-    async with get_async_session_context() as session:
-        # 1. Get all trips that have a guzergah_id but no route_pair_id
-        stmt = (
-            select(Sefer, Lokasyon)
-            .join(Lokasyon, Sefer.guzergah_id == Lokasyon.id)
-            .where(Sefer.route_pair_id.is_(None))
-        )
-        result = await session.execute(stmt)
-        trips_to_fix = result.all()
+    with module_role_scope("m_ops"):
+        async with get_async_session_context() as session:
+            # 1. Get all trips that have a guzergah_id but no route_pair_id
+            stmt = (
+                select(Sefer, Lokasyon)
+                .join(Lokasyon, Sefer.guzergah_id == Lokasyon.id)
+                .where(Sefer.route_pair_id.is_(None))
+            )
+            result = await session.execute(stmt)
+            trips_to_fix = result.all()
 
-        updated_count = 0
-        for sefer, lokasyon in trips_to_fix:
-            # Generate deterministic hash based on coordinates (V2.1 Standard)
-            coord_str = f"{lokasyon.cikis_lat:.5f},{lokasyon.cikis_lon:.5f}->{lokasyon.varis_lat:.5f},{lokasyon.varis_lon:.5f}"  # noqa: E501
-            route_pair_id = hashlib.sha256(coord_str.encode()).hexdigest()[:16]
+            updated_count = 0
+            skipped_count = 0
+            for sefer, lokasyon in trips_to_fix:
+                if (
+                    lokasyon.cikis_lat is None
+                    or lokasyon.cikis_lon is None
+                    or lokasyon.varis_lat is None
+                    or lokasyon.varis_lon is None
+                ):
+                    skipped_count += 1
+                    continue
 
-            sefer.route_pair_id = route_pair_id
-            updated_count += 1
+                # Generate deterministic hash based on coordinates (V2.1 Standard)
+                coord_str = f"{lokasyon.cikis_lat:.5f},{lokasyon.cikis_lon:.5f}->{lokasyon.varis_lat:.5f},{lokasyon.varis_lon:.5f}"  # noqa: E501
+                route_pair_id = hashlib.sha256(coord_str.encode()).hexdigest()[:16]
 
-            if updated_count % 100 == 0:
-                print(f"[BACKFILL] Processed {updated_count} records...")
+                sefer.route_pair_id = route_pair_id
+                updated_count += 1
 
-        await session.commit()
-        print(f"[BACKFILL] Successfully updated {updated_count} trip records.")
+                if updated_count % 100 == 0:
+                    print(f"[BACKFILL] Processed {updated_count} records...")
+
+            await session.commit()
+            print(
+                f"[BACKFILL] Successfully updated {updated_count} trip records "
+                f"({skipped_count} skipped -- linked location has no coordinates)."
+            )
 
 
 if __name__ == "__main__":

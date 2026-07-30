@@ -12,7 +12,7 @@ sys.path.append(project_root)
 # Load env explicitly
 load_dotenv(os.path.join(project_root, ".env"))
 
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.platform_infra.logging.logger import get_logger
 from v2.modules.prediction_ml.public import EnsemblePredictorService
 from v2.modules.trip.public import SeferORM as Sefer
@@ -28,7 +28,7 @@ async def train_all_vehicles():
 
     predictor_service = EnsemblePredictorService()
 
-    async with AsyncSessionLocal() as session:
+    async with open_role_scoped_session("m_ops") as session:
         # 1. Seferi olan araçları bul
         stmt = select(distinct(Sefer.arac_id)).where(Sefer.durum == "Tamam")
         result = await session.execute(stmt)

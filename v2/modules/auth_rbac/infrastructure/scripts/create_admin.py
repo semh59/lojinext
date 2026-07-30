@@ -23,7 +23,7 @@ sys.path.append(os.getcwd())
 from app.config import settings
 from v2.modules.auth_rbac.public import Kullanici, Rol
 from v2.modules.auth_rbac.public import hash_password as get_password_hash
-from v2.modules.platform_infra.database.connection import AsyncSessionLocal
+from v2.modules.platform_infra.database.module_role import open_role_scoped_session
 from v2.modules.platform_infra.security.pii_encryption import blind_index
 
 
@@ -31,7 +31,7 @@ async def create_user():
     admin_email = settings.SUPER_ADMIN_USERNAME
     admin_password = settings.ADMIN_PASSWORD.get_secret_value()
 
-    async with AsyncSessionLocal() as db:
+    async with open_role_scoped_session("m_ops") as db:
         role_result = await db.execute(select(Rol).where(Rol.ad == "super_admin"))
         role = role_result.scalars().first()
         if not role:

@@ -1,8 +1,18 @@
 """Feature B.5 — OPS Telegram alarm broadcast testleri.
 
 Notlar:
-- `httpx.AsyncClient` monkeypatch'i ile gerçek HTTP çağrısını engelliyoruz.
 - High suspicion için sapma_yuzde >= ~30 ve severity high/critical seçilmeli.
+
+0-mock triyaj notu (2026-07-30): `test_telegram_error_does_not_break_creation`
+gerçek api_stub HTTP'sine çevrildi (SIMULATE_ERROR token sentinel'i). Diğer
+4 test (`_FakeAsyncClient` mock'u) bilinçli olarak korundu — bu endpoint
+Telegram'a giden payload'ı veya çağrının yapılıp yapılmadığını kendi
+response'unda hiç ifşa etmiyor (yalnız 201 döner). "post hiç çağrılmadı"
+(no-call) iddiaları ve chat_id/parse_mode/text içerik doğrulaması, gerçek
+HTTP'ye geçilse dahi dıştan gözlemlenemez hale gelir — `_FakeAsyncClient`
+burada üründe olmayan bir gözlem noktası (outgoing call + payload) sağlıyor.
+`_build_theft_alarm_text()`'in içerik/escape mantığı zaten
+`test_theft_alarm_text.py`'de mock'suz test ediliyor.
 """
 
 from datetime import date, datetime, timezone
@@ -191,19 +201,20 @@ class TestTheftAlarmBroadcast:
     async def test_telegram_error_does_not_break_creation(
         self, async_client, admin_auth_headers, db_session, monkeypatch
     ):
-        monkeypatch.setattr("app.config.settings.THEFT_ALARM_ENABLED", True)
-        monkeypatch.setattr("app.config.settings.TELEGRAM_OPS_BOT_TOKEN", "TESTTOKEN")
-        monkeypatch.setattr("app.config.settings.TELEGRAM_OPS_CHAT_ID", "-100123")
+        """Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
+        httpx.AsyncClient to raise ConnectError before). The
+        token=="SIMULATE_ERROR" sentinel (api_stub/main.py's
+        /bot{token}/sendMessage) forces a real 500 response, which
+        raise_for_status() turns into httpx.HTTPStatusError — a subclass
+        of the same httpx.HTTPError _maybe_broadcast_alarm() catches, so
+        this exercises the identical except-branch as the old
+        ConnectError without needing a fake client."""
+        from app.config import settings
 
-        import httpx
-
-        class _BrokenClient(_FakeAsyncClient):
-            async def post(
-                self, url: str, json: dict | None = None, **kwargs: Any
-            ) -> _FakeResp:
-                raise httpx.ConnectError("net down")
-
-        monkeypatch.setattr(httpx, "AsyncClient", _BrokenClient)
+        monkeypatch.setattr(settings, "THEFT_ALARM_ENABLED", True)
+        monkeypatch.setattr(settings, "TELEGRAM_OPS_BOT_TOKEN", "SIMULATE_ERROR")
+        monkeypatch.setattr(settings, "TELEGRAM_OPS_CHAT_ID", "-100123")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         aid = await _seed_high_anomaly(db_session)
         resp = await async_client.post(
@@ -211,5 +222,5 @@ class TestTheftAlarmBroadcast:
             json={"anomaly_id": aid},
             headers=admin_auth_headers,
         )
-        # Telegram hatası yutuldu — soruşturma 201
+        # Telegram error is swallowed — investigation still returns 201
         assert resp.status_code == 201

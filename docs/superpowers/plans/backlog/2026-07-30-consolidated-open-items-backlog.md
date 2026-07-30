@@ -165,6 +165,46 @@ metriğinin ima ettiğinden ÇOK daha küçüktü — 98 dosyadan sadece 1 gerç
 dönüştürme adayı çıktı, o da düzeltildi. Frontend tarafı (`vi.mock`, 136
 dosya) bu oturumda taranmadı — ayrı bir gelecek iş olarak bırakıldı.
 
+**Devam turu (2026-07-30, "tümünü bitir" talimatıyla)**: `test_services/
+test_monitoring/test_repositories/test_ml` kümeleri dışında kalan
+Telegram/Groq/OpenRoute referanslı 8 dosya ek olarak taranıp gerçek
+dış-API mock'u tespit edilenler `api_stub`'a çevrildi:
+- `test_workers/test_coaching_tasks_more.py`, `api/test_coaching_coverage.py`,
+  `api/test_investigations_more.py` — Telegram sendMessage success/error
+  path'leri (`SIMULATE_ERROR` token sentinel'i).
+- `test_routing.py` — `TestOpenRouteClient.test_call_api_success`.
+- `unit/test_groq_service_coverage.py::test_chat_success` — gerçek
+  `AsyncGroq` SDK client'ı `api_stub`'ın `/openai/v1/chat/completions`
+  stub'ına karşı; history/context/system_prompt varyantları ve
+  chat_stream/exception/timeout testleri bilinçli mock'lu kaldı (api_stub
+  SSE desteklemiyor, sabit yanıt döndüğü için farklı-girdi varyantları
+  aynı string'i tekrar doğrulamaktan öteye geçmiyor — gerekçe dosya
+  içinde docstring olarak var).
+- `integration/test_coaching_endpoints.py::test_send_success_with_mocked_telegram` —
+  gerçek HTTP + api_stub'ın echo-back `chat_id`/`text`'i ile doğrulama;
+  aynı dosyadaki `test_send_html_escapes_user_message` bilinçli mock'lu
+  kaldı (endpoint outgoing payload'ı kendi response'unda ifşa etmiyor,
+  escape mantığı zaten `test_coaching_coverage.py`'de mock'suz test
+  ediliyor).
+- `integration/test_coaching_effectiveness.py` (2 test) — içerik
+  doğrulaması olmayan basit success-passthrough mock'ları gerçek HTTP'ye
+  çevrildi.
+- `integration/test_theft_alarm.py::test_telegram_error_does_not_break_creation` —
+  `SIMULATE_ERROR` sentinel'i; aynı dosyadaki diğer 4 test ("post hiç
+  çağrılmadı" negatif iddiaları + dinamik içerik doğrulaması gerektiren
+  success path) bilinçli mock'lu kaldı — endpoint dış çağrının yapılıp
+  yapılmadığını kendi response'unda ifşa etmiyor, `_build_theft_alarm_
+  text()` içeriği zaten `test_theft_alarm_text.py`'de mock'suz test
+  ediliyor.
+
+Geniş bir son-tarama (`httpx.AsyncClient`/`AsyncClient.post`/`respx`/
+`MockTransport` + `*Client(...)`/`_get_client` desenleri, ~30 dosya)
+başka gerçek dış-API mock'u yüzeye çıkarmadı — kalanlar circuit-breaker/
+DB-session/singleton gibi dahili mantık testleri ya da zaten hedefli
+(erişilemez except-dalı) patch'ler. Backend tarafı artık gerçekten
+tam taranmış sayılabilir. Frontend (`vi.mock`, 136 dosya) hâlâ
+taranmadı — kapsam dışında kalmaya devam ediyor.
+
 ### 3. FAZ2 Wave 2 kalanları (bkz. [[faz2_wave2_completed]] hafıza kaydı)
 
 - Celery `task_prerun`/`task_postrun` sinyalinden modül-rolü (`m_<modül>`)

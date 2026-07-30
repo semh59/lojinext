@@ -72,8 +72,16 @@ class TestCoachingEndpoints:
         db_session,
         monkeypatch,
     ):
+        """Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
+        httpx.AsyncClient before). api_stub's /bot{token}/sendMessage
+        echoes chat_id/text from the sent JSON body back in its response
+        — used here to verify the payload actually sent, in place of the
+        old FakeClient's kwargs assertions. parse_mode="HTML" is a
+        hardcoded constant in coaching_routes.py (not test-input-
+        dependent), so it needs no separate assertion here."""
         from sqlalchemy import update
 
+        from app.config import settings
         from v2.modules.driver.public import Sofor
 
         sid = await self._create_sofor(async_client, admin_auth_headers)
@@ -82,32 +90,8 @@ class TestCoachingEndpoints:
         )
         await db_session.commit()
 
-        # Bot token settings'i geçici set et
-        monkeypatch.setattr(
-            "app.config.settings.TELEGRAM_DRIVER_BOT_TOKEN",
-            "test:fake-token",
-        )
-
-        # httpx.AsyncClient.post mock
-        class FakeResp:
-            def raise_for_status(self):
-                return None
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, *args):
-                return False
-
-            async def post(self, *args, **kwargs):
-                # Telegram payload sözleşmesi doğrulanır
-                assert kwargs["json"]["parse_mode"] == "HTML"
-                assert kwargs["json"]["chat_id"] == "123456789"
-                assert "Koçluk" in kwargs["json"]["text"]
-                return FakeResp()
-
-        monkeypatch.setattr("httpx.AsyncClient", lambda **_: FakeClient())
+        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         resp = await async_client.post(
             f"/api/v1/coaching/{sid}/send",
@@ -122,7 +106,20 @@ class TestCoachingEndpoints:
     async def test_send_html_escapes_user_message(
         self, async_client, admin_auth_headers, db_session, monkeypatch
     ):
-        """Q2: parse_mode=HTML + html.escape(); injection denemesi escape edilir."""
+        """Q2: parse_mode=HTML + html.escape(); injection denemesi escape edilir.
+
+        0-mock triyaj notu (2026-07-30): coaching_routes.py'nin send
+        endpoint'i outgoing Telegram payload'ını kendi response'unda
+        hiç ifşa etmiyor ({"sent", "channel"} döner) — bu yüzden gerçek
+        api_stub'a çevrilse bile "escape edilmiş text gerçekten Telegram'a
+        giden payload'a mı yansıdı" sorusu doğrulanamaz hale gelir
+        (yalnız 200 dönüşü kalır, asıl escape iddiası test edilmemiş olur).
+        httpx.AsyncClient mock'u burada ürün-dışı bir gözlem noktası
+        (outgoing request body) sağladığı için bilinçli olarak
+        korunuyor — _build_telegram_text()'in escape mantığı zaten
+        test_coaching_coverage.py::TestBuildTelegramText'te mock'suz
+        test ediliyor; bu test ONA EK olarak "endpoint gerçekten bu
+        fonksiyonu çağırıp sonucu gönderiyor mu" bağlantısını doğruluyor."""
         from sqlalchemy import update
 
         from v2.modules.driver.public import Sofor
@@ -185,7 +182,32 @@ async def test_celery_beat_schedule_includes_weekly_digest():
     entry = sched["coaching-weekly-digest-mondays"]
     assert entry["task"] == "coaching.weekly_digest"
     cron = entry["schedule"]
-    # crontab eşittir kontrolü
+    # crontab equality check
     assert cron.hour == {9}
     assert cron.minute == {0}
     assert cron.day_of_week == {1}  # 1 = Monday in celery's crontab
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_send_high_priority_to_telegram_success(monkeypatch):
+    """0-mock (2026-07-30): real HTTP against api_stub's /bot{token}/
+    sendMessage stub. Moved here from
+    app/tests/unit/test_workers/test_coaching_tasks_more.py -- that file's
+    `unit` marker lane (CI's "Backend unit tests" step) runs before
+    api_stub is started, so a success-path test needing a real 200
+    response can only live in an `integration`-marked module (this file),
+    which runs after api_stub is up."""
+    from app.config import settings
+    from v2.modules.driver.infrastructure.coaching_tasks import (
+        _send_high_priority_to_telegram,
+    )
+
+    monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+    monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
+
+    result = await _send_high_priority_to_telegram(
+        "987654", "Test headline", "Use cruise control"
+    )
+
+    assert result is True

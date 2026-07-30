@@ -47,25 +47,13 @@ class TestCoachingEffectiveness:
         sid = await self._create_sofor_with_telegram(
             async_client, admin_auth_headers, db_session
         )
-        monkeypatch.setattr(
-            "app.config.settings.TELEGRAM_DRIVER_BOT_TOKEN", "test:fake"
-        )
+        # Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
+        # httpx.AsyncClient before) — no content assertions were made on
+        # the sent payload, so a plain settings redirect is sufficient.
+        from app.config import settings
 
-        class FakeResp:
-            def raise_for_status(self):
-                return None
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, *args):
-                return False
-
-            async def post(self, *args, **kwargs):
-                return FakeResp()
-
-        monkeypatch.setattr("httpx.AsyncClient", lambda **_: FakeClient())
+        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         resp = await async_client.post(
             f"/api/v1/coaching/{sid}/send",
@@ -122,25 +110,13 @@ class TestCoachingEffectiveness:
             async_client, admin_auth_headers, db_session
         )
         # Telegram gönderimi mock'la
-        monkeypatch.setattr(
-            "app.config.settings.TELEGRAM_DRIVER_BOT_TOKEN", "test:fake"
-        )
+        # Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
+        # httpx.AsyncClient before) — no content assertions were made on
+        # the sent payload, so a plain settings redirect is sufficient.
+        from app.config import settings
 
-        class FakeResp:
-            def raise_for_status(self):
-                return None
-
-        class FakeClient:
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, *args):
-                return False
-
-            async def post(self, *args, **kwargs):
-                return FakeResp()
-
-        monkeypatch.setattr("httpx.AsyncClient", lambda **_: FakeClient())
+        monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
+        monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
 
         resp = await async_client.post(
             f"/api/v1/coaching/{sid}/send",

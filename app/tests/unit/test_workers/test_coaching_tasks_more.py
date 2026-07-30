@@ -5,15 +5,22 @@ high-priority + telegram_id + COACHING_ENABLED path.
 0-mock (Dilim 33): patch("v2.modules.shared_kernel.infrastructure.unit_of_work.UnitOfWork") replaced with
 narrow patch.object(UnitOfWork, '__aenter__'/__aexit__).
 
-2026-07-30: _send_high_priority_to_telegram's success/failure-path tests
-converted to real HTTP against api_stub (`settings.TELEGRAM_API_BASE_URL`
--> Real Telegram Bot API, already stubbed at `/bot{token}/sendMessage` --
-found live while triaging the 0-mock epic's remaining backend mock files).
-The 2 content-inspection tests (does the escaped/omitted text end up in
-the outbound payload) stay mocked -- the function only returns a bool, so
-asserting on exact outbound text needs request interception either way;
-api_stub's stateless echo response can't be read back through this
-function's own return value.
+2026-07-30: _send_high_priority_to_telegram's failure-path test converted
+to real HTTP against api_stub (`settings.TELEGRAM_API_BASE_URL` -> Real
+Telegram Bot API, already stubbed at `/bot{token}/sendMessage` -- found
+live while triaging the 0-mock epic's remaining backend mock files). The
+success-path test was ALSO converted but then moved out to
+app/tests/integration/test_coaching_endpoints.py::
+test_send_high_priority_to_telegram_success -- it needs a genuine 200
+from api_stub, which is only guaranteed up in CI's `integration` lane
+(this file's `unit` lane runs before api_stub starts); the failure-path
+test stays here because a connection failure (api_stub not yet up)
+exercises the exact same except-branch as a real simulated error, so it
+passes correctly in either lane. The 2 content-inspection tests (does the
+escaped/omitted text end up in the outbound payload) stay mocked -- the
+function only returns a bool, so asserting on exact outbound text needs
+request interception either way; api_stub's stateless echo response can't
+be read back through this function's own return value.
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -50,17 +57,12 @@ async def test_send_telegram_no_token(monkeypatch):
     assert result is False
 
 
-@pytest.mark.asyncio
-async def test_send_telegram_success(monkeypatch):
-    """Successful HTTP call (real request against api_stub) → returns True."""
-    monkeypatch.setattr(settings, "TELEGRAM_DRIVER_BOT_TOKEN", "fake-token")
-    monkeypatch.setattr(settings, "TELEGRAM_API_BASE_URL", "http://localhost:9000")
-
-    result = await _send_high_priority_to_telegram(
-        "987654", "Test headline", "Use cruise control"
-    )
-
-    assert result is True
+# test_send_telegram_success moved 2026-07-30 to
+# app/tests/integration/test_coaching_endpoints.py::
+# test_send_high_priority_to_telegram_success -- its real-HTTP-against-
+# api_stub success path needs api_stub already running, which this
+# module's `unit` marker lane starts *before*; the `integration` lane
+# starts it first.
 
 
 @pytest.mark.asyncio

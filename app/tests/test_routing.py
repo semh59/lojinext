@@ -2,7 +2,6 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.config import settings
 from v2.modules.route_simulation.infrastructure.openroute_client import OpenRouteClient
 
 
@@ -26,24 +25,12 @@ class TestOpenRouteClient:
         destination = (39.9, 32.8)
         assert client._validate_coordinates(origin, destination) is False
 
-    @pytest.mark.asyncio
-    async def test_call_api_success(self, client, monkeypatch):
-        """Başarılı API çağrısı — real HTTP against api_stub (0-mock,
-        2026-07-30, was mocking httpx.AsyncClient.post before). api_stub's
-        default (non-sentinel) /v2/directions/{profile}/json response is a
-        deterministic 450km/5.5h route."""
-        monkeypatch.setattr(
-            settings, "OPENROUTE_API_BASE_URL", "http://localhost:9000/v2"
-        )
-        client.base_url = settings.OPENROUTE_API_BASE_URL
-
-        result = await client._call_api(
-            origin=(40.7669, 29.4319), destination=(39.9334, 32.8597)
-        )
-
-        assert result is not None
-        assert result["distance_km"] == 450.0
-        assert result["duration_hours"] == 5.5
+    # test_call_api_success moved 2026-07-30 to
+    # app/tests/integration/test_route_api.py::test_call_api_success --
+    # its 0-mock conversion to real HTTP against api_stub needs api_stub
+    # already running, which this file's CI lane ("Backend unit tests")
+    # starts *before*; app/tests/integration/ is excluded from that lane
+    # and runs after api_stub is up.
 
     @pytest.mark.asyncio
     async def test_get_distance_no_api_key(self):

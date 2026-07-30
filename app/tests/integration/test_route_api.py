@@ -31,3 +31,25 @@ async def test_openroute_client_structure(db_session, monkeypatch):
     # Real RouteAnalyzer produced a details breakdown (a real dict, not a mocked value).
     assert isinstance(result.get("details"), dict)
     assert result["details"]["highway"]["flat"] > 0
+
+
+@pytest.mark.asyncio
+async def test_call_api_success():
+    """0-mock (2026-07-30): real HTTP against api_stub's default (non-
+    sentinel) /v2/directions/{profile}/json response (deterministic
+    450km/5.5h route). Moved here from app/tests/test_routing.py -- that
+    file has no `integration` marker and isn't under app/tests/
+    integration/, so it runs in CI's "Backend unit tests" step, which
+    starts *before* api_stub -- a success-path test needing a real
+    response can only live under app/tests/integration/ (explicitly
+    excluded from that step via --ignore=app/tests/integration)."""
+    client = OpenRouteClient(api_key="test-api-key-placeholder")
+    client.base_url = "http://localhost:9000/v2"
+
+    result = await client._call_api(
+        origin=(40.7669, 29.4319), destination=(39.9334, 32.8597)
+    )
+
+    assert result is not None
+    assert result["distance_km"] == 450.0
+    assert result["duration_hours"] == 5.5

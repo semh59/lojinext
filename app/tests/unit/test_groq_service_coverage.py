@@ -187,28 +187,12 @@ async def test_chat_no_client_returns_error_message():
 # ---------------------------------------------------------------------------
 
 
-async def test_chat_success(monkeypatch):
-    """Real HTTP against api_stub (0-mock, 2026-07-30, was mocking
-    client.chat.completions.create before). GroqService._get_client()
-    builds a real AsyncGroq SDK client, which genuinely round-trips
-    through api_stub's deterministic /openai/v1/chat/completions stub —
-    proving the SDK's request/response parsing works against a real
-    server, not just a MagicMock shaped like one."""
-    from groq import AsyncGroq
-
-    from app.config import settings
-
-    monkeypatch.setattr(
-        settings, "GROQ_API_BASE_URL", "http://localhost:9000/openai/v1"
-    )
-
-    svc = _make_service_no_key()
-    svc.api_key = "test-key"  # pragma: allowlist secret
-    svc.client = AsyncGroq(api_key=svc.api_key, base_url="http://localhost:9000")
-    svc._get_client = AsyncMock(return_value=svc.client)
-
-    result = await svc.chat("Tüketim nedir?")
-    assert result == "Bu bir test yanıtıdır."
+# test_chat_success moved 2026-07-30 to
+# app/tests/integration/test_groq_client.py::test_chat_success -- its
+# 0-mock conversion to real HTTP against api_stub needs api_stub already
+# running, which this file's `unit` marker lane (CI's "Backend unit
+# tests" step) starts *before*; app/tests/integration/ runs after
+# api_stub is up.
 
 
 async def test_chat_with_history():

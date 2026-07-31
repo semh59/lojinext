@@ -163,12 +163,20 @@ READER_SELECT_GRANTS: dict[str, list[str]] = {
     # "admin_platform" instead of "platform" -- caught by re-verifying
     # live against the dev DB before committing).
     "m_fuel": ["fleet", "trip", "platform"],  # was undocumented anywhere before
-    "m_driver": ["trip", "fleet", "anomaly"],  # trip already documented in
-    # driver/CLAUDE.md; fleet+anomaly found live (FAZ2 Wave 2 driver pilot,
-    # 2026-07-29) — anomaly_repository.py's get_anomalies() query (used by
-    # DriverCoachingEngine via get_anomaly_detector().get_recent_anomalies)
-    # joins unqualified anomalies/araclar/seferler/soforler in one raw SQL
-    # statement
+    "m_driver": ["trip", "fleet", "anomaly", "platform"],  # trip already
+    # documented in driver/CLAUDE.md; fleet+anomaly found live (FAZ2 Wave 2
+    # driver pilot, 2026-07-29) — anomaly_repository.py's get_anomalies()
+    # query (used by DriverCoachingEngine via
+    # get_anomaly_detector().get_recent_anomalies) joins unqualified
+    # anomalies/araclar/seferler/soforler in one raw SQL statement.
+    # "platform" added 2026-07-31 (found live via Sentry, LOJINEXT-1E3,
+    # recurring since 2026-07-29): generate_coaching.py ->
+    # get_anomaly_detector() -> detect_consumption_anomalies() calls
+    # runtime_config.get_runtime_float("ANOMALY_Z_THRESHOLD"), which reads
+    # platform.sistem_konfig -- the exact same schema-mislabeling bug class
+    # 0078 already fixed for m_anomaly/m_prediction_ml, just a third,
+    # missed caller (m_driver, reached via the coaching flow rather than
+    # anomaly's own Celery task).
     "m_prediction_ml": [
         "fleet",
         "trip",
@@ -485,7 +493,18 @@ WRITE_EXCEPTIONS: list[WriteException] = [
     # session inherits the same task-local module_role ContextVar).
     # READER_SELECT_GRANTS alone covers cache HITS; this WriteException
     # covers cache MISSES.
-    WriteException("m_location", "route_simulation", "route_paths", ("INSERT",)),
+    #
+    # FAZ2 Wave 2 pilot fix (2026-07-31): found live via Sentry
+    # (LOJINEXT-1E5/LOJINEXT-17X, recurring since 2026-05-30) --
+    # RouteRepository.save_route() first checks get_by_coords() (bbox
+    # tolerance match) and calls self.update(existing["id"], **data)
+    # when a row already exists within tolerance, not just create(). The
+    # INSERT-only grant above covers a cold cache; a second /locations/
+    # {id}/analyze call for the same (or a nearby, within-tolerance)
+    # coordinate pair hits the UPDATE branch and needs its own grant.
+    WriteException(
+        "m_location", "route_simulation", "route_paths", ("INSERT", "UPDATE")
+    ),
     # FAZ2 Wave 2 admin_platform pilot (2026-07-29): found live --
     # telegram_bridge.py::kaydet_belge() INSERTs a SeferBelge row (photo
     # upload + OCR-pending marker) into trip.sefer_belgeler.

@@ -225,17 +225,23 @@ taranmadı — kapsam dışında kalmaya devam ediyor.
   `hard-gates` CI job'ı zaten yeşil, bu yalnız Docker image publish
   adımını etkiliyor.
 
-### 4. VAPID push bildirimleri — gerçek tarayıcıda hiç denenmedi
+### 4. VAPID push bildirimleri ✅ TAMAMLANDI (2026-07-31, uçtan uca doğrulandı)
 
 Push altyapısı (subscribe/unsubscribe/sender/410-cleanup + 3 tetikleyici:
-kritik anomali, muayene, weekly digest) kodda tam kurulu, ama teslim ucu
-(VAPID anahtar üretimi + `.env`'e `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/
-`VAPID_SUBJECT`/`PUSH_NOTIFICATION_ENABLED=true` + gerçek bir tarayıcıda
-"izin ver" diyalogundan geçip bildirim gelip gelmediğini görme) otomatize
-edilemeyen manuel bir adım — hiç yapılmadı. Sıradaki adım: VAPID anahtar
-çiftini üret (`web-push generate-vapid-keys` veya eşdeğeri), `.env`'e
-ekle, gerçek bir tarayıcıda push izni verip bir test bildirimi tetikleyip
-doğrula.
+kritik anomali, muayene, weekly digest) kodda tam kuruluydu. Teslim ucu
+kontrol edildiğinde `.env`'de VAPID anahtarlarının aslında 2026-05-28'de
+(py-vapid ile) zaten üretilip eklenmiş olduğu görüldü — bu maddenin "hiç
+yapılmadı" iddiası güncel değilmiş, yalnız gerçek tarayıcı doğrulaması
+hiç yapılmamıştı. Bu oturumda:
+- `.env.prod`'a (yerel, git'e girmiyor) ayrı bir VAPID anahtar çifti
+  üretilip eklendi (dev ile paylaşılmıyor — güvenlik ayrımı).
+- Claude-in-Chrome ile gerçek tarayıcıda uçtan uca doğrulama yapıldı:
+  `/profile` sayfasında "Push Bildirimleri → Etkinleştir" tıklandı,
+  gerçek bir FCM (Google push servisi) subscription oluştu
+  (`Notification.permission="granted"`, gerçek
+  `https://fcm.googleapis.com/fcm/send/...` endpoint'i), `POST /push/
+  test` gerçek `{"sent":1,"expired":0,"failed":0}` döndü, ve kullanıcı
+  gerçek makinesinde OS bildirimini gördüğünü doğruladı.
 
 ### 5. Backup-restore — otomatik doğrulama VAR, gerçek felaket tatbikatı YOK
 

@@ -55,7 +55,6 @@ from v2.modules.prediction_ml.domain.ensemble_core import (
 )
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     FuelPrediction,
-    HybridFuelPredictor,
     PhysicsBasedFuelPredictor,
     RouteConditions,
     VehicleSpecs,
@@ -112,7 +111,6 @@ __all__ = [
     "PredictionResultORM",
     "SecurityError",
     "FuelPrediction",
-    "HybridFuelPredictor",
     "PhysicsBasedFuelPredictor",
     "RouteConditions",
     "VehicleSpecs",

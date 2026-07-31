@@ -7,7 +7,7 @@ Kapsam:
 - Servisler: ai_service, analiz_service, anomaly_detector, cost_analyzer,
              weather_service (insight_engine/yakit_tahmin 2026-07-18 temizliğinde silindi)
 - AI: rag_engine (recommendation_engine/context_builder/prompt_tuner 2026-07-18 ölü-kod temizliğinde silindi)
-- ML: ensemble_predictor, kalman_estimator, physics_fuel_predictor, time_series_predictor
+- ML: ensemble_predictor, physics_fuel_predictor, time_series_predictor
 
 Test Yaklaşımı:
 - Unit tests: İzole fonksiyon testleri
@@ -372,81 +372,6 @@ class TestPhysicsFuelPredictor:
         # Boş TIR bile yakıt tüketir (kendi ağırlığı)
         assert prediction.total_liters > 0
         assert prediction.consumption_l_100km < 35  # Boş araç daha az tüketmeli
-
-
-# =============================================================================
-# 3. KALMAN ESTIMATOR TESTS
-# =============================================================================
-
-
-class TestKalmanEstimator:
-    """Kalman filtresi testleri"""
-
-    @pytest.fixture
-    def estimator(self):
-        from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
-
-        return KalmanFuelEstimator()
-
-    def test_initial_state(self, estimator):
-        """Başlangıç durumu kontrolü"""
-        assert estimator.state.state is not None  # State vektörü
-        assert estimator.state.P is not None  # Covariance matrisi
-
-    def test_update_with_single_measurement(self, estimator):
-        """Tek ölçüm ile güncelleme"""
-        initial_estimate, _ = estimator.predict({"ton": 20, "ascent_m": 300})
-
-        estimator.update({"ton": 20, "ascent_m": 300}, 35.0)  # Yeni ölçüm
-
-        new_estimate, _ = estimator.predict({"ton": 20, "ascent_m": 300})
-
-        # Güncelleme sonrası tahmin değişmeli
-        assert new_estimate != initial_estimate
-
-    def test_update_convergence(self, estimator):
-        """Ardışık ölçümlerle yakınsama"""
-        measurements = [32.0, 32.5, 31.8, 32.2, 32.1, 32.3, 31.9, 32.0]
-        features = {"ton": 20, "ascent_m": 300}
-
-        for m in measurements:
-            estimator.update(features, m)
-
-        estimate, _ = estimator.predict(features)
-
-        # Ölçüm ortalamasına yakın olmalı
-        mean_measurement = np.mean(measurements)
-        assert abs(estimate - mean_measurement) < 5.0
-
-    def test_numerical_stability_many_iterations(self, estimator):
-        """Sayısal stabilite - çok sayıda iterasyon"""
-        # 1000 iterasyon boyunca güncelle
-        features = {"ton": 20, "ascent_m": 300}
-        for i in range(1000):
-            value = 32.0 + np.random.normal(0, 1)
-            estimator.update(features, value)
-
-        estimate, _ = estimator.predict(features)
-
-        # NaN veya Inf olmamalı
-        assert np.isfinite(estimate)
-        assert not np.isnan(estimate)
-
-        # Makul aralıkta olmalı (32 etrafında salınıyor)
-        assert 20.0 <= estimate <= 50.0
-
-    def test_covariance_stays_positive_definite(self, estimator):
-        """Covariance matrisi pozitif tanımlı kalmalı"""
-        measurements = [32.0, 33.0, 31.5, 34.0, 30.0, 35.0]
-        features = {"ton": 20, "ascent_m": 300}
-
-        for m in measurements:
-            estimator.update(features, m)
-
-        # state.P matrisi pozitif tanımlı olmalı (eigenvalue'lar > 0)
-        if hasattr(estimator.state, "P") and estimator.state.P is not None:
-            eigenvalues = np.linalg.eigvals(estimator.state.P)
-            assert all(ev > 0 for ev in eigenvalues)
 
 
 # =============================================================================
@@ -885,7 +810,6 @@ class TestWeatherService:
 # =============================================================================
 # 9. INSIGHT ENGINE TESTS
 # =============================================================================
-
 
 
 class TestCostAnalyzer:

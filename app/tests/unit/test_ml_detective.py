@@ -5,7 +5,6 @@ import pytest
 
 from v2.modules.driver.domain.performance_ml import DriverPerformanceML
 from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
-from v2.modules.prediction_ml.domain.kalman_estimator import KalmanFuelEstimator
 from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
 
 
@@ -37,21 +36,6 @@ def test_ensemble_race_condition_protection():
     t1.join()
     t2.join()
     assert predictor.is_trained is True
-
-
-def test_kalman_fading_memory():
-    estimator = KalmanFuelEstimator()
-    np.trace(estimator.state.P)
-
-    # Çok sayıda update yap (normalde P küçülür)
-    features = {"ton": 20, "ascent_m": 100, "arac_yasi": 5}
-    for _ in range(100):
-        estimator.update(features, 32.0)
-
-    # Fading memory sayesinde P aşırı küçülmemeli (divergence protection)
-    # 1.01 faktörü ve Q diag ile besleniyor
-    final_P_trace = np.trace(estimator.state.P)
-    assert final_P_trace > 0.1, f"P matrix collapsed: {final_P_trace}"
 
 
 def test_time_series_padding_safety():

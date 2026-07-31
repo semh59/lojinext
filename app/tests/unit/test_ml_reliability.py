@@ -3,28 +3,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from v2.modules.prediction_ml.domain.benchmark import MLBenchmark
 from v2.modules.prediction_ml.domain.ensemble_core import (
     EnsembleFuelPredictor,
     SecurityError,
 )
-from v2.modules.prediction_ml.domain.lightgbm_predictor import LightGBMFuelPredictor
 from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
-
-
-def test_benchmark_nan_inf_safety():
-    benchmark = MLBenchmark()
-    # NaN ve Inf içeren inputlar
-    preds = np.array([32.0, np.nan, np.inf, 35.0])
-    actuals = np.array([31.0, 32.0, 33.0, 34.0])
-
-    results = benchmark.benchmark_prediction_accuracy("TestModel", preds, actuals)
-
-    for r in results:
-        assert np.isfinite(r.value), f"Metric {r.metric_name} is not finite: {r.value}"
-        assert r.value >= 0 or r.metric_name == "R²", (
-            f"Metric {r.metric_name} is negative: {r.value}"
-        )
 
 
 def test_ensemble_security_checksum(tmp_path):
@@ -51,31 +34,6 @@ def test_ensemble_security_checksum(tmp_path):
     new_predictor = EnsembleFuelPredictor()
     with pytest.raises(SecurityError):
         new_predictor.load_model(str(model_path))
-
-
-def test_lightgbm_margin_guard():
-    predictor = LightGBMFuelPredictor()
-    predictor.is_trained = True
-    predictor.prediction_interval_margin_ = 0.25
-    predictor.feature_importance_ = {}
-
-    class DummyModel:
-        def predict(self, X):
-            return np.array([0.0])
-
-    predictor.model = DummyModel()
-
-    result = predictor.predict(
-        {
-            "mesafe_km": 120,
-            "ton": 10.0,
-            "ascent_m": 50,
-            "descent_m": 20,
-        }
-    )
-
-    assert result.prediction == 0.0
-    assert result.confidence_interval == (-0.25, 0.25)
 
 
 def test_time_series_normalization_nan():

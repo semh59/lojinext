@@ -1,5 +1,5 @@
 """
-Unit tests for PhysicsBasedFuelPredictor, HybridFuelPredictor,
+Unit tests for PhysicsBasedFuelPredictor,
 VehicleSpecs, RouteConditions, and FuelPrediction.
 
 No external I/O — pure in-process physics calculations.
@@ -211,59 +211,3 @@ class TestPhysicsCalibrate:
         assert "calibration_factor" in result
         assert result["calibration_factor"] > 1.0  # underpredicted
         assert result["sample_count"] == 10
-
-
-# ---------------------------------------------------------------------------
-# HybridFuelPredictor
-# ---------------------------------------------------------------------------
-
-
-class TestHybridFuelPredictor:
-    def test_predict_returns_fuel_prediction(self):
-        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
-            FuelPrediction,
-            HybridFuelPredictor,
-        )
-
-        hybrid = HybridFuelPredictor()
-        result = hybrid.predict(_flat_route())
-        assert isinstance(result, FuelPrediction)
-        assert result.total_liters > 0
-
-    def test_learn_from_actual_updates_correction(self):
-        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
-            HybridFuelPredictor,
-        )
-
-        hybrid = HybridFuelPredictor()
-        for _ in range(5):
-            hybrid.learn_from_actual(100.0, 110.0)  # 10 % over-prediction
-        # correction_factor should shift toward 1.10
-        assert hybrid.correction_factor > 1.0
-
-    def test_outlier_ignored_by_learn(self):
-        """Ratios outside (0.5, 1.5) must be ignored."""
-        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
-            HybridFuelPredictor,
-        )
-
-        hybrid = HybridFuelPredictor()
-        initial_factor = hybrid.correction_factor
-        hybrid.learn_from_actual(100.0, 300.0)  # ratio = 3 → ignored
-        assert hybrid.correction_factor == initial_factor
-
-    def test_correction_factor_applied_to_prediction(self):
-        from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
-            HybridFuelPredictor,
-        )
-
-        hybrid = HybridFuelPredictor()
-        base_result = hybrid.predict(_flat_route(load_ton=20))
-
-        # Artificially set correction factor
-        hybrid.correction_factor = 1.2
-        corrected_result = hybrid.predict(_flat_route(load_ton=20))
-
-        assert (
-            abs(corrected_result.total_liters / base_result.total_liters - 1.2) < 0.05
-        )

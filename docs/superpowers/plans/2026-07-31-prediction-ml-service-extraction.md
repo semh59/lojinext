@@ -565,18 +565,36 @@ grep -rl "v2\.modules\.prediction_ml\.\(domain\|application\|infrastructure\|sch
 
 (This assumes the new service's package root is importable as `prediction_ml_service` — set via the service's own `PYTHONPATH=/app` in its Dockerfile, matching how the main backend's Dockerfile sets `PYTHONPATH=/app` for `v2`/`app` roots. Do NOT rewrite imports of OTHER v2 modules like `v2.modules.fleet.public` — those stay pointed at the main backend's package, since this new service still needs network/DB access to fleet/driver/etc. data. **This is the single largest open risk in this task**: the moved code currently imports `v2.modules.fleet.public`, `v2.modules.driver.public`, `v2.modules.analytics_executive.public`, `v2.modules.ai_assistant.public` DIRECTLY as in-process Python imports — those modules physically live in the MAIN backend's codebase, not the new service's. Task 5b below resolves this.)
 
-- [ ] **Step 2b: Resolve the cross-repo-module import problem**
+- [x] **Step 2b: Cross-module data access — RESOLVED, Option B (HTTP to main backend), user decision 2026-08-04**
 
-This is the crux of "real" service separation: `ensemble_service.py` alone imports `v2.modules.fleet.public`, `v2.modules.driver.public`, `v2.modules.analytics_executive.public` (per the module's own CLAUDE.md "Senkron konuştuğu modüller" section — 4 modules, in-process today). The new service cannot import these Python packages (they don't exist in its container). Two options, pick one WITH THE USER before proceeding (this is a real architectural fork this plan cannot resolve unilaterally):
+The new service cannot import `v2.modules.fleet.public`/`v2.modules.driver.public`/`v2.modules.analytics_executive.public`/`v2.modules.ai_assistant.public` directly (those packages physically live in the main backend's codebase). User chose Option B over the plan's original Option A recommendation: the new service reaches this data over HTTP against new internal endpoints on the MAIN backend, matching the `X-Internal-Token`/`INTERNAL_API_SECRET` pattern already used by the telegram bot services (`admin_platform/api/internal_routes.py`).
 
-  - **Option A**: Copy the specific consumed functions/repos (`get_arac_repo`, `get_dorse_repo`, `get_driver_stats`, `classify_route`, `get_analiz_repo`, `get_smart_ai().teach()`) into the new service too, each hitting the SAME Postgres database directly with the `m_prediction_ml` role (already has cross-schema SELECT grants on `fleet`/`driver`/`anomaly`/`platform`/`admin_platform` per `role_grants.py`'s `READER_SELECT_GRANTS["m_prediction_ml"]` entry — confirmed in this session's earlier investigation). This keeps DB access patterns identical, only duplicates a handful of read-only repo functions.
-  - **Option B**: The new service calls the MAIN backend's HTTP API for this cross-module data (e.g. `GET /fleet/vehicles/{id}`), adding a second network hop inside training/prediction paths.
+**Real usage audit** (re-verified directly against the current code, NOT the stale CLAUDE.md prose — `classify_route` and `get_model_params` mentioned in the module's CLAUDE.md are dead references left over from Task 2's `kalman_estimator.py` deletion and are NOT actually called anywhere in the live code): the cross-module surface is exactly 6 operations, all in `ensemble_service.py`/`prediction_service.py`/`time_series_service.py`:
 
-  Option A is recommended: it reuses the ALREADY-GRANTED `m_prediction_ml` DB role, avoids a second network hop, and is a smaller, mechanical duplication (a handful of read-only query functions, not business logic). **Do not proceed past this step without the user's explicit confirmation of which option to implement** — this determines the shape of every remaining step in this task.
+| # | Current call | New internal endpoint (main backend) | Method |
+|---|---|---|---|
+| 1 | `uow.arac_repo.get_by_id(arac_id)` / `self.arac_repo.get_by_id(arac_id)` (`ensemble_service.py:340,575`) | `GET /api/v1/internal/fleet/araclar/{arac_id}` | new, add to `v2/modules/fleet/api/` |
+| 2 | `uow.dorse_repo.get_by_id(dorse_id)` / `self.dorse_repo.get_by_id(dorse_id)` (`ensemble_service.py:584,586`) | `GET /api/v1/internal/fleet/dorseler/{dorse_id}` | new, add to `v2/modules/fleet/api/` |
+| 3 | `get_driver_stats(sofor_id=None\|int, include_elite_score=False, uow=...)` (`ensemble_service.py:369,614`, `prediction_service.py:462`) | `GET /api/v1/internal/driver/stats?sofor_id={optional}&include_elite_score=false` | new, add to `v2/modules/driver/api/` |
+| 4 | `analiz_repo.save_model_params(arac_id, result)` (`ensemble_service.py:425`, write, best-effort/swallowed on error) | `POST /api/v1/internal/analytics/model-params` body `{"arac_id": int, "result": dict}` | new, add to `v2/modules/analytics_executive/api/` |
+| 5 | `uow.analiz_repo.get_daily_summary_for_ml(days=int, arac_id=Optional[int])` (`time_series_service.py:85`) | `GET /api/v1/internal/analytics/daily-summary?days={int}&arac_id={optional}` | new, add to `v2/modules/analytics_executive/api/` |
+| 6 | `get_smart_ai().teach(msg, category="tahmin_izleme")` (`prediction_service.py:431`, fire-and-forget, already wrapped in its own try/except today) | `POST /api/v1/internal/ai/teach` body `{"msg": str, "category": str}` | new, add to `v2/modules/ai_assistant/api/` |
 
-- [ ] **Step 3: Once Option A/B is confirmed, implement the cross-module data access accordingly, then write the routers**
+**Sub-step 3a — add the 4 new internal endpoint files on the MAIN backend** (each mirrors `admin_platform/api/internal_routes.py`'s existing `X-Internal-Token` dependency — import and reuse that same check function, do not reimplement it):
+- `v2/modules/fleet/api/internal_routes.py` — endpoints #1, #2, thin wrappers around `uow.arac_repo.get_by_id`/`uow.dorse_repo.get_by_id`, 404 if not found, register in `v2/modules/platform_infra/api_router.py` alongside fleet's other routers.
+- `v2/modules/driver/api/internal_routes.py` — endpoint #3, thin wrapper around the existing `get_driver_stats` free function, register in `api_router.py`.
+- `v2/modules/analytics_executive/api/internal_routes.py` — endpoints #4, #5, thin wrappers around `get_analiz_repo()`'s two methods, register in `api_router.py`.
+- `v2/modules/ai_assistant/api/internal_routes.py` — endpoint #6, thin wrapper around `get_smart_ai().teach(...)`, register in `api_router.py`.
 
-(Concrete router code depends on the Step 2b decision — write one router file per operation, e.g. `v2/services/prediction_ml_service/routers/predict_routes.py`:)
+Each endpoint's response model: return the SAME dict/list shape the underlying repo/function already returns today (these already return plain dicts or simple dataclasses — FastAPI serializes them automatically; do not introduce new Pydantic schemas unless a field isn't JSON-serializable as-is, e.g. a `datetime` needs `.isoformat()`).
+
+**Sub-step 3b — new service's HTTP client**: `v2/services/prediction_ml_service/infrastructure/cross_module_client.py` — one async function per operation above (`get_vehicle(arac_id)`, `get_trailer(dorse_id)`, `get_driver_stats(sofor_id=None, include_elite_score=False)`, `save_model_params(arac_id, result)`, `get_daily_summary_for_ml(days, arac_id=None)`, `teach(msg, category)`), each a plain `httpx.AsyncClient` call against `settings`-configured `MAIN_BACKEND_INTERNAL_URL` (new env var, default `http://backend:8000`) with the `X-Internal-Token` header, wrapped in the same `with_async_retry` pattern used elsewhere (see Task 6 Step 3 for the exact import path once resolved there — if Task 6 hasn't run yet when this task executes, resolve the same `with_async_retry` import question here first, it's the same open question, don't guess twice). Timeouts: short (2-3s) for the read endpoints (#1-3, #5), matching this task's overall latency-sensitivity; #4 and #6 are best-effort writes that already tolerate failure in the original code (wrap in try/except that logs and continues, exactly like today — do not make training fail if `save_model_params`/`teach` are unreachable).
+
+**Sub-step 3c — update the moved `domain`/`application` files** to call `cross_module_client.*` instead of `v2.modules.fleet.public.get_arac_repo()` etc. — replace each of the 6 call sites listed in the table above. This is the ONE place where Task 5's "mechanical move, no behavior change" framing has a real, intentional exception: these 6 call sites necessarily change from in-process calls to HTTP calls, because that is the entire point of Option B. Every OTHER line of the moved code must still move unchanged.
+
+- [ ] **Step 3: Write the FastAPI routers on the new service (as originally planned) + verify the new internal endpoints end-to-end**
+
+(Router code as originally planned, e.g. `v2/services/prediction_ml_service/routers/predict_routes.py`:)
 
 ```python
 from fastapi import APIRouter, Depends
@@ -619,6 +637,23 @@ docker run --rm -e TEST_DATABASE_URL="postgresql+asyncpg://lojinext_user:lojinex
 ```
 
 Expected: same pass count as the original `app/tests/unit/test_ml/` suite had before the move (record this number in Step 0 of this task, before moving anything, as the baseline to match).
+
+- [ ] **Step 6b: Verify the 4 new internal endpoints on the MAIN backend directly, before testing the new service against them**
+
+```bash
+docker cp v2/modules/fleet/. lojinext-backend-1:/app/v2/modules/fleet/
+docker cp v2/modules/driver/. lojinext-backend-1:/app/v2/modules/driver/
+docker cp v2/modules/analytics_executive/. lojinext-backend-1:/app/v2/modules/analytics_executive/
+docker cp v2/modules/ai_assistant/. lojinext-backend-1:/app/v2/modules/ai_assistant/
+docker restart lojinext-backend-1
+sleep 5
+docker exec lojinext-backend-1 curl -sf http://localhost:8000/api/v1/internal/fleet/araclar/1 -H "X-Internal-Token: $INTERNAL_API_SECRET"
+docker exec lojinext-backend-1 curl -sf "http://localhost:8000/api/v1/internal/driver/stats?include_elite_score=false" -H "X-Internal-Token: $INTERNAL_API_SECRET"
+docker exec lojinext-backend-1 curl -sf "http://localhost:8000/api/v1/internal/analytics/daily-summary?days=30" -H "X-Internal-Token: $INTERNAL_API_SECRET"
+docker exec lojinext-backend-1 curl -sf -X POST http://localhost:8000/api/v1/internal/ai/teach -H "Content-Type: application/json" -H "X-Internal-Token: $INTERNAL_API_SECRET" -d '{"msg": "test", "category": "tahmin_izleme"}'
+```
+
+(`$INTERNAL_API_SECRET` — read the real value from the container: `docker exec lojinext-backend-1 printenv INTERNAL_API_SECRET`; if empty, auth is disabled in this dev environment and the header can be omitted.) Expected: all 4 real HTTP responses (not 404/500) proving these endpoints are correctly wired into `api_router.py` and reach the real repos before the new service's own tests depend on them.
 
 - [ ] **Step 7: Verify the built image starts and serves real predictions**
 

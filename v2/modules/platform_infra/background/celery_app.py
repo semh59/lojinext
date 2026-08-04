@@ -64,10 +64,10 @@ def get_celery_app() -> Celery:
         broker_transport_options=broker_transport_options,
         result_backend_transport_options=get_celery_broker_transport_options(),
         beat_schedule={
-            "drain-prediction-dlq-every-60s": {
-                "task": "prediction.drain_dlq",
-                "schedule": 60.0,
-            },
+            # prediction.drain_dlq / ml.weekly_retrain_all_vehicles moved to
+            # prediction_ml_service's own celery_app.py + beat schedule
+            # (Task 5, 2026-08-04) -- dlq_tasks.py/scheduler_task.py now
+            # live in that service, not in this codebase.
             "relay-outbox-events-every-60s": {
                 "task": "infrastructure.relay_outbox_events",
                 "schedule": 60.0,
@@ -104,11 +104,6 @@ def get_celery_app() -> Celery:
             "theft-pattern-scan-daily": {
                 "task": "theft.daily_pattern_scan",
                 "schedule": crontab(hour=3, minute=0),
-            },
-            # Phase 4.0 — Pazar 03:00 UTC, ML modeli haftalık yenileme.
-            "ml-weekly-retrain-all-vehicles": {
-                "task": "ml.weekly_retrain_all_vehicles",
-                "schedule": crontab(day_of_week="sun", hour=3, minute=0),
             },
             # Faz 1 — Her gün 01:00 UTC, tahminisiz seferleri doldur (gece/düşük tempo).
             "prediction-backfill-missing-nightly": {
@@ -178,17 +173,12 @@ import v2.modules.notification.infrastructure.tasks  # noqa: E402,F401
 # OPS-002 — Nightly DB backup task
 import v2.modules.platform_infra.background.backup_tasks  # noqa: E402,F401
 import v2.modules.platform_infra.background.error_digest  # noqa: E402,F401
-import v2.modules.prediction_ml.infrastructure.dlq_tasks  # noqa: E402,F401
-import v2.modules.prediction_ml.infrastructure.prediction_backfill_tasks  # noqa: E402,F401
-import v2.modules.prediction_ml.infrastructure.prediction_tasks  # noqa: E402,F401
-
-# Phase 4.0 — ML weekly retrain Celery task
-import v2.modules.prediction_ml.infrastructure.scheduler_task  # noqa: E402,F401
 import v2.modules.reports.infrastructure.analytics_tasks  # noqa: E402,F401
 
 # Item C follow-up — weekly physics recalibration snapshot
 import v2.modules.route_simulation.infrastructure.physics_recalibration_tasks  # noqa: E402,F401
 import v2.modules.shared_kernel.infrastructure.outbox_tasks  # noqa: E402,F401
+import v2.modules.trip.infrastructure.prediction_backfill_tasks  # noqa: E402,F401
 
 # NOT: driver.calculate_performance_score orphan Celery task'ı (hiç kayıtlı
 # olmamış, hiçbir .delay() çağıranı yoktu) 2026-07-18 ölü-kod temizliğinde

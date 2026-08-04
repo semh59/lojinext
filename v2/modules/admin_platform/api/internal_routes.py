@@ -20,6 +20,7 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from app.config import settings
 from v2.modules.admin_platform.application.integration_secrets import (
@@ -34,6 +35,7 @@ from v2.modules.admin_platform.application.telegram_bridge import (
     olustur_pdf,
     report_driver_breakdown,
 )
+from v2.modules.admin_platform.public import training_ws_manager
 from v2.modules.admin_platform.schemas import (
     CoachingSnapshotResponse,
     DriverBreakdownRequest,
@@ -272,3 +274,26 @@ async def sofor_pdf(
             )
         },
     )
+
+
+# ── Training progress callback (prediction_ml_service -> this backend) ──────
+# Added 2026-08-04: ml_service.py moved to the standalone prediction_ml_
+# service and can no longer reach training_ws_manager in-process (WS
+# connections terminate in this process). It POSTs progress here instead;
+# this endpoint just re-broadcasts locally, same payload shape as before.
+
+
+class TrainingProgressBody(BaseModel):
+    type: str
+    task_id: int
+    arac_id: Optional[int] = None
+    ilerleme: Optional[int] = None
+    durum: str
+    error: bool = False
+    detail: Optional[str] = None
+
+
+@router.post("/training-progress")
+async def training_progress(body: TrainingProgressBody) -> dict:
+    await training_ws_manager.broadcast(body.model_dump())
+    return {"ok": True}

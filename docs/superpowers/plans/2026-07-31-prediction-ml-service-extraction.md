@@ -569,28 +569,46 @@ grep -rl "v2\.modules\.prediction_ml\.\(domain\|application\|infrastructure\|sch
 
 The new service cannot import `v2.modules.fleet.public`/`v2.modules.driver.public`/`v2.modules.analytics_executive.public`/`v2.modules.ai_assistant.public` directly (those packages physically live in the main backend's codebase). User chose Option B over the plan's original Option A recommendation: the new service reaches this data over HTTP against new internal endpoints on the MAIN backend, matching the `X-Internal-Token`/`INTERNAL_API_SECRET` pattern already used by the telegram bot services (`admin_platform/api/internal_routes.py`).
 
-**Real usage audit** (re-verified directly against the current code, NOT the stale CLAUDE.md prose — `classify_route` and `get_model_params` mentioned in the module's CLAUDE.md are dead references left over from Task 2's `kalman_estimator.py` deletion and are NOT actually called anywhere in the live code): the cross-module surface is exactly 6 operations, all in `ensemble_service.py`/`prediction_service.py`/`time_series_service.py`:
+**⚠️ CORRECTION (2026-08-04, mid-Task-5 re-audit): the original "6 operations, 3 files" table above was wrong — verified directly against the moved code, not the module's CLAUDE.md prose.** The real cross-module surface is 3 categories, discovered by grepping every `from v2.modules.<X>.public/schemas/infrastructure` import inside the already-moved `domain/application/infrastructure` tree:
 
-| # | Current call | New internal endpoint (main backend) | Method |
+**Category 1 — `platform_infra` + `shared_kernel` (12 + several refs): VENDOR, not HTTP.** These are the project's own "freely shared, never import business modules back" infra layer (`get_logger`, `get_cache_manager`, `AsyncSessionLocal`, `get_container`, `UnitOfWork`, `log_audit_event`, etc. — used throughout `ensemble_service.py`, `ml_service.py`, `model_warmup.py`, `physics_handler.py`, `trainer.py`, `time_series_service.py`). User decision: copy `v2/modules/platform_infra/` and `v2/modules/shared_kernel/` source into the new service's Docker image too (build context becomes the repo root, not the service subdir — see Task 9 revision below), keeping their original `v2.modules.platform_infra.*`/`v2.modules.shared_kernel.*` import paths unchanged in the moved code (no sed rewrite needed for these two). Two physical copies of the same source, no network hop, no behavior change — acceptable because neither package ever imports a business module back (verified in their own CLAUDE.md).
+
+**Category 2 — pure/deterministic helper: vendor the function, not the module.** `route_simulation.public.get_weather_service().get_seasonal_factor(date)` (`ensemble_service.py:365,606`) is a pure date→float calendar calculation with zero DB/HTTP dependency (verified by reading `WeatherService.get_seasonal_factor`) — copying the whole `route_simulation` module (which also has heavy Mapbox/Redis-dependent code) would be wrong. Instead: copy just this one function into `v2/services/prediction_ml_service/domain/seasonal_factor.py`, call sites updated to import it locally.
+
+**Category 3 — genuine business-module data access: Option B (HTTP), extended table.** The real operations (re-verified line-by-line, `get_model_params`/`classify_route` from the stale CLAUDE.md are confirmed dead — zero callers):
+
+| # | Current call | New internal endpoint (main backend) | Consumer in new service |
 |---|---|---|---|
-| 1 | `uow.arac_repo.get_by_id(arac_id)` / `self.arac_repo.get_by_id(arac_id)` (`ensemble_service.py:340,575`) | `GET /api/v1/internal/fleet/araclar/{arac_id}` | new, add to `v2/modules/fleet/api/` |
-| 2 | `uow.dorse_repo.get_by_id(dorse_id)` / `self.dorse_repo.get_by_id(dorse_id)` (`ensemble_service.py:584,586`) | `GET /api/v1/internal/fleet/dorseler/{dorse_id}` | new, add to `v2/modules/fleet/api/` |
-| 3 | `get_driver_stats(sofor_id=None\|int, include_elite_score=False, uow=...)` (`ensemble_service.py:369,614`, `prediction_service.py:462`) | `GET /api/v1/internal/driver/stats?sofor_id={optional}&include_elite_score=false` | new, add to `v2/modules/driver/api/` |
-| 4 | `analiz_repo.save_model_params(arac_id, result)` (`ensemble_service.py:425`, write, best-effort/swallowed on error) | `POST /api/v1/internal/analytics/model-params` body `{"arac_id": int, "result": dict}` | new, add to `v2/modules/analytics_executive/api/` |
-| 5 | `uow.analiz_repo.get_daily_summary_for_ml(days=int, arac_id=Optional[int])` (`time_series_service.py:85`) | `GET /api/v1/internal/analytics/daily-summary?days={int}&arac_id={optional}` | new, add to `v2/modules/analytics_executive/api/` |
-| 6 | `get_smart_ai().teach(msg, category="tahmin_izleme")` (`prediction_service.py:431`, fire-and-forget, already wrapped in its own try/except today) | `POST /api/v1/internal/ai/teach` body `{"msg": str, "category": str}` | new, add to `v2/modules/ai_assistant/api/` |
+| 1 | `uow.arac_repo.get_by_id(arac_id)` (`ensemble_service.py:340,575`) | `GET /api/v1/internal/fleet/araclar/{arac_id}` (`v2/modules/fleet/api/internal_routes.py`) | `ensemble_service.py` (train_for_vehicle, predict_consumption) |
+| 2 | `uow.dorse_repo.get_by_id(dorse_id)` (`ensemble_service.py:584,586`) | `GET /api/v1/internal/fleet/dorseler/{dorse_id}` (same file) | `ensemble_service.py` (predict_consumption) |
+| 3 | `get_driver_stats(sofor_id=None\|int, include_elite_score=False)` (`ensemble_service.py:331,568`, `prediction_service.py:460`) | `GET /api/v1/internal/driver/stats?sofor_id=&include_elite_score=` (`v2/modules/driver/api/internal_routes.py`) | `ensemble_service.py`, `prediction_service.py` |
+| 4 | `get_with_route_analysis(days=90, limit=200)` (`route_similarity.py:37`, **not in original table**) | `GET /api/v1/internal/driver/route-analysis-recent?days=&limit=` (same file) | `route_similarity.py::find_similar_trips` |
+| 5 | `uow.sefer_repo.get_for_training(arac_id, limit=500)` (`ensemble_service.py:343`, **not in original table**) | `GET /api/v1/internal/trip/training-data/{arac_id}?limit=` (`v2/modules/trip/api/internal_routes.py`, new file) | `ensemble_service.py::train_for_vehicle` |
+| 6 | `uow.sefer_repo.get_all_for_training(limit=2000)` (`ensemble_service.py:462`, **not in original table**) | `GET /api/v1/internal/trip/training-data-all?limit=` (same file) | `ensemble_service.py::train_general_model` |
+| 7 | `analiz_repo.save_model_params(arac_id, result)` (`ensemble_service.py:425`, write, best-effort) | `POST /api/v1/internal/analytics/model-params` body `{"arac_id": int, "result": dict}` (`v2/modules/analytics_executive/api/internal_routes.py`) | `ensemble_service.py` |
+| 8 | `uow.analiz_repo.get_daily_summary_for_ml(days, arac_id=None)` (`time_series_service.py:85`) | `GET /api/v1/internal/analytics/daily-summary?days=&arac_id=` (same file) | `time_series_service.py` |
+| 9 | `get_smart_ai().teach(msg, category="tahmin_izleme")` (`prediction_service.py:431`, fire-and-forget) | `POST /api/v1/internal/ai/teach` body `{"msg": str, "category": str}` (`v2/modules/ai_assistant/api/internal_routes.py`) | `prediction_service.py` |
+| 10 | `get_llm_client().chat(...)` (`infrastructure/prediction_tasks.py:27`, **not in original table** — unrelated RAG/LLM Celery task `prediction.generate`, invoked by task NAME from `v2/modules/prediction_ml/api/predictions.py:73` via `celery_app.send_task(...)`, no direct import coupling on that side) | `POST /api/v1/internal/ai/chat` body `{"messages": [...], "system_prompt": str, "max_tokens": int, "temperature": float}` (same file) | `infrastructure/prediction_tasks.py` |
 
-**Sub-step 3a — add the 4 new internal endpoint files on the MAIN backend** (each mirrors `admin_platform/api/internal_routes.py`'s existing `X-Internal-Token` dependency — import and reuse that same check function, do not reimplement it):
-- `v2/modules/fleet/api/internal_routes.py` — endpoints #1, #2, thin wrappers around `uow.arac_repo.get_by_id`/`uow.dorse_repo.get_by_id`, 404 if not found, register in `v2/modules/platform_infra/api_router.py` alongside fleet's other routers.
-- `v2/modules/driver/api/internal_routes.py` — endpoint #3, thin wrapper around the existing `get_driver_stats` free function, register in `api_router.py`.
-- `v2/modules/analytics_executive/api/internal_routes.py` — endpoints #4, #5, thin wrappers around `get_analiz_repo()`'s two methods, register in `api_router.py`.
-- `v2/modules/ai_assistant/api/internal_routes.py` — endpoint #6, thin wrapper around `get_smart_ai().teach(...)`, register in `api_router.py`.
+**Genuinely OUT of scope for this task — moved elsewhere instead of into the new service, user decision 2026-08-04**: `application/prediction_backfill_service.py` + `infrastructure/prediction_backfill_tasks.py` call `v2.modules.trip.public.get_sefer_fuel_estimator()` — trip's OWN full sefer-estimation pipeline (Mapbox + route_simulation + this very prediction_ml service, once `PREDICTION_ML_REMOTE=true`). Wrapping that in an HTTP endpoint here would mean a nonsensical double hop (main → prediction_ml_service → main → prediction_ml_service). These two files are moved to `v2/modules/trip/application/` and `v2/modules/trip/infrastructure/` instead (trip already owns the estimator they orchestrate) — NOT part of this task's `git mv` list, handled as a separate correction before Step 3 below.
+
+**`training_ws_manager` (admin_platform) — also not in the original audit.** `ml_service.py` pushes live training-progress updates directly to `v2.modules.admin_platform.public.training_ws_manager`, a WebSocket connection registry that only exists in the main backend's process (WS connections terminate there). User decision: convert to an HTTP callback — `ml_service.py` (in the new service) POSTs progress to a new `POST /api/v1/internal/admin/training-progress` endpoint (`v2/modules/admin_platform/api/internal_routes.py`, added to the existing file), which then calls `training_ws_manager` locally on the main backend exactly as today.
+
+**Sub-step 3a — add the internal endpoint files on the MAIN backend** (each mirrors `admin_platform/api/internal_routes.py`'s existing `X-Internal-Token` dependency — import and reuse that same check function, do not reimplement it):
+- `v2/modules/fleet/api/internal_routes.py` — endpoints #1, #2.
+- `v2/modules/driver/api/internal_routes.py` — endpoints #3, #4.
+- `v2/modules/trip/api/internal_routes.py` (new file) — endpoints #5, #6.
+- `v2/modules/analytics_executive/api/internal_routes.py` — endpoints #7, #8.
+- `v2/modules/ai_assistant/api/internal_routes.py` — endpoints #9, #10.
+- `v2/modules/admin_platform/api/internal_routes.py` (existing file, add one route) — training-progress callback.
+
+All six registered in `v2/modules/platform_infra/api_router.py` alongside each module's other routers.
 
 Each endpoint's response model: return the SAME dict/list shape the underlying repo/function already returns today (these already return plain dicts or simple dataclasses — FastAPI serializes them automatically; do not introduce new Pydantic schemas unless a field isn't JSON-serializable as-is, e.g. a `datetime` needs `.isoformat()`).
 
-**Sub-step 3b — new service's HTTP client**: `v2/services/prediction_ml_service/infrastructure/cross_module_client.py` — one async function per operation above (`get_vehicle(arac_id)`, `get_trailer(dorse_id)`, `get_driver_stats(sofor_id=None, include_elite_score=False)`, `save_model_params(arac_id, result)`, `get_daily_summary_for_ml(days, arac_id=None)`, `teach(msg, category)`), each a plain `httpx.AsyncClient` call against `settings`-configured `MAIN_BACKEND_INTERNAL_URL` (new env var, default `http://backend:8000`) with the `X-Internal-Token` header, wrapped in the same `with_async_retry` pattern used elsewhere (see Task 6 Step 3 for the exact import path once resolved there — if Task 6 hasn't run yet when this task executes, resolve the same `with_async_retry` import question here first, it's the same open question, don't guess twice). Timeouts: short (2-3s) for the read endpoints (#1-3, #5), matching this task's overall latency-sensitivity; #4 and #6 are best-effort writes that already tolerate failure in the original code (wrap in try/except that logs and continues, exactly like today — do not make training fail if `save_model_params`/`teach` are unreachable).
+**Sub-step 3b — new service's HTTP client**: `v2/services/prediction_ml_service/infrastructure/cross_module_client.py` — one async function per operation in the table above (`get_vehicle(arac_id)`, `get_trailer(dorse_id)`, `get_driver_stats(sofor_id=None, include_elite_score=False)`, `get_route_analysis_recent(days=90, limit=200)`, `get_training_data(arac_id, limit=500)`, `get_all_training_data(limit=2000)`, `save_model_params(arac_id, result)`, `get_daily_summary_for_ml(days, arac_id=None)`, `teach(msg, category)`, `ai_chat(messages, system_prompt, max_tokens, temperature)`, `post_training_progress(...)`), each a plain `httpx.AsyncClient` call against `settings`-configured `MAIN_BACKEND_INTERNAL_URL` (new env var, default `http://backend:8000`) with the `X-Internal-Token` header, wrapped in the same `with_async_retry` pattern used elsewhere (see Task 6 Step 3 for the exact import path once resolved there — if Task 6 hasn't run yet when this task executes, resolve the same `with_async_retry` import question here first, it's the same open question, don't guess twice). Timeouts: short (2-3s) for the read endpoints (#1-3,4,5,6,8); #7/#9/#10/training-progress are best-effort writes that already tolerate failure in the original code (wrap in try/except that logs and continues, exactly like today — do not make training fail if these are unreachable).
 
-**Sub-step 3c — update the moved `domain`/`application` files** to call `cross_module_client.*` instead of `v2.modules.fleet.public.get_arac_repo()` etc. — replace each of the 6 call sites listed in the table above. This is the ONE place where Task 5's "mechanical move, no behavior change" framing has a real, intentional exception: these 6 call sites necessarily change from in-process calls to HTTP calls, because that is the entire point of Option B. Every OTHER line of the moved code must still move unchanged.
+**Sub-step 3c — update the moved `domain`/`application` files** to call `cross_module_client.*` instead of `v2.modules.fleet.public.get_arac_repo()` etc. — replace each of the 10 call sites listed in the table above. This is the ONE place where Task 5's "mechanical move, no behavior change" framing has a real, intentional exception: these call sites necessarily change from in-process calls to HTTP calls, because that is the entire point of Option B. Every OTHER line of the moved code must still move unchanged (platform_infra/shared_kernel calls stay in-process via the vendored copy; the seasonal-factor call becomes a local import per Category 2 above).
 
 - [ ] **Step 3: Write the FastAPI routers on the new service (as originally planned) + verify the new internal endpoints end-to-end**
 
@@ -916,10 +934,13 @@ PREDICTION_ML_REMOTE=true was proven green in CI, see Task 9)."
 
 - [ ] **Step 1: Add the docker-compose service block**
 
+**⚠️ CORRECTION (2026-08-04, Task 5 vendoring decision)**: `build.context` must be the REPO ROOT (`.`), not `v2/services/prediction_ml_service` — the Dockerfile now also `COPY`s `v2/modules/platform_infra/` and `v2/modules/shared_kernel/` into the image (Category 1 of Task 5 Step 2b's corrected audit), which are outside the service subdirectory and therefore unreachable from a narrower build context. `dockerfile:` points at the service's own Dockerfile path.
+
 ```yaml
   prediction-ml-service:
     build:
-      context: v2/services/prediction_ml_service
+      context: .
+      dockerfile: v2/services/prediction_ml_service/Dockerfile
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db:5432/${POSTGRES_DB:-lojinext_db}
       - REDIS_URL=redis://redis:6379/0
@@ -990,3 +1011,208 @@ git commit -m "feat(prediction-ml-service): docker-compose + CI wiring, flip def
 - Two genuine open design questions were surfaced rather than papered over: (1) how the new service reaches fleet/driver/analytics_executive/ai_assistant data (Task 5 Step 2b — needs the user's Option A/B choice before proceeding), and (2) the exact `with_async_retry` import path (Task 6 Step 3 — a concrete `grep` check, not a guess). Both are flagged as blocking checkpoints, not silently assumed.
 - Task 5's original "move" was corrected to "copy" mid-plan once the flag's `false`-path requirement was noticed (public.py needs somewhere to delegate to when the flag is off, and the naive plan would have deleted that code in the same task that introduces the flag) — the old in-process code is only deleted in a future cleanup task, explicitly out of this plan's scope.
 - Every task ends with a real command-based verification step (pytest, curl, docker) — no task claims success without one.
+
+## Session log — Task 5 execution, 2026-08-04 (WIP, NOT complete — see checklist below)
+
+Resumed Task 5 mid-execution (Tasks 1-4 were already committed in a prior
+session on `worktree-prediction-ml-service-extraction`; Task 5's directory
+move was already partially staged). This session's real-code investigation
+surfaced THREE rounds of scope corrections beyond what the plan (and its
+own Step 2b "correction") had captured — each one found by grepping the
+ACTUAL moved code, not assumed from prose. Recorded here so the next
+session doesn't have to rediscover them.
+
+### Round 1 (done) — Step 2b's "6 ops / 3 files" table was itself incomplete
+
+Already corrected in-place above (Category 1/2/3 table, 10 operations,
+6 new internal-endpoint files). Implemented and code-complete:
+`v2/modules/{fleet,driver,trip,analytics_executive,ai_assistant}/api/
+internal_routes.py` (5 new files) + `admin_platform/api/internal_routes.py`
+(1 new endpoint, `training-progress` callback for `training_ws_manager`,
+since that WS connection registry only exists in the main backend's
+process). All 6 registered in `api_router.py` with each module's own
+`require_module_role(...)` dependency (matching every other router's
+pattern — FAZ2 DB role scoping, unrelated to auth). `v2/services/
+prediction_ml_service/infrastructure/cross_module_client.py` created:
+one async httpx function per operation, small local retry helper (NOT an
+import of route_simulation's `with_async_retry` — that module isn't
+vendored and its own docstring says it's not general-purpose infra).
+`prediction_backfill_service.py`/`prediction_backfill_tasks.py` moved to
+`v2/modules/trip/{application,infrastructure}/` instead of the new
+service (user decision) — they orchestrate trip's OWN SeferFuelEstimator
+(Mapbox+route_simulation+prediction_ml combined), wrapping that in an
+HTTP endpoint on this side would be a nonsensical double-hop.
+`v2/modules/platform_infra/background/celery_app.py` updated: removed
+`prediction.drain_dlq`/`ml.weekly_retrain_all_vehicles` imports+beat
+entries (moved to a NEW `v2/services/prediction_ml_service/celery_app.py`
+— own Celery app/beat, same Redis broker); `prediction.backfill_missing`
+import repointed to `v2.modules.trip.infrastructure.prediction_backfill_tasks`.
+`app/main.py`'s ML predictor warm-up call removed (moved to the new
+service's own lifespan — not yet wired, see checklist).
+`ensemble_service.py`/`ensemble_orchestration.py`/`route_similarity.py`
+(moved `domain/`→`application/`, was doing I/O)/`model_warmup.py` fully
+rewired to `cross_module_client.*` + two new pure-logic vendor files
+(`domain/seasonal_factor.py`, `domain/vehicle_age.py` — copied byte-
+faithfully from `route_simulation.WeatherService.get_seasonal_factor`/
+`fleet.Arac`'s `yas`/`yas_faktoru`/`euro_sinifi` computed fields, verified
+against the real source, not guessed).
+
+### Round 2 (found, NOT yet fixed) — `shared_kernel.UnitOfWork` cannot be vendored as-is
+
+`v2/modules/shared_kernel/infrastructure/unit_of_work.py` imports 13
+business modules' repository classes at module level (`fleet.
+infrastructure.vehicle_repository.AracRepository`, `trip.infrastructure.
+repository.SeferRepository`, `driver...SoforRepository`,
+`analytics_executive...AnalizRepository`, etc. — the whole point of
+`UnitOfWork` is exposing every module's repo as a property). Vendoring
+this file into the new service (as planned under "Category 1: vendor
+platform_infra + shared_kernel") is a hard ImportError the moment it's
+imported — none of those 13 packages exist in the new service's Docker
+image. **User decision (2026-08-04): do NOT vendor `shared_kernel.
+UnitOfWork` into the new service.** Fix, not yet implemented:
+
+1. **Main-backend regression**: `unit_of_work.py` ALSO imports `v2.modules.
+   prediction_ml.infrastructure.{ml_training_repo,model_versiyon_repo}`
+   for its own `ml_training_repo`/`model_versiyon_repo` properties — both
+   files physically moved to the new service in this same session, so
+   the MAIN BACKEND's `shared_kernel.UnitOfWork` is currently ALSO
+   broken (ImportError on import, not just the new service). Fix: remove
+   those 2 `_Lazy(...)` property lines + their imports from `unit_of_work.py`
+   — nothing on the main backend needs them anymore (prediction_ml no
+   longer runs in-process there). Re-grep after removing to confirm zero
+   remaining `uow.ml_training_repo`/`uow.model_versiyon_repo` callers
+   outside the new service (a first pass found `v2/modules/prediction_ml/
+   api/admin_ml.py` — see Round 3 below, that file needs its own fix
+   regardless of this one).
+2. **New service**: needs a lightweight LOCAL replacement — NOT
+   `shared_kernel.UnitOfWork`, just a small session-scope helper over the
+   already-vendored `platform_infra.database.connection.AsyncSessionLocal`
+   (clean dependency-wise, verified — only imports platform_infra
+   internals), exposing `.session`/`.commit()` plus this service's OWN
+   `ml_training_repo`/`model_versiyon_repo` (using the repo classes that
+   already live in this service's own `infrastructure/
+   {ml_training_repo,model_versiyon_repo}.py` post-move). Every
+   `async with UnitOfWork() as uow:` call site inside the moved code that
+   only touches `uow.session`/`uow.commit()`/`uow.ml_training_repo`/
+   `uow.model_versiyon_repo` can switch to this local class with no
+   further change. Call sites still reading `uow.arac_repo`/`uow.
+   sofor_repo`/`uow.dorse_repo`/`uow.sefer_repo` need their OWN fix —
+   see the full list below.
+3. **Every remaining `UnitOfWork`-consuming call site in the moved code**
+   (found via `grep -rn "UnitOfWork\|uow\."`, not yet fully re-audited
+   after Round 1's fixes — this list is what was visible before Round 1's
+   edits and needs re-verification, not blind trust):
+   - `ensemble_service.py::_register_model_version` — `uow.
+     model_versiyon_repo.get_latest_version` (own table, fix per #2 above).
+   - `ml_service.py` (`MLService` class) — constructor takes a `uow`,
+     used for `egitim_kuyrugu`/`model_versiyonlar` (own tables, fix per
+     #2) — re-check for any fleet/driver read mixed in.
+   - `physics_handler.py` (`PhysicsRecalculationHandler`, subscribes to
+     `SEFER_UPDATED`) — `uow.sefer_repo.get_by_id`/`uow.arac_repo.
+     get_by_id`/`uow.dorse_repo.get_by_id`/`uow.sefer_repo.update` — ALL
+     4 are cross-module, need `cross_module_client` equivalents (get_
+     trailer/get_vehicle already exist; sefer read/update do NOT — trip's
+     `internal_routes.py` only has the 2 training-data GETs today, needs
+     a `GET /internal/trip/seferler/{id}` + `PATCH` or a dedicated
+     recalibration-write endpoint added).
+   - `prediction_service.py::explain_consumption` — `uow.arac_repo.
+     get_by_id`/`uow.sofor_repo.get_by_id`/`uow.dorse_repo.get_by_id`
+     (fallback path when `_arac_obj`/`_sofor_obj`/`_dorse_obj` aren't
+     pre-fetched by the caller — that pre-fetch optimization itself is
+     now moot once this only runs remotely, since a caller in a different
+     process can't hand over a live ORM object; needs its own look) +
+     `fetch_health_input(uow, arac_id)` (`vehicle_health_adjustment.py`)
+     — this one is FINE as-is, it's raw `uow.session.execute(text(...))`
+     SQL against `arac_bakimlari`, no repo-class import, works with any
+     working DB session (this service already has its own `DATABASE_URL`
+     per the Task 9 docker-compose plan, and `m_prediction_ml`'s DB role
+     already has cross-schema SELECT grants there per the design doc's
+     earlier investigation) — no `cross_module_client` needed for this
+     one, just needs the local UnitOfWork-replacement from #2.
+   - `time_series_service.py` — `uow.analiz_repo.get_daily_summary_for_ml`
+     — this is operation #8 in the corrected Category 3 table above,
+     was already scheduled for `cross_module_client.get_daily_summary_for_ml`,
+     not yet implemented (Round 1 didn't reach this file).
+   - `trainer.py`, `scheduler_task.py` — not yet re-checked for
+     `UnitOfWork`/repo usage after Round 1 (scheduler_task.py's own
+     `_run_async` does `uow.session.execute(text(...))` directly against
+     `araclar` — same "raw SQL, fine" category as `fetch_health_input`,
+     needs the local UnitOfWork-replacement but no cross_module_client
+     call).
+
+### Round 3 (found, NOT yet fixed) — `v2/modules/prediction_ml/api/*.py` (stays on main backend) directly imports moved classes
+
+`api/` was deliberately excluded from Task 5's `git mv` list (it stays on
+the main backend, calling through `public.py` — see the module's own
+Global Constraint). But two of its four files bypass `public.py` and
+import moved application-layer classes DIRECTLY:
+
+- `api/admin_ml.py` — `from v2.modules.prediction_ml.application.
+  ml_service import MLService` + `UnitOfWork().model_versiyon_repo` (3
+  endpoints: `POST /train/{arac_id}`, `GET /queue`, `GET /versions/
+  {arac_id}`) — all three now reference a class/repo that physically
+  lives in the new service's container. Needs conversion to HTTP calls
+  against the new service (the new service already needs `/train/
+  {arac_id}` per Task 5's original router list — `GET /queue`/`GET
+  /versions/{arac_id}` need adding as new routes there too, then this
+  file becomes a thin httpx proxy, same shape as `cross_module_client.py`
+  but in the reverse direction, using `settings.PREDICTION_ML_SERVICE_URL`
+  + `X-Internal-Token`).
+- `api/predictions.py` — uses `MLService`/`EnsemblePredictorService`/
+  `PredictionService`/`Trainer` per an earlier grep; NOT YET individually
+  re-read/audited this session — needs the same treatment as `admin_ml.py`
+  before Task 5 can be called done. (`api/admin_pilot.py` was grepped and
+  does NOT hit this pattern — likely already going through `public.py`
+  correctly, but not individually re-verified line-by-line either.)
+
+This is very likely why the plan's original "18 consumer files, zero
+call-site changes required" framing (Global Constraints, top of this
+document) undercounted the real blast radius — `api/admin_ml.py`/
+`api/predictions.py` are the MODULE'S OWN api layer, not one of the 18
+external consumers, so they were never in that count, but they still
+break the moment the application layer physically leaves the container.
+
+### Honest status checklist (2026-08-04 end of session)
+
+**Code-complete and internally consistent** (not yet docker-built/tested):
+internal endpoints (6 files) + `api_router.py` registration, `cross_module_
+client.py`, `celery_app.py` split, `ensemble_service.py`/`ensemble_
+orchestration.py`/`route_similarity.py`/`model_warmup.py` cross-module
+rewiring, `seasonal_factor.py`/`vehicle_age.py` vendored pure logic,
+Dockerfile vendoring (`platform_infra`+`shared_kernel`+`app/config.py`),
+`app/config.py` new settings (`MAIN_BACKEND_INTERNAL_URL`+Task 6's flag
+settings, pulled forward since `cross_module_client.py` needs the URL
+setting now), `prediction_backfill_service.py`/`tasks.py` relocated to
+`trip`, `main.py`/`Dockerfile` package-layout fix (`prediction_ml_service`
+importable as its own top-level package under `PYTHONPATH=/app`).
+
+**NOT done, blocking a real Task-5-complete claim**:
+1. `shared_kernel/unit_of_work.py` fix (remove 2 dead properties on the
+   main-backend side) — Round 2 item 1.
+2. New service's local UnitOfWork-replacement class — Round 2 item 2.
+3. Rewire `ml_service.py`/`physics_handler.py`/`prediction_service.py`/
+   `time_series_service.py`/`trainer.py`/`scheduler_task.py` — Round 2
+   item 3 (physics_handler.py needs 2 NEW `trip` internal endpoints —
+   sefer read + a write/update path — that don't exist yet).
+4. `api/admin_ml.py` + `api/predictions.py` HTTP conversion — Round 3.
+5. `main.py` router registration (Task 5 Step 3/4 — routers directory is
+   still empty) + wiring `schedule_predictor_warmup()` into the new
+   service's own lifespan.
+6. `requirements.txt` version audit against `app/requirements.txt` (Task
+   1 Step 1 was never actually diffed against the real file).
+7. Fix moved test files' import paths (Task 5 Step 5 — not started;
+   18 test files sitting in `v2/services/prediction_ml_service/tests/`
+   still reference old import paths).
+8. `docker build` + real test run + the 4 internal-endpoint curl checks
+   (Task 5 Steps 6/6b/7) — ZERO real command output collected this
+   session. Every claim above is "code review says this should work,"
+   not "verified." Given this codebase's own explicit standard (no
+   success claim without command output), Task 5 must not be reported
+   as done until this step actually runs green.
+
+**Recommended next-session entry point**: fix Round 2 items 1-2 first
+(they unblock everything else — every remaining file in item 3 needs the
+local UnitOfWork replacement to even import), then work through Round 2
+item 3's file list top-to-bottom, then Round 3, then Steps 3-7, then the
+real docker verification. Do not skip straight to `docker build` before
+finishing the rewiring — it will fail on the very first import.

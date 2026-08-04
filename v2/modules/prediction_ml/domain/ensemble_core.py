@@ -541,18 +541,412 @@ class EnsembleFuelPredictor:
 
         return np.array(predictions)
 
+    def _prepare_training_data(self, seferler: List[Dict], y_actual: np.ndarray):
+        """
+        Prepares training data: outlier guard, temporal weighting, feature
+        preparation, physics predictions, label-leak guard, temporal sort,
+        train/test split.
+
+        Returns either the early-exit error dict (insufficient valid data),
+        or the tuple (seferler, X_train, X_test, y_train, y_test, sw_train,
+        y_physics, use_split) consumed by the rest of the fit() pipeline.
+        """
+        # ML Outlier Guard (Z-score > 3.0)
+        if len(y_actual) > 20:
+            y_mean = np.mean(y_actual)
+            y_std = np.std(y_actual)
+            if y_std > 0:
+                z_scores = np.abs((y_actual - y_mean) / y_std)
+                mask = z_scores < 3.0
+                removed = int(len(y_actual) - np.sum(mask))
+                if removed > 0:
+                    logger.info(
+                        f"ML Outlier Guard: {removed} samples removed from training."
+                    )
+                    y_actual = y_actual[mask]
+                    seferler = [s for i, s in enumerate(seferler) if mask[i]]
+
+        # Temporal Weighting — old data low weight, recent data high weight
+        from datetime import date as dt_date
+
+        bugun = dt_date.today()
+        # list while building, then rebound to an ndarray below; keep
+        # the binding Any so the np.array reassignment and the
+        # .min()/.max()/.mean() + fancy-indexing downstream type-check.
+        sample_weights: Any = []
+        for s in seferler:
+            tarih_str = s.get("tarih")
+            if tarih_str:
+                try:
+                    if isinstance(tarih_str, str):
+                        tarih = dt_date.fromisoformat(tarih_str)
+                    elif isinstance(tarih_str, dt_date):
+                        tarih = tarih_str
+                    else:
+                        tarih = bugun
+                    ay_farki = max(0, (bugun - tarih).days / 30.0)
+                    # Alpha: 0.1 (Phase 7 Request - Give 2025 much more weight than 2022)
+                    weight = np.exp(-0.1 * ay_farki)
+                except (ValueError, TypeError):
+                    weight = 0.5
+            else:
+                weight = 0.5
+
+            # NaN Guard for weight
+            if not np.isfinite(weight):
+                weight = 0.1
+
+            sample_weights.append(max(0.1, weight))  # Minimum 10% weight
+        sample_weights = np.array(sample_weights)
+        logger.info(
+            f"Temporal Weighting: min={sample_weights.min():.2f}, "
+            f"max={sample_weights.max():.2f}, mean={sample_weights.mean():.2f}"
+        )
+
+        # Prepare features
+        X = self.prepare_features(seferler)
+        X_scaled = self.scaler.fit_transform(X)
+
+        # Physics predictions (Baseline L/100km)
+        y_physics_raw = self._get_physics_predictions(seferler)
+
+        # Age and seasonal effects stay in feature space; baseline stays raw.
+        y_physics = np.array(y_physics_raw)
+
+        # 'tuketim' from the database is already in L/100km format (critical finding)
+        # Fix: 'tuketim' is used directly (Double Division bug prevented)
+        # Label-leak fix: skip the row if val <= 0, don't use the physics
+        # prediction as the label.
+        valid_mask = np.array(
+            [float(y_actual[i] or 0.0) > 0 for i in range(len(seferler))]
+        )
+        if valid_mask.sum() < 10:
+            return {
+                "success": False,
+                "error": f"Geçerli tuketim değeri olan sefer sayısı yetersiz: {int(valid_mask.sum())} (min 10)",
+            }
+        if valid_mask.sum() < len(seferler):
+            dropped = int(len(seferler) - valid_mask.sum())
+            logger.info(
+                "Label-leak guard: %d sefer tuketim=0/None olduğu için eğitimden çıkarıldı",
+                dropped,
+            )
+            seferler = [s for s, ok in zip(seferler, valid_mask) if ok]
+            y_actual = y_actual[valid_mask]
+            y_physics = y_physics[valid_mask]
+            sample_weights = sample_weights[valid_mask]
+
+        y_norm = np.array([float(v) for v in y_actual])
+
+        # Residual = Actual (L/100km) - Factored Physics (L/100km)
+        residuals = y_norm - y_physics
+
+        # Debug Logging
+        if len(residuals) > 0:
+            logger.info(
+                f"ML FIT DEBUG [Vehicle]: y_norm mean={np.mean(y_norm):.2f}, y_phys mean={np.mean(y_physics):.2f}, resid mean={np.mean(residuals):.2f}"  # noqa: E501
+            )
+            logger.info(
+                f"ML FIT DEBUG [Vehicle]: y_norm range=[{np.min(y_norm):.2f}, {np.max(y_norm):.2f}], residuals std={np.std(residuals):.2f}"  # noqa: E501
+            )
+
+        # Temporal sort: oldest data first — avoid train/test leakage
+        # Sort data by date (using the 'tarih' field in the sefer dict)
+        from datetime import date as _dt_date
+
+        def _parse_tarih(s):
+            t = s.get("tarih")
+            if isinstance(t, _dt_date):
+                return t
+            try:
+                return _dt_date.fromisoformat(str(t))
+            except Exception:
+                return _dt_date(2000, 1, 1)
+
+        sort_indices = sorted(
+            range(len(seferler)), key=lambda i: _parse_tarih(seferler[i])
+        )
+        seferler = [seferler[i] for i in sort_indices]
+        residuals = residuals[sort_indices]
+        sample_weights = sample_weights[sort_indices]
+        y_physics = y_physics[sort_indices]
+        y_norm = y_norm[sort_indices]
+        X = self.prepare_features(seferler)
+        X_scaled = self.scaler.fit_transform(X)
+
+        # Phase 3: Train/Test Split (Overfitting Guard)
+        # With 15+ samples, split for honesty; otherwise proceed with CV
+        use_split = len(residuals) >= 15
+        if use_split:
+            # Temporal split — last 20% is test, the rest is train (sequential order guaranteed)
+            split_idx = int(len(residuals) * 0.8)
+            X_train, X_test = X_scaled[:split_idx], X_scaled[split_idx:]
+            y_train, y_test = residuals[:split_idx], residuals[split_idx:]
+            sw_train = sample_weights[:split_idx]
+            logger.info(
+                "Temporal split: train=%d (oldest→%.0f%%), test=%d (newest)",
+                split_idx,
+                80,
+                len(residuals) - split_idx,
+            )
+        else:
+            X_train, y_train = X_scaled, residuals
+            X_test, y_test = X_scaled, residuals
+            sw_train = sample_weights if len(sample_weights) == len(X_train) else None
+
+        return (
+            seferler,
+            X_train,
+            X_test,
+            y_train,
+            y_test,
+            sw_train,
+            y_physics,
+            use_split,
+        )
+
+    def _train_component_models(
+        self, X_train, y_train, X_test, y_test, sw_train
+    ) -> dict:
+        """
+        Trains GB/RF/XGBoost/LightGBM, computes feature importance and the
+        honest test R2 + cross-validation scores. Trains the models
+        (self.gb_model etc.) in place (side effect), returns the scores as
+        a dict.
+        """
+        # Train ML models (on the training set - Temporal Weighted)
+        self.gb_model.fit(X_train, y_train, sample_weight=sw_train)
+        self.rf_model.fit(X_train, y_train, sample_weight=sw_train)
+
+        # Feature Importance (Explainability)
+        # In sync with FEATURE_NAMES (17 names) — BUG-1 FIX
+        importances = self.rf_model.feature_importances_
+        feat_imp = {
+            name: round(float(imp), 4)
+            for name, imp in zip(self.FEATURE_NAMES, importances)
+        }
+
+        # XGBoost training
+        xgb_r2 = 0.0
+        if self.xgb_model is not None:
+            try:
+                self.xgb_model.fit(X_train, y_train, sample_weight=sw_train)
+                xgb_test_pred = self.xgb_model.predict(X_test)
+                xgb_r2 = r2_score(y_test, xgb_test_pred) if len(y_test) > 0 else 0
+            except Exception as exc:
+                logger.warning("XGBoost fit failed, skipping model: %s", exc)
+                xgb_r2 = 0.0
+
+        # LightGBM training
+        lgb_r2 = 0.0
+        if LIGHTGBM_AVAILABLE and self.lgb_model is not None:
+            try:
+                self.lgb_model.fit(X_train, y_train, sample_weight=sw_train)
+                lgb_test_pred = self.lgb_model.predict(X_test)
+                lgb_r2 = r2_score(y_test, lgb_test_pred) if len(y_test) > 0 else 0
+            except MemoryError as exc:
+                logger.warning("LightGBM fit OOM, skipping model: %s", exc)
+                lgb_r2 = 0.0
+            except Exception as exc:
+                logger.warning("LightGBM fit failed, skipping model: %s", exc)
+                lgb_r2 = 0.0
+
+        # Honest test scores (GB & RF)
+        gb_test_r2 = (
+            r2_score(y_test, self.gb_model.predict(X_test)) if len(y_test) > 0 else 0
+        )
+        rf_test_r2 = (
+            r2_score(y_test, self.rf_model.predict(X_test)) if len(y_test) > 0 else 0
+        )
+
+        # Cross-validation scores (on the training set for honesty)
+        cv_folds = min(5, max(2, len(X_train) // 2))
+        gb_cv_mean = 0.0
+        if cv_folds >= 2:
+            gb_cv_scores = cross_val_score(
+                self.gb_model, X_train, y_train, cv=cv_folds, scoring="r2"
+            )
+            gb_cv_mean = np.mean(gb_cv_scores)
+
+        return {
+            "gb_test_r2": gb_test_r2,
+            "rf_test_r2": rf_test_r2,
+            "xgb_r2": xgb_r2,
+            "lgb_r2": lgb_r2,
+            "gb_cv_mean": gb_cv_mean,
+            "feat_imp": feat_imp,
+        }
+
+    def _compute_ensemble_weights(self, model_scores: dict) -> dict:
+        """
+        Strategy-based weighting (Phase 2): distributes weight across models
+        with a positive R2 score, then normalizes. Updates self.weights and
+        self.physics_weight in place (side effect, same as the original
+        behavior), and also returns the normalized weights.
+        """
+        gb_test_r2 = model_scores["gb_test_r2"]
+        rf_test_r2 = model_scores["rf_test_r2"]
+        xgb_r2 = model_scores["xgb_r2"]
+        lgb_r2 = model_scores["lgb_r2"]
+
+        # 1. Identify models with a positive R2 score
+        metrics_for_strategy = {
+            "gb": {"r2": max(0, gb_test_r2)},
+            "rf": {"r2": max(0, rf_test_r2)},
+            "xgboost": {"r2": max(0, xgb_r2) if xgb_r2 else 0},
+            "lightgbm": {"r2": max(0, lgb_r2) if lgb_r2 else 0},
+        }
+        avail_models = ["gb", "rf", "xgboost", "lightgbm"]
+
+        ml_weights = self.strategy.calculate_weights(metrics_for_strategy, avail_models)
+
+        base_physics_weight = 0.10
+        ml_total_r2 = sum(m["r2"] for m in metrics_for_strategy.values())
+
+        new_weights = {}
+        if ml_total_r2 > 0:
+            # ML models succeeded, distribute the remaining share using the
+            # strategy's returned ratios
+            ml_share = 1.0 - base_physics_weight
+            new_weights["physics"] = base_physics_weight
+
+            for model in avail_models:
+                weight = ml_weights.get(model, 0.0) * ml_share
+                new_weights[model] = round(weight, 3)
+        else:
+            # No ML model succeeded -> Fallback to Physics
+            logger.warning(
+                "Dynamic Weighting: All ML models failed (R2<=0). Fallback to Physics."
+            )
+            new_weights = {
+                "physics": 1.0,
+                "gb": 0,
+                "rf": 0,
+                "xgboost": 0,
+                "lightgbm": 0,
+            }
+
+        # Normalize the weights (total = 1.0)
+        total_w = sum(new_weights.values())
+        if total_w > 0:
+            self.weights = {k: v / total_w for k, v in new_weights.items()}
+        else:
+            self.weights = self.DEFAULT_WEIGHTS.copy()
+
+        self.physics_weight = self.weights.get("physics", 1.0)
+
+        return self.weights
+
+    def _evaluate_and_build_stats(
+        self,
+        X_test,
+        y_test,
+        y_physics,
+        y_train,
+        seferler,
+        use_split,
+        model_scores,
+        weights,
+    ) -> dict:
+        """
+        Produces the weighted ensemble predictions on the test set, computes
+        the error metrics (MAE/RMSE/MAPE/R2), and assembles the final
+        training_stats dict.
+        """
+        # Measure Ensemble performance on the test set
+        final_preds = []
+        for i in range(len(X_test)):
+            # Get factored physics baseline for this test sample
+            p_physics = y_physics[len(y_train) + i] if use_split else y_physics[i]
+
+            weighted_res = 0.0
+            # GB
+            if weights.get("gb", 0) > 0:
+                weighted_res += weights["gb"] * self.gb_model.predict([X_test[i]])[0]
+            # RF
+            if weights.get("rf", 0) > 0:
+                weighted_res += weights["rf"] * self.rf_model.predict([X_test[i]])[0]
+            # XGB
+            if weights.get("xgboost", 0) > 0 and self.xgb_model:
+                weighted_res += (
+                    weights["xgboost"] * self.xgb_model.predict([X_test[i]])[0]
+                )
+            # LGBM
+            if weights.get("lightgbm", 0) > 0 and self.lgb_model:
+                weighted_res += (
+                    weights["lightgbm"] * self.lgb_model.predict([X_test[i]])[0]
+                )
+
+            final_preds.append(p_physics + weighted_res)
+
+        final_preds = np.array(final_preds)  # type: ignore[assignment]
+
+        # Compute metrics (test set: y_test = actual_residuals)
+        # y_test = y_actual - y_physics
+        # Our final_pred - p_physics = weighted_residual_sum
+        # Error = (p_physics + weighted_residual_sum) - (p_physics + y_test)
+        #      = weighted_residual_sum - y_test
+
+        y_true = y_physics[-len(y_test) :] + y_test
+        errors = final_preds - y_true
+        mae = np.mean(np.abs(errors))
+        rmse = np.sqrt(np.mean(errors**2))
+
+        # Ensemble R2 Score calculation
+        ens_r2 = 0.0
+        if SKLEARN_AVAILABLE:
+            try:
+                from sklearn.metrics import r2_score as r2_metrics_func
+
+                ens_r2 = r2_metrics_func(y_true, final_preds)
+            except Exception as e:
+                logger.warning(f"Could not calculate ensemble R2: {e}")
+
+        mape = np.mean(np.abs(errors / np.maximum(np.abs(y_true), 1e-6))) * 100
+
+        physics_mae = np.mean(np.abs(y_test))
+
+        gb_test_r2 = model_scores["gb_test_r2"]
+        rf_test_r2 = model_scores["rf_test_r2"]
+        xgb_r2 = model_scores["xgb_r2"]
+        lgb_r2 = model_scores["lgb_r2"]
+        gb_cv_mean = model_scores["gb_cv_mean"]
+        feat_imp = model_scores["feat_imp"]
+
+        return {
+            "sample_count": len(seferler),
+            "test_size": len(y_test) if use_split else 0,
+            "ensemble_r2": round(float(ens_r2), 4),
+            "measurements": {
+                "mae": round(mae, 2),
+                "rmse": round(rmse, 2),
+                "mape": round(mape, 2),
+                "physics_mae": round(physics_mae, 2),
+            },
+            "metrics": {
+                "gb_test_r2": round(gb_test_r2, 3),
+                "rf_test_r2": round(rf_test_r2, 3),
+                "xgb_test_r2": round(float(xgb_r2), 3) if xgb_r2 else None,
+                "lgb_test_r2": round(float(lgb_r2), 3) if lgb_r2 else None,
+                "gb_cv_mean": round(float(gb_cv_mean), 3),
+            },
+            "feature_importance": feat_imp,
+            "model_weights": self.weights,
+            "is_honest_test": use_split,
+        }
+
     def fit(self, seferler: List[Dict], y_actual: Optional[np.ndarray] = None) -> Dict:
         """
-        Model eğitimi
+        Model training
 
-        1. Feature'ları hazırla
-        2. Fizik tahminleri al
-        3. Residual (hata) hesapla
-        4. ML ile residual öğren
-        5. Ağırlıkları belirle
+        1. Prepare features
+        2. Get physics predictions
+        3. Compute residual (error)
+        4. Learn the residual with ML
+        5. Determine weights
 
-        y_actual: gerçek tüketim değerleri (L/100km). None ise seferler içindeki
-        'tuketim' alanından çıkarılır.
+        y_actual: actual consumption values (L/100km). If None, it is
+        derived from the 'tuketim' field in seferler.
         """
         if y_actual is None:
             y_actual = np.array([float(s.get("tuketim") or 0.0) for s in seferler])
@@ -566,353 +960,40 @@ class EnsembleFuelPredictor:
             return {"success": False, "error": "sklearn kütüphanesi yüklü değil."}
 
         try:
-            # LOCK SCOPE FIX: Tüm eğitim lock içinde - is_trained flag atomik güncellemesi
+            # LOCK SCOPE FIX: entire training inside the lock - atomic update of the is_trained flag
             with self._model_lock:
-                self.is_trained = False  # Eğitim sırasında eski tahminleri engelle
+                self.is_trained = False  # Block stale predictions during training
 
-                # ML Outlier Guard (Z-score > 3.0)
-                if len(y_actual) > 20:
-                    y_mean = np.mean(y_actual)
-                    y_std = np.std(y_actual)
-                    if y_std > 0:
-                        z_scores = np.abs((y_actual - y_mean) / y_std)
-                        mask = z_scores < 3.0
-                        removed = int(len(y_actual) - np.sum(mask))
-                        if removed > 0:
-                            logger.info(
-                                f"ML Outlier Guard: {removed} samples removed from training."
-                            )
-                            y_actual = y_actual[mask]
-                            seferler = [s for i, s in enumerate(seferler) if mask[i]]
+                prep = self._prepare_training_data(seferler, y_actual)
+                if isinstance(prep, dict):  # early-exit error (label-leak guard)
+                    return prep
+                (
+                    seferler,
+                    X_train,
+                    X_test,
+                    y_train,
+                    y_test,
+                    sw_train,
+                    y_physics,
+                    use_split,
+                ) = prep
 
-                # Temporal Weighting — eski veri düşük ağırlık, yeni veri yüksek
-                from datetime import date as dt_date
-
-                bugun = dt_date.today()
-                # list while building, then rebound to an ndarray below; keep
-                # the binding Any so the np.array reassignment and the
-                # .min()/.max()/.mean() + fancy-indexing downstream type-check.
-                sample_weights: Any = []
-                for s in seferler:
-                    tarih_str = s.get("tarih")
-                    if tarih_str:
-                        try:
-                            if isinstance(tarih_str, str):
-                                tarih = dt_date.fromisoformat(tarih_str)
-                            elif isinstance(tarih_str, dt_date):
-                                tarih = tarih_str
-                            else:
-                                tarih = bugun
-                            ay_farki = max(0, (bugun - tarih).days / 30.0)
-                            # Alpha: 0.1 (Phase 7 Request - Give 2025 much more weight than 2022)
-                            weight = np.exp(-0.1 * ay_farki)
-                        except (ValueError, TypeError):
-                            weight = 0.5
-                    else:
-                        weight = 0.5
-
-                    # NaN Guard for weight
-                    if not np.isfinite(weight):
-                        weight = 0.1
-
-                    sample_weights.append(max(0.1, weight))  # Minimum %10 ağırlık
-                sample_weights = np.array(sample_weights)
-                logger.info(
-                    f"Temporal Weighting: min={sample_weights.min():.2f}, "
-                    f"max={sample_weights.max():.2f}, mean={sample_weights.mean():.2f}"
+                model_scores = self._train_component_models(
+                    X_train, y_train, X_test, y_test, sw_train
+                )
+                weights = self._compute_ensemble_weights(model_scores)
+                self.training_stats = self._evaluate_and_build_stats(
+                    X_test,
+                    y_test,
+                    y_physics,
+                    y_train,
+                    seferler,
+                    use_split,
+                    model_scores,
+                    weights,
                 )
 
-                # Feature hazırla
-                X = self.prepare_features(seferler)
-                X_scaled = self.scaler.fit_transform(X)
-
-                # Fizik tahminleri (Baseline L/100km)
-                y_physics_raw = self._get_physics_predictions(seferler)
-
-                # Age and seasonal effects stay in feature space; baseline stays raw.
-                y_physics = np.array(y_physics_raw)
-
-                # Database'den gelen 'tuketim' zaten L/100km formatında (Kritik Keşif)
-                # Fix: 'tuketim' doğrudan kullanılıyor (Double Division bug engellendi)
-                # Label-leak fix: val <= 0 ise satırı ATLA, fizik tahmini etiket olarak kullanma.
-                valid_mask = np.array(
-                    [float(y_actual[i] or 0.0) > 0 for i in range(len(seferler))]
-                )
-                if valid_mask.sum() < 10:
-                    return {
-                        "success": False,
-                        "error": f"Geçerli tuketim değeri olan sefer sayısı yetersiz: {int(valid_mask.sum())} (min 10)",
-                    }
-                if valid_mask.sum() < len(seferler):
-                    dropped = int(len(seferler) - valid_mask.sum())
-                    logger.info(
-                        "Label-leak guard: %d sefer tuketim=0/None olduğu için eğitimden çıkarıldı",
-                        dropped,
-                    )
-                    seferler = [s for s, ok in zip(seferler, valid_mask) if ok]
-                    y_actual = y_actual[valid_mask]
-                    y_physics = y_physics[valid_mask]
-                    sample_weights = sample_weights[valid_mask]
-
-                y_norm = np.array([float(v) for v in y_actual])
-
-                # Residual = Gerçek (L/100km) - Factored Physics (L/100km)
-                residuals = y_norm - y_physics
-
-                # Debug Logging
-                if len(residuals) > 0:
-                    logger.info(
-                        f"ML FIT DEBUG [Vehicle]: y_norm mean={np.mean(y_norm):.2f}, y_phys mean={np.mean(y_physics):.2f}, resid mean={np.mean(residuals):.2f}"  # noqa: E501
-                    )
-                    logger.info(
-                        f"ML FIT DEBUG [Vehicle]: y_norm range=[{np.min(y_norm):.2f}, {np.max(y_norm):.2f}], residuals std={np.std(residuals):.2f}"  # noqa: E501
-                    )
-
-                # Temporal sort: en eski veri önce — train/test sızıntısını önle
-                # Veriyi tarihe göre sırala (sefer dict'indeki 'tarih' alanı kullanılır)
-                from datetime import date as _dt_date
-
-                def _parse_tarih(s):
-                    t = s.get("tarih")
-                    if isinstance(t, _dt_date):
-                        return t
-                    try:
-                        return _dt_date.fromisoformat(str(t))
-                    except Exception:
-                        return _dt_date(2000, 1, 1)
-
-                sort_indices = sorted(
-                    range(len(seferler)), key=lambda i: _parse_tarih(seferler[i])
-                )
-                seferler = [seferler[i] for i in sort_indices]
-                residuals = residuals[sort_indices]
-                sample_weights = sample_weights[sort_indices]
-                y_physics = y_physics[sort_indices]
-                y_norm = y_norm[sort_indices]
-                X = self.prepare_features(seferler)
-                X_scaled = self.scaler.fit_transform(X)
-
-                # Phase 3: Train/Test Split (Overfitting Guard)
-                # 15+ örnek varsa dürüstlük için ayır, yoksa CV ile devam et
-                use_split = len(residuals) >= 15
-                if use_split:
-                    # Temporal split — son %20'si test, öncesi train (sıralı olduğu garanti)
-                    split_idx = int(len(residuals) * 0.8)
-                    X_train, X_test = X_scaled[:split_idx], X_scaled[split_idx:]
-                    y_train, y_test = residuals[:split_idx], residuals[split_idx:]
-                    sw_train = sample_weights[:split_idx]
-                    logger.info(
-                        "Temporal split: train=%d (oldest→%.0f%%), test=%d (newest)",
-                        split_idx,
-                        80,
-                        len(residuals) - split_idx,
-                    )
-                else:
-                    X_train, y_train = X_scaled, residuals
-                    X_test, y_test = X_scaled, residuals
-                    sw_train = (
-                        sample_weights if len(sample_weights) == len(X_train) else None
-                    )
-
-                # ML modelleri eğit (Training set üzerinde - Temporal Weighted)
-                self.gb_model.fit(X_train, y_train, sample_weight=sw_train)
-                self.rf_model.fit(X_train, y_train, sample_weight=sw_train)
-
-                # Feature Importance (Explainability)
-                # FEATURE_NAMES ile senkron (17 isim) — BUG-1 FIX
-                importances = self.rf_model.feature_importances_
-                feat_imp = {
-                    name: round(float(imp), 4)
-                    for name, imp in zip(self.FEATURE_NAMES, importances)
-                }
-
-                # XGBoost eğitimi
-                xgb_r2 = 0.0
-                if self.xgb_model is not None:
-                    try:
-                        self.xgb_model.fit(X_train, y_train, sample_weight=sw_train)
-                        xgb_test_pred = self.xgb_model.predict(X_test)
-                        xgb_r2 = (
-                            r2_score(y_test, xgb_test_pred) if len(y_test) > 0 else 0
-                        )
-                    except Exception as exc:
-                        logger.warning("XGBoost fit failed, skipping model: %s", exc)
-                        xgb_r2 = 0.0
-
-                # LightGBM eğitimi
-                lgb_r2 = 0.0
-                if LIGHTGBM_AVAILABLE and self.lgb_model is not None:
-                    try:
-                        self.lgb_model.fit(X_train, y_train, sample_weight=sw_train)
-                        lgb_test_pred = self.lgb_model.predict(X_test)
-                        lgb_r2 = (
-                            r2_score(y_test, lgb_test_pred) if len(y_test) > 0 else 0
-                        )
-                    except MemoryError as exc:
-                        logger.warning("LightGBM fit OOM, skipping model: %s", exc)
-                        lgb_r2 = 0.0
-                    except Exception as exc:
-                        logger.warning("LightGBM fit failed, skipping model: %s", exc)
-                        lgb_r2 = 0.0
-
-                # Dürüst Test Skorları (GB & RF)
-                gb_test_r2 = (
-                    r2_score(y_test, self.gb_model.predict(X_test))
-                    if len(y_test) > 0
-                    else 0
-                )
-                rf_test_r2 = (
-                    r2_score(y_test, self.rf_model.predict(X_test))
-                    if len(y_test) > 0
-                    else 0
-                )
-
-                # Cross-validation skorları (Training set üzerinde dürüstlük için)
-                cv_folds = min(5, max(2, len(X_train) // 2))
-                gb_cv_mean = 0.0
-                if cv_folds >= 2:
-                    gb_cv_scores = cross_val_score(
-                        self.gb_model, X_train, y_train, cv=cv_folds, scoring="r2"
-                    )
-                    gb_cv_mean = np.mean(gb_cv_scores)
-
-                # ---------------------------------------------------------
-                # STRATEGY BASED WEIGHTING (Faz 2)
-                # ---------------------------------------------------------
-                # 1. Pozitif R2 skoru olan modelleri belirle
-                metrics_for_strategy = {
-                    "gb": {"r2": max(0, gb_test_r2)},
-                    "rf": {"r2": max(0, rf_test_r2)},
-                    "xgboost": {"r2": max(0, xgb_r2) if xgb_r2 else 0},
-                    "lightgbm": {"r2": max(0, lgb_r2) if lgb_r2 else 0},
-                }
-                avail_models = ["gb", "rf", "xgboost", "lightgbm"]
-
-                ml_weights = self.strategy.calculate_weights(
-                    metrics_for_strategy, avail_models
-                )
-
-                base_physics_weight = 0.10
-                ml_total_r2 = sum(m["r2"] for m in metrics_for_strategy.values())
-
-                new_weights = {}
-                if ml_total_r2 > 0:
-                    # ML modelleri başarılı, kalan payı stratejinin döndüğü oranlarla dağıt
-                    ml_share = 1.0 - base_physics_weight
-                    new_weights["physics"] = base_physics_weight
-
-                    for model in avail_models:
-                        weight = ml_weights.get(model, 0.0) * ml_share
-                        new_weights[model] = round(weight, 3)
-                else:
-                    # Hiçbir ML modeli başarılı değil -> Fallback to Physics
-                    logger.warning(
-                        "Dynamic Weighting: All ML models failed (R2<=0). Fallback to Physics."
-                    )
-                    new_weights = {
-                        "physics": 1.0,
-                        "gb": 0,
-                        "rf": 0,
-                        "xgboost": 0,
-                        "lightgbm": 0,
-                    }
-
-                # Ağırlıkları normalize et (toplam = 1.0)
-                total_w = sum(new_weights.values())
-                if total_w > 0:
-                    self.weights = {k: v / total_w for k, v in new_weights.items()}
-                else:
-                    self.weights = self.DEFAULT_WEIGHTS.copy()
-
-                self.physics_weight = self.weights.get("physics", 1.0)
-
-                # ---------------------------------------------------------
-                # EXTENDED METRICS (Faz 2)
-                # ---------------------------------------------------------
-                # Test seti üzerinde Ensemble performansını ölç
-                final_preds = []
-                for i in range(len(X_test)):
-                    # Get factored physics baseline for this test sample
-                    p_physics = (
-                        y_physics[len(y_train) + i] if use_split else y_physics[i]
-                    )
-
-                    weighted_res = 0.0
-                    # GB
-                    if self.weights.get("gb", 0) > 0:
-                        weighted_res += (
-                            self.weights["gb"] * self.gb_model.predict([X_test[i]])[0]
-                        )
-                    # RF
-                    if self.weights.get("rf", 0) > 0:
-                        weighted_res += (
-                            self.weights["rf"] * self.rf_model.predict([X_test[i]])[0]
-                        )
-                    # XGB
-                    if self.weights.get("xgboost", 0) > 0 and self.xgb_model:
-                        weighted_res += (
-                            self.weights["xgboost"]
-                            * self.xgb_model.predict([X_test[i]])[0]
-                        )
-                    # LGBM
-                    if self.weights.get("lightgbm", 0) > 0 and self.lgb_model:
-                        weighted_res += (
-                            self.weights["lightgbm"]
-                            * self.lgb_model.predict([X_test[i]])[0]
-                        )
-
-                    final_preds.append(p_physics + weighted_res)
-
-                final_preds = np.array(final_preds)  # type: ignore[assignment]
-
-                # Metrik hesapla (Test seti: y_test = actual_residuals)
-                # y_test = y_actual - y_physics
-                # Bizim final_pred - p_physics = weighted_residual_sum
-                # Hata = (p_physics + weighted_residual_sum) - (p_physics + y_test)
-                #      = weighted_residual_sum - y_test
-
-                y_true = y_physics[-len(y_test) :] + y_test
-                errors = final_preds - y_true
-                mae = np.mean(np.abs(errors))
-                rmse = np.sqrt(np.mean(errors**2))
-
-                # Ensemble R2 Score calculation
-                ens_r2 = 0.0
-                if SKLEARN_AVAILABLE:
-                    try:
-                        from sklearn.metrics import r2_score as r2_metrics_func
-
-                        ens_r2 = r2_metrics_func(y_true, final_preds)
-                    except Exception as e:
-                        logger.warning(f"Could not calculate ensemble R2: {e}")
-
-                mape = np.mean(np.abs(errors / np.maximum(np.abs(y_true), 1e-6))) * 100
-
-                physics_mae = np.mean(np.abs(y_test))
-
-                self.training_stats = {
-                    "sample_count": len(seferler),
-                    "test_size": len(y_test) if use_split else 0,
-                    "ensemble_r2": round(float(ens_r2), 4),
-                    "measurements": {
-                        "mae": round(mae, 2),
-                        "rmse": round(rmse, 2),
-                        "mape": round(mape, 2),
-                        "physics_mae": round(physics_mae, 2),
-                    },
-                    "metrics": {
-                        "gb_test_r2": round(gb_test_r2, 3),
-                        "rf_test_r2": round(rf_test_r2, 3),
-                        "xgb_test_r2": round(float(xgb_r2), 3) if xgb_r2 else None,
-                        "lgb_test_r2": round(float(lgb_r2), 3) if lgb_r2 else None,
-                        "gb_cv_mean": round(float(gb_cv_mean), 3),
-                    },
-                    "feature_importance": feat_imp,
-                    "model_weights": self.weights,
-                    "is_honest_test": use_split,
-                }
-
-                # is_trained bayrağı lock içinde - RACE CONDITION FIX
+                # is_trained flag inside the lock - RACE CONDITION FIX
                 self.is_trained = True
 
             return {"success": True, **self.training_stats}

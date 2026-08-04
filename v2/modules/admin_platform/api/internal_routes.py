@@ -27,6 +27,7 @@ from v2.modules.admin_platform.application.integration_secrets import (
     BOT_TOKEN_SERVICES,
     get_integration_secret,
 )
+from v2.modules.admin_platform.application.runtime_config import get_runtime_float
 from v2.modules.admin_platform.application.telegram_bridge import (
     get_coaching_snapshot,
     get_seferler,
@@ -287,7 +288,7 @@ class TrainingProgressBody(BaseModel):
     type: str
     task_id: int
     arac_id: Optional[int] = None
-    ilerleme: Optional[int] = None
+    ilerleme: Optional[float] = None
     durum: str
     error: bool = False
     detail: Optional[str] = None
@@ -297,3 +298,12 @@ class TrainingProgressBody(BaseModel):
 async def training_progress(body: TrainingProgressBody) -> dict:
     await training_ws_manager.broadcast(body.model_dump())
     return {"ok": True}
+
+
+# ── Runtime config (prediction_ml_service reads sistem_konfig this way) ─────
+
+
+@router.get("/runtime-config/float")
+async def runtime_config_float(key: str, fallback: float) -> dict:
+    value = await get_runtime_float(key, fallback)
+    return {"value": value}

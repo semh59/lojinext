@@ -12,6 +12,7 @@ admin_platform/api/internal_routes.py.
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from pydantic import BaseModel
 
 from app.config import settings
 from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
@@ -47,3 +48,24 @@ async def training_data(arac_id: int, limit: int = 500) -> list:
 async def training_data_all(limit: int = 2000) -> list:
     async with UnitOfWork() as uow:
         return await uow.sefer_repo.get_all_for_training(limit=limit)
+
+
+@router.get("/seferler/{sefer_id}")
+async def get_sefer(sefer_id: int) -> dict:
+    async with UnitOfWork() as uow:
+        sefer = await uow.sefer_repo.get_by_id(sefer_id)
+    if sefer is None:
+        raise HTTPException(status_code=404, detail="Sefer not found")
+    return sefer
+
+
+class TahminiTuketimBody(BaseModel):
+    tahmini_tuketim: float
+
+
+@router.patch("/seferler/{sefer_id}/tahmini-tuketim")
+async def update_tahmini_tuketim(sefer_id: int, body: TahminiTuketimBody) -> dict:
+    async with UnitOfWork() as uow:
+        await uow.sefer_repo.update(sefer_id, tahmini_tuketim=body.tahmini_tuketim)
+        await uow.commit()
+    return {"ok": True}

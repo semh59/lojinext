@@ -7,6 +7,7 @@ CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 
 import asyncio
 import logging
+import threading
 from datetime import date
 from typing import Any, Dict, Optional
 
@@ -26,7 +27,8 @@ from prediction_ml_service.domain.physics_model import (
     run_physics_model,
 )
 from prediction_ml_service.domain.route_ratios import normalize_route_analysis
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from prediction_ml_service.domain.seasonal_factor import get_seasonal_factor
+from prediction_ml_service.infrastructure import cross_module_client
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +42,6 @@ class PredictionService:
     """
 
     def __init__(self):
-        # Lazy import: route_simulation.public eagerly imports
-        # get_route_details -> mapbox_client -> segment_simulator, which
-        # imports prediction_ml.public -- a module-level import here would
-        # create a real import cycle back into this very module (caught
-        # live: ImportError "cannot import name 'FuelPrediction' from
-        # partially initialized module 'prediction_ml_service.public'").
-        from v2.modules.route_simulation.public import WeatherService
-
-        self.weather_service = WeatherService()
         self.ensemble_service = get_ensemble_service()
 
     async def _build_sefer_dict(
@@ -217,36 +210,40 @@ class PredictionService:
                 _dorse_obj.__dict__ if hasattr(_dorse_obj, "__dict__") else _dorse_obj
             )
 
-        # Only fetch from DB if not already provided
+        # Only fetch from DB if not already provided. `_arac_obj`/
+        # `_sofor_obj`/`_dorse_obj` were an N+1 optimization for the
+        # in-process caller passing pre-fetched ORM objects -- moot now
+        # that this only runs remotely (a caller in a different process
+        # can't hand over a live ORM object), but harmless if still
+        # populated the old way.
         if not arac or not sofor or not dorse:
-            async with UnitOfWork() as uow:
-                if arac_id > 0 and not arac:
-                    raw = await uow.arac_repo.get_by_id(arac_id)
-                    if raw:
-                        arac = raw.__dict__ if hasattr(raw, "__dict__") else raw
-                if sofor_id and not sofor:
-                    raw = await uow.sofor_repo.get_by_id(sofor_id)
-                    if raw:
-                        sofor = raw.__dict__ if hasattr(raw, "__dict__") else raw
-                if dorse_id and not dorse:
-                    raw = await uow.dorse_repo.get_by_id(dorse_id)
-                    if raw:
-                        dorse = raw.__dict__ if hasattr(raw, "__dict__") else raw
-                # D.4 — bakım metadata'sını aynı UoW içinde inject et
-                # (nested UoW açma; downstream factor hesabı için)
-                if arac and settings.MAINTENANCE_FACTOR_ENABLED:
-                    try:
-                        from prediction_ml_service.domain.vehicle_health_adjustment import (
-                            fetch_health_input,
-                        )
+            if arac_id > 0 and not arac:
+                arac = await cross_module_client.get_vehicle(arac_id)
+            if sofor_id and not sofor:
+                sofor = await cross_module_client.get_driver(sofor_id)
+            if dorse_id and not dorse:
+                dorse = await cross_module_client.get_trailer(dorse_id)
+            # D.4 -- maintenance metadata via this service's own DB
+            # session (raw SQL against arac_bakimlari, m_prediction_ml's
+            # role already has SELECT grants there) -- not a cross-module
+            # repo call.
+            if arac and settings.MAINTENANCE_FACTOR_ENABLED:
+                try:
+                    from prediction_ml_service.domain.vehicle_health_adjustment import (
+                        fetch_health_input,
+                    )
+                    from prediction_ml_service.infrastructure.service_uow import (
+                        ServiceUnitOfWork,
+                    )
 
+                    async with ServiceUnitOfWork() as uow:
                         arac["_health_input"] = await fetch_health_input(uow, arac_id)
-                    except Exception as exc:
-                        logger.warning(
-                            "D.4 fetch_health_input failed for arac %s: %s",
-                            arac_id,
-                            exc,
-                        )
+                except Exception as exc:
+                    logger.warning(
+                        "D.4 fetch_health_input failed for arac %s: %s",
+                        arac_id,
+                        exc,
+                    )
 
         # D.4 — bakım çarpanını şimdi (ensemble/physics çağırılmadan önce)
         # hesapla; payload post-process'te tek noktadan uygulanır.
@@ -272,11 +269,7 @@ class PredictionService:
         # Runtime config resolved ONCE per request here (async boundary) —
         # never inside the sync build_vehicle_specs helper, and never
         # per-segment (there is no per-segment fan-out for this factor).
-        from v2.modules.admin_platform.public import (
-            get_runtime_float,
-        )
-
-        age_degradation_rate = await get_runtime_float(
+        age_degradation_rate = await cross_module_client.get_runtime_float(
             "VEHICLE_AGE_DEGRADATION_RATE", settings.VEHICLE_AGE_DEGRADATION_RATE
         )
         specs, age = build_vehicle_specs(arac, dorse, age_degradation_rate)
@@ -292,9 +285,7 @@ class PredictionService:
         if normalized_route and "weather_factor" in normalized_route:
             weather_factor = float(normalized_route["weather_factor"])
         else:
-            weather_factor = await asyncio.to_thread(
-                self.weather_service.get_seasonal_factor, target_date
-            )
+            weather_factor = get_seasonal_factor(target_date)
 
         # ── 4. Physics prediction ─────────────────────────────────────────────
         physics_result = await run_physics_model(
@@ -418,9 +409,6 @@ class PredictionService:
     ):
         """Background task: AI'a tahmin bilgisi gönder"""
         try:
-            from v2.modules.ai_assistant.public import get_smart_ai
-
-            smart_ai = get_smart_ai()
 
             async def _safe_teach():
                 try:
@@ -428,7 +416,7 @@ class PredictionService:
                         f"Tahmin: Araç {arac_id}, {mesafe_km} km,"
                         f" {consumption:.2f} L/100km"
                     )
-                    await smart_ai.teach(msg, category="tahmin_izleme")
+                    await cross_module_client.teach(msg, category="tahmin_izleme")
                 except Exception as e:
                     logger.debug(f"AI teach task failed: {e}")
 
@@ -457,11 +445,11 @@ class PredictionService:
         # Feature setini hazırla (predict ile uyumlu)
         s_score = sofor_score
         if s_score is None and sofor_id:
-            from v2.modules.driver.public import get_driver_stats
-
-            stats = await get_driver_stats(sofor_id, include_elite_score=False)
+            stats = await cross_module_client.get_driver_stats(
+                sofor_id, include_elite_score=False
+            )
             if stats:
-                s_score = 1.0 - (stats[0].filo_karsilastirma / 100) * 0.1
+                s_score = 1.0 - (stats[0]["filo_karsilastirma"] / 100) * 0.1
 
         normalized_route_analysis = normalize_route_analysis(route_analysis)
 
@@ -491,7 +479,7 @@ class PredictionService:
 
         user_id audit log'a yazılır (kim tetiklediyse).
         """
-        from v2.modules.platform_infra.public import log_audit_event
+        from v2.modules.platform_infra.audit.audit_logger import log_audit_event
 
         # ensemble_service uses train_for_vehicle method
         res = await self.ensemble_service.train_for_vehicle(arac_id)
@@ -518,8 +506,21 @@ class PredictionService:
         }
 
 
-def get_prediction_service() -> PredictionService:
-    """Delegates to the DI container for the singleton PredictionService instance."""
-    from v2.modules.platform_infra.public import get_container
+_prediction_service: "PredictionService | None" = None
+_prediction_service_lock = threading.Lock()
 
-    return get_container().prediction_service
+
+def get_prediction_service() -> PredictionService:
+    """Thread-safe singleton accessor.
+
+    Was delegated to the main backend's DI container (`get_container().
+    prediction_service`) before Task 5's move -- that container lives in
+    a different process now, so this service keeps its own singleton
+    (same pattern as `ensemble_service.get_ensemble_service`).
+    """
+    global _prediction_service
+    if _prediction_service is None:
+        with _prediction_service_lock:
+            if _prediction_service is None:
+                _prediction_service = PredictionService()
+    return _prediction_service

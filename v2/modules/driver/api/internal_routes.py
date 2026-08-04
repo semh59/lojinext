@@ -12,9 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from app.config import settings
 from v2.modules.driver.application.driver_stats import get_driver_stats
-from v2.modules.driver.infrastructure.driver_trip_queries import (
-    get_with_route_analysis,
-)
+from v2.modules.driver.application.list_sofor import get_by_id
 
 
 async def _require_internal_token(
@@ -47,6 +45,9 @@ async def driver_stats(
     )
 
 
-@router.get("/route-analysis-recent")
-async def route_analysis_recent(days: int = 90, limit: int = 200) -> list:
-    return await get_with_route_analysis(days=days, limit=limit)
+@router.get("/{sofor_id}")
+async def driver_by_id(sofor_id: int) -> dict:
+    sofor = await get_by_id(sofor_id)
+    if sofor is None:
+        raise HTTPException(status_code=404, detail="Sofor not found")
+    return sofor

@@ -86,6 +86,18 @@ async def _post(path: str, json_body: dict) -> Any:
     return await _with_retry(_call)
 
 
+async def _patch(path: str, json_body: dict) -> Any:
+    async def _call():
+        async with httpx.AsyncClient(
+            base_url=_base_url(), timeout=_WRITE_TIMEOUT_S
+        ) as client:
+            resp = await client.patch(path, json=json_body, headers=_headers())
+            resp.raise_for_status()
+            return resp.json()
+
+    return await _with_retry(_call)
+
+
 # ── fleet ─────────────────────────────────────────────────────────────────
 
 
@@ -119,11 +131,13 @@ async def get_driver_stats(
     return await _get("/api/v1/internal/driver/stats", params=params)
 
 
-async def get_route_analysis_recent(days: int = 90, limit: int = 200) -> list:
-    return await _get(
-        "/api/v1/internal/driver/route-analysis-recent",
-        params={"days": days, "limit": limit},
-    )
+async def get_driver(sofor_id: int) -> Optional[dict]:
+    try:
+        return await _get(f"/api/v1/internal/driver/{sofor_id}")
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return None
+        raise
 
 
 # ── trip ──────────────────────────────────────────────────────────────────
@@ -138,6 +152,22 @@ async def get_training_data(arac_id: int, limit: int = 500) -> list:
 async def get_all_training_data(limit: int = 2000) -> list:
     return await _get(
         "/api/v1/internal/trip/training-data-all", params={"limit": limit}
+    )
+
+
+async def get_sefer(sefer_id: int) -> Optional[dict]:
+    try:
+        return await _get(f"/api/v1/internal/trip/seferler/{sefer_id}")
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            return None
+        raise
+
+
+async def update_tahmini_tuketim(sefer_id: int, tahmini_tuketim: float) -> None:
+    await _patch(
+        f"/api/v1/internal/trip/seferler/{sefer_id}/tahmini-tuketim",
+        {"tahmini_tuketim": tahmini_tuketim},
     )
 
 
@@ -191,7 +221,7 @@ async def ai_chat(
     return result["answer"]
 
 
-# ── admin_platform (training progress callback) ────────────────────────────
+# ── admin_platform (training progress callback + runtime config) ───────────
 
 
 async def post_training_progress(payload: dict) -> None:
@@ -199,3 +229,15 @@ async def post_training_progress(payload: dict) -> None:
         await _post("/api/v1/internal/admin/training-progress", payload)
     except Exception as exc:  # best-effort, same tolerance as before the move
         logger.warning("post_training_progress failed: %s", exc)
+
+
+async def get_runtime_float(key: str, fallback: float) -> float:
+    try:
+        result = await _get(
+            "/api/v1/internal/admin/runtime-config/float",
+            params={"key": key, "fallback": fallback},
+        )
+        return float(result["value"])
+    except Exception as exc:  # config reads must never break the caller
+        logger.warning("get_runtime_float(%s) failed: %s", key, exc)
+        return fallback

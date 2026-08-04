@@ -1,5 +1,12 @@
 FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e4d27e78f1b0e9
 
+# libgomp1: OpenMP runtime lightgbm's native extension needs (same as the
+# main backend's own Dockerfile) -- without it, `import lightgbm` fails at
+# runtime with "OSError: libgomp.so.1: cannot open shared object file"
+# (caught live via a real `docker run` import check, 2026-08-04).
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY v2/services/prediction_ml_service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

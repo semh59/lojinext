@@ -44,12 +44,12 @@ def weekly_retrain_all_vehicles(self) -> dict:
 
 async def _run_async() -> dict:
     from prediction_ml_service.application.trainer import Trainer
-    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+    from prediction_ml_service.infrastructure.service_uow import ServiceUnitOfWork
 
     trainer = Trainer()
     results = {"total": 0, "success": 0, "failed": 0, "skipped": 0}
 
-    async with UnitOfWork() as uow:
+    async with ServiceUnitOfWork() as uow:
         from sqlalchemy import text
 
         rows = (

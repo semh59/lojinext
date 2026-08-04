@@ -34,11 +34,11 @@ async def find_similar_trips(
     limit: int = 5,
 ) -> List[Dict]:
     """Son 90 günden benzer güzergahlı seferleri döndürür."""
-    from prediction_ml_service.infrastructure import cross_module_client
+    from v2.modules.driver.public import get_with_route_analysis
 
     query_vec = encode_route(route_analysis)
 
-    recent = await cross_module_client.get_route_analysis_recent(days=90, limit=200)
+    recent = await get_with_route_analysis(days=90, limit=200)
 
     similar = []
     for sefer in recent:

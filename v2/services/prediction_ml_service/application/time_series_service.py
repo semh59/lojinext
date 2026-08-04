@@ -8,6 +8,7 @@ CREATED_BY: v2/modules/platform_infra/container.py (lazy property)
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Dict, List, Optional
 
 from prediction_ml_service.domain.advanced_lstm import (
@@ -17,7 +18,7 @@ from prediction_ml_service.domain.advanced_lstm import (
     ForecastResult,
     get_advanced_ts_engine,
 )
-from v2.modules.platform_infra.public import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -76,16 +77,15 @@ class TimeSeriesService:
         self, arac_id: Optional[int] = None, days: int = 90
     ) -> List[Dict[str, Any]]:
         """Return daily aggregates from the analytics repository."""
-        from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+        from prediction_ml_service.infrastructure import cross_module_client
 
         days = max(1, min(int(days), 365))
 
         try:
-            async with UnitOfWork() as uow:
-                rows = await uow.analiz_repo.get_daily_summary_for_ml(
-                    days=days,
-                    arac_id=arac_id,
-                )
+            rows = await cross_module_client.get_daily_summary_for_ml(
+                days=days,
+                arac_id=arac_id,
+            )
             return [
                 {
                     "tarih": row.get("tarih"),
@@ -339,7 +339,16 @@ class TimeSeriesService:
         return self.engine.status()
 
 
-def get_time_series_service() -> TimeSeriesService:
-    from v2.modules.platform_infra.public import get_container
+_time_series_service: "TimeSeriesService | None" = None
+_time_series_service_lock = threading.Lock()
 
-    return get_container().time_series_service
+
+def get_time_series_service() -> TimeSeriesService:
+    """Thread-safe singleton accessor (was DI-container-based before
+    Task 5's move -- see get_prediction_service's own note)."""
+    global _time_series_service
+    if _time_series_service is None:
+        with _time_series_service_lock:
+            if _time_series_service is None:
+                _time_series_service = TimeSeriesService()
+    return _time_series_service

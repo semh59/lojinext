@@ -321,19 +321,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # pragma: no cover
         logger.warning("Cache invalidation listener setup failed: %s", exc)
 
-    try:
-        from v2.modules.prediction_ml.public import get_model_training_handler
-
-        get_model_training_handler().setup()
-    except Exception as exc:  # pragma: no cover
-        logger.warning("ModelTrainingHandler setup failed: %s", exc)
-
-    try:
-        from v2.modules.prediction_ml.public import get_physics_handler
-
-        get_physics_handler().register()
-    except Exception as exc:  # pragma: no cover
-        logger.warning("PhysicsRecalculationHandler registration failed: %s", exc)
+    # ModelTrainingHandler / PhysicsRecalculationHandler moved to
+    # prediction_ml_service's own lifespan (Task 5, 2026-08-04) -- both
+    # subscribe to the same Redis-backed event bus, so registering them
+    # there (not here) is enough; the event bus itself doesn't care which
+    # process a subscriber lives in.
 
     try:
         from v2.modules.notification.public import register_handlers

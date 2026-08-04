@@ -16,7 +16,7 @@ from prediction_ml_service.domain.vehicle_age import (
     compute_vehicle_age_factor,
 )
 from prediction_ml_service.infrastructure import cross_module_client
-from v2.modules.platform_infra.public import get_logger
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -45,7 +45,7 @@ async def _register_model_version(
     döngüsünü iptal etmiyor).
     """
     from prediction_ml_service.application.ml_service import MLService
-    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+    from prediction_ml_service.infrastructure.service_uow import ServiceUnitOfWork
 
     try:
         measurements = result.get("measurements", {})
@@ -55,7 +55,7 @@ async def _register_model_version(
             or result.get("ensemble_r2")
             or metrics_payload.get("gb_cv_mean")
         )
-        async with UnitOfWork() as uow:
+        async with ServiceUnitOfWork() as uow:
             ml_service = MLService(uow)
             latest = await uow.model_versiyon_repo.get_latest_version(arac_id)
             next_version = 1 if latest is None else latest.versiyon + 1
@@ -166,7 +166,7 @@ class EnsemblePredictorService:
         already degrades gracefully (returns None) if Redis is
         unreachable -- 0 is assumed in that case.
         """
-        from v2.modules.platform_infra.public import get_cache_manager
+        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
         cache = get_cache_manager()
         raw = cache.get(f"predictor_version:{arac_id}")
@@ -174,7 +174,7 @@ class EnsemblePredictorService:
 
     def _bump_model_version(self, arac_id: int) -> None:
         """Increment the shared model-version counter for this vehicle."""
-        from v2.modules.platform_infra.public import get_cache_manager
+        from v2.modules.platform_infra.cache.cache_manager import get_cache_manager
 
         cache = get_cache_manager()
         current = self._get_model_version(arac_id)

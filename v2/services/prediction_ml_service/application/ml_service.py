@@ -5,9 +5,8 @@ from typing import Dict, Optional
 from fastapi import HTTPException
 
 from prediction_ml_service.infrastructure.models import EgitimKuyrugu, ModelVersiyon
-from v2.modules.admin_platform.public import training_ws_manager
-from v2.modules.platform_infra.public import get_logger
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from prediction_ml_service.infrastructure.service_uow import ServiceUnitOfWork
+from v2.modules.platform_infra.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -20,7 +19,7 @@ class MLService:
 
     _locks: Dict[int, asyncio.Lock] = {}
 
-    def __init__(self, uow: UnitOfWork):
+    def __init__(self, uow: ServiceUnitOfWork):
         self.uow = uow
 
     async def schedule_training(
@@ -112,8 +111,13 @@ class MLService:
 
         await self.uow.commit()
 
-        # Broadcast update via WebSocket
-        await training_ws_manager.broadcast(
+        # Broadcast update via WebSocket -- the WS connection registry
+        # (training_ws_manager) only exists in the main backend's process
+        # now, so this posts to a callback endpoint there instead of
+        # calling it in-process (Task 5, 2026-08-04).
+        from prediction_ml_service.infrastructure import cross_module_client
+
+        await cross_module_client.post_training_progress(
             {
                 "type": "progress",
                 "task_id": task_id,

@@ -3,68 +3,48 @@
 Other modules that need to call into prediction_ml should import from here,
 not from ``application/``, ``domain/``, or ``infrastructure/`` directly.
 
-Table ownership: ``egitim_kuyrugu``, ``model_versiyonlar``, ``prediction_results``.
+Extracted into a standalone service (``v2/services/prediction_ml_service/``,
+Task 5, 2026-08-04) -- the ensemble/ML pipeline itself now runs in a
+separate process. This module keeps two kinds of exports:
 
-``trip`` (migrated, dalga 14) imports ``PredictionService``/
-``get_prediction_service`` via ``v2/modules/trip/application/{add_trip,
-trip_prediction_enrichment,return_trip,bulk_add_trips}.py`` and
-``v2/modules/ai_assistant/api/plan_wizard_routes.py`` — all through this
-``public.py``.
+1. Pure, I/O-free physics/adjustment-factor logic (``domain/
+   {physics_fuel_predictor,adjustment_factors,vehicle_health_adjustment}.py``)
+   -- dual-homed here AND in the new service, since several OTHER modules
+   (route_simulation, location, trip, analytics_executive) construct
+   these objects directly for their own standalone physics calculations,
+   not through the ensemble/ML prediction flow.
+2. ``find_similar_trips`` (``application/route_similarity.py``) -- also
+   kept in-process here. It has zero ML/ensemble dependency (pure route-
+   vector cosine similarity + an in-process driver DB query); it was
+   briefly moved to the new service and moved back once that became
+   clear (see docs/superpowers/plans/2026-07-31-prediction-ml-service-
+   extraction.md's session log).
+3. ``PredictionService``/``get_prediction_service`` -- now an HTTP-client
+   facade calling the new service (``infrastructure_client/http_client.py``),
+   keeping the exact same method names/signatures every consumer already
+   uses (``predict_consumption``/``explain_consumption``/
+   ``train_xgboost_model``).
+
+``EnsemblePredictorService``/``Trainer``/``PredictionBackfillService``/
+``ModelTrainingHandler``/``PhysicsRecalculationHandler``/
+``schedule_predictor_warmup`` are NOT exported anymore -- none of them had
+any consumer outside this module's own (now-moved) internals; the two
+event handlers + the warm-up task are wired directly in the new service's
+own ``main.py`` lifespan.
 """
 
-from v2.modules.prediction_ml.application.ensemble_service import (
-    EnsemblePredictorService,
-    get_ensemble_service,
-)
-from v2.modules.prediction_ml.application.model_training_handler import (
-    ModelTrainingHandler,
-    get_model_training_handler,
-)
-from v2.modules.prediction_ml.application.model_warmup import (
-    schedule_predictor_warmup,
-)
-from v2.modules.prediction_ml.application.physics_handler import (
-    PhysicsRecalculationHandler,
-    get_physics_handler,
-)
-from v2.modules.prediction_ml.application.prediction_backfill_service import (
-    PredictionBackfillService,
-)
-from v2.modules.prediction_ml.application.prediction_service import (
-    PredictionService,
-    get_prediction_service,
-)
-from v2.modules.prediction_ml.application.time_series_service import (
-    TimeSeriesService,
-    get_time_series_service,
-)
-from v2.modules.prediction_ml.application.trainer import Trainer
+from v2.modules.prediction_ml.application.route_similarity import find_similar_trips
 from v2.modules.prediction_ml.domain.adjustment_factors import (
     combine_factors,
     weather_precipitation_factor,
     weather_temperature_factor,
     weather_wind_factor,
 )
-from v2.modules.prediction_ml.domain.ensemble_core import (
-    LIGHTGBM_AVAILABLE,
-    SKLEARN_AVAILABLE,
-    XGBOOST_AVAILABLE,
-    EnsembleFuelPredictor,
-    PredictionResult,
-    SecurityError,
-)
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     FuelPrediction,
     PhysicsBasedFuelPredictor,
     RouteConditions,
     VehicleSpecs,
-)
-from v2.modules.prediction_ml.domain.route_similarity import find_similar_trips
-from v2.modules.prediction_ml.domain.time_series_predictor import (
-    ARIMATimeSeriesPredictor,
-    get_arima_predictor,
-    get_time_series_predictor,
-    is_lstm_available,
 )
 from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
     HealthInput,
@@ -74,51 +54,23 @@ from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
     fetch_health_input,
     fetch_health_input_batch,
 )
-from v2.modules.prediction_ml.infrastructure.models import (
-    EgitimKuyrugu,
-    ModelVersiyon,
-)
-from v2.modules.prediction_ml.infrastructure.models import (
-    PredictionResult as PredictionResultORM,
+from v2.modules.prediction_ml.infrastructure_client.http_client import (
+    PredictionService,
+    get_prediction_service,
 )
 
 __all__ = [
-    "EnsemblePredictorService",
-    "get_ensemble_service",
-    "ModelTrainingHandler",
-    "get_model_training_handler",
-    "schedule_predictor_warmup",
-    "PhysicsRecalculationHandler",
-    "get_physics_handler",
-    "PredictionBackfillService",
     "PredictionService",
     "get_prediction_service",
-    "TimeSeriesService",
-    "get_time_series_service",
-    "Trainer",
     "combine_factors",
     "weather_precipitation_factor",
     "weather_temperature_factor",
     "weather_wind_factor",
-    "LIGHTGBM_AVAILABLE",
-    "SKLEARN_AVAILABLE",
-    "XGBOOST_AVAILABLE",
-    "EnsembleFuelPredictor",
-    "PredictionResult",
-    # ORM (dalga 16 task #58 — database/models.py bölünmesi)
-    "EgitimKuyrugu",
-    "ModelVersiyon",
-    "PredictionResultORM",
-    "SecurityError",
     "FuelPrediction",
     "PhysicsBasedFuelPredictor",
     "RouteConditions",
     "VehicleSpecs",
     "find_similar_trips",
-    "ARIMATimeSeriesPredictor",
-    "get_arima_predictor",
-    "get_time_series_predictor",
-    "is_lstm_available",
     "HealthInput",
     "HealthResult",
     "apply_maintenance_factor",

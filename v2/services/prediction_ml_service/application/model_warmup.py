@@ -17,7 +17,7 @@ import logging
 from sqlalchemy import text
 
 from prediction_ml_service.application.ensemble_service import get_ensemble_service
-from v2.modules.platform_infra.public import AsyncSessionLocal
+from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 

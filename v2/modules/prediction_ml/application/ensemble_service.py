@@ -166,6 +166,8 @@ class EnsemblePredictorService:
             result=result,
             model_path=model_path,
         )
+        self._bump_model_version(model_id)
+        predictor._cached_model_version = self._get_model_version(model_id)
 
         try:
             await legacy_repo.save_model_params(model_id, result)
@@ -179,15 +181,45 @@ class EnsemblePredictorService:
         except Exception as e:
             logger.error(f"Failed to serialize fallback model {model_id}: {e}")
 
-    def get_predictor(self, arac_id: int) -> EnsembleFuelPredictor:
-        """Araç için predictor al veya oluştur (Thread-Safe + LRU Cache)"""
-        with self._lock:
-            if arac_id in self.predictors:
-                # LRU: Mevcut olanı sona taşı (most recently used)
-                self.predictors.move_to_end(arac_id)
-                return self.predictors[arac_id]
+    def _get_model_version(self, arac_id: int) -> int:
+        """Read the shared model-version counter from Redis.
 
-            # Yeni oluştur
+        Each worker/replica process keeps its own separate LRU cache
+        (see the module CLAUDE.md's multi-worker LRU note) -- this
+        counter signals to this process's `get_predictor()` that a
+        newer model was trained in another process. `CacheManager.get()`
+        already degrades gracefully (returns None) if Redis is
+        unreachable -- 0 is assumed in that case.
+        """
+        from v2.modules.platform_infra.public import get_cache_manager
+
+        cache = get_cache_manager()
+        raw = cache.get(f"predictor_version:{arac_id}")
+        return int(raw) if raw is not None else 0
+
+    def _bump_model_version(self, arac_id: int) -> None:
+        """Increment the shared model-version counter for this vehicle."""
+        from v2.modules.platform_infra.public import get_cache_manager
+
+        cache = get_cache_manager()
+        current = self._get_model_version(arac_id)
+        cache.set(f"predictor_version:{arac_id}", str(current + 1))
+
+    def get_predictor(self, arac_id: int) -> EnsembleFuelPredictor:
+        """Get or create a predictor for the vehicle (thread-safe + LRU cache)."""
+        with self._lock:
+            current_version = self._get_model_version(arac_id)
+            if arac_id in self.predictors:
+                cached = self.predictors[arac_id]
+                if cached._cached_model_version >= current_version:
+                    # LRU: move existing entry to the end (most recently used)
+                    self.predictors.move_to_end(arac_id)
+                    return cached
+                # Another worker/replica trained a newer model -- the
+                # in-memory predictor is stale, reload from disk below.
+                del self.predictors[arac_id]
+
+            # Create a new one
             predictor = EnsembleFuelPredictor()
 
             # Diskten yüklemeyi dene (Persistence Fix)
@@ -250,6 +282,7 @@ class EnsemblePredictorService:
                 except Exception:
                     pass
 
+            predictor._cached_model_version = current_version
             self.predictors[arac_id] = predictor
 
             # Limit aşılırsa en eskiyi (baştakini) çıkar
@@ -381,6 +414,8 @@ class EnsemblePredictorService:
                 result=result,
                 model_path=model_path,
             )
+            self._bump_model_version(arac_id)
+            predictor._cached_model_version = self._get_model_version(arac_id)
             logger.info(f"Model version registered for vehicle {arac_id}")
 
             # 2. AnalizRepo ile Legacy Kayıt (YakitFormul)
@@ -453,6 +488,8 @@ class EnsemblePredictorService:
                     result=result,
                     model_path=model_path,
                 )
+                self._bump_model_version(0)
+                predictor._cached_model_version = self._get_model_version(0)
                 await analiz_repo.save_model_params(0, result)
 
                 # 4. Serialize General Model to Disk

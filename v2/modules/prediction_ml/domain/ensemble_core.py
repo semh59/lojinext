@@ -161,6 +161,11 @@ class EnsembleFuelPredictor:
         # Set by load_model() from persisted metadata; None until a model is
         # actually loaded from disk (fresh/never-loaded predictor).
         self._loaded_feature_schema_hash: Optional[str] = None
+        # Tracks the Redis-shared model-version this in-memory instance was
+        # built from -- EnsemblePredictorService.get_predictor() compares
+        # this against the current Redis counter on cache hit to detect a
+        # newer model trained by another worker/replica process.
+        self._cached_model_version: int = 0
         self._physics_version = "v5.2-hybrid"
         self.physics_model = PhysicsBasedFuelPredictor(vehicle_specs)
         self.weights = self.DEFAULT_WEIGHTS.copy()  # Instance-specific weights

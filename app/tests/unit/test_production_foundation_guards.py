@@ -499,8 +499,8 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
     time_series_service = (
         ROOT
         / "v2"
-        / "modules"
-        / "prediction_ml"
+        / "services"
+        / "prediction_ml_service"
         / "application"
         / "time_series_service.py"
     ).read_text(encoding="utf-8")

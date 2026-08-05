@@ -355,10 +355,11 @@ class TestThreadSafety:
         def access_services():
             try:
                 for _ in range(iterations):
-                    # Çeşitli servislere erişim
+                    # Access various services (prediction_service no longer
+                    # lives on the container — moved to the HTTP microservice)
                     _ = container.sefer_service
                     _ = container.sefer_repo
-                    _ = container.prediction_service
+                    _ = container.anomaly_detector
             except Exception as e:
                 errors.append(str(e))
 

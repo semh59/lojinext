@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from v2.modules.anomaly.application.attribute_loss import override_attribution
-from v2.modules.platform_infra.events.event_bus import Event, EventType
 
 
 @pytest.mark.asyncio
@@ -32,56 +31,3 @@ async def test_attribution_override_publishes_event():
         123, is_corrected=True, correction_reason="Reason", arac_id=2, sofor_id=2
     )
     mock_eb.publish_async.assert_awaited_once()
-
-
-@pytest.mark.asyncio
-async def test_physics_handler_execution():
-    """Verify physics handler recalculation."""
-    from v2.modules.prediction_ml.application.physics_handler import (
-        PhysicsRecalculationHandler,
-    )
-
-    with (
-        patch("v2.modules.prediction_ml.application.physics_handler.get_event_bus") as mock_get_event_bus,
-        patch("v2.modules.prediction_ml.application.physics_handler.UnitOfWork") as mock_uow_cls,
-    ):
-        mock_event_bus = MagicMock()
-        mock_event_bus.publish_async = AsyncMock()
-        mock_get_event_bus.return_value = mock_event_bus
-
-        mock_uow = MagicMock()
-        mock_uow.__aenter__.return_value = mock_uow
-        mock_uow_cls.return_value = mock_uow
-        mock_uow.commit = AsyncMock()
-        mock_uow.sefer_repo.get_by_id = AsyncMock(
-            return_value={
-                "id": 123,
-                "arac_id": 1,
-                "mesafe_km": 100.0,
-                "ton": 20.0,
-                "bos_sefer": False,
-                "ascent_m": 0.0,
-                "descent_m": 0.0,
-                "flat_distance_km": 100.0,
-            }
-        )
-        mock_uow.arac_repo.get_by_id = AsyncMock(
-            return_value={
-                "bos_agirlik_kg": 8000.0,
-                "hava_direnc_katsayisi": 0.7,
-                "on_kesit_alani_m2": 8.5,
-                "lastik_direnc_katsayisi": 0.007,
-                "motor_verimliligi": 0.38,
-            }
-        )
-        mock_uow.dorse_repo.get_by_id = AsyncMock(return_value=None)
-        mock_uow.sefer_repo.update = AsyncMock()
-
-        handler = PhysicsRecalculationHandler()
-        event = Event(
-            type=EventType.SEFER_UPDATED, data={"sefer_id": 123, "trigger": "test"}
-        )
-        await handler.on_sefer_updated(event)
-
-    mock_uow.sefer_repo.update.assert_awaited_once()
-    mock_event_bus.publish_async.assert_awaited_once()

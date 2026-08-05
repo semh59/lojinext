@@ -58,9 +58,7 @@ def _patch_bridge(**overrides):
 class TestRequireInternalToken:
     async def test_no_secret_configured_dev_env_passes(self):
         """When INTERNAL_API_SECRET is empty in non-prod, request passes."""
-        mock_get = AsyncMock(
-            return_value={"id": 1, "ad_soyad": "Test", "aktif": True}
-        )
+        mock_get = AsyncMock(return_value={"id": 1, "ad_soyad": "Test", "aktif": True})
 
         with _patch_bridge(get_sofor_by_telegram_id=mock_get):
             with patch(f"{ROUTES_MODULE}.settings") as mock_settings:
@@ -91,9 +89,7 @@ class TestRequireInternalToken:
 
     async def test_correct_token_passes(self):
         """Request with correct token is allowed."""
-        mock_get = AsyncMock(
-            return_value={"id": 1, "ad_soyad": "Ali", "aktif": True}
-        )
+        mock_get = AsyncMock(return_value={"id": 1, "ad_soyad": "Ali", "aktif": True})
 
         with _patch_bridge(get_sofor_by_telegram_id=mock_get):
             with patch(f"{ROUTES_MODULE}.settings") as mock_settings:
@@ -438,3 +434,64 @@ class TestSoforPdf:
                     )
 
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# POST /training-progress, GET /runtime-config/float (Task 5, 2026-08-04:
+# prediction_ml_service callback surface -- see internal_routes.py's own
+# inline comment)
+# ---------------------------------------------------------------------------
+
+
+class TestTrainingProgress:
+    async def test_broadcasts_and_returns_ok(self):
+        mock_broadcast = AsyncMock()
+
+        with patch(f"{ROUTES_MODULE}.training_ws_manager") as mock_ws:
+            mock_ws.broadcast = mock_broadcast
+            with patch(f"{ROUTES_MODULE}.settings") as mock_settings:
+                mock_settings.INTERNAL_API_SECRET = ""
+                mock_settings.ENVIRONMENT = "dev"
+
+                async with _make_client() as client:
+                    resp = await client.post(
+                        f"{BASE}/training-progress",
+                        json={
+                            "type": "progress",
+                            "task_id": 1,
+                            "arac_id": 10,
+                            "ilerleme": 50.0,
+                            "durum": "RUNNING",
+                            "error": False,
+                            "detail": None,
+                        },
+                    )
+
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}
+        mock_broadcast.assert_awaited_once()
+        payload = mock_broadcast.call_args[0][0]
+        assert payload["task_id"] == 1
+        assert payload["durum"] == "RUNNING"
+
+
+class TestRuntimeConfigFloat:
+    async def test_returns_resolved_value(self):
+        mock_get_runtime_float = AsyncMock(return_value=1.25)
+
+        with patch(f"{ROUTES_MODULE}.get_runtime_float", mock_get_runtime_float):
+            with patch(f"{ROUTES_MODULE}.settings") as mock_settings:
+                mock_settings.INTERNAL_API_SECRET = ""
+                mock_settings.ENVIRONMENT = "dev"
+
+                async with _make_client() as client:
+                    resp = await client.get(
+                        f"{BASE}/runtime-config/float"
+                        "?key=vehicle_age_degradation_rate&fallback=1.0"
+                    )
+
+        assert resp.status_code == 200
+        assert resp.json() == {"value": 1.25}
+        mock_get_runtime_float.assert_awaited_once_with(
+            "vehicle_age_degradation_rate", 1.0
+        )

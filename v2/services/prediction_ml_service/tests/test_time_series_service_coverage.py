@@ -9,13 +9,11 @@ from contextlib import ExitStack
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from v2.modules.prediction_ml.application.time_series_service import (
+from prediction_ml_service.application.time_series_service import (
     TimeSeriesDataUnavailable,
     TimeSeriesService,
 )
-from v2.modules.prediction_ml.domain.advanced_lstm import ForecastResult
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+from prediction_ml_service.domain.advanced_lstm import ForecastResult
 
 pytestmark = pytest.mark.unit
 
@@ -45,17 +43,16 @@ def _make_service():
 
 
 def _patch_uow(mock_repo):
-    """AUDIT-131: get_daily_summary artık session'lı UnitOfWork kullanır."""
-    mock_uow = MagicMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.analiz_repo = mock_repo
+    """get_daily_summary now reads over HTTP via cross_module_client
+    (Task 5, 2026-08-04) instead of a UnitOfWork -- kept the helper name
+    for a smaller diff, but it now patches the HTTP call directly."""
     stack = ExitStack()
     stack.enter_context(
-        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
-    )
-    stack.enter_context(
-        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+        patch(
+            "prediction_ml_service.application.time_series_service."
+            "cross_module_client.get_daily_summary_for_ml",
+            mock_repo.get_daily_summary_for_ml,
+        )
     )
     return stack
 

@@ -3,17 +3,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
-
-from v2.modules.prediction_ml.application.ensemble_service import (
+from prediction_ml_service.application.ensemble_service import (
     EnsemblePredictorService,
 )
-from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
-from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
+from prediction_ml_service.domain.ensemble_core import EnsembleFuelPredictor
+from prediction_ml_service.domain.physics_fuel_predictor import (
     FuelPrediction,
     PhysicsBasedFuelPredictor,
     RouteConditions,
 )
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 
 def _sample_trip(**overrides):
@@ -233,20 +231,16 @@ def test_physics_predict_uses_route_analysis_segments_when_available():
 @pytest.mark.asyncio
 async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
     service = EnsemblePredictorService()
-    # train_general_model reads through its own UnitOfWork (not the
-    # session-less service._sefer_repo singleton).
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.sefer_repo = SimpleNamespace(
-        get_all_for_training=AsyncMock(
+    # train_general_model now reads training data over HTTP via
+    # cross_module_client (Task 5, 2026-08-04) instead of a UnitOfWork.
+    monkeypatch.setattr(
+        "prediction_ml_service.application.ensemble_service.cross_module_client.get_all_training_data",
+        AsyncMock(
             return_value=[
                 _sample_trip(arac_id=10, tank_kapasitesi=650) for _ in range(20)
             ]
-        )
+        ),
     )
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
 
     general_predictor = _TrainingPredictorStub(
         {
@@ -279,12 +273,12 @@ async def test_train_general_model_saves_nested_registry_metrics(monkeypatch):
         saved_versions.append({"arac_id": arac_id, "result": result})
 
     monkeypatch.setattr(
-        "v2.modules.prediction_ml.application.ensemble_service._register_model_version",
+        "prediction_ml_service.application.ensemble_service._register_model_version",
         _fake_register,
     )
     monkeypatch.setattr(
-        "v2.modules.analytics_executive.public.get_analiz_repo",
-        lambda: SimpleNamespace(save_model_params=AsyncMock(return_value=None)),
+        "prediction_ml_service.application.ensemble_service.cross_module_client.save_model_params",
+        AsyncMock(return_value=None),
     )
 
     await service.train_general_model()

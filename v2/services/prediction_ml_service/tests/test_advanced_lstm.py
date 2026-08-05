@@ -4,8 +4,7 @@ from datetime import date, timedelta
 from typing import List
 
 import numpy as np
-
-from v2.modules.prediction_ml.domain.advanced_lstm import (
+from prediction_ml_service.domain.advanced_lstm import (
     N_FEATURES,
     AdvancedTSEngine,
     FeatureEngine,
@@ -269,7 +268,7 @@ class TestTimeSeriesServiceUnit:
     """Tests for TimeSeriesService._to_engine_records and related helpers."""
 
     def test_to_engine_records_mapping(self):
-        from v2.modules.prediction_ml.application.time_series_service import (
+        from prediction_ml_service.application.time_series_service import (
             TimeSeriesService,
         )
 
@@ -292,7 +291,7 @@ class TestTimeSeriesServiceUnit:
         assert r["trips"] == 2
 
     def test_to_engine_records_none_values(self):
-        from v2.modules.prediction_ml.application.time_series_service import (
+        from prediction_ml_service.application.time_series_service import (
             TimeSeriesService,
         )
 
@@ -311,7 +310,7 @@ class TestTimeSeriesServiceUnit:
         assert records[0]["trips"] == 0
 
     def test_filter_outliers_removes_extremes(self):
-        from v2.modules.prediction_ml.application.time_series_service import (
+        from prediction_ml_service.application.time_series_service import (
             TimeSeriesService,
         )
 
@@ -323,7 +322,7 @@ class TestTimeSeriesServiceUnit:
         assert 1000.0 not in consumptions
 
     def test_filter_outliers_passthrough_short_data(self):
-        from v2.modules.prediction_ml.application.time_series_service import (
+        from prediction_ml_service.application.time_series_service import (
             TimeSeriesService,
         )
 

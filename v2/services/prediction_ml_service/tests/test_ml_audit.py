@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 
 # Add project root to path
-sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
 
-from v2.modules.prediction_ml.domain.physics_fuel_predictor import VehicleSpecs
+from prediction_ml_service.domain.physics_fuel_predictor import VehicleSpecs
 
 
 class TestModelSerialization:
@@ -17,10 +17,10 @@ class TestModelSerialization:
         """pickle.load kullanılmamalı (joblib hariç)"""
         # scan entire prediction_ml domain directory
         ml_dir = (
-            Path(__file__).parent.parent.parent.parent
+            Path(__file__).parent.parent.parent.parent.parent
             / "v2"
-            / "modules"
-            / "prediction_ml"
+            / "services"
+            / "prediction_ml_service"
             / "domain"
         )
 
@@ -42,7 +42,7 @@ class TestModelSerialization:
     def test_sha256_checksum_verification(self):
         """Model dosyası checksum ile doğrulanmalı"""
         # This logic is inside EnsembleFuelPredictor, here we mock to verify it's called
-        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
+        from prediction_ml_service.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 
@@ -63,10 +63,10 @@ class TestModelSerialization:
         """Torch load weights_only=True kontrolü"""
         # time_series_predictor.py içinde weights_only=True kullanılıyor mu?
         ts_file = (
-            Path(__file__).parent.parent.parent.parent
+            Path(__file__).parent.parent.parent.parent.parent
             / "v2"
-            / "modules"
-            / "prediction_ml"
+            / "services"
+            / "prediction_ml_service"
             / "domain"
             / "time_series_predictor.py"
         )
@@ -96,7 +96,7 @@ class TestEnsembleModel:
 
     def test_weights_sum_to_one(self):
         """Ağırlıklar toplamı 1.0 olmalı"""
-        from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
+        from prediction_ml_service.domain.ensemble_core import EnsembleFuelPredictor
 
         predictor = EnsembleFuelPredictor()
 
@@ -106,7 +106,7 @@ class TestEnsembleModel:
 
     def test_lru_cache_eviction(self):
         """Cache limiti aşılınca eviction çalışmalı"""
-        from v2.modules.prediction_ml.application.ensemble_service import (
+        from prediction_ml_service.application.ensemble_service import (
             EnsemblePredictorService,
         )
 

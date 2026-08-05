@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from v2.modules.prediction_ml.application.prediction_backfill_service import (
+from v2.modules.trip.application.prediction_backfill_service import (
     PredictionBackfillService,
 )
 

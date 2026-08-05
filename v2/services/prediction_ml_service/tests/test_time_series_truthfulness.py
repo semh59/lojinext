@@ -1,9 +1,8 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
-from v2.modules.prediction_ml.application.time_series_service import TimeSeriesService
-from v2.modules.prediction_ml.domain.advanced_lstm import ForecastResult
+from prediction_ml_service.application.time_series_service import TimeSeriesService
+from prediction_ml_service.domain.advanced_lstm import ForecastResult
 
 
 @pytest.mark.asyncio

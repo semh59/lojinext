@@ -157,6 +157,7 @@ ignore_imports =
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.application.**
+    v2.modules.trip.infrastructure.** -> v2.modules.trip.application.**
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository

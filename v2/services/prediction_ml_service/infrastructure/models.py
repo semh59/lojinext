@@ -16,7 +16,6 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     Float,
-    ForeignKey,
     Index,
     Integer,
     String,
@@ -46,9 +45,14 @@ class EgitimKuyrugu(Base):
     id: Mapped[int] = mapped_column(
         BigInteger().with_variant(Integer, "sqlite"), primary_key=True
     )
-    arac_id: Mapped[int] = mapped_column(
-        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
-    )
+    # Plain column, no ForeignKey() object: fleet.araclar isn't in this
+    # service's own Base.metadata (fleet's ORM models aren't vendored
+    # here), so an ORM-level FK dangles unresolved -- SQLAlchemy's flush
+    # dependency-sorter raises NoReferencedTableError trying to walk it
+    # (caught live via a real-backend CI training-task test, 2026-08-05).
+    # The real constraint already exists at the DB level, created once by
+    # the main app's own Alembic migration against the same physical DB.
+    arac_id: Mapped[int] = mapped_column(Integer, index=True)
     hedef_versiyon: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Durumlar: WAITING, RUNNING, COMPLETED, FAILED, CANCELED
@@ -78,12 +82,10 @@ class EgitimKuyrugu(Base):
         nullable=False,
     )
 
-    # İsteğe bağlı, kimin veya sistemin tetiklediği (FK id kalır; Kullanici
-    # auth_rbac'a taşındı, relationship() cross-module olduğu için kaldırıldı
-    # — dalga 16 task #58)
-    tetikleyen_kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
-    )
+    # Who or what triggered this (optional). Plain column, no
+    # ForeignKey() object -- auth_rbac.kullanicilar isn't in this
+    # service's own Base.metadata; see arac_id's comment above for why.
+    tetikleyen_kullanici_id: Mapped[Optional[int]] = mapped_column(Integer)
 
 
 class ModelVersiyon(Base):
@@ -92,9 +94,9 @@ class ModelVersiyon(Base):
     __tablename__ = "model_versiyonlar"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    arac_id: Mapped[int] = mapped_column(
-        ForeignKey("fleet.araclar.id", ondelete="CASCADE"), index=True
-    )
+    # Plain column, no ForeignKey() object -- see EgitimKuyrugu.arac_id's
+    # comment above for why.
+    arac_id: Mapped[int] = mapped_column(Integer, index=True)
     versiyon: Mapped[int] = mapped_column(Integer, nullable=False)
     egitim_tarihi: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -129,11 +131,9 @@ class ModelVersiyon(Base):
 
     # Meta
     notlar: Mapped[Optional[str]] = mapped_column(Text)
-    # FK id kalır; Kullanici auth_rbac'a taşındı, relationship() cross-module
-    # olduğu için kaldırıldı (dalga 16 task #58)
-    egiten_kullanici_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL")
-    )
+    # Plain column, no ForeignKey() object -- see EgitimKuyrugu.
+    # tetikleyen_kullanici_id's comment above for why.
+    egiten_kullanici_id: Mapped[Optional[int]] = mapped_column(Integer)
     tetikleyici: Mapped[str] = mapped_column(String(50), default="otomatik")
 
     __table_args__ = (
@@ -167,8 +167,10 @@ class PredictionResult(Base):
     finished_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Plain column, no ForeignKey() object -- see EgitimKuyrugu.
+    # tetikleyen_kullanici_id's comment above for why.
     user_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("auth_rbac.kullanicilar.id", ondelete="SET NULL"),
+        Integer,
         nullable=True,
         index=True,
     )

@@ -8,6 +8,7 @@ dicts (`{"role": ..., "content": ...}`), not objects with a `.role`
 attribute.
 """
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -146,3 +147,40 @@ def test_run_prediction_task_no_context():
     call_kwargs = mock_ai_chat.call_args.kwargs
     messages = call_kwargs["messages"]
     assert not any(m["role"] == "system" for m in messages)
+
+
+def test_persist_writes_failed_status():
+    """_persist tested directly: writes a status=failed record."""
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_session.add = MagicMock()
+    mock_session.commit = AsyncMock()
+    mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session.__aexit__ = AsyncMock(return_value=False)
+
+    with patch(f"{TASKS_MODULE}.AsyncSessionLocal", return_value=mock_session):
+        from prediction_ml_service.infrastructure.prediction_tasks import _persist
+
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(
+            _persist(task_id="abc-123", status="failed", error="LLM timeout")
+        )
+        loop.close()
+
+    mock_session.commit.assert_awaited_once()
+
+
+def test_persist_best_effort_db_failure():
+    """DB write failure -> _persist swallows silently (best-effort)."""
+    with patch(f"{TASKS_MODULE}.AsyncSessionLocal") as mock_session_cls:
+        mock_session = MagicMock()
+        mock_session.__aenter__ = AsyncMock(side_effect=Exception("DB conn failed"))
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+        mock_session_cls.return_value = mock_session
+
+        from prediction_ml_service.infrastructure.prediction_tasks import _persist
+
+        # Should not raise.
+        asyncio.run(_persist(task_id="abc", status="success", answer="test"))

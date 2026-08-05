@@ -719,6 +719,12 @@ jobs:
           grep -nE "ERROR|CRITICAL|Traceback|Exception|raise " /tmp/uvicorn-vitest.log 2>/dev/null | tail -200 || echo "ERROR satırı yok"
           echo "=== uvicorn ERROR bağlamı (B2/A20) ==="
           grep -B2 -A 20 -E "\| ERROR|Traceback" /tmp/uvicorn-vitest.log 2>/dev/null | tail -300 || echo "bağlam yok"
+          # prediction_ml_service'e özgü hatalar, 1300+ testlik suite'in genel
+          # ERROR kuyruğunda kaybolabiliyor (tail -200/-300 ilgisiz testlerin
+          # trace'leriyle dolup asıl exception'ı dışarı itiyor) -- ayrı, geniş
+          # bağlamlı bir arama ile izole ediyoruz.
+          echo "=== prediction_ml_service / /predictions çağrıları bağlamı (B5/A60) ==="
+          grep -B5 -A 60 -E "prediction_ml_service|/api/v1/predictions/" /tmp/uvicorn-vitest.log 2>/dev/null | tail -600 || echo "bağlam yok"
           echo "=== uvicorn son 150 satır ==="
           tail -150 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
           echo "=== api-stub son 50 satır ==="

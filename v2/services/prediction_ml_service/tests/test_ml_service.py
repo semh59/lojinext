@@ -1,9 +1,8 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from v2.modules.prediction_ml.application.ml_service import MLService
-from v2.modules.prediction_ml.public import EgitimKuyrugu
+from prediction_ml_service.application.ml_service import MLService
+from prediction_ml_service.infrastructure.models import EgitimKuyrugu
 
 
 @pytest.mark.asyncio
@@ -52,10 +51,10 @@ async def test_ml_complete_training_logic():
 
     mock_uow.__aenter__.return_value = mock_uow
 
-    # WS broadcaster mock
-    mock_ws = AsyncMock()
-
-    with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager", mock_ws):
+    with patch(
+        "prediction_ml_service.infrastructure.cross_module_client.post_training_progress",
+        new=AsyncMock(),
+    ) as mock_post:
         service = MLService(uow=mock_uow)
 
         await service.update_task_progress(task_id=1, ilerleme=100.0, durum="COMPLETED")
@@ -66,10 +65,13 @@ async def test_ml_complete_training_logic():
         assert task.durum == "COMPLETED"
         assert task.ilerleme == 100.0
 
-        # 2. WS should broadcast completion
-        mock_ws.broadcast.assert_called_once()
-        args = mock_ws.broadcast.call_args[0][0]
-        assert args["durum"] == "COMPLETED"
+        # 2. Progress must be posted to the main backend's callback endpoint
+        # (the WS connection registry now lives out-of-process — see the
+        # inline note in ml_service.update_task_progress).
+        mock_post.assert_called_once()
+        payload = mock_post.call_args[0][0]
+        assert payload["durum"] == "COMPLETED"
+        assert payload["task_id"] == 1
 
 
 @pytest.mark.asyncio

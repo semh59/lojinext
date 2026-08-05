@@ -226,7 +226,14 @@ async def ai_chat(
 
 async def post_training_progress(payload: dict) -> None:
     try:
-        await _post("/api/v1/internal/admin/training-progress", payload)
+        # No "/admin" segment: admin_platform's internal_routes.py router
+        # mounts at plain "/internal" (same as every other endpoint on
+        # that router, e.g. sofor-by-telegram) -- it does not self-prefix
+        # with the module name the way fleet/driver/trip's internal
+        # routers do (caught live via a real-backend CI test, 2026-08-05:
+        # this wrong path 404'd on every call, retried 3x, and was one of
+        # the 5 failures that kept tripping the circuit breaker).
+        await _post("/api/v1/internal/training-progress", payload)
     except Exception as exc:  # best-effort, same tolerance as before the move
         logger.warning("post_training_progress failed: %s", exc)
 
@@ -234,7 +241,7 @@ async def post_training_progress(payload: dict) -> None:
 async def get_runtime_float(key: str, fallback: float) -> float:
     try:
         result = await _get(
-            "/api/v1/internal/admin/runtime-config/float",
+            "/api/v1/internal/runtime-config/float",
             params={"key": key, "fallback": fallback},
         )
         return float(result["value"])

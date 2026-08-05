@@ -114,44 +114,11 @@ async def test_apply_maintenance_factor_missing_keys_graceful():
     assert "tahmini_litre" not in result
 
 
-async def test_apply_maintenance_factor_with_real_prediction_response():
-    """
-    End-to-end: call real prediction_service (physics-only, arac_id=0),
-    apply factor, verify all primary keys are multiplied together.
-    """
-    from v2.modules.prediction_ml.application.prediction_service import (
-        get_prediction_service,
-    )
-    from v2.modules.prediction_ml.domain.vehicle_health_adjustment import (
-        apply_maintenance_factor,
-    )
-
-    svc = get_prediction_service()
-    pred = await svc.predict_consumption(
-        arac_id=0,
-        mesafe_km=300.0,
-        ton=18.0,
-        ascent_m=200.0,
-        descent_m=200.0,
-    )
-
-    assert "tahmini_tuketim" in pred, (
-        f"prediction_service missing tahmini_tuketim: {list(pred)}"
-    )
-
-    original_l100 = pred["tahmini_tuketim"]
-    original_litre = pred.get("tahmini_litre") or 0.0
-    factor = 1.12
-
-    result = apply_maintenance_factor(
-        dict(pred), factor=factor, reason="integration test"
-    )
-
-    if original_l100 > 0:
-        assert result["tahmini_tuketim"] == pytest.approx(
-            original_l100 * factor, rel=0.01
-        ), "Real prediction tahmini_tuketim not scaled by maintenance factor"
-    if original_litre > 0:
-        assert result["tahmini_litre"] == pytest.approx(
-            original_litre * factor, rel=0.01
-        )
+# The 6th end-to-end case (real prediction_service physics pipeline +
+# apply_maintenance_factor) moved to
+# v2/services/prediction_ml_service/tests/test_maintenance_factor_integration.py
+# with the Task 5 service extraction (2026-08-04) -- the real
+# PredictionService/physics engine now lives in that process, not here;
+# v2.modules.prediction_ml.public.get_prediction_service is an HTTP-client
+# facade now, so calling it here would be a real network call to a
+# service that isn't running in this test environment.

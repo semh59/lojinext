@@ -1,38 +1,28 @@
-"""Feature D.4 — PredictionService entegrasyon-tarzı testleri (DB'siz).
+"""Feature D.4 — PredictionService integration-style tests (no real DB).
 
-Gerçek `predict_consumption`'ı orta-seviye stub'larla çağırır:
-- UnitOfWork → FakeUoW (arac fetch + fetch_health_input)
-- WeatherService → stub
-- Ensemble prediction → opsiyonel mock
+Calls the real `predict_consumption` with mid-level stubs:
+- cross_module_client.get_vehicle -> stub (arac fetch is over HTTP now,
+  since the Task 5 service extraction; ServiceUnitOfWork is only used for
+  the D.4 health-input raw SQL query)
+- ServiceUnitOfWork.session -> fake (backs fetch_health_input's raw SQL)
+- get_seasonal_factor -> stub (a plain function in
+  prediction_ml_service.domain.seasonal_factor now, not
+  route_simulation.public.WeatherService)
+- Ensemble prediction -> optional mock
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Optional
 from unittest.mock import AsyncMock
 
 import pytest
 
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
-
-# ── Fakes ────────────────────────────────────────────────────────────────
-class _FakeAracRepo:
-    def __init__(self, arac_dict: Optional[Dict[str, Any]]) -> None:
-        self._arac = arac_dict
-
-    async def get_by_id(self, _id: int):
-        if self._arac is None:
-            return None
-        from types import SimpleNamespace
-
-        # SimpleNamespace because predict_consumption does raw.__dict__
-        return SimpleNamespace(**self._arac)
-
-
+# -- Fakes --------------------------------------------------------------
 class _FakeSession:
-    """fetch_health_input için minimum SQL execute stub."""
+    """Minimal SQL execute stub for fetch_health_input."""
 
     def __init__(self, last_periyodik, open_ariza=0, open_acil=0):
         self._row = {
@@ -60,17 +50,13 @@ class _Mappings:
         return self._row
 
 
-class _FakeUoW:
+class _FakeServiceUoW:
     def __init__(
         self,
-        arac_dict: Optional[Dict[str, Any]] = None,
         last_periyodik: Optional[datetime] = None,
         open_ariza: int = 0,
         open_acil: int = 0,
     ):
-        self.arac_repo = _FakeAracRepo(arac_dict)
-        self.sofor_repo = _FakeAracRepo(None)  # generic empty repo
-        self.dorse_repo = _FakeAracRepo(None)
         self.session = _FakeSession(last_periyodik, open_ariza, open_acil)
 
     async def __aenter__(self):
@@ -104,55 +90,57 @@ def _arac_dict():
 def _patch_dependencies(
     monkeypatch,
     uow_factory,
+    arac_dict,
     *,
     weather_factor: float = 1.0,
     flag_enabled: bool = True,
 ):
-    """PredictionService'in indirect bağımlılıklarını mocka tabi tutar."""
-    import v2.modules.prediction_ml.application.prediction_service as ps_mod
-    import v2.modules.route_simulation.public as route_simulation_public
+    """Mocks PredictionService's indirect dependencies."""
+    import prediction_ml_service.application.prediction_service as ps_mod
+    from prediction_ml_service.infrastructure.service_uow import ServiceUnitOfWork
 
     uow_inst = uow_factory()
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        ServiceUnitOfWork, "__aenter__", AsyncMock(return_value=uow_inst)
+    )
+    monkeypatch.setattr(ServiceUnitOfWork, "__aexit__", AsyncMock(return_value=False))
     monkeypatch.setattr("app.config.settings.MAINTENANCE_FACTOR_ENABLED", flag_enabled)
 
-    class _FakeWeatherService:
-        def get_seasonal_factor(self, _d):
-            return weather_factor
+    # Vehicle fetch is over HTTP now (cross_module_client), not a UoW repo.
+    monkeypatch.setattr(
+        ps_mod.cross_module_client,
+        "get_vehicle",
+        AsyncMock(return_value=arac_dict),
+    )
+    monkeypatch.setattr(
+        ps_mod.cross_module_client,
+        "get_runtime_float",
+        AsyncMock(return_value=0.015),
+    )
 
-    # WeatherService artık PredictionService.__init__ içinde inline import
-    # ediliyor (route_simulation.public -> ... -> prediction_ml.public
-    # circular-import'unu kırmak için, 2026-07-22) — kaynak modülü patch et,
-    # ps_mod'un artık modül-seviyesi bir WeatherService attribute'u yok.
-    monkeypatch.setattr(route_simulation_public, "WeatherService", _FakeWeatherService)
+    # get_seasonal_factor is a plain module-level function now (used to be
+    # route_simulation.public.WeatherService().get_seasonal_factor before
+    # the extraction) -- patch the source module directly.
+    monkeypatch.setattr(ps_mod, "get_seasonal_factor", lambda _d: weather_factor)
 
-    # Ensemble'ı no-op → her zaman physics fallback path'i (cleaner test)
+    # No-op the ensemble -> always take the physics-fallback path (cleaner test).
     async def _no_ensemble(*args, **kwargs):
         return None
 
-    monkeypatch.setattr(
-        ps_mod,
-        "run_ensemble_prediction",
-        _no_ensemble,
-    )
+    monkeypatch.setattr(ps_mod, "run_ensemble_prediction", _no_ensemble)
 
 
-# ── Tests ────────────────────────────────────────────────────────────────
-@pytest.mark.asyncio
+# -- Tests ----------------------------------------------------------------
 async def test_predict_with_fresh_periyodik_applies_low_factor(monkeypatch, _arac_dict):
-    """Son 30 gün PERIYODIK → maintenance_factor ≈ 0.96 → tahmin düşer."""
+    """Last PERIYODIK 30 days ago -> maintenance_factor ~= 0.96 -> prediction drops."""
     now = datetime.now(timezone.utc)
 
     def _uow_factory():
-        return _FakeUoW(
-            arac_dict=_arac_dict,
-            last_periyodik=now - timedelta(days=30),
-        )
+        return _FakeServiceUoW(last_periyodik=now - timedelta(days=30))
 
-    _patch_dependencies(monkeypatch, _uow_factory)
+    _patch_dependencies(monkeypatch, _uow_factory, _arac_dict)
 
-    from v2.modules.prediction_ml.application.prediction_service import (
+    from prediction_ml_service.application.prediction_service import (
         PredictionService,
     )
 
@@ -167,28 +155,24 @@ async def test_predict_with_fresh_periyodik_applies_low_factor(monkeypatch, _ara
         use_ensemble=False,
         target_date=now.date(),
     )
-    # Factor 0.96 → faktorler'de görünmeli
+    # Factor 0.96 should show up in faktorler
     assert "faktorler" in result
     assert result["faktorler"].get("maintenance_factor") == 0.96
     assert "Taze PERIYODIK" in result.get("explanation_summary", "")
 
 
-@pytest.mark.asyncio
 async def test_predict_with_overdue_periyodik_increases_prediction(
     monkeypatch, _arac_dict
 ):
-    """400 gün PERIYODIK → factor 1.07 → tahmin yükselir."""
+    """PERIYODIK overdue by 400 days -> factor 1.07 -> prediction rises."""
     now = datetime.now(timezone.utc)
 
     def _uow_factory():
-        return _FakeUoW(
-            arac_dict=_arac_dict,
-            last_periyodik=now - timedelta(days=400),
-        )
+        return _FakeServiceUoW(last_periyodik=now - timedelta(days=400))
 
-    _patch_dependencies(monkeypatch, _uow_factory)
+    _patch_dependencies(monkeypatch, _uow_factory, _arac_dict)
 
-    from v2.modules.prediction_ml.application.prediction_service import (
+    from prediction_ml_service.application.prediction_service import (
         PredictionService,
     )
 
@@ -207,20 +191,16 @@ async def test_predict_with_overdue_periyodik_increases_prediction(
     assert "gecikti" in result.get("explanation_summary", "").lower()
 
 
-@pytest.mark.asyncio
 async def test_predict_with_flag_off_no_factor_applied(monkeypatch, _arac_dict):
-    """MAINTENANCE_FACTOR_ENABLED=False → factor uygulanmaz, geri uyumlu."""
+    """MAINTENANCE_FACTOR_ENABLED=False -> no factor applied, backward compatible."""
     now = datetime.now(timezone.utc)
 
     def _uow_factory():
-        return _FakeUoW(
-            arac_dict=_arac_dict,
-            last_periyodik=now - timedelta(days=400),
-        )
+        return _FakeServiceUoW(last_periyodik=now - timedelta(days=400))
 
-    _patch_dependencies(monkeypatch, _uow_factory, flag_enabled=False)
+    _patch_dependencies(monkeypatch, _uow_factory, _arac_dict, flag_enabled=False)
 
-    from v2.modules.prediction_ml.application.prediction_service import (
+    from prediction_ml_service.application.prediction_service import (
         PredictionService,
     )
 
@@ -235,26 +215,21 @@ async def test_predict_with_flag_off_no_factor_applied(monkeypatch, _arac_dict):
         use_ensemble=False,
         target_date=now.date(),
     )
-    # Flag kapalı → maintenance_factor faktorler'e yazılmaz
+    # Flag off -> maintenance_factor not written into faktorler
     faktorler = result.get("faktorler", {})
     assert faktorler.get("maintenance_factor") is None
 
 
-@pytest.mark.asyncio
 async def test_predict_with_open_acil_applies_higher_factor(monkeypatch, _arac_dict):
-    """Taze PERIYODIK (0.96) + açık ACIL (×1.10) → 0.96 × 1.10 = 1.056."""
+    """Fresh PERIYODIK (0.96) + open ACIL (x1.10) -> 0.96 x 1.10 = 1.056."""
     now = datetime.now(timezone.utc)
 
     def _uow_factory():
-        return _FakeUoW(
-            arac_dict=_arac_dict,
-            last_periyodik=now - timedelta(days=10),
-            open_acil=1,
-        )
+        return _FakeServiceUoW(last_periyodik=now - timedelta(days=10), open_acil=1)
 
-    _patch_dependencies(monkeypatch, _uow_factory)
+    _patch_dependencies(monkeypatch, _uow_factory, _arac_dict)
 
-    from v2.modules.prediction_ml.application.prediction_service import (
+    from prediction_ml_service.application.prediction_service import (
         PredictionService,
     )
 
@@ -270,4 +245,4 @@ async def test_predict_with_open_acil_applies_higher_factor(monkeypatch, _arac_d
         target_date=now.date(),
     )
     factor = result["faktorler"]["maintenance_factor"]
-    assert 1.05 <= factor <= 1.06  # ≈1.056 yuvarlanmış
+    assert 1.05 <= factor <= 1.06  # ~1.056 rounded

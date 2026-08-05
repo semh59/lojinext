@@ -56,9 +56,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -83,8 +81,6 @@ ignore_imports =
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.domain.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.application.**
     v2.modules.import_excel.infrastructure.** -> v2.modules.import_excel.domain.**
-    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
-    v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
@@ -103,8 +99,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
     v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
@@ -141,9 +135,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -164,9 +156,7 @@ ignore_imports =
     v2.modules.driver.infrastructure.** -> v2.modules.driver.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.application.**
     v2.modules.notification.infrastructure.** -> v2.modules.notification.domain.**
-    v2.modules.prediction_ml.infrastructure.** -> v2.modules.prediction_ml.application.**
     v2.modules.route_simulation.infrastructure.** -> v2.modules.route_simulation.application.**
-    v2.modules.prediction_ml.domain.ensemble_core -> v2.modules.prediction_ml.infrastructure.ml_probe
     v2.modules.auth_rbac.domain.security_service -> v2.modules.auth_rbac.infrastructure.models
     v2.modules.admin_platform.public -> v2.modules.admin_platform.**
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.admin_platform.infrastructure.repository
@@ -185,8 +175,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
     v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
@@ -277,9 +265,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -312,8 +298,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -402,9 +386,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -437,8 +419,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -527,9 +507,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -562,8 +540,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -652,9 +628,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -687,8 +661,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -777,9 +749,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -812,8 +782,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -902,9 +870,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -937,8 +903,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1027,9 +991,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -1062,8 +1024,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1152,9 +1112,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -1187,8 +1145,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1277,9 +1233,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -1312,8 +1266,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1402,9 +1354,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -1437,8 +1387,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1520,9 +1468,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
     v2.modules.location.public -> v2.modules.location.**
@@ -1555,8 +1501,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1643,9 +1587,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
@@ -1678,8 +1620,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1768,9 +1708,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
@@ -1803,8 +1741,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error
@@ -1891,9 +1827,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
@@ -1925,8 +1859,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
     v2.modules.trip.infrastructure.repository -> v2.modules.location.infrastructure.models
@@ -2016,9 +1948,7 @@ ignore_imports =
     v2.modules.platform_infra.container -> v2.modules.route_simulation.application.weather_service
     v2.modules.platform_infra.container -> v2.modules.trip.infrastructure.repository
     v2.modules.platform_infra.container -> v2.modules.platform_infra.events.event_bus
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.prediction_service
     v2.modules.platform_infra.container -> v2.modules.ai_assistant.application.knowledge_base
-    v2.modules.platform_infra.container -> v2.modules.prediction_ml.application.time_series_service
     v2.modules.platform_infra.container -> v2.modules.anomaly.application.detect_anomaly
     v2.modules.location.public -> v2.modules.location.**
     v2.modules.route_simulation.public -> v2.modules.route_simulation.**
@@ -2050,8 +1980,6 @@ ignore_imports =
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.import_excel.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.location.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.notification.infrastructure.repository
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.ml_training_repo
-    v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.prediction_ml.infrastructure.model_versiyon_repo
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.route_simulation.infrastructure.repository
     v2.modules.shared_kernel.infrastructure.unit_of_work -> v2.modules.trip.infrastructure.repository
 unmatched_ignore_imports_alerting = error

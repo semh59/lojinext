@@ -532,9 +532,33 @@ jobs:
             echo "Waiting for api-stub... ($i/15)" && sleep 2
           done
 
+      # prediction_ml_service (Task 5, 2026-08-04): the main backend's
+      # prediction_ml module is now an HTTP-client facade -- without a
+      # reachable service here, every real-backend vitest test that hits
+      # /predictions/* or /admin/ml/* 5xxs (caught live, run 31024532255,
+      # 2026-08-05: PredictionSimulator/XaiPanel/MLYonetimPage/
+      # prediction-service real-backend suites all failed). Same package,
+      # same lojinext_vitest DB (dual-homed tables) + Redis this job
+      # already has running -- no extra pip install, its requirements.txt
+      # is a strict subset of the root one already installed above.
+      - name: Start prediction-ml-service (standalone ML microservice)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+        run: |
+          PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/v2/services" \
+            uvicorn prediction_ml_service.main:app --host 127.0.0.1 --port 8002 \
+            > /tmp/prediction-ml-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8002/health && echo "prediction-ml-service ready" && break
+            echo "Waiting for prediction-ml-service... ($i/30)" && sleep 2
+          done
+
       - name: Start backend (vitest real-backend + OpenAPI drift + E2E)
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          PREDICTION_ML_SERVICE_URL: http://127.0.0.1:8002
           # Dummy anahtar ŞART: MapboxClient anahtar yoksa stub'a bile
           # gitmeden "API Key missing" ile iptal eder → /routes/simulate 502
           # (2026-07-07 lokal CI-simülasyonunda yakalandı). Stub auth'a bakmaz.

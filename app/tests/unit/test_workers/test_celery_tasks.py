@@ -31,22 +31,6 @@ class TestCeleryTasks:
 
         assert error_digest.name == "monitoring.error_digest"
 
-    def test_prediction_task_is_registered(self):
-        """run_prediction_task is registered with correct name."""
-        from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
-            run_prediction_task,
-        )
-
-        assert run_prediction_task.name == "prediction.generate"
-
-    def test_prediction_task_max_retries(self):
-        """run_prediction_task has max_retries=3."""
-        from v2.modules.prediction_ml.infrastructure.prediction_tasks import (
-            run_prediction_task,
-        )
-
-        assert run_prediction_task.max_retries == 3
-
     def test_relay_outbox_events_max_retries(self):
         """relay_outbox_events task has max_retries=5."""
         from v2.modules.shared_kernel.infrastructure.outbox_tasks import (

@@ -1,16 +1,30 @@
 """
 Real integration tests for the prediction_service contract seams.
 
-These tests call the actual service chain without mocks so contract
-mismatches (wrong dict key names, missing keys) surface immediately.
+Seam 1 (ensemble_service -> prediction_service response shape) moved to
+v2/services/prediction_ml_service/tests/test_prediction_contract_integration.py
+with the Task 5 extraction (2026-08-04): it exercised the real physics
+engine end-to-end, which now only lives in that service's own process --
+v2.modules.prediction_ml.public.get_prediction_service on the main
+backend is an HTTP-client facade that would make a real network call to a
+service not running in this test environment.
+
+Seams 2 and 3 stay here (anomaly_detector / driver_stats are main-backend
+modules) but the prediction_service boundary is now mocked at the
+cross-process HTTP-client-facade seam -- the contract under test is
+"does this consumer read the 'tahmini_tuketim' key correctly", which is
+still exercised for real; only the (now cross-process) physics
+computation itself is faked, with a shape matching what the real service
+actually returns (verified against prediction_ml_service's own response
+schema).
 
 Seams tested:
-  1. ensemble_service → prediction_service  (confidence_score key present)
   2. prediction_service → anomaly_detector  (tahmini_tuketim key read correctly)
   3. prediction_service → sofor_analiz_service  (tahmini_tuketim key read correctly)
 """
 
 from datetime import date, timedelta
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from sqlalchemy import insert
@@ -57,49 +71,28 @@ async def _create_sofor(db_session) -> int:
     return result.inserted_primary_key[0]
 
 
-# ---------------------------------------------------------------------------
-# Seam 1: ensemble_service → prediction_service
-# ---------------------------------------------------------------------------
-
-
-async def test_prediction_service_returns_tahmini_tuketim(db_session):
-    """
-    prediction_service.predict_consumption must return a dict with
-    'tahmini_tuketim' as the primary L/100km key (not 'prediction_l_100km').
-    Also asserts 'confidence_score' is present (fixed in ensemble_service).
-    """
-    from v2.modules.prediction_ml.application.prediction_service import (
-        get_prediction_service,
+def _mock_prediction_service(tahmini_tuketim: float):
+    """Fake the cross-process HTTP-client-facade boundary, not the
+    consumer under test -- shape matches the real service's response
+    (see prediction_ml_service's own response_builder.build_prediction_response)."""
+    svc = MagicMock()
+    svc.predict_consumption = AsyncMock(
+        return_value={
+            "status": "success",
+            "tahmini_tuketim": tahmini_tuketim,
+            "tahmini_litre": None,
+            "model_used": "physics",
+            "model_version": "physics-v2.0",
+            "confidence_score": 0.72,
+            "confidence_low": tahmini_tuketim * 0.9,
+            "confidence_high": tahmini_tuketim * 1.1,
+            "warning_level": "YELLOW",
+            "fallback_triggered": False,
+            "faktorler": {},
+            "explanation_summary": "test",
+        }
     )
-
-    arac_id = await _create_arac(db_session)
-    svc = get_prediction_service()
-
-    result = await svc.predict_consumption(
-        arac_id=arac_id,
-        mesafe_km=300.0,
-        ton=18.0,
-        ascent_m=500.0,
-        descent_m=500.0,
-    )
-
-    # Primary contract: key name must be tahmini_tuketim
-    assert "tahmini_tuketim" in result, (
-        f"'tahmini_tuketim' missing from prediction response. Got keys: {list(result)}"
-    )
-    assert result["tahmini_tuketim"] > 0, "Expected a positive L/100km estimate"
-
-    # confidence_score must be present and valid (fixed P0 bug)
-    assert "confidence_score" in result, (
-        f"'confidence_score' missing — ensemble_service bug not fixed. Keys: {list(result)}"
-    )
-    assert 0.0 <= result["confidence_score"] <= 1.0, (
-        f"confidence_score out of [0,1]: {result['confidence_score']}"
-    )
-
-    # fallback_triggered must be False when physics works (not always True)
-    # Note: may be True if no ML model trained — acceptable, but key must exist
-    assert "fallback_triggered" in result
+    return svc
 
 
 # ---------------------------------------------------------------------------
@@ -121,17 +114,7 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
 
-    # First get the real prediction to know what the model returns
-    from v2.modules.prediction_ml.application.prediction_service import (
-        get_prediction_service,
-    )
-
-    pred = await get_prediction_service().predict_consumption(
-        arac_id=arac_id,
-        mesafe_km=500.0,
-        ton=18.0,
-    )
-    predicted_l100 = pred["tahmini_tuketim"]
+    predicted_l100 = 30.0
 
     # Craft a consumption 3× the prediction → guaranteed >20% deviation
     extreme_consumption = predicted_l100 * 3.0
@@ -147,7 +130,11 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
         "tarih": date.today(),
     }
 
-    result = await detector.detect_trip_anomaly_elite(trip_data)
+    with patch(
+        "v2.modules.anomaly.application.detect_anomaly.get_prediction_service",
+        return_value=_mock_prediction_service(predicted_l100),
+    ):
+        result = await detector.detect_trip_anomaly_elite(trip_data)
 
     assert result is not None, (
         "AnomalyDetector returned None for a 200%+ deviation — "
@@ -161,19 +148,12 @@ async def test_anomaly_detector_reads_tahmini_tuketim_key(db_session):
 async def test_anomaly_detector_hybrid_reads_tahmini_tuketim_key(db_session):
     """Same contract check for detect_anomaly_hybrid (the ML-assisted path)."""
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
-    from v2.modules.prediction_ml.application.prediction_service import (
-        get_prediction_service,
-    )
 
     arac_id = await _create_arac(db_session)
     sofor_id = await _create_sofor(db_session)
 
-    pred = await get_prediction_service().predict_consumption(
-        arac_id=arac_id,
-        mesafe_km=400.0,
-        ton=15.0,
-    )
-    extreme_consumption = pred["tahmini_tuketim"] * 3.0
+    predicted_l100 = 28.0
+    extreme_consumption = predicted_l100 * 3.0
 
     detector = AnomalyDetector()
     trip_data = {
@@ -186,7 +166,11 @@ async def test_anomaly_detector_hybrid_reads_tahmini_tuketim_key(db_session):
         "tarih": date.today(),
     }
 
-    result = await detector.detect_anomaly_hybrid(trip_data, use_ml=False)
+    with patch(
+        "v2.modules.anomaly.application.detect_anomaly.get_prediction_service",
+        return_value=_mock_prediction_service(predicted_l100),
+    ):
+        result = await detector.detect_anomaly_hybrid(trip_data, use_ml=False)
 
     assert result is not None, (
         "detect_anomaly_hybrid returned None for a 200%+ deviation — "
@@ -232,11 +216,15 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
         )
     await db_session.commit()
 
-    async with UnitOfWork() as uow:
-        seferler = await uow.sefer_repo.get_all(
-            filters={"sofor_id": sofor_id}, limit=50
-        )
-        score = await _calc_elite_from_trips(seferler)
+    with patch(
+        "v2.modules.driver.application.driver_stats.get_prediction_service",
+        return_value=_mock_prediction_service(30.0),
+    ):
+        async with UnitOfWork() as uow:
+            seferler = await uow.sefer_repo.get_all(
+                filters={"sofor_id": sofor_id}, limit=50
+            )
+            score = await _calc_elite_from_trips(seferler)
 
     assert score is not None, (
         "Elite score is None — driver_stats is reading wrong key "
@@ -247,8 +235,9 @@ async def test_sofor_elite_score_not_none_with_real_prediction(db_session):
 
 async def test_sofor_calculate_elite_performance_score_real(db_session):
     """
-    Full calculate_elite_performance_score path using real DB data and real
-    prediction_service — no mocks anywhere in the call chain.
+    Full calculate_elite_performance_score path using real DB data; the
+    cross-process prediction_service call is mocked at the HTTP-client
+    facade boundary (see module docstring), everything else is real.
     """
     from v2.modules.driver.application.driver_stats import (
         calculate_elite_performance_score,
@@ -276,8 +265,12 @@ async def test_sofor_calculate_elite_performance_score_real(db_session):
         )
     await db_session.commit()
 
-    async with UnitOfWork() as uow:
-        score = await calculate_elite_performance_score(sofor_id=sofor_id, uow=uow)
+    with patch(
+        "v2.modules.driver.application.driver_stats.get_prediction_service",
+        return_value=_mock_prediction_service(27.0),
+    ):
+        async with UnitOfWork() as uow:
+            score = await calculate_elite_performance_score(sofor_id=sofor_id, uow=uow)
 
     assert score is not None, (
         "calculate_elite_performance_score returned None with real trip data — "

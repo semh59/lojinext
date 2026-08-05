@@ -181,7 +181,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=None)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None
@@ -203,7 +203,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=task)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None
@@ -221,7 +221,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=task)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None
@@ -237,7 +237,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=task)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None
@@ -261,7 +261,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=task)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None
@@ -281,7 +281,7 @@ class TestUpdateTaskProgress:
         uow.session.get = AsyncMock(return_value=task)
 
         with patch(
-            "prediction_ml_service.application.ml_service.cross_module_client"
+            "prediction_ml_service.infrastructure.cross_module_client"
             ".post_training_progress"
         ) as mock_ws:
             mock_ws.return_value = None

@@ -49,8 +49,8 @@ def _patch_uow(mock_repo):
     stack = ExitStack()
     stack.enter_context(
         patch(
-            "prediction_ml_service.application.time_series_service."
-            "cross_module_client.get_daily_summary_for_ml",
+            "prediction_ml_service.infrastructure.cross_module_client"
+            ".get_daily_summary_for_ml",
             mock_repo.get_daily_summary_for_ml,
         )
     )

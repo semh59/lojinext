@@ -1,10 +1,11 @@
 """
-Coverage tests for v2/modules/prediction_ml/application/prediction_service.py
-(+ the domain/application helpers it was split into, dalga 13).
+Coverage tests for prediction_ml_service/application/prediction_service.py
+(+ the domain/application helpers it was split into, dalga 13; moved here
+whole with the service extraction, Task 5, 2026-08-04).
 
 Targets: PredictionService instance methods (_build_sefer_dict,
 _run_physics_fallback, predict_consumption, explain, train) plus the free
-functions extracted into domain/physics_model.py, domain/route_ratios.py,
+functions in domain/physics_model.py, domain/route_ratios.py,
 application/response_builder.py, application/ensemble_orchestration.py.
 """
 
@@ -16,8 +17,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
-
 pytestmark = pytest.mark.unit
 
 # ---------------------------------------------------------------------------
@@ -27,14 +26,11 @@ pytestmark = pytest.mark.unit
 
 def _make_service():
     """Build PredictionService with mocked deps."""
-    from v2.modules.prediction_ml.application.prediction_service import (
+    from prediction_ml_service.application.prediction_service import (
         PredictionService,
     )
 
     svc = PredictionService.__new__(PredictionService)
-    svc.weather_service = MagicMock()
-    svc.weather_service.get_seasonal_factor = MagicMock(return_value=1.0)
-    svc.yakit_tahmin_service = MagicMock()
     svc.ensemble_service = MagicMock()
     svc.ensemble_service.get_predictor = MagicMock()
     return svc
@@ -53,7 +49,7 @@ def _make_physics_result(l_100km: float = 32.0, insight: str = "Normal"):
 
 
 def test_build_explanation_summary():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         build_explanation_summary,
     )
 
@@ -76,7 +72,7 @@ def test_build_explanation_summary():
 
 
 def test_normalize_confidence_band_with_explicit_values():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         normalize_confidence_band,
     )
 
@@ -88,7 +84,7 @@ def test_normalize_confidence_band_with_explicit_values():
 
 
 def test_normalize_confidence_band_computed():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         normalize_confidence_band,
     )
 
@@ -98,7 +94,7 @@ def test_normalize_confidence_band_computed():
 
 
 def test_normalize_confidence_band_zero_base():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         normalize_confidence_band,
     )
 
@@ -112,20 +108,20 @@ def test_normalize_confidence_band_zero_base():
 
 
 def test_sum_segment_km_dict():
-    from v2.modules.prediction_ml.domain.route_ratios import sum_segment_km
+    from prediction_ml_service.domain.route_ratios import sum_segment_km
 
     assert sum_segment_km({"flat": 100, "up": 50, "down": 30}) == 180.0
 
 
 def test_sum_segment_km_non_dict():
-    from v2.modules.prediction_ml.domain.route_ratios import sum_segment_km
+    from prediction_ml_service.domain.route_ratios import sum_segment_km
 
     assert sum_segment_km(None) == 0.0
     assert sum_segment_km("bad") == 0.0
 
 
 def test_sum_segment_km_partial():
-    from v2.modules.prediction_ml.domain.route_ratios import sum_segment_km
+    from prediction_ml_service.domain.route_ratios import sum_segment_km
 
     assert sum_segment_km({"flat": 100}) == 100.0
 
@@ -136,14 +132,14 @@ def test_sum_segment_km_partial():
 
 
 def test_derive_route_ratios_none():
-    from v2.modules.prediction_ml.domain.route_ratios import derive_route_ratios
+    from prediction_ml_service.domain.route_ratios import derive_route_ratios
 
     assert derive_route_ratios(None) is None
     assert derive_route_ratios("bad") is None
 
 
 def test_derive_route_ratios_with_ratios_key():
-    from v2.modules.prediction_ml.domain.route_ratios import derive_route_ratios
+    from prediction_ml_service.domain.route_ratios import derive_route_ratios
 
     result = derive_route_ratios(
         {"ratios": {"otoyol": 0.6, "devlet_yolu": 0.3, "sehir_ici": 0.1}}
@@ -153,7 +149,7 @@ def test_derive_route_ratios_with_ratios_key():
 
 
 def test_derive_route_ratios_from_segments():
-    from v2.modules.prediction_ml.domain.route_ratios import derive_route_ratios
+    from prediction_ml_service.domain.route_ratios import derive_route_ratios
 
     result = derive_route_ratios(
         {
@@ -167,7 +163,7 @@ def test_derive_route_ratios_from_segments():
 
 
 def test_derive_route_ratios_zero_total():
-    from v2.modules.prediction_ml.domain.route_ratios import derive_route_ratios
+    from prediction_ml_service.domain.route_ratios import derive_route_ratios
 
     # All zeros → total_km <= 0 → None
     result = derive_route_ratios({"motorway": {"flat": 0}})
@@ -175,7 +171,7 @@ def test_derive_route_ratios_zero_total():
 
 
 def test_derive_route_ratios_highway_fallback():
-    from v2.modules.prediction_ml.domain.route_ratios import derive_route_ratios
+    from prediction_ml_service.domain.route_ratios import derive_route_ratios
 
     # highway present, trunk+primary absent → trunk_km = highway_km
     result = derive_route_ratios({"highway": {"flat": 200}})
@@ -189,13 +185,13 @@ def test_derive_route_ratios_highway_fallback():
 
 
 def test_normalize_route_analysis_none():
-    from v2.modules.prediction_ml.domain.route_ratios import normalize_route_analysis
+    from prediction_ml_service.domain.route_ratios import normalize_route_analysis
 
     assert normalize_route_analysis(None) is None
 
 
 def test_normalize_route_analysis_nested():
-    from v2.modules.prediction_ml.domain.route_ratios import normalize_route_analysis
+    from prediction_ml_service.domain.route_ratios import normalize_route_analysis
 
     result = normalize_route_analysis(
         {
@@ -210,7 +206,7 @@ def test_normalize_route_analysis_nested():
 
 
 def test_normalize_route_analysis_weather_factor_passthrough():
-    from v2.modules.prediction_ml.domain.route_ratios import normalize_route_analysis
+    from prediction_ml_service.domain.route_ratios import normalize_route_analysis
 
     result = normalize_route_analysis({"weather_factor": 1.1})
     assert result is not None
@@ -223,7 +219,7 @@ def test_normalize_route_analysis_weather_factor_passthrough():
 
 
 def test_extract_confidence_score_valid():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         extract_confidence_score,
     )
 
@@ -231,7 +227,7 @@ def test_extract_confidence_score_valid():
 
 
 def test_extract_confidence_score_clamped():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         extract_confidence_score,
     )
 
@@ -240,7 +236,7 @@ def test_extract_confidence_score_clamped():
 
 
 def test_extract_confidence_score_none_input():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         extract_confidence_score,
     )
 
@@ -254,7 +250,7 @@ def test_extract_confidence_score_none_input():
 
 
 def test_build_base_factors():
-    from v2.modules.prediction_ml.domain.physics_model import build_base_factors
+    from prediction_ml_service.domain.physics_model import build_base_factors
 
     factors = build_base_factors(
         physics_l_100km=30.0,
@@ -281,7 +277,7 @@ def test_build_base_factors():
 
 
 def test_build_base_factors_bos_sefer():
-    from v2.modules.prediction_ml.domain.physics_model import build_base_factors
+    from prediction_ml_service.domain.physics_model import build_base_factors
 
     factors = build_base_factors(
         physics_l_100km=28.0,
@@ -311,16 +307,18 @@ def test_build_base_factors_bos_sefer():
 
 
 def test_build_vehicle_specs_no_arac():
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
+
     from app.config import settings
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
     specs, age = build_vehicle_specs(None, None, settings.VEHICLE_AGE_DEGRADATION_RATE)
     assert age == 0
 
 
 def test_build_vehicle_specs_with_arac():
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
+
     from app.config import settings
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
     arac = {"bos_agirlik_kg": 9000, "yil": date.today().year - 3}
     specs, age = build_vehicle_specs(arac, None, settings.VEHICLE_AGE_DEGRADATION_RATE)
@@ -328,8 +326,9 @@ def test_build_vehicle_specs_with_arac():
 
 
 def test_build_vehicle_specs_old_vehicle_degradation():
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
+
     from app.config import settings
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
     arac = {
         "bos_agirlik_kg": 8000,
@@ -343,7 +342,7 @@ def test_build_vehicle_specs_old_vehicle_degradation():
 
 def test_build_vehicle_specs_old_vehicle_degradation_rate_zero():
     """Behavior proof: age_degradation_rate=0 -> no age penalty regardless of age."""
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
 
     arac = {
         "bos_agirlik_kg": 8000,
@@ -356,7 +355,7 @@ def test_build_vehicle_specs_old_vehicle_degradation_rate_zero():
 
 def test_build_vehicle_specs_old_vehicle_degradation_rate_high():
     """Behavior proof: a higher DB-configured rate produces a larger penalty."""
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
 
     arac = {
         "bos_agirlik_kg": 8000,
@@ -369,8 +368,9 @@ def test_build_vehicle_specs_old_vehicle_degradation_rate_high():
 
 
 def test_build_vehicle_specs_with_dorse():
+    from prediction_ml_service.domain.physics_model import build_vehicle_specs
+
     from app.config import settings
-    from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
     arac = {"yil": 2020}
     dorse = {"bos_agirlik_kg": 7000}
@@ -384,7 +384,7 @@ def test_build_vehicle_specs_with_dorse():
 
 
 def test_build_prediction_response_basic():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         build_prediction_response,
     )
 
@@ -409,7 +409,7 @@ def test_build_prediction_response_basic():
 
 
 def test_build_prediction_response_no_summary():
-    from v2.modules.prediction_ml.application.response_builder import (
+    from prediction_ml_service.application.response_builder import (
         build_prediction_response,
     )
 
@@ -471,7 +471,7 @@ def test_run_physics_fallback_ensemble_unavailable():
 
 
 def test_process_ensemble_result_green():
-    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+    from prediction_ml_service.application.ensemble_orchestration import (
         process_ensemble_result,
     )
 
@@ -500,7 +500,7 @@ def test_process_ensemble_result_green():
 
 
 def test_process_ensemble_result_red_triggers_fallback():
-    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+    from prediction_ml_service.application.ensemble_orchestration import (
         process_ensemble_result,
     )
 
@@ -527,7 +527,7 @@ def test_process_ensemble_result_red_triggers_fallback():
 
 
 def test_process_ensemble_result_yellow():
-    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+    from prediction_ml_service.application.ensemble_orchestration import (
         process_ensemble_result,
     )
 
@@ -553,7 +553,7 @@ def test_process_ensemble_result_yellow():
 
 
 def test_process_ensemble_result_missing_confidence():
-    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+    from prediction_ml_service.application.ensemble_orchestration import (
         process_ensemble_result,
     )
 
@@ -578,7 +578,7 @@ def test_process_ensemble_result_missing_confidence():
 
 
 def test_process_ensemble_result_guven_araligi():
-    from v2.modules.prediction_ml.application.ensemble_orchestration import (
+    from prediction_ml_service.application.ensemble_orchestration import (
         process_ensemble_result,
     )
 
@@ -657,25 +657,32 @@ async def test_build_sefer_dict_bos_sefer():
 # ---------------------------------------------------------------------------
 # predict_consumption — physics fallback path (use_ensemble=False)
 # ---------------------------------------------------------------------------
+#
+# Every predict_consumption test mocks cross_module_client.get_runtime_float
+# (unconditionally awaited to resolve VEHICLE_AGE_DEGRADATION_RATE, Task 5)
+# and disables MAINTENANCE_FACTOR_ENABLED unless the test specifically
+# targets that D.4 branch -- it now goes through ServiceUnitOfWork +
+# fetch_health_input (real DB), not something these unit tests fake.
 
 
-async def test_predict_consumption_physics_only():
+async def test_predict_consumption_physics_only(monkeypatch):
     """Physics-only path: use_ensemble=False, no DB lookup needed."""
     svc = _make_service()
 
     physics_result = _make_physics_result(32.0)
 
+    monkeypatch.setattr("app.config.settings.MAINTENANCE_FACTOR_ENABLED", False)
+
     with (
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            "prediction_ml_service.application.prediction_service.run_physics_model",
             new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
-        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=AsyncMock())),
-        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         patch(
-            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
-            side_effect=lambda p, f, r: p,
+            "prediction_ml_service.application.prediction_service"
+            ".cross_module_client.get_runtime_float",
+            new=AsyncMock(return_value=0.015),
         ),
     ):
         # Provide pre-fetched objects to skip DB
@@ -694,7 +701,7 @@ async def test_predict_consumption_physics_only():
     assert result["fallback_triggered"] is False
 
 
-async def test_predict_consumption_ensemble_success():
+async def test_predict_consumption_ensemble_success(monkeypatch):
     """Ensemble path: ensemble returns success."""
     svc = _make_service()
     physics_result = _make_physics_result(30.0)
@@ -713,19 +720,23 @@ async def test_predict_consumption_ensemble_success():
 
     with (
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            "prediction_ml_service.application.prediction_service.run_physics_model",
             new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_ensemble_prediction",
+            "prediction_ml_service.application.prediction_service"
+            ".run_ensemble_prediction",
             new=AsyncMock(return_value=ensemble_result),
         ),
         patch(
-            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
-            side_effect=lambda p, f, r: p,
+            "prediction_ml_service.application.prediction_service"
+            ".cross_module_client.get_runtime_float",
+            new=AsyncMock(return_value=0.015),
         ),
-        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
+        patch(
+            "prediction_ml_service.application.prediction_service.settings"
+        ) as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = False
         mock_settings.AI_CONFIDENCE_THRESHOLD_RED = 0.40
@@ -746,7 +757,7 @@ async def test_predict_consumption_ensemble_success():
     assert result["status"] == "success"
 
 
-async def test_predict_consumption_ensemble_fails_fallback():
+async def test_predict_consumption_ensemble_fails_fallback(monkeypatch):
     """Ensemble returns no success → physics fallback used."""
     svc = _make_service()
     physics_result = _make_physics_result(30.0)
@@ -755,19 +766,23 @@ async def test_predict_consumption_ensemble_fails_fallback():
 
     with (
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            "prediction_ml_service.application.prediction_service.run_physics_model",
             new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_ensemble_prediction",
+            "prediction_ml_service.application.prediction_service"
+            ".run_ensemble_prediction",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
-            side_effect=lambda p, f, r: p,
+            "prediction_ml_service.application.prediction_service"
+            ".cross_module_client.get_runtime_float",
+            new=AsyncMock(return_value=0.015),
         ),
-        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
+        patch(
+            "prediction_ml_service.application.prediction_service.settings"
+        ) as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = False
         mock_settings.AI_CONFIDENCE_THRESHOLD_RED = 0.40
@@ -786,7 +801,7 @@ async def test_predict_consumption_ensemble_fails_fallback():
     assert result["fallback_triggered"] is True
 
 
-async def test_predict_consumption_with_route_analysis():
+async def test_predict_consumption_with_route_analysis(monkeypatch):
     """Route analysis with ratios and weather_factor keys."""
     svc = _make_service()
     physics_result = _make_physics_result(29.0)
@@ -800,19 +815,23 @@ async def test_predict_consumption_with_route_analysis():
 
     with (
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_physics_model",
+            "prediction_ml_service.application.prediction_service.run_physics_model",
             new=AsyncMock(return_value=physics_result),
         ),
         patch.object(svc, "_log_prediction_to_ai", new=AsyncMock()),
         patch(
-            "v2.modules.prediction_ml.application.prediction_service.run_ensemble_prediction",
+            "prediction_ml_service.application.prediction_service"
+            ".run_ensemble_prediction",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "v2.modules.prediction_ml.domain.vehicle_health_adjustment.apply_maintenance_factor",
-            side_effect=lambda p, f, r: p,
+            "prediction_ml_service.application.prediction_service"
+            ".cross_module_client.get_runtime_float",
+            new=AsyncMock(return_value=0.015),
         ),
-        patch("v2.modules.prediction_ml.application.prediction_service.settings") as mock_settings,
+        patch(
+            "prediction_ml_service.application.prediction_service.settings"
+        ) as mock_settings,
     ):
         mock_settings.MAINTENANCE_FACTOR_ENABLED = False
 
@@ -834,16 +853,18 @@ async def test_predict_consumption_with_route_analysis():
 
 
 async def test_log_prediction_to_ai_no_error():
+    """Background AI-teach task now posts over HTTP via cross_module_client
+    (Task 5) instead of calling ai_assistant.public.get_smart_ai() in-process."""
     svc = _make_service()
-    mock_smart_ai = MagicMock()
-    mock_smart_ai.teach = AsyncMock()
 
-    with patch("v2.modules.prediction_ml.application.prediction_service.asyncio") as mock_asyncio:
+    with patch(
+        "prediction_ml_service.application.prediction_service.asyncio"
+    ) as mock_asyncio:
         mock_asyncio.create_task = MagicMock()
         with patch(
-            "v2.modules.ai_assistant.public.get_smart_ai",
-            return_value=mock_smart_ai,
-            create=True,
+            "prediction_ml_service.application.prediction_service"
+            ".cross_module_client.teach",
+            new=AsyncMock(),
         ):
             # Should not raise
             await svc._log_prediction_to_ai(1, 500.0, 32.0)
@@ -866,7 +887,8 @@ async def test_train_xgboost_model_success():
     )
 
     with patch(
-        "v2.modules.platform_infra.public.log_audit_event", new=AsyncMock()
+        "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
+        new=AsyncMock(),
     ):
         result = await svc.train_xgboost_model(arac_id=1, user_id=5)
 
@@ -887,7 +909,8 @@ async def test_train_xgboost_model_failure():
     )
 
     with patch(
-        "v2.modules.platform_infra.public.log_audit_event", new=AsyncMock()
+        "v2.modules.platform_infra.audit.audit_logger.log_audit_event",
+        new=AsyncMock(),
     ):
         result = await svc.train_xgboost_model(arac_id=99)
 
@@ -900,10 +923,11 @@ async def test_train_xgboost_model_failure():
 
 
 def test_get_prediction_service_singleton():
-    """Delegates to the DI container — same instance on every call (dalga 17
-    fix: this used to be an independent module-level singleton, out of sync
-    with app/core/container.py's own copy; now both paths share one object)."""
-    from v2.modules.prediction_ml.application.prediction_service import (
+    """Own thread-safe module-level singleton (Task 5, 2026-08-04): this
+    service runs in its own process now, so it can no longer delegate to
+    the main backend's DI container the way the pre-extraction copy did --
+    same instance on every call regardless."""
+    from prediction_ml_service.application.prediction_service import (
         get_prediction_service,
     )
 

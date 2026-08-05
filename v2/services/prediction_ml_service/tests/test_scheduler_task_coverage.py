@@ -31,11 +31,15 @@ def _make_session(rows=None):
 @contextlib.contextmanager
 def _patch_uow_and_trainer(rows=None, trainer=None):
     """
-    Patch UnitOfWork dunders and prediction_ml_service.application.trainer.Trainer.
+    Patch ServiceUnitOfWork dunders and
+    prediction_ml_service.application.trainer.Trainer.
+
+    _run_async now uses the service's own ServiceUnitOfWork (not
+    shared_kernel's UnitOfWork) -- verified against scheduler_task.py
+    before rewiring this patch target.
     """
     import prediction_ml_service.application.trainer as trainer_mod
-
-    from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
+    from prediction_ml_service.infrastructure.service_uow import ServiceUnitOfWork
 
     mock_session = _make_session(rows)
     fake_uow = MagicMock()
@@ -46,8 +50,8 @@ def _patch_uow_and_trainer(rows=None, trainer=None):
         trainer_mod.Trainer = lambda: trainer
 
     with (
-        patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
-        patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        patch.object(ServiceUnitOfWork, "__aenter__", AsyncMock(return_value=fake_uow)),
+        patch.object(ServiceUnitOfWork, "__aexit__", AsyncMock(return_value=False)),
     ):
         try:
             yield

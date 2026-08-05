@@ -2,14 +2,19 @@
 Coverage tests for EnsemblePredictorService (ensemble_service.py).
 Focuses on the service layer: LRU cache, training hash, vehicle class logic,
 predict_consumption, and singleton accessor.
+
+Rewired for the service extraction (Task 5, 2026-08-04): the class no
+longer holds arac_repo/sefer_repo/dorse_repo lazy properties or accepts a
+`uow` kwarg on predict_consumption -- all fleet/driver/trip data now comes
+over HTTP via `prediction_ml_service.infrastructure.cross_module_client`,
+verified against the real current ensemble_service.py source before
+rewriting (not guessed).
 """
 
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
 
 pytestmark = pytest.mark.unit
 
@@ -40,12 +45,7 @@ def _make_service():
         EnsemblePredictorService,
     )
 
-    svc = EnsemblePredictorService()
-    # Inject mock repos
-    svc._arac_repo = MagicMock()
-    svc._sefer_repo = MagicMock()
-    svc._dorse_repo = MagicMock()
-    return svc
+    return EnsemblePredictorService()
 
 
 # ---------------------------------------------------------------------------
@@ -55,35 +55,19 @@ def _make_service():
 
 class TestVehicleClassLogic:
     def test_heavy_class_above_500(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         assert svc._get_vehicle_class({"tank_kapasitesi": 600}) == "heavy"
 
     def test_medium_class_200_to_500(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         assert svc._get_vehicle_class({"tank_kapasitesi": 300}) == "medium"
 
     def test_light_class_below_200(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         assert svc._get_vehicle_class({"tank_kapasitesi": 100}) == "light"
 
     def test_none_tank_defaults_to_light(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         assert svc._get_vehicle_class({"tank_kapasitesi": None}) == "light"
 
     def test_vehicle_class_model_id_heavy(self):
@@ -91,64 +75,9 @@ class TestVehicleClassLogic:
             EnsemblePredictorService,
         )
 
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         mid = svc._get_vehicle_class_model_id({"tank_kapasitesi": 600})
         assert mid == EnsemblePredictorService.VEHICLE_CLASS_MODEL_IDS["heavy"]
-
-
-# ---------------------------------------------------------------------------
-# Tests: lazy repo properties
-# ---------------------------------------------------------------------------
-
-
-class TestLazyRepoProperties:
-    def test_arac_repo_property_lazy_loads(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
-        mock_repo = MagicMock()
-
-        with patch(
-            "v2.modules.fleet.public.get_arac_repo",
-            return_value=mock_repo,
-        ):
-            repo = svc.arac_repo
-
-        assert repo is mock_repo
-
-    def test_sefer_repo_property_lazy_loads(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
-        mock_repo = MagicMock()
-
-        with patch(
-            "v2.modules.trip.public.get_sefer_repo",
-            return_value=mock_repo,
-        ):
-            repo = svc.sefer_repo
-
-        assert repo is mock_repo
-
-    def test_dorse_repo_property_lazy_loads(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
-        mock_repo = MagicMock()
-
-        with patch(
-            "v2.modules.fleet.public.get_dorse_repo",
-            return_value=mock_repo,
-        ):
-            repo = svc.dorse_repo
-
-        assert repo is mock_repo
 
 
 # ---------------------------------------------------------------------------
@@ -239,40 +168,24 @@ class TestExtractRouteAnalysis:
 
 class TestCalculateTrainingHash:
     def test_empty_returns_empty_string(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         assert svc._calculate_training_hash([]) == "empty"
 
     def test_hash_is_string(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         seferler = [{"id": i, "mesafe_km": 500, "ton": 20} for i in range(5)]
         result = svc._calculate_training_hash(seferler)
         assert isinstance(result, str)
         assert len(result) == 16
 
     def test_different_data_gives_different_hash(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         s1 = [{"id": 1, "mesafe_km": 500, "ton": 20}]
         s2 = [{"id": 2, "mesafe_km": 800, "ton": 30}]
         assert svc._calculate_training_hash(s1) != svc._calculate_training_hash(s2)
 
     def test_same_data_gives_same_hash(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         seferler = [{"id": i, "mesafe_km": 400 + i, "ton": 20} for i in range(10)]
         h1 = svc._calculate_training_hash(seferler)
         h2 = svc._calculate_training_hash(seferler)
@@ -286,30 +199,18 @@ class TestCalculateTrainingHash:
 
 class TestGetPredictor:
     def test_creates_new_predictor(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         p = svc.get_predictor(42)
         assert p is not None
 
     def test_returns_same_predictor_second_call(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         p1 = svc.get_predictor(42)
         p2 = svc.get_predictor(42)
         assert p1 is p2
 
     def test_lru_eviction_at_limit(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         svc.MAX_PREDICTORS = 3
 
         # Patch model loading path to avoid file-system checks
@@ -324,11 +225,7 @@ class TestGetPredictor:
         assert 1 not in svc.predictors
 
     def test_lru_moves_to_end_on_access(self):
-        from prediction_ml_service.application.ensemble_service import (
-            EnsemblePredictorService,
-        )
-
-        svc = EnsemblePredictorService()
+        svc = _make_service()
         with patch("pathlib.Path.exists", return_value=False):
             svc.get_predictor(1)
             svc.get_predictor(2)
@@ -342,7 +239,7 @@ class TestGetPredictor:
 
 
 # ---------------------------------------------------------------------------
-# Tests: predict_consumption (unit — mocked arac + predictor)
+# Tests: predict_consumption (unit — mocked cross_module_client + predictor)
 # ---------------------------------------------------------------------------
 
 
@@ -352,16 +249,18 @@ class TestPredictConsumption:
         return _make_service()
 
     async def test_returns_error_when_arac_not_found(self, svc):
-        svc._arac_repo.get_by_id = AsyncMock(return_value=None)
-
-        result = await svc.predict_consumption(arac_id=999, mesafe_km=500, ton=20)
+        with patch(
+            "prediction_ml_service.application.ensemble_service"
+            ".cross_module_client.get_vehicle",
+            AsyncMock(return_value=None),
+        ):
+            result = await svc.predict_consumption(arac_id=999, mesafe_km=500, ton=20)
 
         assert result["success"] is False
         assert "Araç" in result["error"]
 
     async def test_success_with_valid_arac(self, svc):
         arac = _make_arac()
-        svc._arac_repo.get_by_id = AsyncMock(return_value=arac)
 
         mock_prediction = MagicMock()
         mock_prediction.tahmin_l_100km = 32.5
@@ -374,18 +273,17 @@ class TestPredictConsumption:
         mock_predictor.predict.return_value = mock_prediction
         mock_predictor.is_trained = True
 
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
-
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=arac),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
-                AsyncMock(return_value=[]),
+                "prediction_ml_service.application.ensemble_service"
+                ".get_seasonal_factor",
+                return_value=1.0,
             ),
         ):
             result = await svc.predict_consumption(arac_id=1, mesafe_km=500, ton=20)
@@ -394,50 +292,8 @@ class TestPredictConsumption:
         assert "tahmin_l_100km" in result
         assert "tahmin_litre" in result
 
-    async def test_uses_uow_when_provided(self, svc):
-        arac = _make_arac()
-        mock_uow = AsyncMock()
-        mock_uow.arac_repo = MagicMock()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-        mock_uow.dorse_repo = MagicMock()
-        mock_uow.dorse_repo.get_by_id = AsyncMock(return_value=None)
-
-        mock_prediction = MagicMock()
-        mock_prediction.tahmin_l_100km = 30.0
-        mock_prediction.confidence_low = 27.0
-        mock_prediction.confidence_high = 33.0
-        mock_prediction.physics_only = 30.0
-        mock_prediction.ml_correction = 0.0
-
-        mock_predictor = MagicMock()
-        mock_predictor.predict.return_value = mock_prediction
-        mock_predictor.is_trained = True
-
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
-
-        with (
-            patch.object(svc, "get_predictor", return_value=mock_predictor),
-            patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
-            ),
-            patch(
-                "v2.modules.driver.public.get_driver_stats",
-                AsyncMock(return_value=[]),
-            ),
-        ):
-            result = await svc.predict_consumption(
-                arac_id=1, mesafe_km=300, ton=15, uow=mock_uow
-            )
-
-        # Should have used uow.arac_repo, not svc._arac_repo
-        mock_uow.arac_repo.get_by_id.assert_awaited_once()
-        assert result["success"] is True
-
     async def test_fallback_to_class_model_when_vehicle_untrained(self, svc):
         arac = _make_arac(tank_kapasitesi=600)  # heavy
-        svc._arac_repo.get_by_id = AsyncMock(return_value=arac)
 
         # Untrained vehicle predictor
         untrained = MagicMock()
@@ -461,18 +317,17 @@ class TestPredictConsumption:
                 return trained
             return untrained
 
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
-
         with (
             patch.object(svc, "get_predictor", side_effect=predictor_factory),
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=arac),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
-                AsyncMock(return_value=[]),
+                "prediction_ml_service.application.ensemble_service"
+                ".get_seasonal_factor",
+                return_value=1.0,
             ),
         ):
             result = await svc.predict_consumption(arac_id=1, mesafe_km=400, ton=20)
@@ -485,58 +340,32 @@ class TestPredictConsumption:
 # ---------------------------------------------------------------------------
 
 
-def _mock_uow(arac=None, seferler=None, all_seferler=None):
-    """train_for_vehicle/train_general_model now read through their own
-    UnitOfWork (see shared_kernel's "Singleton repos need UoW" gotcha)
-    instead of the session-less svc._arac_repo/svc._sefer_repo
-    singletons -- mock the UoW's repos directly, same pattern as
-    predict_batch's test below."""
-    mock_uow = AsyncMock()
-    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-    mock_uow.__aexit__ = AsyncMock(return_value=None)
-    mock_uow.arac_repo = MagicMock()
-    mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-    mock_uow.sefer_repo = MagicMock()
-    mock_uow.sefer_repo.get_for_training = AsyncMock(return_value=seferler or [])
-    mock_uow.sefer_repo.get_all_for_training = AsyncMock(
-        return_value=all_seferler or []
-    )
-    return mock_uow
-
-
 class TestTrainForVehicle:
     @pytest.fixture
     def svc(self):
         return _make_service()
 
-    _mock_uow = staticmethod(_mock_uow)
-
     async def test_returns_error_when_arac_not_found(self, svc):
-        mock_uow = self._mock_uow(arac=None)
-        with (
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        with patch(
+            "prediction_ml_service.application.ensemble_service"
+            ".cross_module_client.get_vehicle",
+            AsyncMock(return_value=None),
         ):
             result = await svc.train_for_vehicle(arac_id=999)
         assert result["success"] is False
 
     async def test_returns_error_on_insufficient_trips(self, svc):
-        mock_uow = self._mock_uow(arac=_make_arac(), seferler=[{"tuketim": 30}] * 5)
-
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
-
         with (
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=_make_arac()),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
-                AsyncMock(return_value=[]),
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_training_data",
+                AsyncMock(return_value=[{"tuketim": 30}] * 5),
             ),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -556,10 +385,6 @@ class TestTrainForVehicle:
             }
             for i in range(15)
         ]
-        mock_uow = self._mock_uow(arac=_make_arac(), seferler=trips)
-
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.05
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -572,15 +397,25 @@ class TestTrainForVehicle:
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=_make_arac()),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_training_data",
+                AsyncMock(return_value=trips),
+            ),
+            patch(
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+            patch(
+                "prediction_ml_service.application.ensemble_service"
+                ".get_seasonal_factor",
+                return_value=1.05,
+            ),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -602,10 +437,6 @@ class TestTrainForVehicle:
             }
             for i in range(15)
         ]
-        mock_uow = self._mock_uow(arac=_make_arac(), seferler=trips)
-
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -619,33 +450,42 @@ class TestTrainForVehicle:
         mock_predictor._feature_hash = "abc"
         mock_predictor._physics_version = "v1"
 
-        mock_analiz_repo = MagicMock()
-        mock_analiz_repo.save_model_params = AsyncMock()
         mock_register = AsyncMock()
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=_make_arac()),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_training_data",
+                AsyncMock(return_value=trips),
+            ),
+            patch(
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_driver_stats",
                 AsyncMock(return_value=[]),
             ),
             patch(
-                "prediction_ml_service.application.ensemble_service."
-                "_register_model_version",
-                mock_register,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.save_model_params",
+                AsyncMock(),
             ),
             patch(
-                "v2.modules.analytics_executive.public.get_analiz_repo",
-                return_value=mock_analiz_repo,
+                "prediction_ml_service.application.ensemble_service"
+                ".get_seasonal_factor",
+                return_value=1.0,
+            ),
+            patch(
+                "prediction_ml_service.application.ensemble_service"
+                "._register_model_version",
+                mock_register,
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(mock_predictor, "save_model"),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_for_vehicle(arac_id=1)
 
@@ -663,19 +503,11 @@ class TestTrainGeneralModel:
     def svc(self):
         return _make_service()
 
-    _mock_uow = staticmethod(_mock_uow)
-
     async def test_returns_error_on_insufficient_data(self, svc):
-        mock_uow = self._mock_uow(all_seferler=[{"tuketim": 30}] * 5)
-
-        mock_analiz_repo = MagicMock()
-        with (
-            patch(
-                "v2.modules.analytics_executive.public.get_analiz_repo",
-                return_value=mock_analiz_repo,
-            ),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
+        with patch(
+            "prediction_ml_service.application.ensemble_service"
+            ".cross_module_client.get_all_training_data",
+            AsyncMock(return_value=[{"tuketim": 30}] * 5),
         ):
             result = await svc.train_general_model()
 
@@ -693,7 +525,6 @@ class TestTrainGeneralModel:
             }
             for i in range(25)
         ]
-        mock_uow = self._mock_uow(all_seferler=trips)
 
         mock_predictor = MagicMock()
         mock_predictor.fit.return_value = {
@@ -706,41 +537,35 @@ class TestTrainGeneralModel:
         mock_predictor._feature_hash = None
         mock_predictor._physics_version = None
 
-        mock_analiz_repo = MagicMock()
-        mock_analiz_repo.save_model_params = AsyncMock()
-
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "prediction_ml_service.application.ensemble_service."
-                "_register_model_version",
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_all_training_data",
+                AsyncMock(return_value=trips),
+            ),
+            patch(
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.save_model_params",
                 AsyncMock(),
             ),
             patch(
-                "v2.modules.analytics_executive.public.get_analiz_repo",
-                return_value=mock_analiz_repo,
+                "prediction_ml_service.application.ensemble_service"
+                "._register_model_version",
+                AsyncMock(),
             ),
             patch("pathlib.Path.mkdir"),
             patch.object(mock_predictor, "save_model"),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             result = await svc.train_general_model()
 
         assert result["success"] is True
 
     async def test_exception_in_train_returns_error(self, svc):
-        mock_analiz_repo = MagicMock()
-        with (
-            patch(
-                "v2.modules.analytics_executive.public.get_analiz_repo",
-                return_value=mock_analiz_repo,
-            ),
-            patch.object(
-                UnitOfWork,
-                "__aenter__",
-                AsyncMock(side_effect=RuntimeError("DB down")),
-            ),
+        with patch(
+            "prediction_ml_service.application.ensemble_service"
+            ".cross_module_client.get_all_training_data",
+            AsyncMock(side_effect=RuntimeError("DB down")),
         ):
             result = await svc.train_general_model()
         assert result["success"] is False
@@ -767,31 +592,20 @@ class TestPredictBatch:
         mock_predictor.predict.return_value = mock_prediction
         mock_predictor.is_trained = True
 
-        mock_weather = MagicMock()
-        mock_weather.get_seasonal_factor.return_value = 1.0
-
-        mock_uow = AsyncMock()
-        mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
-        mock_uow.__aexit__ = AsyncMock(return_value=None)
-        mock_uow.arac_repo = MagicMock()
-        mock_uow.arac_repo.get_by_id = AsyncMock(return_value=arac)
-        mock_uow.dorse_repo = MagicMock()
-        mock_uow.dorse_repo.get_by_id = AsyncMock(return_value=None)
-
         requests = [{"arac_id": 1, "mesafe_km": 500, "ton": 20}]
 
         with (
             patch.object(svc, "get_predictor", return_value=mock_predictor),
             patch(
-                "v2.modules.route_simulation.public.get_weather_service",
-                return_value=mock_weather,
+                "prediction_ml_service.application.ensemble_service"
+                ".cross_module_client.get_vehicle",
+                AsyncMock(return_value=arac),
             ),
             patch(
-                "v2.modules.driver.public.get_driver_stats",
-                AsyncMock(return_value=[]),
+                "prediction_ml_service.application.ensemble_service"
+                ".get_seasonal_factor",
+                return_value=1.0,
             ),
-            patch.object(UnitOfWork, "__aenter__", AsyncMock(return_value=mock_uow)),
-            patch.object(UnitOfWork, "__aexit__", AsyncMock(return_value=False)),
         ):
             results = await svc.predict_batch(requests)
 

@@ -67,6 +67,14 @@ def _headers() -> dict:
     return {"X-Internal-Token": secret} if secret else {}
 
 
+class _ClientRejection(httpx.HTTPStatusError):
+    """4xx from prediction_ml_service -- the service answered and
+    correctly rejected a bad request (validation error, unknown vehicle,
+    ...). That is evidence the service is healthy, not evidence it is
+    failing, so it must never count toward CircuitBreakerRegistry's
+    failure tally -- unlike a real HTTPStatusError (5xx), which does."""
+
+
 async def _post(path: str, payload: Dict[str, Any]) -> Any:
     body = {k: v for k, v in payload.items() if k not in _STRIP_KEYS}
 
@@ -75,10 +83,18 @@ async def _post(path: str, payload: Dict[str, Any]) -> Any:
             base_url=settings.PREDICTION_ML_SERVICE_URL, timeout=_TIMEOUT_S
         ) as client:
             resp = await client.post(path, json=body, headers=_headers())
+            if 400 <= resp.status_code < 500:
+                raise _ClientRejection(
+                    f"Client error '{resp.status_code}' for url '{resp.url}'",
+                    request=resp.request,
+                    response=resp,
+                )
             resp.raise_for_status()
             return resp.json()
 
-    breaker = await CircuitBreakerRegistry.get("prediction_ml_service")
+    breaker = await CircuitBreakerRegistry.get(
+        "prediction_ml_service", exclude_exceptions=(_ClientRejection,)
+    )
     return await breaker.call(lambda: _with_retry(_call))
 
 

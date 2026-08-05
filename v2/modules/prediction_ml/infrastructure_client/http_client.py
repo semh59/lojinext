@@ -24,7 +24,15 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-_TIMEOUT_S = 5.0
+# model_warmup.py's own docstring documents cold-start ensemble prediction
+# taking up to "4-10sn" (LRU predictor-cache miss) -- 5.0s here would clip
+# that ceiling on nearly every cold call, tripping the circuit breaker on
+# genuinely successful-but-slow responses rather than real failures
+# (caught live via real-backend CI tests once this HTTP client actually
+# had a live service behind it, 2026-08-05). Training a full ensemble
+# (train_xgboost_model) is slower still than a single prediction, so the
+# same generous ceiling applies to every call through this client.
+_TIMEOUT_S = 30.0
 
 # Not JSON-serializable and meaningless across a process boundary -- the
 # remote service re-fetches via its own cross_module_client if unset.

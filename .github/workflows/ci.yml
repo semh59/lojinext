@@ -94,6 +94,17 @@ jobs:
       # under tests/ needs it importable even though this job never runs
       # the standalone service itself.
       PYTHONPATH: v2/services
+      # Default (app/config.py) is the docker-compose hostname
+      # "prediction-ml-service", unresolvable on this bare runner. Only the
+      # "Start backend" step set this before (as step-level env), so any
+      # OTHER step hitting a /predictions/* endpoint through a plain
+      # pytest TestClient -- e.g. "Integration — API contracts" -- got the
+      # default and failed with a DNS error, not the actual contract being
+      # tested (caught live in CI, 2026-08-05: test_prediction_response_shape
+      # got 503 "prediction_ml_service unreachable" instead of 200/404/422).
+      # Job-level here so every step sees the already-running instance on
+      # 127.0.0.1:8002 (started by "Start prediction-ml-service" below).
+      PREDICTION_ML_SERVICE_URL: http://127.0.0.1:8002
 
     steps:
       - name: Checkout code

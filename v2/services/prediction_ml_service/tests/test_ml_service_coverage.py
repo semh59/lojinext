@@ -40,7 +40,7 @@ def _make_uow():
 
 def _make_service(uow=None):
     """Return MLService with a mocked UnitOfWork."""
-    from v2.modules.prediction_ml.application.ml_service import MLService
+    from prediction_ml_service.application.ml_service import MLService
 
     if uow is None:
         uow = _make_uow()
@@ -82,7 +82,7 @@ class TestScheduleTraining:
 
         uow.session.add = capture_add
 
-        from v2.modules.prediction_ml.public import EgitimKuyrugu
+        from prediction_ml_service.infrastructure.models import EgitimKuyrugu
 
         fake_task = MagicMock(spec=EgitimKuyrugu)
         fake_task.arac_id = 1
@@ -90,7 +90,7 @@ class TestScheduleTraining:
         fake_task.durum = "WAITING"
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
+            "prediction_ml_service.application.ml_service.EgitimKuyrugu",
             return_value=fake_task,
         ):
             result = await svc.schedule_training(arac_id=1, user_id=None)
@@ -106,7 +106,7 @@ class TestScheduleTraining:
             return_value=MagicMock(versiyon=3)
         )
 
-        from v2.modules.prediction_ml.public import EgitimKuyrugu
+        from prediction_ml_service.infrastructure.models import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -116,7 +116,7 @@ class TestScheduleTraining:
             return task
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
+            "prediction_ml_service.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=2, user_id=10)
@@ -130,7 +130,7 @@ class TestScheduleTraining:
         uow.ml_training_repo.get_active_tasks_for_vehicle = AsyncMock(return_value=[])
         uow.model_versiyon_repo.get_latest_version = AsyncMock(return_value=None)
 
-        from v2.modules.prediction_ml.public import EgitimKuyrugu
+        from prediction_ml_service.infrastructure.models import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -139,7 +139,7 @@ class TestScheduleTraining:
             return MagicMock(spec=EgitimKuyrugu)
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
+            "prediction_ml_service.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=5, user_id=99)
@@ -152,7 +152,7 @@ class TestScheduleTraining:
         uow.ml_training_repo.get_active_tasks_for_vehicle = AsyncMock(return_value=[])
         uow.model_versiyon_repo.get_latest_version = AsyncMock(return_value=None)
 
-        from v2.modules.prediction_ml.public import EgitimKuyrugu
+        from prediction_ml_service.infrastructure.models import EgitimKuyrugu
 
         created_kwargs = {}
 
@@ -161,7 +161,7 @@ class TestScheduleTraining:
             return MagicMock(spec=EgitimKuyrugu)
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.EgitimKuyrugu",
+            "prediction_ml_service.application.ml_service.EgitimKuyrugu",
             side_effect=fake_egitim,
         ):
             await svc.schedule_training(arac_id=3)
@@ -180,8 +180,11 @@ class TestUpdateTaskProgress:
         svc, uow = _make_service()
         uow.session.get = AsyncMock(return_value=None)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             with pytest.raises(HTTPException) as exc_info:
                 await svc.update_task_progress(
                     task_id=999,
@@ -199,8 +202,11 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = None  # not yet set
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             await svc.update_task_progress(task_id=1, ilerleme=10.0, durum="RUNNING")
 
         assert task.baslangic_zaman is not None
@@ -214,8 +220,11 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = datetime.now(timezone.utc)
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             await svc.update_task_progress(task_id=1, ilerleme=100.0, durum="COMPLETED")
 
         assert task.bitis_zaman is not None
@@ -227,8 +236,11 @@ class TestUpdateTaskProgress:
         task.arac_id = 3
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             await svc.update_task_progress(
                 task_id=1,
                 ilerleme=0.0,
@@ -248,12 +260,15 @@ class TestUpdateTaskProgress:
         task.baslangic_zaman = datetime.now(timezone.utc)
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             await svc.update_task_progress(task_id=5, ilerleme=75.0, durum="RUNNING")
 
-            mock_ws.broadcast.assert_called_once()
-            broadcast_payload = mock_ws.broadcast.call_args.args[0]
+            mock_ws.assert_called_once()
+            broadcast_payload = mock_ws.call_args.args[0]
             assert broadcast_payload["type"] == "progress"
             assert broadcast_payload["task_id"] == 5
             assert broadcast_payload["ilerleme"] == 75.0
@@ -265,8 +280,11 @@ class TestUpdateTaskProgress:
         task.arac_id = 4
         uow.session.get = AsyncMock(return_value=task)
 
-        with patch("v2.modules.prediction_ml.application.ml_service.training_ws_manager") as mock_ws:
-            mock_ws.broadcast = AsyncMock()
+        with patch(
+            "prediction_ml_service.application.ml_service.cross_module_client"
+            ".post_training_progress"
+        ) as mock_ws:
+            mock_ws.return_value = None
             # "WAITING" is not in ["RUNNING", "COMPLETED", "FAILED"]
             await svc.update_task_progress(task_id=1, ilerleme=0.0, durum="WAITING")
 
@@ -344,13 +362,13 @@ class TestRegisterModelVersion:
 
         uow.session.add = capture_add
 
-        from v2.modules.prediction_ml.public import ModelVersiyon
+        from prediction_ml_service.infrastructure.models import ModelVersiyon
 
         fake_mv = MagicMock(spec=ModelVersiyon)
         fake_mv.arac_id = 1
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.ModelVersiyon",
+            "prediction_ml_service.application.ml_service.ModelVersiyon",
             return_value=fake_mv,
         ) as MockMV:
             result = await svc.register_model_version(
@@ -377,7 +395,7 @@ class TestRegisterModelVersion:
         """register_model_version uses None for missing metric keys."""
         svc, uow = _make_service()
 
-        from v2.modules.prediction_ml.public import ModelVersiyon
+        from prediction_ml_service.infrastructure.models import ModelVersiyon
 
         created_kwargs = {}
 
@@ -386,7 +404,7 @@ class TestRegisterModelVersion:
             return MagicMock(spec=ModelVersiyon)
 
         with patch(
-            "v2.modules.prediction_ml.application.ml_service.ModelVersiyon",
+            "prediction_ml_service.application.ml_service.ModelVersiyon",
             side_effect=fake_mv,
         ):
             await svc.register_model_version(

@@ -1,27 +1,9 @@
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
+import prediction_ml_service.domain.physics_model as physics_model_module
 import pytest
-
-import v2.modules.prediction_ml.domain.physics_model as physics_model_module
-from v2.modules.prediction_ml.application.prediction_service import PredictionService
-from v2.modules.shared_kernel.infrastructure.unit_of_work import UnitOfWork
-
-
-class DummyUnitOfWork:
-    def __init__(self, *, vehicle=None, driver=None, trailer=None):
-        self.arac_repo = MagicMock()
-        self.sofor_repo = MagicMock()
-        self.dorse_repo = MagicMock()
-        self.arac_repo.get_by_id = AsyncMock(return_value=vehicle or {})
-        self.sofor_repo.get_by_id = AsyncMock(return_value=driver)
-        self.dorse_repo.get_by_id = AsyncMock(return_value=trailer)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
+from prediction_ml_service.application.prediction_service import PredictionService
 
 
 class FakePhysicsPredictor:
@@ -51,7 +33,6 @@ def _vehicle_payload():
 
 @pytest.mark.asyncio
 async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch):
-    uow = DummyUnitOfWork(vehicle=_vehicle_payload(), driver={"score": 0.5})
     ensemble_service = SimpleNamespace(
         predict_consumption=AsyncMock(
             return_value={
@@ -67,8 +48,18 @@ async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch)
         )
     )
 
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.cross_module_client.get_vehicle",
+        AsyncMock(return_value=_vehicle_payload()),
+    )
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.cross_module_client.get_driver",
+        AsyncMock(return_value={"id": 7, "score": 0.5}),
+    )
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.get_seasonal_factor",
+        lambda _: 1.0,
+    )
     monkeypatch.setattr(
         physics_model_module,
         "PhysicsBasedFuelPredictor",
@@ -77,7 +68,6 @@ async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch)
 
     service = PredictionService()
     service.ensemble_service = ensemble_service
-    service.weather_service = SimpleNamespace(get_seasonal_factor=lambda _: 1.0)
     service._log_prediction_to_ai = AsyncMock()
 
     result = await service.predict_consumption(
@@ -108,7 +98,6 @@ async def test_predict_consumption_normalizes_nested_route_analysis(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_predict_consumption_missing_confidence_fails_closed(monkeypatch):
-    uow = DummyUnitOfWork(vehicle=_vehicle_payload(), driver={"score": 0.5})
     ensemble_service = SimpleNamespace(
         predict_consumption=AsyncMock(
             return_value={
@@ -123,8 +112,18 @@ async def test_predict_consumption_missing_confidence_fails_closed(monkeypatch):
         )
     )
 
-    monkeypatch.setattr(UnitOfWork, "__aenter__", AsyncMock(return_value=uow))
-    monkeypatch.setattr(UnitOfWork, "__aexit__", AsyncMock(return_value=False))
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.cross_module_client.get_vehicle",
+        AsyncMock(return_value=_vehicle_payload()),
+    )
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.cross_module_client.get_driver",
+        AsyncMock(return_value={"id": 7, "score": 0.5}),
+    )
+    monkeypatch.setattr(
+        "prediction_ml_service.application.prediction_service.get_seasonal_factor",
+        lambda _: 1.0,
+    )
     monkeypatch.setattr(
         physics_model_module,
         "PhysicsBasedFuelPredictor",
@@ -133,7 +132,6 @@ async def test_predict_consumption_missing_confidence_fails_closed(monkeypatch):
 
     service = PredictionService()
     service.ensemble_service = ensemble_service
-    service.weather_service = SimpleNamespace(get_seasonal_factor=lambda _: 1.0)
     service._log_prediction_to_ai = AsyncMock()
 
     result = await service.predict_consumption(

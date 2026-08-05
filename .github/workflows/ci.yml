@@ -766,7 +766,7 @@ jobs:
     env:
       ENVIRONMENT: test
       SECRET_KEY: test-secret-key
-      PII_ENCRYPTION_KEY: GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=  # pragma: allowlist secret
+      PII_ENCRYPTION_KEY: GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=  # pragma: allowlist secret gitleaks:allow
       POSTGRES_USER: postgres
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test

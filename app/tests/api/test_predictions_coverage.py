@@ -1,8 +1,16 @@
 """
 Predictions endpoint coverage tests.
 
-Targets lines missed in app/api/v1/endpoints/predictions.py (28% → ≥70%).
-All service / Celery calls are mocked — no real DB needed.
+Rewired for the prediction_ml_service extraction (Task 5, 2026-08-04):
+predict/train/explain now go through the HTTP-client facade
+(v2.modules.prediction_ml.public.get_prediction_service), while
+ensemble/status and time-series/{status,trend,forecast} are pure httpx
+proxies to settings.PREDICTION_ML_SERVICE_URL -- no real service runs in
+this test environment, so all of these are mocked at the point they're
+called from predictions.py.
+
+All service / Celery calls are mocked — no real DB needed except where a
+test explicitly touches db_session (marked @pytest.mark.integration).
 """
 
 from contextlib import contextmanager
@@ -11,6 +19,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 pytestmark = pytest.mark.unit
+
+PREDICTIONS_MODULE = "v2.modules.prediction_ml.api.predictions"
 
 # ---------------------------------------------------------------------------
 # Minimal valid PredictionRequest payload
@@ -41,13 +51,19 @@ PRED_SUCCESS = {
 
 
 # ---------------------------------------------------------------------------
-# Helper: override PredictionService constructor
+# Helper: override get_prediction_service()
 # ---------------------------------------------------------------------------
 
 
 @contextmanager
 def _mock_prediction_service(**overrides):
-    """Patch the PredictionService class so endpoints get a mock instance."""
+    """Patch get_prediction_service so endpoints get a mock service instance.
+
+    Real endpoints import `get_prediction_service` (the HTTP-client facade
+    in v2.modules.prediction_ml.public) at module level, not a
+    `PredictionService` class -- patch the consuming module's name, per
+    this repo's own patch-target convention.
+    """
     svc = MagicMock()
     svc.predict_consumption = AsyncMock(return_value={**PRED_SUCCESS, **overrides})
     # Tier E madde 33: shape matches ensemble_core.explain_prediction's real
@@ -70,7 +86,7 @@ def _mock_prediction_service(**overrides):
         }
     )
 
-    with patch("v2.modules.prediction_ml.api.predictions.PredictionService", return_value=svc):
+    with patch(f"{PREDICTIONS_MODULE}.get_prediction_service", return_value=svc):
         yield svc
 
 
@@ -221,7 +237,7 @@ class TestEnqueuePrediction:
         fake_task = MagicMock()
         fake_task.id = "test-task-uuid-1234"
 
-        with patch("v2.modules.prediction_ml.api.predictions.celery_app") as mock_celery:
+        with patch(f"{PREDICTIONS_MODULE}.celery_app") as mock_celery:
             mock_celery.send_task.return_value = fake_task
             resp = await async_client.post(
                 "/api/v1/predictions",
@@ -253,9 +269,7 @@ class TestPredictionStatus:
         fake_result.state = "PENDING"
         fake_result.result = None
 
-        with patch(
-            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-        ):
+        with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
             resp = await async_client.get(
                 "/api/v1/predictions/abc-123",
                 headers=admin_auth_headers,
@@ -272,9 +286,7 @@ class TestPredictionStatus:
             "finished_at": "2026-06-01T10:00:00Z",
         }
 
-        with patch(
-            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-        ):
+        with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
             resp = await async_client.get(
                 "/api/v1/predictions/abc-success",
                 headers=admin_auth_headers,
@@ -366,12 +378,28 @@ class TestPredictionComparison:
 
 class TestEnsembleStatus:
     async def test_ensemble_status_returns_200(self, async_client, admin_auth_headers):
-        fake_predictor = MagicMock()
-        fake_predictor.weights = {"physics": 0.8, "xgboost": 0.05}
+        # Endpoint is now a pure httpx proxy to prediction_ml_service
+        # (_service_get("/ensemble/status")) -- mock the proxy call itself
+        # rather than the domain-layer predictor that used to back it
+        # in-process.
+        fake_status = {
+            "models": {
+                "physics": True,
+                "lightgbm": True,
+                "xgboost": True,
+                "gradient_boosting": True,
+                "random_forest": True,
+            },
+            "weights": {"physics": 0.8, "xgboost": 0.05},
+            "sklearn_available": True,
+            "lightgbm_available": True,
+            "xgboost_available": True,
+            "total_models": 5,
+        }
 
         with patch(
-            "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
-            return_value=fake_predictor,
+            f"{PREDICTIONS_MODULE}._service_get",
+            new=AsyncMock(return_value=fake_status),
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/ensemble/status",
@@ -399,8 +427,9 @@ class TestTimeSeriesStatus:
     ):
         # Tier E madde 33: shape matches AdvancedLSTM.status()'s real return
         # dict — endpoint now has response_model=TimeSeriesStatusResponse.
-        fake_ts_service = MagicMock()
-        fake_ts_service.get_model_status.return_value = {
+        # Also a pure httpx proxy now (_service_get), not an in-process
+        # get_time_series_service() call.
+        fake_status = {
             "is_trained": False,
             "training_epochs": 0,
             "last_loss": None,
@@ -413,11 +442,9 @@ class TestTimeSeriesStatus:
             "min_days_for_deep": 30,
         }
 
-        # get_time_series_service is imported inside the endpoint function body,
-        # so patch at the source module level.
         with patch(
-            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-            return_value=fake_ts_service,
+            f"{PREDICTIONS_MODULE}._service_get",
+            new=AsyncMock(return_value=fake_status),
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/time-series/status",
@@ -436,24 +463,47 @@ class TestTimeSeriesStatus:
 # ---------------------------------------------------------------------------
 
 
+def _fake_httpx_client(json_payload, status_code=200):
+    """Build a fake `async with httpx.AsyncClient(...) as client` context
+    manager whose .post()/.get() return a fake response -- the forecast
+    endpoint constructs its own httpx.AsyncClient inline (not via
+    _service_get), so it needs this shape rather than a plain function mock."""
+    fake_response = MagicMock()
+    fake_response.status_code = status_code
+    fake_response.json.return_value = json_payload
+    if status_code >= 400:
+        import httpx
+
+        fake_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "error", request=MagicMock(), response=fake_response
+        )
+    else:
+        fake_response.raise_for_status.return_value = None
+
+    fake_client = AsyncMock()
+    fake_client.post = AsyncMock(return_value=fake_response)
+    fake_client.get = AsyncMock(return_value=fake_response)
+    fake_client_cm = MagicMock()
+    fake_client_cm.__aenter__ = AsyncMock(return_value=fake_client)
+    fake_client_cm.__aexit__ = AsyncMock(return_value=False)
+    return fake_client_cm
+
+
 class TestTimeSeriesForecast:
     async def test_forecast_success_returns_200(self, async_client, admin_auth_headers):
-        fake_ts_service = MagicMock()
-        fake_ts_service.predict_weekly = AsyncMock(
-            return_value={
-                "success": True,
-                "forecast_dates": ["2026-06-04", "2026-06-05"],
-                "forecast": [31.5, 32.0],
-                "confidence_low": [29.0, 29.5],
-                "confidence_high": [34.0, 34.5],
-                "trend": "stable",
-                "method": "ARIMA",
-            }
-        )
+        fake_payload = {
+            "success": True,
+            "forecast_dates": ["2026-06-04", "2026-06-05"],
+            "forecast": [31.5, 32.0],
+            "confidence_low": [29.0, 29.5],
+            "confidence_high": [34.0, 34.5],
+            "trend": "stable",
+            "method": "ARIMA",
+        }
 
         with patch(
-            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-            return_value=fake_ts_service,
+            f"{PREDICTIONS_MODULE}.httpx.AsyncClient",
+            return_value=_fake_httpx_client(fake_payload),
         ):
             resp = await async_client.post(
                 "/api/v1/predictions/time-series/forecast",
@@ -468,19 +518,16 @@ class TestTimeSeriesForecast:
     async def test_forecast_failure_returns_error_body(
         self, async_client, admin_auth_headers
     ):
-        fake_ts_service = MagicMock()
-        fake_ts_service.predict_weekly = AsyncMock(
-            return_value={
-                "success": False,
-                "error": "Not enough data",
-                "error_code": "INSUFFICIENT_DATA",
-                "status_code": 503,
-            }
-        )
+        fake_payload = {
+            "success": False,
+            "error": "Not enough data",
+            "error_code": "INSUFFICIENT_DATA",
+            "status_code": 503,
+        }
 
         with patch(
-            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-            return_value=fake_ts_service,
+            f"{PREDICTIONS_MODULE}.httpx.AsyncClient",
+            return_value=_fake_httpx_client(fake_payload),
         ):
             resp = await async_client.post(
                 "/api/v1/predictions/time-series/forecast",
@@ -505,27 +552,24 @@ class TestTimeSeriesTrend:
     async def test_trend_success_returns_200(self, async_client, admin_auth_headers):
         # Tier E madde 33: shape matches TimeSeriesService.get_trend_analysis's
         # real success return dict — endpoint now has
-        # response_model=TrendAnalysisResponse.
-        fake_ts_service = MagicMock()
-        fake_ts_service.get_trend_analysis = AsyncMock(
-            return_value={
-                "success": True,
-                "trend": "increasing",
-                "trend_tr": "Artıyor",
-                "slope": 0.15,
-                "current_avg": 32.0,
-                "previous_avg": 31.0,
-                "moving_average_7": [31.5, 31.8, 32.0],
-                "daily_values": [31.0, 32.0, 33.0],
-                "daily_total_values": [100.0, 105.0, 110.0],
-                "dates": ["2026-06-01", "2026-06-02", "2026-06-03"],
-                "days_analyzed": 3,
-            }
-        )
+        # response_model=TrendAnalysisResponse. Pure httpx proxy now.
+        fake_trend = {
+            "success": True,
+            "trend": "increasing",
+            "trend_tr": "Artıyor",
+            "slope": 0.15,
+            "current_avg": 32.0,
+            "previous_avg": 31.0,
+            "moving_average_7": [31.5, 31.8, 32.0],
+            "daily_values": [31.0, 32.0, 33.0],
+            "daily_total_values": [100.0, 105.0, 110.0],
+            "dates": ["2026-06-01", "2026-06-02", "2026-06-03"],
+            "days_analyzed": 3,
+        }
 
         with patch(
-            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-            return_value=fake_ts_service,
+            f"{PREDICTIONS_MODULE}._service_get",
+            new=AsyncMock(return_value=fake_trend),
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/time-series/trend",
@@ -538,19 +582,16 @@ class TestTimeSeriesTrend:
     async def test_trend_failure_returns_error_body(
         self, async_client, admin_auth_headers
     ):
-        fake_ts_service = MagicMock()
-        fake_ts_service.get_trend_analysis = AsyncMock(
-            return_value={
-                "success": False,
-                "error": "No data",
-                "error_code": "NO_DATA",
-                "status_code": 503,
-            }
-        )
+        fake_trend = {
+            "success": False,
+            "error": "No data",
+            "error_code": "NO_DATA",
+            "status_code": 503,
+        }
 
         with patch(
-            "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-            return_value=fake_ts_service,
+            f"{PREDICTIONS_MODULE}._service_get",
+            new=AsyncMock(return_value=fake_trend),
         ):
             resp = await async_client.get(
                 "/api/v1/predictions/time-series/trend",
@@ -562,11 +603,6 @@ class TestTimeSeriesTrend:
     async def test_trend_requires_auth(self, async_client):
         resp = await async_client.get("/api/v1/predictions/time-series/trend")
         assert resp.status_code == 401
-
-
-# ---------------------------------------------------------------------------
-# _build_time_series_error_response helper
-# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------
@@ -582,9 +618,7 @@ class TestPredictionStream:
         fake_result.state = "SUCCESS"
         fake_result.result = {"answer": "done", "finished_at": "2026-06-01T10:00:00Z"}
 
-        with patch(
-            "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-        ):
+        with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
             resp = await async_client.get(
                 "/api/v1/predictions/stream-task/stream",
                 headers=admin_auth_headers,

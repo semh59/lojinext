@@ -554,6 +554,24 @@ jobs:
             curl -sf http://127.0.0.1:8002/health && echo "prediction-ml-service ready" && break
             echo "Waiting for prediction-ml-service... ($i/30)" && sleep 2
           done
+          # /health returns as soon as lifespan startup finishes, but the
+          # background model warm-up task (schedule_predictor_warmup,
+          # asyncio.create_task -- not awaited) and sklearn/xgboost/
+          # lightgbm object construction inside EnsembleFuelPredictor()
+          # keep running after that. Without this, the vitest suite's
+          # first real /predictions/* calls raced the still-warming
+          # service, tripped http_client.py's circuit breaker after 5
+          # timeouts (fail_max=5, 5s client timeout), and then stayed
+          # OPEN for its full 60s reset window -- caught live, run
+          # 31026417857, 2026-08-05 ("Circuit 'prediction_ml_service'
+          # OPENED after 5 failures" at 16:55:47, well after /health had
+          # already reported ready). Hitting /ensemble/status here forces
+          # the same EnsembleFuelPredictor() construction path to finish
+          # inside this wait loop instead.
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8002/ensemble/status > /dev/null && echo "prediction-ml-service warm" && break
+            echo "Waiting for prediction-ml-service warm-up... ($i/30)" && sleep 2
+          done
 
       - name: Start backend (vitest real-backend + OpenAPI drift + E2E)
         env:

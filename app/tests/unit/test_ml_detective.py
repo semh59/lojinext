@@ -1,68 +1,16 @@
-import threading
-
-import numpy as np
-import pytest
+"""
+Driver performance formula checks that stayed on the main backend after
+the prediction_ml_service extraction (Task 5) -- the two EnsembleFuelPredictor
+/TimeSeriesPredictor race-condition/padding tests moved to
+v2/services/prediction_ml_service/tests/test_ml_detective.py.
+"""
 
 from v2.modules.driver.domain.performance_ml import DriverPerformanceML
-from v2.modules.prediction_ml.domain.ensemble_core import EnsembleFuelPredictor
-from v2.modules.prediction_ml.domain.time_series_predictor import TimeSeriesPredictor
-
-
-def test_ensemble_race_condition_protection():
-    predictor = EnsembleFuelPredictor()
-    # Dummy data for fit
-    seferler = [{"mesafe_km": 100, "ton": 20}] * 20
-    y = np.array([30.0] * 20)
-
-    def train_worker():
-        predictor.fit(seferler, y)
-
-    def predict_worker():
-        # Eğitim sürerken tahmin yapmaya çalış
-        try:
-            res = predictor.predict(seferler[0])
-            # Eğitim sırasında is_trained False olacağı için sadece fizik tahmini dönmeli
-            # Lock sayesinde predict bekleyecek veya is_trained=False görecek
-            assert res is not None
-        except Exception as e:
-            pytest.fail(f"Predict failed during training: {e}")
-
-    # Aynı anda hem eğitim hem tahmin başlat
-    t1 = threading.Thread(target=train_worker)
-    t2 = threading.Thread(target=predict_worker)
-
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
-    assert predictor.is_trained is True
-
-
-def test_time_series_padding_safety():
-    predictor = TimeSeriesPredictor()
-    # Sadece 5 günlük veri (Gereken: 30+7=37)
-    short_data = [
-        {
-            "tarih": "2024-01-01",
-            "ort_tuketim": 32.0,
-            "toplam_km": 100,
-            "ort_ton": 20,
-            "sefer_sayisi": 2,
-        }
-    ] * 5
-
-    features = predictor.prepare_features(short_data)
-    targets = np.array([32.0] * 5)
-
-    # create_sequences hata vermemeli, padding yapmalı
-    X, y = predictor.create_sequences(features, targets)
-    assert X.shape[0] > 0
-    assert X.shape[1] == predictor.SEQUENCE_LENGTH
 
 
 def test_driver_performance_consistency_formula():
     ml = DriverPerformanceML()
-    # Tutarsız şoför (En iyi 25, En kötü 45, Ort 35)
+    # Inconsistent driver (best 25, worst 45, avg 35)
     stats = {
         "en_iyi_tuketim": 25.0,
         "en_kotu_tuketim": 45.0,

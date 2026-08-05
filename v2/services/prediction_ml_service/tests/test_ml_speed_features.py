@@ -1,6 +1,12 @@
-"""Tests for speed profile ML features added to EnsemblePredictor."""
+"""Tests for speed profile ML features on EnsemblePredictor.
 
-from v2.modules.prediction_ml.domain.ensemble_core import (
+Moved whole from app/tests/unit/test_ml_speed_features.py (missed in the
+original Task 5 test-fix punch list, caught by a real CI lint run
+2026-08-05): EnsembleFuelPredictor only lives in this service's own
+package now. Mechanical import-path fix only, no behavioral changes.
+"""
+
+from prediction_ml_service.domain.ensemble_core import (
     EnsembleFuelPredictor as EnsemblePredictor,
 )
 

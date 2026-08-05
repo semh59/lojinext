@@ -1,16 +1,19 @@
 """
 LSTM Time Series Predictor Unit Tests
+
+Moved whole from tests/test_time_series_predictor.py (missed in the
+original Task 5 test-fix punch list, caught by a real CI lint run
+2026-08-05): TimeSeriesPredictor (the legacy LSTM class, kept around
+specifically for this test file's investment per this module's own
+CLAUDE.md) only lives in this service's own package now. Mechanical
+import-path fix only, no behavioral changes.
 """
 
-import sys
 from datetime import date, timedelta
 
 import numpy as np
 import pytest
-
-sys.path.insert(0, ".")
-
-from v2.modules.prediction_ml.domain.time_series_predictor import (
+from prediction_ml_service.domain.time_series_predictor import (
     TORCH_AVAILABLE,
     TimeSeriesPrediction,
     TimeSeriesPredictor,
@@ -240,10 +243,6 @@ class TestIntegration:
     @pytest.mark.skipif(not TORCH_AVAILABLE, reason="PyTorch not installed")
     def test_full_pipeline(self):
         """Tam pipeline testi"""
-        from v2.modules.prediction_ml.domain.time_series_predictor import (
-            TimeSeriesPredictor,
-        )
-
         predictor = TimeSeriesPredictor()
 
         # Sentetik veri oluştur (90 gün)

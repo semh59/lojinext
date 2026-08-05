@@ -11,9 +11,6 @@ from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
     PhysicsBasedFuelPredictor,
     RouteConditions,
 )
-from v2.modules.prediction_ml.domain.time_series_predictor import (
-    ARIMATimeSeriesPredictor,
-)
 
 # ---------------------------------------------------------------------------
 # Fizik Tahmincisi — Bilinen Girdi → Beklenen Aralık
@@ -105,49 +102,7 @@ class TestPhysicsFuelPredictorAccuracy:
             assert result.total_liters > 0, "Toplam litre sıfır veya negatif olamaz"
 
 
-# ---------------------------------------------------------------------------
-# ARIMA Tabanlı Zaman Serisi Tahmincisi
-# ---------------------------------------------------------------------------
-
-
-class TestARIMATimeSeriesPredictorAccuracy:
-    @pytest.fixture
-    def predictor(self):
-        return ARIMATimeSeriesPredictor()
-
-    def test_sufficient_data_returns_success(self, predictor):
-        data = [32.0 + (i % 3) for i in range(20)]
-        result = predictor.predict(data)
-        assert result["success"] is True
-        assert "forecast" in result
-        assert len(result["forecast"]) == 7
-
-    def test_insufficient_data_uses_moving_average(self, predictor):
-        data = [35.0, 36.0, 34.0]
-        result = predictor.predict(data)
-        assert result["success"] is True
-        assert result["method"] == "moving_average"
-        assert all(v > 0 for v in result["forecast"])
-
-    def test_empty_data_returns_failure(self, predictor):
-        result = predictor.predict([])
-        assert result["success"] is False
-
-    def test_stable_series_predicts_stable_trend(self, predictor):
-        data = [32.0] * 15
-        result = predictor.predict(data)
-        assert result["success"] is True
-        for v in result["forecast"]:
-            assert 28.0 <= v <= 36.0, f"Stabil seriden uzak tahmin: {v}"
-
-    def test_rising_series_detects_increasing_trend(self, predictor):
-        data = [30.0 + i * 0.5 for i in range(20)]
-        result = predictor.predict(data)
-        assert result["success"] is True
-        assert result["trend"] in ("increasing", "stable")
-
-    def test_custom_forecast_days(self, predictor):
-        data = [32.0] * 15
-        result = predictor.predict(data, forecast_days=14)
-        assert result["forecast_days"] == 14
-        assert len(result["forecast"]) == 14
+# TestARIMATimeSeriesPredictorAccuracy moved to
+# v2/services/prediction_ml_service/tests/test_arima_prediction_accuracy.py
+# (Task 5, 2026-08-04) -- ARIMATimeSeriesPredictor only lives in that
+# service's own package now.

@@ -5,15 +5,12 @@ değiştiriyor (epiğin varlık sebebi — daha önce UI'daki değerin hiçbir
 etkisi yoktu). Mock yok: gerçek DB satırı + gerçek redis cache.
 """
 
-from datetime import date
-
 import pytest
 from sqlalchemy import text
 
 from v2.modules.admin_platform.application.runtime_config import get_runtime_float
 from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
 from v2.modules.platform_infra.cache.redis_cache import get_redis_cache
-from v2.modules.prediction_ml.domain.physics_model import build_vehicle_specs
 
 pytestmark = pytest.mark.unit
 
@@ -87,20 +84,7 @@ async def test_vehicle_age_degradation_rate_db_row_read(db_session):
     assert await get_runtime_float("VEHICLE_AGE_DEGRADATION_RATE", 0.01) == 0.07
 
 
-def test_build_vehicle_specs_uses_resolved_rate_not_settings():
-    """S2 Görev 2 — davranış kanıtı: _build_vehicle_specs artık
-    settings.VEHICLE_AGE_DEGRADATION_RATE'i DOĞRUDAN okumaz; çağıranın
-    (predict_consumption, async boundary'de) geçtiği rate'i kullanır.
-    Oran 0 -> yaş cezası yok; oran 0.05 -> belirgin ceza.
-    """
-    arac = {
-        "bos_agirlik_kg": 8000,
-        "motor_verimliligi": 0.40,
-        "yil": date.today().year - 10,
-    }
-    specs_no_penalty, _ = build_vehicle_specs(arac, None, 0.0)
-    specs_penalized, _ = build_vehicle_specs(arac, None, 0.05)
-
-    assert specs_no_penalty.engine_efficiency == pytest.approx(0.40)
-    assert specs_penalized.engine_efficiency < 0.40
-    assert specs_penalized.engine_efficiency < specs_no_penalty.engine_efficiency
+# test_build_vehicle_specs_uses_resolved_rate_not_settings moved to
+# v2/services/prediction_ml_service/tests/test_physics_model_runtime_rate.py
+# (Task 5, 2026-08-04) -- build_vehicle_specs only lives in that service's
+# own package now.

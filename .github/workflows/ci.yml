@@ -87,6 +87,13 @@ jobs:
       PYTHONUNBUFFERED: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      # tests/conftest.py's autouse _mock_ml_load_model_for_tests fixture
+      # patches prediction_ml_service.domain.ensemble_core.
+      # EnsembleFuelPredictor.load_model -- that package only lives under
+      # v2/services now (Task 5, 2026-08-04 extraction), so every test
+      # under tests/ needs it importable even though this job never runs
+      # the standalone service itself.
+      PYTHONPATH: v2/services
 
     steps:
       - name: Checkout code

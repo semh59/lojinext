@@ -776,7 +776,6 @@ jobs:
       CELERY_EAGER: "True"
       PYTHONUNBUFFERED: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
-      PYTHONPATH: v2/services
 
     steps:
       - name: Checkout code
@@ -798,7 +797,16 @@ jobs:
           pip install -r requirements.txt -r app/requirements-dev.txt
 
       - name: Run prediction_ml_service test suite
-        run: pytest v2/services/prediction_ml_service/tests/ -q --tb=short
+        # PYTHONPATH needs BOTH the repo root (v2.modules.* imports used by
+        # platform_infra/shared_kernel dependencies this service still
+        # shares) AND v2/services (so `prediction_ml_service.*` resolves) --
+        # verified locally with the same two-entry PYTHONPATH against a
+        # live container; a github.workspace-relative single-entry value
+        # here silently dropped the repo root and broke every v2.modules
+        # import with ModuleNotFoundError.
+        run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/v2/services"
+          pytest v2/services/prediction_ml_service/tests/ -q --tb=short
 
   publish:
     name: Build & Push to GHCR

@@ -546,6 +546,17 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
           REDIS_URL: redis://localhost:6379/0
           ENVIRONMENT: test
+          # cross_module_client.py's default ("http://backend:8000") is the
+          # docker-compose service hostname -- doesn't resolve as raw CI
+          # processes on one shared runner, no compose network here. Real
+          # root cause of every prior "fix" failing to help: every call
+          # this service made back to the main backend (fleet vehicle
+          # lookups, runtime-config reads, teach) hit
+          # "httpcore.ConnectError: [Errno -3] Temporary failure in name
+          # resolution", not a timeout or a 4xx (caught live, run
+          # 31041655199, 2026-08-05 -- the newly-added service-side log
+          # dump finally surfaced it).
+          MAIN_BACKEND_INTERNAL_URL: http://127.0.0.1:8000
         run: |
           PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/v2/services" \
             uvicorn prediction_ml_service.main:app --host 127.0.0.1 --port 8002 \

@@ -712,6 +712,10 @@ jobs:
           tail -150 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
           echo "=== api-stub son 50 satır ==="
           tail -50 /tmp/api_stub.log 2>/dev/null || echo "log yok"
+          echo "=== prediction-ml-service ERROR/exception satırları (son 200) ==="
+          grep -nE "ERROR|CRITICAL|Traceback|Exception|raise " /tmp/prediction-ml-service.log 2>/dev/null | tail -200 || echo "ERROR satırı yok"
+          echo "=== prediction-ml-service son 150 satır ==="
+          tail -150 /tmp/prediction-ml-service.log 2>/dev/null || echo "log yok"
 
       - name: Frontend lint
         run: npm --prefix frontend run lint

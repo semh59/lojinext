@@ -21,6 +21,12 @@ backups/
 *.dump
 *.sql.gz
 
+# /graphify skill output (generated, not committed)
+graphify-out/
+
+# Locust load-test result CSVs (generated, not committed)
+loadtest/results/
+
 # =============================================================================
 # Python
 # =============================================================================

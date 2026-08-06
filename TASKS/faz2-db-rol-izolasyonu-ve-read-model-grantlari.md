@@ -1005,8 +1005,15 @@ bulunup düzeltildi (kök `tests/conftest.py`'deki ikinci stale monkeypatch;
 Python'un `ensure_ascii=True` ile Node'un literal-UTF8 serileştirmesi
 arasındaki byte farkıydı).
 
-Kalan/ertelenmiş (ayrı görev, bu dalganın kapsamı dışı):
-Celery `task_prerun`/`task_postrun` sinyalinden modül-rolü türetme (şu an
-Celery task'ları module_role=None ile, yani rol kısıtlamasız çalışıyor);
-16 `m_ops` script'inin `open_role_scoped_session("m_ops")` kullanımına
-geçirilmesi.
+**GÜNCELLEME (2026-08-06, doküman senkronizasyonu):** yukarıdaki "kalan/
+ertelenmiş" madde aynı gün (2026-07-30) commit `f1de159c` ile kapandı —
+Celery `task_prerun`/`task_postrun` sinyali `setup_celery_module_role_signals()`
+ile `@worker_process_init.connect`'e bağlandı, 16 `m_ops` script'inin hepsi
+`open_role_scoped_session("m_ops")` kullanıyor (grep ile doğrulandı). Aynı
+commit'te 3 gerçek pre-existing bug bulunup düzeltildi (docker-compose'un
+silinmiş pre-v2 worker/beat yoluna işaret etmesi; SQLAlchemy 2.0'da geçersiz
+`pool.dispose(close=...)` kwarg'ı; her Celery task'ın kendi event loop'unun
+`pool_pre_ping` ile çakışıp ~%30-50 "Event loop is closed" üretmesi —
+muhtemelen Sentry LOJINEXT-17Z'nin gerçek kök nedeni). Bu bölüm bunu hiç
+işlememişti, `TASKS/STATUS.md` ile birlikte düzeltildi. FAZ2 Wave 2
+tamamen kapalı, geriye kalan iş yok.

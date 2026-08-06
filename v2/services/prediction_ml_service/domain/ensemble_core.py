@@ -817,7 +817,14 @@ class EnsembleFuelPredictor:
 
             for model in avail_models:
                 weight = ml_weights.get(model, 0.0) * ml_share
-                new_weights[model] = round(weight, 3)
+                # 3-decimal rounding here previously collapsed genuinely
+                # distinct model R2 scores into identical weights (e.g.
+                # gb=0.7816 vs rf=0.7813 both rounded to 0.231), silently
+                # discarding real precision the weighted-sum loop in
+                # _evaluate_and_build_stats then uses for actual
+                # predictions. 6 decimals keeps the value readable while
+                # preserving that distinction.
+                new_weights[model] = round(weight, 6)
         else:
             # No ML model succeeded -> Fallback to Physics
             logger.warning(

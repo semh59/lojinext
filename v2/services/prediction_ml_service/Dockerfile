@@ -4,7 +4,11 @@ FROM python:3.12-slim@sha256:d764629ce0ddd8c71fd371e9901efb324a95789d2315a47db7e
 # main backend's own Dockerfile) -- without it, `import lightgbm` fails at
 # runtime with "OSError: libgomp.so.1: cannot open shared object file"
 # (caught live via a real `docker run` import check, 2026-08-04).
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+# curl: docker-compose.yml's healthcheck for this service runs
+# `curl -f http://localhost:8002/health` -- without it the container never
+# leaves "starting"/goes "unhealthy" even though the app itself is up
+# (caught live via a real `docker compose up --build`, 2026-08-06).
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

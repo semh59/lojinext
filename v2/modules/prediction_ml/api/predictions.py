@@ -3,11 +3,13 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, Optional
 
+import httpx
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import and_, select
 
+from app.config import settings
 from v2.modules.auth_rbac.public import (
     Kullanici,
     get_current_active_admin,
@@ -16,7 +18,7 @@ from v2.modules.auth_rbac.public import (
 from v2.modules.driver.public import Sofor
 from v2.modules.platform_infra.background.celery_app import celery_app
 from v2.modules.platform_infra.public import SessionDep
-from v2.modules.prediction_ml.application.prediction_service import PredictionService
+from v2.modules.prediction_ml.public import get_prediction_service
 from v2.modules.prediction_ml.schemas import (
     AccuracyDistribution,
     EnsembleStatusResponse,
@@ -37,6 +39,20 @@ from v2.modules.shared_kernel.schemas.api_responses import SSE_RESPONSES
 from v2.modules.trip.public import SeferORM as Sefer
 
 router = APIRouter()
+
+
+def _service_headers() -> dict:
+    secret = settings.INTERNAL_API_SECRET
+    return {"X-Internal-Token": secret} if secret else {}
+
+
+async def _service_get(path: str, params: dict | None = None):
+    async with httpx.AsyncClient(
+        base_url=settings.PREDICTION_ML_SERVICE_URL, timeout=5.0
+    ) as client:
+        resp = await client.get(path, params=params, headers=_service_headers())
+        resp.raise_for_status()
+        return resp.json()
 
 
 def _build_time_series_error_response(
@@ -104,7 +120,7 @@ async def predict_fuel(
         else:
             raise HTTPException(status_code=404, detail="Şoför bulunamadı")
 
-    service = PredictionService()
+    service = get_prediction_service()
     result = await service.predict_consumption(
         arac_id=request.arac_id,
         mesafe_km=request.mesafe_km,
@@ -139,7 +155,7 @@ async def train_vehicle_model(
     current_admin: Annotated[Kullanici, Depends(get_current_active_admin)],
 ):
     """Belirli bir araç için tüm ML modellerini (Ensemble) eğitir."""
-    service = PredictionService()
+    service = get_prediction_service()
     result = await service.train_xgboost_model(arac_id, user_id=current_admin.id)
     if result.get("status") != "success":
         raise HTTPException(
@@ -262,12 +278,16 @@ async def forecast_consumption(
     days: int = Query(7, ge=1, le=30),
 ):
     """Return a real weekly consumption forecast when prerequisites are met."""
-    from v2.modules.prediction_ml.application.time_series_service import (
-        get_time_series_service,
-    )
-
-    service = get_time_series_service()
-    res = await service.predict_weekly(arac_id)
+    async with httpx.AsyncClient(
+        base_url=settings.PREDICTION_ML_SERVICE_URL, timeout=5.0
+    ) as client:
+        resp = await client.post(
+            "/time-series/forecast",
+            params={"arac_id": arac_id, "days": days},
+            headers=_service_headers(),
+        )
+        resp.raise_for_status()
+        res = resp.json()
 
     if not res["success"]:
         return _build_time_series_error_response(
@@ -306,12 +326,9 @@ async def get_trend_analysis(
     days: int = Query(30, ge=1, le=365),
 ):
     """Return historical consumption trend analysis based on real aggregates."""
-    from v2.modules.prediction_ml.application.time_series_service import (
-        get_time_series_service,
+    result = await _service_get(
+        "/time-series/trend", params={"arac_id": arac_id, "days": days}
     )
-
-    service = get_time_series_service()
-    result = await service.get_trend_analysis(arac_id, days)
     if not result.get("success"):
         return _build_time_series_error_response(
             result, "Time-series trend analysis is unavailable."
@@ -324,12 +341,7 @@ async def get_time_series_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Zaman serisi model durumu."""
-    from v2.modules.prediction_ml.application.time_series_service import (
-        get_time_series_service,
-    )
-
-    service = get_time_series_service()
-    return service.get_model_status()
+    return await _service_get("/time-series/status")
 
 
 @router.get("/ensemble/status", response_model=EnsembleStatusResponse)
@@ -337,37 +349,7 @@ async def get_ensemble_status(
     current_user: Annotated[Kullanici, Depends(get_current_active_user)],
 ):
     """Ensemble model durumu."""
-    from v2.modules.prediction_ml.domain.ensemble_core import (
-        LIGHTGBM_AVAILABLE,
-        SKLEARN_AVAILABLE,
-        XGBOOST_AVAILABLE,
-        EnsembleFuelPredictor,
-    )
-
-    predictor = EnsembleFuelPredictor()
-
-    return {
-        "models": {
-            "physics": True,
-            "lightgbm": LIGHTGBM_AVAILABLE,
-            "xgboost": XGBOOST_AVAILABLE,
-            "gradient_boosting": SKLEARN_AVAILABLE,
-            "random_forest": SKLEARN_AVAILABLE,
-        },
-        "weights": predictor.weights,
-        "sklearn_available": SKLEARN_AVAILABLE,
-        "lightgbm_available": LIGHTGBM_AVAILABLE,
-        "xgboost_available": XGBOOST_AVAILABLE,
-        "total_models": sum(
-            [
-                1,  # Physics
-                1 if LIGHTGBM_AVAILABLE else 0,
-                1 if XGBOOST_AVAILABLE else 0,
-                1 if SKLEARN_AVAILABLE else 0,  # GB
-                1 if SKLEARN_AVAILABLE else 0,  # RF
-            ]
-        ),
-    }
+    return await _service_get("/ensemble/status")
 
 
 @router.post("/explain", response_model=ExplainPredictionResponse)
@@ -378,7 +360,7 @@ async def explain_fuel_prediction(
     """
     Tahmin sonucunun nedenlerini (XAI) getirir.
     """
-    service = PredictionService()
+    service = get_prediction_service()
     result = await service.explain_consumption(
         arac_id=request.arac_id,
         mesafe_km=request.mesafe_km,

@@ -199,7 +199,9 @@ async def test_lifespan_startup_and_shutdown():
     mock_engine.dispose = AsyncMock()
 
     with (
-        patch("v2.modules.platform_infra.resilience.shutdown.register_shutdown_handlers"),
+        patch(
+            "v2.modules.platform_infra.resilience.shutdown.register_shutdown_handlers"
+        ),
         patch(
             "v2.modules.platform_infra.monitoring.event_bus.get_event_bus",
             return_value=mock_bus,
@@ -210,9 +212,6 @@ async def test_lifespan_startup_and_shutdown():
         ),
         patch(
             "v2.modules.platform_infra.monitoring.activate.activate_all_probes",
-        ),
-        patch(
-            "v2.modules.prediction_ml.public.get_ensemble_service",
         ),
         patch(
             "v2.modules.platform_infra.container.get_container",
@@ -285,7 +284,9 @@ async def test_unhandled_exception_handler_sentry_capture(async_client):
         patch.dict(sys.modules, {"sentry_sdk": mock_sentry}),
         patch("v2.modules.platform_infra.monitoring.aemit", new=AsyncMock()),
         patch(
-            "v2.modules.platform_infra.monitoring.__init__.aemit", new=AsyncMock(), create=True
+            "v2.modules.platform_infra.monitoring.__init__.aemit",
+            new=AsyncMock(),
+            create=True,
         ),
     ):
         try:

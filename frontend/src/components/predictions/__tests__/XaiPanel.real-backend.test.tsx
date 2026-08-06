@@ -99,19 +99,53 @@ describe.skipIf(!backendUp)("XaiPanel (real backend)", () => {
     const numberInputs = screen.getAllByRole("spinbutton");
     fireEvent.change(numberInputs[1], { target: { value: "10" } });
 
-    sessionStorage.setItem("access_token", authToken);
-    fireEvent.click(screen.getByRole("button", { name: "Tahmin Et + Açıkla" }));
+    // The prediction_ml_service circuit breaker (reset_timeout=60s,
+    // fail_max=5) is a process-wide singleton -- unrelated real-backend
+    // tests earlier in this suite can leave it OPEN (observed twice in
+    // CI: 2026-08-05). A real user in that situation just clicks the
+    // predict button again (see XaiPanel.tsx:200-208, the button stays
+    // enabled after isError) -- retry across a window wider than the
+    // breaker's own reset_timeout instead of masking the flake.
+    const resultLabel = "Tahmini Tüketim:";
+    const errorLabel = "Tahmin hesaplanamadı";
+    const buttonLabel = "Tahmin Et + Açıkla";
+    const contributionsLabel = "Etki Faktörleri";
+    const loadLabel = "Yük";
 
-    await waitFor(
-      () => {
-        expect(screen.getByText(/Tahmini Tüketim:/)).toBeInTheDocument();
-        expect(screen.getByText("Etki Faktörleri")).toBeInTheDocument();
-      },
-      { timeout: 10000 },
-    );
-    // Gerçek backend contributions anahtarı "Yük" döner (bkz curl kanıtı).
-    expect(screen.getByText("Yük")).toBeInTheDocument();
-    // 0.0 L/100km olmadığını doğrula (regresyonun tam tersini kanıtla).
+    const clickAndWaitForResult = async () => {
+      sessionStorage.setItem("access_token", authToken);
+      fireEvent.click(screen.getByRole("button", { name: buttonLabel }));
+      await waitFor(
+        () => {
+          const hasResult =
+            screen.queryAllByText((text) => text.includes(resultLabel)).length >
+            0;
+          const hasError =
+            screen.queryAllByText((text) => text.includes(errorLabel)).length >
+            0;
+          expect(hasResult || hasError).toBe(true);
+        },
+        { timeout: 8000 },
+      );
+      return (
+        screen.queryAllByText((text) => text.includes(resultLabel)).length > 0
+      );
+    };
+
+    // Retry budget wall-clock: wide enough to span the breaker's own
+    // reset_timeout (60s) plus margin for a half-open probe to succeed.
+    const retryDeadline = Date.now() + 75000;
+    let succeeded = await clickAndWaitForResult();
+    while (!succeeded && Date.now() < retryDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      succeeded = await clickAndWaitForResult();
+    }
+    expect(succeeded).toBe(true);
+
+    expect(screen.getByText(contributionsLabel)).toBeInTheDocument();
+    // Real backend's contributions key comes back as loadLabel (verified via curl).
+    expect(screen.getByText(loadLabel)).toBeInTheDocument();
+    // Confirm it's not 0.0 L/100km (the exact opposite of the original regression).
     expect(screen.queryByText("0.0 L/100km")).not.toBeInTheDocument();
-  }, 15000);
+  }, 100000);
 });

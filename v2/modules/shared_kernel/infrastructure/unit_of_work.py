@@ -65,12 +65,6 @@ from v2.modules.platform_infra.database.connection import AsyncSessionLocal
 from v2.modules.platform_infra.database.db_session import _session_ctx
 from v2.modules.platform_infra.events.event_bus import EventBus, get_event_bus
 from v2.modules.platform_infra.logging.logger import get_logger
-from v2.modules.prediction_ml.infrastructure.ml_training_repo import (
-    MLTrainingRepository,
-)
-from v2.modules.prediction_ml.infrastructure.model_versiyon_repo import (
-    ModelVersiyonRepository,
-)
 from v2.modules.route_simulation.infrastructure.repository import RouteRepository
 from v2.modules.trip.infrastructure.repository import SeferRepository
 
@@ -263,12 +257,6 @@ class UnitOfWork:
     setting_repo = _Lazy("setting_repo", lambda u: SettingRepository(u.session))
     maintenance_repo = _Lazy(
         "maintenance_repo", lambda u: MaintenanceRepository(u.session)
-    )
-    ml_training_repo = _Lazy(
-        "ml_training_repo", lambda u: MLTrainingRepository(u.session)
-    )
-    model_versiyon_repo = _Lazy(
-        "model_versiyon_repo", lambda u: ModelVersiyonRepository(u.session)
     )
     analiz_repo = _Lazy("analiz_repo", lambda u: AnalizRepository(u.session))
     anomaly_repo = _Lazy("anomaly_repo", lambda u: AnomalyRepository(u.session))

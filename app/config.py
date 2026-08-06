@@ -305,6 +305,15 @@ class Settings(BaseSettings):
     OCR_SERVICE_API_KEY: str = ""  # Set to a random secret; empty = auth disabled (dev)
     BELGELER_UPLOAD_DIR: str = "/belgeler"
 
+    # prediction_ml service (internal Docker network) -- feature-flagged
+    # extraction, see docs/superpowers/plans/2026-07-31-prediction-ml-
+    # service-extraction.md. MAIN_BACKEND_INTERNAL_URL is used by the
+    # standalone service's cross_module_client.py to call back into this
+    # backend's /api/v1/internal/* endpoints.
+    PREDICTION_ML_REMOTE: bool = False
+    PREDICTION_ML_SERVICE_URL: str = "http://prediction-ml-service:8002"
+    MAIN_BACKEND_INTERNAL_URL: str = "http://backend:8000"
+
     # Read-only Docker Engine API proxy (see docker-compose.yml's
     # docker-socket-proxy: CONTAINERS+NETWORKS+EVENTS=1, POST=0) — used to
     # report the telegram bot containers' actual running/health state on the

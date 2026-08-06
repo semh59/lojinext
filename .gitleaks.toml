@@ -23,9 +23,19 @@ paths = [
 # Suppress generic-api-key false positives on test fixture parameter names.
 # Real auth tokens are generated at runtime from settings.SECRET_KEY (env-injected)
 # and never stored in source.
+#
+# GL-BaajLCs-... is CI's own fixed test-only PII_ENCRYPTION_KEY (used
+# identically in .github/workflows/ci.yml's hard-gates and
+# prediction-ml-service-tests job env blocks -- never a real key). A
+# content-based allowlist entry is used instead of an inline
+# `gitleaks:allow` comment because Gitleaks scans each commit's diff in
+# git history individually; a suppression comment added in a later commit
+# doesn't retroactively cover the earlier commit that first introduced the
+# line without it (confirmed live in CI, 2026-08-05).
 regexes = [
   '''admin_auth_headers''',
   '''async_superuser_token_headers''',
   '''auth_headers''',
   '''normal_auth_headers''',
+  '''GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=''',  # pragma: allowlist secret
 ]

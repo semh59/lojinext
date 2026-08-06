@@ -23,7 +23,10 @@ class TestNoModuleLevelContainerImport:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "v2.modules.platform_infra.container"
+            ):
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "
@@ -45,12 +48,17 @@ class TestContainerLazyLoading:
         assert c1 is c2
 
     def test_container_has_all_expected_singleton_categories(self):
-        """Container property'leri beklenen kategorileri içermeli."""
+        """Container property'leri beklenen kategorileri içermeli.
+
+        prediction_service / time_series_service artık container'da yok —
+        prediction_ml_service extraction'ı sonrası bu ML pipeline HTTP
+        üzerinden ayrı bir microservice'te çalışıyor (bkz.
+        v2/services/prediction_ml_service/CLAUDE.md), in-process singleton
+        değil.
+        """
         container = get_container()
         # ML/AI Subsystem
-        assert hasattr(container, "prediction_service")
         assert hasattr(container, "anomaly_detector")
-        assert hasattr(container, "time_series_service")
         # Infrastructure
         assert hasattr(container, "event_bus")
         # Repos (yalnız sefer_repo kaldı — diğerleri dalga 17 denetiminde
@@ -70,7 +78,10 @@ class TestContainerLazyLoading:
         source = inspect.getsource(mod)
         tree = ast.parse(source)
         for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and node.module == "v2.modules.platform_infra.container":
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module == "v2.modules.platform_infra.container"
+            ):
                 if hasattr(node, "lineno") and node.lineno <= 20:
                     pytest.fail(
                         f"sefer_upload_importer.py satır {node.lineno}'de "

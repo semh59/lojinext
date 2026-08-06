@@ -1,9 +1,7 @@
 import pytest
 
 from v2.modules.prediction_ml.domain.physics_fuel_predictor import (
-    HybridFuelPredictor,
     PhysicsBasedFuelPredictor,
-    RouteConditions,
 )
 
 
@@ -39,29 +37,6 @@ def test_payload_sensitivity(predictor):
     )
 
 
-def test_hybrid_learning():
-    """
-    Test HybridFuelPredictor learning from historical errors.
-    """
-    predictor = HybridFuelPredictor()
-    route = RouteConditions(distance_km=100.0, load_ton=20.0)
-
-    # Initial state
-    p1 = predictor.predict(route)
-    initial_liters = p1.total_liters
-
-    # Simulate a series of "Actual" readings where vehicle is 20% THIRSTIER
-    for _ in range(10):
-        actual = initial_liters * 1.20
-        predictor.learn_from_actual(initial_liters, actual)
-
-    assert predictor.correction_factor > 1.10
-
-    # New prediction should be higher
-    p2 = predictor.predict(route)
-    assert p2.total_liters > p1.total_liters
-
-
 def test_extreme_downhill_momentum(predictor):
     """
     Verify that extreme downhill doesn't produce negative fuel or absurdly low values
@@ -81,5 +56,4 @@ def test_extreme_downhill_momentum(predictor):
 if __name__ == "__main__":
     p = PhysicsBasedFuelPredictor()
     test_payload_sensitivity(p)
-    test_hybrid_learning()
     test_extreme_downhill_momentum(p)

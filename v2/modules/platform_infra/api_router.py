@@ -33,11 +33,17 @@ from v2.modules.admin_platform.api.internal_routes import router as internal_rou
 from v2.modules.admin_platform.api.system_routes import router as system_router
 from v2.modules.ai_assistant.api.ai_routes import router as ai_router
 from v2.modules.ai_assistant.api.feedback_routes import router as feedback_router
+from v2.modules.ai_assistant.api.internal_routes import (
+    router as ai_assistant_internal_router,
+)
 from v2.modules.ai_assistant.api.plan_wizard_routes import (
     router as plan_wizard_router,
 )
 from v2.modules.analytics_executive.api.executive_routes import (
     router as executive_router,
+)
+from v2.modules.analytics_executive.api.internal_routes import (
+    router as analytics_executive_internal_router,
 )
 from v2.modules.analytics_executive.api.trip_analytics_routes import (
     router as trip_analytics_router,
@@ -57,9 +63,11 @@ from v2.modules.auth_rbac.api.user_routes import router as users_router
 from v2.modules.auth_rbac.api.ws_ticket_routes import router as ws_ticket_router
 from v2.modules.driver.api.coaching_routes import router as coaching_router
 from v2.modules.driver.api.driver_routes import router as driver_router
+from v2.modules.driver.api.internal_routes import router as driver_internal_router
 from v2.modules.fleet.api.admin_maintenance_routes import (
     router as admin_maintenance_router,
 )
+from v2.modules.fleet.api.internal_routes import router as fleet_internal_router
 from v2.modules.fleet.api.maintenance_routes import router as maintenance_router
 from v2.modules.fleet.api.trailer_routes import router as trailer_router
 from v2.modules.fleet.api.vehicle_routes import router as vehicle_router
@@ -105,6 +113,7 @@ from v2.modules.route_simulation.api.admin_calibration_routes import (
 )
 from v2.modules.route_simulation.api.route_routes import router as route_router
 from v2.modules.route_simulation.api.weather_routes import router as weather_router
+from v2.modules.trip.api.internal_routes import router as trip_internal_router
 from v2.modules.trip.api.trip_approval_routes import router as trip_approval_router
 from v2.modules.trip.api.trip_bulk_routes import router as trip_bulk_router
 from v2.modules.trip.api.trip_read_routes import router as trip_read_router
@@ -434,4 +443,27 @@ api_router.include_router(
     prefix="/internal",
     tags=["internal"],
     dependencies=_admin_platform_role_dep,
+)
+# prediction_ml_service internal-HTTP cross-module surface (Task 5,
+# 2026-08-04) -- each router already carries its own X-Internal-Token
+# check; the module-role dependency here matches every other router's
+# own module for DB session scoping (FAZ2 Wave 1/2), same as above.
+api_router.include_router(
+    fleet_internal_router, tags=["internal"], dependencies=_fleet_role_dep
+)
+api_router.include_router(
+    driver_internal_router, tags=["internal"], dependencies=_driver_role_dep
+)
+api_router.include_router(
+    trip_internal_router, tags=["internal"], dependencies=_trip_role_dep
+)
+api_router.include_router(
+    analytics_executive_internal_router,
+    tags=["internal"],
+    dependencies=_analytics_executive_role_dep,
+)
+api_router.include_router(
+    ai_assistant_internal_router,
+    tags=["internal"],
+    dependencies=_ai_assistant_role_dep,
 )

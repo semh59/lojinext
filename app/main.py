@@ -321,19 +321,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # pragma: no cover
         logger.warning("Cache invalidation listener setup failed: %s", exc)
 
-    try:
-        from v2.modules.prediction_ml.public import get_model_training_handler
-
-        get_model_training_handler().setup()
-    except Exception as exc:  # pragma: no cover
-        logger.warning("ModelTrainingHandler setup failed: %s", exc)
-
-    try:
-        from v2.modules.prediction_ml.public import get_physics_handler
-
-        get_physics_handler().register()
-    except Exception as exc:  # pragma: no cover
-        logger.warning("PhysicsRecalculationHandler registration failed: %s", exc)
+    # ModelTrainingHandler / PhysicsRecalculationHandler moved to
+    # prediction_ml_service's own lifespan (Task 5, 2026-08-04) -- both
+    # subscribe to the same Redis-backed event bus, so registering them
+    # there (not here) is enough; the event bus itself doesn't care which
+    # process a subscriber lives in.
 
     try:
         from v2.modules.notification.public import register_handlers
@@ -349,16 +341,9 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # pragma: no cover
         logger.warning("RAGSyncService initialization failed: %s", exc)
 
-    # ML predictor warm-up (v2.modules.prediction_ml.application.model_warmup'a
-    # taşındı, dalga 17 — projenin ilk modül-startup hook'u).
-    try:
-        from v2.modules.prediction_ml.public import schedule_predictor_warmup
-
-        _task = schedule_predictor_warmup()
-        _bg_tasks.add(_task)
-        _task.add_done_callback(_bg_tasks.discard)
-    except Exception as exc:  # pragma: no cover
-        logger.warning("ML warm-up scheduling failed: %s", exc)
+    # ML predictor warm-up moved to prediction_ml_service's own lifespan
+    # (Task 5, 2026-08-04) -- the predictor cache now lives in that
+    # process, not this one.
 
     try:
         yield
@@ -439,6 +424,7 @@ async def redis_unavailable_handler(request: Request, exc: RedisConnectionError)
             }
         },
     )
+
 
 app.add_middleware(
     CORSMiddleware,

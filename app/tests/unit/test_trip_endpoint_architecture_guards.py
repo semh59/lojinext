@@ -7,8 +7,14 @@ def test_trip_endpoints_do_not_use_uow_or_repo_directly():
     'Router bölünmesi' bölümü."""
     root = Path(__file__).resolve().parents[3]
     trip_api_dir = root / "v2" / "modules" / "trip" / "api"
+    # internal_routes.py is the service-to-service callback surface for
+    # prediction_ml_service's cross_module_client (Task 5, 2026-08-04) --
+    # same X-Internal-Token pattern as admin_platform/api/internal_routes.py,
+    # not a public CRUD endpoint, so it is exempt from this guard.
     content = "".join(
-        p.read_text(encoding="utf-8") for p in trip_api_dir.glob("*.py")
+        p.read_text(encoding="utf-8")
+        for p in trip_api_dir.glob("*.py")
+        if p.name != "internal_routes.py"
     )
 
     forbidden_patterns = [

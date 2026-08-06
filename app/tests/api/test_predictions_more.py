@@ -1,7 +1,14 @@
 """
 Predictions endpoint — 2nd pass coverage.
 
-Targets remaining uncovered branches in predictions.py (~77% → higher):
+Rewired for the prediction_ml_service extraction (Task 5, 2026-08-04) --
+same patch-target changes as test_predictions_coverage.py (see that
+file's module docstring): predict/train/explain go through
+get_prediction_service(); ensemble/status and time-series/{status,trend}
+are pure httpx proxies via _service_get(); time-series/forecast builds
+its own inline httpx.AsyncClient.
+
+Targets remaining uncovered branches in predictions.py:
 - predict_fuel: sofor_id lookup when sofor.score is None (uses 1.0), sofor found with score
 - predict_fuel: sofor_score below lower bound (< 0.1) → 400
 - comparison: with matching trip data (non-empty seferler) — all accuracy buckets
@@ -9,7 +16,6 @@ Targets remaining uncovered branches in predictions.py (~77% → higher):
 - stream: timeout path (loop exhausted)
 - stream: failure state terminates early
 - enqueue: missing required fields → 422
-- train: requires admin (non-admin returns 403) already covered — verify training path
 """
 
 from __future__ import annotations
@@ -23,6 +29,7 @@ import pytest
 pytestmark = pytest.mark.unit
 
 BASE = "/api/v1/predictions"
+PREDICTIONS_MODULE = "v2.modules.prediction_ml.api.predictions"
 
 PRED_PAYLOAD = {
     "arac_id": 1,
@@ -54,7 +61,12 @@ def _mock_prediction_service(**overrides):
     svc = MagicMock()
     svc.predict_consumption = AsyncMock(return_value={**PRED_SUCCESS, **overrides})
     svc.explain_consumption = AsyncMock(
-        return_value={"features": [], "top_factor": "mesafe_km"}
+        return_value={
+            "prediction": 32.5,
+            "unit": "L/100km",
+            "contributions": {"mesafe_km": 0.4},
+            "confidence": 0.85,
+        }
     )
     svc.train_xgboost_model = AsyncMock(
         return_value={
@@ -66,8 +78,32 @@ def _mock_prediction_service(**overrides):
         }
     )
 
-    with patch("v2.modules.prediction_ml.api.predictions.PredictionService", return_value=svc):
+    with patch(f"{PREDICTIONS_MODULE}.get_prediction_service", return_value=svc):
         yield svc
+
+
+def _fake_httpx_client(json_payload, status_code=200):
+    """Build a fake `async with httpx.AsyncClient(...) as client` context
+    manager whose .post() returns a fake response -- forecast_consumption
+    constructs its own httpx.AsyncClient inline (not via _service_get)."""
+    fake_response = MagicMock()
+    fake_response.status_code = status_code
+    fake_response.json.return_value = json_payload
+    if status_code >= 400:
+        import httpx
+
+        fake_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+            "error", request=MagicMock(), response=fake_response
+        )
+    else:
+        fake_response.raise_for_status.return_value = None
+
+    fake_client = AsyncMock()
+    fake_client.post = AsyncMock(return_value=fake_response)
+    fake_client_cm = MagicMock()
+    fake_client_cm.__aenter__ = AsyncMock(return_value=fake_client)
+    fake_client_cm.__aexit__ = AsyncMock(return_value=False)
+    return fake_client_cm, fake_client
 
 
 # ---------------------------------------------------------------------------
@@ -322,9 +358,7 @@ async def test_stream_terminates_on_failure_state(async_client, admin_auth_heade
     fake_result.state = "FAILURE"
     fake_result.result = {"error": "something failed", "finished_at": None}
 
-    with patch(
-        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-    ):
+    with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
         resp = await async_client.get(
             f"{BASE}/failing-task/stream",
             headers=admin_auth_headers,
@@ -340,9 +374,7 @@ async def test_stream_terminates_on_revoked_state(async_client, admin_auth_heade
     fake_result.state = "REVOKED"
     fake_result.result = {}
 
-    with patch(
-        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-    ):
+    with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
         resp = await async_client.get(
             f"{BASE}/revoked-task/stream",
             headers=admin_auth_headers,
@@ -362,9 +394,7 @@ async def test_stream_result_not_dict(async_client, admin_auth_headers):
     fake_result.state = "SUCCESS"
     fake_result.result = "some_string_result"  # not a dict
 
-    with patch(
-        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-    ):
+    with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
         resp = await async_client.get(
             f"{BASE}/str-result-task/stream",
             headers=admin_auth_headers,
@@ -384,9 +414,7 @@ async def test_prediction_status_result_not_dict(async_client, admin_auth_header
     fake_result.state = "FAILURE"
     fake_result.result = Exception("something went wrong")  # not a dict
 
-    with patch(
-        "v2.modules.prediction_ml.api.predictions.AsyncResult", return_value=fake_result
-    ):
+    with patch(f"{PREDICTIONS_MODULE}.AsyncResult", return_value=fake_result):
         resp = await async_client.get(
             f"{BASE}/failed-task",
             headers=admin_auth_headers,
@@ -414,34 +442,46 @@ async def test_enqueue_missing_question(async_client, admin_auth_headers):
 
 
 # ---------------------------------------------------------------------------
-# ensemble status — sklearn/lightgbm/xgboost availability flags
+# ensemble status — pure httpx proxy pass-through
 # ---------------------------------------------------------------------------
 
 
 async def test_ensemble_status_all_available(async_client, admin_auth_headers):
-    """GET /ensemble/status when all ML libs available → models dict present."""
-    fake_predictor = MagicMock()
-    fake_predictor.weights = {
-        "physics": 0.6,
-        "lightgbm": 0.1,
-        "xgboost": 0.1,
-        "gradient_boosting": 0.1,
-        "random_forest": 0.1,
+    """GET /ensemble/status relays a "all libs available" payload as-is.
+
+    The flag-computation logic (SKLEARN_AVAILABLE/LIGHTGBM_AVAILABLE/
+    XGBOOST_AVAILABLE) moved into prediction_ml_service's own endpoint --
+    this main-backend route is now a pure httpx proxy (_service_get), so
+    this test only verifies the proxy relays the service's response.
+    """
+    fake_status = {
+        "models": {
+            "physics": True,
+            "lightgbm": True,
+            "xgboost": True,
+            "gradient_boosting": True,
+            "random_forest": True,
+        },
+        "weights": {
+            "physics": 0.6,
+            "lightgbm": 0.1,
+            "xgboost": 0.1,
+            "gradient_boosting": 0.1,
+            "random_forest": 0.1,
+        },
+        "sklearn_available": True,
+        "lightgbm_available": True,
+        "xgboost_available": True,
+        "total_models": 5,
     }
 
     with patch(
-        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
-        return_value=fake_predictor,
+        f"{PREDICTIONS_MODULE}._service_get", new=AsyncMock(return_value=fake_status)
     ):
-        with (
-            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", True),
-            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", True),
-            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", True),
-        ):
-            resp = await async_client.get(
-                f"{BASE}/ensemble/status",
-                headers=admin_auth_headers,
-            )
+        resp = await async_client.get(
+            f"{BASE}/ensemble/status",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code == 200
     data = resp.json()
@@ -450,27 +490,33 @@ async def test_ensemble_status_all_available(async_client, admin_auth_headers):
 
 
 async def test_ensemble_status_none_available(async_client, admin_auth_headers):
-    """GET /ensemble/status when only physics available → total_models=1."""
-    fake_predictor = MagicMock()
-    fake_predictor.weights = {"physics": 1.0}
+    """GET /ensemble/status relays a "only physics available" payload as-is."""
+    fake_status = {
+        "models": {
+            "physics": True,
+            "lightgbm": False,
+            "xgboost": False,
+            "gradient_boosting": False,
+            "random_forest": False,
+        },
+        "weights": {"physics": 1.0},
+        "sklearn_available": False,
+        "lightgbm_available": False,
+        "xgboost_available": False,
+        "total_models": 1,
+    }
 
     with patch(
-        "v2.modules.prediction_ml.domain.ensemble_core.EnsembleFuelPredictor",
-        return_value=fake_predictor,
+        f"{PREDICTIONS_MODULE}._service_get", new=AsyncMock(return_value=fake_status)
     ):
-        with (
-            patch("v2.modules.prediction_ml.domain.ensemble_core.SKLEARN_AVAILABLE", False),
-            patch("v2.modules.prediction_ml.domain.ensemble_core.LIGHTGBM_AVAILABLE", False),
-            patch("v2.modules.prediction_ml.domain.ensemble_core.XGBOOST_AVAILABLE", False),
-        ):
-            resp = await async_client.get(
-                f"{BASE}/ensemble/status",
-                headers=admin_auth_headers,
-            )
+        resp = await async_client.get(
+            f"{BASE}/ensemble/status",
+            headers=admin_auth_headers,
+        )
 
     assert resp.status_code == 200
     data = resp.json()
-    assert "total_models" in data
+    assert data["total_models"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -488,28 +534,26 @@ async def test_forecast_days_param_out_of_range(async_client, admin_auth_headers
 
 
 async def test_forecast_with_arac_id(async_client, admin_auth_headers):
-    """POST /time-series/forecast?arac_id=1 passes arac_id to service."""
-    fake_ts_service = MagicMock()
-    fake_ts_service.predict_weekly = AsyncMock(
-        return_value={
-            "success": True,
-            "forecast_dates": ["2026-06-05"],
-            "forecast": [31.5],
-            "confidence_low": [29.0],
-            "confidence_high": [34.0],
-            "trend": "stable",
-            "method": "ARIMA",
-        }
-    )
+    """POST /time-series/forecast?arac_id=1 passes arac_id as a query param
+    to the httpx proxy call (forecast_consumption builds its own inline
+    httpx.AsyncClient, not via _service_get)."""
+    fake_payload = {
+        "success": True,
+        "forecast_dates": ["2026-06-05"],
+        "forecast": [31.5],
+        "confidence_low": [29.0],
+        "confidence_high": [34.0],
+        "trend": "stable",
+        "method": "ARIMA",
+    }
+    fake_client_cm, fake_client = _fake_httpx_client(fake_payload)
 
-    with patch(
-        "v2.modules.prediction_ml.application.time_series_service.get_time_series_service",
-        return_value=fake_ts_service,
-    ):
+    with patch(f"{PREDICTIONS_MODULE}.httpx.AsyncClient", return_value=fake_client_cm):
         resp = await async_client.post(
             f"{BASE}/time-series/forecast?arac_id=1",
             headers=admin_auth_headers,
         )
 
     assert resp.status_code == 200
-    fake_ts_service.predict_weekly.assert_called_once_with(1)
+    call_kwargs = fake_client.post.call_args.kwargs
+    assert call_kwargs["params"]["arac_id"] == 1

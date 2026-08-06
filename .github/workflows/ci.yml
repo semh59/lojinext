@@ -87,6 +87,24 @@ jobs:
       PYTHONUNBUFFERED: "1"
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      # tests/conftest.py's autouse _mock_ml_load_model_for_tests fixture
+      # patches prediction_ml_service.domain.ensemble_core.
+      # EnsembleFuelPredictor.load_model -- that package only lives under
+      # v2/services now (Task 5, 2026-08-04 extraction), so every test
+      # under tests/ needs it importable even though this job never runs
+      # the standalone service itself.
+      PYTHONPATH: v2/services
+      # Default (app/config.py) is the docker-compose hostname
+      # "prediction-ml-service", unresolvable on this bare runner. Only the
+      # "Start backend" step set this before (as step-level env), so any
+      # OTHER step hitting a /predictions/* endpoint through a plain
+      # pytest TestClient -- e.g. "Integration — API contracts" -- got the
+      # default and failed with a DNS error, not the actual contract being
+      # tested (caught live in CI, 2026-08-05: test_prediction_response_shape
+      # got 503 "prediction_ml_service unreachable" instead of 200/404/422).
+      # Job-level here so every step sees the already-running instance on
+      # 127.0.0.1:8002 (started by "Start prediction-ml-service" below).
+      PREDICTION_ML_SERVICE_URL: http://127.0.0.1:8002
 
     steps:
       - name: Checkout code
@@ -525,9 +543,62 @@ jobs:
             echo "Waiting for api-stub... ($i/15)" && sleep 2
           done
 
+      # prediction_ml_service (Task 5, 2026-08-04): the main backend's
+      # prediction_ml module is now an HTTP-client facade -- without a
+      # reachable service here, every real-backend vitest test that hits
+      # /predictions/* or /admin/ml/* 5xxs (caught live, run 31024532255,
+      # 2026-08-05: PredictionSimulator/XaiPanel/MLYonetimPage/
+      # prediction-service real-backend suites all failed). Same package,
+      # same lojinext_vitest DB (dual-homed tables) + Redis this job
+      # already has running -- no extra pip install, its requirements.txt
+      # is a strict subset of the root one already installed above.
+      - name: Start prediction-ml-service (standalone ML microservice)
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          REDIS_URL: redis://localhost:6379/0
+          ENVIRONMENT: test
+          # cross_module_client.py's default ("http://backend:8000") is the
+          # docker-compose service hostname -- doesn't resolve as raw CI
+          # processes on one shared runner, no compose network here. Real
+          # root cause of every prior "fix" failing to help: every call
+          # this service made back to the main backend (fleet vehicle
+          # lookups, runtime-config reads, teach) hit
+          # "httpcore.ConnectError: [Errno -3] Temporary failure in name
+          # resolution", not a timeout or a 4xx (caught live, run
+          # 31041655199, 2026-08-05 -- the newly-added service-side log
+          # dump finally surfaced it).
+          MAIN_BACKEND_INTERNAL_URL: http://127.0.0.1:8000
+        run: |
+          PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/v2/services" \
+            uvicorn prediction_ml_service.main:app --host 127.0.0.1 --port 8002 \
+            > /tmp/prediction-ml-service.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8002/health && echo "prediction-ml-service ready" && break
+            echo "Waiting for prediction-ml-service... ($i/30)" && sleep 2
+          done
+          # /health returns as soon as lifespan startup finishes, but the
+          # background model warm-up task (schedule_predictor_warmup,
+          # asyncio.create_task -- not awaited) and sklearn/xgboost/
+          # lightgbm object construction inside EnsembleFuelPredictor()
+          # keep running after that. Without this, the vitest suite's
+          # first real /predictions/* calls raced the still-warming
+          # service, tripped http_client.py's circuit breaker after 5
+          # timeouts (fail_max=5, 5s client timeout), and then stayed
+          # OPEN for its full 60s reset window -- caught live, run
+          # 31026417857, 2026-08-05 ("Circuit 'prediction_ml_service'
+          # OPENED after 5 failures" at 16:55:47, well after /health had
+          # already reported ready). Hitting /ensemble/status here forces
+          # the same EnsembleFuelPredictor() construction path to finish
+          # inside this wait loop instead.
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8002/ensemble/status > /dev/null && echo "prediction-ml-service warm" && break
+            echo "Waiting for prediction-ml-service warm-up... ($i/30)" && sleep 2
+          done
+
       - name: Start backend (vitest real-backend + OpenAPI drift + E2E)
         env:
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_vitest
+          PREDICTION_ML_SERVICE_URL: http://127.0.0.1:8002
           # Dummy anahtar ŞART: MapboxClient anahtar yoksa stub'a bile
           # gitmeden "API Key missing" ile iptal eder → /routes/simulate 502
           # (2026-07-07 lokal CI-simülasyonunda yakalandı). Stub auth'a bakmaz.
@@ -659,10 +730,20 @@ jobs:
           grep -nE "ERROR|CRITICAL|Traceback|Exception|raise " /tmp/uvicorn-vitest.log 2>/dev/null | tail -200 || echo "ERROR satırı yok"
           echo "=== uvicorn ERROR bağlamı (B2/A20) ==="
           grep -B2 -A 20 -E "\| ERROR|Traceback" /tmp/uvicorn-vitest.log 2>/dev/null | tail -300 || echo "bağlam yok"
+          # prediction_ml_service'e özgü hatalar, 1300+ testlik suite'in genel
+          # ERROR kuyruğunda kaybolabiliyor (tail -200/-300 ilgisiz testlerin
+          # trace'leriyle dolup asıl exception'ı dışarı itiyor) -- ayrı, geniş
+          # bağlamlı bir arama ile izole ediyoruz.
+          echo "=== prediction_ml_service / /predictions çağrıları bağlamı (B5/A60) ==="
+          grep -B5 -A 60 -E "prediction_ml_service|/api/v1/predictions/" /tmp/uvicorn-vitest.log 2>/dev/null | tail -600 || echo "bağlam yok"
           echo "=== uvicorn son 150 satır ==="
           tail -150 /tmp/uvicorn-vitest.log 2>/dev/null || echo "log yok"
           echo "=== api-stub son 50 satır ==="
           tail -50 /tmp/api_stub.log 2>/dev/null || echo "log yok"
+          echo "=== prediction-ml-service ERROR/exception satırları (son 200) ==="
+          grep -nE "ERROR|CRITICAL|Traceback|Exception|raise " /tmp/prediction-ml-service.log 2>/dev/null | tail -200 || echo "ERROR satırı yok"
+          echo "=== prediction-ml-service son 150 satır ==="
+          tail -150 /tmp/prediction-ml-service.log 2>/dev/null || echo "log yok"
 
       - name: Frontend lint
         run: npm --prefix frontend run lint
@@ -721,9 +802,96 @@ jobs:
         if: always()
         run: kill $UVICORN_PID || true
 
+  prediction-ml-service-tests:
+    name: prediction_ml_service test suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Runs as its own job (own process, own Postgres/Redis) rather than a
+    # step folded into hard-gates: v2/services/prediction_ml_service and
+    # the main backend each carry their own copy of
+    # infrastructure/models.py (dual-homed on purpose, see root CLAUDE.md's
+    # ML subsystem section) — both register the same SQLAlchemy table
+    # names against the same shared Base.metadata, so importing both
+    # copies in one pytest process collides with "Table 'X' is already
+    # defined for this MetaData instance" (confirmed live while verifying
+    # this test suite, 2026-08-05). Passing this job's own test path
+    # explicitly on the CLI (not relying on pytest.ini's `testpaths`, which
+    # intentionally does not include this directory) keeps the two
+    # suites' collections fully isolated, matching how they actually run
+    # in production — separate services, separate processes.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lojinext_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lojinext_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      ENVIRONMENT: test
+      SECRET_KEY: test-secret-key
+      PII_ENCRYPTION_KEY: GL-BaajLCs-r2dCZ55yWHtCv0bxYyzmQ1A3RE4JLNjs=  # pragma: allowlist secret gitleaks:allow
+      POSTGRES_USER: postgres
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/lojinext_test
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      CELERY_EAGER: "True"
+      PYTHONUNBUFFERED: "1"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: |
+            requirements.txt
+            app/requirements.txt
+            app/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r app/requirements-dev.txt
+
+      - name: Run prediction_ml_service test suite
+        # PYTHONPATH needs BOTH the repo root (v2.modules.* imports used by
+        # platform_infra/shared_kernel dependencies this service still
+        # shares) AND v2/services (so `prediction_ml_service.*` resolves) --
+        # verified locally with the same two-entry PYTHONPATH against a
+        # live container; a github.workspace-relative single-entry value
+        # here silently dropped the repo root and broke every v2.modules
+        # import with ModuleNotFoundError.
+        run: |
+          export PYTHONPATH="${GITHUB_WORKSPACE}:${GITHUB_WORKSPACE}/v2/services"
+          pytest v2/services/prediction_ml_service/tests/ -q --tb=short
+
   publish:
     name: Build & Push to GHCR
-    needs: hard-gates
+    needs: [hard-gates, prediction-ml-service-tests]
     runs-on: ubuntu-latest
     if: |
       github.event_name == 'push' &&

@@ -35,12 +35,6 @@ if TYPE_CHECKING:
     from v2.modules.ai_assistant.application.knowledge_base import SmartAIService
     from v2.modules.anomaly.application.detect_anomaly import AnomalyDetector
     from v2.modules.platform_infra.events.event_bus import EventBus
-    from v2.modules.prediction_ml.application.prediction_service import (
-        PredictionService,
-    )
-    from v2.modules.prediction_ml.application.time_series_service import (
-        TimeSeriesService,
-    )
     from v2.modules.trip.application.trip_service import SeferService
     from v2.modules.trip.infrastructure.repository import SeferRepository
 
@@ -97,9 +91,7 @@ class Container:
         # Model dosyaları ilk erişimde bir kez yüklenir.
         # Sonraki request'lerde in-memory model kullanılır.
         # Bu servisler THREAD-SAFE olmak zorunda (paralel inference).
-        self._prediction_service: Optional["PredictionService"] = None
         self._anomaly_detector: Optional["AnomalyDetector"] = None
-        self._time_series_service: Optional["TimeSeriesService"] = None
         self._ai_service = None
         self._smart_ai_service: Optional["SmartAIService"] = None
 
@@ -147,18 +139,6 @@ class Container:
         return self._sefer_service
 
     @property
-    def prediction_service(self) -> "PredictionService":
-        if self._prediction_service is None:
-            with self._lock:
-                if self._prediction_service is None:
-                    from v2.modules.prediction_ml.application.prediction_service import (
-                        PredictionService,
-                    )
-
-                    self._prediction_service = PredictionService()
-        return self._prediction_service
-
-    @property
     def anomaly_detector(self) -> "AnomalyDetector":
         if self._anomaly_detector is None:
             with self._lock:
@@ -169,18 +149,6 @@ class Container:
 
                     self._anomaly_detector = AnomalyDetector()
         return self._anomaly_detector
-
-    @property
-    def time_series_service(self) -> "TimeSeriesService":
-        if self._time_series_service is None:
-            with self._lock:
-                if self._time_series_service is None:
-                    from v2.modules.prediction_ml.application.time_series_service import (
-                        TimeSeriesService,
-                    )
-
-                    self._time_series_service = TimeSeriesService()
-        return self._time_series_service
 
     @property
     def ai_service(self):
@@ -237,9 +205,7 @@ class Container:
             # Servisleri sıfırla (Dependency sırasının tersine)
             self._smart_ai_service = None
             self._ai_service = None
-            self._time_series_service = None
             self._anomaly_detector = None
-            self._prediction_service = None
             self._sefer_service = None
 
             # External / infra singletons

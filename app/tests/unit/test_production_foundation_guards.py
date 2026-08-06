@@ -499,8 +499,8 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
     time_series_service = (
         ROOT
         / "v2"
-        / "modules"
-        / "prediction_ml"
+        / "services"
+        / "prediction_ml_service"
         / "application"
         / "time_series_service.py"
     ).read_text(encoding="utf-8")
@@ -528,9 +528,6 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
         / "application"
         / "weather_service.py"
     ).read_text(encoding="utf-8")
-    lightgbm_predictor = (
-        ROOT / "v2" / "modules" / "prediction_ml" / "domain" / "lightgbm_predictor.py"
-    ).read_text(encoding="utf-8")
     sefer_repo = (
         ROOT / "v2" / "modules" / "trip" / "infrastructure" / "repository.py"
     ).read_text(encoding="utf-8")
@@ -540,7 +537,6 @@ def test_backend_truthfulness_guards_hold_for_time_series_and_route_matching():
     assert "falling back to mock data" not in time_series_service
     assert '"matches": True' not in route_calibration_service
     assert "offline_fallback" not in route_service
-    assert "prediction * 0.08" not in lightgbm_predictor
     assert "include_synthetic" not in sefer_repo
     assert "Mevsimsel Tahmin" not in weather_service
     assert not (

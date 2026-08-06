@@ -103,7 +103,6 @@ LIGHTGBM_AVAILABLE, SKLEARN_AVAILABLE, XGBOOST_AVAILABLE
 
 # Fizik motoru (saf, I/O yok)
 PhysicsBasedFuelPredictor, VehicleSpecs, RouteConditions, FuelPrediction
-HybridFuelPredictor          # fizik + öğrenen düzeltme faktörü (test-only kullanım, bkz. gotcha)
 
 # Rota benzerliği (ai_assistant plan_trip.py kullanır)
 find_similar_trips(route_analysis, mesafe_km, limit=5) -> list[dict]
@@ -169,39 +168,25 @@ constructor-injected client bağımlılığı, CRUD-benzeri bir servis değiller
 3. **`EnsembleFuelPredictor`** (`domain/ensemble_core.py`) — sklearn/xgboost/
    lightgbm model nesnelerini + `self.weights`/`self.is_trained` mutable
    eğitim state'ini tutan model wrapper'ı.
-4. **`PhysicsBasedFuelPredictor`**/`HybridFuelPredictor` (`domain/physics_fuel_predictor.py`) —
-   `HybridFuelPredictor` `self.historical_errors`/`self.correction_factor`
-   online-öğrenen state tutuyor.
-5. **`KalmanFuelEstimator`**/`KalmanEstimatorService` (`domain/kalman_estimator.py`) —
-   Kalman filtresi devlet-uzayı (`state`, `P` kovaryans matrisi) gerçek mutable
-   state; `KalmanEstimatorService` 200-slot LRU cache.
-6. **`LightGBMFuelPredictor`**/`LightGBMAnomalyClassifier` (`domain/lightgbm_predictor.py`) —
-   model wrapper, `self.model`/`self.is_trained` state.
-7. **`ARIMATimeSeriesPredictor`**/legacy `TimeSeriesPredictor`+`FuelConsumptionLSTM`
+4. **`PhysicsBasedFuelPredictor`** (`domain/physics_fuel_predictor.py`) —
+   fizik-tabanlı tahmin motoru, saf model wrapper.
+5. **`ARIMATimeSeriesPredictor`**/legacy `TimeSeriesPredictor`+`FuelConsumptionLSTM`
    (`domain/time_series_predictor.py`) — model wrapper.
-8. **`Trainer`** (`application/trainer.py`) — thin facade, `EnsemblePredictorService`'i
+6. **`Trainer`** (`application/trainer.py`) — thin facade, `EnsemblePredictorService`'i
    lazy import eden tek-pipeline sınıf (offline eğitim, inference path'e hiç
    girmez — Phase 4.0 mimari kararı, `training`/`predictors` paket ayrımından
    kalan tek gerçek parça; `predictors` paketinin kendisi dead code olarak
    silindi ama bu ayrım kararının facade'ı hâlâ geçerli).
-9. **`ModelTrainingHandler`**/`PhysicsRecalculationHandler` (`application/`) —
+7. **`ModelTrainingHandler`**/`PhysicsRecalculationHandler` (`application/`) —
    event-bus subscriber'ları, `self.event_bus`/`self._cache` state.
-10. **`TimeSeriesService`** (`application/time_series_service.py`) —
+8. **`TimeSeriesService`** (`application/time_series_service.py`) —
     `container.py`'de lazy singleton, `self.engine` (AdvancedTSEngine) state.
-11. **`MLService`** (`application/ml_service.py`) — class-level `_locks:
+9. **`MLService`** (`application/ml_service.py`) — class-level `_locks:
     Dict[int, asyncio.Lock]` (araç başına eğitim kilidi), gerçek paylaşılan
     mutable state; use-case fonksiyonlarına bölünemez çünkü kilit sözlüğü
     tüm çağrılar arasında paylaşılmalı. `public.py`'de export EDİLMEZ (bkz.
     yukarı not) — yalnız `api/admin_ml.py` ve `ensemble_service.py`
     (`_register_model_version` üzerinden) kullanır.
-12. **`MLBenchmark`**/**`ABTestFramework`**/**`EnsembleBenchmark`**
-    (`domain/benchmark.py`) — istatistiksel karşılaştırma state'i tutan
-    framework sınıfları (çalışan benchmark/A-B-test sonuçlarını internal
-    listede biriktirir). Denetimde doğrulandı: repo genelinde sıfır prod
-    çağıranı var (yalnız `test_ml_reliability.py`/`test_ml_audit.py`
-    tarafından egzersiz ediliyor) — `lightgbm_predictor.py`/
-    `kalman_estimator.py`/`HybridFuelPredictor` ile aynı "taşındı ama
-    wire edilmedi" kategorisinde, aşağıdaki gotcha'ya bkz.
 
 ## Domain katmanı bölünmesi — task dosyasının §5 kümelemesi kısmen düzeltildi
 
@@ -362,23 +347,25 @@ metodu çağırmaya devam ediyor.
   hash uniqueness/stability davranışını doğruluyor) — gelecekteki data-drift
   tespiti için tutulan kasıtlı bir yardımcı olarak değerlendirildi, "ölü kod"
   silme kararının kapsamına (sıfır test yatırımı olan kod) girmiyor.
-- **`lightgbm_predictor.py`/`kalman_estimator.py`/`HybridFuelPredictor`/
-  legacy LSTM sınıfları/`domain/benchmark.py` (`MLBenchmark`/
-  `ABTestFramework`/`EnsembleBenchmark`) — prod çağıranı yok, ama
-  silinmedi**: grep ile doğrulandı, bu kalemlerin (özellikle
-  `KalmanEstimatorService`/`get_kalman_service` ve `benchmark.py`'nin 3
-  sınıfı) hiçbir endpoint/container/servis tarafından wire edilmediği
-  görüldü. `time_series_predictor.py`'nin legacy LSTM sınıfları için
-  modülün kendi docstring'i zaten "yalnızca test fixture'ları için
-  tutuluyor" diyerek bunu KASITLI olarak dokümante ediyor. Diğerleri
-  (`lightgbm_predictor.py`, `kalman_estimator.py`, `HybridFuelPredictor`,
-  `benchmark.py`) için böyle bir doküman yok — ama bu modülün taşıma görevi
-  (task dosyası) bunları "sil" değil "taşı" olarak işaretliyor ve dead-code
-  temizliği bu dalgada yalnız FAZ0'ın açıkça flag'lediği kalemlerle
-  (model_manager, predictors/, get_training_seferler) sınırlı tutuldu —
-  genişletilmiş bir dead-code avı bu taşımanın kapsamı dışında bırakıldı.
-  Not olarak düşürülüyor: gelecekte ayrı bir "kullanılmayan ML sınıfları"
-  denetimi açılabilir.
+- **✅ SİLİNDİ (2026-07-31, commit `47660fb`): `lightgbm_predictor.py`/
+  `kalman_estimator.py`/`HybridFuelPredictor`/`domain/benchmark.py`
+  (`MLBenchmark`/`ABTestFramework`/`EnsembleBenchmark`)** — bu maddenin
+  önceki hâli bunları "prod çağıranı yok, ama silinmedi" olarak
+  dokümante ediyordu (Task 2'nin ilk taşıma dalgasında bilinçli olarak
+  bırakılmışlardı, aşağıdaki gerekçeyle). Task 2'nin dead-code temizliği
+  turunda (commit `47660fb`) bu değerlendirme yeniden yapıldı: grep ile
+  tekrar doğrulandı (özellikle `KalmanEstimatorService`/`get_kalman_service`
+  ve `benchmark.py`'nin 3 sınıfı) hiçbir endpoint/container/servis
+  tarafından wire edilmediği görüldü — bu kez yeni standalone servise
+  taşınmak yerine SİLİNDİ (`v2/modules/prediction_ml/domain/{kalman_estimator.py,
+  lightgbm_predictor.py,benchmark.py}` + `physics_fuel_predictor.py`'deki
+  `HybridFuelPredictor` sınıfı + dedike test dosyaları
+  `test_kalman_estimator_coverage.py`/`test_lightgbm_coverage.py`/
+  `tests/test_benchmark.py`/`tests/test_lightgbm_predictor.py` tamamen,
+  birkaç paylaşımlı test dosyası kısmen düzenlendi). `time_series_predictor.py`'nin
+  legacy LSTM sınıfları bu temizliğin KAPSAMI DIŞINDA bırakıldı — modülün
+  kendi docstring'i zaten "yalnızca test fixture'ları için tutuluyor"
+  diyerek bunu KASITLI olarak dokümante ediyor, canlı test yatırımı var.
 - **`app/core/ml/ensemble_predictor.py` shim'i kaldırıldı**: DALGA 13'ün
   ilk commit'i (`9e47ce8`) bu dosyayı 19 tüketici (2 script + test
   dosyaları) için geçici bir backward-compat shim olarak bırakmıştı — kök

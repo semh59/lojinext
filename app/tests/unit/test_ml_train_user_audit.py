@@ -19,7 +19,7 @@ async def test_ml_train_passes_user_id_to_service():
     mock_service = MagicMock()
     mock_service.train_xgboost_model = fake_train
 
-    with patch.object(pred_mod, "PredictionService", return_value=mock_service):
+    with patch.object(pred_mod, "get_prediction_service", return_value=mock_service):
         await pred_mod.train_vehicle_model(
             arac_id=21,
             current_admin=mock_admin,

@@ -74,22 +74,15 @@ class HealthService:
         """AI modellerinin yüklenme durumu"""
         try:
             from v2.modules.ai_assistant.public import get_rag_engine
-            from v2.modules.platform_infra.public import get_container
 
             rag = get_rag_engine()
             rag_stats = rag.get_stats()
 
-            try:
-                ensemble = get_container().prediction_service.ensemble_service
-                loaded_models = list(getattr(ensemble, "_models", {}).keys()) or [
-                    "physics",
-                    "lightgbm",
-                    "xgboost",
-                    "gb",
-                    "rf",
-                ]
-            except Exception:
-                loaded_models = ["physics", "lightgbm", "xgboost", "gb", "rf"]
+            # Ensemble model introspection moved out of-process with
+            # prediction_ml_service (Task 5, 2026-08-04) -- this can no
+            # longer inspect the remote service's in-memory predictor
+            # cache directly, so it just reports the known model set.
+            loaded_models = ["physics", "lightgbm", "xgboost", "gb", "rf"]
 
             return {
                 "status": "healthy" if rag_stats.get("initialized") else "degraded",

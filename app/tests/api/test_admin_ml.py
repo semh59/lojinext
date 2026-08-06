@@ -1,5 +1,15 @@
-"""Integration tests for admin ML endpoint — /api/v1/admin/ml/"""
+"""Integration tests for admin ML endpoint — /api/v1/admin/ml/
 
+Since the prediction_ml_service extraction (Task 5, 2026-08-04), these
+endpoints are pure httpx proxies to the standalone service
+(settings.PREDICTION_ML_SERVICE_URL) -- there is no real service running
+in this test environment, so the proxy calls (_service_get/_service_post,
+defined and used in admin_ml.py itself) are mocked. Auth/RBAC/routing
+still exercise the real DB (admin_auth_headers/normal_auth_headers), so
+this stays an integration test.
+"""
+
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -7,6 +17,7 @@ import pytest
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 BASE = "/api/v1/admin/ml"
+ADMIN_ML_MODULE = "v2.modules.prediction_ml.api.admin_ml"
 
 
 # ---------------------------------------------------------------------------
@@ -16,7 +27,8 @@ BASE = "/api/v1/admin/ml"
 
 async def test_ml_queue_admin_gets_200(async_client, admin_auth_headers):
     """Admin can retrieve the ML training queue and gets 200 with a list."""
-    response = await async_client.get(f"{BASE}/queue", headers=admin_auth_headers)
+    with patch(f"{ADMIN_ML_MODULE}._service_get", new=AsyncMock(return_value=[])):
+        response = await async_client.get(f"{BASE}/queue", headers=admin_auth_headers)
     assert response.status_code == 200, response.text
     assert isinstance(response.json(), list)
 
@@ -47,34 +59,27 @@ async def test_ml_queue_rejects_huge_limit(async_client, admin_auth_headers):
 # ---------------------------------------------------------------------------
 
 
-async def test_ml_train_admin_gets_200_or_202(
-    async_client, admin_auth_headers, db_session
-):
+async def test_ml_train_admin_gets_200_or_202(async_client, admin_auth_headers):
     """
     Admin can trigger ML training for a vehicle.
     The response is 200 or 202 (accepted); the actual training is async.
-    MLService.schedule_training is mocked so no real ML work occurs.
+    The proxy call to prediction_ml_service is mocked so no real ML work occurs.
     """
-    from datetime import datetime, timezone
-
-    from v2.modules.prediction_ml.schemas import MLTaskRead
-
-    fake_task = MLTaskRead(
-        id=1,
-        arac_id=1,
-        durum="beklemede",
-        hedef_versiyon=1,
-        ilerleme=0.0,
-        baslangic_zaman=None,
-        bitis_zaman=None,
-        hata_detay=None,
-        tetikleyen_kullanici_id=None,
-        olusturma=datetime.now(timezone.utc),
-    )
+    fake_task = {
+        "id": 1,
+        "arac_id": 1,
+        "durum": "beklemede",
+        "hedef_versiyon": 1,
+        "ilerleme": 0.0,
+        "baslangic_zaman": None,
+        "bitis_zaman": None,
+        "hata_detay": None,
+        "tetikleyen_kullanici_id": None,
+        "olusturma": datetime.now(timezone.utc).isoformat(),
+    }
 
     with patch(
-        "v2.modules.prediction_ml.application.ml_service.MLService.schedule_training",
-        new=AsyncMock(return_value=fake_task),
+        f"{ADMIN_ML_MODULE}._service_post", new=AsyncMock(return_value=fake_task)
     ):
         response = await async_client.post(
             f"{BASE}/train/1", headers=admin_auth_headers
@@ -107,7 +112,10 @@ async def test_ml_train_no_auth_gets_401(async_client):
 
 async def test_ml_versions_admin_gets_200(async_client, admin_auth_headers):
     """Admin can list model versions for a vehicle (may be an empty list)."""
-    response = await async_client.get(f"{BASE}/versions/1", headers=admin_auth_headers)
+    with patch(f"{ADMIN_ML_MODULE}._service_get", new=AsyncMock(return_value=[])):
+        response = await async_client.get(
+            f"{BASE}/versions/1", headers=admin_auth_headers
+        )
     assert response.status_code == 200, response.text
     assert isinstance(response.json(), list)
 

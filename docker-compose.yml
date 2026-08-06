@@ -636,6 +636,75 @@ services:
       - lojinext_network
     restart: unless-stopped
 
+  # prediction_ml_service (Task 5/6/9, 2026-08-04) -- standalone ML pipeline
+  # (5-model ensemble, physics fallback, ARIMA). Build context is the repo
+  # root (not the service subdir) because its Dockerfile also vendors
+  # v2/modules/platform_infra + v2/modules/shared_kernel + app/config.py.
+  # No host port / Traefik rule -- internal Docker network only, same as
+  # telegram-driver-bot/telegram-ops-bot (see the service's own CLAUDE.md).
+  prediction-ml-service:
+    build:
+      context: .
+      dockerfile: v2/services/prediction_ml_service/Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@db:5432/${POSTGRES_DB:-lojinext_db}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - MAIN_BACKEND_INTERNAL_URL=http://backend:8000
+    volumes:
+      - model_data:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
+  prediction-ml-worker:
+    build:
+      context: .
+      dockerfile: v2/services/prediction_ml_service/Dockerfile
+    command: celery -A prediction_ml_service.celery_app worker -l info --hostname=prediction-ml-worker@%h
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-lojinext_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set (see .env.example)}@db:5432/${POSTGRES_DB:-lojinext_db}
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_PASSWORD=
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - MAIN_BACKEND_INTERNAL_URL=http://backend:8000
+    volumes:
+      - model_data:/app/models
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "celery", "-A", "prediction_ml_service.celery_app", "inspect", "ping", "--timeout=10"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - lojinext_network
+
   ocr-service:
     build:
       context: ./v2/services/ocr_service
